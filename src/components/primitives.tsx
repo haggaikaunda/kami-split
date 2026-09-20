@@ -351,7 +351,7 @@ export function Dialog({
         const dialog = event.currentTarget;
         const controls = Array.from(
           dialog.querySelectorAll<HTMLElement>(
-            'button, input, select, textarea, a[href], [tabindex]',
+            'button, input, select, textarea, summary, a[href], [tabindex]',
           ),
         ).filter(
           (element) =>
