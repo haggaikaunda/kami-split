@@ -52,6 +52,30 @@ export function ExpenseDestination({
   }, [panel, expenseId, record?.id]);
   const content = (
     <>
+      <div className="ui-actions">
+        {source ? (
+          <Button tone="secondary" onClick={() => returnToSource(visit)}>
+            Back to previous view
+          </Button>
+        ) : (
+          <Link className="shell-action" href="/history">
+            Back to history
+          </Link>
+        )}
+        {panel && (
+          <Button
+            tone="secondary"
+            onClick={() =>
+              router.replace(
+                fullPageHref(window.location.pathname + window.location.search),
+                { scroll: false },
+              )
+            }
+          >
+            Open full page
+          </Button>
+        )}
+      </div>
       {snapshot && record ? (
         <>
           {(status === 'stale' || status === 'refreshing') && (
@@ -87,30 +111,6 @@ export function ExpenseDestination({
           Retry loading expense
         </Button>
       )}
-      <div className="ui-actions">
-        {source ? (
-          <Button tone="secondary" onClick={() => returnToSource(visit)}>
-            Back to previous view
-          </Button>
-        ) : (
-          <Link className="shell-action" href="/history">
-            Back to history
-          </Link>
-        )}
-        {panel && (
-          <Button
-            tone="secondary"
-            onClick={() =>
-              router.replace(
-                fullPageHref(window.location.pathname + window.location.search),
-                { scroll: false },
-              )
-            }
-          >
-            Open full page
-          </Button>
-        )}
-      </div>
     </>
   );
   if (panel)
