@@ -24,3 +24,5 @@ pnpm build
 ```
 
 See [docs/workflow.md](docs/workflow.md) for the delivery process and [docs/product-scope.md](docs/product-scope.md) for the intended product.
+
+See [the approved UX design](docs/design/README.md) for the seeded-data implementation plan and runnable reference prototype.

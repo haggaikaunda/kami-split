@@ -15,3 +15,7 @@ Kami Split initially supports two invited household members while keeping the do
 ## Initial exclusions
 
 Budgets, bank synchronization, receipt scanning, recurring expenses, currency conversion, payment processing, debt simplification, and social features are outside the MVP.
+
+## Seeded UX implementation phase
+
+The [consolidated design](design/README.md) adds trip-associated expenses and spending charts across days, months and years. Implement against an asynchronous data-access port with deterministic in-memory fixtures; database persistence and real sign-in are deferred. Simulated access states are explicitly labeled and are not a security guarantee. Production release still requires server-side authorization. Existing pilot issues remain a separate workflow exercise.
