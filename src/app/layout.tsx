@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { AppDataProvider } from '@/components/data-provider';
+import './overview.css';
 import { NavigationProvider } from '@/components/navigation/provider';
 import { NavigationShell } from '@/components/navigation/shell';
 import './styles.css';
@@ -17,7 +19,9 @@ export default function RootLayout({
       <body>
         <Suspense fallback={<p role="status">Loading navigation…</p>}>
           <NavigationProvider>
-            <NavigationShell detail={detail}>{children}</NavigationShell>
+            <AppDataProvider>
+              <NavigationShell detail={detail}>{children}</NavigationShell>
+            </AppDataProvider>
           </NavigationProvider>
         </Suspense>
       </body>
