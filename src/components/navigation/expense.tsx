@@ -4,28 +4,33 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button, Dialog, Status } from '../primitives';
 import { useExpenseNavigation, useRouteReady } from './provider';
-import { DraftLink } from './links';
+import { useAppData } from '../data-provider';
+import { ExpenseRecordView } from '../expense-record';
+import type { ExpenseRecord } from '../../lib/data/port';
+import type { ReactNode } from 'react';
+import './expense.css';
 import { fullPageHref, presentation } from './session';
 
 export function ExpenseDestination({
   expenseId,
   intercepted = false,
+  renderActions,
 }: {
   expenseId: string;
   intercepted?: boolean;
+  renderActions?: (record: ExpenseRecord) => ReactNode;
 }) {
   const router = useRouter();
   const params = useSearchParams();
   const visit = params.get('visit');
-  const {
-    getSource,
-    returnToSource,
-    removeFixtureRecord,
-    removedFixtureIds,
-    refreshVersion,
-  } = useExpenseNavigation();
+  const { getSource, returnToSource } = useExpenseNavigation();
   const source = getSource(visit);
-  useRouteReady(`/expenses/${encodeURIComponent(expenseId)}`, refreshVersion);
+  const { snapshot, status, readyVersion, refresh } = useAppData();
+  const canShowSnapshot = ['ready', 'refreshing', 'stale'].includes(status);
+  const record = canShowSnapshot
+    ? snapshot?.expenses.find((row) => row.id === expenseId)
+    : undefined;
+  useRouteReady(`/expenses/${encodeURIComponent(expenseId)}`, readyVersion);
   const [width, setWidth] = useState(0);
   useEffect(() => {
     const update = () => setWidth(window.innerWidth);
@@ -44,47 +49,9 @@ export function ExpenseDestination({
       document
         .getElementById('expense-heading')
         ?.focus({ preventScroll: true });
-  }, [panel, expenseId]);
+  }, [panel, expenseId, record?.id]);
   const content = (
     <>
-      <p className="fixture-label">
-        Navigation fixture · financial detail is not implemented yet
-      </p>
-      <h1 id="expense-heading" data-page-heading tabIndex={-1}>
-        Expense {expenseId}
-      </h1>
-      {expenseId !== '102' ? (
-        <Status kind="denied">
-          This example record is unavailable. No financial details are shown.
-        </Status>
-      ) : removedFixtureIds.includes(expenseId) ? (
-        <Status kind="info">
-          This fixture row was removed from source results. Financial data was
-          not changed.
-        </Status>
-      ) : (
-        <>
-          <p>
-            The same expense identity appears in panel and page presentations.
-          </p>
-          <Link href="/trips/maui?tab=expenses">
-            Open associated trip example
-          </Link>
-          <p>
-            <DraftLink id="edit-example" draftId={`expense-${expenseId}`}>
-              Edit draft example
-            </DraftLink>
-          </p>
-          <div className="ui-actions">
-            <Button
-              tone="secondary"
-              onClick={() => removeFixtureRecord(expenseId)}
-            >
-              Simulate row removed from source
-            </Button>
-          </div>
-        </>
-      )}
       <div className="ui-actions">
         {source ? (
           <Button tone="secondary" onClick={() => returnToSource(visit)}>
@@ -109,13 +76,48 @@ export function ExpenseDestination({
           </Button>
         )}
       </div>
+      {snapshot && record ? (
+        <>
+          {(status === 'stale' || status === 'refreshing') && (
+            <Status kind="info">
+              {status === 'stale'
+                ? 'Offline. These are previously loaded values; they may be out of date.'
+                : 'Refreshing expense… Previously loaded values are shown.'}
+            </Status>
+          )}
+          <ExpenseRecordView
+            record={record}
+            snapshot={snapshot}
+            selectedRevision={params.get('revision')}
+            renderActions={status === 'ready' ? renderActions : undefined}
+          />
+        </>
+      ) : (
+        <>
+          <h1 id="expense-heading" data-page-heading tabIndex={-1}>
+            {status === 'loading' ? 'Loading expense' : 'Expense unavailable'}
+          </h1>
+          <Status kind={status === 'loading' ? 'info' : 'denied'}>
+            {status === 'loading'
+              ? 'Loading the current expense and revision history…'
+              : status === 'expired'
+                ? 'Your simulated session has expired. No financial details are shown.'
+                : 'This expense could not be loaded. No financial details are shown.'}
+          </Status>
+        </>
+      )}
+      {(status === 'stale' || status === 'error') && (
+        <Button tone="secondary" onClick={() => void refresh()}>
+          Retry loading expense
+        </Button>
+      )}
     </>
   );
   if (panel)
     return (
       <Dialog
         open
-        title={`Expense ${expenseId}`}
+        title="Expense details"
         panel
         onClose={() => returnToSource(visit)}
       >

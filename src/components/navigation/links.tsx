@@ -14,22 +14,28 @@ function ordinaryClick(event: MouseEvent<HTMLAnchorElement>) {
 }
 export function ExpenseLink({
   expenseId,
+  revision,
   id,
   children,
 }: {
   expenseId: string;
+  revision?: number;
   id: string;
   children: ReactNode;
 }) {
-  const { openExpense } = useExpenseNavigation();
+  const { openExpense, openContext } = useExpenseNavigation();
+  const href =
+    expenseHref(expenseId) +
+    (revision === undefined ? '' : `?revision=${revision}`);
   return (
     <Link
       id={id}
-      href={expenseHref(expenseId)}
+      href={href}
       onClick={(event) => {
         if (ordinaryClick(event)) {
           event.preventDefault();
-          openExpense(expenseId, id);
+          if (revision === undefined) openExpense(expenseId, id);
+          else openContext(href, id);
         }
       }}
     >

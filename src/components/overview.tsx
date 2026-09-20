@@ -61,6 +61,7 @@ function ActivityRow({
         ) : (
           <ExpenseLink
             expenseId={event.recordId}
+            revision={(row as ExpenseRecord).version}
             id={`overview-event-${event.id}`}
           >
             {title}

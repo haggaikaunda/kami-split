@@ -6,6 +6,15 @@ import { NavigationProvider, useExpenseNavigation } from './provider';
 import { NavigationFixture } from './fixture';
 import { NavigationShell } from './shell';
 import { ExpenseDestination } from './expense';
+import { fixture } from '../../lib/data/fixtures';
+vi.mock('../data-provider', () => ({
+  useAppData: () => ({
+    snapshot: fixture('sample', '2026-09-20'),
+    status: 'ready',
+    readyVersion: 0,
+    refresh: vi.fn(),
+  }),
+}));
 
 afterEach(() => {
   act(() => root.unmount());
