@@ -108,10 +108,13 @@ describe('data-backed overview', () => {
   it('captures stable recent-activity context and repayment entry without placing draft values in links', async () => {
     await mount(createMockData());
     const expense = container.querySelector<HTMLAnchorElement>(
-      'a[href="/expenses/1"]',
+      'a[href="/expenses/1?revision=1"]',
     )!;
     act(() => expense.click());
-    expect(nav.openExpense).toHaveBeenCalledWith('1', 'overview-event-event-1');
+    expect(nav.openContext).toHaveBeenCalledWith(
+      '/expenses/1?revision=1',
+      'overview-event-event-1',
+    );
     const repayment = container.querySelector<HTMLAnchorElement>(
       '#overview-record-repayment',
     )!;
