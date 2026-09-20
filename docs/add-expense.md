@@ -1,0 +1,13 @@
+# Add expense
+
+Issue [#19](https://github.com/haggaikaunda/kami-split/issues/19) replaces only `/drafts/new-expense`; other draft fixtures remain for later issues. The form uses the shared session `DataPort` and does not move money or persist across reloads.
+
+Defaults use the current actor, all active members, Equal, USD and the injected local date. A trip source (or explicit `trip` query) selects the trip and clamps the suggested date to its range. Dates remain editable, including dates before travel. Amounts parse to exact integer minor units; equal remainder order is by stable member ID. Exact amounts, including explicit zero shares, survive participant exclusion and switching modes. Moving from Exact to Equal asks first and retains the manual values for switching back.
+
+Draft values and the operation ID live in the navigation session. Close, Escape and navigation preserve dirty values; the shell offers Resume or confirmed Discard, and native unload confirmation protects session changes. The same native dialog stays mounted while CSS changes between contained desktop and full-screen phone layouts, so resize does not reset values or the operation. Pending and unknown operations cannot be discarded or reset through demo controls.
+
+`ExpenseCreationProvider` owns submissions above routes. It suppresses duplicate submission, retains a frozen command for unknown outcomes, looks up operation status before replay, and verifies the original actor/household/port after asynchronous recovery. A known precommit failure unlocks correction/retry with the same operation ID. A rejected transport promise is treated as unknown. Completed requests update the shared data query and show a View expense link. They return to the initiating (or explicitly resumed) source only while that exact visit is still active; a completion never pulls a user back from another screen. Source filters remain unchanged.
+
+The add form stays read-only while existing data refreshes or is stale, and access failures hide financial fields while retaining the session draft. Inline blur/submission errors reference fields; the first invalid field receives focus. Reconciliation states show exact remaining/excess values and block an unbalanced save.
+
+Verification includes pure validation/default/allocation cases and form/controller tests for focus, exact-value retention, actor changes during recovery, stale callbacks, pending duplicate suppression, unmounted completion, precommit retry and unknown completion lookup. Independent tests are kept beside the implementation. Browser verification covers the demo route separately; actual mobile soft keyboards still require target-device verification during broader journey integration.

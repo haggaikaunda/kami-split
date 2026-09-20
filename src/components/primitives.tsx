@@ -9,6 +9,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type RefObject,
+  type Ref,
   type SelectHTMLAttributes,
 } from 'react';
 
@@ -44,7 +45,8 @@ export function Field({
   error,
   id: suppliedId,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & FieldProps) {
+}: InputHTMLAttributes<HTMLInputElement> &
+  FieldProps & { ref?: Ref<HTMLInputElement> }) {
   const generatedId = useId();
   const id = suppliedId ?? generatedId;
   const describedBy =
