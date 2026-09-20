@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Button,
@@ -23,10 +23,27 @@ function Examples() {
   const [dialog, setDialog] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [selected, setSelected] = useState('No period selected');
+  const [textSize, setTextSize] = useState('100');
+  useEffect(() => {
+    const previous = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize =
+      textSize === '200' ? '32px' : '16px';
+    return () => {
+      document.documentElement.style.fontSize = previous;
+    };
+  }, [textSize]);
   return (
     <main>
       <p>Development examples · simulated data</p>
       <h1>Shared UI primitives</h1>
+      <SelectField
+        label="Example text size"
+        value={textSize}
+        onChange={(event) => setTextSize(event.target.value)}
+      >
+        <option value="100">100%</option>
+        <option value="200">200%</option>
+      </SelectField>
       <div className="preview-grid">
         <Card title="Exact money" balance>
           <Money value="9,999,999.99" currency="USD" />

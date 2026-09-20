@@ -2,7 +2,7 @@
 
 Issue [#16](https://github.com/haggaikaunda/kami-split/issues/16). This standalone development gallery exercises controls and states without adding application routes or implying that example buttons persist records.
 
-Run `pnpm exec vite docs/primitives-preview --host 127.0.0.1 --port 4176`, then open `http://127.0.0.1:4176`. Vite is supplied by the existing Vitest toolchain. No application runtime dependency was added; jsdom is a development dependency for component interaction tests.
+Run `pnpm exec vite docs/primitives-preview --host 127.0.0.1 --port 4176`, then open `http://127.0.0.1:4176`. Vite is supplied by the existing Vitest toolchain. Use the labeled **Example text size** selector to switch between 100% and 200% root text size directly in the gallery. No application runtime dependency was added; jsdom is a development dependency for component interaction tests.
 
 ## Contract
 
