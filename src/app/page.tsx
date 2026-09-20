@@ -1,4 +1,4 @@
-import { NavigationFixture } from '@/components/navigation/fixture';
+import { Overview } from '@/components/overview';
 export default function Home() {
-  return <NavigationFixture title="Overview" route="/" />;
+  return <Overview />;
 }
