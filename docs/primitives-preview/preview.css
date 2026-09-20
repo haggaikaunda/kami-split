@@ -1,0 +1,13 @@
+.preview-grid {
+  display: grid;
+  gap: var(--space-6);
+}
+.preview-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 1280px) {
+  .preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
