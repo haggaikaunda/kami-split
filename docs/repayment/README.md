@@ -16,3 +16,9 @@ Contextual links retain independent source visits, filters, scroll and focus. Ex
 - Formatting, lint, type checking, 152 tests and production build pass.
 
 The adapter is deterministic and session-only. These UI access simulations are not a production authorization guarantee. No durable persistence, payment processing, repayment edit/delete or bank integration is included.
+
+## Live browser verification
+
+Root independently verified the 1280px desktop flow: defaults Kaunda → Mizenin 42.18 USD; 50.00 previews Mizenin owing Kaunda 7.82 USD; unacknowledged submission is blocked and focuses the acknowledgment. After acknowledgment and save, Overview shows the reversed 7.82 USD debt, unchanged spending 5,126.56 USD and contributions 2,496.10 / 2,630.46 USD, and one 50.00 USD repayment event. Focus returns to Record repayment. View repayment opens the correct read-only record.
+
+The 390px form fits the phone viewport. At 320px, document width is 320px, dialog width 318px and date field width 286px; controls remain readable without horizontal overflow.
