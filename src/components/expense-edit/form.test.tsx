@@ -175,7 +175,7 @@ describe('expense editing', () => {
     ).toBe(0);
     expect(nav.router.replace).toHaveBeenLastCalledWith('/expenses/102');
   });
-  it('preserves manual zero-share participants across exclusion and cancelled mode switch', async () => {
+  it('preserves manual zero-share participants across temporary exclusion', async () => {
     await mount();
     await input('amount', '10.01');
     await act(async () =>
@@ -198,6 +198,27 @@ describe('expense editing', () => {
     expect(updated.allocations).toEqual([
       { memberId: 'member-k', amount: 1001 },
       { memberId: 'member-m', amount: 0 },
+    ]);
+  });
+  it('saves changed membership independently of a nonparticipating payer', async () => {
+    await mount();
+    await input('amount', '10.01');
+    await input('payerId', 'member-k');
+    await act(async () =>
+      (
+        container.querySelectorAll(
+          'input[type=checkbox]',
+        )[0] as HTMLInputElement
+      ).click(),
+    );
+    await click('Save changes');
+    const updated = (await snapshot()).expenses.find(
+      (row) => row.id === '102',
+    )!;
+    expect(updated.payerId).toBe('member-k');
+    expect(updated.participantIds).toEqual(['member-m']);
+    expect(updated.allocations).toEqual([
+      { memberId: 'member-m', amount: 1001 },
     ]);
   });
   it('compares original/latest/draft, requires explicit reapply, and then uses the latest version', async () => {

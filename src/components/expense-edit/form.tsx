@@ -21,22 +21,26 @@ import './form.css';
 
 export function ExpenseEditAction({ record }: { record: ExpenseRecord }) {
   return record.deleted ? null : (
-    <DraftLink
-      draftId={`edit-expense-${record.id}`}
-      id={`edit-expense-${record.id}`}
-    >
-      Edit expense
-    </DraftLink>
+    <span className="expense-edit-action">
+      <DraftLink
+        draftId={`edit-expense-${record.id}`}
+        id={`edit-expense-${record.id}`}
+      >
+        Edit expense
+      </DraftLink>
+    </span>
   );
 }
 function ComparedValues({
   label,
   value,
   snapshot,
+  recorded = false,
 }: {
   label: string;
   value: ExpenseDraft;
   snapshot: Snapshot;
+  recorded?: boolean;
 }) {
   const member = (id: string) =>
     snapshot.members.find((row) => row.id === id)?.name ?? 'Unavailable member';
@@ -71,7 +75,7 @@ function ComparedValues({
         {value.participantIds.map((id) => (
           <li key={id}>
             {member(id)}:{' '}
-            {value.split === 'exact'
+            {recorded || value.split === 'exact'
               ? `${value.exact[id] || 'Not entered'} ${value.currency}`
               : allocations.find((row) => row.memberId === id)
                 ? formatMoney(
@@ -136,11 +140,13 @@ function EditingForm({
           label={`Original · revision ${original.version}`}
           value={expenseEditDraft(original)}
           snapshot={snapshot}
+          recorded
         />
         <ComparedValues
           label={`Latest · revision ${conflict.version}`}
           value={expenseEditDraft(conflict)}
           snapshot={snapshot}
+          recorded
         />
         <ComparedValues
           label="Your unsaved draft"
