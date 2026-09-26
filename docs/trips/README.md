@@ -15,6 +15,12 @@ Maui and Tahoe use the two approved remote image identifiers from `docs/design/a
 
 ## Verification
 
-Formatting, lint, type checking, 192 tests and production build pass. New tests cover status boundary days/future years, shared sample totals, deletion exclusion, date/name validation, a real create-to-empty destination, denied command retention, timeout/double-submit deduplication, filters/empty states and image failure.
+Formatting, lint, type checking, 206 tests and production build pass. New tests cover status boundary days/future years, shared sample totals, deletion exclusion, date/name validation, a real create-to-empty destination, denied command retention, timeout/double-submit deduplication, filters/empty states and image failure.
 
 No trip budgets, itineraries, booking, cover upload, separate trip ledger or durable persistence are included. Data remains session-only through the replaceable port.
+
+## Independent verification
+
+The independent final-diff reviewer approved the trip helpers, fallback/credits, shared create lifecycle, preserved edit fallback and final source-aware return, and ran 31 trip/create/edit tests without failures.
+
+Root independently verified one idempotent new trip with an abstract cover and empty expenses, unchanged household finances/activity, and In progress appearing only in All. In the production browser, Upcoming → Create retained name/destination on an invalid end-before-start date and focused the end-date error. Correcting the date created the distinct saved trip with its name/dates, default cover and zero expenses. Back returned to `filter=upcoming`, focused Create trip and showed the new card. The baseline cards matched Maui 1,644.20 USD / 7 expenses, Tahoe 840.00 USD / 3 expenses and Porto 0.00 USD / 0 expenses, with the approved dates. The actual 320px form retained a 320px document and 318px dialog without overflow; the screenshot and date fields were readable.
