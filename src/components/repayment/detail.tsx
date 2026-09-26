@@ -60,7 +60,9 @@ export function RepaymentDetail({ repaymentId }: { repaymentId: string }) {
       <Button onClick={() => returnToSource(visit)}>
         Back to previous view
       </Button>
-      <Link href="/history">History</Link>
+      <Link className="shell-action" href="/history">
+        History
+      </Link>
     </Dialog>
   );
 }

@@ -269,13 +269,17 @@ export function EntryPreview() {
                 Your simulated membership is active. Household access has been
                 revalidated.
               </p>
-              <Link href="/household">Open household</Link>
+              <Link className="shell-action" href="/household">
+                Open household
+              </Link>
             </>
           )}
           {state.phase === 'setup-required' && (
             <>
               <p>Your preview requires a first household.</p>
-              <Link href="/household/setup">Continue to setup preview</Link>
+              <Link className="shell-action" href="/household/setup">
+                Continue to setup preview
+              </Link>
             </>
           )}
           {error && state.phase !== 'request' && (

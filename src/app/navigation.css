@@ -41,6 +41,7 @@
 }
 .shell-nav a {
   justify-content: center;
+  padding-inline: var(--space-1);
   min-width: 0;
   font-size: 0.875rem;
   overflow-wrap: anywhere;

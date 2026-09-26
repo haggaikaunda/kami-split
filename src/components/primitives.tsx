@@ -278,17 +278,19 @@ export function Skeleton({ label = 'Loading expenses' }: { label?: string }) {
   );
 }
 export function EmptyState({
+  headingLevel = 3,
   title,
   children,
   action,
 }: {
+  headingLevel?: 2 | 3;
   title: string;
   children: ReactNode;
   action?: ReactNode;
 }) {
   return (
     <div className="ui-empty">
-      <h3>{title}</h3>
+      {headingLevel === 2 ? <h2>{title}</h2> : <h3>{title}</h3>}
       <p>{children}</p>
       {action}
     </div>

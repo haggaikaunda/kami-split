@@ -41,9 +41,11 @@ function timestampLabel(value: string) {
 
 /** Complete values are rendered from the selected immutable record snapshot. */
 export function ExpenseValues({
+  headingLevel = 3,
   record,
   snapshot,
 }: {
+  headingLevel?: 2 | 3;
   record: ExpenseRecord;
   snapshot: Snapshot;
 }) {
@@ -123,7 +125,11 @@ export function ExpenseValues({
           <dd className="expense-note">{record.note || 'No note'}</dd>
         </div>
       </dl>
-      <h3>Participant allocations</h3>
+      {headingLevel === 2 ? (
+        <h2>Participant allocations</h2>
+      ) : (
+        <h3>Participant allocations</h3>
+      )}
       <ul className="expense-allocations">
         {record.participantIds.map((id) => (
           <li key={id}>
@@ -192,7 +198,7 @@ export function ExpenseRecordView({
             : 'The requested revision is unavailable. The current record is shown below.'}
         </Status>
       )}
-      <ExpenseValues record={record} snapshot={snapshot} />
+      <ExpenseValues headingLevel={2} record={record} snapshot={snapshot} />
       {!record.deleted && renderActions?.(record)}
       <section
         aria-label="Expense revision history"

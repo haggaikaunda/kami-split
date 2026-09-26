@@ -20,7 +20,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(transparent, rgb(12 38 32 / 90%));
+  background: linear-gradient(rgb(12 38 32 / 70%), rgb(12 38 32 / 90%));
 }
 .trip-detail-hero-copy {
   padding: var(--space-6);

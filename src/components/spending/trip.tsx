@@ -37,7 +37,7 @@ export function TripSpending({
           Scroll the chart to inspect every bucket.
         </p>
         <SpendingChart
-          title={title}
+          title={`Trip ${title.toLowerCase()} chart`}
           namespace="trip-days"
           rows={data.buckets}
           currency={snapshot.household.currency}

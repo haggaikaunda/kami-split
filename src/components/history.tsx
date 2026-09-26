@@ -203,11 +203,12 @@ export function History() {
               ))}
             </ol>
           ) : snapshot.activity.length ? (
-            <EmptyState title="No matching activity">
+            <EmptyState headingLevel={2} title="No matching activity">
               Try another description, activity type, or member.
             </EmptyState>
           ) : (
             <EmptyState
+              headingLevel={2}
               title="Start your shared history"
               action={
                 <DraftLink draftId="new-expense" id="history-first-expense">
