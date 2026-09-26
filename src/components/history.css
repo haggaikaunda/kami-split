@@ -1,0 +1,110 @@
+.history-screen {
+  padding: clamp(1rem, 4vw, 3rem);
+  max-width: 78rem;
+  margin: 0 auto;
+}
+.history-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.history-heading h1 {
+  margin: 0.35rem 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+.history-heading p {
+  color: var(--color-muted);
+}
+.history-heading > a,
+.history-screen .ui-empty a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+}
+.history-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.history-filters > * {
+  min-width: 0;
+}
+.history-count {
+  color: var(--color-muted);
+  margin: 1.5rem 0 1rem;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.history-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+.history-event + .history-event {
+  border-top: 1px solid var(--color-border);
+}
+.history-event-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.history-event-main > a {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+.history-event-main p {
+  margin: 0.25rem 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.history-kind {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
+}
+.history-kind--deleted {
+  color: var(--color-danger);
+}
+.history-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .history-filters {
+    grid-template-columns: 1fr;
+  }
+  .history-event {
+    flex-wrap: wrap;
+    padding: 1rem;
+  }
+  .history-event-main {
+    flex-basis: 100%;
+  }
+  .history-amount {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

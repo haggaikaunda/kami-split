@@ -252,3 +252,25 @@ describe('independent navigation provider acceptance probes', () => {
     expect(api.drafts.new.operationId).toBe(operationId);
   });
 });
+it('replaces same-page filters without moving keyboard focus or adding an entry', () => {
+  navigate('/history?type=created');
+  flushFrames();
+  const row = document.getElementById('row')!;
+  row.focus();
+  const entry = window.history.state.kamiEntry;
+  const length = window.history.length;
+  act(() => api.replaceQuery('/history?type=deleted&search=Poke'));
+  route.search = new URLSearchParams(window.location.search);
+  render();
+  flushFrames();
+  expect(window.history.length).toBe(length);
+  expect(window.history.state.kamiEntry).toBe(entry);
+  expect(document.activeElement).toBe(row);
+  expect(window.location.search).toBe('?type=deleted&search=Poke');
+  act(() => api.replaceQuery('/expenses/102'));
+  expect(window.location.pathname).toBe('/history');
+  act(() => api.openExpense('102', 'row'));
+  expect(api.getSource(visit(pushedHref()))?.href).toBe(
+    '/history?type=deleted&search=Poke',
+  );
+});
