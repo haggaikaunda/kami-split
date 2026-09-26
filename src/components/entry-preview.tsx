@@ -46,22 +46,33 @@ export function EntryPreview() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const busy = useRef(false);
+  const reads = useRef(0);
+  const lifetime = useRef(0);
+  const access = useRef({ port: data.port, epoch: data.sessionEpoch });
+  useEffect(() => {
+    access.current = { port: data.port, epoch: data.sessionEpoch };
+  }, [data.port, data.sessionEpoch]);
   const emailField = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
+    lifetime.current += 1;
     let active = true;
     const read = async () => {
+      const request = ++reads.current;
       try {
         const next = await data.port.entry.read();
-        if (active) setState(next);
+        if (active && request === reads.current) setState(next);
       } catch {
-        if (active) setError('The entry preview is unavailable. Try again.');
+        if (active && request === reads.current)
+          setError('The entry preview is unavailable. Try again.');
       }
     };
     void read();
     const unsubscribe = data.port.subscribe(() => void read());
     return () => {
       active = false;
+      reads.current += 1;
+      lifetime.current += 1;
       unsubscribe();
     };
   }, [data.port]);
@@ -74,10 +85,18 @@ export function EntryPreview() {
   async function run(action: EntryAction) {
     if (busy.current) return;
     busy.current = true;
+    reads.current += 1;
+    const started = access.current;
+    const visitLifetime = lifetime.current;
+    const stillCurrent = () =>
+      lifetime.current === visitLifetime &&
+      access.current.port === started.port &&
+      access.current.epoch === started.epoch;
     setPending(true);
     setError('');
     try {
       const next = await data.port.entry.dispatch(action);
+      if (!stillCurrent()) return;
       if (next.problem === 'invalid-email') {
         setError('Enter a valid email address for this preview.');
         emailField.current?.focus();
@@ -86,6 +105,7 @@ export function EntryPreview() {
       setState(next);
       setEmail('');
       await data.refresh();
+      if (!stillCurrent()) return;
       if (next.phase === 'ready') router.push('/household');
       else if (next.phase === 'setup-required') router.push('/household/setup');
     } catch {
