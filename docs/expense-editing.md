@@ -1,0 +1,9 @@
+# Expense editing
+
+Issue [#21](https://github.com/haggaikaunda/kami-split/issues/21) adds Edit expense to current detail records. The existing expense form and integer validation are shared with creation. The complete record is prefilled, including explicit participant membership, zero shares, payer, effective date, trip, category and note. The original immutable snapshot and expected version are retained in the session draft; refreshes never silently rebase it.
+
+A successful update creates a revision and attributed activity through the async port, preserves the creator, and refreshes derived queries. Per-visit navigation returns to the same detail URL and presentation, preserving selected audit revision and source query state. Direct edit links have an explicit fallback to that expense. Creation retains its existing behavior and recovery tests.
+
+Conflicts show complete original, latest and draft values. Reapply keeps the user's full draft and explicitly targets the displayed latest version; it does not itself save. A subsequent concurrent change causes another conflict. Deleted records remain read-only and cannot be resurrected. Unknown completion freezes the original command and operation until status lookup resolves it, and session-owned commands finish safely after the form unmounts.
+
+Tests cover all-field editing, unchanged-field validation, odd-cent allocation, manual zero membership, immutable revisions and creator, changed actor attribution, date/trip/balance recomputation, conflict/reapply, concurrent deletion, timeout recovery and pending duplicate/navigation safety. Browser integration verifies the detail presentation and source restoration separately. Charts/trip destination screens are completed in their own issues; this change uses shared snapshot invalidation and selectors.

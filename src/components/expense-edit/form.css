@@ -1,0 +1,29 @@
+.edit-conflict {
+  margin-block: var(--space-4);
+}
+.edit-comparison {
+  display: grid;
+  gap: var(--space-4);
+}
+.edit-comparison-values {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+}
+.edit-comparison-values dl {
+  margin: 0;
+}
+.edit-comparison-values dt {
+  font-weight: 700;
+}
+.edit-comparison-values dd {
+  margin: 0 0 var(--space-3);
+  white-space: pre-wrap;
+}
+@media (min-width: 1000px) {
+  .edit-comparison {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
