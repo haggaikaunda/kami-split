@@ -229,10 +229,10 @@ export type SpendFilter = {
   start?: string;
   end?: string;
 };
-export function spending(
-  expenses: readonly Expense[],
+export function spending<T extends Expense>(
+  expenses: readonly T[],
   filter: SpendFilter,
-): { total: number; count: number; expenses: Expense[] } {
+): { total: number; count: number; expenses: T[] } {
   if (new Set(expenses.map((row) => row.id)).size !== expenses.length)
     throw new Error('Supply each current record once');
   const selected = expenses.filter(
