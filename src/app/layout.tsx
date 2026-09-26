@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { HouseholdCommandsProvider } from '@/components/household-controller';
 import { ExpenseDeletionProvider } from '@/components/expense-delete';
@@ -9,6 +9,12 @@ import { NavigationShell } from '@/components/navigation/shell';
 import { ExpenseCreationProvider } from '@/components/expense-create/controller';
 import './styles.css';
 import './navigation.css';
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: 'Kami Split',
   description: 'Shared expenses, simply settled.',

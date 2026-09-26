@@ -242,12 +242,17 @@ button:disabled {
 }
 .ui-dialog-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
 }
+.ui-dialog-header > .ui-button {
+  flex-shrink: 0;
+}
 .ui-dialog-header h2 {
   min-width: 0;
+  flex: 1 1 12rem;
 }
 .ui-actions {
   display: flex;

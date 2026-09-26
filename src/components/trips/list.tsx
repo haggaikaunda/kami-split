@@ -116,6 +116,7 @@ export function TripsList() {
             </div>
           ) : (
             <EmptyState
+              headingLevel={2}
               title={
                 snapshot.trips.length
                   ? 'No trips match this filter'
@@ -123,7 +124,9 @@ export function TripsList() {
               }
             >
               {snapshot.trips.length ? (
-                <Link href="/trips">Show all trips</Link>
+                <Link className="shell-action" href="/trips">
+                  Show all trips
+                </Link>
               ) : (
                 <>Create a trip to organize its shared expenses.</>
               )}

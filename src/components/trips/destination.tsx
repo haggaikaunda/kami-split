@@ -138,7 +138,7 @@ export function TripDestination({ tripId }: { tripId: string }) {
             }}
           />
           {model.count === 0 && (
-            <EmptyState title="No expenses yet">
+            <EmptyState headingLevel={2} title="No expenses yet">
               Add the first shared expense for {trip.name}. Dates before the
               trip are allowed.
             </EmptyState>
