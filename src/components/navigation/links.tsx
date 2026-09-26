@@ -68,3 +68,30 @@ export function DraftLink({
     </Link>
   );
 }
+
+export function RepaymentLink({
+  repaymentId,
+  id,
+  children,
+}: {
+  repaymentId: string;
+  id: string;
+  children: ReactNode;
+}) {
+  const { openContext } = useExpenseNavigation();
+  const href = `/repayments/${encodeURIComponent(repaymentId)}`;
+  return (
+    <Link
+      id={id}
+      href={href}
+      onClick={(event) => {
+        if (ordinaryClick(event)) {
+          event.preventDefault();
+          openContext(href, id);
+        }
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
