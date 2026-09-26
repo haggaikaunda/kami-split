@@ -22,3 +22,5 @@ The adapter is deterministic and session-only. These UI access simulations are n
 Root independently verified the 1280px desktop flow: defaults Kaunda → Mizenin 42.18 USD; 50.00 previews Mizenin owing Kaunda 7.82 USD; unacknowledged submission is blocked and focuses the acknowledgment. After acknowledgment and save, Overview shows the reversed 7.82 USD debt, unchanged spending 5,126.56 USD and contributions 2,496.10 / 2,630.46 USD, and one 50.00 USD repayment event. Focus returns to Record repayment. View repayment opens the correct read-only record.
 
 The 390px form fits the phone viewport. At 320px, document width is 320px, dialog width 318px and date field width 286px; controls remain readable without horizontal overflow.
+
+At 320px and 200% text (32px root size), the document remains 320px wide, the dialog 318px and date field 286px. The complete 09/20/2026 date remains readable and keyboard-focusable with vertical scrolling. Returning from read-only repayment detail restores the Overview's saved View repayment link focus. Root's final-diff review found no blocking issues.
