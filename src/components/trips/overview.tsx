@@ -2,6 +2,7 @@
 import type { Snapshot } from '@/lib/data/port';
 import type { TripDetail } from '@/lib/trip-detail';
 import { formatMoney } from '@/lib/ledger';
+import { TripSpending } from '../spending/trip';
 import { Button, Card, Member } from '../primitives';
 export function TripOverview({
   snapshot,
@@ -64,24 +65,14 @@ export function TripOverview({
           })}
         </ul>
       </Card>
-      <div className="trip-analytics">
-        <Card title="Spending by day">
-          <p>
-            Inspect exact daily totals and their expenses in the Expenses view.
-          </p>
-          <Button tone="secondary" onClick={showExpenses}>
-            View daily expenses
-          </Button>
-        </Card>
-        <Card title="Where it went">
-          <p>
-            Use the category filter to inspect the expenses behind your trip
-            spending.
-          </p>
-          <Button tone="secondary" onClick={showExpenses}>
-            Browse by category
-          </Button>
-        </Card>
+      <TripSpending snapshot={snapshot} trip={model.trip} />
+      <div className="ui-actions">
+        <Button tone="secondary" onClick={showExpenses}>
+          View daily expenses
+        </Button>
+        <Button tone="secondary" onClick={showExpenses}>
+          Browse by category
+        </Button>
       </div>
     </>
   );
