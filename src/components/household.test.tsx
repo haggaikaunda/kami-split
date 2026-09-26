@@ -28,6 +28,7 @@ let root: Root;
 let api: AppData;
 let nav: ReturnType<typeof useExpenseNavigation>;
 let source: ReturnType<typeof createMockData>;
+let initialHouseholdId = 'household-demo';
 function Probe() {
   const data = useAppData();
   const navigation = useExpenseNavigation();
@@ -41,7 +42,7 @@ async function render(screen: 'entry' | 'setup' | 'household' = 'household') {
   await act(async () =>
     root.render(
       <NavigationProvider>
-        <AppDataProvider source={source}>
+        <AppDataProvider source={source} householdId={initialHouseholdId}>
           <HouseholdCommandsProvider>
             <Probe />
             {screen === 'entry' ? (
@@ -100,6 +101,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   source = createMockData();
+  initialHouseholdId = 'household-demo';
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -318,4 +320,41 @@ it('finishes setup without redirecting a user who left the setup route during th
   await act(async () => complete());
   expect(api.snapshot?.household.name).toBe('Preserved destination');
   expect(router.replace).not.toHaveBeenCalled();
+});
+it('retains but cannot replay an uncertain setup from a different selected source household', async () => {
+  await source.port.entry.dispatch({
+    kind: 'scenario',
+    scenario: 'first-household',
+  });
+  await source.port.entry.dispatch({
+    kind: 'request',
+    email: 'new@example.test',
+  });
+  await source.port.entry.dispatch({ kind: 'follow' });
+  await render('setup');
+  const dispatch = source.port.entry.dispatch.bind(source.port.entry);
+  let complete!: () => void;
+  const send = vi
+    .spyOn(source.port.entry, 'dispatch')
+    .mockImplementation(async (action) => {
+      const value = await dispatch(action);
+      return new Promise((resolve) => {
+        complete = () => resolve(value);
+      });
+    });
+  await input('Household name', 'Old selected scope');
+  await click('Create preview household');
+  const epoch = api.sessionEpoch;
+  initialHouseholdId = 'another-household';
+  await render('setup');
+  await act(async () => complete());
+  expect(api.snapshot).toBeUndefined();
+  expect(api.sessionEpoch).toBe(epoch);
+  expect(router.replace).not.toHaveBeenCalled();
+  await act(async () => {
+    expect(await api.setupHousehold('Wrong scope')).toEqual({
+      status: 'unknown',
+    });
+  });
+  expect(send).toHaveBeenCalledTimes(1);
 });

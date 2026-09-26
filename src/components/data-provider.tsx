@@ -196,6 +196,7 @@ export function AppDataProvider({
   }, [port, householdId]);
   const setupAttempt = useRef<{
     port: DataPort;
+    initialHouseholdId: string;
     name: string;
     release: () => void;
   } | null>(null);
@@ -221,9 +222,15 @@ export function AppDataProvider({
           },
         };
       const previous = setupAttempt.current;
-      if (previous && previous.port !== port) return { status: 'unknown' };
+      if (
+        previous &&
+        (previous.port !== port ||
+          previous.initialHouseholdId !== initialHouseholdId)
+      )
+        return { status: 'unknown' };
       const attempt = previous ?? {
         port,
+        initialHouseholdId,
         name,
         release: acquirePendingOperation('household-setup'),
       };
