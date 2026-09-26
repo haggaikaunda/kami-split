@@ -4,6 +4,7 @@ import { AppDataProvider } from '@/components/data-provider';
 import './overview.css';
 import { NavigationProvider } from '@/components/navigation/provider';
 import { NavigationShell } from '@/components/navigation/shell';
+import { ExpenseCreationProvider } from '@/components/expense-create/controller';
 import './styles.css';
 import './navigation.css';
 export const metadata: Metadata = {
@@ -20,7 +21,9 @@ export default function RootLayout({
         <Suspense fallback={<p role="status">Loading navigation…</p>}>
           <NavigationProvider>
             <AppDataProvider>
-              <NavigationShell detail={detail}>{children}</NavigationShell>
+              <ExpenseCreationProvider>
+                <NavigationShell detail={detail}>{children}</NavigationShell>
+              </ExpenseCreationProvider>
             </AppDataProvider>
           </NavigationProvider>
         </Suspense>
