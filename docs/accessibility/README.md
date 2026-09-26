@@ -39,10 +39,10 @@ The enlarged-text pass used a temporary development-only checkbox and CSS `html:
 
 ## Evidence images
 
-- Baseline comparison: [implementation 1280](screenshots/overview-1280.png), [prototype 1280](screenshots/prototype-overview-1280.png), [implementation 390](screenshots/overview-390.png), [prototype 390](screenshots/prototype-overview-390.png).
-- [Tablet 768](screenshots/overview-768.png), [settled phone](screenshots/settled-390.png), [filtered desktop panel](screenshots/filtered-panel-1280.png).
-- [200% expense form](screenshots/expense-320-200-percent.png), [200% trip](screenshots/trip-320-200-percent.png), [200% chart dialog](screenshots/chart-dialog-320-200-percent.png).
-- [Trip-card focus](screenshots/trip-card-focus-320.png), [default trip cover](screenshots/trip-fallback-320.png), [retained tombstone](screenshots/tombstone-320.png).
+- Baseline comparison: [implementation 1280](screenshots/overview-1280.jpg), [prototype 1280](screenshots/prototype-overview-1280.jpg), [implementation 390](screenshots/overview-390.jpg), [prototype 390](screenshots/prototype-overview-390.jpg).
+- [Tablet 768](screenshots/overview-768.jpg), [settled phone](screenshots/settled-390.jpg), [filtered desktop panel](screenshots/filtered-panel-1280.jpg).
+- [200% expense form](screenshots/expense-320-200-percent.jpg), [200% trip](screenshots/trip-320-200-percent.jpg), [200% chart dialog](screenshots/chart-dialog-320-200-percent.jpg).
+- [Trip-card focus](screenshots/trip-card-focus-320.jpg), [default trip cover](screenshots/trip-fallback-320.jpg), [retained tombstone](screenshots/tombstone-320.jpg).
 
 ## Practical limits
 
