@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { ExpenseEditAction } from '../expense-edit/form';
 import { DeleteExpenseButton } from '../expense-delete';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -94,6 +95,7 @@ export function ExpenseDestination({
               status === 'ready'
                 ? (current) => (
                     <div className="ui-actions">
+                      <ExpenseEditAction record={current} />
                       {renderActions?.(current)}
                       <DeleteExpenseButton record={current} />
                     </div>

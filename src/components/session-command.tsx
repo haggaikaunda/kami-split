@@ -209,6 +209,11 @@ function CommandSession({ children }: { children: ReactNode }) {
               replaceDestination(
                 `/trips/${encodeURIComponent(result.value.id)}`,
               );
+            else if (attempt.envelope.command.kind === 'update-expense')
+              returnToSource(
+                attempt.visit,
+                `/expenses/${encodeURIComponent(attempt.envelope.command.id)}`,
+              );
             else returnToSource(attempt.visit);
         } else if (result.status === 'unknown') {
           state(id, {
