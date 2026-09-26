@@ -1,4 +1,5 @@
 import type { Expense, Repayment } from '../ledger';
+import type { EntryPort } from './entry';
 
 export type Member = {
   id: string;
@@ -107,6 +108,8 @@ export type Envelope = {
 };
 /** Implement this boundary with a future authorized API, without changing UI consumers. */
 export interface DataPort {
+  /** Entry preview only; a future production adapter needs real server authentication. */
+  entry: EntryPort;
   read(householdId: string): Promise<Outcome<Snapshot>>;
   expense(
     householdId: string,
