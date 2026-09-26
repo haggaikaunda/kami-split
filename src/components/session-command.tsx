@@ -106,6 +106,10 @@ function CommandSession({ children }: { children: ReactNode }) {
   const run = useCallback(
     async (attempt: Attempt, recovery: boolean) => {
       const id = attempt.envelope.operationId;
+      const noun =
+        attempt.envelope.command.kind === 'record-repayment'
+          ? 'repayment'
+          : 'expense';
       if (busy.current.has(id)) return;
       if (recovery && !sameSession(attempt)) {
         state(id, {
@@ -213,12 +217,12 @@ function CommandSession({ children }: { children: ReactNode }) {
             result,
             message:
               result.status === 'offline'
-                ? 'No record was saved. Restore your connection and retry.'
+                ? `No ${noun} was saved. Restore your connection and retry.`
                 : result.status === 'denied' || result.status === 'expired'
                   ? 'Access could not be confirmed. Your draft is preserved; restore your session before retrying.'
                   : result.status === 'operation-conflict'
                     ? 'This operation already belongs to different values. Check the saved operation before continuing.'
-                    : 'The record was not saved. Check your fields and retry.',
+                    : `The ${noun} was not saved. Check your fields and retry.`,
           });
         }
       } catch {
