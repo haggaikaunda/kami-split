@@ -1,0 +1,9 @@
+# Simulated entry
+
+Issue #28 provides a deterministic entry rehearsal through `DataPort.entry`. Email input is validated transiently and discarded after requesting a preview link; no credentials, token, message, network delivery or persistent storage is created. These tests are not server-authentication coverage.
+
+Named scenarios cover existing membership, first household, invitation, used/expired/revoked links, wrong identity and expired session. Entry errors and declined invitations deny financial reads, expense detail, commands and operation lookup. Successful existing-member entry retains the active actor and revalidates the adapter. Invitation acceptance adds one deterministic active member and changes actor only once; repeated acceptance does not duplicate membership. First-time entry keeps financial access denied and routes to the explicit setup-required destination until #29 supplies the form.
+
+The UI labels every entry/setup surface as a preview, supplies recovery actions, clears transient email after a request, focuses errors and announces transitions. Scenario switching is disabled while financial operations are unresolved. Existing session drafts are retained and their commands still revalidate actor/access through the shared command provider.
+
+Validation: formatting, lint, type checking, 181 tests and production build pass. Nine entry contract cases and three UI cases cover every named error, denial, duplicate acceptance, invalid email focus, no retained email, actor restoration and setup handoff. Independent testing/review and live responsive acceptance remain PR gates.
