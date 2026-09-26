@@ -22,6 +22,7 @@ type NavigationContext = {
   href: string;
   getSource: (visitId: string | null) => SourceDescriptor | undefined;
   sourceHref: (route: string) => string;
+  replaceQuery: (href: string) => void;
   openContext: (href: string, focusId: string) => void;
   openExpense: (id: string, focusId: string) => void;
   openDraft: (id: string, focusId: string) => void;
@@ -174,6 +175,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [href, getSource],
   );
 
+  const replaceQuery = useCallback((nextHref: string) => {
+    const next = new URL(nextHref, window.location.origin);
+    if (
+      next.origin !== window.location.origin ||
+      next.pathname !== window.location.pathname
+    )
+      return;
+    const entryId = ensureEntryId();
+    pendingRestore.current = null;
+    // Same-screen filters replace this entry and preserve the active control.
+    processedEntry.current = `${next.pathname}${next.search}\0${entryId}`;
+    // Next's native-history integration copies its internal router state and
+    // synchronizes useSearchParams. Do not pass __NA, which bypasses that hook.
+    window.history.replaceState(
+      { kamiEntry: entryId },
+      '',
+      next.pathname + next.search,
+    );
+  }, []);
+
   useEffect(() => {
     const visit = search.get('visit');
 
@@ -302,6 +323,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       href,
       getSource,
       sourceHref,
+      replaceQuery,
       openContext,
       openExpense,
       openDraft,
@@ -321,6 +343,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       href,
       getSource,
       sourceHref,
+      replaceQuery,
       openContext,
       openExpense,
       openDraft,
