@@ -1,4 +1,4 @@
-import { SetupRequired } from '@/components/entry-preview';
+import { HouseholdSetup } from '@/components/household-setup';
 export default function Page() {
-  return <SetupRequired />;
+  return <HouseholdSetup />;
 }

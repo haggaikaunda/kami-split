@@ -209,9 +209,9 @@ export function EntryPreview() {
           {state.phase === 'invitation' && (
             <>
               <p>
-                Alex (preview) is invited to join the sample household as a
-                member. Accepting changes only this session’s simulated
-                membership.
+                {state.inviteeName ?? 'The invited preview identity'} can join
+                this household as a member. Accepting changes only this
+                session’s simulated membership.
               </p>
               <div className="ui-actions">
                 <Button
