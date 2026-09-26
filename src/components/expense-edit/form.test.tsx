@@ -114,6 +114,10 @@ describe('expense editing', () => {
       record = before.expenses.find((row) => row.id === '102')!;
     await mount();
     expect(document.activeElement?.id).toBe('create-amount');
+    expect(button('Save changes').disabled).toBe(true);
+    expect(container.textContent).toContain(
+      'Make a change to save a new revision',
+    );
     await input('description', '');
     await input('amount', '10.01');
     await click('Save changes');

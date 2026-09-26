@@ -174,6 +174,7 @@ function EditingForm({
     <p className="ui-hint">
       Editing revision {values.expectedVersion}. A successful save records a new
       revision and preserves the creator and earlier history.
+      {!draft && ' Make a change to save a new revision.'}
     </p>
   );
   return (
@@ -194,7 +195,7 @@ function EditingForm({
           : undefined
       }
       beforeFields={comparison}
-      saveDisabled={!!conflict}
+      saveDisabled={!draft || !!conflict}
       state={
         state?.result?.status === 'conflict' ||
         state?.result?.status === 'deleted'
