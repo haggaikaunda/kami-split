@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CATEGORIES } from '../../lib/data/mock';
-import type { Snapshot } from '../../lib/data/port';
+import type { ExpenseInput, Snapshot } from '../../lib/data/port';
 import {
   defaultExpenseDraft,
   decimalText,
@@ -22,10 +22,10 @@ import {
   Skeleton,
   Status,
 } from '../primitives';
-import { useExpenseCreation } from './controller';
+import { useExpenseCreation, type CreationState } from './controller';
 import './form.css';
 
-const draftId = 'new-expense';
+const addDraftId = 'new-expense';
 const fieldId = (key: string) => `create-${encodeURIComponent(key)}`;
 function suggestedTrip(
   snapshot: Snapshot,
@@ -40,42 +40,60 @@ function suggestedTrip(
       : undefined);
   return snapshot.trips.some((trip) => trip.id === id) ? id : undefined;
 }
-function ExpenseForm({
+export function ExpenseForm<T extends ExpenseDraft>({
   snapshot,
   disabled,
   visit,
   initialFocusRef,
+  draftId,
+  initialValues,
+  label,
+  state,
+  onSave,
+  onRecover,
+  saveLabel = 'Save expense',
+  disabledMessage = 'The household is refreshing or offline. Your draft is preserved; restore current data before saving.',
+  beforeFields,
+  saveDisabled = false,
+  onExit,
+  introduction = 'Record a shared expense. Nothing is charged and no money is moved.',
+  showTripSuggestion = true,
 }: {
   snapshot: Snapshot;
   disabled: boolean;
   visit: string | null;
   initialFocusRef: React.RefObject<HTMLInputElement | null>;
+  draftId: string;
+  initialValues: T;
+  label: string;
+  state?: CreationState;
+  onSave: (value: ExpenseInput, operationId: string) => Promise<void>;
+  onRecover: (operationId: string) => Promise<void>;
+  saveLabel?: string;
+  disabledMessage?: string;
+  beforeFields?: React.ReactNode;
+  saveDisabled?: boolean;
+  onExit?: () => void;
+  introduction?: string;
+  showTripSuggestion?: boolean;
 }) {
-  const params = useSearchParams();
   useEffect(() => {
     initialFocusRef.current?.focus();
   }, [initialFocusRef]);
-  const { getSource, returnToSource } = useExpenseNavigation();
-  const { draft, update } = useSessionDraft<ExpenseDraft>(draftId);
-  const creation = useExpenseCreation();
-  const [defaults] = useState(() =>
-    defaultExpenseDraft(
-      snapshot,
-      suggestedTrip(snapshot, params.get('trip'), getSource(visit)?.href),
-    ),
-  );
+  const { returnToSource } = useExpenseNavigation();
+  const { draft, update } = useSessionDraft<T>(draftId);
+  const [defaults] = useState(initialValues);
   const values = draft?.values ?? defaults;
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const [confirmEqual, setConfirmEqual] = useState(false);
-  const state = draft ? creation.states[draft.operationId] : undefined;
   const locked = !!draft?.pending;
   const validation = validateExpenseDraft(values, snapshot);
   const errors = { ...validation.fields, ...(state?.fields ?? {}) };
   const show = (key: string) =>
     submitted || touched[key] ? errors[key] : undefined;
   const change = (next: Partial<ExpenseDraft>) => {
-    if (!locked && !disabled) update({ ...values, ...next }, 'new expense');
+    if (!locked && !disabled) update({ ...values, ...next }, label);
   };
   const blur = (key: string) => () =>
     setTouched((previous) => ({ ...previous, [key]: true }));
@@ -96,14 +114,14 @@ function ExpenseForm({
   }
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (locked || disabled) return;
+    if (locked || disabled || saveDisabled) return;
     setSubmitted(true);
     if (!validation.value || !draft) {
       const first = Object.keys(validation.fields)[0];
       if (first) document.getElementById(fieldId(first))?.focus();
       return;
     }
-    await creation.submit(draftId, draft.operationId, validation.value, visit);
+    await onSave(validation.value, draft.operationId);
   }
   const members = snapshot.members.filter(
     (member) =>
@@ -113,19 +131,15 @@ function ExpenseForm({
   );
   return (
     <>
-      <p>Record a shared expense. Nothing is charged and no money is moved.</p>
-      {values.tripId && (
+      <p>{introduction}</p>
+      {showTripSuggestion && values.tripId && (
         <p className="ui-hint">
           The suggested date is today within the trip dates. You can change it,
           including for pre-trip bookings.
         </p>
       )}
-      {disabled && (
-        <Status kind="stale">
-          The household is refreshing or offline. Your draft is preserved;
-          restore current data before saving.
-        </Status>
-      )}
+      {disabled && <Status kind="stale">{disabledMessage}</Status>}
+      {beforeFields}
       <form noValidate onSubmit={submit}>
         {submitted && Object.keys(errors).length > 0 && (
           <ErrorSummary
@@ -362,9 +376,7 @@ function ExpenseForm({
             {state.message}
             {state.phase === 'unknown' && draft && (
               <div className="ui-actions">
-                <Button
-                  onClick={() => void creation.recover(draft.operationId)}
-                >
+                <Button onClick={() => void onRecover(draft.operationId)}>
                   Check save status and retry safely
                 </Button>
               </div>
@@ -372,15 +384,20 @@ function ExpenseForm({
           </Status>
         )}
         <div className="ui-actions create-actions">
-          <Button tone="secondary" onClick={() => returnToSource(visit)}>
+          <Button
+            tone="secondary"
+            onClick={onExit ?? (() => returnToSource(visit))}
+          >
             {draft ? 'Leave and preserve draft' : 'Cancel'}
           </Button>
           <Button
             type="submit"
             pending={state?.phase === 'submitting'}
-            disabled={locked || disabled || validation.remaining !== 0}
+            disabled={
+              locked || disabled || saveDisabled || validation.remaining !== 0
+            }
           >
-            Save expense
+            {saveLabel}
           </Button>
         </div>
       </form>
@@ -401,6 +418,45 @@ function ExpenseForm({
   );
 }
 
+function AddExpenseForm({
+  snapshot,
+  disabled,
+  visit,
+  initialFocusRef,
+}: {
+  snapshot: Snapshot;
+  disabled: boolean;
+  visit: string | null;
+  initialFocusRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const params = useSearchParams();
+  const { getSource } = useExpenseNavigation();
+  const { draft } = useSessionDraft<ExpenseDraft>(addDraftId);
+  const creation = useExpenseCreation();
+  const [defaults] = useState(() =>
+    defaultExpenseDraft(
+      snapshot,
+      suggestedTrip(snapshot, params.get('trip'), getSource(visit)?.href),
+    ),
+  );
+  return (
+    <ExpenseForm
+      snapshot={snapshot}
+      disabled={disabled}
+      visit={visit}
+      initialFocusRef={initialFocusRef}
+      draftId={addDraftId}
+      initialValues={defaults}
+      label="new expense"
+      state={draft ? creation.states[draft.operationId] : undefined}
+      onSave={(value, operationId) =>
+        creation.submit(addDraftId, operationId, value, visit)
+      }
+      onRecover={creation.recover}
+    />
+  );
+}
+
 export function AddExpense() {
   const { snapshot, status, refresh } = useAppData();
   const { returnToSource } = useExpenseNavigation();
@@ -417,7 +473,7 @@ export function AddExpense() {
     >
       <div className="create-expense">
         {canRead ? (
-          <ExpenseForm
+          <AddExpenseForm
             snapshot={snapshot!}
             disabled={status !== 'ready'}
             visit={visit}
