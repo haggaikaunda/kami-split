@@ -15,13 +15,15 @@ const scenarios: { value: Scenario; label: string }[] = [
   { value: 'concurrent-delete', label: 'Concurrent deletion' },
 ];
 export function DemoPanel({ active = true }: { active?: boolean }) {
-  const { demo, snapshot } = useAppData();
+  const { demo, snapshot, pendingOperations } = useAppData();
   const { drafts } = useExpenseNavigation();
   const [fixture, setFixture] = useState<Fixture>('sample');
   const [scenario, setScenario] = useState<Scenario>('normal');
   const [confirm, setConfirm] = useState(false);
   if (!demo) return null;
-  const pending = Object.values(drafts).some((draft) => draft.pending);
+  const pending =
+    pendingOperations > 0 ||
+    Object.values(drafts).some((draft) => draft.pending);
   return (
     <details className="demo-controls">
       <summary>Simulation controls</summary>
