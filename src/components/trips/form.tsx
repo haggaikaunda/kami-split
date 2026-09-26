@@ -1,4 +1,5 @@
 'use client';
+import { CommandFeedback } from '../command-feedback';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Snapshot } from '@/lib/data/port';
@@ -106,16 +107,13 @@ function TripFields({
           />
         ))}
       </fieldset>
-      {state && state.phase !== 'saved' && (
-        <Status kind={state.phase === 'failed' ? 'error' : 'pending'}>
-          {state.message}
-          {state.phase === 'unknown' && draft && (
-            <Button onClick={() => void commands.recover(draft.operationId)}>
-              Check trip status and retry safely
-            </Button>
-          )}
-        </Status>
-      )}
+      <CommandFeedback
+        state={state}
+        onRecover={
+          draft ? () => void commands.recover(draft.operationId) : undefined
+        }
+        recoveryLabel="Check trip status and retry safely"
+      />
       <div className="ui-actions">
         <Button tone="secondary" onClick={() => returnToSource(visit)}>
           {draft ? 'Leave and preserve draft' : 'Cancel'}

@@ -426,6 +426,32 @@ export function createMockData(options: MockOptions = {}): {
         entity = member;
       }
     }
+    // Removed members have no remaining obligations. Historical corrections must
+    // not reopen debt they can no longer settle through the active-member flow.
+    if (
+      command.kind === 'create-expense' ||
+      command.kind === 'update-expense' ||
+      command.kind === 'delete-expense'
+    ) {
+      const inactive = new Set(
+        next.members
+          .filter((member) => member.status === 'inactive')
+          .map((member) => member.id),
+      );
+      if (
+        inactive.size &&
+        (['USD', 'EUR'] as const).some((currency) =>
+          directObligations(next, currency).some(
+            (edge) =>
+              inactive.has(edge.senderId) || inactive.has(edge.recipientId),
+          ),
+        )
+      )
+        return validation({
+          allocations:
+            'This change would reopen a balance for an inactive member. Keep their historical financial amounts unchanged. Notes and other nonfinancial corrections are still allowed.',
+        });
+    }
     // Validate aggregate conservation before swapping the complete session state.
     positions(
       next.members.map((member) => member.id),
