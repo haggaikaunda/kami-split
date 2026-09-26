@@ -197,9 +197,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       return;
     }
     pendingRestore.current = null;
-    const frame = requestAnimationFrame(() =>
-      visiblePageHeading()?.focus({ preventScroll: true }),
-    );
+    const frame = requestAnimationFrame(() => {
+      // A mounted modal owns initial/validation focus; route focus must not
+      // override its explicitly focused amount field or first invalid control.
+      if (document.activeElement?.closest('dialog[open]')) return;
+      visiblePageHeading()?.focus({ preventScroll: true });
+    });
     return () => cancelAnimationFrame(frame);
   }, [href, search, getSource, router]);
 
