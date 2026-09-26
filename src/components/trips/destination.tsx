@@ -1,7 +1,11 @@
 'use client';
 import Link from 'next/link';
 import { useAppData } from '../data-provider';
-import { useRouteReady } from '../navigation/provider';
+import {
+  useExpenseNavigation,
+  useRouteContext,
+  useRouteReady,
+} from '../navigation/provider';
 import { DraftLink } from '../navigation/links';
 import { Button, Card, EmptyState, Skeleton, Status } from '../primitives';
 import { formatMoney, spending } from '@/lib/ledger';
@@ -10,7 +14,18 @@ import { TripCover } from './cover';
 import './trips.css';
 export function TripDestination({ tripId }: { tripId: string }) {
   const { snapshot, status, refresh, readyVersion } = useAppData();
-  useRouteReady(`/trips/${encodeURIComponent(tripId)}`, readyVersion);
+  const route = `/trips/${encodeURIComponent(tripId)}`;
+  useRouteReady(route, readyVersion);
+  const { searchParams } = useRouteContext(route);
+  const visit = searchParams.get('visit');
+  const { getSource, returnToSource } = useExpenseNavigation();
+  const back = getSource(visit) ? (
+    <Button tone="secondary" onClick={() => returnToSource(visit)}>
+      Back to previous view
+    </Button>
+  ) : (
+    <Link href="/trips">All trips</Link>
+  );
   const trip = snapshot?.trips.find((row) => row.id === tripId);
   if (status === 'loading') return <Skeleton label="Loading trip" />;
   if (!trip || !snapshot)
@@ -23,7 +38,7 @@ export function TripDestination({ tripId }: { tripId: string }) {
           This trip is unavailable to the current session.
           <Button onClick={() => void refresh()}>Try again</Button>
         </Status>
-        <Link href="/trips">All trips</Link>
+        {back}
       </>
     );
   const total = spending(snapshot.expenses, {
@@ -32,7 +47,7 @@ export function TripDestination({ tripId }: { tripId: string }) {
   });
   return (
     <div className="trips-screen">
-      <Link href="/trips">All trips</Link>
+      {back}
       <TripCover cover={trip.cover} />
       <header className="trips-heading">
         <div>

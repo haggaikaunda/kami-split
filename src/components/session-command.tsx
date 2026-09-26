@@ -207,7 +207,7 @@ function CommandSession({ children }: { children: ReactNode }) {
           )
             if (attempt.envelope.command.kind === 'create-trip')
               replaceDestination(
-                `/trips/${encodeURIComponent(result.value.id)}`,
+                `/trips/${encodeURIComponent(result.value.id)}${attempt.visit ? `?visit=${encodeURIComponent(attempt.visit)}` : ''}`,
               );
             else if (attempt.envelope.command.kind === 'update-expense')
               returnToSource(

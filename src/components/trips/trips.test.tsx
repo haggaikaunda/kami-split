@@ -92,6 +92,12 @@ afterEach(() => {
 describe('trip creation and cards', () => {
   it('creates once and opens a real empty destination with saved name and dates', async () => {
     const execute = vi.spyOn(source.port, 'execute');
+    nav.params = new URLSearchParams('visit=trip-list-visit');
+    window.history.replaceState(
+      {},
+      '',
+      '/drafts/new-trip?visit=trip-list-visit',
+    );
     await mount();
     expect(document.activeElement?.id).toBe('trip-name');
     await input('name', 'Autumn escape');
@@ -106,7 +112,9 @@ describe('trip creation and cards', () => {
       (row) => row.name === 'Autumn escape',
     )!;
     expect(trip.cover).toBeNull();
-    expect(nav.router.replace).toHaveBeenCalledWith(`/trips/${trip.id}`);
+    expect(nav.router.replace).toHaveBeenCalledWith(
+      `/trips/${trip.id}?visit=trip-list-visit`,
+    );
     nav.path = `/trips/${trip.id}`;
     window.history.replaceState({}, '', nav.path);
     await mount(trip.id);
@@ -165,6 +173,14 @@ describe('trip creation and cards', () => {
     expect(container.textContent).toContain('1,644.20 USD');
     expect(container.textContent).toContain('840.00 USD');
     expect(container.querySelectorAll('article')).toHaveLength(3);
+    const card = container.querySelector(
+      '#trip-card-maui',
+    ) as HTMLAnchorElement;
+    await act(async () => card.click());
+    expect(nav.router.push).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/trips\/maui\?visit=/),
+      { scroll: false },
+    );
     const photo = container.querySelector('img')!;
     await act(async () => photo.dispatchEvent(new Event('error')));
     expect(
@@ -193,5 +209,22 @@ describe('trip creation and cards', () => {
     });
     await mount('list');
     expect(container.textContent).toContain('Your next adventure starts here');
+  });
+  it('returns a contextual trip to its filtered list visit', async () => {
+    nav.path = '/trips';
+    nav.params = new URLSearchParams('filter=past');
+    window.history.replaceState({}, '', '/trips?filter=past');
+    await mount('list');
+    await act(async () =>
+      (container.querySelector('#trip-card-maui') as HTMLAnchorElement).click(),
+    );
+    const href = nav.router.push.mock.calls.at(-1)![0] as string;
+    const url = new URL(href, 'https://kami.invalid');
+    nav.path = url.pathname;
+    nav.params = url.searchParams;
+    window.history.pushState({}, '', href);
+    await mount('maui');
+    await click('Back to previous view');
+    expect(nav.router.back).toHaveBeenCalledTimes(1);
   });
 });

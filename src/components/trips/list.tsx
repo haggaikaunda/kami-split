@@ -1,7 +1,11 @@
 'use client';
 import Link from 'next/link';
 import { useAppData } from '../data-provider';
-import { useRouteContext, useRouteReady } from '../navigation/provider';
+import {
+  useExpenseNavigation,
+  useRouteContext,
+  useRouteReady,
+} from '../navigation/provider';
 import { DraftLink } from '../navigation/links';
 import { Button, EmptyState, Skeleton, Status } from '../primitives';
 import { tripCards, tripDateLabel, type TripFilter } from '@/lib/trips';
@@ -11,6 +15,7 @@ import './trips.css';
 export function TripsList() {
   const { snapshot, status, refresh, readyVersion } = useAppData();
   const { searchParams } = useRouteContext('/trips');
+  const { openContext } = useExpenseNavigation();
   useRouteReady('/trips', readyVersion);
   const raw = searchParams.get('filter');
   const filter: TripFilter = raw === 'upcoming' || raw === 'past' ? raw : 'all';
@@ -64,6 +69,22 @@ export function TripsList() {
                 <article className="ui-card" key={trip.id}>
                   <Link
                     className="trips-card"
+                    id={`trip-card-${trip.id}`}
+                    onClick={(event) => {
+                      if (
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      ) {
+                        event.preventDefault();
+                        openContext(
+                          `/trips/${encodeURIComponent(trip.id)}`,
+                          `trip-card-${trip.id}`,
+                        );
+                      }
+                    }}
                     href={`/trips/${encodeURIComponent(trip.id)}`}
                     aria-label={`View ${trip.name}, ${tripDateLabel(trip.start)} to ${tripDateLabel(trip.end)}`}
                   >

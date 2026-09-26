@@ -11,10 +11,10 @@ Maui and Tahoe use the two approved remote image identifiers from `docs/design/a
 - `tripStatus(trip, today)`, `tripCards(snapshot, filter)`, `tripDateLabel(date)` and `validateTripDraft(values)` are in `src/lib/trips.ts`.
 - `TripCover` and `TripCredits` are shared by list/detail surfaces.
 - `TripDestination` is intentionally the minimal saved-trip destination for this issue; #26 expands the overview, charts and expense tab.
-- `NavigationProvider.replaceDestination` replaces a completed create form with its saved destination. Existing contextual returns and query/source capture remain unchanged.
+- `NavigationProvider.replaceDestination` replaces a completed create form with its saved destination. Cards capture their list visit; confirmed creation carries its visit to the saved trip, and its Back action restores the original filter, scroll and focus. Direct trip entry offers All trips.
 
 ## Verification
 
-Formatting, lint, type checking, 181 tests and production build pass. New tests cover status boundary days/future years, shared sample totals, deletion exclusion, date/name validation, a real create-to-empty destination, denied command retention, timeout/double-submit deduplication, filters/empty states and image failure.
+Formatting, lint, type checking, 192 tests and production build pass. New tests cover status boundary days/future years, shared sample totals, deletion exclusion, date/name validation, a real create-to-empty destination, denied command retention, timeout/double-submit deduplication, filters/empty states and image failure.
 
 No trip budgets, itineraries, booking, cover upload, separate trip ledger or durable persistence are included. Data remains session-only through the replaceable port.
