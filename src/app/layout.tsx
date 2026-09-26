@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { ExpenseDeletionProvider } from '@/components/expense-delete';
 import { AppDataProvider } from '@/components/data-provider';
 import './overview.css';
 import { NavigationProvider } from '@/components/navigation/provider';
@@ -22,7 +23,9 @@ export default function RootLayout({
           <NavigationProvider>
             <AppDataProvider>
               <ExpenseCreationProvider>
-                <NavigationShell detail={detail}>{children}</NavigationShell>
+                <ExpenseDeletionProvider>
+                  <NavigationShell detail={detail}>{children}</NavigationShell>
+                </ExpenseDeletionProvider>
               </ExpenseCreationProvider>
             </AppDataProvider>
           </NavigationProvider>
