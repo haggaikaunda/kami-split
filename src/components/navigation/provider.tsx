@@ -26,6 +26,7 @@ type NavigationContext = {
   openContext: (href: string, focusId: string) => void;
   openExpense: (id: string, focusId: string) => void;
   openDraft: (id: string, focusId: string) => void;
+  replaceDestination: (href: string) => void;
   resumeDraft: (id: string) => void;
   returnToSource: (visitId: string | null, fallbackHref?: string) => void;
   refreshVersion: number;
@@ -104,6 +105,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       router.push(url.pathname + url.search, { scroll: false });
     },
     [capture, router],
+  );
+  const replaceDestination = useCallback(
+    (target: string) => {
+      const url = new URL(target, window.location.origin);
+      if (url.origin !== window.location.origin)
+        throw new Error('Destination must stay in-app');
+      router.replace(url.pathname + url.search);
+    },
+    [router],
   );
   const openExpense = useCallback(
     (id: string, focusId: string) => {
@@ -325,6 +335,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       sourceHref,
       replaceQuery,
       openContext,
+      replaceDestination,
       openExpense,
       openDraft,
       resumeDraft,
@@ -345,6 +356,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       sourceHref,
       replaceQuery,
       openContext,
+      replaceDestination,
       openExpense,
       openDraft,
       resumeDraft,

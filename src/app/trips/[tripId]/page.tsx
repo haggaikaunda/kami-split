@@ -1,14 +1,8 @@
-import { NavigationFixture } from '@/components/navigation/fixture';
-export default async function Trip({
+import { TripDestination } from '@/components/trips/destination';
+export default async function Page({
   params,
 }: {
   params: Promise<{ tripId: string }>;
 }) {
-  const { tripId } = await params;
-  return (
-    <NavigationFixture
-      title={`Trip ${tripId}`}
-      route={`/trips/${encodeURIComponent(tripId)}`}
-    />
-  );
+  return <TripDestination tripId={(await params).tripId} />;
 }

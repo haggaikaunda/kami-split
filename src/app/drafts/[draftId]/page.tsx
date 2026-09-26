@@ -1,3 +1,4 @@
+import { CreateTrip } from '@/components/trips/form';
 import { DraftFixture } from '@/components/navigation/fixture';
 import { EditExpense } from '@/components/expense-edit/form';
 import { RecordRepayment } from '@/components/repayment/form';
@@ -8,6 +9,7 @@ export default async function Draft({
   params: Promise<{ draftId: string }>;
 }) {
   const { draftId } = await params;
+  if (draftId === 'new-trip') return <CreateTrip />;
   if (draftId === 'new-repayment') return <RecordRepayment />;
   return draftId === 'new-expense' ? (
     <AddExpense />
