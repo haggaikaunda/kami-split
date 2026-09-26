@@ -18,7 +18,13 @@ const doubles = vi.hoisted(() => ({
     returnToSource: vi.fn(),
   },
 }));
-vi.mock('../data-provider', () => ({ useAppData: () => doubles.data }));
+vi.mock('../data-provider', () => ({
+  useAppData: () => ({
+    sessionEpoch: 0,
+    acquirePendingOperation: () => () => {},
+    ...doubles.data,
+  }),
+}));
 vi.mock('../navigation/provider', () => ({
   useExpenseNavigation: () => doubles.nav,
 }));

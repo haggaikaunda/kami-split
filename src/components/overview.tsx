@@ -11,7 +11,7 @@ import type {
 } from '@/lib/data/port';
 import { useAppData } from './data-provider';
 import { DemoPanel } from './demo-controls';
-import { DraftLink, ExpenseLink } from './navigation/links';
+import { DraftLink, ExpenseLink, RepaymentLink } from './navigation/links';
 import {
   useExpenseNavigation,
   useRouteReady,
@@ -57,7 +57,12 @@ function ActivityRow({
       <div>
         <span className="overview-event-kind">{label}</span>
         {repayment ? (
-          <strong>{title}</strong>
+          <RepaymentLink
+            repaymentId={event.recordId}
+            id={`overview-event-${event.id}`}
+          >
+            {title}
+          </RepaymentLink>
         ) : (
           <ExpenseLink
             expenseId={event.recordId}
