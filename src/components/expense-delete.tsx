@@ -237,11 +237,14 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
     // Completion removes the focused submit button; retain a useful keyboard
     // destination inside this dialog instead of leaving focus on the document.
     if (selected?.phase === 'done') safe.current?.focus();
-    else if (selected?.phase === 'conflict' || selected?.phase === 'unknown')
+    else if (
+      data.status === 'ready' &&
+      (selected?.phase === 'conflict' || selected?.phase === 'unknown')
+    )
       actions.current
         ?.querySelector<HTMLButtonElement>('[data-next-action]')
         ?.focus();
-  }, [visible, selected?.phase]);
+  }, [visible, selected?.phase, data.status]);
   const close = () => {
     const removedTrigger = selected?.phase === 'done';
     setActive(null);

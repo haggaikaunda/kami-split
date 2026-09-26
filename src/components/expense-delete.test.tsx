@@ -274,3 +274,38 @@ it('keeps dirty reasons during navigation, but discards them after simulation re
   window.dispatchEvent(event);
   expect(event.defaultPrevented).toBe(false);
 });
+it('focuses the conflict action after a delayed latest-record refresh becomes ready', async () => {
+  const source = createMockData();
+  await mount(source);
+  await click('Delete expense');
+  const snapshot = api.snapshot!;
+  const current = {
+    ...snapshot.expenses.find((row) => row.id === '102')!,
+    version: 2,
+  };
+  vi.spyOn(source.port, 'execute').mockResolvedValue({
+    status: 'conflict',
+    current,
+  });
+  let complete!: () => void;
+  vi.spyOn(source.port, 'read').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = () =>
+          resolve({
+            status: 'ok',
+            value: {
+              ...snapshot,
+              expenses: snapshot.expenses.map((row) =>
+                row.id === '102' ? current : row,
+              ),
+            },
+          });
+      }),
+  );
+  buttons('Delete expense').at(-1)!.focus();
+  await click('Delete expense', true);
+  expect(buttons('Review latest revision')[0].disabled).toBe(true);
+  await act(async () => complete());
+  expect(document.activeElement?.textContent).toBe('Review latest revision');
+});
