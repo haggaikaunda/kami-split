@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { ExpenseLink, RepaymentLink } from './navigation/links';
 import {
   createContext,
@@ -67,7 +68,7 @@ function CommandSession({ children }: { children: ReactNode }) {
   useEffect(() => {
     access.current = { port, snapshot, status, sessionEpoch };
   }, [port, snapshot, status, sessionEpoch]);
-  const { setDraftPending, discardDraft, returnToSource } =
+  const { setDraftPending, discardDraft, returnToSource, replaceDestination } =
     useExpenseNavigation();
   const attempts = useRef(new Map<string, Attempt>());
   const busy = useRef(new Set<string>());
@@ -109,7 +110,9 @@ function CommandSession({ children }: { children: ReactNode }) {
       const noun =
         attempt.envelope.command.kind === 'record-repayment'
           ? 'repayment'
-          : 'expense';
+          : attempt.envelope.command.kind === 'create-trip'
+            ? 'trip'
+            : 'expense';
       if (busy.current.has(id)) return;
       if (recovery && !sameSession(attempt)) {
         state(id, {
@@ -177,7 +180,9 @@ function CommandSession({ children }: { children: ReactNode }) {
             message:
               attempt.envelope.command.kind === 'record-repayment'
                 ? 'Repayment recorded.'
-                : 'Expense saved.',
+                : attempt.envelope.command.kind === 'create-trip'
+                  ? 'Trip created.'
+                  : 'Expense saved.',
           });
           leases.current.get(id)?.();
           leases.current.delete(id);
@@ -200,7 +205,11 @@ function CommandSession({ children }: { children: ReactNode }) {
               attempt.href &&
             window.history.state?.kamiEntry === attempt.entry
           )
-            returnToSource(attempt.visit);
+            if (attempt.envelope.command.kind === 'create-trip')
+              replaceDestination(
+                `/trips/${encodeURIComponent(result.value.id)}`,
+              );
+            else returnToSource(attempt.visit);
         } else if (result.status === 'unknown') {
           state(id, {
             phase: 'unknown',
@@ -243,6 +252,7 @@ function CommandSession({ children }: { children: ReactNode }) {
       setDraftPending,
       discardDraft,
       returnToSource,
+      replaceDestination,
       state,
     ],
   );
@@ -314,9 +324,11 @@ function CommandSession({ children }: { children: ReactNode }) {
           <Status kind="success">
             {saved?.kind === 'record-repayment'
               ? 'Repayment recorded.'
-              : saved?.kind === 'update-expense'
-                ? 'Expense updated.'
-                : 'Expense saved.'}{' '}
+              : saved?.kind === 'create-trip'
+                ? 'Trip created.'
+                : saved?.kind === 'update-expense'
+                  ? 'Expense updated.'
+                  : 'Expense saved.'}{' '}
             Your source filters are preserved.{' '}
             {saved?.kind === 'record-repayment' ? (
               <RepaymentLink
@@ -325,6 +337,10 @@ function CommandSession({ children }: { children: ReactNode }) {
               >
                 View repayment
               </RepaymentLink>
+            ) : saved?.kind === 'create-trip' ? (
+              <Link href={`/trips/${encodeURIComponent(savedId)}`}>
+                View trip
+              </Link>
             ) : (
               <ExpenseLink expenseId={savedId} id={`saved-expense-${savedId}`}>
                 View expense
