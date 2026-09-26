@@ -1,4 +1,5 @@
 'use client';
+import { CommandFeedback } from '../command-feedback';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CATEGORIES } from '../../lib/data/mock';
@@ -371,18 +372,13 @@ export function ExpenseForm<T extends ExpenseDraft>({
             )}
           </div>
         </fieldset>
-        {state && state.phase !== 'saved' && (
-          <Status kind={state.phase === 'failed' ? 'error' : 'pending'}>
-            {state.message}
-            {state.phase === 'unknown' && draft && (
-              <div className="ui-actions">
-                <Button onClick={() => void onRecover(draft.operationId)}>
-                  Check save status and retry safely
-                </Button>
-              </div>
-            )}
-          </Status>
-        )}
+        <CommandFeedback
+          state={state}
+          onRecover={
+            draft ? () => void onRecover(draft.operationId) : undefined
+          }
+          recoveryLabel="Check save status and retry safely"
+        />
         <div className="ui-actions create-actions">
           <Button
             tone="secondary"

@@ -1,4 +1,5 @@
 'use client';
+import { CommandFeedback } from '../command-feedback';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Snapshot } from '@/lib/data/port';
@@ -212,16 +213,13 @@ function RepaymentFields({
           </div>
         )}
       </fieldset>
-      {state && state.phase !== 'saved' && (
-        <Status kind={state.phase === 'failed' ? 'error' : 'pending'}>
-          {state.message}
-          {state.phase === 'unknown' && draft && (
-            <Button onClick={() => void creation.recover(draft.operationId)}>
-              Check repayment status and retry safely
-            </Button>
-          )}
-        </Status>
-      )}
+      <CommandFeedback
+        state={state}
+        onRecover={
+          draft ? () => void creation.recover(draft.operationId) : undefined
+        }
+        recoveryLabel="Check repayment status and retry safely"
+      />
       <div className="ui-actions">
         <Button tone="secondary" onClick={() => returnToSource(visit)}>
           {draft ? 'Leave and preserve draft' : 'Cancel'}
