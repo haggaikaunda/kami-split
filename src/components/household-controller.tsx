@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 import {
   createContext,
   useContext,
@@ -191,7 +192,7 @@ function Session({ children }: { children: ReactNode }) {
       !current.snapshot
     )
       return;
-    const operationId = crypto.randomUUID();
+    const operationId = createSessionId();
     const row: Attempt = {
       envelope: {
         householdId: current.snapshot.household.id,

@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 import {
   createContext,
   useCallback,
@@ -43,7 +44,7 @@ const Context = createContext<NavigationContext | null>(null);
 function ensureEntryId() {
   const existing = window.history.state?.kamiEntry;
   if (typeof existing === 'string') return existing;
-  const id = crypto.randomUUID();
+  const id = createSessionId();
   window.history.replaceState({ ...window.history.state, kamiEntry: id }, '');
   return id;
 }
@@ -83,7 +84,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [removedFixtureIds, setRemovedFixtureIds] = useState<string[]>([]);
 
   const capture = useCallback((focusId: string) => {
-    const visit = crypto.randomUUID();
+    const visit = createSessionId();
     sources.current.set(
       visit,
       sourceDescriptor(
@@ -153,7 +154,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           target.searchParams.get('visit') ?? '',
         );
         if (targetSource) {
-          const targetVisit = crypto.randomUUID();
+          const targetVisit = createSessionId();
           sources.current.set(targetVisit, {
             ...targetSource,
             visitId: targetVisit,
@@ -282,7 +283,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
           label,
           href: `/drafts/${encodeURIComponent(id)}`,
           values: structuredClone(values),
-          operationId: current[id]?.operationId ?? crypto.randomUUID(),
+          operationId: current[id]?.operationId ?? createSessionId(),
           pending: current[id]?.pending ?? false,
           source:
             current[id]?.source ??
@@ -300,7 +301,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         router.push(draft.href);
         return;
       }
-      const visit = crypto.randomUUID();
+      const visit = createSessionId();
       sources.current.set(visit, {
         ...draft.source,
         visitId: visit,

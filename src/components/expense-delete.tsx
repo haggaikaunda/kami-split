@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 
 import {
   createContext,
@@ -92,7 +93,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
         householdId: snapshot.household.id,
         port,
         epoch: access.current.sessionEpoch,
-        operationId: crypto.randomUUID(),
+        operationId: createSessionId(),
         phase: 'editing',
       });
     setOrigin(href);
@@ -353,7 +354,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
                         record: structuredClone(latest),
                         envelope: undefined,
                         epoch: access.current.sessionEpoch,
-                        operationId: crypto.randomUUID(),
+                        operationId: createSessionId(),
                         phase: 'editing',
                         message:
                           'Latest revision loaded. Review its name and amount before deleting.',
