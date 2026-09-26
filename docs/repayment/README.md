@@ -13,7 +13,7 @@ Contextual links retain independent source visits, filters, scroll and focus. Ex
 - Pure draft tests cover pair/group/settled defaults, partial/exact/overpayment, opposite-direction acknowledgment, zero/invalid money, same-member denial, invalid dates, and unchanged expense spending/contributions.
 - Form/port tests cover saving the default full amount once, invalidating acknowledgment after edits, and timeout-after-commit with form unmount and recovery without duplicate execution.
 - Existing independent expense concurrency/session/recovery assertions remain in place for the shared provider extraction.
-- Formatting, lint, type checking, 152 tests and production build pass.
+- Formatting, lint, type checking, 158 tests and production build pass.
 
 The adapter is deterministic and session-only. These UI access simulations are not a production authorization guarantee. No durable persistence, payment processing, repayment edit/delete or bank integration is included.
 
@@ -24,3 +24,5 @@ Root independently verified the 1280px desktop flow: defaults Kaunda → Mizenin
 The 390px form fits the phone viewport. At 320px, document width is 320px, dialog width 318px and date field width 286px; controls remain readable without horizontal overflow.
 
 At 320px and 200% text (32px root size), the document remains 320px wide, the dialog 318px and date field 286px. The complete 09/20/2026 date remains readable and keyboard-focusable with vertical scrolling. Returning from read-only repayment detail restores the Overview's saved View repayment link focus. Root's final-diff review found no blocking issues.
+
+Independent requirements testing adds six integration probes: explicit/distinct group selection and invalid amount, partial repayment with unchanged spending, reacknowledgment after a changed balance, denied fields with retained draft, read-only detail with expired access, and timeout recovery with actor switching and reset leases. The uncertain-operation probe confirms the other actor cannot perform a lookup or write; restoring the original actor confirms one repayment without duplicate execution, then reset clears its notice. No substantive findings remained.
