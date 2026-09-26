@@ -18,7 +18,10 @@ const nav = vi.hoisted(() => ({
 vi.mock('./navigation/provider', () => ({
   useExpenseNavigation: () => nav,
   useRouteReady: vi.fn(),
-  useRouteContext: () => ({ isActive: nav.isActive }),
+  useRouteContext: () => ({
+    isActive: nav.isActive,
+    searchParams: new URLSearchParams(),
+  }),
 }));
 vi.mock('next/link', () => ({
   default: ({

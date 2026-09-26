@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { HouseholdSpending } from './spending/household';
 import { useState } from 'react';
 import { checkedSum, formatMoney } from '@/lib/ledger';
 import { overview } from '@/lib/overview';
@@ -297,13 +298,7 @@ function OverviewContent() {
           </ul>
         </Card>
       )}
-      <section
-        className="overview-chart-placeholder"
-        aria-labelledby="spending-heading"
-      >
-        <h2 id="spending-heading">Spending over time</h2>
-        <p>Expense charts will appear here in the next part of this preview.</p>
-      </section>
+      <HouseholdSpending snapshot={snapshot} />
       <section className="overview-recent" aria-labelledby="recent-heading">
         <div className="overview-section-heading">
           <h2 id="recent-heading">Recent activity</h2>
