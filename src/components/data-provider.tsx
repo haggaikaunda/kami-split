@@ -35,7 +35,12 @@ type QueryState = {
   readyVersion: number | null;
 };
 export type AppData = QueryState &
-  AppDataSource & { refresh: () => Promise<void> };
+  AppDataSource & {
+    refresh: () => Promise<void>;
+    sessionEpoch: number;
+    pendingOperations: number;
+    acquirePendingOperation: (id: string) => () => void;
+  };
 const Context = createContext<AppData | null>(null);
 
 /** One session-owned adapter; components depend only on the replaceable DataPort. */
@@ -53,6 +58,22 @@ export function AppDataProvider({
   const controls = source ? source.demo : owned.demo;
   const { refreshVersion, drafts, discardDraft } = useExpenseNavigation();
   const sequence = useRef(0);
+  const [sessionEpoch, setSessionEpoch] = useState(0);
+  const locks = useRef(new Map<string, number>());
+  const [pendingOperations, setPendingOperations] = useState(0);
+  const acquirePendingOperation = useCallback((id: string) => {
+    locks.current.set(id, (locks.current.get(id) ?? 0) + 1);
+    setPendingOperations(locks.current.size);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const remaining = (locks.current.get(id) ?? 1) - 1;
+      if (remaining) locks.current.set(id, remaining);
+      else locks.current.delete(id);
+      setPendingOperations(locks.current.size);
+    };
+  }, []);
   const [query, setQuery] = useState<{
     port: DataPort;
     householdId: string;
@@ -174,18 +195,39 @@ export function AppDataProvider({
               controls.actor(id);
             },
             reset(fixture) {
-              if (Object.values(drafts).some((draft) => draft.pending)) return;
+              if (
+                locks.current.size ||
+                Object.values(drafts).some((draft) => draft.pending)
+              )
+                return;
               Object.keys(drafts).forEach(discardDraft);
               clearFinancial();
               controls.reset(fixture);
+              setSessionEpoch((epoch) => epoch + 1);
             },
           }
         : undefined,
     [controls, clearFinancial, drafts, discardDraft],
   );
   const value = useMemo(
-    () => ({ ...state, port, refresh, demo }),
-    [state, port, refresh, demo],
+    () => ({
+      ...state,
+      port,
+      refresh,
+      demo,
+      sessionEpoch,
+      pendingOperations,
+      acquirePendingOperation,
+    }),
+    [
+      state,
+      port,
+      refresh,
+      demo,
+      sessionEpoch,
+      pendingOperations,
+      acquirePendingOperation,
+    ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

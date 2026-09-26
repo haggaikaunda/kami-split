@@ -123,3 +123,36 @@ describe('session app data boundary', () => {
     expect(api.snapshot!.activity[0].kind).toBe('deleted');
   });
 });
+
+it('blocks resets until all leases release and advances the epoch only on reset', async () => {
+  await mount(createMockData());
+  const initial = api.sessionEpoch;
+  let releaseA!: () => void;
+  let releaseB!: () => void;
+  await act(async () => {
+    releaseA = api.acquirePendingOperation('same-operation');
+    releaseB = api.acquirePendingOperation('same-operation');
+    api.demo!.reset('empty');
+  });
+  expect(api.pendingOperations).toBe(1);
+  expect(api.sessionEpoch).toBe(initial);
+  expect(api.snapshot!.expenses.length).toBeGreaterThan(0);
+  await act(async () => {
+    releaseA();
+    releaseA();
+    api.demo!.reset('empty');
+  });
+  expect(api.pendingOperations).toBe(1);
+  expect(api.sessionEpoch).toBe(initial);
+  await act(async () => api.demo!.actor('member-m'));
+  await act(async () => api.demo!.scenario('denied'));
+  await act(async () => api.demo!.scenario('normal'));
+  expect(api.sessionEpoch).toBe(initial);
+  await act(async () => {
+    releaseB();
+    api.demo!.reset('empty');
+  });
+  expect(api.pendingOperations).toBe(0);
+  expect(api.sessionEpoch).toBe(initial + 1);
+  expect(api.snapshot!.expenses).toHaveLength(0);
+});
