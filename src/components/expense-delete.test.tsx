@@ -123,10 +123,12 @@ it('soft deletes once, retains immutable audit and reconciles contributions, tri
   await click('Delete expense');
   await reason('Accidental duplicate');
   const submit = buttons('Delete expense').at(-1)!;
+  submit.focus();
   await act(async () => {
     submit.click();
     submit.click();
   });
+  expect(document.activeElement?.textContent).toBe('View retained expense');
   const after = api.snapshot!;
   expect(after.expenses).toHaveLength(before.expenses.length);
   expect(after.expenses.find((entry) => entry.id === '102')?.deleted).toBe(
@@ -193,7 +195,9 @@ it('requires reviewing the latest revision after a conflict, and preserves reaso
   await click('Delete expense');
   await reason('Duplicate');
   await act(async () => api.demo!.scenario('second-editor'));
+  buttons('Delete expense').at(-1)!.focus();
   await click('Delete expense', true);
+  expect(document.activeElement?.textContent).toBe('Review latest revision');
   expect(dialog().textContent).toContain('This expense changed');
   expect(
     api.snapshot!.expenses.find((row) => row.id === '102')!.deleted,

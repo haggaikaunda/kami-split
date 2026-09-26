@@ -44,6 +44,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<string | null>(null);
   const [rows, setRows] = useState(new Map<string, Deletion>());
   const safe = useRef<HTMLButtonElement>(null);
+  const actions = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const update = (id: string, patch: Partial<Deletion>) => {
     const previous = attempts.current.get(id);
@@ -231,6 +232,16 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
     data.snapshot?.actorId === row.actorId &&
     data.snapshot?.household.id === row.householdId;
   const visible = selected && canSee(selected) && origin === href;
+  useEffect(() => {
+    if (!visible) return;
+    // Completion removes the focused submit button; retain a useful keyboard
+    // destination inside this dialog instead of leaving focus on the document.
+    if (selected?.phase === 'done') safe.current?.focus();
+    else if (selected?.phase === 'conflict' || selected?.phase === 'unknown')
+      actions.current
+        ?.querySelector<HTMLButtonElement>('[data-next-action]')
+        ?.focus();
+  }, [visible, selected?.phase]);
   const close = () => {
     const removedTrigger = selected?.phase === 'done';
     setActive(null);
@@ -307,7 +318,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
                 }
               />
             )}
-            <div className="ui-actions">
+            <div className="ui-actions" ref={actions}>
               <button
                 ref={safe}
                 type="button"
@@ -322,6 +333,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
               </button>
               {selected.phase === 'conflict' ? (
                 <Button
+                  data-next-action
                   disabled={data.status !== 'ready'}
                   onClick={() => {
                     const latest = data.snapshot?.expenses.find(
@@ -349,6 +361,7 @@ export function ExpenseDeletionProvider({ children }: { children: ReactNode }) {
                 </Button>
               ) : selected.phase === 'unknown' ? (
                 <Button
+                  data-next-action
                   disabled={data.status !== 'ready'}
                   onClick={() => void run(active!, true)}
                 >
