@@ -108,6 +108,14 @@ describe('add expense form and session-owned command lifecycle', () => {
       container.querySelector('.expense-save-notice')!.textContent,
     ).toContain('Expense saved');
     expect(nav.router.replace).toHaveBeenCalledWith('/history');
+    const view = container.querySelector<HTMLAnchorElement>(
+      '.expense-save-notice a',
+    )!;
+    expect(view.getAttribute('href')).toMatch(/^\/expenses\/expense-/);
+    await act(async () => view.click());
+    expect(nav.router.push.mock.calls.at(-1)?.[0]).toMatch(
+      /^\/expenses\/expense-.*\?visit=/,
+    );
   });
   it('focuses an invalid description and retains exact amounts across membership and confirmed mode changes', async () => {
     await mount();

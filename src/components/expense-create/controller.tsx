@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import { ExpenseLink } from '../navigation/links';
 import {
   createContext,
   useCallback,
@@ -255,9 +255,9 @@ export function ExpenseCreationProvider({ children }: { children: ReactNode }) {
         <div className="expense-save-notice">
           <Status kind="success">
             Expense saved. Your source filters are preserved.{' '}
-            <Link href={`/expenses/${encodeURIComponent(savedId)}`}>
+            <ExpenseLink expenseId={savedId} id={`saved-expense-${savedId}`}>
               View expense
-            </Link>
+            </ExpenseLink>
             <Button tone="secondary" onClick={() => setSavedId(null)}>
               Dismiss
             </Button>

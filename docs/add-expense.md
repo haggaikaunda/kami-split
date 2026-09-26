@@ -11,3 +11,11 @@ Draft values and the operation ID live in the navigation session. Close, Escape 
 The add form stays read-only while existing data refreshes or is stale, and access failures hide financial fields while retaining the session draft. Inline blur/submission errors reference fields; the first invalid field receives focus. Reconciliation states show exact remaining/excess values and block an unbalanced save.
 
 Verification includes pure validation/default/allocation cases and form/controller tests for focus, exact-value retention, actor changes during recovery, stale callbacks, pending duplicate suppression, unmounted completion, precommit retry and unknown completion lookup. Independent tests are kept beside the implementation. Browser verification covers the demo route separately; actual mobile soft keyboards still require target-device verification during broader journey integration.
+
+## Recorded browser verification
+
+Live CUA at desktop and phone sizes verified a $10.01 expense resolves to $5.01/$5.00 shares, returns to Overview with Add expense focused, updates debt to $37.18, contributions to $2,506.11/$2,630.46 and total expenses to $5,136.57, with one new activity. Exact $10.01/$0 manual shares survived excluding/reincluding a participant and a confirmed switch to Equal and back. Resizing with focus in Note preserved the field, all values and draft identity.
+
+At an actual 320×844 viewport with a temporary verification-only selector setting root text to32px, the form dialog had318px client/scroll width; the native date input had284px client/scroll width, and the document remained320px wide. Exact values, date and actions remained readable. The selector was removed after testing.
+
+The restored preview also passed timeout-after-commit recovery: fields/save locked, Leave preserved the operation, Resume retained the draft, and Check save status resolved the original record without a second expense or changed totals. The saved notice's View expense link opened a contextual panel showing the same $10.01 and $5.01/$5.00 allocations. This validates a committed result, not only a success toast.
