@@ -49,11 +49,14 @@ function Session({ children }: { children: ReactNode }) {
   const attempt = useRef<Attempt | null>(null);
   const busy = useRef(false);
   const [state, setState] = useState<State>({ phase: 'idle', message: '' });
+  const sameScope = (row: Attempt) =>
+    access.current.port === row.port &&
+    access.current.sessionEpoch === row.epoch &&
+    access.current.selectedHouseholdId === row.envelope.householdId;
   const same = (row: Attempt) => {
     const current = access.current;
     return (
-      current.port === row.port &&
-      current.sessionEpoch === row.epoch &&
+      sameScope(row) &&
       current.status === 'ready' &&
       current.snapshot?.actorId === row.actorId &&
       current.snapshot.household.id === row.envelope.householdId
@@ -65,8 +68,8 @@ function Session({ children }: { children: ReactNode }) {
       recovery &&
       row.envelope.command.kind === 'remove-member' &&
       row.envelope.command.memberId === row.actorId &&
-      access.current.port === row.port &&
-      access.current.sessionEpoch === row.epoch;
+      sameScope(row) &&
+      access.current.status !== 'expired';
     if (!same(row) && !receiptOnly) {
       setState({
         phase: 'unknown',
@@ -75,6 +78,16 @@ function Session({ children }: { children: ReactNode }) {
       });
       return;
     }
+    const scopeValid = () =>
+      sameScope(row) &&
+      (!access.current.snapshot ||
+        access.current.snapshot.actorId === row.actorId);
+    const stale = () =>
+      setState({
+        phase: 'unknown',
+        message:
+          'Return to the original household and session to check this change.',
+      });
     busy.current = true;
     setState({
       phase: 'pending',
@@ -89,6 +102,10 @@ function Session({ children }: { children: ReactNode }) {
           row.envelope.householdId,
           row.envelope.operationId,
         );
+        if (!scopeValid()) {
+          stale();
+          return;
+        }
         if (
           !same(row) &&
           !(
@@ -129,6 +146,10 @@ function Session({ children }: { children: ReactNode }) {
           return;
         }
       } else result = await row.port.execute(row.envelope);
+      if (!scopeValid()) {
+        stale();
+        return;
+      }
       if (result.status === 'unknown')
         setState({
           phase: 'unknown',

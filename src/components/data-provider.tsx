@@ -42,7 +42,11 @@ export type AppData = QueryState &
     sessionEpoch: number;
     pendingOperations: number;
     acquirePendingOperation: (id: string) => () => void;
-    setupHousehold: (name: string) => Promise<Outcome<Household>>;
+    selectedHouseholdId: string;
+    setupHousehold: (
+      name: string,
+      onSuccess?: () => void,
+    ) => Promise<Outcome<Household>>;
   };
 const Context = createContext<AppData | null>(null);
 
@@ -209,7 +213,10 @@ export function AppDataProvider({
     };
   }, [port, initialHouseholdId]);
   const setupHousehold = useCallback(
-    async (name: string): Promise<Outcome<Household>> => {
+    async (
+      name: string,
+      onSuccess?: () => void,
+    ): Promise<Outcome<Household>> => {
       if (
         setupBusy.current ||
         (locks.current.size && !setupAttempt.current) ||
@@ -260,6 +267,9 @@ export function AppDataProvider({
             initial: initialHouseholdId,
             id: result.householdId,
           });
+          // The initiating route may navigate before session providers remount.
+          // The caller guards its route lifetime; stale provider scopes returned above.
+          onSuccess?.();
           setSessionEpoch((epoch) => epoch + 1);
           return { status: 'ok', value: read.value.household };
         }
@@ -330,6 +340,7 @@ export function AppDataProvider({
       pendingOperations,
       acquirePendingOperation,
       setupHousehold,
+      selectedHouseholdId: householdId,
     }),
     [
       state,
@@ -340,6 +351,7 @@ export function AppDataProvider({
       pendingOperations,
       acquirePendingOperation,
       setupHousehold,
+      householdId,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;

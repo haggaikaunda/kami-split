@@ -36,21 +36,25 @@ export function HouseholdSetup() {
       lifetime.current += 1;
     };
   }, [data.port]);
+  useEffect(() => {
+    if (message && !pending) field.current?.focus();
+  }, [message, pending]);
   async function submit() {
     if (busy.current) return;
     busy.current = true;
     setPending(true);
     setMessage('');
     const started = lifetime.current;
-    const result = await data.setupHousehold(name);
+    const result = await data.setupHousehold(name, () => {
+      if (lifetime.current === started) router.replace('/household');
+    });
     if (lifetime.current === started) {
-      if (result.status === 'ok') router.replace('/household');
-      else if (result.status === 'unknown') {
+      if (result.status === 'unknown') {
         setUnknown(true);
         setMessage(
           'The setup result is unconfirmed. Check the original setup before trying again.',
         );
-      } else {
+      } else if (result.status !== 'ok') {
         setMessage(
           result.status === 'validation'
             ? Object.values(result.fields).join(' ')

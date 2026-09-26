@@ -8,6 +8,7 @@ import {
   NavigationProvider,
   useExpenseNavigation,
 } from './navigation/provider';
+import { SessionCommandProvider } from './session-command';
 import { HouseholdCommandsProvider } from './household-controller';
 import { Household } from './household';
 import { HouseholdSetup } from './household-setup';
@@ -43,16 +44,18 @@ async function render(screen: 'entry' | 'setup' | 'household' = 'household') {
     root.render(
       <NavigationProvider>
         <AppDataProvider source={source} householdId={initialHouseholdId}>
-          <HouseholdCommandsProvider>
-            <Probe />
-            {screen === 'entry' ? (
-              <EntryPreview />
-            ) : screen === 'setup' ? (
-              <HouseholdSetup />
-            ) : (
-              <Household />
-            )}
-          </HouseholdCommandsProvider>
+          <SessionCommandProvider>
+            <HouseholdCommandsProvider>
+              <Probe />
+              {screen === 'entry' ? (
+                <EntryPreview />
+              ) : screen === 'setup' ? (
+                <HouseholdSetup />
+              ) : (
+                <Household />
+              )}
+            </HouseholdCommandsProvider>
+          </SessionCommandProvider>
         </AppDataProvider>
       </NavigationProvider>,
     ),
@@ -121,6 +124,7 @@ it('completes the sign-in-to-empty-household flow and clears old drafts only aft
   const epoch = api.sessionEpoch;
   await render('setup');
   await click('Create preview household');
+  expect(document.activeElement).toBe(field('Household name'));
   expect(document.body.textContent).toContain('Enter a household name');
   expect(api.sessionEpoch).toBe(epoch);
   expect(nav.drafts['new-expense']).toBeTruthy();
@@ -357,4 +361,56 @@ it('retains but cannot replay an uncertain setup from a different selected sourc
     });
   });
   expect(send).toHaveBeenCalledTimes(1);
+});
+it.each(['source', 'household'] as const)(
+  'does not consume a delayed self-removal receipt after changing %s scope',
+  async (change) => {
+    source = createMockData({ fixture: 'empty' });
+    await render();
+    await click('Make Mizenin an owner');
+    await act(async () => api.demo!.scenario('timeout-after-commit'));
+    await click('Leave household');
+    await click('Remove access');
+    const operation = source.port.operation.bind(source.port);
+    let complete!: () => void;
+    vi.spyOn(source.port, 'operation').mockImplementation(
+      async (householdId, operationId) => {
+        const result = await operation(householdId, operationId);
+        return new Promise((resolve) => {
+          complete = () => resolve(result);
+        });
+      },
+    );
+    await click('Check household change');
+    if (change === 'source') source = createMockData();
+    else initialHouseholdId = 'unrelated-household';
+    await render();
+    await act(async () => complete());
+    expect(document.body.textContent).toContain(
+      'Return to the original household and session',
+    );
+    expect(api.pendingOperations).toBe(1);
+  },
+);
+it('does not announce a delayed household write as saved in a replacement source', async () => {
+  await render();
+  const execute = source.port.execute.bind(source.port);
+  let complete!: () => void;
+  vi.spyOn(source.port, 'execute').mockImplementation(async (envelope) => {
+    const result = await execute(envelope);
+    return new Promise((resolve) => {
+      complete = () => resolve(result);
+    });
+  });
+  await input('Preview member name', 'Old source member');
+  await click('Create preview invitation');
+  source = createMockData();
+  await render();
+  await act(async () => complete());
+  expect(document.body.textContent).toContain(
+    'Return to the original household and session',
+  );
+  expect(
+    api.snapshot?.members.some((member) => member.name === 'Old source member'),
+  ).toBe(false);
 });
