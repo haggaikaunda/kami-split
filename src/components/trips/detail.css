@@ -1,0 +1,149 @@
+.trip-detail-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: end;
+  min-height: 260px;
+  margin-block: var(--space-6);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-primary);
+}
+.trip-detail-hero > .trips-cover {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  z-index: -2;
+}
+.trip-detail-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(transparent, rgb(12 38 32 / 90%));
+}
+.trip-detail-hero-copy {
+  padding: var(--space-6);
+  color: white;
+  overflow-wrap: anywhere;
+}
+.trip-detail-hero-copy h1 {
+  color: white;
+  margin-block: var(--space-3);
+}
+.trip-detail-hero-copy p {
+  margin-block: var(--space-2);
+}
+.trip-detail-status {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: white;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.trip-detail-toolbar,
+.trip-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.trip-detail-toolbar {
+  align-items: center;
+  justify-content: space-between;
+  margin-block: var(--space-6);
+}
+.trip-metrics,
+.trip-analytics,
+.trip-expense-filters {
+  display: grid;
+  gap: var(--space-4);
+  margin-block: var(--space-6);
+}
+.trip-metric {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+}
+.trip-contributions,
+.trip-expense-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.trip-contributions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-6);
+}
+.trip-contributions li {
+  min-width: 0;
+}
+.trip-contributions dl {
+  margin-bottom: 0;
+}
+.trip-contributions dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.trip-contributions dd {
+  margin: 0;
+  font-weight: 700;
+}
+.trip-day-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.trip-day-heading h3 {
+  margin-block: var(--space-3);
+}
+.trip-expense-list li {
+  border-bottom: 1px solid var(--color-border);
+}
+.trip-expense-list a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 72px;
+  padding: var(--space-4);
+  color: inherit;
+  text-decoration: none;
+}
+.trip-expense-description,
+.trip-expense-amount {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.trip-expense-description > span,
+.trip-expense-amount > span {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.trip-household-repayment {
+  margin-block: var(--space-6);
+  padding: var(--space-6);
+  background: var(--color-balance);
+  border-radius: var(--radius-card);
+}
+@media (min-width: 760px) {
+  .trip-metrics,
+  .trip-analytics,
+  .trip-expense-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trip-expense-amount {
+    text-align: right;
+  }
+  .trip-detail-hero {
+    min-height: 300px;
+  }
+}
