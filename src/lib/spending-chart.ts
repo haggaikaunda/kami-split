@@ -280,9 +280,15 @@ export function tripSeries(
   let definitions: Bucket[], granularity: SpendingSeries['granularity'];
   if (days <= 93) {
     granularity = 'day';
-    definitions = Array.from({ length: days }, (_, index) =>
-      dayBucket(new Date(first + index * 86400000).toISOString().slice(0, 10)),
-    );
+    definitions = Array.from({ length: days }, (_, index) => {
+      const date = new Date(first + index * 86400000)
+        .toISOString()
+        .slice(0, 10);
+      const bucket = dayBucket(date);
+      if (index === 0 || date.endsWith('-01'))
+        bucket.shortLabel = dateLabel(date, { month: 'short', day: 'numeric' });
+      return bucket;
+    });
   } else {
     const sy = Number(start.slice(0, 4)),
       ey = Number(end.slice(0, 4));
