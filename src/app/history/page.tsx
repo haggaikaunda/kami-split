@@ -1,4 +1,4 @@
-import { NavigationFixture } from '@/components/navigation/fixture';
-export default function History() {
-  return <NavigationFixture title="History" route="/history" />;
+import { History } from '@/components/history';
+export default function Page() {
+  return <History />;
 }
