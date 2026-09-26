@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { HouseholdCommandsProvider } from '@/components/household-controller';
 import { ExpenseDeletionProvider } from '@/components/expense-delete';
 import { AppDataProvider } from '@/components/data-provider';
 import './overview.css';
@@ -24,7 +25,11 @@ export default function RootLayout({
             <AppDataProvider>
               <ExpenseCreationProvider>
                 <ExpenseDeletionProvider>
-                  <NavigationShell detail={detail}>{children}</NavigationShell>
+                  <HouseholdCommandsProvider>
+                    <NavigationShell detail={detail}>
+                      {children}
+                    </NavigationShell>
+                  </HouseholdCommandsProvider>
                 </ExpenseDeletionProvider>
               </ExpenseCreationProvider>
             </AppDataProvider>

@@ -20,11 +20,15 @@ export type EntryState = {
     | 'declined'
     | 'ready'
     | 'setup-required';
-  problem?: EntryScenario | 'invalid-email';
+  problem?: EntryScenario | 'invalid-email' | 'invalid-name';
+  householdId?: string;
+  inviteeId?: string;
+  inviteeName?: string;
 };
 export type EntryAction =
   | { kind: 'scenario'; scenario: EntryScenario }
   | { kind: 'request'; email: string }
+  | { kind: 'complete-setup'; name: string }
   | { kind: 'follow' | 'accept' | 'decline' | 'switch-account' | 'new-link' };
 export interface EntryPort {
   read(): Promise<EntryState>;
@@ -36,8 +40,10 @@ export function validPreviewEmail(value: string) {
 export function createEntryPreview(hooks: {
   deny(): void;
   existing(): void;
-  invite(): void;
+  invitation(): { inviteeId: string; inviteeName: string };
+  invite(memberId?: string): boolean;
   setup(): void;
+  completeSetup(name: string): string;
   notify(): void;
 }) {
   let state: EntryState = { scenario: 'existing-member', phase: 'request' };
@@ -55,6 +61,18 @@ export function createEntryPreview(hooks: {
           return { ...state, problem: 'invalid-email' };
         state = { scenario: state.scenario, phase: 'sent' };
         hooks.deny();
+      } else if (
+        action.kind === 'complete-setup' &&
+        state.phase === 'setup-required'
+      ) {
+        if (
+          typeof action.name !== 'string' ||
+          !action.name.trim() ||
+          action.name.trim().length > 120
+        )
+          return { ...state, problem: 'invalid-name' };
+        const householdId = hooks.completeSetup(action.name.trim());
+        state = { scenario: state.scenario, phase: 'ready', householdId };
       } else if (action.kind === 'new-link') {
         state = {
           scenario:
@@ -68,7 +86,11 @@ export function createEntryPreview(hooks: {
         action.kind === 'switch-account' &&
         state.problem === 'wrong-account'
       ) {
-        state = { scenario: 'invitation', phase: 'invitation' };
+        state = {
+          scenario: 'invitation',
+          phase: 'invitation',
+          ...hooks.invitation(),
+        };
         hooks.deny();
       } else if (action.kind === 'follow' && state.phase === 'sent') {
         const scenario = state.scenario;
@@ -79,13 +101,18 @@ export function createEntryPreview(hooks: {
           state = { scenario, phase: 'setup-required' };
           hooks.setup();
         } else if (scenario === 'invitation')
-          state = { scenario, phase: 'invitation' };
+          state = { scenario, phase: 'invitation', ...hooks.invitation() };
         else state = { scenario, phase: 'error', problem: scenario };
       } else if (action.kind === 'accept' && state.phase === 'invitation') {
         // The transition happens synchronously before returning its promise.
         // Repeated clicks cannot add another member, even with different callers.
-        state = { scenario: state.scenario, phase: 'ready' };
-        hooks.invite();
+        state = hooks.invite(state.inviteeId)
+          ? { scenario: state.scenario, phase: 'ready' }
+          : {
+              scenario: 'revoked-link',
+              phase: 'error',
+              problem: 'revoked-link',
+            };
       } else if (action.kind === 'decline' && state.phase === 'invitation') {
         state = { scenario: state.scenario, phase: 'declined' };
         hooks.deny();

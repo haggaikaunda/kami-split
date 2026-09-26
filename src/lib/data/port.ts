@@ -6,6 +6,7 @@ export type Member = {
   name: string;
   role: 'owner' | 'member';
   status: 'active' | 'pending' | 'inactive';
+  invitationAttempts?: number;
 };
 export type Household = { id: string; name: string; currency: 'USD' };
 export type Trip = {
@@ -85,8 +86,15 @@ export type Command =
     }
   | { kind: 'record-repayment'; value: RepaymentInput }
   | { kind: 'create-trip'; value: Omit<Trip, 'id' | 'cover'> }
-  | { kind: 'update-household'; name: string };
-export type Entity = ExpenseRecord | RepaymentRecord | Trip | Household;
+  | { kind: 'update-household'; name: string }
+  | { kind: 'invite-member'; name: string }
+  | {
+      kind: 'resend-invite' | 'revoke-invite' | 'remove-member';
+      memberId: string;
+    }
+  | { kind: 'change-role'; memberId: string; role: Member['role'] };
+export type Entity =
+  ExpenseRecord | RepaymentRecord | Trip | Household | Member;
 export type Failure =
   | { status: 'validation'; fields: Record<string, string> }
   | { status: 'conflict'; current: ExpenseRecord }

@@ -5,6 +5,7 @@ import {
   validDate,
 } from '../ledger';
 import { fixture } from './fixtures';
+import { directObligations } from '../overview';
 import { createEntryPreview } from './entry';
 import type {
   Activity,
@@ -78,7 +79,7 @@ export function createMockData(options: MockOptions = {}): {
   const listeners = new Set<() => void>();
   const operations = new Map<
     string,
-    { fingerprint: string; result: Outcome<Entity> }
+    { fingerprint: string; result: Outcome<Entity>; selfRemoval: boolean }
   >();
   const notify = () => {
     for (const listener of listeners) {
@@ -310,7 +311,7 @@ export function createMockData(options: MockOptions = {}): {
       };
       next.trips.push(row);
       entity = row;
-    } else {
+    } else if (command.kind === 'update-household') {
       if (
         !next.members.some(
           (member) => member.id === actorId && member.role === 'owner',
@@ -327,6 +328,103 @@ export function createMockData(options: MockOptions = {}): {
         });
       next.household = { ...next.household, name: command.name.trim() };
       entity = next.household;
+    } else {
+      const actor = next.members.find((member) => member.id === actorId)!;
+      const selfRemoval =
+        command.kind === 'remove-member' && command.memberId === actorId;
+      if (actor.role !== 'owner' && !selfRemoval) return { status: 'denied' };
+      if (command.kind === 'invite-member') {
+        if (
+          typeof command.name !== 'string' ||
+          !command.name.trim() ||
+          command.name.trim().length > 80
+        )
+          return validation({
+            name: 'Enter a preview name of 1–80 characters.',
+          });
+        if (
+          next.members.some(
+            (member) =>
+              member.status !== 'inactive' &&
+              member.name.toLowerCase() === command.name.trim().toLowerCase(),
+          )
+        )
+          return validation({
+            name: 'This active or invited member already exists.',
+          });
+        const member = {
+          id: nextId('member'),
+          name: command.name.trim(),
+          role: 'member' as const,
+          status: 'pending' as const,
+          invitationAttempts: 1,
+        };
+        next.members.push(member);
+        entity = member;
+      } else {
+        const member = next.members.find(
+          (member) => member.id === command.memberId,
+        );
+        if (!member) return { status: 'unavailable' };
+        if (
+          command.kind === 'resend-invite' ||
+          command.kind === 'revoke-invite'
+        ) {
+          if (member.status !== 'pending')
+            return validation({
+              member:
+                'This invitation is no longer pending. Refresh the member list.',
+            });
+          if (command.kind === 'resend-invite')
+            member.invitationAttempts = (member.invitationAttempts ?? 1) + 1;
+          else member.status = 'inactive';
+        } else {
+          if (member.status !== 'active')
+            return validation({ member: 'Choose an active member.' });
+          const losesOwnership =
+            member.role === 'owner' &&
+            (command.kind === 'remove-member' ||
+              (command.kind === 'change-role' && command.role === 'member'));
+          if (
+            losesOwnership &&
+            next.members.filter(
+              (row) => row.status === 'active' && row.role === 'owner',
+            ).length <= 1
+          )
+            return validation({
+              member:
+                'The last owner cannot leave or lose ownership. Make another active member an owner first.',
+            });
+          if (command.kind === 'remove-member') {
+            for (const currency of ['USD', 'EUR'] as const) {
+              const balance = positions(
+                next.members.map((row) => row.id),
+                next.expenses,
+                next.repayments,
+                currency,
+              ).find((row) => row.memberId === member.id);
+              if (
+                balance?.net ||
+                directObligations(next, currency).some(
+                  (edge) =>
+                    edge.senderId === member.id ||
+                    edge.recipientId === member.id,
+                )
+              )
+                return validation({
+                  member:
+                    'A member with an outstanding balance cannot be removed. Settle their balance first.',
+                });
+            }
+            member.status = 'inactive';
+          } else if (command.kind === 'change-role') {
+            if (command.role !== 'owner' && command.role !== 'member')
+              return validation({ role: 'Choose owner or member.' });
+            member.role = command.role;
+          }
+        }
+        entity = member;
+      }
     }
     // Validate aggregate conservation before swapping the complete session state.
     positions(
@@ -351,24 +449,55 @@ export function createMockData(options: MockOptions = {}): {
         (member) => member.id === state.actorId && member.status === 'active',
       )
         ? state.actorId
-        : 'member-k';
+        : (state.members.find((member) => member.status === 'active')?.id ??
+          'member-k');
       state = { ...state, actorId, generation: state.generation + 1 };
     },
-    invite() {
-      const memberId = 'member-invited';
-      if (!state.members.some((member) => member.id === memberId))
+    invitation() {
+      const pending = state.members.find(
+        (member) => member.status === 'pending',
+      );
+      return {
+        inviteeId: pending?.id ?? 'member-invited',
+        inviteeName: pending?.name ?? 'Alex (preview)',
+      };
+    },
+    invite(memberId = 'member-invited') {
+      const existing = state.members.find((member) => member.id === memberId);
+      if (existing?.status === 'inactive') return false;
+      if (existing) existing.status = 'active';
+      else if (memberId === 'member-invited')
         state.members.push({
           id: memberId,
           name: 'Alex (preview)',
           role: 'member',
           status: 'active',
         });
+      else return false;
       entryAllowed = true;
       scenario = 'normal';
       state = { ...state, actorId: memberId, generation: state.generation + 1 };
+      return true;
     },
     setup() {
       entryAllowed = false;
+    },
+    completeSetup(name) {
+      epoch++;
+      operations.clear();
+      const fresh = fixture('empty', clock().slice(0, 10));
+      const householdId = `household-setup-${epoch}`;
+      state = {
+        ...fresh,
+        trips: [],
+        household: { ...fresh.household, id: householdId, name },
+        members: [fresh.members.find((member) => member.id === 'member-k')!],
+        actorId: 'member-k',
+        generation: state.generation + 1,
+      };
+      entryAllowed = true;
+      scenario = 'normal';
+      return householdId;
     },
     notify,
   });
@@ -471,7 +600,12 @@ export function createMockData(options: MockOptions = {}): {
       }
       // Only completed commands bind an operation ID. Rejected validation/conflicts can be corrected.
       if (result.status === 'ok')
-        operations.set(key, { fingerprint, result: copy(result) });
+        operations.set(key, {
+          fingerprint,
+          result: copy(result),
+          selfRemoval:
+            command.kind === 'remove-member' && command.memberId === actorId,
+        });
       notify();
       return mode === 'timeout-after-commit' && result.status === 'ok'
         ? { status: 'unknown' }
@@ -479,7 +613,21 @@ export function createMockData(options: MockOptions = {}): {
     },
     async operation(householdId, operationId) {
       const failure = access(householdId);
-      if (failure) return failure;
+      if (failure) {
+        const receipt = operations.get(
+          `${householdId}:${state.actorId}:${operationId}`,
+        );
+        if (
+          failure.status === 'denied' &&
+          entryAllowed &&
+          scenario !== 'denied' &&
+          scenario !== 'offline' &&
+          householdId === state.household.id &&
+          receipt?.selfRemoval
+        )
+          return copy(receipt.result);
+        return failure;
+      }
       if (scenario === 'offline') return { status: 'offline' };
       const entry = operations.get(
         `${householdId}:${state.actorId}:${operationId}`,

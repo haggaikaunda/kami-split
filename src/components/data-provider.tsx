@@ -15,6 +15,8 @@ import type {
   DemoControls,
   Failure,
   Snapshot,
+  Household,
+  Outcome,
 } from '@/lib/data/port';
 import { useExpenseNavigation } from './navigation/provider';
 
@@ -40,6 +42,7 @@ export type AppData = QueryState &
     sessionEpoch: number;
     pendingOperations: number;
     acquirePendingOperation: (id: string) => () => void;
+    setupHousehold: (name: string) => Promise<Outcome<Household>>;
   };
 const Context = createContext<AppData | null>(null);
 
@@ -47,7 +50,7 @@ const Context = createContext<AppData | null>(null);
 export function AppDataProvider({
   children,
   source,
-  householdId = 'household-demo',
+  householdId: initialHouseholdId = 'household-demo',
 }: {
   children: ReactNode;
   source?: AppDataSource;
@@ -56,6 +59,15 @@ export function AppDataProvider({
   const [owned] = useState(() => createMockData());
   const port = source?.port ?? owned.port;
   const controls = source ? source.demo : owned.demo;
+  const [selection, setSelection] = useState<{
+    port: DataPort;
+    initial: string;
+    id: string;
+  }>();
+  const householdId =
+    selection?.port === port && selection.initial === initialHouseholdId
+      ? selection.id
+      : initialHouseholdId;
   const { refreshVersion, drafts, discardDraft } = useExpenseNavigation();
   const sequence = useRef(0);
   const [sessionEpoch, setSessionEpoch] = useState(0);
@@ -182,6 +194,97 @@ export function AppDataProvider({
       value: { status: 'loading', readyVersion: null },
     });
   }, [port, householdId]);
+  const setupAttempt = useRef<{
+    port: DataPort;
+    name: string;
+    release: () => void;
+  } | null>(null);
+  const setupBusy = useRef(false);
+  const setupScope = useRef(0);
+  useEffect(() => {
+    setupScope.current += 1;
+    return () => {
+      setupScope.current += 1;
+    };
+  }, [port, initialHouseholdId]);
+  const setupHousehold = useCallback(
+    async (name: string): Promise<Outcome<Household>> => {
+      if (
+        setupBusy.current ||
+        (locks.current.size && !setupAttempt.current) ||
+        Object.values(drafts).some((draft) => draft.pending)
+      )
+        return {
+          status: 'validation',
+          fields: {
+            name: 'Resolve pending operations before creating a household.',
+          },
+        };
+      const previous = setupAttempt.current;
+      if (previous && previous.port !== port) return { status: 'unknown' };
+      const attempt = previous ?? {
+        port,
+        name,
+        release: acquirePendingOperation('household-setup'),
+      };
+      setupAttempt.current = attempt;
+      setupBusy.current = true;
+      const scope = setupScope.current;
+      const currentScope = () => setupScope.current === scope;
+      try {
+        let result = previous ? await port.entry.read() : undefined;
+        if (!currentScope()) return { status: 'unknown' };
+        if (!result || result.phase === 'setup-required')
+          result = await port.entry.dispatch({
+            kind: 'complete-setup',
+            name: attempt.name,
+          });
+        if (!currentScope()) return { status: 'unknown' };
+        if (result.phase === 'ready' && result.householdId) {
+          const read = await port.read(result.householdId);
+          if (!currentScope() || read.status !== 'ok')
+            return { status: 'unknown' };
+          attempt.release();
+          setupAttempt.current = null;
+          Object.keys(drafts).forEach(discardDraft);
+          clearFinancial();
+          setSelection({
+            port,
+            initial: initialHouseholdId,
+            id: result.householdId,
+          });
+          setSessionEpoch((epoch) => epoch + 1);
+          return { status: 'ok', value: read.value.household };
+        }
+        if (result.problem === 'invalid-name') {
+          attempt.release();
+          setupAttempt.current = null;
+          return {
+            status: 'validation',
+            fields: { name: 'Enter a household name of 1–120 characters.' },
+          };
+        }
+        if (!previous) {
+          attempt.release();
+          setupAttempt.current = null;
+          return { status: 'denied' };
+        }
+        return { status: 'unknown' };
+      } catch {
+        return { status: 'unknown' };
+      } finally {
+        setupBusy.current = false;
+      }
+    },
+    [
+      port,
+      initialHouseholdId,
+      acquirePendingOperation,
+      drafts,
+      discardDraft,
+      clearFinancial,
+    ],
+  );
   const demo = useMemo<DemoControls | undefined>(
     () =>
       controls
@@ -203,6 +306,7 @@ export function AppDataProvider({
               Object.keys(drafts).forEach(discardDraft);
               clearFinancial();
               controls.reset(fixture);
+              setSelection(undefined);
               setSessionEpoch((epoch) => epoch + 1);
             },
           }
@@ -218,6 +322,7 @@ export function AppDataProvider({
       sessionEpoch,
       pendingOperations,
       acquirePendingOperation,
+      setupHousehold,
     }),
     [
       state,
@@ -227,6 +332,7 @@ export function AppDataProvider({
       sessionEpoch,
       pendingOperations,
       acquirePendingOperation,
+      setupHousehold,
     ],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
