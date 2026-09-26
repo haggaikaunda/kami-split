@@ -5,6 +5,7 @@ import {
   validDate,
 } from '../ledger';
 import { fixture } from './fixtures';
+import { createEntryPreview } from './entry';
 import type {
   Activity,
   Command,
@@ -73,6 +74,7 @@ export function createMockData(options: MockOptions = {}): {
   let scenario: Scenario = 'normal';
   let serial = 0;
   let epoch = 0;
+  let entryAllowed = true;
   const listeners = new Set<() => void>();
   const operations = new Map<
     string,
@@ -93,6 +95,7 @@ export function createMockData(options: MockOptions = {}): {
   ): Failure | null => {
     if (scenario === 'expired') return { status: 'expired' };
     if (
+      !entryAllowed ||
       scenario === 'denied' ||
       householdId !== state.household.id ||
       actorId !== state.actorId ||
@@ -337,7 +340,40 @@ export function createMockData(options: MockOptions = {}): {
     serial = nextSerial;
     return { status: 'ok', value: copy(entity) };
   }
+  const entry = createEntryPreview({
+    deny() {
+      entryAllowed = false;
+    },
+    existing() {
+      entryAllowed = true;
+      scenario = 'normal';
+      const actorId = state.members.some(
+        (member) => member.id === state.actorId && member.status === 'active',
+      )
+        ? state.actorId
+        : 'member-k';
+      state = { ...state, actorId, generation: state.generation + 1 };
+    },
+    invite() {
+      const memberId = 'member-invited';
+      if (!state.members.some((member) => member.id === memberId))
+        state.members.push({
+          id: memberId,
+          name: 'Alex (preview)',
+          role: 'member',
+          status: 'active',
+        });
+      entryAllowed = true;
+      scenario = 'normal';
+      state = { ...state, actorId: memberId, generation: state.generation + 1 };
+    },
+    setup() {
+      entryAllowed = false;
+    },
+    notify,
+  });
   const port: DataPort = {
+    entry: entry.port,
     async read(householdId) {
       const requestEpoch = epoch,
         actorId = state.actorId;
@@ -473,6 +509,8 @@ export function createMockData(options: MockOptions = {}): {
         notify();
       },
       reset(name = 'sample') {
+        entryAllowed = true;
+        entry.reset();
         epoch++;
         serial = 0;
         operations.clear();
