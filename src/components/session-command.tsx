@@ -200,7 +200,12 @@ function CommandSession({ children }: { children: ReactNode }) {
               attempt.href &&
             window.history.state?.kamiEntry === attempt.entry
           )
-            returnToSource(attempt.visit);
+            if (attempt.envelope.command.kind === 'update-expense')
+              returnToSource(
+                attempt.visit,
+                `/expenses/${encodeURIComponent(attempt.envelope.command.id)}`,
+              );
+            else returnToSource(attempt.visit);
         } else if (result.status === 'unknown') {
           state(id, {
             phase: 'unknown',

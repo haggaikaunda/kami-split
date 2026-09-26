@@ -27,7 +27,7 @@ type NavigationContext = {
   openExpense: (id: string, focusId: string) => void;
   openDraft: (id: string, focusId: string) => void;
   resumeDraft: (id: string) => void;
-  returnToSource: (visitId: string | null) => void;
+  returnToSource: (visitId: string | null, fallbackHref?: string) => void;
   refreshVersion: number;
   markRouteReady: (href: string, version: number) => void;
   announcement: string;
@@ -123,10 +123,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     [],
   );
   const returnToSource = useCallback(
-    (visitId: string | null) => {
+    (visitId: string | null, fallbackHref = '/history') => {
       const source = visitId ? sources.current.get(visitId) : undefined;
       if (!source) {
-        router.replace('/history');
+        router.replace(
+          fallbackHref.startsWith('/') && !fallbackHref.startsWith('//')
+            ? fallbackHref
+            : '/history',
+        );
         return;
       }
       if (source.adjacent) router.back();
