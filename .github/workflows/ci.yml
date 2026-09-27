@@ -13,38 +13,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  web:
+    name: Web
+    uses: ./.github/workflows/web.yml
+  api:
+    name: API
+    uses: ./.github/workflows/api.yml
   verify:
     name: Verify
+    needs: [web, api]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.25.0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: apps/api/go.mod
-          cache-dependency-path: apps/api/go.sum
-      - run: make api-check
-      - run: docker compose config --quiet
-      - run: docker build --target verify -f apps/api/Dockerfile .
-      - run: docker compose up --build --wait api
-      - name: Smoke test container GraphQL
+      - name: Require successful web and API checks
+        env:
+          WEB_RESULT: ${{ needs.web.result }}
+          API_RESULT: ${{ needs.api.result }}
         run: |
-          curl --fail --silent --show-error -H 'Content-Type: application/json' \
-            -d '{"query":"{ health { status } }"}' http://127.0.0.1:8080/graphql \
-            | python3 -c 'import json,sys; assert json.load(sys.stdin) == {"data":{"health":{"status":"ok"}}}'
-      - if: always()
-        run: docker compose down
+          echo "Web: $WEB_RESULT; API: $API_RESULT"
+          test "$WEB_RESULT" = success && test "$API_RESULT" = success
