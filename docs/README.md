@@ -4,6 +4,11 @@ Current state: the seeded UX is complete, followed by the LAN HTTP compatibility
 
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
 
+## Documentation sections
+
+- [Agent documentation](agents/README.md): delivery instructions and Go engineering conventions.
+- [Application documentation](application/README.md): current implementation references and planned API architecture.
+
 ## Implementation guides
 
 | Area                                                | Guide                                                    |
@@ -29,7 +34,7 @@ See [repository layout and deployment](repository-layout.md) for workspace comma
 
 [Testing strategy](testing-strategy.md) explains what the automated suite and manual browser checks cover. The [final UX report](accessibility/README.md) includes screenshots and explicit hardware/assistive-technology limitations; its [criterion matrix](accessibility/criterion-matrix.md) traces every approved journey. Feature guides retain their dated PR-specific evidence. Their historical test counts and local ports are not current runtime configuration.
 
-The [delivery workflow](workflow.md), [contributing guide](../CONTRIBUTING.md), and [agent instructions](../AGENTS.md) define issue, test, review and merge gates. GitHub is the source of truth for work status. The [completed implementation record](design/implementation-plan.md) links each UX issue to its merged PR.
+The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CONTRIBUTING.md), and [agent instructions](../AGENTS.md) define issue, test, review and merge gates. GitHub is the source of truth for work status. The [completed implementation record](design/implementation-plan.md) links each UX issue to its merged PR.
 
 ## Approved design archive
 

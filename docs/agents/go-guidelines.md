@@ -1,0 +1,46 @@
+# Go engineering guide
+
+## Status and authority
+
+The agreed backend is Go + gqlgen with PostgreSQL and an authoritative SDL-first contract. Implementation is deferred to approved issues. [API agent instructions](../../apps/api/AGENTS.md) state enforceable rules; this guide explains them. Root instructions and issue-specific requirements still apply.
+
+Use [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), [Effective Go](https://go.dev/doc/effective_go), and [Google's Go style principles](https://google.github.io/styleguide/go/guide) as references for readability, explicit behavior, small interfaces, naming, and standard tooling. Effective Go is foundational, not a complete modern tooling guide. These sources do not mandate a particular application directory hierarchy.
+
+## Selected Uber conventions
+
+We adopt this specific subset of the [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md), not the entire guide:
+
+| Rule                                                                                                                           | Application                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| [Avoid mutable globals](https://github.com/uber-go/guide/blob/master/style.md#avoid-mutable-globals)                           | Inject database connections, clocks, and external clients through constructors.                        |
+| [Avoid init](https://github.com/uber-go/guide/blob/master/style.md#avoid-init)                                                 | Make startup configuration and dependency construction explicit.                                       |
+| [Handle errors once](https://github.com/uber-go/guide/blob/master/style.md#handle-errors-once)                                 | Handle or propagate a failure; avoid logging it at every layer.                                        |
+| [Error wrapping](https://github.com/uber-go/guide/blob/master/style.md#error-wrapping)                                         | Add context and preserve causes when callers need to inspect them.                                     |
+| [Don't panic](https://github.com/uber-go/guide/blob/master/style.md#dont-panic)                                                | Return errors for validation, authorization, conflicts, and operational failures.                      |
+| [Don't fire-and-forget goroutines](https://github.com/uber-go/guide/blob/master/style.md#dont-fire-and-forget-goroutines)      | Make ownership, shutdown, and completion handling explicit.                                            |
+| [Defer cleanup](https://github.com/uber-go/guide/blob/master/style.md#defer-to-clean-up)                                       | Keep cleanup near successful acquisition; do not silently lose consequential errors.                   |
+| [Copy slices and maps at boundaries](https://github.com/uber-go/guide/blob/master/style.md#copy-slices-and-maps-at-boundaries) | Copy where shared backing storage could violate ownership; this is not a blanket copy-everything rule. |
+| [Reduce nesting](https://github.com/uber-go/guide/blob/master/style.md#reduce-nesting)                                         | Use early returns to make the successful path easy to follow.                                          |
+
+We do not automatically adopt underscore-prefixed globals, Uber-specific atomic dependencies, functional options, every micro-optimization, or the guide's full linting configuration. Use ordinary constructors for required dependencies. Optional configuration patterns and additional dependencies need a concrete benefit.
+
+## Local design policies
+
+These policies are Kami Split decisions, not claims of industry consensus:
+
+- Start with concrete implementations. Introduce small interfaces at actual consumer boundaries, without a matching interface for every struct. Avoid generic repositories, service frameworks, and event buses without a present requirement.
+- Organize packages around coherent responsibilities. Use Go's `internal` boundary for application-private code when implementation begins; do not scaffold empty layers or prescribe identical layers for every feature.
+- Keep resolvers thin, authorization in application operations, and financial calculations pure. See [API architecture](../application/api-architecture.md).
+- Use `errors.Is`/`errors.As` for recognizable error causes when appropriate, not string matching. Map application failures centrally to safe GraphQL responses. Log unexpected failures at their owning boundary without sensitive payloads.
+- Carry request context through I/O. Pure calculations need no context just for uniformity. Essential post-request work must be durably scheduled, not detached from request cancellation.
+- Define ownership of mutable values. Shallow copying a slice or map does not isolate nested mutable values; copy to the depth required by the ownership contract.
+- Keep financial values exact. Validate bounds before arithmetic and serialization. Go `int64`, GraphQL `Int`, and JavaScript numbers have different ranges; choose and test the wire representation explicitly before publishing money fields.
+- Add pagination, batching, and query limits deliberately. Benchmark representative operations before introducing caching, pooling, or parallel execution as optimizations.
+
+## Testing and tools
+
+Test observable behavior. Use table-driven tests where cases share a clear structure, without forcing unrelated scenarios into one table. Financial tests should cover rounding/remainder rules, overflow, and balance invariants. Persistence tests should exercise real PostgreSQL constraints, atomic rollback, competing updates, duplicate operation IDs, and authorization denial. Mock external providers at their boundary rather than mocking every internal function.
+
+Once a Go module is introduced, its implementation issue must pin the supported toolchain and generation tools, establish formatting checks, `go vet ./...`, `go test ./...`, `go build ./...`, and reproducible gqlgen generation. Run `go test -race ./...` on a supported runner with its required toolchain; race detection does not prove database concurrency correctness. Integration tests must actually execute in CI rather than silently skip for missing infrastructure.
+
+These are future API verification requirements. No Go module or Go checks exist yet. Current root pnpm checks remain required for repository changes. Independent testers verify issue requirements and reviewers inspect the final diff, including financial, authorization, and failure-path risks.
