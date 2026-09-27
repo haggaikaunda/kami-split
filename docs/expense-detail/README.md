@@ -1,0 +1,23 @@
+# Expense detail
+
+Issue #20 renders the same current expense and immutable revision history in the shell's contextual desktop panel or full-page destination. It consumes the session `AppDataProvider` snapshot through the replaceable async data port. It never imports fixture arrays into screen code.
+
+`/expenses/:id` is a direct full page. `?revision=N` identifies a selected audit snapshot while the current revision or deletion state remains explicit. `ExpenseLink` accepts an optional numeric `revision`; ordinary activation captures a fresh visit, while modified activation retains a canonical shareable URL. “Open full page” preserves the selected revision and visit using replace semantics.
+
+Every revision has complete comparable values: description, amount/currency, expense date, payer, explicit participants and allocations (including zero), split, category, trip association, note, original creator, creation/update timestamps, editor and reason. Audit timestamps are displayed in UTC; expense dates are date-only. Deleted records remain readable and excluded from mutation intent hooks. Unavailable IDs disclose no record fields.
+
+`ExpenseDestination.renderActions(record)` adds optional current-record actions alongside the built-in actions, which open the implemented [edit](../expense-editing.md) and [delete](../expense-deletion/README.md) journeys. Actions are rendered only for current, loaded, non-deleted records. Stale/offline values are explicitly labeled and cannot expose mutation actions. Denied/expired states suppress financial values even if an outdated snapshot is present.
+
+## Verification
+
+Component tests exercise actual adapter-created exact allocations, edits, different actors and tombstones. Independent requirements tests check complete selected snapshots, changed current values, identity-based labels, zero shares, unavailable trip association, literal note rendering, revision-aware navigation, and native summary keyboard ordering within dialogs.
+
+Destination tests cover initial loading, missing records, denied/expired/unavailable/error states, retained offline values and retry, mutation-hook suppression, selected-revision full-page replacement, and modified-click canonical links. The shell's existing tests continue to verify per-visit origins, responsive boundaries, Back/Forward and freshness barriers.
+
+Live browser results are recorded below after integration. The UI is a session-only simulation: reload restores fixtures and session-created IDs can become unavailable. This is not real authentication or durable audit storage.
+
+CUA on the actual Next router verified desktop direct `/expenses/102?revision=1` renders Poke bowls, $86.20 USD, $43.10/$43.10 shares, creator, dates, associated Maui link and selected revision. Filtered History → contextual panel → Open full page → one browser Back restored `search=Poke&tab=expenses`, source-row focus and scroll. Forward and resize to390px retained the same record and full-page presentation. Shift+Tab from the native revision summary focused the preceding trip link in the panel.
+
+At320×844 with a temporary UI text-size selector setting computed root text to32px, current and selected historical values wrapped without horizontal overflow (document width320px). Revision content remained keyboard reachable. The temporary selector was removed after this check. Back/Open full page controls were moved before the record values so users can reach navigation without scrolling through the audit history.
+
+After integration with Overview, its activity links opened the associated selected revision. A three-member fixture showed three $28.12 grocery allocations. A temporary verification-only button called the async delete command for Dinner, then was removed; the new activity opened revision 2, showed the retained $68.00 tombstone, exact $22.67/$22.67/$22.66 allocations, original creator, deletion actor/time/reason, and expandable revision 1. The overview contribution total changed from $5,126.56 to $5,058.56. Selecting simulated access denial on Overview and using Forward to a previously viewed expense rendered no financial fields. A direct missing-ID URL provided a neutral unavailable state and History fallback.

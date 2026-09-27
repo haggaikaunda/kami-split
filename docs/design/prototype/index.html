@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kami Split · Our household</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231d5949'/%3E%3Ctext x='10' y='29' fill='white' font-size='28'%3Ek%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <aside>
+      <a class="brand" href="#home"
+        ><span class="mark">k<span>•</span></span
+        >kami split</a
+      >
+      <div class="house">
+        <span class="house-icon">⌂</span>
+        <div>Our household<small>2 members · USD</small></div>
+      </div>
+      <nav>
+        <a href="#home" data-page="home">◫ <span>Overview</span></a
+        ><a href="#history" data-page="history">↺ <span>History</span></a
+        ><a href="#trips" data-page="trips">♧ <span>Trips</span></a
+        ><a href="#household" data-page="household">⌂ <span>Household</span></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <p>Shared expenses.<br />A little more harmony.</p>
+        <a href="#auth" class="profile"
+          ><b class="avatar pink">K</b
+          ><span>Kaunda<small>Personal account</small></span
+          ><span>↗</span></a
+        >
+      </div>
+    </aside>
+    <div class="shell">
+      <header>
+        <span
+          >Our household <span class="slash">/</span>
+          <span id="crumb">Overview</span></span
+        ><span class="private">♧ Private household</span>
+      </header>
+      <main id="main"></main>
+      <footer>
+        <span>Kami Split · Interactive design prototype</span
+        ><button class="text" onclick="openStates()">
+          Explore recovery states</button
+        ><button class="text" onclick="resetDemo()">Reset demo</button>
+      </footer>
+    </div>
+    <dialog id="modal"></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+    <script src="redesign.js"></script>
+    <script src="expense-navigation.js"></script>
+  </body>
+</html>
