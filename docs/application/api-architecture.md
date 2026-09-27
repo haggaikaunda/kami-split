@@ -2,7 +2,7 @@
 
 ## Status
 
-A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. PostgreSQL is the intended database. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
+A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. These integrations are not yet implemented. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 ## Responsibilities
 
@@ -29,6 +29,10 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 ## Future integrations
 
-Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; this document does not select or install a queue.
+Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with a Go worker is selected for future imports, but is not installed or provisioned.
 
 See the [Go engineering guide](../agents/go-guidelines.md) for code and testing expectations. Detailed schema, authentication, persistence, deployment, and worker designs require subsequent approved issues.
+
+## Accepted decisions and open questions
+
+[ADR-001](decisions/001-backend-foundation.md) is the canonical record of the accepted platform, USD money representation, and membership policies. Consult the [open-decision register](decisions/open-decisions.md) before treating unresolved details as requirements.
