@@ -1,6 +1,6 @@
 # Architecture decisions
 
-[ADR-001: Backend foundation](001-backend-foundation.md) records accepted platform, money, and membership decisions. [Open decisions](open-decisions.md) tracks questions to resolve before their dependent work begins.
+[ADR-001: Backend foundation](001-backend-foundation.md) records accepted platform, money, and membership decisions. [ADR-002: Authentication and database operations](002-authentication-and-database-operations.md) refines O01–O07, including stable-only tooling and free-plan backups. [Open decisions](open-decisions.md) tracks questions to resolve before their dependent work begins.
 
 Accepted means agreed design, not implemented functionality. GitHub issues/PRs remain the source of truth for delivery status. Each implementation issue must identify the relevant decisions and acceptance tests.
 

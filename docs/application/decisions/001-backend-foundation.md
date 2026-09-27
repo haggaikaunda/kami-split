@@ -5,6 +5,10 @@
 - Authority: Repository owner approved these choices in the architecture discussion.
 - Scope: Platform, persistence tooling, money, identity, and group membership.
 
+## Follow-up decisions
+
+[ADR-002](002-authentication-and-database-operations.md) refines authentication, identity, RLS, local tooling, migration deployment, and backup policies. References below to open details reflect this original decision; use the updated [register](open-decisions.md) for current status.
+
 ## Context and current state
 
 Kami Split has a seeded Next.js UI and a Go + gqlgen health-only server with Docker support. Business GraphQL operations, Supabase integration, authentication, persistence, Relay, and imports are not implemented by this ADR. The design must preserve exact financial calculations and auditability while supporting future clients and imports. See [API architecture](../api-architecture.md) and [open decisions](open-decisions.md).
