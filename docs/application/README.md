@@ -7,3 +7,7 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 ## Backend scaffold and planned features
 
 [API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. A health-only scaffold exists; financial and authenticated behavior is still planned. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+
+## Architecture decisions
+
+[Accepted foundation decisions](decisions/001-backend-foundation.md) cover Supabase, persistence tooling, money, and membership. The [open-decision register](decisions/open-decisions.md) tracks unresolved choices and when they must be settled. See [decision maintenance](decisions/README.md) for updating them.
