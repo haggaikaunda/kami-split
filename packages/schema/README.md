@@ -1,5 +1,7 @@
-# Future GraphQL contract
+# GraphQL contract
 
-Reserved for the checked-in, authoritative SDL-first GraphQL schema shared by the future Go + gqlgen API and the frontend Relay compiler. The schema will define the cross-language API contract; language-neutral test fixtures may also be shared in future work.
+`schema.graphql` is the authoritative SDL for the Go + gqlgen backend. It currently exposes only `health { status }`; no financial or authenticated operations exist.
 
-No schema, package manifest, code generation or Relay integration is introduced yet. Those require separately approved implementation issues. Existing TypeScript money/ledger logic, fixtures, selectors and DataPort remain inside [`apps/web`](../../apps/web); there is no shared TypeScript domain package. The future Go backend will own server financial rules.
+Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. The future Relay compiler will consume this same contract; Relay is not installed yet.
+
+Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript money logic and DataPort remain in `apps/web`; future Go services own server financial rules. Language-neutral test fixtures may be shared when implemented.

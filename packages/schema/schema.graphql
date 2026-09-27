@@ -1,0 +1,13 @@
+"""
+Minimal scaffold API; no financial or authenticated operations yet.
+"""
+type Query {
+  health: Health!
+}
+
+"""
+Process-level GraphQL availability, not database or financial readiness.
+"""
+type Health {
+  status: String!
+}

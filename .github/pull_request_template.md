@@ -15,9 +15,9 @@ Closes #
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
-- [ ] Applicable area checks recorded (web browser/accessibility evidence; API checks once Go tooling exists)
+- [ ] Applicable area checks recorded (web browser/accessibility evidence; Go/API and container checks)
 
-<!-- Record commands, outcomes, commit SHA, and limitations. Explain non-applicable area checks; do not claim future tooling was run. -->
+<!-- Record commands, outcomes, commit SHA, and limitations. Explain non-applicable area checks; do not claim unavailable tooling was run. -->
 
 ## Independent gates
 

@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      API_ADDR: ':8080'
+      API_SHUTDOWN_TIMEOUT: 5s
+    ports:
+      - '127.0.0.1:8080:8080'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 10s
+    healthcheck:
+      test:
+        ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/readyz']
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 5s

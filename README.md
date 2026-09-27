@@ -8,7 +8,7 @@ The approved UX tracker [#13](https://github.com/haggaikaunda/kami-split/issues/
 
 ## Repository layout
 
-The Next.js application lives in `apps/web`. `apps/api` reserves the future Go + gqlgen backend, and `packages/schema` reserves its shared SDL-first GraphQL contract. Documentation and automation remain at the root. See [repository layout and deployment](docs/repository-layout.md) for configuration ownership and hosting follow-up. The API and Relay integration are deferred.
+The Next.js application lives in `apps/web`. `apps/api` contains a health-only Go + gqlgen server, and `packages/schema` owns its SDL-first contract. See the [API README](apps/api/README.md) for Docker Compose and native Go commands. Documentation and automation remain at the root. See [repository layout and deployment](docs/repository-layout.md) for configuration ownership and hosting follow-up. Financial API features and Relay integration are deferred.
 
 ## Run locally
 

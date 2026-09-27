@@ -1,0 +1,10 @@
+**
+!apps/
+!apps/api/
+!apps/api/**
+!packages/
+!packages/schema/
+!packages/schema/**
+apps/api/.env*
+apps/api/**/*.log
+apps/api/server

@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-The agreed backend is Go + gqlgen with PostgreSQL and an authoritative SDL-first contract. Implementation is deferred to approved issues. [API agent instructions](../../apps/api/AGENTS.md) state enforceable rules; this guide explains them. Root instructions and issue-specific requirements still apply.
+The agreed backend is Go + gqlgen with PostgreSQL and an authoritative SDL-first contract. A health-only scaffold exists; business features remain deferred to approved issues. [API agent instructions](../../apps/api/AGENTS.md) state enforceable rules; this guide explains them. Root instructions and issue-specific requirements still apply.
 
 Use [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), [Effective Go](https://go.dev/doc/effective_go), and [Google's Go style principles](https://google.github.io/styleguide/go/guide) as references for readability, explicit behavior, small interfaces, naming, and standard tooling. Effective Go is foundational, not a complete modern tooling guide. These sources do not mandate a particular application directory hierarchy.
 
@@ -41,6 +41,6 @@ These policies are Kami Split decisions, not claims of industry consensus:
 
 Test observable behavior. Use table-driven tests where cases share a clear structure, without forcing unrelated scenarios into one table. Financial tests should cover rounding/remainder rules, overflow, and balance invariants. Persistence tests should exercise real PostgreSQL constraints, atomic rollback, competing updates, duplicate operation IDs, and authorization denial. Mock external providers at their boundary rather than mocking every internal function.
 
-Once a Go module is introduced, its implementation issue must pin the supported toolchain and generation tools, establish formatting checks, `go vet ./...`, `go test ./...`, `go build ./...`, and reproducible gqlgen generation. Run `go test -race ./...` on a supported runner with its required toolchain; race detection does not prove database concurrency correctness. Integration tests must actually execute in CI rather than silently skip for missing infrastructure.
+The scaffold pins the Go toolchain and gqlgen tool in `apps/api/go.mod`. `make api-check` runs formatting checks, `go vet ./...`, `go test ./...`, `go build ./...`, and reproducible gqlgen generation. Run `go test -race ./...` on a supported runner with its required toolchain; race detection does not prove database concurrency correctness. Integration tests must actually execute in CI rather than silently skip for missing infrastructure.
 
-These are future API verification requirements. No Go module or Go checks exist yet. Current root pnpm checks remain required for repository changes. Independent testers verify issue requirements and reviewers inspect the final diff, including financial, authorization, and failure-path risks.
+Go checks exist for the health scaffold. Database integration checks become mandatory when persistence is introduced. Current root pnpm checks remain required for repository changes. Independent testers verify issue requirements and reviewers inspect the final diff, including financial, authorization, and failure-path risks.
