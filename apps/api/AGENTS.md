@@ -1,5 +1,7 @@
 # Go API agent instructions
 
+Follow the repository-wide [delivery workflow](../../docs/agents/delivery-workflow.md), including independent testing and final-diff review.
+
 These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [Go engineering guide](../../docs/agents/go-guidelines.md) and [API architecture](../../docs/application/api-architecture.md) before API changes.
 
 The API is currently a placeholder. These rules govern future approved implementation; they do not authorize server scaffolding or dependency installation by themselves.

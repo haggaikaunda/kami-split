@@ -37,4 +37,4 @@ The final pass covers 320/390/768/1280px, actual 200% root text, keyboard dialog
 
 A real backend needs additional authenticated API, cross-user/household denial, persistence, migration, transaction, concurrency, idempotency and durable-audit tests. Existing simulation coverage does not satisfy those production security gates. Percentage splits are not implemented; test them only if separately approved and added.
 
-Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](workflow.md).
+Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).
