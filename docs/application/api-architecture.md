@@ -36,3 +36,5 @@ See the [Go engineering guide](../agents/go-guidelines.md) for code and testing 
 ## Accepted decisions and open questions
 
 [ADR-001](decisions/001-backend-foundation.md) is the canonical record of the accepted platform, USD money representation, and membership policies. Consult the [open-decision register](decisions/open-decisions.md) before treating unresolved details as requirements.
+
+[ADR-002](decisions/002-authentication-and-database-operations.md) adds the accepted session/JWKS policy, transaction-local identity with RLS, stable-only tooling, GitHub Actions migration deployment, and free-plan backup constraint. These integrations remain planned.
