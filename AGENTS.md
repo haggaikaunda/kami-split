@@ -6,6 +6,8 @@ Build a trustworthy personal expense-sharing application through small, independ
 
 ## Required workflow
 
+Follow the canonical [delivery workflow](docs/agents/delivery-workflow.md) for every area of the repository. Application instructions add implementation and verification requirements, not separate PR lifecycles.
+
 1. Start from an approved, acceptance-criteria-driven GitHub issue.
 2. Inspect relevant code and documentation before editing.
 3. State a short implementation plan.
@@ -45,3 +47,7 @@ Never bypass branch protections, force-push shared branches, weaken tests to obt
 ## Review priorities
 
 Prioritize financial errors, authorization flaws, data loss, database inconsistency, races, duplicate requests, missing meaningful tests, private-data exposure, breaking changes, and unnecessary complexity over style preferences.
+
+## Area guidance
+
+See [agent documentation](docs/agents/README.md) for area-specific instructions. Future API work must follow [apps/api/AGENTS.md](apps/api/AGENTS.md); [application documentation](docs/application/README.md) distinguishes current behavior from planned architecture.
