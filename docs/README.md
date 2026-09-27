@@ -2,6 +2,8 @@
 
 Current state: the seeded UX is complete, followed by the LAN HTTP compatibility fix, as of September 26, 2026. Start with the [project README](../README.md) to run the app or preview it on a phone. Read [product scope](product-scope.md) before treating any simulated account or financial flow as a production service.
 
+See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
+
 ## Implementation guides
 
 | Area                                                | Guide                                                    |

@@ -8,7 +8,7 @@ Maui and Tahoe use the two approved remote image identifiers from `docs/design/a
 
 ## Integration API
 
-- `tripStatus(trip, today)`, `tripCards(snapshot, filter)`, `tripDateLabel(date)` and `validateTripDraft(values)` are in `src/lib/trips.ts`.
+- `tripStatus(trip, today)`, `tripCards(snapshot, filter)`, `tripDateLabel(date)` and `validateTripDraft(values)` are in `apps/web/src/lib/trips.ts`.
 - `TripCover` and `TripCredits` are shared by list/detail surfaces.
 - `TripDestination` provides the implemented [trip detail](detail.md), including Overview/Expenses views and [spending charts](../spending/README.md).
 - `NavigationProvider.replaceDestination` replaces a completed create form with its saved destination. Cards capture their list visit; confirmed creation carries its visit to the saved trip, and its Back action restores the original filter, scroll and focus. Direct trip entry offers All trips.
