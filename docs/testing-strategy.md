@@ -1,6 +1,6 @@
 # Testing strategy
 
-Tests demonstrate behavior rather than mirror implementation. The current system is a browser UI over an asynchronous in-memory adapter; there is no deployed API, database, migration runner or real authentication service to test yet.
+Tests demonstrate behavior rather than mirror implementation. The current system is a browser UI over an asynchronous in-memory adapter; the Go API is a health-only scaffold without database, migrations, or real authentication. See [API verification](../apps/api/README.md) for HTTP/lifecycle tests and `make api-check`.
 
 ## Current coverage
 

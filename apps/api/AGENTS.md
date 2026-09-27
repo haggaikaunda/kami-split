@@ -4,7 +4,7 @@ Follow the repository-wide [delivery workflow](../../docs/agents/delivery-workfl
 
 These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [Go engineering guide](../../docs/agents/go-guidelines.md) and [API architecture](../../docs/application/api-architecture.md) before API changes.
 
-The API is currently a placeholder. These rules govern future approved implementation; they do not authorize server scaffolding or dependency installation by themselves.
+The API currently implements a health-only scaffold. Financial operations, authentication, and persistence require separately approved issues.
 
 ## Design and implementation
 
@@ -23,5 +23,5 @@ The API is currently a placeholder. These rules govern future approved implement
 
 - Test financial behavior and failure paths, not implementation structure. Use real PostgreSQL integration tests for transactions, constraints, duplicate requests, concurrent changes, rollback, and cross-group access once persistence exists.
 - Preserve the builder/tester/reviewer workflow. Measure representative workloads before adding performance complexity.
-- Once the Go module exists, run `go test ./...`, `go vet ./...`, and `go build ./...` from its root; require clean `gofmt` output and generation checks. Run race-enabled tests on a supported CI runner. These future Go checks supplement, not replace, existing repository checks.
+- Run `go test ./...`, `go vet ./...`, and `go build ./...` from its root; require clean `gofmt` output and generation checks. Run race-enabled tests on a supported CI runner. These Go checks supplement, not replace, existing repository checks.
 - Apply only the selected external rules in the linked guide. External style guides are supplementary, not wholesale repository policy.

@@ -1,8 +1,8 @@
-# Planned API architecture
+# API architecture
 
 ## Status
 
-The backend is not implemented. `apps/api` reserves a standalone Go + gqlgen application; `packages/schema` reserves the authoritative GraphQL SDL. PostgreSQL is the intended database. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
+A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. PostgreSQL is the intended database. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 ## Responsibilities
 
@@ -21,7 +21,7 @@ Use integer minor units, explicit currency, checked arithmetic, and a documented
 
 ## Contract and reads
 
-The future SDL is the cross-language contract for gqlgen and Relay. Keep generated transport types at the boundary where practical. Pin generators and verify reproducibility; do not manually patch generated output.
+The SDL is the cross-language contract for gqlgen and Relay. Keep generated transport types at the boundary where practical. Pin generators and verify reproducibility; do not manually patch generated output.
 
 Define stable identity and cursor pagination for Relay. Compute complete balances and spending summaries on the server rather than deriving them from a client's partially loaded expense list. Batch related reads and enforce bounded page sizes and query costs. Authorize all access paths, including node lookup and nested fields.
 

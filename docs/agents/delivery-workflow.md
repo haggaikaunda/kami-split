@@ -28,7 +28,7 @@ Builder, tester, and reviewer are independent roles with separate agent/task con
 
 Use separate contexts with the [builder](prompts/builder.md), [tester](prompts/tester.md), and [reviewer](prompts/reviewer.md) prompts. Record the tested/reviewed commit, requirements coverage, commands and outcomes, findings, and limitations on the PR. After changes, rerun affected checks and obtain independent re-testing or re-review as appropriate so the evidence covers the final diff.
 
-Use the [PR template](../../.github/pull_request_template.md) to collect evidence, not as a substitute for executing verification. Follow [web instructions](../../apps/web/AGENTS.md) or [API instructions](../../apps/api/AGENTS.md) for area-specific checks. Documentation-only work should validate links and accuracy without adding tests that merely mirror prose or file layout. Existing required repository checks still apply; future Go checks apply once the module/tooling exists.
+Use the [PR template](../../.github/pull_request_template.md) to collect evidence, not as a substitute for executing verification. Follow [web instructions](../../apps/web/AGENTS.md) or [API instructions](../../apps/api/AGENTS.md) for area-specific checks. Documentation-only work should validate links and accuracy without adding tests that merely mirror prose or file layout. Existing required repository checks still apply; Go scaffold checks are documented in the API instructions.
 
 Mark the PR ready only after findings are resolved. Satisfy required GitHub approvals and branch protections as well as independent testing/review. Never bypass protections or merge with failing or missing required checks. After an authorized merge, verify GitHub reports the merge and report the result.
 

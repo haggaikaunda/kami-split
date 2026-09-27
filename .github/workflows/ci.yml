@@ -33,3 +33,18 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - run: make api-check
+      - run: docker compose config --quiet
+      - run: docker build --target verify -f apps/api/Dockerfile .
+      - run: docker compose up --build --wait api
+      - name: Smoke test container GraphQL
+        run: |
+          curl --fail --silent --show-error -H 'Content-Type: application/json' \
+            -d '{"query":"{ health { status } }"}' http://127.0.0.1:8080/graphql \
+            | python3 -c 'import json,sys; assert json.load(sys.stdin) == {"data":{"health":{"status":"ok"}}}'
+      - if: always()
+        run: docker compose down
