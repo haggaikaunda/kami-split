@@ -62,7 +62,7 @@ The implemented forms reconcile pending/unknown adapter outcomes before discardi
 
 ## Current navigation checks
 
-Run `pnpm dev`, or `pnpm exec next dev --hostname localhost --port 4177` for a dedicated local test port at `http://localhost:4177`. The following routes use the shared session data:
+Run `pnpm dev`, or `pnpm dev --hostname localhost --port 4177` for a dedicated local test port at `http://localhost:4177`. The following routes use the shared session data:
 
 1. Open `/history?search=Poke&type=created`, select the expense, choose **Open full page**, and use browser Back/Forward. Check the same filters, source row focus and scroll.
 2. Open `/trips/maui?tab=expenses&search=Poke` and repeat the round trip. Its source visit must remain independent of History.

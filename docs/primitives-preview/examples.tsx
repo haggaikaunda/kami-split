@@ -15,8 +15,8 @@ import {
   Skeleton,
   Status,
   Toast,
-} from '../../src/components/primitives';
-import '../../src/app/styles.css';
+} from '../../apps/web/src/components/primitives';
+import '../../apps/web/src/app/styles.css';
 import './preview.css';
 
 function Examples() {

@@ -6,9 +6,13 @@ The preview uses deterministic in-memory data, not a production backend. Changes
 
 The approved UX tracker [#13](https://github.com/haggaikaunda/kami-split/issues/13) and all eighteen child issues are complete. The subsequent [LAN HTTP fix](https://github.com/haggaikaunda/kami-split/pull/51) supports phone previews. See the [documentation index](docs/README.md) for current behavior, architecture, verification evidence, and the original design.
 
+## Repository layout
+
+The Next.js application lives in `apps/web`. `apps/api` reserves the future Go + gqlgen backend, and `packages/schema` reserves its shared SDL-first GraphQL contract. Documentation and automation remain at the root. See [repository layout and deployment](docs/repository-layout.md) for configuration ownership and hosting follow-up. The API and Relay integration are deferred.
+
 ## Run locally
 
-Requirements: Node.js **24** and pnpm **11**; `package.json` pins the package-manager version.
+Run commands from the repository root. Requirements: Node.js **24** and pnpm **11**; `package.json` pins the package-manager version.
 
 ```bash
 pnpm install --frozen-lockfile

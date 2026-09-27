@@ -7,7 +7,7 @@ Tests demonstrate behavior rather than mirror implementation. The current system
 - **Domain tests:** exact minor-unit parsing/allocation, multi-member conservation, direct obligations, repayment effects, currencies, effective dates, trip aggregation and truthful chart buckets.
 - **Adapter tests:** access simulations, immutable snapshots/audits, atomic mock commands, versions/conflicts, same-request idempotency, duplicate payload rejection, before/after-commit failures, membership and setup boundaries.
 - **Component integration tests:** React/jsdom with actual providers for navigation/drafts, forms, revisions, deletion, repayment, filtered history, charts, trips, entry and household management. Mocks replace browser/framework facilities where necessary; these are not real browser tests.
-- **Automated accessibility:** 24 axe-backed cases in `src/components/accessibility.test.tsx`. Only color contrast is disabled because jsdom cannot evaluate rendered layout. Contrast calculations, real focus behavior, target geometry and reflow have separate evidence.
+- **Automated accessibility:** 24 axe-backed cases in `apps/web/src/components/accessibility.test.tsx`. Only color contrast is disabled because jsdom cannot evaluate rendered layout. Contrast calculations, real focus behavior, target geometry and reflow have separate evidence.
 - **LAN compatibility:** helper and actual-provider tests remove `crypto.randomUUID` while retaining cryptographic `getRandomValues`; verify UUID format, distinct visits, stable draft IDs and duplicate-safe deletion/household recovery.
 - **Manual browser acceptance:** actual app interactions recorded in feature PRs and the [final report](accessibility/README.md), with a [criterion matrix](accessibility/criterion-matrix.md) for P01–P10/N01–N07. The LAN origin was additionally verified through rendered overview and add/preserve/resume/save in [PR #51](https://github.com/haggaikaunda/kami-split/pull/51).
 
@@ -25,7 +25,7 @@ pnpm test
 pnpm build
 ```
 
-For a focused regression, use `pnpm test path/to/file.test.ts`. Avoid running type checking and build concurrently because Next.js generates types. Stop a production preview before rebuilding its `.next` output; restart and reload before continuing browser verification.
+For a focused regression, use `pnpm test src/lib/ledger.test.ts` (paths are relative to `apps/web`). Avoid running type checking and build concurrently because Next.js generates types. Stop a production preview before rebuilding its `.next` output; restart and reload before continuing browser verification.
 
 ## Browser evidence and limits
 

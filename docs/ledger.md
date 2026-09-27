@@ -1,6 +1,6 @@
 # Exact-money ledger
 
-`src/lib/ledger.ts` is the shared pure financial boundary. Values are integer minor units. The record limit is 999,999,999 minor units ($9,999,999.99 USD). Parsing rejects rounding, signs, exponent notation, whitespace and more than two decimal places. Exact allocations may be zero; expense and repayment totals must be positive. Aggregate addition rejects unsafe integers instead of returning an imprecise result.
+`apps/web/src/lib/ledger.ts` is the shared pure financial boundary. Values are integer minor units. The record limit is 999,999,999 minor units ($9,999,999.99 USD). Parsing rejects rounding, signs, exponent notation, whitespace and more than two decimal places. Exact allocations may be zero; expense and repayment totals must be positive. Aggregate addition rejects unsafe integers instead of returning an imprecise result.
 
 Equal splits assign remainder cents to participant IDs in ascending code-unit order, independent of UI selection order. Participant membership is explicit and includes members with zero shares. A payer can be outside the participant set. One payer pays the full record total; allocations must independently reconcile to that total.
 
