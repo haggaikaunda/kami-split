@@ -2,7 +2,7 @@
 
 Issue [#16](https://github.com/haggaikaunda/kami-split/issues/16). This standalone development gallery exercises controls and states without adding application routes or implying that example buttons persist records.
 
-Run `pnpm exec vite docs/primitives-preview --host 127.0.0.1 --port 4176`, then open `http://127.0.0.1:4176`. Vite is supplied by the existing Vitest toolchain. Use the labeled **Example text size** selector to switch between 100% and 200% root text size directly in the gallery. No application runtime dependency was added; jsdom is a development dependency for component interaction tests.
+Run `pnpm --package=vite@8.3.0 dlx vite docs/primitives-preview --host 127.0.0.1 --port 4210`, then open `http://127.0.0.1:4210`. This fetches the pinned development server (matching the lockfile’s Vite version) into pnpm’s tool cache. Vite is a transitive Vitest dependency, so a clean install does not expose it through `pnpm exec vite`; the explicit command adds no application runtime dependency. Use the labeled **Example text size** selector to switch between 100% and 200% root text size directly in the gallery. No application runtime dependency was added; jsdom is a development dependency for component interaction tests.
 
 ## Contract
 
@@ -29,4 +29,4 @@ In Chrome, twelve successive Tab and Shift+Tab presses each remained inside the 
 
 Manual token review with WCAG relative-luminance calculations: ink/white 13.42:1, muted/white 6.29:1, white/primary 7.92:1, white/destructive 7.52:1, error/error-surface 6.78:1, focus/white 6.41:1, control-border/white 3.10:1. Disabled controls remain semantically disabled. Screenshots exercise the system-font fallback without a font service and a failed photo request.
 
-The gallery does not cover authentication, transport, concurrency, persistence, or complete journeys. Those remain later issue work.
+The gallery does not cover authentication, transport, concurrency, persistence, or complete journeys. The implemented application journeys have separate feature tests and the [integrated accessibility report](../accessibility/README.md); this gallery remains a standalone primitive demonstration.

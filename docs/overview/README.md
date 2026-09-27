@@ -1,6 +1,6 @@
 # Overview and shared data boundary
 
-Issue [#18](https://github.com/haggaikaunda/kami-split/issues/18) replaces the Overview navigation fixture with the seeded financial overview. Charts remain a labeled reserved area; Add expense and Record repayment lead to their clearly marked entry previews until those separate issues land. No payments are sent.
+Issue [#18](https://github.com/haggaikaunda/kami-split/issues/18) replaces the Overview navigation fixture with the seeded financial overview. The Overview now includes [spending charts](../spending/README.md), and Add expense and Record repayment open their implemented session-only forms. No payments are sent.
 
 ## Financial meaning
 
@@ -10,7 +10,7 @@ The selectors validate the ledger and use checked integer-minor-unit sums. Direc
 
 Three-member expected positions `(paid, share, net)` are Kaunda `(249610, 170893, 81217)`, Mizenin `(263046, 170884, 89662)` and River `(0, 170879, -170879)`. Direct obligations are Kaunda → Mizenin $19.84, River → Kaunda $832.01, River → Mizenin $876.78. Names come from member records, never from pair-specific domain branches.
 
-Current active expense snapshots drive contributions and positions. Recent activity independently shows immutable event descriptions, event dates/actors, and explicit added/edited/deleted/repayment labels. Expense rows use stable logical focus IDs and contextual expense links. The separate detail work adds selected-revision inspection to those links. An entirely empty household gets a first-expense prompt, not a claim that an unloaded ledger is settled.
+Current active expense snapshots drive contributions and positions. Recent activity independently shows immutable event descriptions, event dates/actors, and explicit added/edited/deleted/repayment labels. Expense rows use stable logical focus IDs and contextual expense links. Those links identify the event revision in the implemented [expense detail](../expense-detail/README.md). An entirely empty household gets a first-expense prompt, not a claim that an unloaded ledger is settled.
 
 ## `AppDataProvider` integration
 
@@ -25,6 +25,8 @@ The persistent root layout nests `AppDataProvider` inside `NavigationProvider`. 
 - `readyVersion: number | null`: captured navigation refresh generation of the newest completed query; null while waiting.
 - `refresh(): Promise<void>`: request another read. Subscription invalidations and navigation refresh generations invoke the same path.
 - `demo?`: optional simulation controls, separate from the application port.
+- `sessionEpoch`, `pendingOperations`, and `acquirePendingOperation(id)`: session boundary and idempotently released operation leases; unresolved commands block reset.
+- `selectedHouseholdId` and `setupHousehold(name, onSuccess?)`: select a confirmed empty household through the guarded setup transition.
 
 A screen calls `useRouteReady(itsRoute, readyVersion)` after rendering its snapshot or terminal error/empty state. The provider records the generation captured when the request starts, never a newer generation when it finishes. A sequence guard rejects obsolete completions after invalidation, context change or unmount. Port/household provenance gates the exposed snapshot during render, so a source switch cannot expose one frame of another context's financial data before effects run.
 

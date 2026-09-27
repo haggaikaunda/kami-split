@@ -12,7 +12,7 @@ A selected `bucket` is parsed independently of the latest series, so a mutation 
 
 ## Verification
 
-Formatting, lint, type checking, 287 tests and production build pass. Fourteen pure tests cover leap/century boundaries, view shifts, zero periods, exact scope/counts, large values, complete trip extents, currency partitioning and real date-mutation invalidation. Five component probes cover truthful geometry, equivalent table inspection, URL controls, newly empty selected buckets, expense suspension/return and denied trip disclosure. Existing Overview assertions remain unchanged; its navigation stub supplies the now-used search parameters.
+At issue #27 acceptance, formatting, lint, type checking, 287 tests and production build passed. This is a historical acceptance count, not the current suite total. Fourteen pure tests cover leap/century boundaries, view shifts, zero periods, exact scope/counts, large values, complete trip extents, currency partitioning and real date-mutation invalidation. Five component probes cover truthful geometry, equivalent table inspection, URL controls, newly empty selected buckets, expense suspension/return and denied trip disclosure. Existing Overview assertions remain unchanged; its navigation stub supplies the now-used search parameters.
 
 Two independent requirements tests cover included zero-share counts with a real deletion to the same empty bucket, retained audit history, and exact conservation over a 1000–9999 trip range with currency isolation.
 

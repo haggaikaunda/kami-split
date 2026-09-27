@@ -1,6 +1,6 @@
 # Implementation issue specifications
 
-These versioned acceptance criteria are mirrored into GitHub issues. GitHub is the executable work queue; keep both in sync through reviewed changes. See the [implementation plan](../implementation-plan.md) for canonical issue links, dependency order and merge readiness.
+These are the original approved acceptance-criteria snapshots for the completed issues #14–31. The checkboxes record specification text, not live completion status. Every issue is closed; see the [completed implementation record](../implementation-plan.md) for merged PRs and evidence. GitHub remains the source of truth for work status. New scope changes require reviewed specifications and a new approved issue.
 
 - [UX-01: Define exact-money and multi-member ledger rules](01.md)
 - [UX-02: Introduce async data access and deterministic seed adapter](02.md)

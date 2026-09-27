@@ -1,6 +1,6 @@
 # Design-package verification record
 
-Date: 2026-09-20. Planning issue #11; draft PR #12; implementation tracker #13.
+Historical design-only record, September 20, 2026. Planning issue #11; PR #12 (subsequently merged); implementation tracker #13 (subsequently completed). For current application verification, see the [final UX report](../accessibility/README.md) and [testing strategy](../testing-strategy.md).
 
 ## Independent requirements testing
 
@@ -24,4 +24,4 @@ Limits: independent passes checked requirements/diff/arithmetic, not a new produ
 - GitHub tracker contains eighteen child links; reviewed dependency/handoff changes are mirrored to the affected issue bodies.
 - Production application source under `src/` is unchanged. Changes are design documentation/reference assets plus narrowly scoped prototype lint exclusion and documentation links.
 
-This record is not merge approval. Keep the design PR in draft until the user/team reviews it; implementation is gated on reviewed design merge and issue approval. Future feature PRs still require their own independent testing/review and current CI.
+At the time, this record was not merge approval: design review and issue approval still gated implementation. Those gates were subsequently satisfied and the rollout completed. Future PRs still require their own independent testing/review and current CI.

@@ -6,7 +6,7 @@ Issue #20 renders the same current expense and immutable revision history in the
 
 Every revision has complete comparable values: description, amount/currency, expense date, payer, explicit participants and allocations (including zero), split, category, trip association, note, original creator, creation/update timestamps, editor and reason. Audit timestamps are displayed in UTC; expense dates are date-only. Deleted records remain readable and excluded from mutation intent hooks. Unavailable IDs disclose no record fields.
 
-`ExpenseDestination.renderActions(record)` is an integration hook for subsequent editing/deletion issues. It is called only for current, loaded, non-deleted records. Until those journeys are connected, no misleading mutation buttons are rendered. Stale/offline values are explicitly labeled and cannot expose mutation actions. Denied/expired states suppress financial values even if an outdated snapshot is present.
+`ExpenseDestination.renderActions(record)` adds optional current-record actions alongside the built-in actions, which open the implemented [edit](../expense-editing.md) and [delete](../expense-deletion/README.md) journeys. Actions are rendered only for current, loaded, non-deleted records. Stale/offline values are explicitly labeled and cannot expose mutation actions. Denied/expired states suppress financial values even if an outdated snapshot is present.
 
 ## Verification
 

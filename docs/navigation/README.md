@@ -1,6 +1,6 @@
 # Responsive navigation and source restoration
 
-Issue [#17](https://github.com/haggaikaunda/kami-split/issues/17) supplies the Next App Router shell, not financial journey implementations. Overview, History, Trips and Household are semantic links; account entry is explicitly simulated. Financial routes currently contain labeled navigation fixtures.
+Issue [#17](https://github.com/haggaikaunda/kami-split/issues/17) introduced the Next App Router shell. Overview, History, Trips and Household now render the implemented shared-data journeys; account entry remains explicitly simulated. This document describes the current navigation contract and retains the original shell verification as historical evidence.
 
 ## Per-visit return context
 
@@ -12,7 +12,7 @@ Every repeated record visit gets its own descriptor. Back/Forward use the descri
 
 ## Integration hooks
 
-`NavigationProvider` is persistent in the root layout. Add the future application data provider inside it.
+`NavigationProvider` is persistent in the root layout, with `AppDataProvider` and the session-owned command providers nested inside it.
 
 - `ExpenseLink({ expenseId, id, children })`: `id` is the stable logical return-focus target. It must be unique in the rendered source surface.
 - `DraftLink({ draftId, id, children })`: starts a contextual draft route; form values never enter the URL.
@@ -20,7 +20,7 @@ Every repeated record visit gets its own descriptor. Back/Forward use the descri
 - `useRouteContext(route)`: returns the screen's own `href`, `searchParams`, `refreshVersion`, and `isActive`. Retained backgrounds **must use this instead of the foreground `useSearchParams()`**. It walks nested source descriptors so a chart bucket remains selected under an expense. Use `isActive` to suspend source-modal behavior while a foreground detail route is active; the source state remains retained.
 - `useRouteReady(route, readyVersion)`: pass the generation of the freshly rendered query result, or `null` while waiting. A return increments `refreshVersion`; restoration occurs only when both the source URL and generation match. Errors/empty results also acknowledge their rendered generation so focus can fall back to the heading. Stale results must never acknowledge a newer generation.
 
-A later async source screen should use this pattern (adapt the read call to its actual application service):
+Current screens use `AppDataProvider.readyVersion` with `useRouteReady`. A separately queried source screen can use this equivalent readiness pattern (adapt the read call to its actual service):
 
 ```tsx
 const { href, searchParams, refreshVersion } = useRouteContext('/history');
@@ -58,23 +58,23 @@ All in-app exits, including Back/Forward and navigation links, preserve drafts i
 
 Resume allocates a fresh visit and preserves the original source descriptor. Explicit Close (and a later successful-save return) replaces to that original source because it may no longer be the adjacent history entry. Browser Back from a resumed draft follows the actual invoking history entry while preserving the draft. If the original source was itself an expense or bucket visit, its descriptor is copied into a new nonadjacent visit; old history entries retain their original Back/Forward meaning. Never reuse an old visit's adjacency in a new history entry.
 
-Later forms must reconcile pending/unknown adapter outcomes before discarding and must preserve their original operation ID on retries. The fixture only simulates pending state; it does not send or claim to commit financial mutations.
+The implemented forms reconcile pending/unknown adapter outcomes before discarding and preserve their original operation ID on retries. They commit through the session-only mock adapter, without durable storage or real payments. Session/visit/operation IDs use `createSessionId`: native `crypto.randomUUID()` where available, otherwise UUID v4 from `crypto.getRandomValues()`, including plain-HTTP LAN previews.
 
-## Deterministic browser fixture
+## Current navigation checks
 
-Run `pnpm dev`, or `pnpm exec next dev --hostname 127.0.0.1 --port 4177` for a dedicated test port. The ordinary app routes provide labeled fixtures until later issues replace them.
+Run `pnpm dev`, or `pnpm exec next dev --hostname localhost --port 4177` for a dedicated local test port at `http://localhost:4177`. The following routes use the shared session data:
 
-1. At 1280px, choose **Example search: Poke**, scroll to **Open expense 102**, enter the panel, choose **Open full page**, and use browser Back/Forward. Check the same query state, row focus and scroll.
-2. Enter the same expense from `/trips/maui?tab=expenses&search=Poke`; repeat Back/Forward and confirm this independent source.
-3. Select **September daily personal chart**, then **Inspect September 20 bucket**, then its expense. Test Close/Back at desktop and phone widths; the bucket reopens with its own source state and no obsolete modal blocking the detail page.
-4. From detail choose **Edit draft example**, type description and note, then navigate away or browser Back. Resume it from the banner; fields remain, including during resize. Simulate pending, navigate, resume, then end the simulated request. Discard is blocked until pending ends and otherwise requires confirmation.
-5. From a resumed nested draft choose **Leave and preserve draft**, then expense **Back to previous view**. Both original source levels remain correct; unrelated intermediate destinations do not replace the original filters.
-6. In detail, **Simulate row removed from source** changes only navigation-fixture state. Return to the source: filters stay selected, the empty result re-renders, and its heading receives focus with an announcement.
-7. Open `/expenses/102` directly: full page with a safe History link. Unknown IDs show unavailable fixture copy without financial details.
+1. Open `/history?search=Poke&type=created`, select the expense, choose **Open full page**, and use browser Back/Forward. Check the same filters, source row focus and scroll.
+2. Open `/trips/maui?tab=expenses&search=Poke` and repeat the round trip. Its source visit must remain independent of History.
+3. On Overview, select Daily and inspect a spending bar or its exact-table row. Open an expense, then return; the selected bucket and its refreshed records remain available.
+4. Open Add expense or Edit expense, change values, and leave with Escape or navigation. Resume from the draft banner and check retained values through resize. Use the simulation controls for pending/unknown outcomes; do not discard an unresolved operation.
+5. Open `/expenses/102` directly for a full page with a safe History fallback. A missing ID must expose no financial details.
 
-The browser fixture tests navigation without implementing real expense creation/editing, chart totals, trips, or authentication. Its removal simulation never mutates the financial adapter.
+For mutation, error, responsive and accessibility evidence, see the [recovery report](../recovery/README.md) and [final UX verification](../accessibility/README.md). The fixture-only controls named in the original evidence below no longer appear on application routes.
 
-## Recorded verification
+## Recorded issue #17 verification
+
+The following observations were recorded against the original navigation fixture. They are preserved as historical evidence, not instructions for finding those fixture controls in the current application.
 
 Independent live CUA checks on the actual Next router verified:
 

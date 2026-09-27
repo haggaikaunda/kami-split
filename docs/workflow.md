@@ -20,9 +20,11 @@
 
 ## Independence
 
-Builder, tester, and reviewer are separate Codex tasks with role-specific prompts. Testing begins from the issue requirements, not the builder's summary. Review evaluates the actual final diff.
+Builder, tester, and reviewer are independent roles with separate agent/task contexts and role-specific prompts. Testing begins from the issue requirements, not the builder's summary. Review evaluates the actual final diff.
 
-## Pilot iterations
+## Historical pilot track
+
+The original greeting pilots established the workflow. Issues #6–9 remain separate from the completed seeded UX tracker #13 and are not its prerequisites or a current production roadmap.
 
 1. Repository foundation and Hello World.
 2. Validated personalized greeting.
