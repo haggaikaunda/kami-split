@@ -1,0 +1,39 @@
+.household-screen {
+  max-width: 68rem;
+  padding: clamp(1rem, 4vw, 3rem);
+  margin: auto;
+}
+.household-screen form {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  max-width: 40rem;
+}
+.household-screen h1 {
+  overflow-wrap: anywhere;
+}
+.household-screen a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0.5rem;
+}
+.household-members {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.household-members li {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+}
+.household-members li p {
+  color: var(--color-muted);
+}
+.household-members .ui-button {
+  white-space: normal;
+}

@@ -5,5 +5,11 @@ import nextTypeScript from 'eslint-config-next/typescript';
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
-  globalIgnores(['.next/**', 'coverage/**', 'playwright-report/**']),
+  { settings: { next: { rootDir: 'apps/web/' } } },
+  globalIgnores([
+    '**/.next/**',
+    '**/coverage/**',
+    '**/playwright-report/**',
+    'docs/design/prototype/**',
+  ]),
 ]);

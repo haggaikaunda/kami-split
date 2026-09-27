@@ -1,0 +1,71 @@
+.expense-page,
+.ui-dialog:has(.expense-values) {
+  overflow-wrap: anywhere;
+}
+.expense-eyebrow {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+.expense-total {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-weight: 800;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+.expense-facts {
+  display: grid;
+  gap: var(--space-4);
+}
+.expense-facts div {
+  min-width: 0;
+}
+.expense-facts dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.expense-facts dd {
+  margin: 0;
+}
+.expense-facts a,
+.expense-revisions summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.expense-note {
+  white-space: pre-wrap;
+}
+.expense-allocations {
+  list-style: none;
+  padding: 0;
+}
+.expense-allocations li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.expense-allocations small {
+  display: block;
+  color: var(--color-muted);
+}
+.expense-revisions details {
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.expense-revisions summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.expense-revisions .selected-revision {
+  border: 2px solid var(--color-ink);
+}
+@media (min-width: 761px) {
+  .expense-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

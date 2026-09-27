@@ -1,0 +1,149 @@
+.spending-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  justify-content: space-between;
+  align-items: start;
+}
+.spending-heading > div,
+.spending-controls,
+.spending-plot {
+  min-width: 0;
+}
+.spending-total {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  margin-block: var(--space-3);
+}
+.spending-period,
+.spending-scale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.spending-scale {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.spending-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  padding: var(--space-1);
+  margin-block: var(--space-4);
+}
+.spending-columns {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+.spending-bar-button {
+  font: inherit;
+  color: var(--color-ink);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.spending-bar-button:disabled {
+  cursor: default;
+}
+.spending-columns .spending-bar-button {
+  flex: 1 0 3.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: start;
+}
+.spending-bar-space {
+  display: block;
+  position: relative;
+  height: 12rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.spending-bar-fill {
+  display: block;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background: var(--color-primary);
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+.spending-bar-label {
+  margin-top: var(--space-2);
+  text-align: center;
+}
+.spending-bar-button:hover .spending-bar-fill {
+  background: var(--color-primary-hover);
+}
+.spending-horizontal {
+  display: grid;
+  gap: var(--space-3);
+}
+.spending-horizontal .spending-bar-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  text-align: left;
+}
+.spending-horizontal .spending-bar-label {
+  grid-row: 1;
+  grid-column: 1;
+  margin: 0;
+  text-align: left;
+}
+.spending-horizontal .ui-money {
+  grid-row: 1;
+  grid-column: 2;
+  text-align: right;
+}
+.spending-horizontal .spending-bar-space {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  height: 1rem;
+  border-bottom: 0;
+  border-left: 1px solid var(--color-border);
+}
+.spending-horizontal .spending-bar-fill {
+  height: 100%;
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+.spending-plot .ui-table-scroll {
+  margin-top: var(--space-4);
+}
+.spending-plot table {
+  min-width: 28rem;
+}
+.spending-records {
+  list-style: none;
+  padding: 0;
+}
+.spending-records li {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.spending-records a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+.spending-records p {
+  color: var(--color-muted);
+  margin-block: var(--space-2);
+}
+.trip-spending-charts {
+  display: grid;
+  gap: var(--space-6);
+  margin-block: var(--space-6);
+  min-width: 0;
+}
