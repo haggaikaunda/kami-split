@@ -13,7 +13,7 @@ Contextual links retain independent source visits, filters, scroll and focus. Ex
 - Pure draft tests cover pair/group/settled defaults, partial/exact/overpayment, opposite-direction acknowledgment, zero/invalid money, same-member denial, invalid dates, and unchanged expense spending/contributions.
 - Form/port tests cover saving the default full amount once, invalidating acknowledgment after edits, and timeout-after-commit with form unmount and recovery without duplicate execution.
 - Existing independent expense concurrency/session/recovery assertions remain in place for the shared provider extraction.
-- Formatting, lint, type checking, 158 tests and production build pass.
+- At issue #23 acceptance, formatting, lint, type checking, 158 tests and production build passed. This is a historical acceptance count, not the current suite total.
 
 The adapter is deterministic and session-only. These UI access simulations are not a production authorization guarantee. No durable persistence, payment processing, repayment edit/delete or bank integration is included.
 

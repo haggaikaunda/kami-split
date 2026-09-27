@@ -20,7 +20,7 @@ Browser checks used the Codex in-app browser via CUA, with accessibility-tree in
 
 `src/components/accessibility.test.tsx` runs **24 axe-backed tests** against the real shell and providers: overview/chart table, populated and empty history, trips, trip detail/charts, entry/invitation/setup, household management, expense add/edit/detail, validation, unknown recovery, repayment/detail, and destructive confirmations. All axe rules remain enabled except color contrast, which jsdom cannot evaluate without rendering. These checks detected the heading and landmark defects above before the fixes.
 
-The complete suite passes **319 tests in 52 files**, along with formatting, lint, type checking, and production build. Separate independent passes covered 45 requirements/regression tests and 48 accessibility/navigation/chart tests. Final exact-commit approvals and CI are recorded on the PR.
+At issue #31 acceptance, the complete suite passed **319 tests in 52 files**, along with formatting, lint, type checking, and production build. These counts describe that recorded pass; later changes have added regression tests. Separate independent passes covered 45 requirements/regression tests and 48 accessibility/navigation/chart tests. Final exact-commit approvals and CI are recorded on the PR.
 
 ## Fresh browser acceptance
 

@@ -6,4 +6,4 @@ Equal splits assign remainder cents to participant IDs in ascending code-unit or
 
 Positions are computed per currency as paid minus allocated share plus repayments sent minus repayments received. Spending and contributions exclude repayments and soft-deleted expenses. Selectors consume exactly one current snapshot per expense, using effective dates; revision history is a separate adapter responsibility. Editing replaces that current snapshot before recomputation. USD is the only enabled seed currency; EUR exercises partitioning in domain tests, without currency conversion.
 
-This module provides no authentication, persistence, request deduplication, revisions or UI. Those belong to subsequent approved issues.
+This module provides no authentication, persistence, request deduplication, revisions or UI. The shared data adapter and application providers supply simulated access checks, session request deduplication, revisions and UI; see [session mock data](mock-data.md). Real authentication and durable persistence remain outside this phase.
