@@ -4,6 +4,11 @@ Current state: the seeded UX is complete, followed by the LAN HTTP compatibility
 
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
 
+## Documentation sections
+
+- [Agent documentation](agents/README.md): delivery instructions and Go engineering conventions.
+- [Application documentation](application/README.md): current implementation references and planned API architecture.
+
 ## Implementation guides
 
 | Area                                                | Guide                                                    |

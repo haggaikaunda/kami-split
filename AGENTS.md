@@ -45,3 +45,7 @@ Never bypass branch protections, force-push shared branches, weaken tests to obt
 ## Review priorities
 
 Prioritize financial errors, authorization flaws, data loss, database inconsistency, races, duplicate requests, missing meaningful tests, private-data exposure, breaking changes, and unnecessary complexity over style preferences.
+
+## Area guidance
+
+See [agent documentation](docs/agents/README.md) for area-specific instructions. Future API work must follow [apps/api/AGENTS.md](apps/api/AGENTS.md); [application documentation](docs/application/README.md) distinguishes current behavior from planned architecture.
