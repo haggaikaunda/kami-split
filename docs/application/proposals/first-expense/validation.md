@@ -1,6 +1,6 @@
 # Design validation and implementation acceptance
 
-Status: evidence in progress; no business implementation claimed. Run the proposed
+Status: design checks completed as recorded below; no business implementation claimed. Run the proposed
 SDL validator from `apps/api`:
 
 ```sh
@@ -41,3 +41,46 @@ provider grants, SQL locking, JWT/current-email integration, scalar coercion,
 Relay arithmetic and browser recovery remain implementation verification. A
 validated SDL or passing existing health/mock suite does not prove these designs
 implemented. No hosted service or paid resource is used.
+
+## Executed builder checks
+
+On the proposal branch (initial content 29d8409; affected formatting/SDL checks
+repeated after review corrections):
+
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`:
+  pass; 54 web files / 325 tests. No UI behavior changed, so browser acceptance
+  remains #83 implementation evidence rather than a documentation check.
+- `make api-check`: pass, including vet, regular/race tests, build and gqlgen drift.
+- `make db-tools`, `make db-generation-check`, `make db-test`: pass after installing
+  the missing local pinned binaries. Fresh replay, schema/ACL reconciliation,
+  runtime permissions and database integration execute in #74's unique test stack.
+- `docker compose config --quiet`, Docker verify target: pass (Docker layers cached).
+- `make dev-up`, live GraphQL exact health JSON assertion and `/readyz`: pass;
+  task-owned Kami Split Compose/Supabase services stopped via `make dev-down`.
+- Local Markdown link targets: 40 checked, none missing (before final evidence links).
+- Proposed SDL: five operations/three fragments valid; three malformed operations
+  rejected. Running health-only schema/generation remains unchanged.
+
+Independent review identified and corrected (1) stale authorization when a
+REPEATABLE READ snapshot preceded a group-lock wait, and (2) a union-valued field
+incompatible with Relay connection handling. S3/D5 now specify fresh READ COMMITTED
+authorization after locks; A8/SDL specify a concrete nullable connection, complete
+PageInfo and safe field errors. Final commit-specific independent outcomes and
+required Verify status are recorded on [PR #95](https://github.com/haggaikaunda/kami-split/pull/95).
+
+## Independent SQL experiment
+
+A separate tester extracted D1's table sketches into a disposable, port-unpublished
+Supabase PostgreSQL 17.6.1.171 container using the image's actual managed Auth
+schema. Valid deferred bootstrap, ownerless/cross-group/inactive-owner rejection,
+permanent membership uniqueness, enabled-Auth-delete rejection, disable/delete
+identity retention, disabled relink denial and reserved-subject uniqueness passed.
+These probe the proposed constraints, not implemented migrations or services.
+
+The provider-role probe found ordinary postgres cannot grant Auth reference
+privileges to a new restricted owner. D1 now uses the tested narrow create-under-
+postgres then ALTER OWNER procedure, immediately revoking temporary app-schema
+grants. Insert and disable/delete FK behavior still worked after transfer while
+migrator Auth USAGE/REFERENCES remained false. #75 must repeat this in the complete
+migration/desired-state and permission suite. Hosted role availability remains a
+deployment check; no hosted environment was accessed.

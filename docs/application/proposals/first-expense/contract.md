@@ -25,9 +25,10 @@ The scalar can parse int64 minimum, but no balance can reach it under bounded
 nonnegative aggregates. PostgreSQL `sum(bigint)` returns numeric; calculate sums
 and differences in exact numeric, range-check before Go int64 conversion.
 Go uses checked addition/subtraction; simplification never negates int64 minimum.
-A future write whose candidate complete projection exceeds any bound fails
-AMOUNT_OVERFLOW and rolls back expense/allocations/audit/success receipt. Persist
-only its definitive rejection outcome if the receipt policy permits it. Reads
+A future write whose candidate complete projection exceeds any bound returns ValidationProblem with field code AMOUNT_OVERFLOW and writes no
+expense/allocations/audit/success receipt. Store that definitive rejection in the
+attempt row under the same proposed receipt-retention rule as other domain
+validation rejections. Reads
 with corrupt/out-of-range data return AMOUNT_OVERFLOW, never truncated totals or
 partial zero positions. Sum all nets using exact/wider accumulation; arbitrary
 iteration order must not overflow a valid zero conservation sum.
@@ -203,7 +204,10 @@ history; tombstone includes outcome kind and committed expense ID (if any), but
 EXPIRED reveals no recoverable original payload. Cleanup and retry acquire the
 same group/attempt locks; expiry boundary uses database time, `now >= expires_at`.
 Never delete key uniqueness while financial history exists. A lost-response retry
-after expiry returns EXPIRED, not a new expense. A totally absent key can safely
+after expiry returns EXPIRED, not a new expense. After current authorization,
+tombstone/expiry detection takes precedence over payload comparison: expired
+canonical bytes no longer exist, so changed input also returns EXPIRED rather
+than claiming a comparison or executing again. A totally absent key can safely
 execute only under the guarantee that no tombstone/history was purged. If future
 retention erases those guards, the protocol must add an issuance epoch/cutoff and
 reject older keys; never deploy receipt deletion that quietly permits reuse.

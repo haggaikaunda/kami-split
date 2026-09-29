@@ -48,11 +48,34 @@ CREATE TABLE app.installation (
 ```
 
 All unspecified deletes are NO ACTION; never cascade history. Auth provider owns
-`auth.users`; reference only its primary key. Controlled migration credential
-must grant the DDL owner only schema USAGE and column REFERENCES(id) needed for
-that FK, not SELECT or ownership of Auth data. Verify on pinned Supabase in #75;
-if the hosted provider denies this grant, report a deployment blocker, never
-broaden runtime privileges. No managed Auth table/trigger is created or changed.
+`auth.users`; reference only its primary key. The isolated Supabase experiment found that its non-superuser `postgres`
+migration login cannot delegate Auth schema USAGE or REFERENCES(id): GRANT warns
+that no privileges were granted. Do not rely on that unsupported grant path.
+Instead propose one narrow exception to #74's default SET ROLE DDL convention:
+
+```sql
+-- One controlled migration transaction; illustrative users definition above.
+SET ROLE kami_migrator;
+GRANT USAGE, CREATE ON SCHEMA app TO postgres;
+RESET ROLE;
+-- CREATE TABLE app.users (...) including the auth.users FK, as postgres.
+ALTER TABLE app.users OWNER TO kami_migrator;
+SET ROLE kami_migrator;
+REVOKE USAGE, CREATE ON SCHEMA app FROM postgres;
+-- All remaining app DDL uses kami_migrator as usual.
+```
+
+The table and FK are created by the existing migration login using its existing
+Auth reference rights, then immediately transferred to the restricted app owner.
+Temporary grants and creation/transfer/revocation are atomic. Final owner must be
+kami_migrator; its Auth USAGE/REFERENCES remain absent. Revoke all table privileges
+from PUBLIC/browser/service_role/kami_api explicitly on this table after transfer:
+creation used postgres defaults rather than migrator defaults. Then apply only
+D3's intended grants/RLS. No function is created under postgres. #75 must assert
+final ownership and ACLs, and reconcile this exception in desired SQL and migration
+history. No managed Auth table/trigger is created or changed. Local experiment
+passed on Supabase PostgreSQL 17.6.1.171; hosted deployment credentials must prove
+the same path before deployment, not assume every credential is equivalent.
 
 There is no role column that could disagree with the pointer: OWNER means
 `membership.id = group.owner_membership_id`; everyone else is MEMBER. NOT NULL
