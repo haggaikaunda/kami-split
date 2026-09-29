@@ -1,0 +1,226 @@
+query Entry {
+  viewer {
+    __typename
+    ... on Viewer {
+      id
+      displayName
+      canCreateGroups
+      groups {
+        id
+        name
+        currency
+      }
+    }
+    ... on ViewerAccess {
+      state
+    }
+    ... on Problem {
+      code
+      message
+    }
+  }
+}
+query FirstPage($group: ID!, $after: String, $filter: ExpenseFilter) {
+  group(id: $group) {
+    __typename
+    ... on Problem {
+      code
+      message
+    }
+    ... on Group {
+      id
+      name
+      currency
+      viewerMembership {
+        id
+        role
+      }
+      members {
+        id
+        displayName
+        status
+        role
+        canParticipate
+      }
+      expenses(first: 20, after: $after, filter: $filter) {
+        __typename
+        ... on Problem {
+          code
+          message
+        }
+        ... on ExpenseConnection {
+          revision
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          edges {
+            cursor
+            node {
+              ...ExpenseFields
+            }
+          }
+        }
+      }
+      balances {
+        ...BalanceFields
+      }
+    }
+  }
+}
+mutation Save($input: CreateExpenseInput!) {
+  createExpense(input: $input) {
+    __typename
+    ... on ExpenseCommitted {
+      key
+      receipt {
+        ...ReceiptFields
+      }
+    }
+    ... on ValidationProblem {
+      fields {
+        path
+        code
+        message
+      }
+    }
+    ... on OperationMismatch {
+      key
+    }
+    ... on OperationProgress {
+      key
+      state
+    }
+    ... on Problem {
+      code
+      message
+    }
+  }
+}
+query Recover($group: ID!, $key: OperationKey!) {
+  expenseOperation(groupId: $group, key: $key) {
+    __typename
+    ... on ExpenseCommitted {
+      key
+      receipt {
+        ...ReceiptFields
+      }
+    }
+    ... on ValidationProblem {
+      fields {
+        path
+        code
+        message
+      }
+    }
+    ... on OperationProgress {
+      key
+      state
+    }
+    ... on Problem {
+      code
+      message
+    }
+  }
+}
+query RefreshAfterRecovery($group: ID!, $expense: ID!) {
+  node(id: $expense) {
+    id
+    ... on Expense {
+      ...ExpenseFields
+    }
+  }
+  group(id: $group) {
+    ... on Group {
+      id
+      balances {
+        ...BalanceFields
+      }
+    }
+    ... on Problem {
+      code
+      message
+    }
+  }
+}
+fragment ExpenseFields on Expense {
+  id
+  groupId
+  totalMinor
+  currency
+  description
+  effectiveDate
+  category
+  note
+  split
+  createdAt
+  payer {
+    id
+    displayName
+  }
+  creator {
+    id
+    displayName
+  }
+  allocations {
+    participant {
+      id
+      displayName
+    }
+    amountMinor
+  }
+}
+fragment ReceiptFields on ExpenseReceipt {
+  expenseId
+  groupId
+  creatorMembershipId
+  payerMembershipId
+  totalMinor
+  currency
+  description
+  effectiveDate
+  category
+  note
+  split
+  committedAt
+  revision
+  allocations {
+    participantId
+    amountMinor
+  }
+}
+fragment BalanceFields on BalanceResult {
+  __typename
+  ... on Problem {
+    code
+    message
+  }
+  ... on GroupBalances {
+    groupId
+    currency
+    revision
+    totalExpenseMinor
+    settled
+    positions {
+      member {
+        id
+        displayName
+        status
+      }
+      paidMinor
+      owedMinor
+      netMinor
+    }
+    obligations {
+      from {
+        id
+        displayName
+      }
+      to {
+        id
+        displayName
+      }
+      amountMinor
+    }
+  }
+}

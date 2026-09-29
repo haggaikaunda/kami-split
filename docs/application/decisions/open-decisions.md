@@ -53,3 +53,19 @@ O08 is not resolved by the delegated engineering handoff in ADR-004 C4. The owne
 ## Working sequence
 
 Resolve the relevant subset rather than designing every future feature now: domain contract and access boundaries → persistence/local infrastructure → identity and minimal membership → first real expense/balance journey with Relay → safe edits/settlements and remaining UI workflows → operational readiness → Plaid and workers. Track detailed sequencing and delivery in GitHub issues; this register is not evidence that features exist.
+
+## Concrete #75/#76 proposal (not yet accepted)
+
+[ADR-005](005-identity-and-expense-contract-proposal.md) and its
+[gate matrix](../proposals/first-expense/gates.md) propose O04 grants/context,
+O08 money/ordering, O09 identity/ownership/disclosure, O13 pagination/recovery,
+O14 client lifetime/first-route scope, and minimal O18 household designation.
+P1–P4 explicitly retain owner approval for profile fields, receipt retention,
+browser storage and UI scope. No stable register entry is resolved by this link.
+
+O10's earlier wording must be read with the newer owner-approved
+[email comparison/delivery](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886277636),
+[valid-link preview/shared links](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886419039),
+and [immediate first-time admission](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886876182)
+comments. #79/#80 own their complete reviewed reconciliation. Former-member
+shared-link readmission is still open; targeted-only is not an accepted rule.
