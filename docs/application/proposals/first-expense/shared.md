@@ -45,7 +45,7 @@ active enabled members; readmission restores full history. Financial records
 refer to retained membership IDs, never a name as identity. Display names are
 current minimal labels; an audit actor ID remains stable when a label changes.
 No implied retention/anonymization decision or immutable name-snapshot promise.
-The exact field set is privacy decision P1 in [gates](gates.md).
+The exact field set is owner-approved privacy decision P1 in [gates](gates.md).
 
 ## S3: Verified transaction and authorization ordering
 

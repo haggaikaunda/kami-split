@@ -52,6 +52,8 @@ Auth context. Viewer/group reads then expose only authorized projections. #82
 lists and creates USD expenses and atomically saves audit/receipt; #83 preserves
 the original attempt and refreshes complete balances after recovery.
 
-#75 implementation remains open after this design. #76 remains open until owner
-choices and final contract approval are recorded. Merge of documentation alone
+#75 implementation remains open after this design. #76 remains open until the deferred receipt-retention
+choice and final contract approval are recorded. P1 profile fields, P3 client
+storage direction and P4 first UI scope were approved on 2026-09-29; see the
+[decision sheet](gates.md). Merge of documentation alone
 must not be interpreted as accepting every proposed choice.

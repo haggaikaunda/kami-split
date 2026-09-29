@@ -60,8 +60,10 @@ Resolve the relevant subset rather than designing every future feature now: doma
 [gate matrix](../proposals/first-expense/gates.md) propose O04 grants/context,
 O08 money/ordering, O09 identity/ownership/disclosure, O13 pagination/recovery,
 O14 client lifetime/first-route scope, and minimal O18 household designation.
-P1–P4 explicitly retain owner approval for profile fields, receipt retention,
-browser storage and UI scope. No stable register entry is resolved by this link.
+The owner approved P1 profile fields, P3 browser storage direction and P4 first UI
+scope on 2026-09-29; P2 receipt retention is explicitly deferred. These resolve
+those policy subsets of O09/O14, while final contract acceptance and O13 retention
+remain gated. Stable register entries and unrelated questions are retained.
 
 O10's earlier wording must be read with the newer owner-approved
 [email comparison/delivery](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886277636),

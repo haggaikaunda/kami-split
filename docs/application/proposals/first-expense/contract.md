@@ -214,10 +214,13 @@ reject older keys; never deploy receipt deletion that quietly permits reuse.
 No seven-day invitation lifetime is reused as a financial policy. Until approved,
 #82 receipt cleanup and production launch are gated, not silently unlimited.
 
-**Client P3 proposal, awaiting owner agreement:** sessionStorage holds versioned
+**Client P3 owner-approved direction (2026-09-29):** sessionStorage holds versioned
 actor/group/key/canonical payload/status for submitted unresolved attempts and
 ordinary drafts, scoped to a tab and stable user; bounded by receipt lifetime.
-It survives reload in that tab, not tab close/device loss. Navigation preserves
+The server receipt duration is still deferred under P2; the approved client
+storage direction does not settle it. Align final recovery expiry with the
+approved server duration before #83 implementation. It survives reload in that
+tab, not tab close/device loss. Navigation preserves
 it. Logout/account switch clears private state and replaces Relay per ADR-002;
 late responses cannot repopulate a new epoch. Reauthentication of the same actor
 within the live session can resume only after fresh authorization. Do not claim
@@ -293,7 +296,8 @@ First real route slice is group selection, expense list/create and complete bala
 panel with explicit recovery. Hide/label demo-only activity/revision history,
 monthly reporting, trip controls, pending-member simulation, settlements,
 edit/delete, setup and ownership controls; do not fabricate data for them.
-This is a proposed O14 scope decision P4, not a claim of full preview parity.
+This is owner-approved O14 scope decision P4 (2026-09-29), not a claim of full
+preview parity.
 
 ## Technical references
 

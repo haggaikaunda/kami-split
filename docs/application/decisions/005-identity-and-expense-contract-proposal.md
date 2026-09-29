@@ -12,8 +12,10 @@ exact money, pagination, complete balances and same-attempt recovery.
 
 The [gate matrix and owner decision sheet](../proposals/first-expense/gates.md)
 separates delegated engineering recommendations from P1 profile fields, P2 receipt
-retention, P3 client storage/lifetime and P4 first real UI scope. Those choices
-remain proposed until explicitly approved. [Validation evidence](../proposals/first-expense/validation.md)
+retention, P3 client storage/lifetime and P4 first real UI scope. On 2026-09-29 the owner approved P1, P3 and P4 and explicitly deferred P2
+(receipt retention) in the PR #95 design conversation. The engineering package
+remains proposed pending final contract acceptance; the deferred retention gate
+does not waive atomic financial recovery. [Validation evidence](../proposals/first-expense/validation.md)
 distinguishes schema shape checks from future runtime acceptance.
 
 O04/O08/O09/O13/O14 and minimal O18 now have concrete proposals, not automatic
