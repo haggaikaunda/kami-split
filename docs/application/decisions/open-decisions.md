@@ -30,8 +30,8 @@ This register distinguishes accepted outcomes from unresolved questions; it is n
 
 ## Partially resolved financial contract and recovery decisions
 
-- **O13:** [ADR-004 C3/C4](004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) settles same-attempt/same-key recovery, current actor/group authorization, same-canonical-input single effect, changed-input protection, durable atomic expense/allocations/audit/result, and immutable-outcome versus fresh-balance meaning. Global IDs, cursors, pagination/filtering, error conventions, expected-version behavior, precise key scope/canonicalization/mismatch/lookup protocol and retention remain for [#76](https://github.com/haggaikaunda/kami-split/issues/76) before business SDL and first mutation.
-- **O14:** ADR-004 requires the frontend to possess the key before its first write and preserve uncertain-attempt recovery without silently generating a new key. Owner-approved P3 now selects tab-scoped `sessionStorage` for drafts/unresolved attempts, surviving same-tab reload and cleared on logout/account switch; duration is bounded by the eventual approved receipt-retention policy, which remains deferred under P2/O13. Owner-approved P4 selects group selection, expense list/create, complete balances and recovery as the first real UI, with remaining preview features isolated. These choices are recorded in [ADR-005](005-identity-and-expense-contract-proposal.md). Precise recovery/refresh integration, final contract acceptance and #80 session/logout details remain for #76/[#83](https://github.com/haggaikaunda/kami-split/issues/83). Neither a 90-day receipt duration nor unlimited retention is approved.
+- **O13:** [ADR-004 C3/C4](004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) settles same-attempt/same-key recovery, current actor/group authorization, same-canonical-input single effect, changed-input protection, durable atomic expense/allocations/audit/result, and immutable-outcome versus fresh-balance meaning. Global IDs, cursors, pagination/filtering, error conventions, expected-version behavior, precise key scope/canonicalization/mismatch/lookup protocol are concretely specified by ADR-005 for [#76](https://github.com/haggaikaunda/kami-split/issues/76) before implementation. P2 now retains operation recovery/idempotency records with associated financial history; no timed expiry/tombstones. Future deletion/archival/pruning remains lifecycle work.
+- **O14:** ADR-004 requires the frontend to possess the key before its first write and preserve uncertain-attempt recovery without silently generating a new key. Owner-approved P3 now selects tab-scoped `sessionStorage` for drafts/unresolved attempts, surviving same-tab reload and cleared on logout/account switch; P2 now retains server operation records with financial history, without adding a timed browser expiry or extending storage beyond that tab/session. Owner-approved P4 selects group selection, expense list/create, complete balances and recovery as the first real UI, with remaining preview features isolated. These choices are recorded in [ADR-005](005-identity-and-expense-contract-proposal.md). Implementation of the reviewed recovery/refresh contract and #80 session/logout details remain for #76/[#83](https://github.com/haggaikaunda/kami-split/issues/83). No 90-day expiry/tombstone lifecycle is approved; uploaded receipt attachments remain outside the first journey.
 
 ## Other open decisions
 
@@ -53,22 +53,20 @@ This register distinguishes accepted outcomes from unresolved questions; it is n
 
 Automatic within-group simplification is accepted in [ADR-004 C1](004-group-balances-membership-and-recovery.md#c1-automatic-simplification-within-one-group-and-currency). Deterministic matching/tie-breaks, stability as the ledger changes, API representation and explanatory UI remain engineering design in #75/#76 and later consumers. No minimum-repayment-count guarantee or per-group toggle is approved. Complete server projections and eligibility must agree; partial reads cannot imply settlement. O19's inclusion rule is unchanged: every individual's net must be zero in a group for that group to be settled; cross-group cancellation and hiding partners' nonzero obligations remain invalid.
 
-O08 is not resolved by the delegated engineering handoff in ADR-004 C4. The owner reviews the coherent proposal's observable behavior and tradeoffs; contract review and unchosen privacy/retention decisions remain required. No transfer, trip, reporting or settlement feature becomes a first-journey prerequisite through this register.
+O08 now has the reviewed exact scalar/arithmetic/ordering contract in ADR-005. Runtime coercion and cross-language financial tests remain implementation requirements. No transfer, trip, reporting or settlement feature becomes a first-journey prerequisite through this register.
 
 ## Working sequence
 
 Resolve the relevant subset rather than designing every future feature now: domain contract and access boundaries → persistence/local infrastructure → identity and minimal membership → first real expense/balance journey with Relay → safe edits/settlements and remaining UI workflows → operational readiness → Plaid and workers. Track detailed sequencing and delivery in GitHub issues; this register is not evidence that features exist.
 
-## Concrete #75/#76 proposal (not yet accepted)
+## Concrete #75/#76 design
 
 [ADR-005](005-identity-and-expense-contract-proposal.md) and its
-[gate matrix](../proposals/first-expense/gates.md) propose O04 grants/context,
+[gate matrix](../proposals/first-expense/gates.md) specify O04 grants/context,
 O08 money/ordering, O09 identity/ownership/disclosure, O13 pagination/recovery,
 O14 client lifetime/first-route scope, and minimal O18 household designation.
 The owner approved P1 profile fields, P3 browser storage direction and P4 first UI
-scope on 2026-09-29; P2 receipt retention is explicitly deferred. These resolve
-those policy subsets of O09/O14, while final contract acceptance and O13 retention
-remain gated. Stable register entries and unrelated questions are retained.
+scope on 2026-09-29. The later [owner P2 decision](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197) resolves operation-record retention for the lifetime of associated financial history. These resolve the first-journey policy subsets of O09/O13/O14; final-head delivery checks and implementation remain separate. Stable register entries and unrelated questions are retained.
 
 O10's earlier wording must be read with the newer owner-approved
 [email comparison/delivery](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886277636),

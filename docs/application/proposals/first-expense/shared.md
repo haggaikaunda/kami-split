@@ -1,6 +1,6 @@
 # Shared identity, authorization and financial decisions
 
-Engineering choices below remain proposed; S2 disclosure is now owner-approved.
+Engineering choices below form the finalized design; implementation is separate.
 Accepted policy sources and approval status are in the [index](README.md).
 This is the shared mapping for both proposals; do not duplicate it in implementations.
 

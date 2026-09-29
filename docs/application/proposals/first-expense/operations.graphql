@@ -68,8 +68,8 @@ mutation Save($input: CreateExpenseInput!) {
     __typename
     ... on ExpenseCommitted {
       key
-      receipt {
-        ...ReceiptFields
+      record {
+        ...OperationRecordFields
       }
     }
     ... on ValidationProblem {
@@ -97,8 +97,8 @@ query Recover($group: ID!, $key: OperationKey!) {
     __typename
     ... on ExpenseCommitted {
       key
-      receipt {
-        ...ReceiptFields
+      record {
+        ...OperationRecordFields
       }
     }
     ... on ValidationProblem {
@@ -165,7 +165,7 @@ fragment ExpenseFields on Expense {
     amountMinor
   }
 }
-fragment ReceiptFields on ExpenseReceipt {
+fragment OperationRecordFields on ExpenseOperationRecord {
   expenseId
   groupId
   creatorMembershipId

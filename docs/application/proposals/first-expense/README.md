@@ -1,7 +1,7 @@
 # Coordinated identity and expense contract proposal
 
-Status: **reviewed design/proposal record, not implemented**; P1/P3/P4 approved,
-#76 final contract acceptance and P2 retention still deferred. Design-only
+Status: **finalized design, not implemented**; P1–P4 approved. Final-head review,
+verification and merge establish delivery completion. Design-only
 handoff for [#75](https://github.com/haggaikaunda/kami-split/issues/75) and
 [#76](https://github.com/haggaikaunda/kami-split/issues/76). No production SQL,
 running SDL, resolvers, Auth, invitation service or Relay changes belong here.
@@ -50,15 +50,12 @@ invitation contract and reconciliation. No invitation fields are published here.
 #80 registers/authenticates an invitation-eligible user; #79 admits them using
 #75 stable identities and the narrow admission boundary. #78 supplies verified
 Auth context. Viewer/group reads then expose only authorized projections. #82
-lists and creates USD expenses and atomically saves audit/receipt; #83 preserves
+lists and creates USD expenses and atomically saves audit/operation result; #83 preserves
 the original attempt and refreshes complete balances after recovery.
 
-#75 implementation remains open after this design. #76 remains open until the deferred receipt-retention
-choice and final contract approval are recorded. P1 profile fields, P3 client
-storage direction and P4 first UI scope were approved on 2026-09-29; see the
-[decision sheet](gates.md). Merge of documentation alone
-must not be interpreted as accepting every proposed choice.
-
-[Adoption strategy](gates.md#pr-adoption-and-readiness-strategy): keep one PR and
-merge the reviewed record only through normal gates. Deferred #76 retention does
-not block the separate #75 foundation handoff or turn proposal SDL into runtime code.
+#75 implementation remains a separate PR. After final-head checks/review and
+merge, #76 can close on its design acceptance criteria; #82 is not started here.
+P2 now retains operation recovery records with financial history, without the
+unapproved 90-day/tombstone lifecycle. [Owner decision](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197).
+Uploaded receipt images/PDFs, storage, metadata, OCR and upload UI are separate
+future features outside #73/#76/#82. See the [decision sheet](gates.md).

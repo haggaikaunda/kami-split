@@ -6,6 +6,7 @@ Accepted means agreed design, not implemented functionality. GitHub issues/PRs r
 
 Clarify these documents through reviewed PRs as we learn. Preserve stable IDs. For a substantive reversal, add a new ADR, link the superseded decision, and explain the change rather than silently rewriting history. Resolve register entries by recording the outcome and linking its ADR/issue; retain the entry for traceability.
 
-[ADR-005: Coordinated identity and expense contract proposal](005-identity-and-expense-contract-proposal.md)
-is **proposed**, with concrete #75/#76 engineering recommendations and an explicit
-owner decision sheet. It does not turn pending gates into accepted policy.
+[ADR-005: Identity and first expense contract](005-identity-and-expense-contract-proposal.md)
+records the accepted #75/#76 design and P1–P4 decisions, including lifetime-of-
+financial-history operation recovery records. Uploaded receipt attachments remain
+deferred. Design acceptance does not claim implementation; delivery gates still apply.

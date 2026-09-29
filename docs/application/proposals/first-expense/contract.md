@@ -1,6 +1,6 @@
 # Proposed #76 expense contract
 
-Status: proposed; [SDL](schema.graphql) and [operations](operations.graphql) are
+Status: finalized design, not runtime implementation; [SDL](schema.graphql) and [operations](operations.graphql) are
 not imported by running schema generation. #82 promotes only approved implemented
 fields. [Shared S1–S4](shared.md) defines identities, disclosure, locks and complete
 balances. [Owner choices](gates.md) remain explicit gates.
@@ -26,8 +26,8 @@ nonnegative aggregates. PostgreSQL `sum(bigint)` returns numeric; calculate sums
 and differences in exact numeric, range-check before Go int64 conversion.
 Go uses checked addition/subtraction; simplification never negates int64 minimum.
 A future write whose candidate complete projection exceeds any bound returns ValidationProblem with field code AMOUNT_OVERFLOW and writes no
-expense/allocations/audit/success receipt. Store that definitive rejection in the
-attempt row under the same proposed receipt-retention rule as other domain
+expense/allocations/audit/success operation record. Store that definitive rejection in the
+attempt row under the same accepted operation-record retention rule as other domain
 validation rejections. Reads
 with corrupt/out-of-range data return AMOUNT_OVERFLOW, never truncated totals or
 partial zero positions. Sum all nets using exact/wider accumulation; arbitrary
@@ -140,8 +140,8 @@ transport interruption means UNKNOWN regardless of a 503 or timeout; client must
 recover. Domain rejection is definitive only when its union was received or
 retrieved durably. Unsupported edit conflicts/deleted outcomes are not exposed
 in this create-only SDL. OperationMismatch is the create-specific conflict;
-unknown enum/scalar errors are not durable receipts because execution never began.
-Permission loss on a receipt lookup returns NOT_FOUND without revealing whether
+unknown enum/scalar errors are not durable operation records because execution never began.
+Permission loss on a operation record lookup returns NOT_FOUND without revealing whether
 the key exists. Key possession never overrides current account/membership checks.
 
 ## A4: Attempt scope, canonical comparison and atomicity
@@ -158,79 +158,82 @@ before canonicalizing. Encode a fixed-position JSON array of primitives using
 specified UTF-8 escaping (JSON controls/quote/backslash, no optional slash or
 non-ASCII escaping), hash SHA256, and compare stored canonical bytes as well as
 hash to avoid relying solely on collision resistance. Retain canonicalization
-version with receipt; deployments must compare old versions correctly.
+version with operation record; deployments must compare old versions correctly.
 
 Acquire S3 user/group locks and recheck authorization; claim unique attempt row
 in the same transaction. A concurrent same-key request waits on database lock
 (deadline-bounded), then compares canonical input and returns original stored
 outcome. If no row, validate state under locks; either store definitive validation
 rejection, or insert expense, explicit allocation rows, audit actor/event and
-immutable successful receipt atomically. No committed PENDING row in this design.
+immutable successful operation record atomically. No committed PENDING row in this design.
 Conflict rollback/failed commit never leaves half an expense or an orphan success.
 A database connection loss around COMMIT is UNKNOWN; repeat lookup/retry with the
 same key/input after current authorization. Do not detach work from request
 cancellation; durability comes from database commit, not background goroutines.
 Same-key changed input returns OperationMismatch and never edits/replaces expense
-or receipt, even if new input would now be valid. Corrected definitive validation
+or operation record, even if new input would now be valid. Corrected definitive validation
 uses a new key. An unresolved original remains frozen; do not let a new key
 silently abandon it. Malformed input rejected before a canonical attempt exists
 can be corrected, but #83 should use a fresh key for the corrected intent.
 
-Authorized retry checks for an existing receipt before rechecking historical
+Authorized retry checks for an existing operation record before rechecking historical
 payer/participant eligibility: later participant inactivity must not invalidate
-an original successful receipt. Actor must still have current enabled active
-access. Helpers therefore need a receipt-lookup phase with actor/group locks
+an original successful operation record. Actor must still have current enabled active
+access. Helpers therefore need a operation-lookup phase with actor/group locks
 before locking all new-write participants; release and restart in S3 lock order
-when new work is required, then check receipt again. Never acquire participant
-user locks after group lock. Receipt contains immutable original IDs, financial
+when new work is required, then check operation record again. Never acquire participant
+user locks after group lock. Operation record contains immutable original IDs, financial
 values, description/date/category/note, audit commit timestamp and the financial revision produced by that operation; no
-current profile objects or balance snapshot. Nested receipt IDs are values,
-not an authorization shortcut. Receipt revision is immutable historical financial
+current profile objects or balance snapshot. Nested operation record IDs are values,
+not an authorization shortcut. Operation record revision is immutable historical financial
 provenance, never the latest response version. Current Expense and balances come from separately
 authorized reads, and may differ after future authorized edits.
 
-## A5: Recovery states and proposed retention
+## A5: Recovery states and accepted retention
 
 | Result/state      | Meaning and permitted client action                                                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| ExpenseCommitted  | Original expense/receipt committed; fetch current node and complete group balances                           |
+| ExpenseCommitted  | Original expense/operation record committed; fetch current node and complete group balances                  |
 | ValidationProblem | Definitive rejected attempt, no expense from it; corrections are a new key                                   |
 | OperationMismatch | Key already bound to different canonical input; restore original input and recover, never overwrite          |
 | NOT_OBSERVED      | No visible durable result at lookup snapshot; might be an in-flight transaction; same key/input retry only   |
 | PENDING           | Request demonstrably waiting on another attempt/group lock in this server call; transient, not durable claim |
 | UNKNOWN           | Infrastructure could not establish outcome; preserve key/input and retry lookup later                        |
-| EXPIRED           | Known retained tombstone, full result unavailable; no re-execution under that key; manual reconciliation     |
-| NOT_FOUND         | Missing group or no current authorization; hide receipt and block financial retry                            |
+| NOT_FOUND         | Missing group or no current authorization; hide operation record and block financial retry                   |
 
 PENDING need not be emitted unless contention can be identified safely; ordinary
 lookup while an uncommitted attempt is invisible reports NOT_OBSERVED. Server
 restarts erase transient observations, not durable results. Missing is never
 called “not started” as the preview currently does.
 
-**Retention P2 proposal, awaiting owner agreement:** retain full success/rejection
-receipt plus canonical input for 90 days from committed decision, then retain a
-minimal scope/key tombstone for the lifetime of the associated group's financial
-history; tombstone includes outcome kind and committed expense ID (if any), but
-EXPIRED reveals no recoverable original payload. Cleanup and retry acquire the
-same group/attempt locks; expiry boundary uses database time, `now >= expires_at`.
-Never delete key uniqueness while financial history exists. A lost-response retry
-after expiry returns EXPIRED, not a new expense. After current authorization,
-tombstone/expiry detection takes precedence over payload comparison: expired
-canonical bytes no longer exist, so changed input also returns EXPIRED rather
-than claiming a comparison or executing again. A totally absent key can safely
-execute only under the guarantee that no tombstone/history was purged. If future
-retention erases those guards, the protocol must add an issuance epoch/cutoff and
-reject older keys; never deploy receipt deletion that quietly permits reuse.
-No seven-day invitation lifetime is reused as a financial policy. Until approved,
-#82 receipt cleanup and production launch are gated, not silently unlimited.
+**Owner-approved P2:** retain financial operation recovery records and the
+information needed to recognize/recover the original attempt for the lifetime
+of the associated financial history. This includes canonical input/version,
+actor/group/operation/key binding, original successful result and definitive
+rejection outcomes. Keep rejected-attempt records with the target group's
+history even when that attempt created no expense; there is no initial pruning.
+No 90-day expiry, cleanup job, record-to-tombstone transition or EXPIRED outcome
+is part of this protocol. Same-key recovery and mismatch protection do not expire
+while that history remains. Test recovery well beyond 90 days and after restart.
+
+[Owner authority](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197). Group/account deletion, archival and
+pruning remain future lifecycle design. Before any such deletion could remove
+uniqueness/canonical data, its reviewed protocol must preserve duplicate safety;
+this contract does not authorize purging history or reuse of old keys. Missing
+lookup remains NOT_OBSERVED, never proof of no commit or permission to mint a
+replacement key. Authorization remains current even for old operation records.
+
+These **operation recovery records/idempotency results** are not uploaded receipts.
+Images/PDFs, file/object storage, attachment metadata, OCR, upload UI and attachment
+retention are explicitly deferred and not part of #73/#76/#82.
 
 **Client P3 owner-approved direction (2026-09-29):** sessionStorage holds versioned
 actor/group/key/canonical payload/status for submitted unresolved attempts and
-ordinary drafts, scoped to a tab and stable user; bounded by receipt lifetime.
-The server receipt duration is still deferred under P2; the approved client
-storage direction does not settle it. Align final recovery expiry with the
-approved server duration before #83 implementation. It survives reload in that
-tab, not tab close/device loss. Navigation preserves
+ordinary drafts, scoped to a tab and stable user. No time-based client expiry is
+introduced by P2: submitted attempts remain available while that tab/session
+retains them, with the server record retained with financial history. This does
+not promise cross-device recovery or browser storage beyond the approved session
+boundary. It survives reload in that tab, not tab close/device loss. Navigation preserves
 it. Logout/account switch clears private state and replaces Relay per ADR-002;
 late responses cannot repopulate a new epoch. Reauthentication of the same actor
 within the live session can resume only after fresh authorization. Do not claim
@@ -249,7 +252,7 @@ variables must contain the full canonical strings.
 
 Equal Save: G, random precreated key K, USD `"1000"`, description `"Dinner"`,
 2026-09-29, DINING, note `""`, payer C, participantIds [B,A,C], EQUAL, no exact
-allocations. Creator A is independent of payer C. Receipt allocation order is
+allocations. Creator A is independent of payer C. Operation record allocation order is
 [A:334,B:333,C:333]. Positions: A=-334,B=-333,C=667; obligations A→C334,B→C333.
 Exact Save: total `"1000"`, payer C, participants A/B, allocations A `"1000"`,
 B `"0"`; both remain participants. C need not owe a share. Negative share and
@@ -286,7 +289,8 @@ expense ID, even after another expense changes group revision. RefreshAfterRecov
 queries that node and complete balances at current revision. Two same-key requests
 and a process restart still find one expense/audit. Changed note with K mismatches.
 A revoked member receives NOT_FOUND, even possessing K. Missing lookup is
-NOT_OBSERVED and allows only same-key retry; expiry gives EXPIRED and no new write.
+NOT_OBSERVED and allows only same-key retry. After 90 days or later, the original
+record still recovers under current authorization while financial history remains.
 
 ## A7: Field-to-UI trace and deliberate migration boundary
 
@@ -299,7 +303,7 @@ NOT_OBSERVED and allows only same-key retry; expiry gives EXPIRED and no new wri
 | form equal/exact/payer/zero participants                                   | split, explicit participantIds, exactAllocations; Expense.allocations | Do not infer participation from nonzero shares; server computes equal remainder  |
 | `lib/overview.ts`, `components/overview.tsx` net/obligations/spending      | GroupBalances positions, obligations, totalExpenseMinor, settled      | Remove direct-debt inference; include inactive history; never compute from page  |
 | expense cards/creator attribution                                          | Expense.payer/creator/allocations and description/date/category       | Current minimal labels, durable IDs                                              |
-| create controller/session drafts and `docs/recovery/README.md`             | key before Save, Recover, receipt then refresh                        | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
+| create controller/session drafts and `docs/recovery/README.md`             | key before Save, Recover, operation record then refresh               | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
 | `lib/ledger.ts` exact/remainder                                            | MinorUnits bounds, S1 ordering                                        | Existing safe-number code cannot be reused for arbitrary aggregates              |
 
 First real route slice is group selection, expense list/create and complete balance

@@ -1,9 +1,9 @@
 # Gate matrix and consolidated owner decision sheet
 
-Engineering choices remain proposed pending contract acceptance. On 2026-09-29,
-the owner approved P1, P3 and P4 in the PR #95 design review conversation and
-deferred P2 (receipt retention). Accepted policy is cited separately; technical
-recommendations do not ask the owner to choose SQL types. [Validation](validation.md) records actual evidence.
+The coordinated design is finalized subject to final-head verification and normal
+merge gates. P1/P3/P4 were approved earlier; the [owner follow-up](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197)
+resolves P2 with retention for the lifetime of financial history. Design acceptance
+does not claim implemented behavior. [Validation](validation.md) records evidence.
 
 | Gate                        | Accepted policy/source          | Technical recommendation                                                         | Validation/review                                                                         | Owner decision                                    | Dependent work                                         |
 | --------------------------- | ------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------ |
@@ -16,22 +16,22 @@ recommendations do not ask the owner to choose SQL types. [Validation](validatio
 | #76.2 IDs/order             | ADR-001 D3/D4                   | S1 typed ASCII IDs, authorized nodes, canonical membership order                 | A6 odd cents and group isolation scenarios                                                | none                                              | #75/#82/#83                                            |
 | #76.3 pagination            | #76, server-informed UI         | A2 signed bounded keyset, revision anchor, complete independent balance snapshot | SDL/operations plus concurrency scenarios; no snapshot across pages                       | none                                              | #82 storage creation revision, signing keys            |
 | #76.4 errors                | #78 outcomes, ADR-004 C3        | A3 union failures, 401/503 credentials boundary, generic NOT_FOUND               | operation selection validation; runtime denial tests pending                              | none                                              | #78/#82 adapter                                        |
-| #76.5 recovery              | ADR-004 C3                      | A4 scoped key/canonical bytes/atomic receipt; A5 explicit uncertainty            | lost commit/concurrent/restart/expiry scenarios; no implementation proof                  | P2 deferred; P3 approved                          | #82 receipt persistence; #83 client recovery           |
+| #76.5 recovery              | ADR-004 C3                      | A4 scoped key/canonical bytes/atomic receipt; A5 explicit uncertainty            | lost commit/concurrent/restart/long-lived recovery scenarios; no implementation proof     | P2/P3 approved                                    | #82 receipt persistence; #83 client recovery           |
 | #76.6 membership/read model | ADR-004 C1/C2                   | S2 minimal projection; S4 complete deterministic plan; A7 UI trace               | UI inspected; runtime/UI integration pending                                              | P1/P4 approved                                    | #82/#83                                                |
 
 ## Owner decision sheet and recorded outcome
 
-Owner response: “defer receipts for later, otherwise all other proposals are
-approved.” This approves P1/P3/P4 below and defers the P2 receipt-retention choice.
-It does not revoke ADR-004 same-attempt recovery or permit an expense write without
-its atomic recoverable result. P2 remains a gate before affected #82 implementation.
+The earlier deferral of “receipts” is preserved in PR history. The owner's later
+explicit decision resolves financial operation recovery record retention and
+separately defers uploaded images/PDFs. None of file storage, OCR, attachment
+metadata/UI or attachment retention is in #73/#76/#82.
 
-| ID                                            | Recommended answer                                                                                                                                                 | Observable consequences / alternative                                                                                                                                                                                                                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1 — profile disclosure (approved)            | Approve S2 exact fields, current display names for retained historical members, no email/avatar/peer Viewer ID                                                     | People can identify historical payers/participants without a global directory. `canParticipate=false` reveals ineligibility without account-status reason. Anonymization/retention remains separately gated; adding profile fields needs privacy review.                                          |
-| P2 — financial receipt retention (deferred)   | Approve 90-day full canonical input/receipt, then minimal permanent-with-history key tombstone                                                                     | Recovery remains automatic for 90 days; later attempts require reconciliation and cannot create twice. Tombstones consume storage and retain pseudonymous financial linkage. Shorter retention reduces payload storage but shortens recovery; full deletion needs a new issuance/cutoff protocol. |
-| P3 — client draft/attempt lifetime (approved) | Approve tab-scoped sessionStorage through reload, cleared on logout/account change; lifetime bounded by the eventual approved receipt duration (deferred under P2) | Reload can recover in the same tab; tab close/logout/device loss loses automatic attempt recovery. Financial draft data resides in browser session storage. Memory-only avoids persistent browser draft storage but loses reload recovery; a server inbox would be additional scope.              |
-| P4 — first real UI scope (approved)           | Approve group selection, expense list/create and complete balances/recovery; isolate remaining preview routes                                                      | No simulated activity, trips, edits or settlement controls appear as persisted features; full overview/reporting parity is deferred. Wider UI parity requires additional read contracts and review.                                                                                               |
+| ID                                            | Recommended answer                                                                                                                    | Observable consequences / alternative                                                                                                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 — profile disclosure (approved)            | Approve S2 exact fields, current display names for retained historical members, no email/avatar/peer Viewer ID                        | People can identify historical payers/participants without a global directory. `canParticipate=false` reveals ineligibility without account-status reason. Anonymization/retention remains separately gated; adding profile fields needs privacy review. |
+| P2 — financial operation records (approved)   | Retain complete recovery/idempotency information for the lifetime of associated financial history; no time-based expiry or tombstones | Same-key recovery/mismatch protection remains available under current authorization. Future deletion/archival/pruning requires separate lifecycle design. Uploaded receipts are deferred.                                                                |
+| P3 — client draft/attempt lifetime (approved) | Tab-scoped sessionStorage through reload, cleared on logout/account change; no new timed expiry                                       | No cross-device or post-tab-close recovery promise. Server records remain with history independently of browser storage.                                                                                                                                 |
+| P4 — first real UI scope (approved)           | Approve group selection, expense list/create and complete balances/recovery; isolate remaining preview routes                         | No simulated activity, trips, edits or settlement controls appear as persisted features; full overview/reporting parity is deferred. Wider UI parity requires additional read contracts and review.                                                      |
 
 Invitation current-email freshness, former-member shared-link policy, link limits,
 owner-change behavior and milestone placement remain #79/#80, not extra decisions
@@ -49,34 +49,22 @@ proof boundary is reviewed; helper seam must not become a broad mutation API.
 Second slice is #78 verified JWT/context integration; #81 bootstrap is separately
 owned. Do not start schema implementation automatically from this handoff.
 
-**#76:** SDL and representative operations can be validated now, but publication
-and completion require reviewed technical choices plus the deferred P2 retention decision and final contract acceptance. Keep open while
-those decisions are pending. After approval, #82's smallest first slice is
-viewer/group/member reads with real-role authorization and coherent complete-read
-infrastructure. Next is one complete expense-create/list/balance/recovery slice
-with allocations, audit, receipt, overflow and concurrent retry tests together;
-never land a financial write without its safeguards. #83 follows implemented
-fields and #79/#80 onboarding, not a mock claim of the invited-user journey.
+**#76:** P1–P4 and engineering design gates now have concrete decisions, SDL,
+operations and validation scenarios. Close after final-head independent testing,
+review, required Verify and merge of PR #95 establish all design acceptance
+criteria. Business SDL stays under docs until #82 implements approved fields.
+Runtime behavior tests belong to #82/#83, not an invented remaining design gate.
+No #82 financial implementation starts in this task.
 
 ## PR adoption and readiness strategy
 
-Recommend the smallest path: merge PR #95 as a **reviewed design/proposal record**
-after final-head Verify, independent testing/review, resolved findings and any
-formal GitHub approvals required by branch protection. Mark it ready once the
-cleanup findings and independent checks are resolved. P2 does not block adopting
-the #75 foundation handoff; splitting these coordinated documents would duplicate
-shared decisions without resolving retention. The decision-maintenance rules
-allow explicit status distinctions; a merged proposal is not blanket acceptance.
+Finalize and merge this one coordinated design record through normal gates:
+final-head CI/Verify, recorded independent testing/review, resolved blocking
+conversations, non-draft status and applicable formal GitHub approvals/protections.
+Do not substitute agent comments for required formal approval or bypass protection.
 
-At adoption, #75 has a reviewed next slice: the D1–D3 identity/group/membership/
-installation foundation, with the existing real-role, lifecycle, locking and
-migration tests. Keep #75 open until implementation acceptance criteria pass.
-Do not start that implementation in this task. #79 admission grants and hosted
-credential verification remain scoped to their owning implementation/deployment.
-
-Keep #76 open for deferred P2 retention and final contract acceptance; its SDL
-remains a proposal under docs, not the running schema. The 90-day recommendation
-is not accepted. A later explicit decision resolves P2 and the dependent client
-recovery duration before affected financial implementation. Formal GitHub approval
-is separate from agent review evidence and owner approval of P1/P3/P4; never
-bypass protection or close either issue merely by merging this documentation.
+Keep #75 open for its separate implementation PR and tests. Close #76 only after
+its design criteria are verified and this record is merged. No 90-day lifecycle
+is adopted; lifetime-of-history retention is the initial policy. Future lifecycle
+pruning, admission-specific decisions and uploaded receipt attachments remain
+separate work. Implementation of #82 is not authorized by completing this record.

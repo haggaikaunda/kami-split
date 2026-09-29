@@ -48,7 +48,6 @@ enum OperationState {
   NOT_OBSERVED
   PENDING
   UNKNOWN
-  EXPIRED
 }
 
 type Query {
@@ -189,10 +188,10 @@ union OperationResult =
   | Problem
 type ExpenseCommitted {
   key: OperationKey!
-  receipt: ExpenseReceipt!
+  record: ExpenseOperationRecord!
 }
 "Immutable successful operation values, not current expense or balances."
-type ExpenseReceipt {
+type ExpenseOperationRecord {
   expenseId: ID!
   groupId: ID!
   creatorMembershipId: ID!
@@ -204,11 +203,11 @@ type ExpenseReceipt {
   category: Category!
   note: String!
   split: SplitMode!
-  allocations: [ReceiptAllocation!]!
+  allocations: [OperationAllocation!]!
   committedAt: DateTime!
   revision: Revision!
 }
-type ReceiptAllocation {
+type OperationAllocation {
   participantId: ID!
   amountMinor: MinorUnits!
 }

@@ -1,44 +1,44 @@
-# ADR-005: Coordinated identity and expense contract proposal
+# ADR-005: Identity and first expense contract
 
-- Status: **Design/proposal record**; P1/P3/P4 owner-approved, engineering handoff reviewed, #76 final acceptance/P2 deferred. Not implemented.
-- Recorded: 2026-09-29.
-- Scope: Design-only engineering handoff for #75/#76.
-- Relationship: Elaborates ADR-001–004 without superseding accepted policy.
+- Status: **Accepted design; not implemented.** Final-head verification and merge remain delivery gates.
+- Recorded: 2026-09-29; P2 finalized by the later owner follow-up.
+- Scope: #75 identity foundation and #76 first expense contract; implementations remain separate.
+- Relationship: Elaborates ADR-001–004 without changing accepted financial/authorization policy.
 
-The [coordinated proposal](../proposals/first-expense/README.md) defines shared
-stable identities, disclosure and transaction locking; concrete user/group/
-membership constraints and RLS boundaries; proposed business SDL, operations,
-exact money, pagination, complete balances and same-attempt recovery.
+The [coordinated design](../proposals/first-expense/README.md) defines stable
+identities, minimal disclosure, transaction locking, constrained database
+boundaries and the first GraphQL contract. Its SQL/SDL are design artifacts, not
+production migrations or runtime fields. #82 promotes only implemented fields.
 
-The [gate matrix and owner decision sheet](../proposals/first-expense/gates.md)
-separates delegated engineering recommendations from P1 profile fields, P2 receipt
-retention, P3 client storage/lifetime and P4 first real UI scope. On 2026-09-29 the owner approved P1, P3 and P4 and explicitly deferred P2
-(receipt retention) in the PR #95 design conversation. The engineering package
-remains proposed pending final contract acceptance; the deferred retention gate
-does not waive atomic financial recovery. [Validation evidence](../proposals/first-expense/validation.md)
-distinguishes schema shape checks from future runtime acceptance.
+## Owner decisions and retention
 
-O04/O08/O09/O13/O14 and minimal O18 now have concrete proposals, not automatic
-resolution. O03/O10/O11/O12 retain the explicitly scoped lifecycle/admission gaps.
-Newer #79/#80 invitation approvals are linked in the proposal and inform its
-admission boundary; this ADR does not finalize their invitation service contract.
+P1 minimal profiles, P3 tab-scoped sessionStorage cleared on logout/account switch,
+and P4 first-route scope were approved earlier. The earlier P2 deferral is
+superseded by [the explicit owner follow-up](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197):
+retain durable financial operation results and information needed to recognize
+and recover the original attempt for the lifetime of associated financial history.
+No 90-day expiry, cleanup job, record-to-tombstone transition or EXPIRED operation
+outcome belongs in the initial contract. Atomic expense/allocations/audit/result,
+current authorization, same-key comparison and separate fresh balances remain.
 
-Do not close #75 from documentation or start its schema implementation as part
-of this handoff. #76 remains open pending contract/owner approval gates. Running
-`packages/schema` remains health-only; #82 promotes only approved implemented
-fields. Future acceptance should preserve this proposal's history and record
-which decisions were accepted or amended, with issue/PR authority.
+These operation recovery records/idempotency results are distinct from uploaded
+receipt images/PDFs. Uploads, file/object storage, attachment metadata, OCR, upload
+UI and attachment-retention policy are deferred outside #73/#76/#82. Future
+account/group deletion, archival and pruning require separately reviewed lifecycle
+policy. No extra browser timed expiry or cross-device recovery promise is added.
 
-## Adoption without closing implementation issues
+## Acceptance and next work
 
-Following [the owner follow-up review](https://github.com/haggaikaunda/kami-split/pull/95#pullrequestreview-5359720753),
-recommend adopting this coordinated record in PR #95 after its normal merge
-gates. This makes the reviewed #75 foundation available for its next separate
-implementation slice without waiting for #76's P2 receipt-retention decision.
-It does not accept the 90-day recommendation, publish business SDL, satisfy
-implementation tests, or close #75/#76. See the [explicit readiness strategy](../proposals/first-expense/gates.md#pr-adoption-and-readiness-strategy).
+The [gate matrix](../proposals/first-expense/gates.md) traces decisions and
+[validation](../proposals/first-expense/validation.md) separates design evidence
+from required runtime tests. O04/O08/O09/O13/O14 and minimal O18 have the concrete
+first-journey design. Unrelated O03/O10/O11/O12 lifecycle/admission work remains.
 
-The tested Auth-reference DDL path remains local proposal/evidence: #75 must
-verify final ownership/ACLs and full migration behavior, and deployment must
-verify its actual hosted credentials. Adoption does not make that experiment a
-universal hosted guarantee. No #75 implementation is authorized by this follow-up.
+Finalize PR #95 through required CI, independent testing/review and applicable
+formal approval/protection gates. Close #76 only when design criteria pass and
+this record is merged; keep #75 open for its separate implementation PR. No #82
+financial implementation begins from this task.
+
+The local Auth-reference creation/ownership-transfer procedure is evidence,
+not a universal hosted guarantee: #75 must verify final ownership/ACLs and complete
+migration behavior, and deployment must verify actual hosted credentials.
