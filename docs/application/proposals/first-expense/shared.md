@@ -1,6 +1,7 @@
 # Shared identity, authorization and financial decisions
 
-All choices below are proposed. Accepted policy sources are in the [index](README.md).
+Engineering choices below remain proposed; S2 disclosure is now owner-approved.
+Accepted policy sources and approval status are in the [index](README.md).
 This is the shared mapping for both proposals; do not duplicate it in implementations.
 
 ## S1: Stable identity and public IDs
