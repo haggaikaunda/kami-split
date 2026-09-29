@@ -9,3 +9,6 @@ test-results/
 .DS_Store
 *.log
 *.tsbuildinfo
+.tools/
+supabase/.temp/
+supabase/.branches/

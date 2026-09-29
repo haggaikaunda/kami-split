@@ -17,6 +17,10 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
+      - name: Install pinned database tools
+        run: make db-tools
+      - run: make db-generation-check
+      - run: make db-test
       - run: make api-check
       - run: docker compose config --quiet
       - run: docker build --target verify -f apps/api/Dockerfile .
@@ -26,5 +30,8 @@ jobs:
           curl --fail --silent --show-error -H 'Content-Type: application/json' \
             -d '{"query":"{ health { status } }"}' http://127.0.0.1:8080/graphql \
             | python3 -c 'import json,sys; assert json.load(sys.stdin) == {"data":{"health":{"status":"ok"}}}'
+      - run: docker compose down
+      - name: Coordinated local database and API readiness
+        run: make dev-up
       - if: always()
-        run: docker compose down
+        run: make dev-down

@@ -22,6 +22,9 @@ import (
 
 type requestIDKey struct{}
 
+// Readiness is the optional dependency check, with its own bounded deadline.
+type Readiness interface{ Ready(context.Context) error }
+
 // Server is a single-use HTTP server. Create a new instance for each run.
 type Server struct {
 	http            *http.Server
@@ -30,7 +33,7 @@ type Server struct {
 }
 
 // New constructs a server with explicit configuration, schema, and logging dependencies.
-func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger) *Server {
+func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger, dependencies ...Readiness) *Server {
 	s := &Server{shutdownTimeout: cfg.ShutdownTimeout}
 	gql := handler.New(schema)
 	gql.AddTransport(transport.POST{})
@@ -54,6 +57,12 @@ func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger
 		if !s.ready.Load() {
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
+		}
+		for _, dependency := range dependencies {
+			if err := dependency.Ready(r.Context()); err != nil {
+				http.Error(w, "not ready", http.StatusServiceUnavailable)
+				return
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 	})

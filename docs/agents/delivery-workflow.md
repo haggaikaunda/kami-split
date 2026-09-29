@@ -30,10 +30,13 @@ have no path filters, inherited secrets, or child concurrency groups.
 
 `web.yml` owns pnpm/Node setup, the root-lockfile cache, repository-wide formatting
 (exactly once), lint, type checking, web tests, and the Next.js build, in order.
-`api.yml` owns Go setup and the Go-module cache, `make api-check` (formatting,
+`api.yml` owns Go setup and the Go-module cache, pinned database tool setup,
+sqlc generation drift, isolated Supabase migration/permission/integration checks,
+`make api-check` (formatting,
 module integrity, vet, regular and race tests, build, generation drift), Docker
 Compose validation, the Docker verification stage, Compose readiness, and the live
-GraphQL response assertion. Compose cleanup always runs, including after failure.
+GraphQL response assertion. It also checks coordinated database/API startup.
+Compose and local Supabase cleanup always run, including after failure.
 Each child checks out the repository on its own runner and has a 15-minute limit.
 
 The one-minute **Verify** job waits for both calls with `always()`, then explicitly
