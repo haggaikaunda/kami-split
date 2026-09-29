@@ -27,3 +27,31 @@ api-check: api-format-check
 	$(MAKE) api-generate
 	git diff --exit-code -- apps/api packages/schema
 	@test -z "$$(git ls-files --others --exclude-standard -- apps/api packages/schema)" || (echo "Untracked API/schema files; commit generated artifacts before drift verification"; exit 1)
+
+.PHONY: db-tools db-start db-stop dev-up dev-down db-test db-generate db-generation-check
+
+db-tools:
+	./scripts/install-db-tools.sh
+
+db-start:
+	./scripts/db-network.sh kami-split
+	./scripts/db-tool.sh supabase start
+
+db-stop:
+	./scripts/db-tool.sh supabase stop
+
+dev-up: db-start
+	docker compose -f compose.yaml -f compose.database.yaml up --build --wait api
+
+dev-down:
+	docker compose -f compose.yaml -f compose.database.yaml down
+	$(MAKE) db-stop
+
+db-test:
+	./scripts/db-test.sh
+
+db-generate:
+	./scripts/db-tool.sh sqlc generate
+
+db-generation-check:
+	./scripts/check-sqlc.sh

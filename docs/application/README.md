@@ -6,7 +6,7 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 
 ## Backend scaffold and planned features
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. A health-only scaffold exists; financial and authenticated behavior is still planned. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. A health-only scaffold and [local database foundation](database-development.md) exist; financial and authenticated behavior is still planned. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
 
 ## Architecture decisions
 

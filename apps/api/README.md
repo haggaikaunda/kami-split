@@ -1,6 +1,6 @@
 # Go GraphQL server
 
-Health-only scaffold using Go **1.27.1**, gqlgen **v0.17.95**, and `net/http`. No database, authentication, financial operations, or Relay integration exists yet. The web preview still uses its in-memory DataPort.
+Health-only scaffold using Go **1.27.1**, gqlgen **v0.17.95**, and `net/http`. An optional pgxpool database boundary supports local Supabase. Authentication, financial operations, and Relay integration remain unimplemented. The web preview still uses its in-memory DataPort.
 
 ## Run locally
 
@@ -11,7 +11,7 @@ make api-run
 curl -H 'Content-Type: application/json' -d '{"query":"{ health { status } }"}' http://127.0.0.1:8080/graphql
 ```
 
-Run the curl command in a second terminal. The response is `{"data":{"health":{"status":"ok"}}}`. `/healthz` reports process liveness; `/readyz` reports whether the server is serving and not shutting down. Neither claims database readiness.
+Run the curl command in a second terminal. The response is `{"data":{"health":{"status":"ok"}}}`. `/healthz` reports process liveness; `/readyz` reports whether the server is serving and not shutting down. With no `DATABASE_URL`, neither claims database readiness. For database-backed readiness, local startup, restricted roles and integration checks, see [database development](../../docs/application/database-development.md).
 
 ## Docker development
 
@@ -32,7 +32,7 @@ The Dockerfile also has a `verify` target:
 docker build --target verify -f apps/api/Dockerfile .
 ```
 
-That target runs formatting, vet, race tests, build, and module/generation reproducibility checks. Runtime binaries are built without CGO; the verification stage retains a C compiler for race tests. PostgreSQL can be added as a real isolated Compose dependency when persistence is implemented; it is not mocked or provisioned here. Do not run `docker compose down -v` against future persistent services unless data deletion is intended.
+That target runs formatting, vet, race tests, build, and module/generation reproducibility checks. Runtime binaries are built without CGO; the verification stage retains a C compiler for race tests. Supabase CLI owns local PostgreSQL/Auth. `make dev-up` adds the database Compose override and coordinates both stacks; `make dev-down` stops them without deleting development data.
 
 ## Configuration
 
@@ -47,6 +47,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 
 - `cmd/server`: configuration, explicit dependency wiring, structured logging, and signals.
 - `internal/config`: validated configuration.
+- `internal/database`: validated pgxpool lifecycle and readiness, with disposable sqlc fixture.
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and handwritten resolver implementations.
 - [`packages/schema`](../../packages/schema/README.md): authoritative SDL consumed by `gqlgen.yml`.
