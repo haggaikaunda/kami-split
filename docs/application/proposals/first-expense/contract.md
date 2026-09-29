@@ -3,7 +3,7 @@
 Status: finalized design, not runtime implementation; [SDL](schema.graphql) and [operations](operations.graphql) are
 not imported by running schema generation. #82 promotes only approved implemented
 fields. [Shared S1–S4](shared.md) defines identities, disclosure, locks and complete
-balances. [Owner choices](gates.md) remain explicit gates.
+balances. [Owner decisions](gates.md) are recorded; final-head delivery verification remains required.
 
 ## A1: Exact scalar and field rules
 
