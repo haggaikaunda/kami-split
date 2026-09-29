@@ -1,5 +1,11 @@
 # Overview and shared data boundary
 
+## Accepted production direction
+
+The evidence below covers one seeded household snapshot. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment) distinguishes the household group from a future dashboard including it plus ordinary/trip groups where both partners are active. One-partner-only groups remain accessible through that person’s Groups experience, outside the shared overview. Source-group balances and repayment shortcuts never create an overall debt or cross-group offset; net zero does not mean every obligation is settled. Exact combined/individual metrics, “our spending”/average-trip formulas and reporting history remain for #86; combined allocated shares are only a proposal.
+
+## Seeded preview
+
 Issue [#18](https://github.com/haggaikaunda/kami-split/issues/18) replaces the Overview navigation fixture with the seeded financial overview. The Overview now includes [spending charts](../spending/README.md), and Add expense and Record repayment open their implemented session-only forms. No payments are sent.
 
 ## Financial meaning

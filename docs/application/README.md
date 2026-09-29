@@ -13,3 +13,5 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 [Accepted foundation decisions](decisions/001-backend-foundation.md) cover Supabase, persistence tooling, money, and membership. The [open-decision register](decisions/open-decisions.md) tracks unresolved choices and when they must be settled. See [decision maintenance](decisions/README.md) for updating them.
 
 [Authentication and database operations](decisions/002-authentication-and-database-operations.md) records O01–O07 outcomes and remaining implementation choices.
+
+[Bootstrap, group boundaries and invitation lifecycle](decisions/003-bootstrap-groups-and-invitations.md) records the #77 baseline, preview differences and separately owned follow-up decisions. Transfer, full trips and consolidated reporting remain deferred.

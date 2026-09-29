@@ -9,6 +9,8 @@ See [repository layout and deployment](repository-layout.md) for workspace comma
 - [Agent documentation](agents/README.md): delivery instructions and Go engineering conventions.
 - [Application documentation](application/README.md): current implementation references and planned API architecture.
 
+- [Architecture decisions](application/decisions/README.md): accepted production design, including [bootstrap, groups and invitations](application/decisions/003-bootstrap-groups-and-invitations.md), distinct from the seeded preview.
+
 ## Implementation guides
 
 | Area                                                | Guide                                                    |

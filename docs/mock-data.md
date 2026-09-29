@@ -1,5 +1,11 @@
 # Session mock data
 
+## Production boundary
+
+This guide preserves the session preview. [ADR-003](application/decisions/003-bootstrap-groups-and-invitations.md#seeded-preview-evidence-and-production-differences) explains why household-scoped `Snapshot`/`Trip` and pending `Member` shapes are not the production schema: trips become independent groups, invitations are separate records, and first-account bootstrap is operator-only. No mock behavior changes accompany that decision.
+
+## Seeded preview
+
 Create one `createMockData()` instance in the application provider and inject its `port` into screens. Never import fixtures from a component. The instance owns one in-memory ledger shared by all routes; reload or `demo.reset()` deliberately loses session changes. There is no browser storage, database, email, payment or authentication provider.
 
 The asynchronous `DataPort` offers simulated entry transitions, snapshot queries, current/historical expense queries, commands, operation lookup and change subscriptions. Queries return isolated copies. Screens must invalidate/requery on notifications and ignore obsolete request responses using a request sequence; they must not serialize previous financial results into navigation state. Mutations continue after screen unmount. The mock commits a complete cloned state in one synchronous step after validation and aggregate checks; notification errors cannot turn a committed write into a failed command.

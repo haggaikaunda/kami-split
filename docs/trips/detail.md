@@ -1,5 +1,11 @@
 # Trip detail
 
+## Accepted production direction
+
+The household expense filters and household repayment link below describe the preserved preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment) requires future repayment entry to target the original trip group, whether opened here or from a dashboard, with no Household copy or cross-group offset. No private-household-expense-to-trip-report association was adopted. Full group/trip and consolidated dashboard design remain #85/#86, outside #73.
+
+## Seeded preview
+
 Issue [#26](https://github.com/haggaikaunda/kami-split/issues/26) expands the saved trip destination into the approved hero, Overview/Expenses views, total spending, actor share and member contributions. Every member is rendered by stable ID, including zero contributions; layouts wrap rather than assuming a pair.
 
 `tripDetail` selects current active household expense records through the shared spending selector. Its paid/share positions use only those exact records and no repayments. It includes effective dates outside travel dates and partitions by the household currency. Missing trips return no model; empty accessible trips show actual zero values. The shared spending selector now preserves the input record type, with no runtime calculation change.

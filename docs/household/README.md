@@ -1,5 +1,11 @@
 # Household setup and membership preview
 
+## Accepted production policy
+
+This page preserves issue #29’s seeded UX evidence. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md) instead specifies administrative first-account bootstrap into an empty USD Household, separate verified-email invitations, and exactly one active owner. The preview’s pending `Member` records, first-household screen and role toggles are not the production schema or transfer workflow. Operational bootstrap is #81; ownership transfer is low-priority deferred #84. Membership/profile visibility and returning-member behavior are separately tracked through #75/#79.
+
+## Seeded preview
+
 Issue #29 completes the first-household handoff from the sign-in preview. Setup validates a name, fixes the only enabled default currency to USD, and creates an actually empty dataset with one owner and a distinct household identity. A successful, freshly read setup selects that identity, clears previous sample drafts and advances the app session epoch. Validation failures do not discard drafts. Pending/unknown commands block setup and simulation reset. Unknown setup responses are checked using the original entry transition; stale responses after a source change or route unmount cannot redirect or overwrite the current scope.
 
 Household owners can rename the household, invite a made-up member name, resend/revoke pending invitations, change roles and remove access. Ordinary members can only preview leaving their own household. The adapter enforces these permissions. Invitations retain a deterministic ID and send count; acceptance binds the identity shown in the preview and activates that pending member once. No email address or delivery is required.
