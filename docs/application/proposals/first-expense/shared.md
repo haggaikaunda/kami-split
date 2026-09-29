@@ -71,10 +71,15 @@ then invitation/attempt rows, then memberships/financial rows in UUID order.
 User-status changes lock the user FOR UPDATE first, then affected groups in UUID
 order. No group operation acquires a user lock after a group lock. Participant
 IDs are resolved before locking, then revalidated after locks; identities/group
-IDs never change. Reads lock actor user FOR SHARE then group FOR SHARE and read
-all selected group data at one repeatable-read snapshot, or one SQL statement;
-#82 should use one REPEATABLE READ read transaction, retrying serialization
-failures without returning partial data. Group writes serialize so a future
+IDs never change. Reads use READ COMMITTED: lock actor user FOR SHARE, then group FOR SHARE,
+then recheck authorization in a fresh statement after both locks are acquired.
+Return all selected group projections through one subsequent SQL statement
+(including its authorization predicate), so page/member/balance data share one
+statement snapshot while locks prevent group or actor revocation. Do not establish
+a REPEATABLE READ snapshot before waiting for the group lock: a concurrent
+membership removal may change only the membership row, leaving that snapshot
+stale without a serialization failure. #82 assembles the group projection before
+GraphQL field mapping; resolvers must not independently fetch divergent snapshots. Group writes serialize so a future
 zero-net departure check and membership transition cannot race financial writes.
 Admission locks the existing user first (new-user uniqueness conflict is resolved
 before group locking), then group, then invitation. Multi-group financial writes

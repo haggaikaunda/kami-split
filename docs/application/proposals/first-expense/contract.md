@@ -101,7 +101,7 @@ retirement produces INVALID_CURSOR; restart list, never restart a financial writ
 No time-based cursor expiry promised. Keep previous signing keys during planned
 rotation; a server restart must preserve configured keys.
 
-FirstPage reads balances and expense page at one group read snapshot; balances
+FirstPage reads balances and expense page in one complete SQL statement after locked, fresh authorization; balances
 always include all committed financial records in that snapshot. On later pages,
 connection revision R can be older than current balance revision. This difference
 is explicit, not a snapshot guarantee across requests. Concurrent create committed

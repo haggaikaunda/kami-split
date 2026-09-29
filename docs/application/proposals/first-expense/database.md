@@ -157,7 +157,8 @@ rechecks can_read_group, joins that group's retained memberships/users/groups,
 and projects S2 fields. Account-disabled peers appear nonparticipating, without
 revealing the account status reason. An inactive caller gets no historical data.
 
-`lock_group_read(g)` locks own user SHARE then group SHARE and rechecks access;
+`lock_group_read(g)` locks own user SHARE then group SHARE; after it returns,
+the caller rechecks access in a fresh READ COMMITTED statement per S3;
 `lock_group_write(g, affected_members[])` resolves distinct users from same-group
 member IDs, includes actor, locks users SHARE in UUID order then group UPDATE,
 and rechecks enabled/active eligibility. Wrong-group IDs return generic denial.
@@ -235,3 +236,8 @@ transaction-local settings. [Supabase user data](https://supabase.com/docs/guide
 recommends referencing only the managed Auth primary key and notes deletion does
 not itself invalidate issued JWTs. We deliberately reject cascading history.
 Checked 2026-09-29; actual provider-role and concurrency proof remains #75 tests.
+
+Review regression scenario: removal locks group UPDATE; reader locks actor SHARE
+and waits on group SHARE; removal updates only membership then commits. Reader
+must recheck in a fresh READ COMMITTED statement and deny, even though the group
+row was not updated. A pre-lock repeatable-read snapshot is specifically invalid.
