@@ -1,5 +1,7 @@
 # Seeded data and replaceable access boundary
 
+Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
+
 ## Scope
 
 Implement the UI against an injected async application-service port. Its initial adapter is an in-memory store created from deterministic fixtures. Components may not import seed arrays, query mutable globals, use member names as IDs, call storage directly, or embed pair-specific financial calculations. Database/schema/migration work and real network/auth providers are excluded.

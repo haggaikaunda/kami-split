@@ -2,6 +2,12 @@
 
 Issue [#30](https://github.com/haggaikaunda/kami-split/issues/30) integrates the existing async mock port and session-owned requests. Simulation controls exercise actual adapter states; they do not manufacture a success toast. All data remains session-only, without production authentication or persistence.
 
+## Accepted production policy
+
+[ADR-004 C3](../application/decisions/004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) requires the client to possess an expense-create key before sending and recover a lost response with that same key and original input. Current server-derived actor/group authorization governs retries and receipt reads. Concurrent/restarted same-key/same-canonical-input requests have one durable financial effect; expense, allocations, audit and recoverable result commit atomically. Changed input cannot create or overwrite the original expense. Recover the original immutable outcome, then fetch current authorized balances as needed. Missing lookup is not proof of no commit and cannot silently trigger a new key. Exact pending/unknown/not-observed/committed, mismatch, retention, storage and reload/session behavior remain #76/#83 design. The in-memory receipt behavior below is preview evidence, not durable production recovery or a promise of identical GraphQL envelopes.
+
+ADR-004 also replaces production direct-obligation departure checks with individual-zero-net eligibility under within-group simplification. The historical inactive-member correction guard below stays as preview evidence; post-departure corrections, reversal and retention policies remain separately gated.
+
 ## Boundaries
 
 A known offline failure publishes no expense, repayment, revision or event. An unknown result freezes the original operation and draft. Recovery queries that operation before any repeat write, revalidates the original household/actor, and applies at most one financial effect. Reset/discard cannot abandon unresolved requests. Expired/denied access hides private financial fields while retaining the session draft; restoring the original session revalidates it before submission. Old reads/completions cannot replace a newer source or steal navigation.

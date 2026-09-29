@@ -68,12 +68,12 @@ Lifecycle rules:
 
 - Removal ends group access while preserving attribution in expenses, allocations, settlements, and audit history. Do not cascade-delete financial history.
 - Inactive members cannot participate in new expenses. Historical corrections involving them require an explicit policy before implementation.
-- Leaving or removal requires outstanding settlement obligations to be resolved. A zero net balance alone is insufficient where unresolved pairwise obligations remain.
+- Historical policy: leaving/removal additionally required clearing original pairwise obligations. [ADR-004 C1/C2](004-group-balances-membership-and-recovery.md#c2-departure-removal-visibility-and-readmission) supersedes that restriction: automatic within-group simplification makes an individual net of exactly zero the financial condition; original pairwise chains/cycles do not independently block departure. Authority and ownership checks still apply.
 - An owner transfers ownership before leaving. Transfer must be atomic and preserve the one-active-owner invariant.
-- Rejoining restores the existing membership identity and its historical continuity; owner privileges must not be accidentally revived. Role-restoration policy was open at this decision. The newer [#75 follow-up](https://github.com/haggaikaunda/kami-split/issues/75) approves ordinary-member/full-history readmission; reviewed follow-up documentation is pending through #75/#79, separately from ADR-003’s baseline.
+- Rejoining restores the existing membership identity and its historical continuity. [ADR-004 C2](004-group-balances-membership-and-recovery.md#c2-departure-removal-visibility-and-readmission) resolves the originally open restoration policy: a new valid invitation and authorized acceptance restore ordinary-member/full-history access, never former ownership or disabled access.
 - Email invitation acceptance requires the matching verified email of the signed-in user, is idempotent, and rejects expired/revoked invitations.
 
-Rationale: separating identities, memberships, and invitations prevents invitations from granting premature access and preserves financial attribution. Consequences: departures and transfers require transactional checks against concurrent financial writes. Last-owner/group closure, account deletion, and historical visibility policies need explicit decisions.
+Rationale: separating identities, memberships, and invitations prevents invitations from granting premature access and preserves financial attribution. Consequences: departures and transfers require transactional checks against concurrent financial writes. Last-owner/group closure, account deletion, and historical-correction policies still need explicit decisions; readmission visibility is resolved by ADR-004 C2.
 
 ## Implementation and change control
 

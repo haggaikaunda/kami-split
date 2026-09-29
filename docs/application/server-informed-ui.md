@@ -28,6 +28,8 @@ Prefer APIs that directly express the authorized result the UI needs. Complete b
 
 A capability exposed on a read is informational presentation state, not an authorization boundary. Every operation must still authenticate and authorize the current actor against current server state when it executes.
 
+Under [ADR-004](decisions/004-group-balances-membership-and-recovery.md), production repayment suggestions derive from complete individual nets within one group/currency, retaining inactive-member financial history. Expense attribution and the current repayment plan have different meanings; original pairwise relationships are not additional debts. The server’s simplified plan, settled state and departure eligibility must agree. Every individual net must be zero to call a group settled; adding member or cross-group nets cannot hide obligations. Failed/incomplete reads are not zero. Matching and explanatory UI remain design work, not a client-only financial rule. Recovery returns the original immutable operation outcome; clients fetch current authorized balances as needed instead of displaying cached mutation balances as current.
+
 ### Build reusable financial and reporting projections
 
 Do not shape aggregate APIs around one React component tree or one dashboard when the underlying concept is reusable. Server-side projections should be capable of supporting multiple authorized perspectives without duplicating financial definitions.

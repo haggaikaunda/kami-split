@@ -1,5 +1,7 @@
 # UX specification
 
+Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
+
 ## Scope and screen inventory
 
 Kami Split makes shared spending and repayment understandable for an invited household. The initial sample uses Kaunda and Mizenin. Member count, identifiers, copy and layout must not encode a permanent two-person limit.
