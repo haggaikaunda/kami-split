@@ -43,22 +43,17 @@ query FirstPage($group: ID!, $after: String, $filter: ExpenseFilter) {
         canParticipate
       }
       expenses(first: 20, after: $after, filter: $filter) {
-        __typename
-        ... on Problem {
-          code
-          message
+        revision
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
         }
-        ... on ExpenseConnection {
-          revision
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-          edges {
-            cursor
-            node {
-              ...ExpenseFields
-            }
+        edges {
+          cursor
+          node {
+            ...ExpenseFields
           }
         }
       }

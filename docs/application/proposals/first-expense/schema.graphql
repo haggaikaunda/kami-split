@@ -85,7 +85,7 @@ type Group implements Node {
     first: Int! = 20
     after: String
     filter: ExpenseFilter
-  ): ExpensePageResult!
+  ): ExpenseConnection
   balances: BalanceResult!
 }
 type Membership implements Node {
@@ -101,7 +101,6 @@ input ExpenseFilter {
   category: Category
   participantId: ID
 }
-union ExpensePageResult = ExpenseConnection | Problem
 type ExpenseConnection {
   edges: [ExpenseEdge!]!
   pageInfo: PageInfo!
@@ -112,6 +111,8 @@ type ExpenseEdge {
   node: Expense!
 }
 type PageInfo {
+  hasPreviousPage: Boolean!
+  startCursor: String
   hasNextPage: Boolean!
   endCursor: String
 }

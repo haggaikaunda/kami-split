@@ -94,7 +94,10 @@ This is a bounded append-only traversal: an expense committed later, including a
 backdated one, is omitted until restart. No open DB snapshot spans requests.
 Only create exists initially; future edit/delete requires revisiting the cursor
 contract before publication. Ties have the UUID tie-breaker. Query `first+1` for
-hasNextPage; empty page endCursor null. A no-longer-existing boundary row need not
+hasNextPage; empty page startCursor/endCursor null. Nonempty startCursor is the first edge
+cursor. hasPreviousPage is false for the first page; for an after cursor, use an
+EXISTS probe for an eligible tuple at or above the cursor boundary under the
+same filters/anchor. Only forward request arguments are supported. A no-longer-existing boundary row need not
 be fetched because tuple is embedded. Bad MAC/shape/version/filter/group or
 future revision yields INVALID_CURSOR after group authorization. Signing-key
 retirement produces INVALID_CURSOR; restart list, never restart a financial write.
@@ -114,7 +117,7 @@ expense connection. A failed refresh shows unavailable/stale UI, never settled.
 
 GraphQL parse/validation/scalar coercion failures: HTTP 400, safe BAD_USER_INPUT,
 no execution. Domain results use HTTP 200 unions so expected outcomes survive
-selection-set changes. Invalid semantic input yields ValidationProblem paths
+selection-set changes, except the Relay connection boundary described below. Invalid semantic input yields ValidationProblem paths
 such as `["input","exactAllocations","1","amountMinor"]`, stable code and safe
 human message. Malformed public ID is INVALID_INPUT; well-formed nonexistent or
 unauthorized ID is NOT_FOUND for both. No cross-group names, peer identities,
@@ -295,3 +298,22 @@ custom coercion beyond SDL validation; [PostgreSQL aggregates](https://www.postg
 define numeric output for bigint sum. Both checked 2026-09-29. SDL validation proves
 schema/operation shape only; #82/#83 must implement and test all scalar and runtime
 semantics above. No generator/runtime schema is altered to obtain validation.
+
+## A8: Relay connection and pagination errors
+
+`Group.expenses` returns nullable concrete ExpenseConnection with standard edges
+and complete PageInfo, enabling Relay `@connection`/`usePaginationFragment` in
+#83. Proposed operations omit Relay compiler directives so the server-side
+validator can check them without installing Relay. #83 annotates the concrete
+field, keeps filter arguments in the connection identity and resets it after a
+new create/recovery; cursor/first are pagination arguments, not filter identities.
+On invalid pagination input, cursor, unauthorized filter, aggregate revision
+failure or unavailable infrastructure, return expenses:null plus a safe GraphQL
+error at that field path with INVALID_INPUT, INVALID_CURSOR, NOT_FOUND,
+AMOUNT_OVERFLOW or UNAVAILABLE code. #83's network adapter must preserve partial
+data and these errors and show a failed page, never an empty list or page-complete
+state. A successful empty connection has edges:[] and valid PageInfo, no error.
+This narrow transport exception avoids a union where Relay requires a connection
+object. Complete balances retain their explicit union and independent semantics.
+See [Relay connection specification](https://relay.dev/graphql/connections.htm)
+and [pagination](https://relay.dev/docs/guided-tour/list-data/pagination/).
