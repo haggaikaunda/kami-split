@@ -2,7 +2,7 @@
 
 ## Status
 
-A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. These integrations are not yet implemented. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
+A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. Local Supabase, pgxpool and disposable sqlc verification are implemented; see [database development](database-development.md). Business persistence remains unimplemented. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 ## Responsibilities
 
@@ -37,7 +37,7 @@ See the [Go engineering guide](../agents/go-guidelines.md) for code and testing 
 
 [ADR-001](decisions/001-backend-foundation.md) is the canonical record of the accepted platform, USD money representation, and membership policies. Consult the [open-decision register](decisions/open-decisions.md) before treating unresolved details as requirements.
 
-[ADR-002](decisions/002-authentication-and-database-operations.md) adds the accepted session/JWKS policy, transaction-local identity with RLS, stable-only tooling, GitHub Actions migration deployment, and free-plan backup constraint. These integrations remain planned.
+[ADR-002](decisions/002-authentication-and-database-operations.md) adds the accepted session/JWKS policy, transaction-local identity with RLS, stable-only tooling, GitHub Actions migration deployment, and free-plan backup constraint. Local database tooling is implemented; authentication, production operations and business policies remain planned.
 
 [ADR-003](decisions/003-bootstrap-groups-and-invitations.md) records the administrative bootstrap exception, separate group ledgers and invitation lifecycle/token protection. Each expense and settlement belongs to exactly one group; trip membership grants no household access. Future dashboard repayment shortcuts retain the original group and never duplicate or offset records across groups. The preview's embedded trips and pending members are not production schema.
 

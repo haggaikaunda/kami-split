@@ -70,7 +70,7 @@ Lifecycle rules:
 - Inactive members cannot participate in new expenses. Historical corrections involving them require an explicit policy before implementation.
 - Leaving or removal requires outstanding settlement obligations to be resolved. A zero net balance alone is insufficient where unresolved pairwise obligations remain.
 - An owner transfers ownership before leaving. Transfer must be atomic and preserve the one-active-owner invariant.
-- Rejoining restores the existing membership identity and its historical continuity; owner privileges must not be accidentally revived. Detailed role-restoration policy remains open.
+- Rejoining restores the existing membership identity and its historical continuity; owner privileges must not be accidentally revived. Role-restoration policy was open at this decision. The newer [#75 follow-up](https://github.com/haggaikaunda/kami-split/issues/75) approves ordinary-member/full-history readmission; reviewed follow-up documentation is pending through #75/#79, separately from ADR-003’s baseline.
 - Email invitation acceptance requires the matching verified email of the signed-in user, is idempotent, and rejects expired/revoked invitations.
 
 Rationale: separating identities, memberships, and invitations prevents invitations from granting premature access and preserves financial attribution. Consequences: departures and transfers require transactional checks against concurrent financial writes. Last-owner/group closure, account deletion, and historical visibility policies need explicit decisions.

@@ -1,0 +1,15 @@
+# Opt-in local database mode; base compose.yaml remains health-only.
+services:
+  api:
+    environment:
+      DATABASE_URL: postgres://kami_api:kami-local-only@supabase_db_kami-split:5432/postgres?sslmode=disable
+      DATABASE_MAX_CONNS: '5'
+      DATABASE_TIMEOUT: 2s
+    networks:
+      - default
+      - supabase
+
+networks:
+  supabase:
+    external: true
+    name: supabase_network_kami-split
