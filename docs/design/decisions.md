@@ -1,5 +1,7 @@
 # Design decisions
 
+Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
+
 | Decision                               | Rationale and consequence                                                                                                                      |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Seeded-data implementation first       | Exercise real UI/domain outcomes now; isolate persistence behind async access. Session mutations reset on reload. No production privacy claim. |

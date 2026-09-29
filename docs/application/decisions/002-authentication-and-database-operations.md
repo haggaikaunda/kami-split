@@ -13,6 +13,8 @@ The API remains a health-only scaffold. This document records decisions, not imp
 
 [ADR-003](003-bootstrap-groups-and-invitations.md) resolves bootstrap and further invitation lifecycle/token policies while preserving all other Auth/security policies here. Accepted design remains distinct from implementation.
 
+[ADR-004](004-group-balances-membership-and-recovery.md) records ordinary-member/full-history readmission and same-attempt financial recovery, retaining current authorization on retries and receipt reads. It does not change the session/JWKS policy, decide account deletion/retention, or combine financial durability with email delivery semantics.
+
 ## O01: Sign-in and invitations
 
 Use email/password sign-in with Supabase Auth. Signup is invite-only; disable public self-registration. Use Supabase Auth for verification and Resend for email delivery, including application invitations. Supabase verification links and application invitation links have separate lifecycles; configuring the same delivery provider does not combine their tokens.

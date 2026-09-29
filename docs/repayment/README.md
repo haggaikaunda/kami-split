@@ -4,6 +4,8 @@
 
 The household-only flow below is preserved seeded-preview behavior. Under [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment), every future settlement belongs to exactly one group, including a trip group. A dashboard shortcut opens that original group’s repayment form without a Household copy, cross-group netting or an overall debt to settle. Group-specific shortcut design is #86; settlement implementation remains outside #73. The preview’s lack of trip assignment is not a production prohibition on settling trip-group obligations.
 
+[ADR-004 C1](../application/decisions/004-group-balances-membership-and-recovery.md#c1-automatic-simplification-within-one-group-and-currency) automatically simplifies the production plan within one group/currency: A owing B 20 and B owing C 20 USD becomes A owing C 20. Record one actual A → C transfer in that group, with no fake intermediary payments. Original expense history stays intact and is not another debt list. No money is moved by recording it. A same-group cycle with every individual net zero requires no repayment; a mere sum of zero does not prove settlement. Matching and later repayment implementation remain gated; the form below still uses the preview’s original direct debts.
+
 ## Seeded preview
 
 Issue #23 implements S01/N06 through the replaceable session data port. The form records money already repaid; no money moves, no payment method is collected, and no repayment is assigned to a trip.

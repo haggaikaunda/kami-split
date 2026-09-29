@@ -15,3 +15,5 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 [Authentication and database operations](decisions/002-authentication-and-database-operations.md) records O01–O07 outcomes and remaining implementation choices.
 
 [Bootstrap, group boundaries and invitation lifecycle](decisions/003-bootstrap-groups-and-invitations.md) records the #77 baseline, preview differences and separately owned follow-up decisions. Transfer, full trips and consolidated reporting remain deferred.
+
+[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). Algorithm, schema and contract work remain gated; the preview does not yet simplify debts.

@@ -19,6 +19,8 @@ An expense mutation must atomically preserve the expense state, its audit histor
 
 Use integer minor units, explicit currency, checked arithmetic, and a documented wire range. Amounts paid and owed each reconcile to the expense total; net positions sum to zero per currency; settlements change payer and recipient positions equally and oppositely. Retain auditable history for edits and deletions.
 
+[ADR-004 C3](decisions/004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) requires a key known by the client before the initial write. Persist allocations and a recoverable result with the expense and audit atomically and durably; concurrent same-key/same-canonical-input retries and restart recovery have one effect. Server-derived actor, explicit group and operation bind recovery under the reviewed scope, with current authorization on retries and receipt reads. Changed-input reuse cannot create/overwrite the original expense. Recover the immutable original outcome, then read fresh authorized balances as needed; neither missing receipt nor cached balance proves current state. #76 retains the concrete protocol, mismatch, key retention and transport choices.
+
 ## Contract and reads
 
 The SDL is the cross-language contract for gqlgen and Relay. Keep generated transport types at the boundary where practical. Pin generators and verify reproducibility; do not manually patch generated output.
@@ -26,6 +28,8 @@ The SDL is the cross-language contract for gqlgen and Relay. Keep generated tran
 Define stable identity and cursor pagination for Relay. Compute complete balances and spending summaries on the server rather than deriving them from a client's partially loaded expense list. Batch related reads and enforce bounded page sizes and query costs. Authorize all access paths, including node lookup and nested fields.
 
 Map expected validation, access, version-conflict, and duplicate-operation outcomes consistently. Do not expose SQL, credentials, or private data in client errors or logs. Request cancellation propagates to database and external I/O.
+
+[ADR-004 C1/C2](decisions/004-group-balances-membership-and-recovery.md#c1-automatic-simplification-within-one-group-and-currency) requires automatic repayment simplification from complete individual group/currency nets, preserving historical attribution and inactive-member financial contributions. Original pairwise relationships are not additional debts. Every individual net must be zero to call a group settled. The target’s zero net is the departure/removal financial condition; ownership, account and authorization checks remain separate, and the eventual balance check/transition must be atomic against competing writes. Matching, representations and concrete concurrency protocol remain reviewed design.
 
 ## Future integrations
 
