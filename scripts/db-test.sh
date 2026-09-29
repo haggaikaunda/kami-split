@@ -27,7 +27,6 @@ for sock, old in zip(sockets, [55421, 55422, 55420, 55424]):
     text = text.replace(str(old), str(sock.getsockname()[1]))
 open(path, 'w').write(text)
 PY
-scripts/db-network.sh "$project"
 scripts/db-tool.sh supabase start --workdir "$stage"
 container="supabase_db_$project"
 port=$(python3 - "$stage/supabase/config.toml" <<'PY'

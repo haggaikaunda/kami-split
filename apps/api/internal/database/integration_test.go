@@ -69,6 +69,11 @@ func TestDatabaseIntegration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				rollbackCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				_ = tx.Rollback(rollbackCtx)
+			}()
 			if _, err = tx.Exec(ctx, "SET LOCAL ROLE "+role); err != nil {
 				t.Fatal(err)
 			}
@@ -87,10 +92,16 @@ func TestDatabaseIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer conn.Release()
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer func() {
+			rollbackCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = tx.Rollback(rollbackCtx)
+		}()
 		if _, err = tx.Exec(ctx, `SET LOCAL search_path = app; CREATE TEMP VIEW fixture AS SELECT * FROM app.foundation_fixture`); err != nil {
 			t.Fatal(err)
 		}

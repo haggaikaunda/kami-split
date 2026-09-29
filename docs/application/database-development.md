@@ -26,10 +26,13 @@ make dev-down
 
 `dev-up` waits for Supabase's health checks, applies initial migrations/seeds, then
 builds and waits for the API. It does not silently stop a service when a port is
-occupied. The startup wrapper creates the CLI-owned bridge with Docker’s loopback default
-host-binding option and rejects a pre-existing incompatible network. Supabase
-project `kami-split` uses host loopback ports 55421 (Auth/Data
-API), 55422 (Postgres), 55420 (shadow), and 55424 (local mail). Auth signup is
+occupied. Supabase project `kami-split` publishes host ports 55421 (Auth/Data API), 55422
+(Postgres), 55420 (shadow), and 55424 (local mail). **The pinned CLI publishes
+Supabase ports on all host interfaces**, including on Docker Desktop; this is
+not a loopback-only security boundary. Use a trusted local development machine
+and network or a host firewall that blocks external access to these ports.
+The synthetic credentials are public development values. Never run this stack
+on an internet-exposed host. Compose's Go API binds only host loopback. Auth signup is
 disabled; email stays local. The private `app` schema is not Data API exposed.
 
 Go in Compose joins `supabase_network_kami-split` and connects directly to

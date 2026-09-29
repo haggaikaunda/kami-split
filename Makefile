@@ -34,7 +34,6 @@ db-tools:
 	./scripts/install-db-tools.sh
 
 db-start:
-	./scripts/db-network.sh kami-split
 	./scripts/db-tool.sh supabase start
 
 db-stop:
