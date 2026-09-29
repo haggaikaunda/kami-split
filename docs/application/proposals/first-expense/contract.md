@@ -48,7 +48,8 @@ Date accepts only valid Gregorian `YYYY-MM-DD`, years 0001–9999, no timezone.
 No future-date ban is invented; this matches the form's date requirement.
 DateTime output is UTC RFC3339 with six fractional digits and Z. Revision is a
 nonnegative canonical decimal string bounded to int64 max, not GraphQL Int;
-revision exhaustion rejects a write. OperationKey is lowercase canonical UUID v4
+It tracks only the group financial projection per S4, not response metadata;
+revision exhaustion rejects a financial write. OperationKey is lowercase canonical UUID v4
 with valid variant, CSPRNG `crypto.randomUUID()` before first submission.
 
 Description is trimmed of leading/trailing ASCII space/tab/CR/LF, 1–120 Unicode
@@ -91,6 +92,9 @@ createdAt and expense UUID. Key ID prefix selects a configured signing key;
 compare MAC constant-time before interpreting fields, cap token at 2048 bytes.
 No credentials in cursor. First page records current group financial revision R;
 subsequent pages enforce expense creation revision <= R and strict tuple `< last`.
+The anchor bounds financial inclusion only: it does not freeze profile labels,
+membership/account state or authorization across pages. Each page reauthorizes
+and can return updated non-financial fields at the same financial revision.
 This is a bounded append-only traversal: an expense committed later, including a
 backdated one, is omitted until restart. No open DB snapshot spans requests.
 Only create exists initially; future edit/delete requires revisiting the cursor
@@ -112,7 +116,12 @@ is explicit, not a snapshot guarantee across requests. Concurrent create committ
 after the read is absent from both fresh projections until next read. Current
 reads can change after any response. No mutation returns a supposedly current
 balance; success/recovery causes #83 to refetch group balances and reset the
-expense connection. A failed refresh shows unavailable/stale UI, never settled.
+expense connection. Balance revision identifies the financial projection read;
+it is not a cache validator for member labels, eligibility or access. After
+recovery, even an equal revision requires the normal authorized refresh; never
+skip it or retain private data because the revision matches. Non-financial
+changes use ordinary refetch/session invalidation rather than a new global
+version counter. A failed refresh shows unavailable/stale UI, never settled.
 
 ## A3: Errors and disclosure
 
@@ -174,9 +183,10 @@ access. Helpers therefore need a receipt-lookup phase with actor/group locks
 before locking all new-write participants; release and restart in S3 lock order
 when new work is required, then check receipt again. Never acquire participant
 user locks after group lock. Receipt contains immutable original IDs, financial
-values, description/date/category/note, audit commit timestamp and revision; no
+values, description/date/category/note, audit commit timestamp and the financial revision produced by that operation; no
 current profile objects or balance snapshot. Nested receipt IDs are values,
-not an authorization shortcut. Current Expense and balances come from separately
+not an authorization shortcut. Receipt revision is immutable historical financial
+provenance, never the latest response version. Current Expense and balances come from separately
 authorized reads, and may differ after future authorized edits.
 
 ## A5: Recovery states and proposed retention

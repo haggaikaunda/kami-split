@@ -28,7 +28,7 @@ its atomic recoverable result. P2 remains a gate before affected #82 implementat
 
 | ID                                            | Recommended answer                                                                                                                                                 | Observable consequences / alternative                                                                                                                                                                                                                                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1 — profile disclosure (approved)            | Approve S2 exact fields, current display names for retained historical members, no email/avatar/peer User ID                                                       | People can identify historical payers/participants without a global directory. `canParticipate=false` reveals ineligibility without account-status reason. Anonymization/retention remains separately gated; adding profile fields needs privacy review.                                          |
+| P1 — profile disclosure (approved)            | Approve S2 exact fields, current display names for retained historical members, no email/avatar/peer Viewer ID                                                     | People can identify historical payers/participants without a global directory. `canParticipate=false` reveals ineligibility without account-status reason. Anonymization/retention remains separately gated; adding profile fields needs privacy review.                                          |
 | P2 — financial receipt retention (deferred)   | Approve 90-day full canonical input/receipt, then minimal permanent-with-history key tombstone                                                                     | Recovery remains automatic for 90 days; later attempts require reconciliation and cannot create twice. Tombstones consume storage and retain pseudonymous financial linkage. Shorter retention reduces payload storage but shortens recovery; full deletion needs a new issuance/cutoff protocol. |
 | P3 — client draft/attempt lifetime (approved) | Approve tab-scoped sessionStorage through reload, cleared on logout/account change; lifetime bounded by the eventual approved receipt duration (deferred under P2) | Reload can recover in the same tab; tab close/logout/device loss loses automatic attempt recovery. Financial draft data resides in browser session storage. Memory-only avoids persistent browser draft storage but loses reload recovery; a server inbox would be additional scope.              |
 | P4 — first real UI scope (approved)           | Approve group selection, expense list/create and complete balances/recovery; isolate remaining preview routes                                                      | No simulated activity, trips, edits or settlement controls appear as persisted features; full overview/reporting parity is deferred. Wider UI parity requires additional read contracts and review.                                                                                               |
@@ -58,6 +58,25 @@ with allocations, audit, receipt, overflow and concurrent retry tests together;
 never land a financial write without its safeguards. #83 follows implemented
 fields and #79/#80 onboarding, not a mock claim of the invited-user journey.
 
-A documentation PR may remain draft for owner decisions. Independent reviews and
-Verify must be recorded against the final commit before any eligible merge;
-merging proposed documentation would not alone close #75 or #76.
+## PR adoption and readiness strategy
+
+Recommend the smallest path: merge PR #95 as a **reviewed design/proposal record**
+after final-head Verify, independent testing/review, resolved findings and any
+formal GitHub approvals required by branch protection. Mark it ready once the
+cleanup findings and independent checks are resolved. P2 does not block adopting
+the #75 foundation handoff; splitting these coordinated documents would duplicate
+shared decisions without resolving retention. The decision-maintenance rules
+allow explicit status distinctions; a merged proposal is not blanket acceptance.
+
+At adoption, #75 has a reviewed next slice: the D1–D3 identity/group/membership/
+installation foundation, with the existing real-role, lifecycle, locking and
+migration tests. Keep #75 open until implementation acceptance criteria pass.
+Do not start that implementation in this task. #79 admission grants and hosted
+credential verification remain scoped to their owning implementation/deployment.
+
+Keep #76 open for deferred P2 retention and final contract acceptance; its SDL
+remains a proposal under docs, not the running schema. The 90-day recommendation
+is not accepted. A later explicit decision resolves P2 and the dependent client
+recovery duration before affected financial implementation. Formal GitHub approval
+is separate from agent review evidence and owner approval of P1/P3/P4; never
+bypass protection or close either issue merely by merging this documentation.

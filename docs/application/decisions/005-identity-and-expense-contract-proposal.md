@@ -1,6 +1,6 @@
 # ADR-005: Coordinated identity and expense contract proposal
 
-- Status: **Proposed**, not accepted or implemented.
+- Status: **Design/proposal record**; P1/P3/P4 owner-approved, engineering handoff reviewed, #76 final acceptance/P2 deferred. Not implemented.
 - Recorded: 2026-09-29.
 - Scope: Design-only engineering handoff for #75/#76.
 - Relationship: Elaborates ADR-001–004 without superseding accepted policy.
@@ -28,3 +28,17 @@ of this handoff. #76 remains open pending contract/owner approval gates. Running
 `packages/schema` remains health-only; #82 promotes only approved implemented
 fields. Future acceptance should preserve this proposal's history and record
 which decisions were accepted or amended, with issue/PR authority.
+
+## Adoption without closing implementation issues
+
+Following [the owner follow-up review](https://github.com/haggaikaunda/kami-split/pull/95#pullrequestreview-5359720753),
+recommend adopting this coordinated record in PR #95 after its normal merge
+gates. This makes the reviewed #75 foundation available for its next separate
+implementation slice without waiting for #76's P2 receipt-retention decision.
+It does not accept the 90-day recommendation, publish business SDL, satisfy
+implementation tests, or close #75/#76. See the [explicit readiness strategy](../proposals/first-expense/gates.md#pr-adoption-and-readiness-strategy).
+
+The tested Auth-reference DDL path remains local proposal/evidence: #75 must
+verify final ownership/ACLs and full migration behavior, and deployment must
+verify its actual hosted credentials. Adoption does not make that experiment a
+universal hosted guarantee. No #75 implementation is authorized by this follow-up.

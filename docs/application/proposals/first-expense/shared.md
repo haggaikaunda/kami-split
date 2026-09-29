@@ -9,20 +9,28 @@ This is the shared mapping for both proposals; do not duplicate it in implementa
 | Identity              | Internal representation                                                     | Public use                                                               |
 | --------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | Verified Auth subject | Supabase `auth.users.id`, UUID; configured issuer fixed by #78              | Never exposed                                                            |
-| Application identity  | Random UUID v4 `app.users.id`, stable through disabled access/Auth deletion | `User` ID only for viewer; no global directory                           |
+| Application identity  | Random UUID v4 `app.users.id`, stable through disabled access/Auth deletion | `Viewer` ID for self only; no global directory                           |
 | Group identity        | Random UUID v4                                                              | `Group` ID; explicit on every financial operation                        |
 | Membership identity   | Random UUID v4, permanent unique `(group_id,user_id)`                       | `Membership` ID for payer, participant, creator, balance and attribution |
 | Expense identity      | Random UUID v4, assigned server-side by #82                                 | `Expense` ID                                                             |
 | Attempt identity      | Client CSPRNG UUID v4, generated before submit                              | `OperationKey`, bound to actor/group/CREATE_EXPENSE                      |
 
 Public IDs are ASCII `ks1:<Type>:<lowercase canonical UUID>` with exact types
-`User`, `Group`, `Membership`, `Expense`. No base64: readable, unambiguous,
+`Viewer`, `Group`, `Membership`, `Expense`. No base64: readable, unambiguous,
 versioned, easy cross-language validation; opacity means callers cannot infer
 rights, not secrecy. Reject wrong type/version/case/UUID and lengths over 64.
 GraphQL ID numeric coercion is rejected by application ID validation. IDs do not
 contain email or Auth subjects. Membership IDs prevent accidental cross-group
 user references. Every lookup, including nested fields and `node`, authorizes
-current enabled actor and active membership. `User` node resolves only self.
+current enabled actor. Group-scoped nodes additionally require active membership.
+`Viewer` is both the public ID type and GraphQL `__typename`: its UUID maps to
+`app.users.id`, and `viewer.id` equals the ID returned by `node(id: viewer.id)`.
+An enabled provisioned caller can resolve only their own Viewer node, including
+when they have no groups. Another user's Viewer ID returns null, regardless of
+shared membership; no peer user IDs or directory are exposed. Disabled or
+unprovisioned callers receive their ViewerAccess state through `viewer` and no
+Viewer node. The old `ks1:User:...` spelling is invalid, not an alias; this is an
+unpublished proposal, so there is no deployed-ID migration.
 Unknown and unauthorized valid IDs both yield safe NOT_FOUND/null-node outcomes.
 
 Sort **full canonical Membership public IDs ascending ASCII code-unit order**
@@ -35,11 +43,11 @@ allocates 334,333,333 regardless of selection order.
 
 ## S2: Disclosure and historical attribution
 
-Propose exactly these group-member fields: public membership ID, displayName,
+Owner-approved P1 discloses exactly these group-member fields: public membership ID, displayName,
 ACTIVE/INACTIVE status, OWNER/MEMBER role, and `canParticipate` (active membership
 and enabled linked account). No peer user ID, email, Auth ID, account status,
 join/leave dates, avatar, phone or other-group membership. Viewer alone receives
-its stable User ID, displayName, and `canCreateGroups` (informational only).
+its stable Viewer ID, displayName, and `canCreateGroups` (informational only).
 Group provides ID/name/USD currency/viewerMembership and complete member list.
 Members, including inactive historical members, are visible only to current
 active enabled members; readmission restores full history. Financial records
@@ -102,8 +110,15 @@ received. #82's initial data has expenses only; it must not invent repayments.
 Compute across the entire single group, including inactive contributions, with
 no expense-list filters. Settled means every individual net is zero; net sum
 zero is merely conservation. A failed/incomplete aggregate returns an error,
-never zero. Snapshot revision is an opaque decimal counter incremented under
-group lock on financial changes; it identifies a projection, not a cache lifetime.
+never zero. `Revision` is a per-group **financial/ledger projection revision**:
+a nonnegative decimal counter incremented atomically under the group lock on each
+committed financial change. It is not an ETag, entity version, authorization token,
+or version of the entire GraphQL response. Profile labels, membership/account
+state and other non-financial metadata can change without incrementing it.
+Equal financial revisions therefore do not prove equal responses or continuing
+access. Reauthorize every request; clients must refresh metadata and access state
+independently rather than retain them merely because Revision is unchanged.
+No global entity-versioning system is proposed.
 
 Simplification: sort debtors and creditors by S1 ID, repeatedly emit the minimum
 of current debt and credit, subtract exactly and advance exhausted entries.

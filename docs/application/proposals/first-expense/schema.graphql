@@ -3,6 +3,7 @@ scalar MinorUnits
 scalar Date
 scalar DateTime
 scalar OperationKey
+"Per-group financial/ledger projection counter; not a response ETag or metadata version."
 scalar Revision
 
 interface Node {
@@ -60,6 +61,7 @@ type Mutation {
   createExpense(input: CreateExpenseInput!): CreateExpenseResult!
 }
 union ViewerResult = Viewer | ViewerAccess | Problem
+"Self-only application identity. IDs use ks1:Viewer:<UUID>; node never exposes a peer Viewer."
 type Viewer implements Node {
   id: ID!
   displayName: String!

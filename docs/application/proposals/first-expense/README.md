@@ -1,6 +1,7 @@
 # Coordinated identity and expense contract proposal
 
-Status: **proposed engineering design, not accepted or implemented**. Design-only
+Status: **reviewed design/proposal record, not implemented**; P1/P3/P4 approved,
+#76 final contract acceptance and P2 retention still deferred. Design-only
 handoff for [#75](https://github.com/haggaikaunda/kami-split/issues/75) and
 [#76](https://github.com/haggaikaunda/kami-split/issues/76). No production SQL,
 running SDL, resolvers, Auth, invitation service or Relay changes belong here.
@@ -57,3 +58,7 @@ choice and final contract approval are recorded. P1 profile fields, P3 client
 storage direction and P4 first UI scope were approved on 2026-09-29; see the
 [decision sheet](gates.md). Merge of documentation alone
 must not be interpreted as accepting every proposed choice.
+
+[Adoption strategy](gates.md#pr-adoption-and-readiness-strategy): keep one PR and
+merge the reviewed record only through normal gates. Deferred #76 retention does
+not block the separate #75 foundation handoff or turn proposal SDL into runtime code.

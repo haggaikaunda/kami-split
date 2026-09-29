@@ -86,3 +86,22 @@ grants. Insert and disable/delete FK behavior still worked after transfer while
 migrator Auth USAGE/REFERENCES remained false. #75 must repeat this in the complete
 migration/desired-state and permission suite. Hosted role availability remains a
 deployment check; no hosted environment was accessed.
+
+## Follow-up review acceptance scenarios
+
+[Review 5359720753](https://github.com/haggaikaunda/kami-split/pull/95#pullrequestreview-5359720753)
+requires consistent Viewer IDs, current decision/issue statuses and narrow revision
+meaning. Additional downstream scenarios (not implemented runtime claims):
+
+- `viewer.id` and self `node` resolve the same `ks1:Viewer:<UUID>` with typename
+  Viewer, including an enabled user with no groups. Peer Viewer lookup is null;
+  disabled/unprovisioned access yields no Viewer node; `ks1:User:` rejects.
+- Rename a profile or change membership/account state without a financial write:
+  revision stays equal while metadata/access changes. Reauthorize/refetch; never
+  reuse access or treat equal revisions as identical GraphQL responses.
+- Commit an expense: increment financial revision under group lock, retain that
+  historical value in its receipt, and fetch current balances after recovery.
+  Cursor anchors bound expense inclusion, not future metadata or access.
+
+The follow-up preserves local Auth-FK evidence and hosted/final-ACL limitations.
+Final-head check/review evidence and live issue synchronization are recorded on PR #95.
