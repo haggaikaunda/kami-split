@@ -7,7 +7,7 @@
 
 ## Follow-up decisions
 
-[ADR-002](002-authentication-and-database-operations.md) refines authentication, identity, RLS, local tooling, migration deployment, and backup policies. References below to open details reflect this original decision; use the updated [register](open-decisions.md) for current status.
+[ADR-002](002-authentication-and-database-operations.md) refines authentication, identity, RLS, local tooling, migration deployment, and backup policies. [ADR-003](003-bootstrap-groups-and-invitations.md) records administrative bootstrap, independent group/settlement boundaries, deferred ownership transfer and invitation lifecycle/token protection. References below to open details reflect this original decision; use the updated [register](open-decisions.md) for current status.
 
 ## Context and current state
 

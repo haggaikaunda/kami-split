@@ -9,13 +9,17 @@
 
 The API remains a health-only scaffold. This document records decisions, not implemented Auth, database, email, or deployment functionality. No resources or paid services are provisioned. See the [decision register](open-decisions.md) for remaining choices.
 
+## Follow-up decisions
+
+[ADR-003](003-bootstrap-groups-and-invitations.md) resolves bootstrap and further invitation lifecycle/token policies while preserving all other Auth/security policies here. Accepted design remains distinct from implementation.
+
 ## O01: Sign-in and invitations
 
 Use email/password sign-in with Supabase Auth. Signup is invite-only; disable public self-registration. Use Supabase Auth for verification and Resend for email delivery, including application invitations. Supabase verification links and application invitation links have separate lifecycles; configuring the same delivery provider does not combine their tokens.
 
-An application invitation expires seven days after issuance. Resend reuses the same invitation and token/link, extending expiry to seven days from the resend. It does not create duplicate invitations or invalidate older copies of that link. Accepted or revoked invitations cannot be revived by resend. Revocation invalidates the invitation immediately. Specify expired-invitation resend behavior and secure reusable-token storage during invitation implementation (O10).
+An application invitation expires seven days after issuance. Resend reuses the same invitation and token/link, extending expiry to seven days from the resend. It does not create duplicate invitations or invalidate older copies of that link. Accepted or revoked invitations cannot be revived by resend. Revocation invalidates the invitation immediately. [ADR-003 B5/B6](003-bootstrap-groups-and-invitations.md#b5-invitation-lifecycle-o10) now specifies expired outstanding resend, duplicate/race outcomes and reusable-token protection; O10 retains the remaining design details.
 
-Acceptance requires the matching current verified email and consumes the invitation atomically. Repeated acceptance must not create duplicate membership. Existing users join with their existing account. Account signup eligibility and group admission are separate: revoking a group invitation does not delete an existing account. First-owner/bootstrap issuance remains O09.
+Acceptance requires the matching current verified email and consumes the invitation atomically. Repeated acceptance must not create duplicate membership. Existing users join with their existing account. Account signup eligibility and group admission are separate: revoking a group invitation does not delete an existing account. First-account administrative bootstrap is the explicit exception described in [ADR-003 B1](003-bootstrap-groups-and-invitations.md#b1-explicit-administrative-bootstrap-o09); ordinary provisioning remains invite-based.
 
 Rationale: simple, predictable invitation behavior without treating delivery-provider defaults as application policy. Consequence: older copies of a link share the extended expiry; verification and revocation remain necessary.
 
@@ -44,7 +48,9 @@ Rationale: local verification keeps requests independent of Auth service round t
 
 Give each application user a stable ID with a unique link to the Supabase Auth user ID. Memberships and financial history reference the application identity, not email. Never automatically merge/link users because emails match.
 
-After verified authentication and a valid invitation, Go creates the application user and accepts membership transactionally. Auth account creation is outside that application transaction: an Auth account left by incomplete provisioning grants no group access, and retry must safely complete provisioning without duplicate users/memberships.
+For ordinary provisioning, after verified authentication and a valid invitation, Go creates the application user and accepts membership transactionally. Auth account creation is outside that application transaction: an Auth account left by incomplete provisioning grants no group access, and retry must safely complete provisioning without duplicate users/memberships.
+
+The designated first account instead uses supported administrative Auth creation and normal emailed recovery, with verification still required, followed by an operator-only application transaction as specified in ADR-003. This exception does not enable public signup or a bootstrap invitation.
 
 Supabase handles verified email changes; memberships remain linked to identity. Pending invitations require the current verified matching email and are not automatically retargeted by an email change.
 

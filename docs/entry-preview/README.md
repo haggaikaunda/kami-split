@@ -1,5 +1,11 @@
 # Simulated entry
 
+## Production onboarding boundary
+
+This page records the simulated entry UX. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b1-explicit-administrative-bootstrap-o09) approves an operator-created first Auth account and empty USD Household with ordinary emailed password recovery and verification required. There is no production first-group setup screen or bootstrap invitation. Ordinary invitation onboarding and recovery are separately implemented through #79/#80; bootstrap is #81. This decision does not claim those flows are delivered.
+
+## Seeded preview
+
 Issue #28 provides a deterministic entry rehearsal through `DataPort.entry`. Email input is validated transiently and discarded after requesting a preview link; no credentials, token, message, network delivery or persistent storage is created. These tests are not server-authentication coverage.
 
 Named scenarios cover existing membership, first household, invitation, used/expired/revoked links, wrong identity and expired session. Entry errors and declined invitations deny financial reads, expense detail, commands and operation lookup. Successful existing-member entry retains the active actor and revalidates the adapter. Invitation acceptance activates the pending identity displayed in the preview (or creates the deterministic sample invitee when using the default scenario) and changes actor only once; repeated acceptance does not duplicate membership. First-time entry keeps financial access denied until the implemented [household setup](../household/README.md) creates and selects its distinct empty household.

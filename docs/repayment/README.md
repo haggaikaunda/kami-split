@@ -1,5 +1,11 @@
 # Repayment recording
 
+## Accepted production direction
+
+The household-only flow below is preserved seeded-preview behavior. Under [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment), every future settlement belongs to exactly one group, including a trip group. A dashboard shortcut opens that original group’s repayment form without a Household copy, cross-group netting or an overall debt to settle. Group-specific shortcut design is #86; settlement implementation remains outside #73. The preview’s lack of trip assignment is not a production prohibition on settling trip-group obligations.
+
+## Seeded preview
+
 Issue #23 implements S01/N06 through the replaceable session data port. The form records money already repaid; no money moves, no payment method is collected, and no repayment is assigned to a trip.
 
 For two active members, the form defaults to the outstanding direct debt and its named sender/recipient. A settled pair has no invented amount. Groups require explicit members. Integer minor units drive before/after previews; an opposite-direction balance requires acknowledgment. Changing fields resets acknowledgment, and a changed confirmed balance invalidates a previous acknowledgment.

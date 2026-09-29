@@ -1,5 +1,11 @@
 # Trips list and creation
 
+## Accepted production direction
+
+The implementation below is the household-scoped seeded preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b2-groups-are-independent-access-and-financial-boundaries) specifies a trip as an independently authorized group with trip classification and structured metadata; ordinary non-trip groups use the same foundation. Trip invitations grant no household access, and each expense/settlement belongs to exactly one group. Full group/trip design is deferred to #85, outside #73; embedded `Trip` records are not a production schema.
+
+## Seeded preview
+
 Issue #25 implements T01 and the create-to-empty-trip part of N05. Cards derive totals and counts from current shared expense IDs through `spending`; repayments and deleted expenses do not contribute. Dates always include a year. Status is computed from the injected snapshot clock: start/end days are In progress, dates before start Upcoming, dates after end Past. Only All includes in-progress trips.
 
 The create form validates name, optional destination, valid dates and end >= start, and stores dirty input in the shared session draft. The generic session command provider handles one operation, uncertainty, actor changes and reset leases. A confirmed create opens `/trips/:id`, where the saved name/dates, zero expenses and a working Add expense action are available immediately. A request completing after users leave does not interrupt their current route. New trips use the abstract cover.

@@ -21,9 +21,15 @@ USD is the only enabled UI currency. Domain records carry currency; there is no 
 
 There is no database, durable cross-device storage, real identity provider, delivered email, protected invitation token, server-enforced authorization or payment processing. Adapter guards test the intended rules in a simulation; they do not secure private data. This preview should be described as a demo, not a production private service.
 
-Production work requires separately approved issues for authenticated server transport, per-household authorization, durable atomic writes, version/idempotency guarantees, protected invitations and immutable audit storage. The [data-access design](design/data-access.md) describes this future boundary; completing the UX did not complete those release gates.
+Production work requires separately approved issues for authenticated server transport, per-group authorization, durable atomic writes, version/idempotency guarantees, protected invitations and immutable audit storage. The [data-access design](design/data-access.md) describes this future boundary; completing the UX did not complete those release gates.
 
 Budgets, bank synchronization, receipt scanning, recurring expenses, percentage splits, currency conversion, debt simplification, itineraries and social features are outside the implemented phase. Trip cover upload/edit and repayment editing/deletion are also excluded.
+
+## Accepted production direction
+
+[ADR-003](application/decisions/003-bootstrap-groups-and-invitations.md) records the approved bootstrap, group and invitation baseline in [#77](https://github.com/haggaikaunda/kami-split/issues/77). Production uses operator-only first-account/empty Household bootstrap, separate verified-email invitations, and independent groups for household, trips and ordinary groups. A trip invitation grants no household access; every expense and settlement belongs to one group. The designated stable application identity alone may create groups for now. These are accepted policies, not implemented features.
+
+The future household dashboard includes the household plus groups where both partners are active, retaining source-group obligations and settlement targets. Exact spending/reporting formulas remain undecided. Ownership transfer is accepted but low-priority deferred (#84); full group/trip design (#85), dashboard design (#86) and settlement work are outside the first authenticated expense milestone (#73). Historical preview descriptions above remain accurate for that phase, including household-scoped trip expenses and simulated setup/roles.
 
 ## Verification and remaining limits
 
