@@ -74,7 +74,9 @@ A separate tester extracted D1's table sketches into a disposable, port-unpublis
 Supabase PostgreSQL 17.6.1.171 container using the image's actual managed Auth
 schema. Valid deferred bootstrap, ownerless/cross-group/inactive-owner rejection,
 permanent membership uniqueness, enabled-Auth-delete rejection, disable/delete
-identity retention, disabled relink denial and reserved-subject uniqueness passed.
+identity retention, re-enable-without-live-link rejection and reserved-subject
+uniqueness passed. Relink prevention still needs the immutable-column triggers
+and admission tests specified for implementation.
 These probe the proposed constraints, not implemented migrations or services.
 
 The provider-role probe found ordinary postgres cannot grant Auth reference
