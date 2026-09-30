@@ -10,3 +10,7 @@ Clarify these documents through reviewed PRs as we learn. Preserve stable IDs. F
 records the accepted #75/#76 design and P1–P4 decisions, including lifetime-of-
 financial-history operation recovery records. Uploaded receipt attachments remain
 deferred. Design acceptance does not claim implementation; delivery gates still apply.
+
+[ADR-006: Coordinated invitation and onboarding design](006-invitation-onboarding-design.md)
+records #79/#80 owner-approved follow-ups, proposed technical protocols and the
+remaining owner choices. Neither full feature issue is implementation-ready yet.

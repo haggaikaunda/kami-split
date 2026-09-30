@@ -74,3 +74,18 @@ O10's earlier wording must be read with the newer owner-approved
 and [immediate first-time admission](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886876182)
 comments. #79/#80 own their complete reviewed reconciliation. Former-member
 shared-link readmission is still open; targeted-only is not an accepted rule.
+
+## O01/O02/O10: invitation and onboarding reconciliation
+
+[ADR-006](006-invitation-onboarding-design.md) and its
+[gate matrix](../proposals/invitations/README.md) reconcile newer #79/#80 comments:
+email comparison, committed-state-versus-delivery behavior, valid-link two-field
+preview, reusable owner-distributed shared links and immediate first-time joining
+are owner-approved. Do not treat them as open product choices because older rows
+or issue bodies predate the comments. Shared joins do not globally consume links.
+
+Former-member shared-link authorization, link controls/transfer expectations,
+invitation retention, session settings and delivery placement remain explicit
+owner choices I1–I5. Targeted-only readmission is not approved. Engineering
+recommendations, including bounded external current-email evidence and its race
+limit, are under review. #78 blocks affected implementation, not this design work.
