@@ -22,6 +22,16 @@ type CreateExpenseResult interface {
 	IsCreateExpenseResult()
 }
 
+// Durable success/rejection, conflicting intent, or safe access/unavailable problem; transport loss remains unknown.
+type CreateGroupResult interface {
+	IsCreateGroupResult()
+}
+
+// Original outcome or not-started observation under current authorization; refresh Group separately.
+type GroupCreationOperationResult interface {
+	IsGroupCreationOperationResult()
+}
+
 // An authorized complete group projection or safe problem.
 type GroupResult interface {
 	IsGroupResult()
@@ -98,6 +108,18 @@ type CreateExpenseInput struct {
 	Split SplitMode `json:"split"`
 	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
 	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+}
+
+// Identity-scoped frozen creation intent; actor and USD currency are server supplied.
+type CreateGroupInput struct {
+	// Client-generated key scoped to the verified creator and CREATE_GROUP; retain through uncertainty.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Trim ASCII space/tab/CR/LF; require 1–120 Unicode scalars, without NUL or surrogate code points.
+	Name string `json:"name"`
+	// Explicit classification; no inferred household or inherited membership.
+	Kind GroupKind `json:"kind"`
+	// Required for TRIP, absent or null for ORDINARY.
+	Trip *GroupTripInput `json:"trip,omitempty"`
 }
 
 // One selected participant and its nonnegative exact share, including zero.
@@ -229,6 +251,12 @@ type FieldProblem struct {
 
 // Currently authorized group projections; selected members, expense page and complete balances share one statement snapshot.
 type Group struct {
+	// Derived classification; absence of trip metadata means ORDINARY.
+	Kind GroupKind `json:"kind"`
+	// Trip metadata only for this currently accessible group; ordinary groups return null.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this authorized group is the designated household; never reveals another group ID.
+	IsHousehold bool `json:"isHousehold"`
 	// Stable typed public ID; possession does not authorize access.
 	ID string `json:"id"`
 	// Current authorized group label.
@@ -276,14 +304,84 @@ type GroupBalances struct {
 
 func (GroupBalances) IsBalanceResult() {}
 
+// Immutable original creation identity; current names, metadata and balances require a fresh authorized Group read.
+type GroupCreationCompleted struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Original stable Group ID; current access was checked before disclosure.
+	GroupID string `json:"groupId"`
+	// Original creator Membership ID, regardless of later ownership changes.
+	CreatorMembershipID string `json:"creatorMembershipId"`
+	// Original durable creation timestamp.
+	CreatedAt ledger.DateTime `json:"createdAt"`
+}
+
+func (GroupCreationCompleted) IsCreateGroupResult() {}
+
+func (GroupCreationCompleted) IsGroupCreationOperationResult() {}
+
+// OPERATION_CONFLICT: the key already names different canonical input; the original result is unchanged.
+type GroupCreationConflict struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+}
+
+func (GroupCreationConflict) IsCreateGroupResult() {}
+
+// NOT_STARTED: no committed attempt is visible; an in-flight request may still commit. Retry only identical intent.
+type GroupCreationNotStarted struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+}
+
+func (GroupCreationNotStarted) IsGroupCreationOperationResult() {}
+
+// Durable domain rejection with no group created; correction requires a new key.
+type GroupCreationRejected struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Safe retained validation errors.
+	Fields []*FieldProblem `json:"fields"`
+}
+
+func (GroupCreationRejected) IsCreateGroupResult() {}
+
+func (GroupCreationRejected) IsGroupCreationOperationResult() {}
+
 // One currently accessible group; no cross-group financial aggregation.
 type GroupSummary struct {
+	// Derived classification; absence of trip metadata means ORDINARY.
+	Kind GroupKind `json:"kind"`
+	// Trip metadata only for this currently accessible group; ordinary groups return null.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this authorized group is the designated household; never reveals another group ID.
+	IsHousehold bool `json:"isHousehold"`
 	// Stable typed public ID; possession does not authorize access.
 	ID string `json:"id"`
 	// Current authorized group label.
 	Name string `json:"name"`
 	// USD only; no conversion or cross-currency netting.
 	Currency Currency `json:"currency"`
+}
+
+// Immutable creation metadata; inclusive Gregorian dates, independent of expense dates.
+type GroupTrip struct {
+	// Exact destination content, including whitespace; absent input becomes empty.
+	Destination string `json:"destination"`
+	// Inclusive first travel date.
+	StartDate ledger.Date `json:"startDate"`
+	// Inclusive last travel date, at or after startDate.
+	EndDate ledger.Date `json:"endDate"`
+}
+
+// Trip creation fields; destination is optional, dates are required.
+type GroupTripInput struct {
+	// Absent or null means empty; at most 200 Unicode scalar values, no NUL.
+	Destination *string `json:"destination,omitempty"`
+	// Valid Gregorian YYYY-MM-DD in years 0001 through 9999.
+	StartDate ledger.Date `json:"startDate"`
+	// Valid Gregorian date at or after startDate; equal dates are allowed.
+	EndDate ledger.Date `json:"endDate"`
 }
 
 // Process-level GraphQL availability, not database or financial readiness.
@@ -479,6 +577,10 @@ func (Problem) IsCreateExpenseResult() {}
 
 func (Problem) IsOperationResult() {}
 
+func (Problem) IsCreateGroupResult() {}
+
+func (Problem) IsGroupCreationOperationResult() {}
+
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {
 }
@@ -499,8 +601,10 @@ type Viewer struct {
 	ID string `json:"id"`
 	// Current minimal display label; not an immutable name snapshot.
 	DisplayName string `json:"displayName"`
-	// Informational designated-creator capability; no group-creation mutation is exposed here.
+	// Informational designated-creator capability; creation always rechecks current authority.
 	CanCreateGroups bool `json:"canCreateGroups"`
+	// UTC calendar date sampled once for this response; use for trip status and defaults.
+	Today ledger.Date `json:"today"`
 	// Currently accessible active groups sorted by canonical group ID; never a manufactured bootstrap group.
 	Groups []*GroupSummary `json:"groups"`
 }
@@ -701,6 +805,64 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Classification derived from the optional trip extension; access and ledgers remain group-local.
+type GroupKind string
+
+const (
+	// An ordinary group, including the separately designated household.
+	GroupKindOrdinary GroupKind = "ORDINARY"
+	// A group with travel metadata; dates never restrict financial history.
+	GroupKindTrip GroupKind = "TRIP"
+)
+
+var AllGroupKind = []GroupKind{
+	GroupKindOrdinary,
+	GroupKindTrip,
+}
+
+func (e GroupKind) IsValid() bool {
+	switch e {
+	case GroupKindOrdinary, GroupKindTrip:
+		return true
+	}
+	return false
+}
+
+func (e GroupKind) String() string {
+	return string(e)
+}
+
+func (e *GroupKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = GroupKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid GroupKind", str)
+	}
+	return nil
+}
+
+func (e GroupKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *GroupKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e GroupKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1045,6 +1207,8 @@ func (e OperationState) MarshalJSON() ([]byte, error) {
 type ProblemCode string
 
 const (
+	// Enabled caller lacks current designated group-creation authority.
+	ProblemCodeForbidden ProblemCode = "FORBIDDEN"
 	// Missing or currently unauthorized resource, without distinguishing private existence.
 	ProblemCodeNotFound ProblemCode = "NOT_FOUND"
 	// The requested outcome could not be safely established; never assume an empty ledger.
@@ -1058,6 +1222,7 @@ const (
 )
 
 var AllProblemCode = []ProblemCode{
+	ProblemCodeForbidden,
 	ProblemCodeNotFound,
 	ProblemCodeUnavailable,
 	ProblemCodeInvalidCursor,
@@ -1067,7 +1232,7 @@ var AllProblemCode = []ProblemCode{
 
 func (e ProblemCode) IsValid() bool {
 	switch e {
-	case ProblemCodeNotFound, ProblemCodeUnavailable, ProblemCodeInvalidCursor, ProblemCodeInvalidInput, ProblemCodeAmountOverflow:
+	case ProblemCodeForbidden, ProblemCodeNotFound, ProblemCodeUnavailable, ProblemCodeInvalidCursor, ProblemCodeInvalidInput, ProblemCodeAmountOverflow:
 		return true
 	}
 	return false

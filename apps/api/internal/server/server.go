@@ -20,6 +20,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -130,7 +131,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 	inner := graphqlHandler
 	graphqlHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var once sync.Once
-		ctx := diagnostic.WithReporter(r.Context(), func(operation string) {
+		ctx := diagnostic.WithReporter(graph.WithResponseTime(r.Context(), time.Now()), func(operation string) {
 			once.Do(func() {
 				logger.ErrorContext(r.Context(), "graphql execution failed", "request_id", r.Context().Value(requestIDKey{}), "operation", operation)
 			})

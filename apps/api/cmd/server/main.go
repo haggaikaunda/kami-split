@@ -12,6 +12,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
@@ -103,7 +104,7 @@ func run() int {
 		logger.Error("invalid onboarding configuration")
 		return 1
 	}
-	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(db), Cursors: cursors, Invitations: invitations}})
+	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}})
 	application := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...)
 	if invitations != nil {
 		handler, err := onboarding.NewHandler(invitations, verifier, os.Getenv("ONBOARDING_ORIGIN"), os.Getenv("ONBOARDING_AUTH_ADMIN_KEY"))
