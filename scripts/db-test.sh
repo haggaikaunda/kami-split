@@ -50,6 +50,8 @@ cp supabase/migrations/*.sql "$stage/supabase/migrations/"
 # its complete rows afterwards, proving IDs, ownership and designation survive.
 group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
 mv "$group_migration" "$stage/group-creation.sql"
+repayment_migration="$stage/supabase/migrations/20261005000000_repayments.sql"
+mv "$repayment_migration" "$stage/repayments.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
@@ -57,6 +59,10 @@ mv "$stage/group-creation.sql" "$group_migration"
 mv "$stage/group-metadata-read.sql" "$stage/supabase/migrations/20261004000000_group_metadata_read.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgraded.sql
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/repayment_upgrade.sql
+mv "$stage/repayments.sql" "$repayment_migration"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/repayment_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"

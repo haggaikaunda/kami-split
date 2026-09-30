@@ -42,14 +42,14 @@ func registerExpenseCleanup(t *testing.T, admin *pgx.Conn, id func(int) string, 
 		for i, n := range actorNumbers {
 			actors[i] = id(n)
 		}
-		financialTables := []string{"allocations", "expense_audit", "expense_operations", "expenses"}
+		financialTables := []string{"expense_operations", "repayment_audit", "repayments", "financial_records", "allocations", "expense_audit", "expenses"}
 		for _, table := range financialTables {
 			if _, err = tx.Exec(ctx, "ALTER TABLE app."+table+" NO FORCE ROW LEVEL SECURITY"); err != nil {
 				t.Errorf("cleanup RLS scope: %v", err)
 				return
 			}
 		}
-		for _, table := range []string{"allocations", "expense_audit", "expense_operations", "expenses", "memberships"} {
+		for _, table := range []string{"expense_operations", "repayment_audit", "repayments", "financial_records", "allocations", "expense_audit", "expenses", "memberships"} {
 			if _, err = tx.Exec(ctx, "DELETE FROM app."+table+" WHERE group_id = ANY($1::uuid[])", groups); err != nil {
 				t.Errorf("cleanup %s: %v", table, err)
 				return
