@@ -179,11 +179,13 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Token       string `json:"token"`
-		Email       string `json:"email"`
-		Key         string `json:"key"`
-		State       string `json:"state"`
-		TokenDigest string `json:"tokenDigest"`
+		Token        string `json:"token"`
+		GroupID      string `json:"groupID"`
+		InvitationID string `json:"invitationID"`
+		Email        string `json:"email"`
+		Key          string `json:"key"`
+		State        string `json:"state"`
+		TokenDigest  string `json:"tokenDigest"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192))
 	decoder.DisallowUnknownFields()
@@ -200,6 +202,21 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/onboarding/")
+	if path == "copy-shared" {
+		group, e1 := ledger.ParseID(in.GroupID, "Group")
+		invite, e2 := ledger.ParseID(in.InvitationID, "Invitation")
+		if e1 != nil || e2 != nil {
+			respond(w, 400, map[string]string{"code": "INVALID_INPUT"})
+			return
+		}
+		token, err := service.CopyShared(ctx, uuid.MustParse(group), uuid.MustParse(invite))
+		if err != nil {
+			respond(w, 400, map[string]string{"code": safeOutcome(err)})
+			return
+		}
+		respond(w, 200, map[string]string{"link": h.origin + "/join#" + token.Value()})
+		return
+	}
 	if path == "start" {
 		if in.Token != "" {
 			if _, err := service.Preview(ctx, in.Token); err != nil {

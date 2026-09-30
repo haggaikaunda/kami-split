@@ -28,7 +28,13 @@ export class RequestEpoch {
 }
 
 export type Attempt = {
-  kind: 'CREATE' | 'RESEND' | 'REVOKE' | 'ACCEPT';
+  kind:
+    | 'CREATE'
+    | 'RESEND'
+    | 'REVOKE'
+    | 'ACCEPT'
+    | 'CREATE_SHARED'
+    | 'RENEW_SHARED';
   key: string;
   groupID?: string;
   invitationID?: string;
@@ -41,7 +47,14 @@ export function readAttempt(): Attempt | null {
       sessionStorage.getItem(storageKey) ?? 'null',
     ) as Attempt | null;
     return value &&
-      ['CREATE', 'RESEND', 'REVOKE', 'ACCEPT'].includes(value.kind) &&
+      [
+        'CREATE',
+        'RESEND',
+        'REVOKE',
+        'ACCEPT',
+        'CREATE_SHARED',
+        'RENEW_SHARED',
+      ].includes(value.kind) &&
       /^[0-9a-f-]{36}$/.test(value.key)
       ? value
       : null;

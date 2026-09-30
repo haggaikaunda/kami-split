@@ -208,8 +208,10 @@ type ComplexityRoot struct {
 		AcceptInvitation         func(childComplexity int, token string, key ledger.OperationKey) int
 		CreateExpense            func(childComplexity int, input model.CreateExpenseInput) int
 		CreateGroup              func(childComplexity int, input model.CreateGroupInput) int
+		CreateSharedInvitation   func(childComplexity int, groupID string, key ledger.OperationKey) int
 		CreateTargetedInvitation func(childComplexity int, groupID string, email string, key ledger.OperationKey) int
 		RecordRepayment          func(childComplexity int, input model.RecordRepaymentInput) int
+		RenewSharedInvitation    func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		RetryInvitationDelivery  func(childComplexity int, actionID string) int
 		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
@@ -240,6 +242,7 @@ type ComplexityRoot struct {
 		Delivery  func(childComplexity int) int
 		ExpiresAt func(childComplexity int) int
 		ID        func(childComplexity int) int
+		Kind      func(childComplexity int) int
 		Lifecycle func(childComplexity int) int
 		Recipient func(childComplexity int) int
 	}
@@ -352,6 +355,8 @@ type MutationResolver interface {
 	RevokeInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
 	RetryInvitationDelivery(ctx context.Context, actionID string) (model.InvitationDelivery, error)
 	AcceptInvitation(ctx context.Context, token string, key ledger.OperationKey) (model.InvitationResult, error)
+	CreateSharedInvitation(ctx context.Context, groupID string, key ledger.OperationKey) (model.InvitationResult, error)
+	RenewSharedInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
 type QueryResolver interface {
@@ -1050,6 +1055,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateGroup(childComplexity, args["input"].(model.CreateGroupInput)), true
+	case "Mutation.createSharedInvitation":
+		if e.ComplexityRoot.Mutation.CreateSharedInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createSharedInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateSharedInvitation(childComplexity, args["groupID"].(string), args["key"].(ledger.OperationKey)), true
 	case "Mutation.createTargetedInvitation":
 		if e.ComplexityRoot.Mutation.CreateTargetedInvitation == nil {
 			break
@@ -1072,6 +1088,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordRepayment(childComplexity, args["input"].(model.RecordRepaymentInput)), true
+	case "Mutation.renewSharedInvitation":
+		if e.ComplexityRoot.Mutation.RenewSharedInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_renewSharedInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RenewSharedInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
 	case "Mutation.resendInvitation":
 		if e.ComplexityRoot.Mutation.ResendInvitation == nil {
 			break
@@ -1182,6 +1209,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OwnerInvitation.ID(childComplexity), true
+	case "OwnerInvitation.kind":
+		if e.ComplexityRoot.OwnerInvitation.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.Kind(childComplexity), true
 	case "OwnerInvitation.lifecycle":
 		if e.ComplexityRoot.OwnerInvitation.Lifecycle == nil {
 			break
@@ -2722,6 +2755,14 @@ Original operation kind for actor-bound recovery.
 """
 enum InvitationOperation {
   """
+  Recover creation of a reusable shared link.
+  """
+  CREATE_SHARED
+  """
+  Recover deliberate shared-link renewal.
+  """
+  RENEW_SHARED
+  """
   Recover the original create action.
   """
   CREATE
@@ -2809,6 +2850,10 @@ type InvitationActionResult {
 Current-owner projection; no token or full link.
 """
 type OwnerInvitation {
+  """
+  TARGETED or SHARED; never capability material.
+  """
+  kind: String!
   """
   Typed Invitation ID.
   """
@@ -2984,6 +3029,39 @@ extend type Mutation {
     token: String!
     """
     Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}
+
+extend type Mutation {
+  """
+  Current owner creates or retrieves one shared link, with no email or implicit renewal.
+  """
+  createSharedInvitation(
+    """
+    Owner's group.
+    """
+    groupID: ID!
+    """
+    Original action key retained through uncertain responses.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Current owner explicitly renews the same non-revoked link for seven days; no email.
+  """
+  renewSharedInvitation(
+    """
+    Owner's group.
+    """
+    groupID: ID!
+    """
+    Existing shared invitation.
+    """
+    id: ID!
+    """
+    Original action key retained through uncertain responses.
     """
     key: OperationKey!
   ): InvitationResult!
@@ -3462,6 +3540,8 @@ func (ec *executionContext) childFields_OperationAllocation(ctx context.Context,
 
 func (ec *executionContext) childFields_OwnerInvitation(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "kind":
+		return ec.fieldContext_OwnerInvitation_kind(ctx, field)
 	case "id":
 		return ec.fieldContext_OwnerInvitation_id(ctx, field)
 	case "recipient":
@@ -3788,6 +3868,28 @@ func (ec *executionContext) field_Mutation_createGroup_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createSharedInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createTargetedInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -3829,6 +3931,36 @@ func (ec *executionContext) field_Mutation_recordRepayment_args(ctx context.Cont
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_renewSharedInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg2
 	return args, nil
 }
 
@@ -6935,6 +7067,94 @@ func (ec *executionContext) fieldContext_Mutation_acceptInvitation(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createSharedInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createSharedInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateSharedInvitation(ctx, fc.Args["groupID"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createSharedInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createSharedInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_renewSharedInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_renewSharedInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RenewSharedInvitation(ctx, fc.Args["groupID"].(string), fc.Args["id"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_renewSharedInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_renewSharedInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_recordRepayment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7179,6 +7399,29 @@ func (ec *executionContext) _OperationProgress_state(ctx context.Context, field 
 }
 func (ec *executionContext) fieldContext_OperationProgress_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OperationProgress", field, false, false, errors.New("field of type OperationState does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_kind(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _OwnerInvitation_id(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
@@ -12213,6 +12456,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createSharedInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createSharedInvitation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "renewSharedInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_renewSharedInvitation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "recordRepayment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordRepayment(ctx, field)
@@ -12425,6 +12682,11 @@ func (ec *executionContext) _OwnerInvitation(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("OwnerInvitation")
+		case "kind":
+			out.Values[i] = ec._OwnerInvitation_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "id":
 			out.Values[i] = ec._OwnerInvitation_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

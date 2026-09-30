@@ -479,3 +479,71 @@ it('removes the tab invitation binding and pending action when the session signs
   expect(readAttempt()).toBeNull();
   expect(container.textContent).not.toContain('Private group');
 });
+
+it('copies shared links without renewing or sending and deliberately renews with recovery', async () => {
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  const invite = {
+    id: 'invite',
+    kind: 'SHARED',
+    recipient: null,
+    expiresAt: '2026-01-01T00:00:00Z',
+    lifecycle: 'EXPIRED',
+    actionID: null,
+    delivery: 'NOT_REQUESTED',
+  };
+  respond = async (path, body) => {
+    if (path === '/api/onboarding-config')
+      return { url: 'https://example.test', key: 'public' };
+    if (path === '/api/onboarding/copy-shared')
+      return { link: 'https://example.test/join#sensitive' };
+    const query = String(body.query);
+    if (query.includes('ownerInvitations'))
+      return {
+        data: { ownerInvitations: { items: [invite], nextCursor: null } },
+      };
+    if (query.includes('renewSharedInvitation'))
+      return {
+        data: {
+          renewSharedInvitation: {
+            outcome: 'APPLIED',
+            delivery: 'NOT_REQUESTED',
+          },
+        },
+      };
+    return {
+      data: {
+        viewer: {
+          __typename: 'Viewer',
+          groups: [{ id: 'group', name: 'Group' }],
+        },
+      },
+    };
+  };
+  await render('invitations');
+  await click('Load my groups');
+  await click('Manage invitations for Group');
+  const before = requests.length;
+  await click('Copy shared link');
+  expect(writeText).toHaveBeenCalledWith('https://example.test/join#sensitive');
+  expect(requests.slice(before)).toHaveLength(1);
+  expect(requests.at(-1)?.path).toBe('/api/onboarding/copy-shared');
+  expect(container.textContent).not.toContain('sensitive');
+  expect(sessionStorage.getItem('kami-onboarding-attempt')).toBeNull();
+  expect(button('Resend and renew for seven days')).toBeUndefined();
+  await click('Renew shared link for seven days');
+  expect(
+    requests.some(({ body }) =>
+      String(body.query).includes('renewSharedInvitation'),
+    ),
+  ).toBe(true);
+  expect(
+    requests.some(({ body }) =>
+      String(body.query).includes('retryInvitationDelivery'),
+    ),
+  ).toBe(false);
+  expect(container.textContent).toContain('No invitation email was sent.');
+});
