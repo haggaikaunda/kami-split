@@ -45,8 +45,15 @@ docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c 
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS true"
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d kami_desired -c "SET ROLE kami_migrator; DROP SCHEMA app CASCADE"
 cp supabase/migrations/*.sql "$stage/supabase/migrations/"
-# Upgrade the existing #74 installation, then independently exercise fresh replay.
+# Seed a real #75 group before the additive group-creation migration. Compare
+# its complete rows afterwards, proving IDs, ownership and designation survive.
+group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
+mv "$group_migration" "$stage/group-creation.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
+mv "$stage/group-creation.sql" "$group_migration"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
