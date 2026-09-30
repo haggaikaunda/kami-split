@@ -2,8 +2,9 @@ package invitation
 
 import (
 	"context"
-	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"time"
+
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 )
 
 // RunMaintenance is owned by the server lifecycle. It purges at startup

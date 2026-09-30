@@ -5,9 +5,10 @@ package invitation
 import (
 	"context"
 	"encoding/json"
-	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"testing"
 	"time"
+
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
