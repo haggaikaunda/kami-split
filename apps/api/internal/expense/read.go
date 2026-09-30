@@ -173,7 +173,7 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 		Revision                                      int64
 		Members                                       []Member
 		Records                                       []Record
-		Positions                                     []struct{ MemberID, Paid, Owed string }
+		Positions                                     []struct{ MemberID, Paid, Owed, Sent, Received string }
 		HasPrevious, ValidParticipant                 bool
 	}
 	if err = json.Unmarshal(payload, &data); err != nil {
@@ -198,11 +198,13 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 	for _, p := range data.Positions {
 		paid, ok1 := new(big.Int).SetString(p.Paid, 10)
 		owed, ok2 := new(big.Int).SetString(p.Owed, 10)
-		if !ok1 || !ok2 || !paid.IsInt64() || !owed.IsInt64() || paid.Sign() < 0 || owed.Sign() < 0 {
+		sent, ok3 := new(big.Int).SetString(p.Sent, 10)
+		received, ok4 := new(big.Int).SetString(p.Received, 10)
+		if !ok1 || !ok2 || !ok3 || !ok4 || !paid.IsInt64() || !owed.IsInt64() || !sent.IsInt64() || !received.IsInt64() || paid.Sign() < 0 || owed.Sign() < 0 || sent.Sign() < 0 || received.Sign() < 0 {
 			result.BalanceError = "AMOUNT_OVERFLOW"
 			continue
 		}
-		result.Positions = append(result.Positions, ledger.Position{MemberID: ledger.PublicID("Membership", p.MemberID), Paid: paid.Int64(), Owed: owed.Int64()})
+		result.Positions = append(result.Positions, ledger.Position{MemberID: ledger.PublicID("Membership", p.MemberID), Paid: paid.Int64(), Owed: owed.Int64(), Sent: sent.Int64(), Received: received.Int64()})
 	}
 	if result.BalanceError == "" {
 		result.Balance, err = ledger.Balances(result.Total, result.Positions)
@@ -239,7 +241,7 @@ const projectionSQL = `WITH visible AS (
  SELECT g.id,g.name,g.currency,app.viewer_membership(g.id) AS viewer
  FROM app.groups g WHERE g.id=$1 AND app.can_read_group(g.id)
 ), members AS (SELECT * FROM app.group_members($1)),
-revision AS (SELECT coalesce(max(revision),0) AS n FROM app.expenses WHERE group_id=$1),
+revision AS (SELECT coalesce(max(revision),0) AS n FROM app.financial_records WHERE group_id=$1),
 filtered AS (
  SELECT e.* FROM app.expenses e WHERE e.group_id=$1
  AND e.revision<=coalesce($7::bigint,(SELECT n FROM revision))
@@ -252,7 +254,9 @@ filtered AS (
  ORDER BY effective_date DESC,created_at DESC,id DESC LIMIT $2
 ), positions AS (
  SELECT m.id,coalesce((SELECT sum(e.total_minor) FROM app.expenses e WHERE e.group_id=$1 AND e.payer_id=m.id),0)::text AS paid,
- coalesce((SELECT sum(a.amount_minor) FROM app.allocations a WHERE a.group_id=$1 AND a.participant_id=m.id),0)::text AS owed
+ coalesce((SELECT sum(a.amount_minor) FROM app.allocations a WHERE a.group_id=$1 AND a.participant_id=m.id),0)::text AS owed,
+ coalesce((SELECT sum(r.amount_minor) FROM app.repayments r WHERE r.group_id=$1 AND r.sender_id=m.id),0)::text AS sent,
+ coalesce((SELECT sum(r.amount_minor) FROM app.repayments r WHERE r.group_id=$1 AND r.recipient_id=m.id),0)::text AS received
  FROM members m
 )
 SELECT jsonb_build_object('ID',v.id,'Name',v.name,'Currency',v.currency,'ViewerMembershipID',v.viewer,
@@ -262,6 +266,6 @@ SELECT jsonb_build_object('ID',v.id,'Name',v.name,'Currency',v.currency,'ViewerM
  'ValidParticipant',($6::uuid IS NULL OR EXISTS(SELECT FROM members WHERE id=$6)),
  'HasPrevious',($8::date IS NOT NULL AND EXISTS(SELECT FROM filtered e WHERE (e.effective_date,e.created_at,e.id)>=($8::date,$9::timestamptz,$10::uuid))),
  'Members',coalesce((SELECT jsonb_agg(jsonb_build_object('ID',id,'DisplayName',display_name,'Status',status,'Role',role,'CanParticipate',can_participate) ORDER BY id) FROM members),'[]'::jsonb),
- 'Positions',coalesce((SELECT jsonb_agg(jsonb_build_object('MemberID',id,'Paid',paid,'Owed',owed) ORDER BY id) FROM positions),'[]'::jsonb),
+ 'Positions',coalesce((SELECT jsonb_agg(jsonb_build_object('MemberID',id,'Paid',paid,'Owed',owed,'Sent',sent,'Received',received) ORDER BY id) FROM positions),'[]'::jsonb),
  'Records',coalesce((SELECT jsonb_agg(jsonb_build_object('ExpenseID',e.id,'CreatorMembershipID',e.creator_id,'PayerMembershipID',e.payer_id,'TotalMinor',e.total_minor,'Currency',e.currency,'Description',e.description,'EffectiveDate',to_char(e.effective_date,'YYYY-MM-DD'),'Category',e.category,'Note',e.note,'Split',e.split,'CommittedAt',to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'Revision',e.revision,
  'Allocations',(SELECT jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Amount',a.amount_minor) ORDER BY a.participant_id) FROM app.allocations a WHERE a.expense_id=e.id)) ORDER BY e.effective_date DESC,e.created_at DESC,e.id DESC) FROM page e),'[]'::jsonb)) FROM visible v`

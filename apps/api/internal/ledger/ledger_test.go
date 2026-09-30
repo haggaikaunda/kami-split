@@ -174,7 +174,7 @@ func TestExactZeroAndValidation(t *testing.T) {
 }
 func TestCompleteBalanceChainsCyclesAndConservation(t *testing.T) {
 	a, b, c := testID("Membership", 1), testID("Membership", 2), testID("Membership", 3)
-	positions := []Position{{c, 2000, 0}, {b, 2000, 2000}, {a, 0, 2000}}
+	positions := []Position{{c, 2000, 0, 0, 0}, {b, 2000, 2000, 0, 0}, {a, 0, 2000, 0, 0}}
 	balance, e := Balances(4000, positions)
 	if e != nil {
 		t.Fatal(e)
@@ -185,21 +185,21 @@ func TestCompleteBalanceChainsCyclesAndConservation(t *testing.T) {
 	if positions[0].MemberID != c {
 		t.Fatal("mutated input")
 	}
-	cycle, e := Balances(6000, []Position{{a, 2000, 2000}, {b, 2000, 2000}, {c, 2000, 2000}})
+	cycle, e := Balances(6000, []Position{{a, 2000, 2000, 0, 0}, {b, 2000, 2000, 0, 0}, {c, 2000, 2000, 0, 0}})
 	if e != nil || !cycle.Settled || len(cycle.Obligations) != 0 {
 		t.Fatal(cycle, e)
 	}
-	empty, e := Balances(0, []Position{{a, 0, 0}})
+	empty, e := Balances(0, []Position{{a, 0, 0, 0, 0}})
 	if e != nil || !empty.Settled {
 		t.Fatal(empty, e)
 	}
-	if _, e := Balances(4000, []Position{{a, 1, 2000}, {b, 2000, 2000}, {c, 2000, 0}}); e == nil {
+	if _, e := Balances(4000, []Position{{a, 1, 2000, 0, 0}, {b, 2000, 2000, 0, 0}, {c, 2000, 0, 0, 0}}); e == nil {
 		t.Fatal("unreconciled aggregate accepted")
 	}
-	if _, e := Balances(math.MaxInt64, []Position{{a, math.MaxInt64, 0}, {b, 1, math.MaxInt64}}); e == nil {
+	if _, e := Balances(math.MaxInt64, []Position{{a, math.MaxInt64, 0, 0, 0}, {b, 1, math.MaxInt64, 0, 0}}); e == nil {
 		t.Fatal("overflow accepted")
 	}
-	large, e := Balances(math.MaxInt64, []Position{{a, math.MaxInt64, 0}, {b, 0, math.MaxInt64}})
+	large, e := Balances(math.MaxInt64, []Position{{a, math.MaxInt64, 0, 0, 0}, {b, 0, math.MaxInt64, 0, 0}})
 	if e != nil || large.Obligations[0].Amount != math.MaxInt64 {
 		t.Fatal(large, e)
 	}

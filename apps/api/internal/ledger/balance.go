@@ -7,14 +7,15 @@ import (
 	"sort"
 )
 
-// Position contains complete nonnegative paid and owed aggregates for one retained
-// membership. Callers must include inactive history and all group expenses.
+// Position contains complete nonnegative expense and repayment aggregates for one retained
+// membership. Callers must include inactive history and all group financial history.
 type Position struct {
-	MemberID   string
-	Paid, Owed int64
+	MemberID       string
+	Paid, Owed     int64
+	Sent, Received int64
 }
 
-// NetPosition adds the exact paid-minus-owed individual net.
+// NetPosition adds the exact paid-minus-owed-plus-sent-minus-received net.
 type NetPosition struct {
 	Position
 	Net int64
@@ -55,7 +56,7 @@ func Balances(total int64, positions []Position) (Balance, error) {
 	ordered := append([]Position(nil), positions...)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].MemberID < ordered[j].MemberID })
 	result := Balance{Total: total, Positions: make([]NetPosition, 0, len(ordered)), Obligations: []Obligation{}, Settled: true}
-	var paid, owed big.Int
+	var paid, owed, sent, received big.Int
 	type remaining struct {
 		id     string
 		amount int64
@@ -68,12 +69,21 @@ func Balances(total int64, positions []Position) (Balance, error) {
 		if i > 0 && p.MemberID == ordered[i-1].MemberID {
 			return Balance{}, errors.New("duplicate membership position")
 		}
-		if p.Paid < 0 || p.Owed < 0 {
+		if p.Paid < 0 || p.Owed < 0 || p.Sent < 0 || p.Received < 0 {
 			return fail()
 		}
 		paid.Add(&paid, big.NewInt(p.Paid))
 		owed.Add(&owed, big.NewInt(p.Owed))
-		net := p.Paid - p.Owed // Both operands are 0..MaxInt64, so difference cannot overflow.
+		sent.Add(&sent, big.NewInt(p.Sent))
+		received.Add(&received, big.NewInt(p.Received))
+		wide := big.NewInt(p.Paid)
+		wide.Sub(wide, big.NewInt(p.Owed))
+		wide.Add(wide, big.NewInt(p.Sent))
+		wide.Sub(wide, big.NewInt(p.Received))
+		if !wide.IsInt64() || wide.Int64() == math.MinInt64 {
+			return fail()
+		}
+		net := wide.Int64()
 		result.Positions = append(result.Positions, NetPosition{p, net})
 		if net < 0 {
 			debtors = append(debtors, remaining{p.MemberID, -net})
@@ -85,7 +95,7 @@ func Balances(total int64, positions []Position) (Balance, error) {
 		}
 	}
 	expected := big.NewInt(total)
-	if paid.Cmp(expected) != 0 || owed.Cmp(expected) != 0 {
+	if paid.Cmp(expected) != 0 || owed.Cmp(expected) != 0 || sent.Cmp(&received) != 0 {
 		return fail()
 	}
 	for d, c := 0, 0; d < len(debtors) && c < len(creditors); {

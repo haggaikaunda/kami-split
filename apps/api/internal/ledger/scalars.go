@@ -147,7 +147,7 @@ func ParseID(public, expectedType string) (string, error) {
 		return "", errors.New("invalid public ID")
 	}
 	switch p[1] {
-	case "Viewer", "Group", "Membership", "Expense", "Invitation", "InvitationAction":
+	case "Viewer", "Group", "Membership", "Expense", "Repayment", "Invitation", "InvitationAction":
 	default:
 		return "", errors.New("invalid public ID")
 	}
