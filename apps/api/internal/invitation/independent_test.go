@@ -11,6 +11,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestIndependentImmutableDeliveryAndReceipt(t *testing.T) {
@@ -85,6 +88,36 @@ func TestIndependentPredatingDepartureCannotReadmit(t *testing.T) {
 	requireOutcome(t, readmitted, err, "ADMITTED")
 	if readmitted.MembershipID != joined.MembershipID || !readmitted.HasAccess {
 		t.Fatal("new authorized invitation lost stable membership")
+	}
+	if err := f.db.WithIdentity(context.Background(), f.member.String(), func(tx pgx.Tx) error {
+		viewer, err := database.ReadViewer(context.Background(), tx)
+		if err != nil {
+			return err
+		}
+		if viewer.CanCreateGroups {
+			t.Fatal("readmission granted group creation")
+		}
+		var gid pgtype.UUID
+		_ = gid.Scan(f.group.String())
+		group, err := database.ReadGroup(context.Background(), tx, gid)
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, member := range group.Members {
+			if uuid.UUID(member.ID.Bytes) == readmitted.MembershipID {
+				found = true
+				if member.Role != "MEMBER" || !member.CanParticipate {
+					t.Fatal("readmission restored wrong role/access")
+				}
+			}
+		}
+		if !found {
+			t.Fatal("authorized read missing stable member")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 }
 

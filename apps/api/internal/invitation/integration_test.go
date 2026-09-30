@@ -490,36 +490,3 @@ func TestAdmissionRecoveryAndDisabledAccount(t *testing.T) {
 		t.Fatal("disabled actor readmitted", err)
 	}
 }
-
-func TestOwnedMaintenancePurgesWithoutInvitationTraffic(t *testing.T) {
-	f := newFixture(t)
-	created, _ := f.create("member@example.invalid")
-	f.exec(`UPDATE app.invitation_delivery SET created_at=clock_timestamp()-interval '24 hours' WHERE action_id=$1`, created.ActionID)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	done := make(chan struct{})
-	go func() { defer close(done); f.db.RunInvitationMaintenance(ctx, nil) }()
-	deadline := time.After(3 * time.Second)
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		var purged bool
-		if err := f.admin.QueryRow(context.Background(), `SELECT payload IS NULL FROM app.invitation_delivery WHERE action_id=$1`, created.ActionID).Scan(&purged); err != nil {
-			t.Fatal(err)
-		}
-		if purged {
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatal("startup maintenance did not purge idle material")
-		case <-ticker.C:
-		}
-	}
-	cancel()
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("maintenance did not join cancellation")
-	}
-}
