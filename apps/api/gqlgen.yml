@@ -26,10 +26,14 @@ models:
     fields:
       expenses:
         resolver: true
+      repayments:
+        resolver: true
     extraFields:
       Snapshot:
         type: github.com/haggaikaunda/kami-split/apps/api/internal/expense.Snapshot
       PageError:
+        type: string
+      RepaymentError:
         type: string
       PageRequest:
         type: github.com/haggaikaunda/kami-split/apps/api/internal/expense.PageRequest

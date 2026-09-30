@@ -69,6 +69,16 @@ type OwnerInvitationsResult interface {
 	IsOwnerInvitationsResult()
 }
 
+// Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
+type RecordRepaymentResult interface {
+	IsRecordRepaymentResult()
+}
+
+// Currently authorized original result or transient missing/unknown state. Refresh balances separately.
+type RepaymentOperationResult interface {
+	IsRepaymentOperationResult()
+}
+
 // Own application identity, own access state, or unavailable read; no peer user directory.
 type ViewerResult interface {
 	IsViewerResult()
@@ -270,11 +280,14 @@ type Group struct {
 	// A bounded filtered page. Failure returns null plus a safe field error, never a successful empty page.
 	Expenses *ExpenseConnection `json:"expenses,omitempty"`
 	// Complete current group positions and simplified obligations, never inferred from the expense page.
-	Balances    BalanceResult       `json:"balances"`
-	Filter      ledger.Filter       `json:"-"`
-	PageError   string              `json:"-"`
-	PageRequest expense.PageRequest `json:"-"`
-	Snapshot    expense.Snapshot    `json:"-"`
+	Balances BalanceResult `json:"balances"`
+	// Authorized append-only transfer history ordered by date, commit timestamp and ID descending. A page's inclusion revision can be older than separately refreshed balances. Pagination failures return null with a safe field error.
+	Repayments     *RepaymentConnection `json:"repayments,omitempty"`
+	Filter         ledger.Filter        `json:"-"`
+	PageError      string               `json:"-"`
+	PageRequest    expense.PageRequest  `json:"-"`
+	RepaymentError string               `json:"-"`
+	Snapshot       expense.Snapshot     `json:"-"`
 }
 
 func (Group) IsGroupResult() {}
@@ -294,7 +307,7 @@ type GroupBalances struct {
 	Revision ledger.Revision `json:"revision"`
 	// Checked complete nonnegative spending up to int64 maximum; never limited by filters or pagination.
 	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
-	// Complete individual paid, owed and net amounts, including retained inactive members.
+	// Complete individual paid, owed, sent, received and net amounts, including retained inactive members.
 	Positions []*MemberPosition `json:"positions"`
 	// Positive debts derived only from complete nets, matched by canonical ID order; no minimum-payment-count guarantee or synthetic transfers.
 	Obligations []*Obligation `json:"obligations"`
@@ -456,8 +469,12 @@ type MemberPosition struct {
 	PaidMinor ledger.MinorUnits `json:"paidMinor"`
 	// Checked nonnegative complete allocation total in cents.
 	OwedMinor ledger.MinorUnits `json:"owedMinor"`
-	// Exact paid minus owed; positive is owed to this member, negative is owed by this member.
+	// Exact paid minus owed plus sent minus received; positive is owed to this member, negative is owed by this member.
 	NetMinor ledger.MinorUnits `json:"netMinor"`
+	// Complete nonnegative actual repayments sent, including retained inactive history.
+	SentMinor ledger.MinorUnits `json:"sentMinor"`
+	// Complete nonnegative actual repayments received, including retained inactive history.
+	ReceivedMinor ledger.MinorUnits `json:"receivedMinor"`
 }
 
 // Minimal current label and eligibility for a retained group identity; no peer email or Auth identity.
@@ -503,15 +520,17 @@ type OperationAllocation struct {
 
 // The scoped key already identifies a different canonical intent; original data is never overwritten.
 type OperationMismatch struct {
-	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	// Original client-created attempt key, scoped to the authenticated actor, group and financial operation kind.
 	Key ledger.OperationKey `json:"key"`
 }
 
 func (OperationMismatch) IsCreateExpenseResult() {}
 
+func (OperationMismatch) IsRecordRepaymentResult() {}
+
 // Transient knowledge about the original attempt; preserve its key, frozen input and scope.
 type OperationProgress struct {
-	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	// Original client-created attempt key, scoped to the authenticated actor, group and financial operation kind.
 	Key ledger.OperationKey `json:"key"`
 	// NOT_OBSERVED or UNKNOWN is not proof of no commit; continue with the original key and payload.
 	State OperationState `json:"state"`
@@ -520,6 +539,10 @@ type OperationProgress struct {
 func (OperationProgress) IsCreateExpenseResult() {}
 
 func (OperationProgress) IsOperationResult() {}
+
+func (OperationProgress) IsRecordRepaymentResult() {}
+
+func (OperationProgress) IsRepaymentOperationResult() {}
 
 // Current-owner projection; no token or full link.
 type OwnerInvitation struct {
@@ -581,8 +604,119 @@ func (Problem) IsCreateGroupResult() {}
 
 func (Problem) IsGroupCreationOperationResult() {}
 
+func (Problem) IsRecordRepaymentResult() {}
+
+func (Problem) IsRepaymentOperationResult() {}
+
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {
+}
+
+// An actual transfer recorded within one explicitly authorized group. Creator is server-derived; no money is moved.
+type RecordRepaymentInput struct {
+	// Explicit group; never inferred from a dashboard or another record.
+	GroupID string `json:"groupId"`
+	// Original actor/group/RECORD_REPAYMENT attempt key; preserve it through uncertainty.
+	Key ledger.OperationKey `json:"key"`
+	// Active enabled linked sender Membership in this group.
+	SenderID string `json:"senderId"`
+	// Distinct active enabled linked recipient Membership in this group.
+	RecipientID string `json:"recipientId"`
+	// Positive USD cents, 1..999999999; overpayments and unmatched actual transfers are allowed.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// USD only; no conversion.
+	Currency Currency `json:"currency"`
+	// Actual transfer calendar date, Gregorian years 0001 through 9999.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Preserved note, at most 2000 Unicode scalar values; no NUL or unpaired surrogates.
+	Note string `json:"note"`
+}
+
+// Currently authorized append-only actual transfer with minimal current member labels; history retains inactive attribution.
+type Repayment struct {
+	// Stable typed Repayment identity.
+	ID string `json:"id"`
+	// The single group containing this transfer.
+	GroupID string `json:"groupId"`
+	// Person who recorded the transfer; independent of sender and recipient.
+	Creator *Membership `json:"creator"`
+	// Historical sender with currently authorized minimal identification.
+	Sender *Membership `json:"sender"`
+	// Historical recipient with currently authorized minimal identification.
+	Recipient *Membership `json:"recipient"`
+	// Exact positive USD cents; can exceed the historical simplified obligation.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// USD only.
+	Currency Currency `json:"currency"`
+	// Recorded calendar date of the actual transfer.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Original note, preserving whitespace.
+	Note string `json:"note"`
+	// Immutable record timestamp in UTC.
+	CreatedAt ledger.DateTime `json:"createdAt"`
+	// Shared group financial revision produced by this transfer.
+	Revision ledger.Revision `json:"revision"`
+}
+
+func (Repayment) IsNode() {}
+
+// Stable typed public ID; possession does not authorize access.
+func (this Repayment) GetID() string { return this.ID }
+
+// Immutable successful transfer outcome; does not contain current labels or balances.
+type RepaymentCommitted struct {
+	// Original actor/group/RECORD_REPAYMENT key.
+	Key ledger.OperationKey `json:"key"`
+	// Original immutable financial values and commit provenance.
+	Record *RepaymentOperationRecord `json:"record"`
+}
+
+func (RepaymentCommitted) IsRecordRepaymentResult() {}
+
+func (RepaymentCommitted) IsRepaymentOperationResult() {}
+
+// Bounded authorized repayment history, pinned to its initial financial inclusion revision.
+type RepaymentConnection struct {
+	// Actual records only; no simplified or synthetic transfers.
+	Edges []*RepaymentEdge `json:"edges"`
+	// Forward traversal boundaries; an empty successful list has null cursors.
+	PageInfo *PageInfo `json:"pageInfo"`
+	// Inclusion anchor for this traversal, not a cache validator for authorization or labels.
+	Revision ledger.Revision `json:"revision"`
+}
+
+// One actual transfer and its signed traversal boundary.
+type RepaymentEdge struct {
+	// Signed group/repayment-scope/revision/order boundary.
+	Cursor string `json:"cursor"`
+	// Currently authorized transfer and minimal profiles.
+	Node *Repayment `json:"node"`
+}
+
+// Immutable original transfer values retained for the lifetime of financial history. Membership IDs are historical values, not access grants.
+type RepaymentOperationRecord struct {
+	// Original committed Repayment ID.
+	RepaymentID string `json:"repaymentId"`
+	// Original group, never redirected by navigation.
+	GroupID string `json:"groupId"`
+	// Server-derived membership of the person who recorded this transfer.
+	CreatorMembershipID string `json:"creatorMembershipId"`
+	// Original sender membership.
+	SenderMembershipID string `json:"senderMembershipId"`
+	// Original recipient membership.
+	RecipientMembershipID string `json:"recipientMembershipId"`
+	// Exact positive USD cents; can exceed the historical simplified obligation.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// USD only.
+	Currency Currency `json:"currency"`
+	// Recorded calendar date of the actual transfer.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Original note, preserving whitespace.
+	Note string `json:"note"`
+	// Original database commit-provenance timestamp in UTC.
+	CommittedAt ledger.DateTime `json:"committedAt"`
+	// Original shared group financial revision; not a current balance revision.
+	Revision ledger.Revision `json:"revision"`
 }
 
 // Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
@@ -594,6 +728,10 @@ type ValidationProblem struct {
 func (ValidationProblem) IsCreateExpenseResult() {}
 
 func (ValidationProblem) IsOperationResult() {}
+
+func (ValidationProblem) IsRecordRepaymentResult() {}
+
+func (ValidationProblem) IsRepaymentOperationResult() {}
 
 // Self-only application identity. Viewer IDs use the stable application UUID, never the Auth subject.
 type Viewer struct {

@@ -30,6 +30,8 @@ type Cursor struct {
 	EffectiveDate string `json:"date"`
 	CreatedAt     string `json:"created"`
 	ExpenseID     string `json:"expense"`
+	// Kind is empty for legacy expense cursors; Repayment separates transfer history.
+	Kind string `json:"kind,omitempty"`
 }
 
 type cursorEnvelope struct {
@@ -90,7 +92,13 @@ func validCursor(c Cursor) bool {
 	if _, e := ParseID(c.GroupID, "Group"); e != nil {
 		return false
 	}
-	if _, e := ParseID(c.ExpenseID, "Expense"); e != nil {
+	kind := "Expense"
+	if c.Kind == "Repayment" {
+		kind = "Repayment"
+	} else if c.Kind != "" {
+		return false
+	}
+	if _, e := ParseID(c.ExpenseID, kind); e != nil {
 		return false
 	}
 	var created DateTime
@@ -120,6 +128,15 @@ func (c *CursorCodec) Encode(cursor Cursor) (string, error) {
 // Decode verifies the MAC before interpreting JSON, then requires exact scope,
 // filter and a nonfuture anchor. Call only after current group authorization.
 func (c *CursorCodec) Decode(token, groupID string, filter Filter, currentRevision int64) (Cursor, error) {
+	return c.decode(token, groupID, filter, currentRevision, "")
+}
+
+// DecodeRepayment verifies a repayment-only cursor under the existing signing
+// protocol. Expense cursors are rejected even when group and anchor match.
+func (c *CursorCodec) DecodeRepayment(token, groupID string, currentRevision int64) (Cursor, error) {
+	return c.decode(token, groupID, Filter{}, currentRevision, "Repayment")
+}
+func (c *CursorCodec) decode(token, groupID string, filter Filter, currentRevision int64, kind string) (Cursor, error) {
 	fail := func() (Cursor, error) { return Cursor{}, errors.New("INVALID_CURSOR") }
 	if c == nil || len(token) > 2048 {
 		return fail()
@@ -161,7 +178,7 @@ func (c *CursorCodec) Decode(token, groupID string, filter Filter, currentRevisi
 		return fail()
 	}
 	cur := env.Cursor
-	if env.Version != 1 || !validCursor(cur) || cur.GroupID != groupID || cur.Filter != filter || cur.Revision > currentRevision {
+	if env.Version != 1 || !validCursor(cur) || cur.GroupID != groupID || cur.Filter != filter || cur.Revision > currentRevision || cur.Kind != kind {
 		return fail()
 	}
 	return cur, nil
