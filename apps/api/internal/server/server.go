@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -34,7 +35,17 @@ type Server struct {
 
 // New constructs a server with explicit configuration, schema, and logging dependencies.
 func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger, dependencies ...Readiness) *Server {
+	return NewWithAuthentication(cfg, schema, logger, nil, dependencies...)
+}
+
+// NewWithAuthentication attaches verified request evidence without changing the
+// public health schema. Future business operations must call auth.WithActor.
+// When configured, verifier also participates in protected readiness.
+func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger, verifier *auth.Verifier, dependencies ...Readiness) *Server {
 	s := &Server{shutdownTimeout: cfg.ShutdownTimeout}
+	if verifier != nil {
+		dependencies = append(append([]Readiness(nil), dependencies...), verifier)
+	}
 	gql := handler.New(schema)
 	gql.AddTransport(transport.POST{})
 	gql.Use(extension.FixedComplexityLimit(100))
@@ -66,10 +77,14 @@ func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.Handle("/graphql", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	graphqlHandler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		gql.ServeHTTP(w, r)
 	}))
+	if verifier != nil {
+		graphqlHandler = verifier.Authenticate(graphqlHandler)
+	}
+	mux.Handle("/graphql", graphqlHandler)
 	s.http = &http.Server{Addr: cfg.Addr, Handler: requestIDs(mux), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	return s
 }

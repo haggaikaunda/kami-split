@@ -69,3 +69,5 @@ make api-check
 Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s write/60s idle timeouts. Request IDs are server-generated. Logs omit request bodies and error/panic payloads. No playground, WebSocket transport, CORS integration, or production TLS/deployment is configured.
 
 Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending this scaffold.
+
+See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. The public GraphQL schema remains health-only.

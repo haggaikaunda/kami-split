@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"os"
 	"testing"
@@ -222,6 +223,18 @@ func TestIdentityIndependent(t *testing.T) {
 			e = db.Pool.QueryRow(ctx, `SELECT app.can_read_group($1)`, id(11)).Scan(&allowed)
 			if e != nil || allowed {
 				t.Fatalf("context leaked after %s: %v %v", mode, allowed, e)
+			}
+			// Reuse the one-connection runtime pool after every completion path.
+			// Actor 2 lacks group H; actor 3 has only inactive membership in G.
+			for _, denied := range []struct{ actor, group int }{{2, 12}, {3, 11}} {
+				err := db.WithIdentity(ctx, id(denied.actor), func(tx pgx.Tx) error {
+					_, err := database.ReadGroup(ctx, tx, uid(denied.group))
+					return err
+				})
+				var pgErr *pgconn.PgError
+				if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+					t.Fatalf("%s: actor %d group %d should be denied: %v", mode, denied.actor, denied.group, err)
+				}
 			}
 			if e = db.WithIdentity(ctx, id(2), func(tx pgx.Tx) error {
 				v, e := database.ReadViewer(ctx, tx)
