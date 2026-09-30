@@ -249,7 +249,13 @@ func TestIndependentRuntimePurgeWithoutInvitationTraffic(t *testing.T) {
 }
 
 func TestIndependentDifferentGroupsAndOwnerIsolation(t *testing.T) {
-	left, right := newFixture(t), newFixture(t)
+	left := newFixture(t)
+	// Fixture JWTs and fake current-email responses use subjects. Give its local
+	// Auth seed unique addresses before constructing the second independent group.
+	left.exec(`RESET ROLE`)
+	left.exec(`UPDATE auth.users SET email=id::text||'@example.invalid' WHERE id IN ($1,$2)`, left.owner, left.member)
+	left.exec(`SET ROLE kami_migrator`)
+	right := newFixture(t)
 	type answer struct {
 		r   Result
 		err error
