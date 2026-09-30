@@ -23,3 +23,7 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 [Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation and settlement capability have explicit follow-up gates; spending/history formulas remain deferred.
 
 - [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
+
+The [administrative bootstrap runbook](bootstrap.md) covers explicit first-account
+and Household creation, safe retries, and the ordinary verified-email recovery
+flow. Hosted execution requires separate authorization.

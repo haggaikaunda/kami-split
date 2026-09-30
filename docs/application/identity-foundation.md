@@ -5,8 +5,9 @@ and its reviewed [database design](proposals/first-expense/database.md). The
 accepted policy comes from ADR-001 through ADR-005. This guide describes the identity
 boundary used by the implemented [verified request identity](authentication-boundary.md),
 [persisted expenses](persisted-expenses.md), and internal [targeted invitations](targeted-invitations.md).
-Public onboarding transport remains #80 and browser Relay integration remains #83;
-bootstrap, ownership transfer and departure require their separately owned work.
+[Onboarding transport](onboarding.md) and [operator bootstrap](bootstrap.md) are
+implemented. Browser Relay integration remains #83; ownership transfer and
+departure require their separately owned work.
 
 The private `app` schema now holds users, groups, permanent memberships and an
 installation singleton (empty after migrations). IDs are supplied by trusted callers;
