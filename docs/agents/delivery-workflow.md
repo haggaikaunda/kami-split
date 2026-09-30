@@ -12,6 +12,14 @@ This is the canonical process for all repository changes: web, API, schema, infr
 6. **Resolution:** findings are fixed or explicitly resolved; CI reruns after all changes.
 7. **Merge:** an agent may squash-merge only when every gate below is satisfied.
 
+## Shared source-of-truth updates
+
+Before updating issue bodies, PR descriptions, decision records, or equivalent collaborative source-of-truth content, refresh the current live issue, PR, and relevant decision state. Reconcile the intended edit with that state and preserve newer concurrent changes; never overwrite them from a stale snapshot.
+
+## Partial issue delivery
+
+A PR may merge while its linked issue remains open. Merging a partial, design, or foundation PR does not by itself close the issue: use a non-closing issue reference and explicitly record remaining work on the issue. Close an issue only when its full acceptance criteria and required gates are satisfied.
+
 ## Merge gates
 
 - The PR is linked to an approved issue and is not a draft.
