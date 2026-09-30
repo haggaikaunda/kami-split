@@ -51,3 +51,16 @@ func TestJWKSStatusAndMalformedDocumentsAreDiagnosable(t *testing.T) {
 		}
 	}
 }
+
+func TestEmptyJWKSIsDiagnosableWithoutRetainingOldTrust(t *testing.T) {
+	v, _, now := requestFixture(t)
+	v.now = func() time.Time { return now.Add(time.Minute) }
+	v.fetch = func(context.Context) ([]byte, error) { return []byte(`{"keys":[]}`), nil }
+	err := v.Warm(context.Background())
+	if _, ok := diagnostic.Operation(err); !ok {
+		t.Fatal("empty provider keyset lost diagnostic")
+	}
+	if !errors.Is(v.Ready(context.Background()), Unavailable) {
+		t.Fatal("empty keyset retained old trust")
+	}
+}

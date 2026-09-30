@@ -227,7 +227,8 @@ func (v *Verifier) refresh(ctx context.Context) error {
 	v.nextAttempt = now.Add(30 * time.Second)
 	v.scheduled = now.Add(time.Hour + v.jitter())
 	if !v.usable(now) {
-		return Unavailable
+		v.lastError = diagnostic.Wrap(Unavailable, nil, "auth.jwks_keys")
+		return v.lastError
 	}
 	return nil
 }
