@@ -47,3 +47,19 @@ See the [Go engineering guide](../agents/go-guidelines.md) for code and testing 
 [ADR-003](decisions/003-bootstrap-groups-and-invitations.md) records the administrative bootstrap exception, separate group ledgers and invitation lifecycle/token protection. Each expense and settlement belongs to exactly one group; trip membership grants no household access. Future dashboard repayment shortcuts retain the original group and never duplicate or offset records across groups. The preview's embedded trips and pending members are not production schema.
 
 [#73](https://github.com/haggaikaunda/kami-split/issues/73) tracks the first invited, persisted expense journey. [#75](https://github.com/haggaikaunda/kami-split/issues/75) owns schema/visibility decisions, [#76](https://github.com/haggaikaunda/kami-split/issues/76) the first financial contract, [#79](https://github.com/haggaikaunda/kami-split/issues/79) invitation operations, and [#81](https://github.com/haggaikaunda/kami-split/issues/81) operational bootstrap. ADR-003 does not resolve their remaining gates. Deferred transfer [#84](https://github.com/haggaikaunda/kami-split/issues/84), group/trip design [#85](https://github.com/haggaikaunda/kami-split/issues/85), and dashboard design [#86](https://github.com/haggaikaunda/kami-split/issues/86) are not #73 completion requirements.
+
+## Diagnostic ownership
+
+Unexpected database, actor, expense and invitation errors retain private causes
+for `errors.Is`/`errors.As` through `internal/diagnostic`; their `Error` text stays
+safe. Callers must never serialize the cause or log the error object. Diagnostic
+operation labels are static server-defined strings, never request values.
+
+The GraphQL boundary installs a request-scoped diagnostic sink and emits at most
+one structured failure event per request with a generated request ID and static
+operation label. Resolver union mappings and expense uncertainty mappings report
+before consuming unexpected errors. Expected validation, access masking and durable
+operation outcomes remain quiet. Panic recovery reports only `graphql.panic` and
+never retains the recovered value. Internal invitation operations do not log;
+future transport/worker adapters own reporting their returned unexpected failures
+through `diagnostic.Report` with their own correlation and sink.

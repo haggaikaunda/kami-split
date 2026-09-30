@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -127,7 +128,7 @@ func WithActor(ctx context.Context, db *database.DB, fn func(pgx.Tx, Actor) erro
 	err = db.WithIdentity(ctx, subject, func(tx pgx.Tx) error {
 		viewer, err := database.ReadViewer(ctx, tx)
 		if err != nil {
-			return Unavailable
+			return diagnostic.Wrap(Unavailable, err, "auth.viewer")
 		}
 		switch viewer.Status {
 		case "DISABLED":
@@ -136,11 +137,11 @@ func WithActor(ctx context.Context, db *database.DB, fn func(pgx.Tx, Actor) erro
 			return Unprovisioned
 		case "READY":
 			if !viewer.ID.Valid {
-				return Unavailable
+				return diagnostic.Wrap(Unavailable, nil, "auth.viewer_state")
 			}
 			return fn(tx, Actor{ID: viewer.ID})
 		default:
-			return Unavailable
+			return diagnostic.Wrap(Unavailable, nil, "auth.viewer_state")
 		}
 	})
 	if err == nil {
@@ -148,9 +149,9 @@ func WithActor(ctx context.Context, db *database.DB, fn func(pgx.Tx, Actor) erro
 	}
 	var outcome Outcome
 	if errors.As(err, &outcome) {
-		return outcome
+		return err
 	}
-	return Unavailable
+	return diagnostic.Wrap(Unavailable, err, "auth.transaction")
 }
 
 // WriteError maps only safe authentication outcomes to the #76 transport contract.

@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 )
 
 func TestCanonicalEmail(t *testing.T) {
@@ -69,5 +72,17 @@ func TestEmailEvidence(t *testing.T) {
 		if _, err := ObserveCurrentEmail(ctx, emailProviderFunc(func(context.Context, string) (ProviderEmail, error) { return r, nil })); err == nil {
 			t.Fatal("invalid provider response accepted")
 		}
+	}
+}
+
+func TestProviderFailurePreservesPrivateCause(t *testing.T) {
+	ctx := context.WithValue(context.Background(), identityKey{}, identity{subject: "verified", marker: &requestMarker{}})
+	cause := errors.New("bearer recipient@example.test private-provider-body")
+	_, err := ObserveCurrentEmail(ctx, emailProviderFunc(func(context.Context, string) (ProviderEmail, error) { return ProviderEmail{}, cause }))
+	if !errors.Is(err, cause) || !errors.Is(err, Unavailable) || err.Error() != string(Unavailable) {
+		t.Fatal("provider cause or safe outcome lost")
+	}
+	if operation, ok := diagnostic.Operation(err); !ok || operation != "auth.email_provider" {
+		t.Fatal("missing safe provider classification")
 	}
 }

@@ -8,6 +8,7 @@ package graph
 import (
 	"context"
 
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph/model"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
@@ -31,6 +32,7 @@ func (r *groupResolver) Expenses(ctx context.Context, obj *model.Group, first in
 	for _, record := range snapshot.Records {
 		token, err := r.Cursors.Encode(ledger.Cursor{GroupID: obj.ID, Filter: obj.Filter, Revision: revision, EffectiveDate: record.EffectiveDate, CreatedAt: record.CommittedAt, ExpenseID: record.ExpenseID})
 		if err != nil {
+			diagnostic.Report(ctx, diagnostic.Wrap(expense.Failure("UNAVAILABLE"), err, "graphql.cursor"))
 			return nil, fieldError("UNAVAILABLE")
 		}
 		result.Edges = append(result.Edges, &model.ExpenseEdge{Cursor: token, Node: mapExpense(record, profiles)})
@@ -45,7 +47,7 @@ func (r *groupResolver) Expenses(ctx context.Context, obj *model.Group, first in
 // CreateExpense is the resolver for the createExpense field.
 func (r *mutationResolver) CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error) {
 	if r.Expenses == nil {
-		return problem(expense.Failure("UNAVAILABLE")), nil
+		return problem(ctx, expense.Failure("UNAVAILABLE")), nil
 	}
 	command := ledger.Input{GroupID: input.GroupID, Key: string(input.Key), Total: int64(input.TotalMinor), Currency: string(input.Currency), Description: input.Description, EffectiveDate: string(input.EffectiveDate), Category: string(input.Category), Note: input.Note, PayerID: input.PayerID, ParticipantIDs: input.ParticipantIds, Split: string(input.Split)}
 	if input.ExactAllocations != nil {
@@ -56,7 +58,7 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 	}
 	out, err := r.Expenses.Create(ctx, command)
 	if err != nil {
-		return problem(err), nil
+		return problem(ctx, err), nil
 	}
 	return mapOutcome(out), nil
 }
@@ -64,11 +66,11 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 // Viewer is the resolver for the viewer field.
 func (r *queryResolver) Viewer(ctx context.Context) (model.ViewerResult, error) {
 	if r.Expenses == nil {
-		return problem(expense.Failure("UNAVAILABLE")), nil
+		return problem(ctx, expense.Failure("UNAVAILABLE")), nil
 	}
 	v, err := r.Expenses.ReadViewer(ctx)
 	if err != nil {
-		return problem(err), nil
+		return problem(ctx, err), nil
 	}
 	if v.State != "" {
 		return &model.ViewerAccess{State: model.AccessState(v.State)}, nil
@@ -110,7 +112,7 @@ func (r *queryResolver) Node(ctx context.Context, id string) (model.Node, error)
 			return nil, nil
 		}
 		if err != nil {
-			return nil, fieldError(string(problem(err).Code))
+			return nil, fieldError(string(problem(ctx, err).Code))
 		}
 	}
 	if kind == "Expense" {
@@ -119,7 +121,7 @@ func (r *queryResolver) Node(ctx context.Context, id string) (model.Node, error)
 			return nil, nil
 		}
 		if err != nil {
-			return nil, fieldError(string(problem(err).Code))
+			return nil, fieldError(string(problem(ctx, err).Code))
 		}
 		if len(snapshot.Records) == 0 {
 			return nil, nil
@@ -131,7 +133,7 @@ func (r *queryResolver) Node(ctx context.Context, id string) (model.Node, error)
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fieldError(string(problem(err).Code))
+		return nil, fieldError(string(problem(ctx, err).Code))
 	}
 	if kind == "Membership" {
 		return members(group.Snapshot)[id], nil
@@ -143,7 +145,7 @@ func (r *queryResolver) Node(ctx context.Context, id string) (model.Node, error)
 func (r *queryResolver) Group(ctx context.Context, id string) (model.GroupResult, error) {
 	group, err := r.groupProjection(ctx, id)
 	if err != nil {
-		return problem(err), nil
+		return problem(ctx, err), nil
 	}
 	return group, nil
 }
@@ -151,11 +153,11 @@ func (r *queryResolver) Group(ctx context.Context, id string) (model.GroupResult
 // ExpenseOperation is the resolver for the expenseOperation field.
 func (r *queryResolver) ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error) {
 	if r.Expenses == nil {
-		return problem(expense.Failure("UNAVAILABLE")), nil
+		return problem(ctx, expense.Failure("UNAVAILABLE")), nil
 	}
 	out, err := r.Expenses.Recover(ctx, groupID, string(key))
 	if err != nil {
-		return problem(err), nil
+		return problem(ctx, err), nil
 	}
 	return mapOutcome(out).(model.OperationResult), nil
 }
