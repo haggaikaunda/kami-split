@@ -1,6 +1,6 @@
 # Go GraphQL server
 
-Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). The web preview still uses its in-memory DataPort; Relay integration remains #83.
+Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). Internal targeted invitation, admission and durable delivery recovery are also implemented; public invitation/onboarding transport remains #80. The web preview still uses its in-memory DataPort; Relay integration remains #83.
 
 ## Run locally
 
@@ -47,6 +47,8 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 
 - `cmd/server`: configuration, explicit dependency wiring, structured logging, and signals.
 - `internal/config`: validated configuration.
+- `internal/auth`: verified request identity, provider evidence and transaction-bound actor access.
+- `internal/invitation`: internal targeted invitations, capability preview/eligibility, admission and durable delivery recovery.
 - `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and thin handwritten transport mapping.
@@ -64,12 +66,12 @@ make api-build
 make api-check
 ```
 
-`api-check` runs formatting, module integrity, vet, regular/race tests, build, and generation drift against committed API/schema files. Commit intentional changes before the final drift check; tracked differences or untracked API/schema files fail it. Race tests require a supported platform and C compiler. Root pnpm checks remain required.
+`api-check` runs formatting, module integrity, vet, regular/race tests, build, and generation drift against committed API/schema files. Commit intentional changes before the final drift check; tracked differences or untracked API/schema files fail it. Race tests require a supported platform and C compiler. Run `make db-test` for required real Supabase/PostgreSQL migration, permission and race-enabled integration verification, and `make db-generation-check` for sqlc drift. Root pnpm checks remain required.
 
 `go.mod` pins gqlgen as a tool dependency. Edit SDL and handwritten resolvers, then regenerate committed artifacts; never patch generated execution/model output. Resolver scaffolding preserves handwritten implementations on regeneration.
 
 Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s write/60s idle timeouts, and a 10s GraphQL execution context deadline that cancels database lock waits. Request IDs are server-generated. Logs omit request bodies and error/panic payloads. No playground, WebSocket transport, CORS integration, or production TLS/deployment is configured.
 
-Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending this scaffold.
+Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending the API.
 
 See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. Protected startup additionally requires `CURSOR_ACTIVE_KEY_ID` and `CURSOR_SIGNING_KEYS`; see [cursor configuration and operating limits](../../docs/application/persisted-expenses.md#configuration-and-limits). Public health remains unauthenticated.
