@@ -4,6 +4,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -212,11 +213,12 @@ func TestIndependentBootstrapOwnershipAndDepartureNeverRestored(t *testing.T) {
 		f.exec(`DELETE FROM auth.users WHERE id=$1`, otherAuth)
 	})
 	f.exec(`INSERT INTO app.memberships(id,group_id,user_id) VALUES($1,$2,$3)`, otherMember, f.target.GroupID, otherUser)
-	f.exec(`UPDATE app.groups SET owner_membership_id=$1 WHERE id=$2`, otherMember, f.target.GroupID)
+	// Each administrative transition prepares lifecycle locks in its own transaction.
+	f.exec(fmt.Sprintf(`BEGIN; SELECT app.household_lifecycle_lock(ARRAY['%s','%s']::uuid[]); UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; COMMIT`, f.target.UserID, otherUser, otherMember, f.target.GroupID))
 	if _, e := Provision(f.ctx, f.db, f.target); e == nil {
 		t.Fatal("ownership transfer accepted as original setup")
 	}
-	f.exec(`UPDATE app.memberships SET active=false WHERE id=$1`, f.target.MembershipID)
+	f.exec(fmt.Sprintf(`BEGIN; SELECT app.household_lifecycle_lock(ARRAY['%s']::uuid[]); UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT`, f.target.UserID, f.target.MembershipID))
 	if _, e := Provision(f.ctx, f.db, f.target); e == nil {
 		t.Fatal("historical membership accepted")
 	}
