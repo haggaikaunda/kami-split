@@ -29,7 +29,7 @@ We do not automatically adopt underscore-prefixed globals, Uber-specific atomic 
 These policies are Kami Split decisions, not claims of industry consensus:
 
 - Start with concrete implementations. Introduce small interfaces at actual consumer boundaries, without a matching interface for every struct. Avoid generic repositories, service frameworks, and event buses without a present requirement.
-- Organize packages around coherent responsibilities. Use Go's `internal` boundary for application-private code when implementation begins; do not scaffold empty layers or prescribe identical layers for every feature.
+- Organize packages around coherent responsibilities. Use Go's `internal` boundary for application-private code; do not scaffold empty layers or prescribe identical layers for every feature.
 - Keep resolvers thin, authorization in application operations, and financial calculations pure. See [API architecture](../application/api-architecture.md).
 - Use `errors.Is`/`errors.As` for recognizable error causes when appropriate, not string matching. Map application failures centrally to safe GraphQL responses. Log unexpected failures at their owning boundary without sensitive payloads.
 - Carry request context through I/O. Pure calculations need no context just for uniformity. Essential post-request work must be durably scheduled, not detached from request cancellation.
