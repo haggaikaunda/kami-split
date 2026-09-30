@@ -92,3 +92,7 @@ implementation is separately tracked in #108; targeted #79/#80 delivery belongs
 to #73. #78 is complete and no longer blocks implementation. Engineering validates
 bounded current-email evidence and its non-atomic provider race, lock ordering,
 provider behavior and purge/retry mechanics within those approved boundaries.
+
+### O18: #85 creation design resolution
+
+[ADR-006](006-group-creation.md) resolves the minimal creation design: reuse the implemented #75 installation designation/creator pointers, ordinary groups with optional trip metadata, explicit membership, identity-scoped atomic creation/recovery and group-scoped real UI navigation. Independent review and PR adoption remain required. Follow-up implementations are linked from that ADR; this is not delivered functionality. Metadata editing/reclassification is excluded from the initial slice and needs its own issue if requested. O19 remains wholly with #86; no report formula, partner inference or settlement design is added.

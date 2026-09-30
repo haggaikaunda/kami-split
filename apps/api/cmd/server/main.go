@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
@@ -43,8 +44,45 @@ func run() int {
 	} else {
 		logger.Info("health-only development mode; database readiness disabled")
 	}
+	authConfig, err := auth.Load(os.LookupEnv)
+	if err != nil || (authConfig != nil && dbConfig == nil) {
+		logger.Error("invalid authentication configuration or missing database")
+		return 1
+	}
+	var verifier *auth.Verifier
+	if authConfig != nil {
+		verifier, err = auth.New(*authConfig)
+		if err != nil {
+			logger.Error("invalid authentication configuration")
+			return 1
+		}
+		if verifier.Warm(ctx) != nil {
+			logger.Warn("protected authentication readiness unavailable")
+		}
+		authCtx, cancelAuth := context.WithCancel(ctx)
+		finished := make(chan struct{})
+		go func() { defer close(finished); verifier.Run(authCtx) }()
+		defer func() { cancelAuth(); <-finished }()
+		// SIGHUP discards local trust immediately, then the owned refresh loop reloads.
+		invalidate := make(chan os.Signal, 1)
+		signal.Notify(invalidate, syscall.SIGHUP)
+		defer signal.Stop(invalidate)
+		invalidationDone := make(chan struct{})
+		go func() {
+			defer close(invalidationDone)
+			for {
+				select {
+				case <-authCtx.Done():
+					return
+				case <-invalidate:
+					verifier.Invalidate()
+				}
+			}
+		}()
+		defer func() { cancelAuth(); <-invalidationDone }()
+	}
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}})
-	if err := server.New(cfg, schema, logger, dependencies...).Run(ctx); err != nil {
+	if err := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...).Run(ctx); err != nil {
 		logger.Error("server stopped unexpectedly")
 		return 1
 	}

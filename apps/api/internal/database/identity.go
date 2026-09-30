@@ -11,7 +11,8 @@ import (
 )
 
 // WithIdentity binds a previously verified Auth subject to one READ COMMITTED
-// transaction. It does not verify JWTs: #78 must supply trusted subject evidence.
+// transaction. Callers must supply a subject verified by the auth boundary;
+// this low-level helper does not verify JWTs or accept client identity metadata.
 // Callbacks must use tx, never the pool; helpers recheck current application access.
 func (d *DB) WithIdentity(ctx context.Context, subject string, fn func(pgx.Tx) error) error {
 	var id pgtype.UUID
@@ -35,6 +36,8 @@ type Viewer struct {
 	CanCreateGroups bool
 }
 
+// ReadViewer resolves the transaction-bound subject to its current application
+// identity and status; authorization decisions must not outlive this transaction.
 func ReadViewer(ctx context.Context, tx pgx.Tx) (Viewer, error) {
 	var v Viewer
 	err := tx.QueryRow(ctx, `SELECT status, id, display_name, can_create_groups FROM app.viewer_identity()`).Scan(&v.Status, &v.ID, &v.DisplayName, &v.CanCreateGroups)
@@ -49,6 +52,8 @@ type GroupMember struct {
 	Role           string
 	CanParticipate bool
 }
+
+// Group is the approved group projection with membership-scoped profiles.
 type Group struct {
 	ID       pgtype.UUID
 	Name     string

@@ -57,7 +57,7 @@ the runtime role before binding HTTP. `/readyz` additionally performs a bounded
 pool ping on every request and returns 503 on failure, including pool exhaustion.
 It recovers when connectivity returns. `/healthz` and the GraphQL health field
 remain process/transport checks, independent of database availability. Readiness
-does not claim migrations or future authentication keys are up to date.
+does not claim migrations are up to date. With authentication configured, readiness also checks the [bounded JWKS cache](authentication-boundary.md).
 
 | Setting              | Default | Contract                                                                   |
 | -------------------- | ------- | -------------------------------------------------------------------------- |
