@@ -4,6 +4,7 @@ package model
 
 // Process-level GraphQL availability, not database or financial readiness.
 type Health struct {
+	// Returns "ok" when the GraphQL health resolver responds; does not indicate database or financial readiness.
 	Status string `json:"status"`
 }
 

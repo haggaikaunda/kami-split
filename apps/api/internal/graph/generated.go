@@ -155,6 +155,9 @@ var sources = []*ast.Source{
 Minimal scaffold API; no financial or authenticated operations yet.
 """
 type Query {
+  """
+  Public availability check; requires no authentication and does not check database readiness.
+  """
   health: Health!
 }
 
@@ -162,6 +165,9 @@ type Query {
 Process-level GraphQL availability, not database or financial readiness.
 """
 type Health {
+  """
+  Returns "ok" when the GraphQL health resolver responds; does not indicate database or financial readiness.
+  """
   status: String!
 }
 `, BuiltIn: false},
