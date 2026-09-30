@@ -111,9 +111,9 @@ func TestIdentityConstraints(t *testing.T) {
 	reject := f.reject
 	for _, sql := range []string{
 		fmt.Sprintf(`INSERT INTO app.groups(id,name,owner_membership_id) VALUES ('%s','ownerless','%s')`, id(99), id(21)),
-		fmt.Sprintf(`UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, id(24), id(11)),
-		fmt.Sprintf(`UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, id(23), id(11)),
-		fmt.Sprintf(`UPDATE app.memberships SET active=false WHERE id='%s'`, id(21)),
+		fmt.Sprintf(`SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, id(24), id(11)),
+		fmt.Sprintf(`SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, id(23), id(11)),
+		fmt.Sprintf(`SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=false WHERE id='%s'`, id(21)),
 		fmt.Sprintf(`INSERT INTO app.memberships(id,group_id,user_id) VALUES ('%s','%s','%s')`, id(99), id(11), id(3)),
 		fmt.Sprintf(`INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES ('%s','%s','%s','duplicate')`, id(99), id(1), id(1)),
 		fmt.Sprintf(`UPDATE app.users SET auth_subject='%s' WHERE id='%s'`, id(2), id(1)),
@@ -320,8 +320,8 @@ func TestIdentityReadmissionSameIdentityOrdinaryRole(t *testing.T) {
 	id := f.id
 	uid := f.uid
 	exec := f.exec
-	exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(23)))
-	defer exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=false WHERE id='%s'; RESET ROLE`, id(23)))
+	exec(fmt.Sprintf(`SET ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(23)))
+	defer exec(fmt.Sprintf(`SET ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=false WHERE id='%s'; RESET ROLE`, id(23)))
 	if e := db.WithIdentity(ctx, id(3), func(tx pgx.Tx) error {
 		g, e := database.ReadGroup(ctx, tx, uid(11))
 		if e != nil {
@@ -352,7 +352,7 @@ func TestIdentityMembershipRevocationWaitFreshSnapshot(t *testing.T) {
 			t.Fatal(e)
 		}
 		defer tx.Rollback(context.Background())
-		_, e = tx.Exec(ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT id FROM app.groups WHERE id='%s' FOR UPDATE; UPDATE app.memberships SET active=false WHERE id='%s'`, id(11), id(22)))
+		_, e = tx.Exec(ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); SELECT id FROM app.groups WHERE id='%s' FOR UPDATE; UPDATE app.memberships SET active=false WHERE id='%s'`, id(11), id(22)))
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -380,7 +380,7 @@ func TestIdentityMembershipRevocationWaitFreshSnapshot(t *testing.T) {
 		if e = <-done; e == nil {
 			t.Fatal("revoked waiting caller allowed")
 		}
-		exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(22)))
+		exec(fmt.Sprintf(`SET ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(22)))
 	}
 }
 
@@ -412,7 +412,7 @@ func TestIdentityReadLocksBlockRevocation(t *testing.T) {
 				return
 			}
 			defer tx.Rollback(context.Background())
-			sql := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT id FROM app.groups WHERE id='%s' FOR UPDATE; UPDATE app.memberships SET active=false WHERE id='%s'`, id(11), id(22))
+			sql := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); SELECT id FROM app.groups WHERE id='%s' FOR UPDATE; UPDATE app.memberships SET active=false WHERE id='%s'`, id(11), id(22))
 			if disable {
 				sql = fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'`, id(2))
 			}
@@ -449,8 +449,8 @@ func TestIdentityOwnerTransferAndTargetInactivationSerialize(t *testing.T) {
 			t.Fatal(e)
 		}
 		defer tx.Rollback(context.Background())
-		first := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.memberships SET active=false WHERE id='%s'`, id(22))
-		second := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; SET CONSTRAINTS ALL IMMEDIATE`, id(22), id(11))
+		first := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=false WHERE id='%s'`, id(22))
+		second := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; SET CONSTRAINTS ALL IMMEDIATE`, id(22), id(11))
 		if transferFirst {
 			first, second = second, first+`; SET CONSTRAINTS ALL IMMEDIATE`
 		}
@@ -492,7 +492,7 @@ func TestIdentityOwnerTransferAndTargetInactivationSerialize(t *testing.T) {
 		if e = admin.QueryRow(ctx, `SELECT count(*) FROM app.groups g JOIN app.memberships m ON m.id=g.owner_membership_id AND m.group_id=g.id AND m.active WHERE g.id=$1`, id(11)).Scan(&owners); e != nil || owners != 1 {
 			t.Fatalf("owner invariant %d %v", owners, e)
 		}
-		exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; COMMIT`, id(22), id(21), id(11)))
+		exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=true WHERE id='%s'; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; COMMIT`, id(22), id(21), id(11)))
 	}
 }
 
@@ -505,7 +505,7 @@ func TestIdentityDisableCommitsBeforeWaitingAuthorization(t *testing.T) {
 	uid := f.uid
 	exec := f.exec
 	// Both actor and participant eligibility must be rechecked after user locks.
-	exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(23)))
+	exec(fmt.Sprintf(`SET ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(23)))
 	for _, participant := range []bool{true, false} {
 		victim := 1
 		actor := 1

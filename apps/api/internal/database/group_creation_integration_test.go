@@ -199,7 +199,7 @@ func TestGroupCreationAuthorityAndGrants(t *testing.T) {
 		}
 	}
 	// Creator eligibility is independent of household membership and Auth email.
-	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=false WHERE id='%s'; RESET ROLE; UPDATE auth.users SET email='changed@example.invalid' WHERE id='%s'`, f.id(22), f.id(2)))
+	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY(SELECT id FROM app.users ORDER BY id)); UPDATE app.memberships SET active=false WHERE id='%s'; RESET ROLE; UPDATE auth.users SET email='changed@example.invalid' WHERE id='%s'`, f.id(22), f.id(2)))
 	result := requireCreation(t, f, input, "COMPLETED")
 	for _, query := range []string{`INSERT INTO app.groups(id,name,owner_membership_id) VALUES(gen_random_uuid(),'denied',gen_random_uuid())`, `INSERT INTO app.memberships(id,group_id,user_id) VALUES(gen_random_uuid(),gen_random_uuid(),gen_random_uuid())`, `INSERT INTO app.group_trip VALUES(gen_random_uuid(),'x','2026-01-01','2026-01-01')`, `SELECT * FROM app.group_creation_attempts`, `SELECT app.group_creator_lock()`} {
 		if _, err := database.IntegrationPool(f.db).Exec(f.ctx, query); err == nil {
