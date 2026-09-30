@@ -50,13 +50,48 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 	gql.AddTransport(transport.POST{})
 	gql.Use(extension.FixedComplexityLimit(100))
 	gql.SetParserTokenLimit(1000)
+	gql.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		operation := graphql.GetOperationContext(ctx)
+		if !validOperationScalars(operation, schema.Schema()) {
+			return func(context.Context) *graphql.Response {
+				return &graphql.Response{Errors: gqlerror.List{&gqlerror.Error{Message: "Invalid scalar input.", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}}}
+			}
+		}
+		protected := false
+		for _, field := range graphql.CollectFields(operation, operation.Operation.SelectionSet, nil) {
+			if field.Name != "health" && field.Name != "__typename" && field.Name != "__schema" && field.Name != "__type" {
+				protected = true
+			}
+		}
+		if protected {
+			if err := auth.RequireRequest(ctx); err != nil {
+				code := "UNAUTHENTICATED"
+				if errors.Is(err, auth.Unavailable) {
+					code = "AUTH_UNAVAILABLE"
+				}
+				return func(context.Context) *graphql.Response {
+					return &graphql.Response{Errors: gqlerror.List{&gqlerror.Error{Message: "Authentication unavailable.", Extensions: map[string]any{"code": code}}}}
+				}
+			}
+		}
+		return next(ctx)
+	})
 	gql.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
-		// Parse/validation errors belong to gqlgen and may safely describe the public schema.
+		presented := graphql.DefaultErrorPresenter(ctx, err)
+		if code, ok := presented.Extensions["code"].(string); ok {
+			switch code {
+			case "INVALID_INPUT", "INVALID_CURSOR", "NOT_FOUND", "AMOUNT_OVERFLOW", "UNAVAILABLE", "BAD_USER_INPUT":
+				return presented
+			}
+		}
 		if graphql.GetFieldContext(ctx) == nil {
-			return graphql.DefaultErrorPresenter(ctx, err)
+			presented.Extensions = map[string]any{"code": "BAD_USER_INPUT"}
+			return presented
 		}
 		logger.ErrorContext(ctx, "graphql execution failed", "request_id", ctx.Value(requestIDKey{}))
-		return graphql.DefaultErrorPresenter(ctx, errors.New("internal server error"))
+		presented.Message = "internal server error"
+		presented.Extensions = map[string]any{"code": "UNAVAILABLE"}
+		return presented
 	})
 	gql.SetRecoverFunc(func(ctx context.Context, recovered any) error {
 		// Never log panic values: they may contain private request or dependency data.
@@ -77,10 +112,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	graphqlHandler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
-		gql.ServeHTTP(w, r)
-	}))
+	graphqlHandler := graphTransport(gql)
 	if verifier != nil {
 		graphqlHandler = verifier.Authenticate(graphqlHandler)
 	}

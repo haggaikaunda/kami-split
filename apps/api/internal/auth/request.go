@@ -171,3 +171,10 @@ func WriteError(w http.ResponseWriter, err error) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "access unavailable", "extensions": map[string]string{"code": code}}}})
 }
+
+// RequireRequest checks verified request evidence before protected GraphQL
+// execution. Current application access is still checked inside each transaction.
+func RequireRequest(ctx context.Context) error {
+	_, err := requestIdentity(ctx)
+	return err
+}

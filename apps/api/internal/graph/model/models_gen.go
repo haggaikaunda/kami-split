@@ -2,12 +2,904 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+
+	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+)
+
+// Complete exact balances or an explicit failure; failure never means zero or settled.
+type BalanceResult interface {
+	IsBalanceResult()
+}
+
+// Durable success or rejection, payload mismatch, transient uncertainty, or safe access/infrastructure problem.
+type CreateExpenseResult interface {
+	IsCreateExpenseResult()
+}
+
+// An authorized complete group projection or safe problem.
+type GroupResult interface {
+	IsGroupResult()
+}
+
+// A typed ks1 public identity. Every lookup requires current authorization; IDs confer no access.
+type Node interface {
+	IsNode()
+	// Stable typed public ID; possession does not authorize access.
+	GetID() string
+}
+
+// Currently authorized recovery of an original attempt; missing results do not establish noncommit.
+type OperationResult interface {
+	IsOperationResult()
+}
+
+// Own application identity, own access state, or unavailable read; no peer user directory.
+type ViewerResult interface {
+	IsViewerResult()
+}
+
+// One explicit participant share; zero amounts still retain participation and history.
+type Allocation struct {
+	// Explicit retained participant membership, including when its share is zero.
+	Participant *Membership `json:"participant"`
+	// Exact nonnegative cents; zero is an explicit participant share.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+}
+
+// One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
+type CreateExpenseInput struct {
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	Key ledger.OperationKey `json:"key"`
+	// Exact expense cents in the inclusive range 1 through 999999999.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+	Description string `json:"description"`
+	// Expense calendar date; valid future dates are permitted.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Descriptive category without financial or access implications.
+	Category Category `json:"category"`
+	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+	Note string `json:"note"`
+	// Active eligible same-group Membership ID; independent of creator and selected participants.
+	PayerID string `json:"payerId"`
+	// Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
+	ParticipantIds []string `json:"participantIds"`
+	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	Split SplitMode `json:"split"`
+	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+}
+
+// One selected participant and its nonnegative exact share, including zero.
+type ExactAllocationInput struct {
+	// Stable explicit Membership ID; never a global user ID.
+	ParticipantID string `json:"participantId"`
+	// Exact nonnegative cents; zero is an explicit participant share.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+}
+
+// Persisted single-payer expense with explicit participant allocations and server-derived creator.
+type Expense struct {
+	// Stable typed public ID; possession does not authorize access.
+	ID string `json:"id"`
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// Exact expense cents in the inclusive range 1 through 999999999.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+	Description string `json:"description"`
+	// Expense calendar date; valid future dates are permitted.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Descriptive category without financial or access implications.
+	Category Category `json:"category"`
+	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+	Note string `json:"note"`
+	// Single payer; may differ from creator and need not be an owed participant.
+	Payer *Membership `json:"payer"`
+	// Server-derived authenticated membership responsible for creation.
+	Creator *Membership `json:"creator"`
+	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	Split SplitMode `json:"split"`
+	// Explicit shares in ascending canonical membership-ID order, including zero shares.
+	Allocations []*Allocation `json:"allocations"`
+	// Immutable server creation timestamp used with date and UUID for page ordering.
+	CreatedAt ledger.DateTime `json:"createdAt"`
+}
+
+func (Expense) IsNode() {}
+
+// Stable typed public ID; possession does not authorize access.
+func (this Expense) GetID() string { return this.ID }
+
+// Durable original financial success; refresh current authorized group data separately.
+type ExpenseCommitted struct {
+	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	Key ledger.OperationKey `json:"key"`
+	// Immutable original outcome; use a separate authorized read for current expense and balances.
+	Record *ExpenseOperationRecord `json:"record"`
+}
+
+func (ExpenseCommitted) IsCreateExpenseResult() {}
+
+func (ExpenseCommitted) IsOperationResult() {}
+
+// Forward-only append-only traversal, bounded by its initial financial revision; later creates appear after restarting the list.
+type ExpenseConnection struct {
+	// Bounded records ordered by effective date, creation timestamp and UUID, all descending.
+	Edges []*ExpenseEdge `json:"edges"`
+	// Metadata for this filtered anchored traversal, not the complete ledger.
+	PageInfo *PageInfo `json:"pageInfo"`
+	// Traversal anchor; may be older than the simultaneously returned complete balance revision.
+	Revision ledger.Revision `json:"revision"`
+}
+
+// One expense and its signed continuation boundary.
+type ExpenseEdge struct {
+	// Signed boundary bound to group, filters, financial anchor and immutable ordering tuple.
+	Cursor string `json:"cursor"`
+	// Currently authorized expense with current minimal membership labels.
+	Node *Expense `json:"node"`
+}
+
+// AND-combined inclusive page filters. Complete balances never use these filters.
+type ExpenseFilter struct {
+	// Inclusive earliest effective date; must not exceed to.
+	From *ledger.Date `json:"from,omitempty"`
+	// Inclusive latest effective date; must not precede from.
+	To *ledger.Date `json:"to,omitempty"`
+	// Descriptive category without financial or access implications.
+	Category *Category `json:"category,omitempty"`
+	// Same-group Membership ID; includes zero-share participation but excludes payer-only matches.
+	ParticipantID *string `json:"participantId,omitempty"`
+}
+
+// Immutable successful operation values retained with financial history; neither current labels nor current balances.
+type ExpenseOperationRecord struct {
+	// Original stable Expense ID, reused on every successful retry of this attempt.
+	ExpenseID string `json:"expenseId"`
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// Original server-derived creator membership ID, not the Auth identity.
+	CreatorMembershipID string `json:"creatorMembershipId"`
+	// Original selected payer membership ID, retained independently of later eligibility.
+	PayerMembershipID string `json:"payerMembershipId"`
+	// Exact expense cents in the inclusive range 1 through 999999999.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+	Description string `json:"description"`
+	// Expense calendar date; valid future dates are permitted.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Descriptive category without financial or access implications.
+	Category Category `json:"category"`
+	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+	Note string `json:"note"`
+	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	Split SplitMode `json:"split"`
+	// Explicit shares in ascending canonical membership-ID order, including zero shares.
+	Allocations []*OperationAllocation `json:"allocations"`
+	// Original server timestamp retained with the financial audit.
+	CommittedAt ledger.DateTime `json:"committedAt"`
+	// Original financial revision produced by this operation, never the current balance version.
+	Revision ledger.Revision `json:"revision"`
+}
+
+// Safe actionable validation detail without internal database information.
+type FieldProblem struct {
+	// Input field path, including an array index when the error identifies a submitted allocation.
+	Path []string `json:"path"`
+	// Stable safe machine-readable outcome code.
+	Code string `json:"code"`
+	// Safe human explanation without SQL, tokens or private identities.
+	Message string `json:"message"`
+}
+
+// Currently authorized group projections; selected members, expense page and complete balances share one statement snapshot.
+type Group struct {
+	// Stable typed public ID; possession does not authorize access.
+	ID string `json:"id"`
+	// Current authorized group label.
+	Name string `json:"name"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Current caller membership, independently of who paid or created an expense.
+	ViewerMembership *Membership `json:"viewerMembership"`
+	// Complete retained membership list, including inactive history, with only approved minimal profile fields.
+	Members []*Membership `json:"members"`
+	// A bounded filtered page. Failure returns null plus a safe field error, never a successful empty page.
+	Expenses *ExpenseConnection `json:"expenses,omitempty"`
+	// Complete current group positions and simplified obligations, never inferred from the expense page.
+	Balances    BalanceResult       `json:"balances"`
+	Filter      ledger.Filter       `json:"-"`
+	PageError   string              `json:"-"`
+	PageRequest expense.PageRequest `json:"-"`
+	Snapshot    expense.Snapshot    `json:"-"`
+}
+
+func (Group) IsGroupResult() {}
+
+func (Group) IsNode() {}
+
+// Stable typed public ID; possession does not authorize access.
+func (this Group) GetID() string { return this.ID }
+
+// All financial history for one group and currency, independent of the loaded expense page and filters.
+type GroupBalances struct {
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Financial projection counter only; current access and mutable metadata must still be refreshed.
+	Revision ledger.Revision `json:"revision"`
+	// Checked complete nonnegative spending up to int64 maximum; never limited by filters or pagination.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Complete individual paid, owed and net amounts, including retained inactive members.
+	Positions []*MemberPosition `json:"positions"`
+	// Positive debts derived only from complete nets, matched by canonical ID order; no minimum-payment-count guarantee or synthetic transfers.
+	Obligations []*Obligation `json:"obligations"`
+	// True only when every individual net is zero. A zero sum of nonzero nets is not settled.
+	Settled bool `json:"settled"`
+}
+
+func (GroupBalances) IsBalanceResult() {}
+
+// One currently accessible group; no cross-group financial aggregation.
+type GroupSummary struct {
+	// Stable typed public ID; possession does not authorize access.
+	ID string `json:"id"`
+	// Current authorized group label.
+	Name string `json:"name"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+}
+
 // Process-level GraphQL availability, not database or financial readiness.
 type Health struct {
 	// Returns "ok" when the GraphQL health resolver responds; does not indicate database or financial readiness.
 	Status string `json:"status"`
 }
 
-// Minimal scaffold API; no financial or authenticated operations yet.
+// Complete individual position including retained inactive-member history.
+type MemberPosition struct {
+	// Retained group membership attributed by the complete history.
+	Member *Membership `json:"member"`
+	// Checked nonnegative complete payer total in cents.
+	PaidMinor ledger.MinorUnits `json:"paidMinor"`
+	// Checked nonnegative complete allocation total in cents.
+	OwedMinor ledger.MinorUnits `json:"owedMinor"`
+	// Exact paid minus owed; positive is owed to this member, negative is owed by this member.
+	NetMinor ledger.MinorUnits `json:"netMinor"`
+}
+
+// Minimal current label and eligibility for a retained group identity; no peer email or Auth identity.
+type Membership struct {
+	// Stable typed public ID; possession does not authorize access.
+	ID string `json:"id"`
+	// Current minimal display label; not an immutable name snapshot.
+	DisplayName string `json:"displayName"`
+	// ACTIVE or INACTIVE; inactive callers have no group access.
+	Status MembershipStatus `json:"status"`
+	// OWNER for the sole owner pointer, MEMBER otherwise; no automatic restoration on readmission.
+	Role MembershipRole `json:"role"`
+	// Current active/enabled eligibility hint, always rechecked under locks for a new write.
+	CanParticipate bool `json:"canParticipate"`
+}
+
+func (Membership) IsNode() {}
+
+// Stable typed public ID; possession does not authorize access.
+func (this Membership) GetID() string { return this.ID }
+
+// Authenticated financial commands with database-backed atomicity and durable duplicate protection.
+type Mutation struct {
+}
+
+// Deterministic simplified current obligation; historical payer relationships are not additional debts.
+type Obligation struct {
+	// Debtor membership with a negative complete net.
+	From *Membership `json:"from"`
+	// Creditor membership with a positive complete net.
+	To *Membership `json:"to"`
+	// Strictly positive exact obligation cents, at most int64 maximum.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+}
+
+// Original explicit participant ID and committed share, without mutable profile data.
+type OperationAllocation struct {
+	// Stable explicit Membership ID; never a global user ID.
+	ParticipantID string `json:"participantId"`
+	// Exact nonnegative cents; zero is an explicit participant share.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+}
+
+// The scoped key already identifies a different canonical intent; original data is never overwritten.
+type OperationMismatch struct {
+	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	Key ledger.OperationKey `json:"key"`
+}
+
+func (OperationMismatch) IsCreateExpenseResult() {}
+
+// Transient knowledge about the original attempt; preserve its key, frozen input and scope.
+type OperationProgress struct {
+	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+	Key ledger.OperationKey `json:"key"`
+	// NOT_OBSERVED or UNKNOWN is not proof of no commit; continue with the original key and payload.
+	State OperationState `json:"state"`
+}
+
+func (OperationProgress) IsCreateExpenseResult() {}
+
+func (OperationProgress) IsOperationResult() {}
+
+// Forward pagination metadata, including whether eligible earlier rows exist at the same anchor.
+type PageInfo struct {
+	// False on the first page; otherwise an eligible tuple exists at or above the supplied boundary.
+	HasPreviousPage bool `json:"hasPreviousPage"`
+	// First edge cursor, or null for an empty page.
+	StartCursor *string `json:"startCursor,omitempty"`
+	// Another eligible row exists beyond this page at the same anchor.
+	HasNextPage bool `json:"hasNextPage"`
+	// Last edge cursor, or null for an empty page.
+	EndCursor *string `json:"endCursor,omitempty"`
+}
+
+// Safe expected failure with no private existence or infrastructure diagnostics.
+type Problem struct {
+	// Stable safe machine-readable outcome code.
+	Code ProblemCode `json:"code"`
+	// Safe human explanation without SQL, tokens or private identities.
+	Message string `json:"message"`
+}
+
+func (Problem) IsViewerResult() {}
+
+func (Problem) IsGroupResult() {}
+
+func (Problem) IsBalanceResult() {}
+
+func (Problem) IsCreateExpenseResult() {}
+
+func (Problem) IsOperationResult() {}
+
+// Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {
+}
+
+// Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
+type ValidationProblem struct {
+	// Definitive validation details; corrected intent uses a new operation key.
+	Fields []*FieldProblem `json:"fields"`
+}
+
+func (ValidationProblem) IsCreateExpenseResult() {}
+
+func (ValidationProblem) IsOperationResult() {}
+
+// Self-only application identity. Viewer IDs use the stable application UUID, never the Auth subject.
+type Viewer struct {
+	// Stable typed public ID; possession does not authorize access.
+	ID string `json:"id"`
+	// Current minimal display label; not an immutable name snapshot.
+	DisplayName string `json:"displayName"`
+	// Informational designated-creator capability; no group-creation mutation is exposed here.
+	CanCreateGroups bool `json:"canCreateGroups"`
+	// Currently accessible active groups sorted by canonical group ID; never a manufactured bootstrap group.
+	Groups []*GroupSummary `json:"groups"`
+}
+
+func (Viewer) IsViewerResult() {}
+
+func (Viewer) IsNode() {}
+
+// Stable typed public ID; possession does not authorize access.
+func (this Viewer) GetID() string { return this.ID }
+
+// Verified caller state without group or identity data.
+type ViewerAccess struct {
+	// Caller-only disabled or unprovisioned state; neither permits group access.
+	State AccessState `json:"state"`
+}
+
+func (ViewerAccess) IsViewerResult() {}
+
+// Self-only application access state for a cryptographically verified caller.
+type AccessState string
+
+const (
+	// The caller application identity is disabled or no longer linked for access.
+	AccessStateDisabled AccessState = "DISABLED"
+	// Verified Auth account has no provisioned application identity.
+	AccessStateUnprovisioned AccessState = "UNPROVISIONED"
+)
+
+var AllAccessState = []AccessState{
+	AccessStateDisabled,
+	AccessStateUnprovisioned,
+}
+
+func (e AccessState) IsValid() bool {
+	switch e {
+	case AccessStateDisabled, AccessStateUnprovisioned:
+		return true
+	}
+	return false
+}
+
+func (e AccessState) String() string {
+	return string(e)
+}
+
+func (e *AccessState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccessState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccessState", str)
+	}
+	return nil
+}
+
+func (e AccessState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AccessState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AccessState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Descriptive expense category; never changes group scope or financial calculations.
+type Category string
+
+const (
+	// Meals and dining.
+	CategoryDining Category = "DINING"
+	// Grocery purchases.
+	CategoryGroceries Category = "GROCERIES"
+	// Lodging expenses.
+	CategoryAccommodation Category = "ACCOMMODATION"
+	// Transportation expenses.
+	CategoryTransport Category = "TRANSPORT"
+	// Shared activities.
+	CategoryActivities Category = "ACTIVITIES"
+	// Household purchases.
+	CategoryHome Category = "HOME"
+	// Other supported expenses.
+	CategoryOther Category = "OTHER"
+)
+
+var AllCategory = []Category{
+	CategoryDining,
+	CategoryGroceries,
+	CategoryAccommodation,
+	CategoryTransport,
+	CategoryActivities,
+	CategoryHome,
+	CategoryOther,
+}
+
+func (e Category) IsValid() bool {
+	switch e {
+	case CategoryDining, CategoryGroceries, CategoryAccommodation, CategoryTransport, CategoryActivities, CategoryHome, CategoryOther:
+		return true
+	}
+	return false
+}
+
+func (e Category) String() string {
+	return string(e)
+}
+
+func (e *Category) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Category(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Category", str)
+	}
+	return nil
+}
+
+func (e Category) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Category) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Category) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Supported ledger currency; each group is an independent financial boundary.
+type Currency string
+
+const (
+	// United States dollars, using integer cents.
+	CurrencyUsd Currency = "USD"
+)
+
+var AllCurrency = []Currency{
+	CurrencyUsd,
+}
+
+func (e Currency) IsValid() bool {
+	switch e {
+	case CurrencyUsd:
+		return true
+	}
+	return false
+}
+
+func (e Currency) String() string {
+	return string(e)
+}
+
+func (e *Currency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Currency(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Currency", str)
+	}
+	return nil
+}
+
+func (e Currency) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Currency) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Current role derived from the group owner membership, independently of financial position.
+type MembershipRole string
+
+const (
+	// The sole active owner identified by the group owner pointer.
+	MembershipRoleOwner MembershipRole = "OWNER"
+	// Ordinary membership without ownership authority.
+	MembershipRoleMember MembershipRole = "MEMBER"
+)
+
+var AllMembershipRole = []MembershipRole{
+	MembershipRoleOwner,
+	MembershipRoleMember,
+}
+
+func (e MembershipRole) IsValid() bool {
+	switch e {
+	case MembershipRoleOwner, MembershipRoleMember:
+		return true
+	}
+	return false
+}
+
+func (e MembershipRole) String() string {
+	return string(e)
+}
+
+func (e *MembershipRole) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MembershipRole(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MembershipRole", str)
+	}
+	return nil
+}
+
+func (e MembershipRole) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *MembershipRole) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e MembershipRole) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Current membership state; inactive members retain attribution but have no group access.
+type MembershipStatus string
+
+const (
+	// Active membership; account eligibility is checked separately.
+	MembershipStatusActive MembershipStatus = "ACTIVE"
+	// Historical membership retained without current group access.
+	MembershipStatusInactive MembershipStatus = "INACTIVE"
+)
+
+var AllMembershipStatus = []MembershipStatus{
+	MembershipStatusActive,
+	MembershipStatusInactive,
+}
+
+func (e MembershipStatus) IsValid() bool {
+	switch e {
+	case MembershipStatusActive, MembershipStatusInactive:
+		return true
+	}
+	return false
+}
+
+func (e MembershipStatus) String() string {
+	return string(e)
+}
+
+func (e *MembershipStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MembershipStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MembershipStatus", str)
+	}
+	return nil
+}
+
+func (e MembershipStatus) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *MembershipStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e MembershipStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Transient recovery knowledge, never permission to replace the original attempt key.
+type OperationState string
+
+const (
+	// No durable result visible at lookup; an in-flight attempt may still commit.
+	OperationStateNotObserved OperationState = "NOT_OBSERVED"
+	// Transient known contention in this call, not a durable pending record.
+	OperationStatePending OperationState = "PENDING"
+	// Infrastructure could not establish the financial result; preserve the original attempt.
+	OperationStateUnknown OperationState = "UNKNOWN"
+)
+
+var AllOperationState = []OperationState{
+	OperationStateNotObserved,
+	OperationStatePending,
+	OperationStateUnknown,
+}
+
+func (e OperationState) IsValid() bool {
+	switch e {
+	case OperationStateNotObserved, OperationStatePending, OperationStateUnknown:
+		return true
+	}
+	return false
+}
+
+func (e OperationState) String() string {
+	return string(e)
+}
+
+func (e *OperationState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OperationState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OperationState", str)
+	}
+	return nil
+}
+
+func (e OperationState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *OperationState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e OperationState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Safe failures that disclose neither private existence nor infrastructure details.
+type ProblemCode string
+
+const (
+	// Missing or currently unauthorized resource, without distinguishing private existence.
+	ProblemCodeNotFound ProblemCode = "NOT_FOUND"
+	// The requested outcome could not be safely established; never assume an empty ledger.
+	ProblemCodeUnavailable ProblemCode = "UNAVAILABLE"
+	// Invalid signature, shape, scope, filters, retired key or future financial anchor.
+	ProblemCodeInvalidCursor ProblemCode = "INVALID_CURSOR"
+	// Input violates the reviewed operation contract.
+	ProblemCodeInvalidInput ProblemCode = "INVALID_INPUT"
+	// Exact complete amounts or the revision exceed supported bounds; no truncation.
+	ProblemCodeAmountOverflow ProblemCode = "AMOUNT_OVERFLOW"
+)
+
+var AllProblemCode = []ProblemCode{
+	ProblemCodeNotFound,
+	ProblemCodeUnavailable,
+	ProblemCodeInvalidCursor,
+	ProblemCodeInvalidInput,
+	ProblemCodeAmountOverflow,
+}
+
+func (e ProblemCode) IsValid() bool {
+	switch e {
+	case ProblemCodeNotFound, ProblemCodeUnavailable, ProblemCodeInvalidCursor, ProblemCodeInvalidInput, ProblemCodeAmountOverflow:
+		return true
+	}
+	return false
+}
+
+func (e ProblemCode) String() string {
+	return string(e)
+}
+
+func (e *ProblemCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProblemCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProblemCode", str)
+	}
+	return nil
+}
+
+func (e ProblemCode) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProblemCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProblemCode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Allocation intent retained with the expense and included in duplicate comparison.
+type SplitMode string
+
+const (
+	// Server divides exact cents; remainder cents go to ascending canonical participant IDs.
+	SplitModeEqual SplitMode = "EQUAL"
+	// Caller supplies one reconciled amount for each explicit participant, including zero.
+	SplitModeExact SplitMode = "EXACT"
+)
+
+var AllSplitMode = []SplitMode{
+	SplitModeEqual,
+	SplitModeExact,
+}
+
+func (e SplitMode) IsValid() bool {
+	switch e {
+	case SplitModeEqual, SplitModeExact:
+		return true
+	}
+	return false
+}
+
+func (e SplitMode) String() string {
+	return string(e)
+}
+
+func (e *SplitMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SplitMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SplitMode", str)
+	}
+	return nil
+}
+
+func (e SplitMode) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SplitMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SplitMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
