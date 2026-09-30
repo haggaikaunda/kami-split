@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -308,5 +310,73 @@ func TestIndependentDifferentGroupsAndOwnerIsolation(t *testing.T) {
 	}
 	if _, err := left.service.Resend(caller, left.group, target.InvitationID, uuid.New()); err == nil {
 		t.Fatal("foreign invitation accepted under owned group")
+	}
+}
+
+func TestIndependentReadmissionRestoresActualFinancialHistory(t *testing.T) {
+	f := newFixture(t)
+	// Remove only this synthetic ledger before the shared fixture removes its group.
+	t.Cleanup(func() {
+		for _, table := range []string{"expense_operations", "expense_audit", "allocations", "expenses"} {
+			if _, err := f.admin.Exec(context.Background(), "DELETE FROM app."+table+" WHERE group_id=$1", f.group); err != nil {
+				t.Errorf("ledger fixture cleanup: %v", err)
+			}
+		}
+	})
+	finances := &expense.Service{DB: f.db}
+	_, oldToken := f.create("member@example.invalid")
+	joined, err := f.service.Accept(f.actor(f.member), oldToken, uuid.New())
+	requireOutcome(t, joined, err, "ADMITTED")
+	groupID := ledger.PublicID("Group", f.group.String())
+	var ownerMembership uuid.UUID
+	if err := f.admin.QueryRow(context.Background(), `SELECT owner_membership_id FROM app.groups WHERE id=$1`, f.group).Scan(&ownerMembership); err != nil {
+		t.Fatal(err)
+	}
+	createExpense := func(payer uuid.UUID, description string, total int64) *expense.Record {
+		t.Helper()
+		memberID := ledger.PublicID("Membership", payer.String())
+		out, err := finances.Create(f.actor(f.owner), ledger.Input{GroupID: groupID, Key: uuid.NewString(), Currency: "USD", Description: description, EffectiveDate: "2026-09-29", Category: "DINING", Total: total, PayerID: memberID, ParticipantIDs: []string{memberID}, Split: "EQUAL"})
+		if err != nil || out.Kind != "COMMITTED" || out.Record == nil {
+			t.Fatalf("financial fixture create: %s %v", out.Kind, err)
+		}
+		return out.Record
+	}
+	before := createExpense(joined.MembershipID, "before departure", 1000)
+	initial, err := finances.Read(f.actor(f.member), groupID, expense.PageRequest{First: 50})
+	if err != nil || len(initial.Records) != 1 {
+		t.Fatal("active member cannot read history", err)
+	}
+	f.exec(`UPDATE app.memberships SET active=false WHERE id=$1`, joined.MembershipID)
+	during := createExpense(ownerMembership, "during absence", 2000)
+	if _, err := finances.Read(f.actor(f.member), groupID, expense.PageRequest{First: 50}); err == nil {
+		t.Fatal("inactive member reads financial group")
+	}
+	if _, err := finances.ReadExpense(f.actor(f.member), groupID, before.ExpenseID); err == nil {
+		t.Fatal("inactive member reads old financial record")
+	}
+	historical, err := f.service.Accept(f.actor(f.member), oldToken, uuid.New())
+	requireOutcome(t, historical, err, "HISTORICAL_ACCEPTANCE")
+	if historical.HasAccess {
+		t.Fatal("old invitation restored financial access")
+	}
+	_, fresh := f.create("member@example.invalid")
+	readmitted, err := f.service.Accept(f.actor(f.member), fresh, uuid.New())
+	requireOutcome(t, readmitted, err, "ADMITTED")
+	if readmitted.MembershipID != joined.MembershipID {
+		t.Fatal("readmission changed historical membership")
+	}
+	history, err := finances.Read(f.actor(f.member), groupID, expense.PageRequest{First: 50})
+	if err != nil || len(history.Records) != 2 {
+		t.Fatalf("full financial history not restored: records=%d err=%v", len(history.Records), err)
+	}
+	seen := map[string]bool{}
+	for _, record := range history.Records {
+		seen[record.ExpenseID] = true
+	}
+	if !seen[before.ExpenseID] || !seen[during.ExpenseID] {
+		t.Fatal("missing pre-departure or absence financial record")
+	}
+	if _, err := finances.ReadExpense(f.actor(f.member), groupID, during.ExpenseID); err != nil {
+		t.Fatal("readmitted member cannot resolve absence expense", err)
 	}
 }
