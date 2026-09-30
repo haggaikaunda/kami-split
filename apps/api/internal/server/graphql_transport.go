@@ -19,12 +19,17 @@ type graphResponse struct {
 	status int
 }
 
+// Header returns the buffered response headers for the downstream handler.
 func (r *graphResponse) Header() http.Header { return r.header }
+
+// WriteHeader retains the first status, matching net/http response semantics.
 func (r *graphResponse) WriteHeader(status int) {
 	if r.status == 0 {
 		r.status = status
 	}
 }
+
+// Write buffers the response and supplies an implicit successful status.
 func (r *graphResponse) Write(p []byte) (int, error) {
 	if r.status == 0 {
 		r.status = 200
