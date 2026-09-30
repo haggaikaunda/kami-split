@@ -156,9 +156,20 @@ func TestRepaymentGraphQLHistoryAnchorAliasesAndCursorScopes(t *testing.T) {
 		}
 	}
 	aliases := `query($group:ID!){group(id:$group){... on Group{a:repayments(first:1){edges{node{id}}} b:repayments(first:100){edges{node{id}}} expenses(first:1){pageInfo{endCursor}}}}}`
-	aliased := repaymentData(t, repaymentGraphQL(t, f, 1, aliases, vars), "group")
-	if len(aliased["a"].(map[string]any)["edges"].([]any)) != 1 || len(aliased["b"].(map[string]any)["edges"].([]any)) != 4 {
-		t.Fatal(aliased)
+	aliasResponse := repaymentGraphQL(t, f, 1, aliases, vars)
+	aliasErrors, ok := aliasResponse["errors"].([]any)
+	if !ok || len(aliasErrors) != 2 {
+		t.Fatalf("expected one safe error per rejected selection: %v", aliasResponse)
+	}
+	for _, raw := range aliasErrors {
+		err := raw.(map[string]any)
+		if err["extensions"].(map[string]any)["code"] != "INVALID_INPUT" || err["message"] != "The requested field is unavailable." {
+			t.Fatalf("unsafe or incorrect alias error: %v", err)
+		}
+	}
+	aliased := aliasResponse["data"].(map[string]any)["group"].(map[string]any)
+	if aliased["a"] != nil || aliased["b"] != nil || aliased["expenses"] == nil {
+		t.Fatalf("alias rejection damaged sibling projection: %v", aliased)
 	}
 	expenseCursor := aliased["expenses"].(map[string]any)["pageInfo"].(map[string]any)["endCursor"]
 	for _, bad := range []map[string]any{{"group": f.input.GroupID, "first": 0}, {"group": f.input.GroupID, "first": 101}, {"group": f.input.GroupID, "first": 1, "after": "invalid"}, {"group": f.input.GroupID, "first": 1, "after": expenseCursor}, {"group": f.public("Group", 202), "first": 1, "after": cursor}} {
