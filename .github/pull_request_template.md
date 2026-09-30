@@ -15,6 +15,7 @@ Closes #
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
+- [ ] New/changed public Go/SDL surfaces documented; readability and module boundaries reviewed
 - [ ] Applicable area checks recorded (web browser/accessibility evidence; Go/API and container checks)
 
 <!-- Record commands, outcomes, commit SHA, and limitations. Explain non-applicable area checks; do not claim unavailable tooling was run. -->

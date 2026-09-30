@@ -37,6 +37,18 @@ These policies are Kami Split decisions, not claims of industry consensus:
 - Keep financial values exact. Validate bounds before arithmetic and serialization. Go `int64`, GraphQL `Int`, and JavaScript numbers have different ranges; choose and test the wire representation explicitly before publishing money fields.
 - Add pagination, batching, and query limits deliberately. Benchmark representative operations before introducing caching, pooling, or parallel execution as optimizations.
 
+## Documentation and comprehensibility
+
+The [API instructions](../../apps/api/AGENTS.md) require Go doc comments for all exported handwritten types, functions, methods, constants, and variables. Generated code is exempt; regenerate it from its source rather than adding comments by hand. Public comments describe the caller's contract, including relevant invariants, ownership, security requirements, concurrency guarantees, and non-obvious reasoning.
+
+Unexported implementation does not need a comment on every declaration. Add context where a reader cannot infer intent or constraints from clear code. Comments that paraphrase statements add maintenance work without explaining the contract. If a comment must walk through a difficult expression or nested branch, first consider restructuring the code with meaningful names, intermediate values, early returns, or a cohesive helper.
+
+Readable decomposition makes an operation's decisions and effects easy to follow locally. Extract a helper when it names a meaningful responsibility or clarifies reasoning; avoid scattering a straightforward operation across trivial helpers. There are no arbitrary maximum function or file sizes: cohesion and comprehensibility determine whether decomposition helps.
+
+Modularity means cohesive responsibilities and explicit dependencies, not a prescribed number of packages or layers. Keep related behavior together and expose the dependencies and ownership boundaries a caller needs to understand. Mixed responsibilities and hidden coupling make changes harder to reason about even when tests pass. Start with cohesive concrete implementations; introduce small consumer-owned interfaces only at real boundaries. Unnecessary layers, speculative interfaces, generic repositories, and abstractions without a present need work against this goal.
+
+The [schema documentation policy](../../packages/schema/README.md) applies the same contract-focused approach to public GraphQL SDL. The independent reviewer checks these documented standards on the final diff without turning personal style preferences into required rewrites.
+
 ## Testing and tools
 
 Test observable behavior. Use table-driven tests where cases share a clear structure, without forcing unrelated scenarios into one table. Financial tests should cover rounding/remainder rules, overflow, and balance invariants. Persistence tests should exercise real PostgreSQL constraints, atomic rollback, competing updates, duplicate operation IDs, and authorization denial. Mock external providers at their boundary rather than mocking every internal function.

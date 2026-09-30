@@ -9,6 +9,9 @@ The API currently implements a health-only scaffold. Financial operations, authe
 ## Design and implementation
 
 - Use idiomatic Go, `gofmt`, explicit constructors, and concrete types by default. Introduce small consumer-owned interfaces for actual boundaries; do not generate an interface for every struct or speculative generic frameworks.
+- Document every exported handwritten Go type, function, method, constant, and variable with a Go doc comment; generated code is exempt. Explain contracts, invariants, security/concurrency requirements, ownership, or non-obvious reasoning rather than restating implementation. Comment unexported code where that context is needed; restructure difficult implementation instead of explaining it line by line.
+- Prefer readable named helpers and intermediate values over dense expressions and deeply nested control flow when decomposition improves clarity. Use clear names; do not extract gratuitous helpers or impose arbitrary function/file size limits.
+- Define module boundaries by cohesive responsibilities and explicit dependencies. Avoid mixed responsibilities, hidden coupling, unnecessary layers, speculative interfaces, generic repositories, and abstraction for its own sake.
 - Keep packages cohesive and dependencies explicit. Avoid mutable globals, startup side effects in `init()`, and catch-all utility packages.
 - Keep gqlgen resolvers focused on transport mapping. Application operations own authorization and transaction boundaries; financial calculations remain independent of GraphQL and database libraries.
 - Treat the checked-in SDL in `packages/schema` as authoritative once introduced. Pin generation tools, regenerate output rather than editing generated code, and check for generation drift in CI.
