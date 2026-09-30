@@ -20,6 +20,8 @@ type Config struct {
 	Timeout  time.Duration
 }
 
+// Load validates database settings from lookup. It returns nil configuration when
+// DATABASE_URL and its dependent settings are absent; explicit empty values fail.
 func Load(lookup func(string) (string, bool)) (*Config, error) {
 	raw, enabled := lookup("DATABASE_URL")
 	if !enabled {
@@ -95,6 +97,8 @@ type DB struct {
 	timeout time.Duration
 }
 
+// Open creates a bounded pool and verifies the restricted runtime role within the
+// configured timeout. On failure it closes the pool; on success the caller owns Close.
 func Open(ctx context.Context, c Config) (*DB, error) {
 	cfg, err := c.poolConfig()
 	if err != nil {
@@ -121,6 +125,8 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	return db, nil
 }
 
+// Ready checks connectivity within the configured timeout and the caller deadline.
+// It does not check migrations or grant administrative monitoring privileges.
 func (d *DB) Ready(ctx context.Context) error {
 	probe, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
@@ -130,4 +136,6 @@ func (d *DB) Ready(ctx context.Context) error {
 	return nil
 }
 
+// Close waits for acquired connections to be returned and releases the pool.
+// Callers must finish database work before closing the shared dependency.
 func (d *DB) Close() { d.pool.Close() }
