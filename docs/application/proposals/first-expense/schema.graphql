@@ -1,0 +1,232 @@
+"Proposed only; never included by the running gqlgen schema."
+scalar MinorUnits
+scalar Date
+scalar DateTime
+scalar OperationKey
+"Per-group financial/ledger projection counter; not a response ETag or metadata version."
+scalar Revision
+
+interface Node {
+  id: ID!
+}
+enum Currency {
+  USD
+}
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+enum MembershipRole {
+  OWNER
+  MEMBER
+}
+enum Category {
+  DINING
+  GROCERIES
+  ACCOMMODATION
+  TRANSPORT
+  ACTIVITIES
+  HOME
+  OTHER
+}
+enum SplitMode {
+  EQUAL
+  EXACT
+}
+enum AccessState {
+  DISABLED
+  UNPROVISIONED
+}
+enum ProblemCode {
+  NOT_FOUND
+  UNAVAILABLE
+  INVALID_CURSOR
+  INVALID_INPUT
+  AMOUNT_OVERFLOW
+}
+enum OperationState {
+  NOT_OBSERVED
+  PENDING
+  UNKNOWN
+}
+
+type Query {
+  viewer: ViewerResult!
+  node(id: ID!): Node
+  group(id: ID!): GroupResult!
+  expenseOperation(groupId: ID!, key: OperationKey!): OperationResult!
+}
+type Mutation {
+  createExpense(input: CreateExpenseInput!): CreateExpenseResult!
+}
+union ViewerResult = Viewer | ViewerAccess | Problem
+"Self-only application identity. IDs use ks1:Viewer:<UUID>; node never exposes a peer Viewer."
+type Viewer implements Node {
+  id: ID!
+  displayName: String!
+  canCreateGroups: Boolean!
+  groups: [GroupSummary!]!
+}
+type ViewerAccess {
+  state: AccessState!
+}
+type GroupSummary {
+  id: ID!
+  name: String!
+  currency: Currency!
+}
+union GroupResult = Group | Problem
+type Group implements Node {
+  id: ID!
+  name: String!
+  currency: Currency!
+  viewerMembership: Membership!
+  members: [Membership!]!
+  expenses(
+    first: Int! = 20
+    after: String
+    filter: ExpenseFilter
+  ): ExpenseConnection
+  balances: BalanceResult!
+}
+type Membership implements Node {
+  id: ID!
+  displayName: String!
+  status: MembershipStatus!
+  role: MembershipRole!
+  canParticipate: Boolean!
+}
+input ExpenseFilter {
+  from: Date
+  to: Date
+  category: Category
+  participantId: ID
+}
+type ExpenseConnection {
+  edges: [ExpenseEdge!]!
+  pageInfo: PageInfo!
+  revision: Revision!
+}
+type ExpenseEdge {
+  cursor: String!
+  node: Expense!
+}
+type PageInfo {
+  hasPreviousPage: Boolean!
+  startCursor: String
+  hasNextPage: Boolean!
+  endCursor: String
+}
+type Expense implements Node {
+  id: ID!
+  groupId: ID!
+  totalMinor: MinorUnits!
+  currency: Currency!
+  description: String!
+  effectiveDate: Date!
+  category: Category!
+  note: String!
+  payer: Membership!
+  creator: Membership!
+  split: SplitMode!
+  allocations: [Allocation!]!
+  createdAt: DateTime!
+}
+type Allocation {
+  participant: Membership!
+  amountMinor: MinorUnits!
+}
+union BalanceResult = GroupBalances | Problem
+type GroupBalances {
+  groupId: ID!
+  currency: Currency!
+  revision: Revision!
+  totalExpenseMinor: MinorUnits!
+  positions: [MemberPosition!]!
+  obligations: [Obligation!]!
+  settled: Boolean!
+}
+type MemberPosition {
+  member: Membership!
+  paidMinor: MinorUnits!
+  owedMinor: MinorUnits!
+  netMinor: MinorUnits!
+}
+type Obligation {
+  from: Membership!
+  to: Membership!
+  amountMinor: MinorUnits!
+}
+input CreateExpenseInput {
+  groupId: ID!
+  key: OperationKey!
+  totalMinor: MinorUnits!
+  currency: Currency!
+  description: String!
+  effectiveDate: Date!
+  category: Category!
+  note: String! = ""
+  payerId: ID!
+  participantIds: [ID!]!
+  split: SplitMode!
+  exactAllocations: [ExactAllocationInput!]
+}
+input ExactAllocationInput {
+  participantId: ID!
+  amountMinor: MinorUnits!
+}
+union CreateExpenseResult =
+  | ExpenseCommitted
+  | ValidationProblem
+  | OperationMismatch
+  | OperationProgress
+  | Problem
+union OperationResult =
+  | ExpenseCommitted
+  | ValidationProblem
+  | OperationProgress
+  | Problem
+type ExpenseCommitted {
+  key: OperationKey!
+  record: ExpenseOperationRecord!
+}
+"Immutable successful operation values, not current expense or balances."
+type ExpenseOperationRecord {
+  expenseId: ID!
+  groupId: ID!
+  creatorMembershipId: ID!
+  payerMembershipId: ID!
+  totalMinor: MinorUnits!
+  currency: Currency!
+  description: String!
+  effectiveDate: Date!
+  category: Category!
+  note: String!
+  split: SplitMode!
+  allocations: [OperationAllocation!]!
+  committedAt: DateTime!
+  revision: Revision!
+}
+type OperationAllocation {
+  participantId: ID!
+  amountMinor: MinorUnits!
+}
+type ValidationProblem {
+  fields: [FieldProblem!]!
+}
+type FieldProblem {
+  path: [String!]!
+  code: String!
+  message: String!
+}
+type OperationMismatch {
+  key: OperationKey!
+}
+type OperationProgress {
+  key: OperationKey!
+  state: OperationState!
+}
+type Problem {
+  code: ProblemCode!
+  message: String!
+}
