@@ -29,6 +29,9 @@ Install the checked-in `supabase/templates/invite.html` and `recovery.html`. Con
 
 For an authorized future hosted deployment, configure Supabase's supported [Resend SMTP integration](https://resend.com/docs/send-with-supabase-smtp): host `smtp.resend.com`, port `465`, username `resend`, password the dedicated send API key, and a verified sender. This is separate from the Go application's Resend HTTP transport. Local Supabase uses Mailpit instead. Do not enable email link tracking or analytics on capability/callback pages.
 
+The designated first account uses the [operator bootstrap runbook](bootstrap.md)
+and this same recovery flow.
+
 A new invitee enters their email after a valid two-name preview. The server checks `Eligible` before calling the Auth admin invitation endpoint. New, existing, ineligible and interrupted provisioning receive the same generic response. Repeated provisioning preserves provider identity; it cannot grant membership. Existing accounts sign in or recover normally. Verification leads to the same password page used by a pre-created bootstrap account. Only explicit Join invokes `Accept`, rechecking live invitation, enabled application identity and fresh matching verified email. An Auth account left by interrupted/revoked provisioning grants no group access.
 
 ## Browser state and privacy
