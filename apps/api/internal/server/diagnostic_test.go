@@ -140,7 +140,7 @@ func TestPreExecutionJWKSFailureIsSafelyCorrelated(t *testing.T) {
 	r.Header.Set("Authorization", "Bearer "+raw)
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, r)
-	if w.Code != 503 || !strings.Contains(w.Body.String(), "AUTH_UNAVAILABLE") {
+	if w.Code != 503 || !strings.Contains(w.Body.String(), `"code":"UNAVAILABLE"`) {
 		t.Fatalf("auth contract changed: %d %s", w.Code, w.Body.String())
 	}
 	if strings.Count(logs.String(), "graphql execution failed") != 1 || !strings.Contains(logs.String(), "auth.jwks_status") || !strings.Contains(logs.String(), w.Header().Get("X-Request-ID")) {
