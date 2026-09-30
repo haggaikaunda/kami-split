@@ -94,5 +94,5 @@ scripts/check-sqlc.sh
 cd apps/api
 TEST_DATABASE_URL="postgres://kami_api:kami-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
 TEST_DATABASE_ADMIN_URL="postgres://postgres:postgres@127.0.0.1:$port/postgres?sslmode=disable" \
-  go test -race -tags=integration -count=1 ./internal/database/...
+  go test -race -tags=integration -count=1 ./internal/database/... ./internal/auth/...
 cd "$root"
