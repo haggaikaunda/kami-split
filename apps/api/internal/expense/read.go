@@ -43,7 +43,7 @@ type Summary struct{ ID, Name, Currency string }
 // ReadViewer exposes disabled/unprovisioned states without granting group access.
 func (s *Service) ReadViewer(ctx context.Context) (Viewer, error) {
 	var result Viewer
-	err := auth.WithActor(ctx, s.DB, func(tx pgx.Tx, _ auth.Actor) error {
+	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
 		var raw string
 		if e := tx.QueryRow(ctx, `SELECT id::text,display_name,can_create_groups FROM app.viewer_identity()`).Scan(&raw, &result.DisplayName, &result.CanCreateGroups); e != nil {
 			return e

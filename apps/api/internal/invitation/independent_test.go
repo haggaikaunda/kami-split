@@ -220,7 +220,7 @@ func TestIndependentRuntimePurgeWithoutInvitationTraffic(t *testing.T) {
 	defer cancel()
 	done := make(chan struct{})
 	var failures atomic.Int32
-	go func() { defer close(done); f.db.RunInvitationMaintenance(ctx, func() { failures.Add(1) }) }()
+	go func() { defer close(done); RunMaintenance(ctx, f.db, func() { failures.Add(1) }) }()
 	deadline := time.After(5 * time.Second)
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
@@ -321,7 +321,7 @@ func TestIndependentReadmissionRestoresActualFinancialHistory(t *testing.T) {
 	f.exec(`RESET ROLE`)
 	f.exec(`UPDATE auth.users SET email=id::text||'@example.invalid' WHERE id IN ($1,$2)`, f.owner, f.member)
 	f.exec(`SET ROLE kami_migrator`)
-	finances := &expense.Service{DB: f.db}
+	finances := expense.New(f.db)
 	_, oldToken := f.create("member@example.invalid")
 	joined, err := f.service.Accept(f.actor(f.member), oldToken, uuid.New())
 	requireOutcome(t, joined, err, "ADMITTED")

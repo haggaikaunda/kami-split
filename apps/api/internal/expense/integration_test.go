@@ -122,7 +122,7 @@ func newExpenseFixture(t *testing.T) *expenseFixture {
 	if err = verifier.Warm(ctx); err != nil {
 		t.Fatal(err)
 	}
-	service := &expense.Service{DB: db}
+	service := expense.New(db)
 	codec, e := ledger.NewCursorCodec("test", map[string][]byte{"test": bytes.Repeat([]byte{1}, 32)})
 	if e != nil {
 		t.Fatal(e)
@@ -316,7 +316,7 @@ func TestPersistedExpenseRecoverySurvivesPoolRestartAndInactiveHistoricalPayer(t
 	input := f.input
 	original := f.original
 	exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE`, id(303)))
-	db.Pool.Reset()
+	database.IntegrationPool(db).Reset()
 	replay := create(1, input)
 	if replay.Kind != "COMMITTED" || replay.Record.ExpenseID != original.Record.ExpenseID {
 		t.Fatal(replay)
@@ -537,7 +537,7 @@ func TestPersistedExpenseLostCommitResponseRecoversThroughNewPoolAndService(t *t
 		t.Fatal(e)
 	}
 	defer restarted.Close()
-	recovered := &expense.Service{DB: restarted}
+	recovered := expense.New(restarted)
 	recoveryServer := httptest.NewServer(verifier.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		out, e := recovered.Recover(r.Context(), lost.GroupID, lost.Key)
 		if e != nil {
@@ -580,7 +580,7 @@ func TestPersistedExpenseDatabaseCommitAcknowledgementLossRemainsRecoverable(t *
 		t.Fatal(e)
 	}
 	defer uncertainDB.Close()
-	uncertainService := &expense.Service{DB: uncertainDB}
+	uncertainService := expense.New(uncertainDB)
 	in := input
 	in.Key = uuid.NewString()
 	in.PayerID = public("Membership", 302)

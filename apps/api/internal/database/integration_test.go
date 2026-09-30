@@ -60,7 +60,7 @@ func TestDatabaseIntegration(t *testing.T) {
 			`SELECT * FROM app.foundation_fixture`, `SELECT app.foundation_probe()`,
 			`SELECT * FROM auth.users`, `CREATE ROLE foundation_denied`,
 		} {
-			if _, err := db.Pool.Exec(ctx, sql); err == nil {
+			if _, err := database.IntegrationPool(db).Exec(ctx, sql); err == nil {
 				t.Fatalf("runtime unexpectedly allowed %s", sql)
 			}
 		}
@@ -88,7 +88,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		// their own privileges and introduce their separately reviewed RLS policies.
 		exec(`SET ROLE kami_migrator; GRANT SELECT ON app.foundation_fixture TO kami_api;
    INSERT INTO app.foundation_fixture VALUES(74, 'synthetic'); RESET ROLE`)
-		conn, err := db.Pool.Acquire(ctx)
+		conn, err := database.IntegrationPool(db).Acquire(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +115,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		conn.Release()
 	})
 	t.Run("bounded pool exhaustion", func(t *testing.T) {
-		held, err := db.Pool.Acquire(ctx)
+		held, err := database.IntegrationPool(db).Acquire(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,7 +173,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		status("/readyz", 200)
 		exec(`ALTER ROLE kami_api NOLOGIN; SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename='kami_api'`)
 		defer exec(`ALTER ROLE kami_api LOGIN`)
-		db.Pool.Reset()
+		database.IntegrationPool(db).Reset()
 		status("/readyz", 503)
 		status("/healthz", 200)
 		exec(`ALTER ROLE kami_api LOGIN`)
@@ -184,7 +184,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		}
 	})
 	db.Close()
-	if db.Pool.Stat().TotalConns() != 0 || db.Ready(ctx) == nil {
+	if database.IntegrationPool(db).Stat().TotalConns() != 0 || db.Ready(ctx) == nil {
 		t.Fatal("pool not closed")
 	}
 }

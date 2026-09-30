@@ -106,7 +106,7 @@ func TestVerifiedRequestRuntimeBoundary(t *testing.T) {
 	noLeak := func() {
 		t.Helper()
 		var subject string
-		if err := db.Pool.QueryRow(ctx, "SELECT coalesce(current_setting('app.verified_sub',true),'')").Scan(&subject); err != nil || subject != "" {
+		if err := database.IntegrationPool(db).QueryRow(ctx, "SELECT coalesce(current_setting('app.verified_sub',true),'')").Scan(&subject); err != nil || subject != "" {
 			t.Fatalf("identity survived reuse: %q %v", subject, err)
 		}
 	}
