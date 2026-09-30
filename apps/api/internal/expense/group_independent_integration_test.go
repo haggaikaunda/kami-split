@@ -16,7 +16,7 @@ func TestIndependentGroupCreatorNeedsNoHouseholdMembershipAndReceiptsSurviveTran
 	f := newGroupTransportFixture(t)
 	// Removing the designated creator from the household must neither disclose H
 	// nor remove its separate creation grant. Use an existing active peer as owner.
-	f.exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT; RESET ROLE`, f.id(302), f.id(201), f.id(301)))
+	f.exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY['%s','%s']::uuid[]); UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT; RESET ROLE`, f.id(101), f.id(102), f.id(302), f.id(201), f.id(301)))
 	input := ordinaryGroupInput()
 	first := createGroup(t, f, input, "GroupCreationCompleted")
 	v := groupRequest(t, f, 1, `{viewer{__typename ... on Viewer{canCreateGroups groups{id isHousehold}}}}`, nil, "viewer", "Viewer")
