@@ -9,7 +9,7 @@ This register distinguishes accepted outcomes from unresolved questions; it is n
 | ID  | Status and accepted outcome                                                                                                                                                                             | Still to resolve                                                                                                                       | Timing                                          |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | O01 | Policy settled: email/password, invite-only, Supabase Auth + Resend, seven-day invitation, same-link resend extending expiry, acceptance/revocation terminal                                            | Bootstrap and lifecycle policies settled in ADR-003; O09/O10 retain details; delivery configuration remains                            | Auth and invitations                            |
-| O02 | Policy settled: golang-jwt/v5 + keyfunc/v3, ES256, Relay Bearer transport, Supabase session integration, no immediate session revocation, hourly JWKS refresh/two-hour maximum age                      | Exact versions, token lifetime/logout scope, issuer/audience values, fetch timeout/rate limit and clock tolerance                      | Auth integration                                |
+| O02 | Policy settled: golang-jwt/v5 + keyfunc/v3, ES256, Relay Bearer transport, Supabase session integration, no immediate session revocation, hourly JWKS refresh/two-hour maximum age                      | Exact versions, issuer/audience values, fetch timeout/rate limit and clock tolerance; ADR-006 settles token lifetime/logout scope      | Auth integration                                |
 | O03 | Partially settled: stable application identity, unique Auth link, ordinary invite-based retry-safe provisioning plus ADR-003 administrative bootstrap, verified email changes, deactivate-before-delete | Retention/anonymized display, account-deletion recovery, group closure dependencies                                                    | User lifecycle                                  |
 | O04 | Architecture settled: private app schema, separate restricted roles, transaction-local verified identity, RLS isolation, Go business authorization                                                      | Concrete role grants, policy SQL and helper privileges, tested claims mapping                                                          | Database foundation                             |
 | O05 | Partially settled: direct pgxpool/session fallback, initial five-connection cap, verified TLS, separate secrets                                                                                         | Host/region, hosted staging choice, connection mode and total deployment budget                                                        | Hosted connectivity                             |
@@ -73,7 +73,25 @@ O10's earlier wording must be read with the newer owner-approved
 [valid-link preview/shared links](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886419039),
 and [immediate first-time admission](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886876182)
 comments. #79/#80 own their complete reviewed reconciliation. Former-member
-shared-link readmission is still open; targeted-only is not an accepted rule.
+shared-link readmission is resolved by I1 below: new targeted invitation required.
+
+## O01/O02/O10: invitation and onboarding reconciliation
+
+[ADR-006](006-invitation-onboarding-design.md) and its
+[gate matrix](../proposals/invitations/README.md) reconcile newer #79/#80 comments:
+email comparison, committed-state-versus-delivery behavior, valid-link two-field
+preview, reusable owner-distributed shared links and immediate first-time joining
+are owner-approved. Do not treat them as open product choices because older rows
+or issue bodies predate the comments. Shared joins do not globally consume links.
+
+The [owner I1–I5 decisions](https://github.com/haggaikaunda/kami-split/pull/101#issuecomment-5904210048)
+resolve former-member return (new targeted invitation only), shared controls,
+terminal recipient/token cleanup, bounded delivery-material recovery, 15-minute
+access tokens/current-session logout and critical-path placement. Shared-link
+implementation is separately tracked in #108; targeted #79/#80 delivery belongs
+to #73. #78 is complete and no longer blocks implementation. Engineering validates
+bounded current-email evidence and its non-atomic provider race, lock ordering,
+provider behavior and purge/retry mechanics within those approved boundaries.
 
 ### O18: #85 creation design resolution
 

@@ -11,4 +11,9 @@ records the accepted #75/#76 design and P1–P4 decisions, including lifetime-of
 financial-history operation recovery records. Uploaded receipt attachments remain
 deferred. Design acceptance does not claim implementation; delivery gates still apply.
 
+[ADR-006: Coordinated invitation and onboarding design](006-invitation-onboarding-design.md)
+records #79/#80 owner-approved follow-ups including I1–I5 and engineering protocols.
+#78 is complete; targeted #79/#80 delivery is on #73’s critical path, while reusable
+shared-link implementation is tracked separately in #108. Runtime proof remains required.
+
 [ADR-006: Ordinary and trip-group creation](006-group-creation.md) defines the #85 design-only extension, its contract, UI adaptation and ordered follow-up work. Adoption and implementation are separate.
