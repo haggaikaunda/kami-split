@@ -4,9 +4,11 @@ Follow the repository-wide [delivery workflow](../../docs/agents/delivery-workfl
 
 These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [Go engineering guide](../../docs/agents/go-guidelines.md) and [API architecture](../../docs/application/api-architecture.md) before API changes.
 
-The API currently implements a health-only scaffold. Financial operations, authentication, and persistence require separately approved issues.
+The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Internal targeted invitation, admission, and durable delivery recovery operations are implemented; their public onboarding transport (#80) and browser integration (#83) remain separate work. The web preview uses its mock DataPort. Expense editing/deletion, settlements, and imports remain deferred to separately approved issues.
 
 ## Design and implementation
+
+- Document every exported handwritten package declaration with its caller-visible contract. Preserve GraphQL descriptions on all public SDL declarations; do not manually document generated gqlgen/sqlc output.
 
 - Use idiomatic Go, `gofmt`, explicit constructors, and concrete types by default. Introduce small consumer-owned interfaces for actual boundaries; do not generate an interface for every struct or speculative generic frameworks.
 - Document every exported handwritten Go type, function, method, constant, and variable with a Go doc comment; generated code is exempt. Explain contracts, invariants, security/concurrency requirements, ownership, or non-obvious reasoning rather than restating implementation. Comment unexported code where that context is needed; restructure difficult implementation instead of explaining it line by line.

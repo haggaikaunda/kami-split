@@ -26,7 +26,7 @@ func TestDatabaseOperationsPreserveCancellationWithoutCredentials(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	db := &DB{Pool: pool, timeout: time.Second}
+	db := &DB{pool: pool, timeout: time.Second}
 	err = db.Ready(ctx)
 	if !errors.Is(err, context.Canceled) || err.Error() != "database unavailable" {
 		t.Fatalf("unsafe/lost readiness cause: %s", err)

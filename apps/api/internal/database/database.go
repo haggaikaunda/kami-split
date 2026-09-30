@@ -20,6 +20,8 @@ type Config struct {
 	Timeout  time.Duration
 }
 
+// Load validates database settings from lookup. It returns nil configuration when
+// DATABASE_URL and its dependent settings are absent; explicit empty values fail.
 func Load(lookup func(string) (string, bool)) (*Config, error) {
 	raw, enabled := lookup("DATABASE_URL")
 	if !enabled {
@@ -91,10 +93,12 @@ func (c Config) poolConfig() (*pgxpool.Config, error) {
 
 // DB owns a bounded pool. Callers must release acquired connections before Close.
 type DB struct {
-	Pool    *pgxpool.Pool
+	pool    *pgxpool.Pool
 	timeout time.Duration
 }
 
+// Open creates a bounded pool and verifies the restricted runtime role within the
+// configured timeout. On failure it closes the pool; on success the caller owns Close.
 func Open(ctx context.Context, c Config) (*DB, error) {
 	cfg, err := c.poolConfig()
 	if err != nil {
@@ -104,7 +108,7 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	if err != nil {
 		return nil, diagnostic.Wrap(errors.New("create database pool"), err, "database.open")
 	}
-	db := &DB{Pool: pool, timeout: c.Timeout}
+	db := &DB{pool: pool, timeout: c.Timeout}
 	probe, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	// SELECT 1 / Ping does not require pg_monitor or privileges on provider internals.
@@ -125,13 +129,17 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	return db, nil
 }
 
+// Ready checks connectivity within the configured timeout and the caller deadline.
+// It does not check migrations or grant administrative monitoring privileges.
 func (d *DB) Ready(ctx context.Context) error {
 	probe, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
-	if err := d.Pool.Ping(probe); err != nil {
+	if err := d.pool.Ping(probe); err != nil {
 		return diagnostic.Wrap(errors.New("database unavailable"), err, "database.ready")
 	}
 	return nil
 }
 
-func (d *DB) Close() { d.Pool.Close() }
+// Close waits for acquired connections to be returned and releases the pool.
+// Callers must finish database work before closing the shared dependency.
+func (d *DB) Close() { d.pool.Close() }

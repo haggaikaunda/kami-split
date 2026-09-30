@@ -12,6 +12,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 )
@@ -47,7 +48,7 @@ func run() int {
 		maintenanceDone := make(chan struct{})
 		go func() {
 			defer close(maintenanceDone)
-			db.RunInvitationMaintenance(maintenanceCtx, func() { logger.Error("invitation cleanup unavailable") })
+			invitation.RunMaintenance(maintenanceCtx, db, func() { logger.Error("invitation cleanup unavailable") })
 		}()
 		defer func() { cancelMaintenance(); <-maintenanceDone }()
 		dependencies = append(dependencies, db)
@@ -96,7 +97,7 @@ func run() int {
 		logger.Error("invalid or missing cursor signing configuration")
 		return 1
 	}
-	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: &expense.Service{DB: db}, Cursors: cursors}})
+	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(db), Cursors: cursors}})
 	if err := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...).Run(ctx); err != nil {
 		logger.Error("server stopped unexpectedly")
 		return 1

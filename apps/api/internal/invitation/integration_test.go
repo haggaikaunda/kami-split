@@ -263,7 +263,7 @@ func TestActionsDeliveryAndRestrictedRole(t *testing.T) {
 		t.Fatal("late completion reversed terminal", ok, err)
 	}
 	for _, sql := range []string{`SELECT * FROM app.invitations`, `SELECT * FROM app.invitation_actions`, `SELECT * FROM app.invitation_delivery`, `UPDATE app.memberships SET active=true`, `SELECT * FROM auth.users`, `SELECT app.invitation_owner_lock('` + f.group.String() + `')`} {
-		if _, err := f.db.Pool.Exec(context.Background(), sql); err == nil {
+		if _, err := database.IntegrationPool(f.db).Exec(context.Background(), sql); err == nil {
 			t.Fatalf("runtime allowed %s", sql)
 		}
 	}
