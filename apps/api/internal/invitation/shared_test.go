@@ -5,6 +5,7 @@ package invitation
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func TestSharedLifecycle(t *testing.T) {
 	if err != nil || TokenHash(token.Value()) == nil {
 		t.Fatal("copy failed", err)
 	}
-	if fmt.Sprintf("%v %#v", token, token) == token.Value() {
+	if strings.Contains(fmt.Sprintf("%v %#v", token, token), token.Value()) {
 		t.Fatal("unredacted token")
 	}
 	again, err := f.service.CreateShared(owner, f.group, uuid.New())
