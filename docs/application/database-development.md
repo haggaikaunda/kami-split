@@ -163,3 +163,47 @@ to this disposable local/test command. Do not run resets against hosted resource
 CI installs the pinned tools and executes these checks without production secrets,
 then preserves base health-only container checks and verifies coordinated
 Supabase+Compose startup. The existing required `Verify` aggregation remains intact.
+
+## Internal ordinary/trip creation (#103)
+
+`DB.CreateGroup` and `DB.GroupCreationOperation` implement the accepted
+[ADR-006 creation contract](decisions/006-group-creation.md) for a previously
+verified Auth subject. They own READ COMMITTED transactions; no HTTP or GraphQL
+entry point is published. Only the enabled, linked stable identity designated by
+`installation.group_creator_user_id` can create or recover. Household membership,
+email and ownership of other groups grant no capability.
+
+The additive `005_group_creation.sql` introduces optional `group_trip` metadata
+and permanent identity-scoped `group_creation_attempts`. Existing groups remain
+ordinary by absence of metadata. Creation inserts its receipt, new group, sole
+active owner membership and optional trip atomically; deferred foreign keys make
+partial results uncommittable. No financial entries or ledger revisions are
+created. Trip dates are Gregorian date-only values, independent of timezone;
+classification/status projections and UI defaults are deferred to the read/UI
+slices. Runtime receives only the narrow create/lookup functions and authorized
+trip reads, with no direct creation-table writes or receipt reads.
+
+Lock order is user FOR SHARE, installation FOR SHARE, then the unique identity /
+CREATE_GROUP / operation-key receipt. Operator disabling follows the existing
+user lock; designation changes must lock installation and must never acquire a
+user lock afterwards. Trip insertion and household designation changes also
+serialize on installation, enforcing an ordinary household in both directions.
+Completed Go results undergo a separate current authorized group read after the
+creation transaction. Result IDs describe the original creation; callers fetch
+fresh group metadata before navigation.
+
+Name canonicalization trims only ASCII space/tab/CR/LF. Destination null/omission
+normalizes to empty without trimming or Unicode normalization. SQL counts Unicode
+scalars and repeats Go's scalar validation. Domain rejection is durable; corrected
+input needs a new key. Malformed scalar, authorization and transient failures do
+not reserve keys. A same-key changed canonical input conflicts. NOT_STARTED is
+only a committed-state observation, since an in-flight attempt may later commit;
+retry only its identical key/input. UNAVAILABLE likewise never proves failure.
+Receipts have no expiry or pruning operation.
+
+`make db-test` snapshots real existing #75 identity/group/membership/installation
+rows before applying #103 and checks exact preservation, in addition to fresh
+replay and desired-state reconciliation. The real-role creation suites exercise
+Unicode/date boundaries, durable rejection, access/grant denial, lost-response
+replay, concurrent duplicate calls, in-flight lookup, injected rollback at every
+insert, and both commit orders for disabling and creator-designation races.
