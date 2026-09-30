@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -477,6 +478,43 @@ func TestPersistedExpenseJourney(t *testing.T) {
 		replay := create(1, in)
 		if replay.Kind != "COMMITTED" || replay.Record.ExpenseID != committed.Record.ExpenseID {
 			t.Fatal("uncertain commit retry duplicated effect")
+		}
+	})
+	t.Run("independent real GraphQL faults remain correlated and masked", func(t *testing.T) {
+		failedDB, err := database.Open(ctx, database.Config{URL: runtime, MaxConns: 1, Timeout: time.Second})
+		if err != nil {
+			t.Fatal(err)
+		}
+		failedDB.Close()
+		var logs bytes.Buffer
+		failedServer := server.NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: &expense.Service{DB: failedDB}, Cursors: codec}}), slog.New(slog.NewJSONHandler(&logs, nil)), verifier)
+		for _, tc := range []struct{ query, want string }{
+			{`{ viewer { __typename ... on Problem { code } } }`, `"code":"UNAVAILABLE"`},
+			{fmt.Sprintf(`{ expenseOperation(groupId: %q, key: %q) { __typename ... on OperationProgress { key state } } }`, input.GroupID, input.Key), `"state":"UNKNOWN"`},
+			{fmt.Sprintf(`mutation { createExpense(input: {groupId: %q, key: %q, totalMinor: "1000", currency: USD, description: "Diagnostic", effectiveDate: "2026-09-29", category: DINING, payerId: %q, participantIds: [%q], split: EQUAL}) { __typename ... on OperationProgress { key state } } }`, input.GroupID, input.Key, input.PayerID, input.PayerID), `"state":"UNKNOWN"`},
+		} {
+			logs.Reset()
+			payload, _ := json.Marshal(map[string]string{"query": tc.query})
+			req := httptest.NewRequest("POST", "/graphql", bytes.NewReader(payload))
+			bearer := token(1)
+			req.Header.Set("Authorization", "Bearer "+bearer)
+			req.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			failedServer.Handler().ServeHTTP(response, req)
+			if !strings.Contains(response.Body.String(), tc.want) {
+				t.Fatalf("unexpected response: %s", response.Body)
+			}
+			if strings.Count(logs.String(), "graphql execution failed") != 1 || !strings.Contains(logs.String(), response.Header().Get("X-Request-ID")) || !strings.Contains(logs.String(), "expense.transaction") {
+				t.Fatalf("missing/duplicate safe event: %s", logs.String())
+			}
+			for _, private := range []string{bearer, runtime, input.GroupID, input.Key, "closed pool", "SELECT"} {
+				if strings.Contains(logs.String(), private) {
+					t.Fatalf("private data in log: %s", logs.String())
+				}
+			}
+			if strings.Contains(response.Body.String(), "closed pool") {
+				t.Fatal("raw cause in response")
+			}
 		}
 	})
 	t.Run("disabled actor cannot recover receipt", func(t *testing.T) {

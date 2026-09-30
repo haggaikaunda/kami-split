@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
@@ -71,5 +72,38 @@ func TestReadinessDependenciesAreOwnedWithoutAuthentication(t *testing.T) {
 	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/readyz", nil))
 	if w.Code != 200 {
 		t.Fatal("caller changed retained dependency slice")
+	}
+}
+
+type countedReadiness struct{ calls *int }
+
+func (r countedReadiness) Ready(context.Context) error { *r.calls++; return nil }
+
+func TestIndependentReadinessOwnershipAcrossConstructors(t *testing.T) {
+	for _, mode := range []string{"new", "nil verifier", "verifier"} {
+		t.Run(mode, func(t *testing.T) {
+			calls := 0
+			dependencies := []Readiness{countedReadiness{&calls}}
+			schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}})
+			var s *Server
+			switch mode {
+			case "new":
+				s = New(config.Config{}, schema, slog.Default(), dependencies...)
+			case "nil verifier":
+				s = NewWithAuthentication(config.Config{}, schema, slog.Default(), nil, dependencies...)
+			default:
+				verifier, err := auth.New(auth.Config{Issuer: "https://auth.example.invalid", Audience: "authenticated", JWKSURL: "https://auth.example.invalid/jwks"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				s = NewWithAuthentication(config.Config{}, schema, slog.Default(), verifier, dependencies...)
+			}
+			dependencies[0] = diagnosticReadiness{errors.New("replacement")}
+			s.ready.Store(true)
+			s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/readyz", nil))
+			if calls != 1 {
+				t.Fatal("constructor retained caller slice")
+			}
+		})
 	}
 }
