@@ -11,6 +11,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
@@ -20,13 +28,6 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
-	"log/slog"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestIndependentGraphQLDiagnosticFailures(t *testing.T) {
@@ -75,7 +76,7 @@ func TestIndependentGraphQLDiagnosticFailures(t *testing.T) {
 	}
 	failedDB.Close()
 	var logs bytes.Buffer
-	failedServer := server.NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: &expense.Service{DB: failedDB}, Cursors: codec}}), slog.New(slog.NewJSONHandler(&logs, nil)), verifier)
+	failedServer := server.NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(failedDB), Cursors: codec}}), slog.New(slog.NewJSONHandler(&logs, nil)), verifier)
 	for _, tc := range []struct{ query, want string }{
 		{`{ viewer { __typename ... on Problem { code } } }`, `"code":"UNAVAILABLE"`},
 		{fmt.Sprintf(`{ expenseOperation(groupId: %q, key: %q) { __typename ... on OperationProgress { key state } } }`, input.GroupID, input.Key), `"state":"UNKNOWN"`},

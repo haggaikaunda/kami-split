@@ -69,4 +69,3 @@ operation outcomes remain quiet. Panic recovery reports only `graphql.panic` and
 never retains the recovered value. Internal invitation operations do not log;
 future transport/worker adapters own reporting their returned unexpected failures
 through `diagnostic.Report` with their own correlation and sink.
-
