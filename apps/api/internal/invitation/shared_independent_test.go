@@ -211,3 +211,43 @@ func TestIndependentSharedJoinRevokeSerialized(t *testing.T) {
 		})
 	}
 }
+
+func TestIndependentSharedForwardedRecipientsReuseOneLink(t *testing.T) {
+	f := newFixture(t)
+	r, token := independentShared(t, f)
+	stranger := uuid.New()
+	f.provider.emails[stranger.String()] = "forwarded@example.invalid"
+	f.exec(`RESET ROLE`)
+	f.exec(`INSERT INTO auth.users(id,email) VALUES($1,'forwarded@example.invalid')`, stranger)
+	f.exec(`SET ROLE kami_migrator`)
+	t.Cleanup(func() {
+		f.exec(`DELETE FROM app.invitation_actions WHERE actor=$1`, stranger)
+		f.exec(`DELETE FROM app.memberships WHERE user_id IN (SELECT id FROM app.users WHERE auth_subject=$1)`, stranger)
+		f.exec(`DELETE FROM app.users WHERE auth_subject=$1`, stranger)
+		f.exec(`RESET ROLE`)
+		f.exec(`DELETE FROM auth.users WHERE id=$1`, stranger)
+		f.exec(`SET ROLE kami_migrator`)
+	})
+	for _, subject := range []uuid.UUID{f.member, stranger} {
+		joined, err := f.service.Accept(f.actor(subject), token, uuid.New())
+		requireOutcome(t, joined, err, "ADMITTED")
+		if !joined.HasAccess {
+			t.Fatal("forwarded recipient lacks group access")
+		}
+		var owner, canCreate bool
+		if err = f.admin.QueryRow(context.Background(), `SELECT g.owner_membership_id=m.id,EXISTS(SELECT FROM app.installation x WHERE x.group_creator_user_id=u.id) FROM app.memberships m JOIN app.groups g ON g.id=m.group_id JOIN app.users u ON u.id=m.user_id WHERE m.id=$1`, joined.MembershipID).Scan(&owner, &canCreate); err != nil {
+			t.Fatal(err)
+		}
+		if owner || canCreate {
+			t.Fatal("shared admission granted owner/group creation privileges")
+		}
+	}
+	var accepted *time.Time
+	var expiry time.Time
+	if err := f.admin.QueryRow(context.Background(), `SELECT accepted_at,expires_at FROM app.invitations WHERE id=$1`, r.InvitationID).Scan(&accepted, &expiry); err != nil {
+		t.Fatal(err)
+	}
+	if accepted != nil || !expiry.Equal(r.ExpiresAt) {
+		t.Fatal("joins consumed or renewed capability")
+	}
+}
