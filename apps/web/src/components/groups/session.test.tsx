@@ -64,6 +64,7 @@ async function render() {
 it('disposes private memory even when logout storage cleanup throws', async () => {
   await render();
   const original = current.scope!;
+  sessionStorage.setItem(privateStorageKey, '{}');
   vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
     throw new DOMException('Blocked', 'SecurityError');
   });
@@ -72,6 +73,10 @@ it('disposes private memory even when logout storage cleanup throws', async () =
   expect(current.scope).toBeUndefined();
   expect(host.textContent).not.toContain('Private alice');
   expect(host.textContent).toContain('Private storage is unavailable');
+  vi.restoreAllMocks();
+  await act(async () => sdk.changed('SIGNED_IN', { user: { id: 'alice' } }));
+  expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
+  expect(current.scope?.id).not.toBe(original.id);
 });
 it('replaces the environment and clears private drafts on switch and same-account logout/login', async () => {
   await render();

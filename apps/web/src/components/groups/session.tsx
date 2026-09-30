@@ -18,6 +18,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true,
       ticket = 0;
+    let pendingPurge = false;
     let scope: FinancialScope | undefined;
     let unsubscribe: (() => void) | undefined;
     void loadClient()
@@ -26,6 +27,8 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
         const update = (actor: string | undefined, signedOut = false) => {
           if (!active) return;
           // Invalidate memory before touching storage: storage can throw during logout.
+          if (signedOut || !actor || (scope && scope.actor !== actor))
+            pendingPurge = true;
           const changed = signedOut || scope?.actor !== actor;
           if (changed) {
             scope?.dispose();
@@ -33,8 +36,11 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
           }
           try {
             const previous = sessionStorage.getItem('kami-financial-subject');
-            if (signedOut || !actor || (previous && previous !== actor))
+            if (previous && previous !== actor) pendingPurge = true;
+            if (pendingPurge) {
               clearFinancialStorage();
+              pendingPurge = false;
+            }
             if (actor) sessionStorage.setItem('kami-financial-subject', actor);
             else sessionStorage.removeItem('kami-financial-subject');
             if (actor && !scope) scope = createScope(client, actor);
