@@ -47,7 +47,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 
 - `cmd/server`: configuration, explicit dependency wiring, structured logging, and signals.
 - `internal/config`: validated configuration.
-- `internal/database`: validated pgxpool lifecycle and readiness, with disposable sqlc fixture.
+- `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and handwritten resolver implementations.
 - [`packages/schema`](../../packages/schema/README.md): authoritative SDL consumed by `gqlgen.yml`.

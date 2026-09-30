@@ -14,7 +14,10 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "$stage/supabase"
 cp supabase/config.toml "$stage/supabase/"
-cp -R supabase/migrations supabase/seeds "$stage/supabase/"
+cp -R supabase/seeds "$stage/supabase/"
+mkdir -p "$stage/supabase/migrations"
+# Start with the provider plus the already shipped #74 foundation only.
+cp supabase/migrations/20260929000000_foundation.sql "$stage/supabase/migrations/"
 # Reserve four unused loopback ports during selection. Docker binding still fails
 # safely if another process races us; no shared stack is stopped or reset.
 python3 - "$stage/supabase/config.toml" "$project" <<'PY'
@@ -34,22 +37,30 @@ import sys, tomllib
 with open(sys.argv[1], 'rb') as f: print(tomllib.load(f)['db']['port'])
 PY
 )
-# CLI is the sole migration runner: reset tests fresh replay; up tests that an
-# already-applied history is a no-op. Initial release upgrades the empty app state.
-scripts/db-tool.sh supabase db reset --local --workdir "$stage"
+# Clone the actual provider database before new app migrations. The desired-state
+# database retains managed Auth objects verbatim; no hand-built provider stub.
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS false"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d template1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'postgres'"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "CREATE DATABASE kami_desired TEMPLATE postgres"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS true"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d kami_desired -c "SET ROLE kami_migrator; DROP SCHEMA app CASCADE"
+cp supabase/migrations/*.sql "$stage/supabase/migrations/"
+# Upgrade the existing #74 installation, then independently exercise fresh replay.
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
-scripts/db-tool.sh supabase db lint --local --schema app --fail-on warning --workdir "$stage"
+# Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
+# ownership when called by the non-inheriting migration login. No ACL is widened.
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
+scripts/db-tool.sh supabase db lint --db-url "postgres://postgres:postgres@127.0.0.1:$port/postgres?options=-c%20role%3Dkami_migrator" --schema app --fail-on warning --workdir "$stage"
 
 # Desired SQL is applied only to this throwaway comparison database, not as a
-# deployment runner. Provider schemas are neither copied nor redefined.
+# deployment runner. Managed provider schemas came from the clean template.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
 role_snapshot() {
   docker exec "$container" psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -c "SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolconnlimit, rolconfig FROM pg_roles WHERE rolname IN ('kami_api','kami_migrator') ORDER BY rolname; SELECT roleid::regrole, member::regrole, admin_option, inherit_option, set_option FROM pg_auth_members WHERE roleid IN ('kami_api'::regrole,'kami_migrator'::regrole) OR member IN ('kami_api'::regrole,'kami_migrator'::regrole) ORDER BY 1,2;"
 }
 role_snapshot > "$stage/migration-roles.txt"
-docker exec "$container" createdb -U postgres kami_desired
 for file in supabase/schemas/*.sql; do
-  docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d kami_desired < "$file"
+  docker exec -i "$container" psql -X -1 -v ON_ERROR_STOP=1 -U postgres -d kami_desired < "$file"
 done
 # Include schema objects, ownership, ACLs and default privileges. pg_dump's
 # random restriction token is the sole nondeterministic content removed.
@@ -65,6 +76,17 @@ for db in postgres kami_desired; do
   docker exec "$container" psql -X -At -U postgres -d "$db" -c "SELECT defaclrole::regrole, defaclnamespace::regnamespace, defaclobjtype, defaclacl FROM pg_default_acl WHERE defaclrole = 'kami_migrator'::regrole ORDER BY 1,2,3" > "$stage/$db.acl"
 done
 diff -u "$stage/postgres.acl" "$stage/kami_desired.acl"
+# Supabase reset recreates the cluster, including comparison databases. Compare
+# upgrade/desired state first, then fresh replay against the saved exact snapshot.
+scripts/db-tool.sh supabase db reset --local --workdir "$stage"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec "$container" pg_dump -U postgres -d postgres --schema-only --schema app \
+  | sed '/^\\restrict /d; /^\\unrestrict /d' > "$stage/fresh.sql"
+diff -u "$stage/postgres.sql" "$stage/fresh.sql"
+role_snapshot > "$stage/fresh-roles.txt"
+diff -u "$stage/migration-roles.txt" "$stage/fresh-roles.txt"
+docker exec "$container" psql -X -At -U postgres -d postgres -c "SELECT defaclrole::regrole, defaclnamespace::regnamespace, defaclobjtype, defaclacl FROM pg_default_acl WHERE defaclrole = 'kami_migrator'::regrole ORDER BY 1,2,3" > "$stage/fresh.acl"
+diff -u "$stage/postgres.acl" "$stage/fresh.acl"
 # Additional cluster-role and effective default-grant assertions run against the
 # migration replay, followed by real authenticated runtime integration tests.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql

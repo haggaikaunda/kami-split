@@ -1,8 +1,9 @@
 # Local database foundation
 
 Issue #74 introduces local PostgreSQL/Auth and a Go connection boundary. There
-are no application tables, business queries, membership policies, auth middleware,
-or hosted resources. Supabase owns its containers; Compose owns only Go.
+is now an [identity/membership foundation](identity-foundation.md) from #75, with
+private tables, RLS and transaction-bound reads. Auth middleware, business
+GraphQL operations and hosted resources remain deferred. Supabase owns its containers; Compose owns only Go.
 
 ## Prerequisites and pins
 
@@ -82,11 +83,15 @@ settings; do not put hosted secrets in Compose or PR jobs.
 CLI is its sole runner. `supabase/schemas` describes desired application SQL.
 There are no application-owned definitions of managed `auth` objects. Supabase's
 migration login bootstraps restricted roles and a private schema; application DDL
-uses `SET ROLE kami_migrator`, the NOLOGIN, non-admin owner. `kami_api` is a
+uses `SET ROLE kami_migrator`, the NOLOGIN, non-admin owner. The sole #75
+exception creates the users table/Auth FK as the existing migration login, then
+immediately transfers ownership and revokes temporary/default grants inside the
+same migration transaction; no provider schema privileges are delegated. `kami_api` is a
 separate LOGIN, NOINHERIT role without ownership, role creation, database creation,
 replication, BYPASSRLS or owner membership. Startup refuses other/admin roles.
-Runtime has schema USAGE only; each future feature must explicitly grant table
-privileges and implement separately approved RLS policies. Browser roles and
+Runtime has schema USAGE, column-only group/membership SELECT and narrow #75
+helper execution. Each future feature must explicitly grant table privileges and
+implement separately approved RLS policies. Browser roles and
 `service_role` have no app schema access. Default function execution is revoked
 for the owner globally because per-schema revocation cannot remove PostgreSQL's
 global PUBLIC EXECUTE default. No monitoring privileges are granted for probes.
@@ -108,8 +113,9 @@ explicit desired-state reconciliation, not experimental generation:
 4. `scripts/db-tool.sh supabase migration up --local` applies pending local history.
 5. Run `make db-test`, then all repository checks. Never edit an applied migration.
 
-For this initial release, the previous application schema is empty: fresh replay
-covers its first upgrade. The test also reruns migration up with an applied history.
+The #75 test upgrades the shipped #74 foundation and separately runs fresh
+replay plus migration up with an applied history. Desired-schema comparison uses
+a clone of the disposable provider baseline, retaining real Auth objects.
 Future migrations must add fixtures for upgrades from their prior release and
 prove preservation of real existing data. Hosted deployment, backups and recovery
 remain open decisions; no remote reset or deployment command is provided here.
@@ -128,18 +134,19 @@ make api-check
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-`sqlc.yaml` targets an explicitly disposable fixture under
-`apps/api/internal/database/sqlctest`. Generated pgx code is committed and compiled;
-the integration suite executes it against a temporary view of a synthetic fixture.
-It is not used by the API. When a real query is approved, replace this configuration
-with desired app schema and actual query inputs. Any needed managed-object analysis
-stubs belong only in tooling inputs, never in application migrations.
+`sqlc.yaml` generates the foundation group query directly from desired app SQL
+and retains the disposable `sqlctest` generation probe. Generated pgx code is
+committed, compiled and exercised under the real runtime role. Viewer/member
+helpers use explicit transaction-bound pgx queries for their function projections.
+There are no managed-object stubs or application-owned provider definitions.
 
 `db-generation-check` generates into a temporary directory and compares all files.
 `db-test` requires working Docker/tools and fails if dependencies are absent. It
 creates a unique Supabase project with automatically selected ports, replays via
-`db reset --local`, checks migration-up idempotence, and runs database lint with
-warnings fatal. Inside that stack it applies desired SQL to a throwaway comparison
+`db reset --local`, verifies upgrade from #74 and migration-up idempotence, and
+runs database lint with warnings fatal under the restricted function owner.
+`plpgsql_check` needs that owner context to inspect private helper calls; no
+application ACL is widened for lint. Inside that stack it applies desired SQL to a throwaway comparison
 database and compares schema dumps with ownership/ACLs plus global default ACLs
 and cluster role attributes/memberships. Only dump restriction tokens are removed.
 This is reconciliation, not an alternative deployment runner.
