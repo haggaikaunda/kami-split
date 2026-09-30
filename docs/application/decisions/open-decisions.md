@@ -74,3 +74,7 @@ O10's earlier wording must be read with the newer owner-approved
 and [immediate first-time admission](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886876182)
 comments. #79/#80 own their complete reviewed reconciliation. Former-member
 shared-link readmission is still open; targeted-only is not an accepted rule.
+
+### O18: #85 creation design resolution
+
+[ADR-006](006-group-creation.md) resolves the minimal creation design: reuse the implemented #75 installation designation/creator pointers, ordinary groups with optional trip metadata, explicit membership, identity-scoped atomic creation/recovery and group-scoped real UI navigation. Independent review and PR adoption remain required. Follow-up implementations are linked from that ADR; this is not delivered functionality. Metadata editing/reclassification is excluded from the initial slice and needs its own issue if requested. O19 remains wholly with #86; no report formula, partner inference or settlement design is added.
