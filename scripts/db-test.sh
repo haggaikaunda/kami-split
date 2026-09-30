@@ -49,7 +49,7 @@ cp supabase/migrations/*.sql "$stage/supabase/migrations/"
 # Seed a real #75 group before the additive group-creation migration. Compare
 # its complete rows afterwards, proving IDs, ownership and designation survive.
 group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
-household_migration="$stage/supabase/migrations/20261004000000_household_designation.sql"
+household_migration="$stage/supabase/migrations/20261005000000_household_designation.sql"
 mv "$household_migration" "$stage/household-designation.sql"
 mv "$group_migration" "$stage/group-creation.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
