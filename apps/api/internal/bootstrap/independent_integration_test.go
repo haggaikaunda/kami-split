@@ -108,6 +108,7 @@ func TestIndependentBootstrapConcurrentAndRepeat(t *testing.T) {
 	f := newFixture(t)
 	var wg sync.WaitGroup
 	results := make(chan error, 6)
+	outcomes := make(chan Result, 6)
 	for i := 0; i < 6; i++ {
 		wg.Add(1)
 		go func() {
@@ -115,7 +116,9 @@ func TestIndependentBootstrapConcurrentAndRepeat(t *testing.T) {
 			c, e := pgx.Connect(f.ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
 			if e == nil {
 				defer c.Close(f.ctx)
-				_, e = Provision(f.ctx, c, f.target)
+				var result Result
+				result, e = Provision(f.ctx, c, f.target)
+				outcomes <- result
 			}
 			results <- e
 		}()
@@ -126,6 +129,20 @@ func TestIndependentBootstrapConcurrentAndRepeat(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
+	}
+	close(outcomes)
+	created := 0
+	existing := 0
+	for outcome := range outcomes {
+		if outcome == Created {
+			created++
+		}
+		if outcome == Existing {
+			existing++
+		}
+	}
+	if created != 1 || existing != 5 {
+		t.Fatalf("concurrent outcomes created=%d existing=%d", created, existing)
 	}
 	f.provision()
 	f.exact()
@@ -293,6 +310,13 @@ func TestIndependentBootstrapMissingInstallationDoesNotRepairHistory(t *testing.
 	if _, e := Provision(f.ctx, f.db, f.target); e == nil {
 		t.Fatal("missing installation silently repaired historical setup")
 	}
+	alternate := f.target
+	alternate.GroupID = uuid.NewString()
+	alternate.MembershipID = uuid.NewString()
+	if _, e := Provision(f.ctx, f.db, alternate); e == nil {
+		t.Fatal("existing membership history allowed a fresh household")
+	}
+
 	var n int
 	if e := f.db.QueryRow(f.ctx, `SELECT count(*) FROM app.installation WHERE household_group_id=$1`, f.target.GroupID).Scan(&n); e != nil || n != 0 {
 		t.Fatal("installation restored", e)
@@ -309,5 +333,27 @@ func TestIndependentBootstrapRetryPreservesRenamedData(t *testing.T) {
 	e := f.db.QueryRow(f.ctx, `SELECT g.name,u.display_name FROM app.groups g,app.users u WHERE g.id=$1 AND u.id=$2`, f.target.GroupID, f.target.UserID).Scan(&groupName, &userName)
 	if e != nil || groupName != "Renamed household" || userName != "Updated profile" {
 		t.Fatal("retry overwrote mutable data", e)
+	}
+}
+
+func TestIndependentBootstrapDisabledOrTombstonedBeforeInstallation(t *testing.T) {
+	for _, tombstone := range []bool{false, true} {
+		t.Run(map[bool]string{false: "disabled", true: "tombstoned"}[tombstone], func(t *testing.T) {
+			f := newFixture(t)
+			f.exec(`INSERT INTO app.users(id,auth_subject,live_auth_id,display_name,enabled) VALUES($1,$2,$2,'Disabled synthetic',false)`, f.target.UserID, f.target.AuthUserID)
+			if tombstone {
+				f.exec(`UPDATE app.users SET live_auth_id=NULL WHERE id=$1`, f.target.UserID)
+			}
+			if _, e := Provision(f.ctx, f.db, f.target); e == nil {
+				t.Fatal("disabled preexisting identity provisioned")
+			}
+			var n int
+			var enabled bool
+			var live bool
+			e := f.db.QueryRow(f.ctx, `SELECT enabled,live_auth_id IS NOT NULL,(SELECT count(*) FROM app.groups WHERE id=$2) FROM app.users WHERE id=$1`, f.target.UserID, f.target.GroupID).Scan(&enabled, &live, &n)
+			if e != nil || enabled || live == tombstone || n != 0 {
+				t.Fatal("disabled/tombstoned identity changed", e)
+			}
+		})
 	}
 }
