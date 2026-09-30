@@ -782,3 +782,36 @@ func TestRepaymentHistoryRetainedForFullBackupRestore(t *testing.T) {
 	}
 	f.retainForBackup()
 }
+
+func TestRepaymentRevisionExhaustionIsDurable(t *testing.T) {
+	f := newExpenseFixture(t)
+	call := repaymentEndpoint(t, f, f.db)
+	in := repaymentInput(f)
+	original := repaymentRecord(t, call, 3, in)
+	if original.Kind != "COMMITTED" {
+		t.Fatal(original)
+	}
+	// Privileged synthetic fixture reaches the shared sequence's final value;
+	// record and registry stay aligned. Runtime never receives mutation grants.
+	f.exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; ALTER TABLE app.repayments NO FORCE ROW LEVEL SECURITY; ALTER TABLE app.financial_records NO FORCE ROW LEVEL SECURITY; UPDATE app.repayments SET revision=9223372036854775807 WHERE group_id='%s'; UPDATE app.financial_records SET revision=9223372036854775807 WHERE group_id='%s' AND kind='RECORD_REPAYMENT'; ALTER TABLE app.repayments FORCE ROW LEVEL SECURITY; ALTER TABLE app.financial_records FORCE ROW LEVEL SECURITY; COMMIT`, f.id(201), f.id(201)))
+	next := in
+	next.Key = uuid.NewString()
+	out := repaymentRecord(t, call, 3, next)
+	if out.Kind != "VALIDATION" || len(out.Fields) != 1 || out.Fields[0].Code != "AMOUNT_OVERFLOW" {
+		t.Fatalf("revision exhaustion %+v", out)
+	}
+	var recovered expense.Outcome
+	if call(3, "/recover", next, &recovered) != 200 || !reflect.DeepEqual(recovered, out) {
+		t.Fatal("exhaustion result not durable", recovered)
+	}
+	if retry := repaymentRecord(t, call, 3, next); !reflect.DeepEqual(retry, out) {
+		t.Fatal("exhausted same attempt changed", retry)
+	}
+	state := repaymentSnapshot(t, call, in)
+	if state.Revision != 9223372036854775807 || state.Total != 1000 {
+		t.Fatal("exhaustion mutated revision/spending", state)
+	}
+	if got := repaymentCounts(t, f); got != [4]int{1, 1, 2, 2} {
+		t.Fatal("exhaustion has financial effect", got)
+	}
+}
