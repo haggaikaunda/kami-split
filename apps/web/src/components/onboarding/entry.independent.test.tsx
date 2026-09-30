@@ -307,3 +307,116 @@ it('rejects malformed callback fragments and removes credentials from the addres
   expect(container.textContent).toContain('invalid, expired');
   expect(button('Continue with email link')).toBeUndefined();
 });
+it('resubmits an unobserved acceptance with the original key after an offline failure', async () => {
+  window.history.replaceState(null, '', '/join');
+  await render('join');
+  respond = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+  await click('Join group');
+  const original = readAttempt()!;
+  respond = async () => ({
+    data: { invitationAction: { outcome: 'NOT_OBSERVED' } },
+  });
+  await click('Recover original action');
+  expect(readAttempt()).toEqual(original);
+  respond = async (path, body) => {
+    expect(path).toBe('/api/onboarding/accept');
+    expect(body).toEqual({ key: original.key });
+    return { code: 'APPLIED', groupID: 'group-a', hasAccess: true };
+  };
+  await click('Retry original action with the same key');
+  expect(readAttempt()).toBeNull();
+  expect(container.textContent).toContain('You have joined the group');
+  expect(
+    requests
+      .filter((item) => item.path.endsWith('/accept'))
+      .map((item) => item.body.key),
+  ).toEqual([original.key, original.key]);
+});
+it('resubmits an unobserved resend after navigation using the retained group, invitation, and key', async () => {
+  const original = {
+    kind: 'RESEND' as const,
+    key,
+    groupID: 'original-group',
+    invitationID: 'original-invitation',
+  };
+  saveAttempt(original);
+  await render('invitations');
+  respond = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+  await click('Retry original action with the same key');
+  expect(readAttempt()).toEqual(original);
+  respond = async () => ({
+    data: { invitationAction: { outcome: 'NOT_OBSERVED' } },
+  });
+  await click('Recover original action');
+  respond = async (_path, body) => {
+    if (String(body.query).includes('resendInvitation')) {
+      expect(body.variables).toEqual({
+        groupID: original.groupID,
+        id: original.invitationID,
+        email: '',
+        key,
+      });
+      return {
+        data: {
+          resendInvitation: { outcome: 'APPLIED', delivery: 'ACCEPTED' },
+        },
+      };
+    }
+    expect(body.variables).toEqual({ groupID: original.groupID, after: null });
+    return { data: { ownerInvitations: { items: [], nextCursor: null } } };
+  };
+  await click('Retry original action with the same key');
+  expect(readAttempt()).toBeNull();
+  expect(
+    requests.filter((item) =>
+      String(item.body.query).includes('resendInvitation'),
+    ),
+  ).toHaveLength(2);
+});
+it('releases a definitely invalid create operation so the email can be corrected', async () => {
+  respond = async (_path, body) =>
+    String(body.query).includes('viewer')
+      ? {
+          data: {
+            viewer: {
+              __typename: 'Viewer',
+              groups: [{ id: 'group-a', name: 'House' }],
+            },
+          },
+        }
+      : String(body.query).includes('createTargetedInvitation')
+        ? { data: { createTargetedInvitation: { code: 'INVALID_EMAIL' } } }
+        : { data: { ownerInvitations: { items: [], nextCursor: null } } };
+  await render('invitations');
+  await click('Load my groups');
+  await click('Manage invitations for House');
+  await act(async () =>
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(
+    requests.filter((item) =>
+      String(item.body.query).includes('createTargetedInvitation'),
+    ),
+  ).toHaveLength(1);
+  expect(readAttempt()).toBeNull();
+  expect(button('Create invitation').disabled).toBe(false);
+  expect(
+    (container.querySelector('#invite-email') as HTMLInputElement).disabled,
+  ).toBe(false);
+});
+it('blocks retry when the current invitation differs from the retained acceptance', async () => {
+  saveAttempt({ kind: 'ACCEPT', key, tokenDigest: 'original-digest' });
+  sessionStorage.setItem('kami-onboarding-link-digest', 'different-digest');
+  await render('join');
+  await click('Retry original action with the same key');
+  expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
+    0,
+  );
+  expect(readAttempt()?.key).toBe(key);
+});

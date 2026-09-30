@@ -32,6 +32,7 @@ export type Attempt = {
   key: string;
   groupID?: string;
   invitationID?: string;
+  tokenDigest?: string;
 };
 const storageKey = 'kami-onboarding-attempt';
 export function readAttempt(): Attempt | null {

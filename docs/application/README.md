@@ -6,7 +6,7 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 
 ## Backend and planned features
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The #80 Auth/browser/email adapters and real web integration remain separate. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. Financial browser integration remains separate. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
 
 ## Architecture decisions
 

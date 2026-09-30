@@ -190,6 +190,7 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
             setPassword('');
             if (previous) {
               saveAttempt(null);
+              sessionStorage.removeItem('kami-onboarding-link-digest');
               setAttempt(null);
               setPreview(null);
               void fetch('/api/onboarding/clear', {
@@ -212,6 +213,21 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
         dispose = () => subscription.data.subscription.unsubscribe();
         if (mode === 'join') {
           if (fragment) {
+            const bytes = await crypto.subtle.digest(
+              'SHA-256',
+              new TextEncoder().encode(fragment),
+            );
+            const digest = Array.from(new Uint8Array(bytes), (byte) =>
+              byte.toString(16).padStart(2, '0'),
+            ).join('');
+            const original = readAttempt();
+            if (
+              original?.kind === 'ACCEPT' &&
+              original.tokenDigest &&
+              original.tokenDigest !== digest
+            )
+              throw new Error('ORIGINAL_LINK_REQUIRED');
+            sessionStorage.setItem('kami-onboarding-link-digest', digest);
             await requests.run((signal) =>
               jsonRequest(
                 '/api/onboarding/start',
@@ -355,7 +371,11 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
       tell('No invitations yet.');
   };
   const showReceipt = (value: Receipt) => {
-    if (value.code) throw new Error(value.code);
+    if (value.code) {
+      if (value.code === 'INVALID_EMAIL' || value.code === 'INVALID_INPUT')
+        pending(null);
+      throw new Error(value.code);
+    }
     setReceipt(value);
     if (value.outcome === 'NOT_OBSERVED' || value.outcome === 'KEY_REUSED') {
       tell(explain(value.outcome));
@@ -405,8 +425,9 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
   const ownerAction = async (
     kind: 'CREATE' | 'RESEND' | 'REVOKE',
     id?: string,
+    original?: Attempt,
   ) => {
-    const value: Attempt = {
+    const value: Attempt = original ?? {
       kind,
       key: crypto.randomUUID(),
       groupID: group,
@@ -424,8 +445,8 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
         ? `mutation($groupID:ID!,$email:String!,$key:OperationKey!){${name}(groupID:$groupID,email:$email,key:$key){${actionFields}}}`
         : `mutation($groupID:ID!,$id:ID!,$key:OperationKey!){${name}(groupID:$groupID,id:$id,key:$key){${actionFields}}}`;
     const data = await graph(query, {
-      groupID: group,
-      id,
+      groupID: value.groupID,
+      id: value.invitationID,
       email,
       key: value.key,
     });
@@ -439,7 +460,7 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
     ) {
       await send(result.actionID);
     }
-    await loadInvites(group);
+    await loadInvites(value.groupID ?? group);
   };
   const title = {
     'sign-in': 'Sign in',
@@ -584,6 +605,9 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                   const value: Attempt = {
                     kind: 'ACCEPT',
                     key: crypto.randomUUID(),
+                    tokenDigest:
+                      sessionStorage.getItem('kami-onboarding-link-digest') ??
+                      undefined,
                   };
                   pending(value);
                   const out = await call('/api/onboarding/accept', {
@@ -683,8 +707,10 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                         disabled={busy || !!attempt}
                         onClick={() =>
                           void run(async () => {
-                            setGroup(item.id);
+                            setGroup('');
+                            setInvites([]);
                             await loadInvites(item.id);
+                            setGroup(item.id);
                           })
                         }
                       >
@@ -797,6 +823,57 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
               <button disabled={busy} onClick={() => void run(() => recover())}>
                 Recover original action
               </button>
+              {attempt.kind === 'CREATE' && (
+                <>
+                  <label htmlFor="original-invite-email">
+                    Original invitee email (re-enter after navigation)
+                  </label>
+                  <input
+                    id="original-invite-email"
+                    type="email"
+                    value={email}
+                    disabled={busy}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </>
+              )}
+              <button
+                disabled={busy || (attempt.kind === 'CREATE' && !email)}
+                onClick={() =>
+                  void run(async () => {
+                    if (attempt.kind === 'ACCEPT') {
+                      const currentDigest = sessionStorage.getItem(
+                        'kami-onboarding-link-digest',
+                      );
+                      if (
+                        attempt.tokenDigest &&
+                        attempt.tokenDigest !== currentDigest
+                      )
+                        throw new Error('ORIGINAL_LINK_REQUIRED');
+                      const out = await call('/api/onboarding/accept', {
+                        key: attempt.key,
+                      });
+                      showReceipt({
+                        outcome: out.code,
+                        groupID: out.groupID,
+                        hasAccess: out.hasAccess,
+                      });
+                    } else
+                      await ownerAction(
+                        attempt.kind,
+                        attempt.invitationID,
+                        attempt,
+                      );
+                  })
+                }
+              >
+                Retry original action with the same key
+              </button>
+              <p>
+                Retry only the original inputs. A concurrent completion is safe
+                with this same key; never replace it merely because recovery has
+                not observed a result.
+              </p>
             </aside>
           )}
           {receipt && (
