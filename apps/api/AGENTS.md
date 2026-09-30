@@ -4,7 +4,7 @@ Follow the repository-wide [delivery workflow](../../docs/agents/delivery-workfl
 
 These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [Go engineering guide](../../docs/agents/go-guidelines.md) and [API architecture](../../docs/application/api-architecture.md) before API changes.
 
-The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Internal targeted invitation, admission, and durable delivery recovery operations are implemented; their public onboarding transport (#80) and browser integration (#83) remain separate work. The web preview uses its mock DataPort. Internal append-only repayment persistence shares the financial transaction/recovery engine; its public API/history is a separate #110 slice. Expense editing/deletion and imports remain deferred to separately approved issues.
+The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Targeted invitation/onboarding, durable delivery recovery, and ordinary/trip group creation APIs are implemented; real expense browser integration (#83) remains separate work. The web preview uses its mock DataPort. Append-only repayment persistence and its authenticated API/history share the financial transaction/recovery engine. Expense editing/deletion and imports remain deferred to separately approved issues.
 
 ## Design and implementation
 

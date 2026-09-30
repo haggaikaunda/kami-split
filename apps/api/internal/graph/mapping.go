@@ -54,7 +54,7 @@ func mapGroup(ctx context.Context, s expense.Snapshot) *model.Group {
 	}
 	b := &model.GroupBalances{GroupID: s.ID, Currency: model.Currency(s.Currency), Revision: ledger.Revision(s.Revision), TotalExpenseMinor: ledger.MinorUnits(s.Balance.Total), Settled: s.Balance.Settled, Positions: []*model.MemberPosition{}, Obligations: []*model.Obligation{}}
 	for _, p := range s.Balance.Positions {
-		b.Positions = append(b.Positions, &model.MemberPosition{Member: m[p.MemberID], PaidMinor: ledger.MinorUnits(p.Paid), OwedMinor: ledger.MinorUnits(p.Owed), NetMinor: ledger.MinorUnits(p.Net)})
+		b.Positions = append(b.Positions, &model.MemberPosition{Member: m[p.MemberID], PaidMinor: ledger.MinorUnits(p.Paid), OwedMinor: ledger.MinorUnits(p.Owed), NetMinor: ledger.MinorUnits(p.Net), SentMinor: ledger.MinorUnits(p.Sent), ReceivedMinor: ledger.MinorUnits(p.Received)})
 	}
 	for _, o := range s.Balance.Obligations {
 		b.Obligations = append(b.Obligations, &model.Obligation{From: m[o.From], To: m[o.To], AmountMinor: ledger.MinorUnits(o.Amount)})
@@ -91,9 +91,13 @@ func (r *Resolver) groupProjection(ctx context.Context, id string) (*model.Group
 	filter := ledger.Filter{}
 	pageError := ""
 	count := 0
+	repaymentCount := 0
 	after := ""
 	hasAfter := false
 	for _, field := range graphql.CollectFieldsCtx(ctx, []string{"Group"}) {
+		if field.Name == "repayments" {
+			repaymentCount++
+		}
 		if field.Name != "expenses" {
 			continue
 		}
@@ -161,6 +165,9 @@ func (r *Resolver) groupProjection(ctx context.Context, id string) (*model.Group
 	g.PageError = pageError
 	g.PageRequest = requested
 	g.Filter = filter
+	if repaymentCount > 1 {
+		g.RepaymentError = "INVALID_INPUT"
+	}
 	return g, nil
 }
 func nodeKind(id string) string {

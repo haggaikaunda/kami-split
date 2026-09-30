@@ -1,0 +1,242 @@
+"""
+An actual transfer recorded within one explicitly authorized group. Creator is server-derived; no money is moved.
+"""
+input RecordRepaymentInput {
+  """
+  Explicit group; never inferred from a dashboard or another record.
+  """
+  groupId: ID!
+  """
+  Original actor/group/RECORD_REPAYMENT attempt key; preserve it through uncertainty.
+  """
+  key: OperationKey!
+  """
+  Active enabled linked sender Membership in this group.
+  """
+  senderId: ID!
+  """
+  Distinct active enabled linked recipient Membership in this group.
+  """
+  recipientId: ID!
+  """
+  Positive USD cents, 1..999999999; overpayments and unmatched actual transfers are allowed.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only; no conversion.
+  """
+  currency: Currency!
+  """
+  Actual transfer calendar date, Gregorian years 0001 through 9999.
+  """
+  effectiveDate: Date!
+  """
+  Preserved note, at most 2000 Unicode scalar values; no NUL or unpaired surrogates.
+  """
+  note: String! = ""
+}
+
+extend type Mutation {
+  """
+  Record one actual transfer atomically with audit and recoverable outcome. Any currently authorized active member may record it; creator may differ from sender and recipient.
+  """
+  recordRepayment(
+    """
+    Frozen explicit-group transfer intent and original retry key.
+    """
+    input: RecordRepaymentInput!
+  ): RecordRepaymentResult!
+}
+extend type Query {
+  """
+  Recover the original actor-scoped repayment outcome under current group access; missing does not prove noncommit.
+  """
+  repaymentOperation(
+    """
+    Original attempt's group; navigation never changes recovery scope.
+    """
+    groupId: ID!
+    """
+    Original actor/group/RECORD_REPAYMENT key.
+    """
+    key: OperationKey!
+  ): RepaymentOperationResult!
+}
+extend type Group {
+  """
+  Authorized append-only transfer history ordered by date, commit timestamp and ID descending. A page's inclusion revision can be older than separately refreshed balances. Pagination failures return null with a safe field error.
+  """
+  repayments(
+    """
+    Bounded forward page size, 1..100, default 20.
+    """
+    first: Int! = 20
+    """
+    Signed repayment-only cursor; expense cursors are not interchangeable.
+    """
+    after: String
+  ): RepaymentConnection
+}
+"""
+Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
+"""
+union RecordRepaymentResult =
+  | RepaymentCommitted
+  | ValidationProblem
+  | OperationMismatch
+  | OperationProgress
+  | Problem
+"""
+Currently authorized original result or transient missing/unknown state. Refresh balances separately.
+"""
+union RepaymentOperationResult =
+  | RepaymentCommitted
+  | ValidationProblem
+  | OperationProgress
+  | Problem
+
+"""
+Immutable successful transfer outcome; does not contain current labels or balances.
+"""
+type RepaymentCommitted {
+  """
+  Original actor/group/RECORD_REPAYMENT key.
+  """
+  key: OperationKey!
+  """
+  Original immutable financial values and commit provenance.
+  """
+  record: RepaymentOperationRecord!
+}
+
+"""
+Immutable original transfer values retained for the lifetime of financial history. Membership IDs are historical values, not access grants.
+"""
+type RepaymentOperationRecord {
+  """
+  Original committed Repayment ID.
+  """
+  repaymentId: ID!
+  """
+  Original group, never redirected by navigation.
+  """
+  groupId: ID!
+  """
+  Server-derived membership of the person who recorded this transfer.
+  """
+  creatorMembershipId: ID!
+  """
+  Original sender membership.
+  """
+  senderMembershipId: ID!
+  """
+  Original recipient membership.
+  """
+  recipientMembershipId: ID!
+  """
+  Exact positive USD cents; can exceed the historical simplified obligation.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only.
+  """
+  currency: Currency!
+  """
+  Recorded calendar date of the actual transfer.
+  """
+  effectiveDate: Date!
+  """
+  Original note, preserving whitespace.
+  """
+  note: String!
+  """
+  Original database commit-provenance timestamp in UTC.
+  """
+  committedAt: DateTime!
+  """
+  Original shared group financial revision; not a current balance revision.
+  """
+  revision: Revision!
+}
+
+"""
+Currently authorized append-only actual transfer with minimal current member labels; history retains inactive attribution.
+"""
+type Repayment implements Node {
+  """
+  Stable typed Repayment identity.
+  """
+  id: ID!
+  """
+  The single group containing this transfer.
+  """
+  groupId: ID!
+  """
+  Person who recorded the transfer; independent of sender and recipient.
+  """
+  creator: Membership!
+  """
+  Historical sender with currently authorized minimal identification.
+  """
+  sender: Membership!
+  """
+  Historical recipient with currently authorized minimal identification.
+  """
+  recipient: Membership!
+  """
+  Exact positive USD cents; can exceed the historical simplified obligation.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only.
+  """
+  currency: Currency!
+  """
+  Recorded calendar date of the actual transfer.
+  """
+  effectiveDate: Date!
+  """
+  Original note, preserving whitespace.
+  """
+  note: String!
+  """
+  Immutable record timestamp in UTC.
+  """
+  createdAt: DateTime!
+  """
+  Shared group financial revision produced by this transfer.
+  """
+  revision: Revision!
+}
+
+"""
+Bounded authorized repayment history, pinned to its initial financial inclusion revision.
+"""
+type RepaymentConnection {
+  """
+  Actual records only; no simplified or synthetic transfers.
+  """
+  edges: [RepaymentEdge!]!
+  """
+  Forward traversal boundaries; an empty successful list has null cursors.
+  """
+  pageInfo: PageInfo!
+  """
+  Inclusion anchor for this traversal, not a cache validator for authorization or labels.
+  """
+  revision: Revision!
+}
+
+"""
+One actual transfer and its signed traversal boundary.
+"""
+type RepaymentEdge {
+  """
+  Signed group/repayment-scope/revision/order boundary.
+  """
+  cursor: String!
+  """
+  Currently authorized transfer and minimal profiles.
+  """
+  node: Repayment!
+}

@@ -4,7 +4,7 @@ Issue #82 implements the reviewed [first-expense contract](proposals/first-expen
 and [shared identity and money rules](proposals/first-expense/shared.md). The
 running SDL is in [packages/schema](../../packages/schema/README.md). The web
 preview still uses its mock DataPort; the real UI migration is #83. Invitations,
-administrative bootstrap, edits, deletion, public repayment mutations, trip/group
+administrative bootstrap, edits, deletion, trip/group
 creation, and uploaded receipt files remain separate work.
 
 ## Transaction and recovery boundary
@@ -48,8 +48,8 @@ of selection order or locale. The payer need not be a participant or the creator
 
 Complete paid, owed, sent and received aggregates use PostgreSQL numeric
 accumulation and checked int64 conversion. Internal [repayment persistence](persisted-repayments.md)
-shares the transaction/recovery engine and financial revision; its public API is
-a separate delivery slice. Net is paid − owed + sent − received. Group positions include inactive-member history and all
+shares the transaction/recovery engine and financial revision with authenticated
+repayment mutations, history and original-attempt recovery. Net is paid − owed + sent − received. Group positions include inactive-member history and all
 expenses, regardless of page filters. Positive nets are amounts owed to a member;
 negative nets are amounts owed by them. Simplification matches debtors and
 creditors in canonical ID order and emits no synthetic transactions. A group is
