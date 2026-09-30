@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database/expensequery"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -63,6 +65,9 @@ func safeError(err error) error {
 	}
 	var failure Failure
 	if errors.As(err, &failure) {
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(failure, err, operation)
+		}
 		return failure
 	}
 	var authError auth.Outcome
@@ -71,6 +76,9 @@ func safeError(err error) error {
 			return Failure("NOT_FOUND")
 		}
 		if authError == auth.Unavailable {
+			if _, ok := diagnostic.Operation(err); ok {
+				return diagnostic.Wrap(Failure("UNAVAILABLE"), err, "expense.transaction")
+			}
 			return Failure("UNAVAILABLE")
 		}
 		return authError
@@ -82,7 +90,7 @@ func safeError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Failure("NOT_FOUND")
 	}
-	return Failure("UNAVAILABLE")
+	return diagnostic.Wrap(Failure("UNAVAILABLE"), err, "expense.transaction")
 }
 func (s *Service) transaction(ctx context.Context, fn func(pgx.Tx, auth.Actor) error) error {
 	// Preserve domain/permission outcomes through WithActor's intentionally safe

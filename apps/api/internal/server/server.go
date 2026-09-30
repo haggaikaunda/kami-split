@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -43,8 +45,9 @@ func New(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger
 // When configured, verifier also participates in protected readiness.
 func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, logger *slog.Logger, verifier *auth.Verifier, dependencies ...Readiness) *Server {
 	s := &Server{shutdownTimeout: cfg.ShutdownTimeout}
+	dependencies = append([]Readiness(nil), dependencies...)
 	if verifier != nil {
-		dependencies = append(append([]Readiness(nil), dependencies...), verifier)
+		dependencies = append(dependencies, verifier)
 	}
 	gql := handler.New(schema)
 	gql.AddTransport(transport.POST{})
@@ -65,6 +68,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		}
 		if protected {
 			if err := auth.RequireRequest(ctx); err != nil {
+				diagnostic.Report(ctx, err)
 				code := "UNAUTHENTICATED"
 				if errors.Is(err, auth.Unavailable) {
 					code = "AUTH_UNAVAILABLE"
@@ -77,6 +81,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		return next(ctx)
 	})
 	gql.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
+		diagnostic.Report(ctx, err)
 		presented := graphql.DefaultErrorPresenter(ctx, err)
 		if code, ok := presented.Extensions["code"].(string); ok {
 			switch code {
@@ -88,14 +93,14 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 			presented.Extensions = map[string]any{"code": "BAD_USER_INPUT"}
 			return presented
 		}
-		logger.ErrorContext(ctx, "graphql execution failed", "request_id", ctx.Value(requestIDKey{}))
+		diagnostic.Report(ctx, diagnostic.Wrap(errors.New("internal server error"), err, "graphql.execution"))
 		presented.Message = "internal server error"
 		presented.Extensions = map[string]any{"code": "UNAVAILABLE"}
 		return presented
 	})
 	gql.SetRecoverFunc(func(ctx context.Context, recovered any) error {
 		// Never log panic values: they may contain private request or dependency data.
-		return errors.New("internal server error")
+		return diagnostic.Wrap(errors.New("internal server error"), nil, "graphql.panic")
 	})
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -113,6 +118,16 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		w.WriteHeader(http.StatusOK)
 	})
 	graphqlHandler := graphTransport(gql)
+	inner := graphqlHandler
+	graphqlHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var once sync.Once
+		ctx := diagnostic.WithReporter(r.Context(), func(operation string) {
+			once.Do(func() {
+				logger.ErrorContext(r.Context(), "graphql execution failed", "request_id", r.Context().Value(requestIDKey{}), "operation", operation)
+			})
+		})
+		inner.ServeHTTP(w, r.WithContext(ctx))
+	})
 	if verifier != nil {
 		graphqlHandler = verifier.Authenticate(graphqlHandler)
 	}

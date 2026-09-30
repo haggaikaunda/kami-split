@@ -77,7 +77,7 @@ func (d Dispatch) Payload() []byte { return append([]byte(nil), d.payload...) }
 func (s *Service) Claim(ctx context.Context, action uuid.UUID) (Dispatch, error) {
 	lease, err := uuid.NewRandom()
 	if err != nil {
-		return Dispatch{}, Unavailable
+		return Dispatch{}, safe(err)
 	}
 	d := Dispatch{action: action, lease: lease}
 	err = s.transaction(ctx, func(tx pgx.Tx) error {

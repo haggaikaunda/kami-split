@@ -7,13 +7,15 @@ import (
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph/model"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-func problem(err error) *model.Problem {
+func problem(ctx context.Context, err error) *model.Problem {
+	diagnostic.Report(ctx, err)
 	code := model.ProblemCodeUnavailable
 	var failure expense.Failure
 	if errors.As(err, &failure) {
@@ -38,14 +40,14 @@ func mapExpense(r expense.Record, m map[string]*model.Membership) *model.Expense
 	}
 	return e
 }
-func mapGroup(s expense.Snapshot) *model.Group {
+func mapGroup(ctx context.Context, s expense.Snapshot) *model.Group {
 	m := members(s)
 	g := &model.Group{ID: s.ID, Name: s.Name, Currency: model.Currency(s.Currency), ViewerMembership: m[s.ViewerMembershipID], Members: []*model.Membership{}, Snapshot: s}
 	for _, member := range s.Members {
 		g.Members = append(g.Members, m[member.ID])
 	}
 	if s.BalanceError != "" {
-		g.Balances = problem(expense.Failure(s.BalanceError))
+		g.Balances = problem(ctx, expense.Failure(s.BalanceError))
 		return g
 	}
 	b := &model.GroupBalances{GroupID: s.ID, Currency: model.Currency(s.Currency), Revision: ledger.Revision(s.Revision), TotalExpenseMinor: ledger.MinorUnits(s.Balance.Total), Settled: s.Balance.Settled, Positions: []*model.MemberPosition{}, Obligations: []*model.Obligation{}}
@@ -153,7 +155,7 @@ func (r *Resolver) groupProjection(ctx context.Context, id string) (*model.Group
 	if err != nil {
 		return nil, err
 	}
-	g := mapGroup(snapshot)
+	g := mapGroup(ctx, snapshot)
 	g.PageError = pageError
 	g.PageRequest = requested
 	g.Filter = filter

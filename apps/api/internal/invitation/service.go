@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -68,17 +69,23 @@ func safe(err error) error {
 	}
 	var outcome Outcome
 	if errors.As(err, &outcome) {
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(outcome, err, operation)
+		}
 		return outcome
 	}
 	var authentication auth.Outcome
 	if errors.As(err, &authentication) {
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(authentication, err, operation)
+		}
 		return authentication
 	}
 	var databaseError *pgconn.PgError
 	if errors.As(err, &databaseError) && databaseError.Code == "42501" {
 		return Outcome("ACCESS_DENIED")
 	}
-	return Unavailable
+	return diagnostic.Wrap(Unavailable, err, "invitation.operation")
 }
 func (s *Service) transaction(ctx context.Context, fn func(pgx.Tx) error) error {
 	return safe(auth.WithVerifiedIdentity(ctx, s.db, fn))

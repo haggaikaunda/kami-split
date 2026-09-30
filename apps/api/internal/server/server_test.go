@@ -143,6 +143,12 @@ func TestExecutionErrorsAreMasked(t *testing.T) {
 		if strings.Contains(w.Body.String()+logs.String(), "secret-password") {
 			t.Fatal("secret leaked")
 		}
+		if strings.Count(logs.String(), "graphql execution failed") != 1 || !strings.Contains(logs.String(), w.Header().Get("X-Request-ID")) {
+			t.Fatal("missing or duplicate diagnostic correlation")
+		}
+		if panics && !strings.Contains(logs.String(), "graphql.panic") {
+			t.Fatal("missing panic classification")
+		}
 		if !strings.Contains(w.Body.String(), "internal server error") {
 			t.Fatal(w.Body.String())
 		}

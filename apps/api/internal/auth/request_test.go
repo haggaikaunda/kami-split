@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -195,7 +196,7 @@ func TestConfigAndHTTPTrust(t *testing.T) {
 	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, destination.URL, 302) }))
 	defer remote.Close()
 	v, _ := New(Config{Issuer: valid["AUTH_ISSUER"], Audience: "authenticated", JWKSURL: remote.URL})
-	if v.Warm(context.Background()) != Unavailable || reached {
+	if !errors.Is(v.Warm(context.Background()), Unavailable) || reached {
 		t.Fatal("followed trust redirect")
 	}
 }

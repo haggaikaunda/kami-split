@@ -4,11 +4,11 @@ package database
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -106,7 +106,7 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		return nil, errors.New("create database pool")
+		return nil, diagnostic.Wrap(errors.New("create database pool"), err, "database.open")
 	}
 	db := &DB{pool: pool, timeout: c.Timeout}
 	probe, cancel := context.WithTimeout(ctx, c.Timeout)
@@ -118,7 +118,11 @@ func Open(ctx context.Context, c Config) (*DB, error) {
  AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
  AND NOT pg_has_role(current_user, 'kami_migrator', 'MEMBER')
  FROM pg_roles WHERE rolname = current_user`).Scan(&safe)
-	if err != nil || !safe {
+	if err != nil {
+		pool.Close()
+		return nil, diagnostic.Wrap(errors.New("database startup or runtime-role validation failed"), err, "database.startup")
+	}
+	if !safe {
 		pool.Close()
 		return nil, errors.New("database startup or runtime-role validation failed")
 	}
@@ -131,7 +135,7 @@ func (d *DB) Ready(ctx context.Context) error {
 	probe, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 	if err := d.pool.Ping(probe); err != nil {
-		return fmt.Errorf("database unavailable")
+		return diagnostic.Wrap(errors.New("database unavailable"), err, "database.ready")
 	}
 	return nil
 }

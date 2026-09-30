@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database/expensequery"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -39,7 +40,8 @@ func (s *Service) Recover(ctx context.Context, groupID, key string) (Outcome, er
 		}
 		return e
 	})
-	if err == Failure("UNAVAILABLE") {
+	if errors.Is(err, Failure("UNAVAILABLE")) {
+		diagnostic.Report(ctx, err)
 		return Outcome{Kind: "UNKNOWN", Key: key}, nil
 	}
 	return out, err
@@ -72,7 +74,8 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 		out = compare(previous, c, h, canonical, hash[:], input.Key)
 		return nil
 	})
-	if err == Failure("UNAVAILABLE") {
+	if errors.Is(err, Failure("UNAVAILABLE")) {
+		diagnostic.Report(ctx, err)
 		return Outcome{Kind: "UNKNOWN", Key: input.Key}, nil
 	}
 	if err != nil || found {
@@ -140,7 +143,8 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 		return e
 	})
 	if err != nil {
-		if err == Failure("UNAVAILABLE") {
+		if errors.Is(err, Failure("UNAVAILABLE")) {
+			diagnostic.Report(ctx, err)
 			return Outcome{Kind: "UNKNOWN", Key: input.Key}, nil
 		}
 		return Outcome{}, err
