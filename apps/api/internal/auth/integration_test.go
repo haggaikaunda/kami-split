@@ -143,10 +143,9 @@ func TestVerifiedRequestRuntimeBoundary(t *testing.T) {
 		t.Fatalf("unprovisioned access: %d %s", status, body)
 	}
 	noLeak()
-	execute(fmt.Sprintf("SET ROLE kami_migrator; UPDATE app.users SET enabled=true WHERE id='%s'; RESET ROLE", id(101)))
 	requestCtx, stop := context.WithCancel(ctx)
 	req, _ := http.NewRequestWithContext(requestCtx, "GET", endpoint.URL+"?action=cancel", nil)
-	req.Header.Set("Authorization", "Bearer "+token(1))
+	req.Header.Set("Authorization", "Bearer "+token(2))
 	responseDone := make(chan struct{})
 	go func() {
 		defer close(responseDone)
