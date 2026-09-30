@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -80,8 +81,11 @@ func ObserveCurrentEmail(ctx context.Context, provider CurrentEmailProvider) (Em
 	}
 	observed := time.Now()
 	result, err := provider.CurrentEmail(ctx, subject)
-	if err != nil || ctx.Err() != nil {
-		return EmailEvidence{}, Unavailable
+	if err != nil {
+		return EmailEvidence{}, diagnostic.Wrap(Unavailable, err, "auth.email_provider")
+	}
+	if ctx.Err() != nil {
+		return EmailEvidence{}, diagnostic.Wrap(Unavailable, ctx.Err(), "auth.email_provider")
 	}
 	if result.Subject != subject {
 		return EmailEvidence{}, Unauthenticated
@@ -140,7 +144,7 @@ func WithVerifiedIdentity(ctx context.Context, db *database.DB, fn func(pgx.Tx) 
 	return db.WithIdentity(ctx, subject, func(tx pgx.Tx) error {
 		viewer, err := database.ReadViewer(ctx, tx)
 		if err != nil {
-			return Unavailable
+			return diagnostic.Wrap(Unavailable, err, "auth.viewer")
 		}
 		switch viewer.Status {
 		case "DISABLED":
@@ -148,7 +152,7 @@ func WithVerifiedIdentity(ctx context.Context, db *database.DB, fn func(pgx.Tx) 
 		case "READY", "UNPROVISIONED":
 			return fn(tx)
 		default:
-			return Unavailable
+			return diagnostic.Wrap(Unavailable, nil, "auth.viewer_state")
 		}
 	})
 }
