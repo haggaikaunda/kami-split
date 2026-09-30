@@ -23,6 +23,7 @@ type Mode =
   'sign-in' | 'join' | 'confirm' | 'password' | 'account' | 'invitations';
 type Group = { id: string; name: string };
 type Invite = {
+  kind: string;
   id: string;
   recipient: string | null;
   expiresAt: string;
@@ -361,7 +362,7 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
   };
   const loadInvites = async (id: string, after: string | null = null) => {
     const data = await graph(
-      'query($groupID:ID!,$after:ID){ownerInvitations(groupID:$groupID,first:20,after:$after){__typename ... on OwnerInvitationPage { items{id recipient expiresAt lifecycle actionID delivery} nextCursor } ... on InvitationProblem {code}}}',
+      'query($groupID:ID!,$after:ID){ownerInvitations(groupID:$groupID,first:20,after:$after){__typename ... on OwnerInvitationPage { items{id kind recipient expiresAt lifecycle actionID delivery} nextCursor } ... on InvitationProblem {code}}}',
       { groupID: id, after },
     );
     if (data.ownerInvitations.code) throw new Error(data.ownerInvitations.code);
@@ -391,7 +392,11 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
         'You have joined the group. Continue to your account to see your admitted groups.',
       );
     else if (value.outcome === 'SAVED' || value.outcome === 'APPLIED')
-      tell('Invitation change saved. Check the separate send status below.');
+      tell(
+        value.delivery === 'NOT_REQUESTED'
+          ? 'Shared link change saved. No invitation email was sent.'
+          : 'Invitation change saved. Check the separate send status below.',
+      );
     else if (value.outcome === 'EXISTING')
       tell(
         'An outstanding invitation already exists. No new email was requested and its expiry was not changed.',
@@ -427,7 +432,7 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
     );
   };
   const ownerAction = async (
-    kind: 'CREATE' | 'RESEND' | 'REVOKE',
+    kind: 'CREATE' | 'RESEND' | 'REVOKE' | 'CREATE_SHARED' | 'RENEW_SHARED',
     id?: string,
     original?: Attempt,
   ) => {
@@ -439,15 +444,21 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
     };
     pending(value);
     const name =
-      kind === 'CREATE'
-        ? 'createTargetedInvitation'
-        : kind === 'RESEND'
-          ? 'resendInvitation'
-          : 'revokeInvitation';
+      kind === 'CREATE_SHARED'
+        ? 'createSharedInvitation'
+        : kind === 'RENEW_SHARED'
+          ? 'renewSharedInvitation'
+          : kind === 'CREATE'
+            ? 'createTargetedInvitation'
+            : kind === 'RESEND'
+              ? 'resendInvitation'
+              : 'revokeInvitation';
     const query =
-      kind === 'CREATE'
-        ? `mutation($groupID:ID!,$email:String!,$key:OperationKey!){${name}(groupID:$groupID,email:$email,key:$key){${actionFields}}}`
-        : `mutation($groupID:ID!,$id:ID!,$key:OperationKey!){${name}(groupID:$groupID,id:$id,key:$key){${actionFields}}}`;
+      kind === 'CREATE_SHARED'
+        ? `mutation($groupID:ID!,$key:OperationKey!){${name}(groupID:$groupID,key:$key){${actionFields}}}`
+        : kind === 'CREATE'
+          ? `mutation($groupID:ID!,$email:String!,$key:OperationKey!){${name}(groupID:$groupID,email:$email,key:$key){${actionFields}}}`
+          : `mutation($groupID:ID!,$id:ID!,$key:OperationKey!){${name}(groupID:$groupID,id:$id,key:$key){${actionFields}}}`;
     const data = await graph(query, {
       groupID: value.groupID,
       id: value.invitationID,
@@ -599,9 +610,11 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                 </button>
               )}
               <p>
-                Accounts are invitation-only. Existing users reuse their
-                account. Open verification and recovery emails in this browser
-                within 15 minutes.
+                Shared links require an existing registered account and verified
+                email. New accounts need a targeted email invitation; the
+                verification button applies only to targeted invitations.
+                Existing users reuse their account. Open verification and
+                recovery emails in this browser within 15 minutes.
               </p>
             </form>
           )}
@@ -734,6 +747,18 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
               {group && (
                 <>
                   <h2>Group invitations</h2>
+                  <p>
+                    Shared links admit verified first-time members who
+                    explicitly join. Forwarded links work too. Former members
+                    need a new targeted invitation. No application email is sent
+                    for shared links.
+                  </p>
+                  <button
+                    disabled={busy || !!attempt}
+                    onClick={() => void run(() => ownerAction('CREATE_SHARED'))}
+                  >
+                    Create or retrieve shared link
+                  </button>
                   <button
                     disabled={busy}
                     onClick={() => void run(() => loadInvites(group))}
@@ -762,24 +787,60 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                   <ul>
                     {invites.map((item) => (
                       <li key={item.id}>
-                        <strong>{item.recipient ?? 'Recipient removed'}</strong>
+                        <strong>
+                          {item.kind === 'SHARED'
+                            ? 'Shared group link'
+                            : (item.recipient ?? 'Recipient removed')}
+                        </strong>
                         <p>
                           {item.lifecycle} · Expires{' '}
                           {new Date(item.expiresAt).toLocaleString()}
                         </p>
-                        <p>
-                          Send status: {item.delivery}. Provider acceptance does
-                          not confirm recipient delivery.
-                        </p>
+                        {item.kind !== 'SHARED' && (
+                          <p>
+                            Send status: {item.delivery}. Provider acceptance
+                            does not confirm recipient delivery.
+                          </p>
+                        )}
                         {!['ACCEPTED', 'REVOKED'].includes(item.lifecycle) && (
                           <div className="onboarding-actions">
+                            {item.kind === 'SHARED' && (
+                              <button
+                                disabled={busy}
+                                onClick={() =>
+                                  void run(async () => {
+                                    const result = await call(
+                                      '/api/onboarding/copy-shared',
+                                      { groupID: group, invitationID: item.id },
+                                    );
+                                    await navigator.clipboard.writeText(
+                                      result.link,
+                                    );
+                                    tell(
+                                      'Shared link copied. Copying does not renew it. Distribute it only to people you want to join.',
+                                    );
+                                  })
+                                }
+                              >
+                                Copy shared link
+                              </button>
+                            )}
                             <button
                               disabled={busy || !!attempt}
                               onClick={() =>
-                                void run(() => ownerAction('RESEND', item.id))
+                                void run(() =>
+                                  ownerAction(
+                                    item.kind === 'SHARED'
+                                      ? 'RENEW_SHARED'
+                                      : 'RESEND',
+                                    item.id,
+                                  ),
+                                )
                               }
                             >
-                              Resend and renew for seven days
+                              {item.kind === 'SHARED'
+                                ? 'Renew shared link for seven days'
+                                : 'Resend and renew for seven days'}
                             </button>
                             <button
                               disabled={busy || !!attempt}

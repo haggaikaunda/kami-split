@@ -93,6 +93,39 @@ func (r *mutationResolver) AcceptInvitation(ctx context.Context, token string, k
 	return invitationResult(ctx, out, err), nil
 }
 
+// CreateSharedInvitation is the resolver for the createSharedInvitation field.
+func (r *mutationResolver) CreateSharedInvitation(ctx context.Context, groupID string, key ledger.OperationKey) (model.InvitationResult, error) {
+	service, err := r.Invitations.Service(ctx)
+	if err != nil {
+		return inviteProblem(ctx, err), nil
+	}
+	group, err := invitationID(groupID, "Group")
+	if err != nil {
+		return inviteProblem(ctx, err), nil
+	}
+
+	out, err := service.CreateShared(ctx, group, uuid.MustParse(string(key)))
+	return invitationResult(ctx, out, err), nil
+}
+
+// RenewSharedInvitation is the resolver for the renewSharedInvitation field.
+func (r *mutationResolver) RenewSharedInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error) {
+	service, err := r.Invitations.Service(ctx)
+	if err != nil {
+		return inviteProblem(ctx, err), nil
+	}
+	group, err := invitationID(groupID, "Group")
+	if err != nil {
+		return inviteProblem(ctx, err), nil
+	}
+	invite, err := invitationID(id, "Invitation")
+	if err != nil {
+		return inviteProblem(ctx, err), nil
+	}
+	out, err := service.RenewShared(ctx, group, invite, uuid.MustParse(string(key)))
+	return invitationResult(ctx, out, err), nil
+}
+
 // PreviewInvitation is the resolver for the previewInvitation field.
 func (r *queryResolver) PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error) {
 	service, err := r.Invitations.Service(ctx)
@@ -133,7 +166,7 @@ func (r *queryResolver) OwnerInvitations(ctx context.Context, groupID string, fi
 	}
 	page := &model.OwnerInvitationPage{Items: []*model.OwnerInvitation{}}
 	for _, item := range items {
-		entry := &model.OwnerInvitation{ID: ledger.PublicID("Invitation", item.ID.String()), Recipient: item.Recipient, ExpiresAt: *inviteTime(item.ExpiresAt), Lifecycle: item.Lifecycle, Delivery: item.Delivery}
+		entry := &model.OwnerInvitation{Kind: item.Kind, ID: ledger.PublicID("Invitation", item.ID.String()), Recipient: item.Recipient, ExpiresAt: *inviteTime(item.ExpiresAt), Lifecycle: item.Lifecycle, Delivery: item.Delivery}
 		if item.ActionID != nil {
 			entry.ActionID = inviteID("InvitationAction", *item.ActionID)
 		}

@@ -65,7 +65,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		fields := graphql.CollectFields(operation, operation.Operation.SelectionSet, nil)
 		for _, field := range fields {
 			switch field.Name {
-			case "previewInvitation", "ownerInvitations", "invitationAction", "createTargetedInvitation", "resendInvitation", "revokeInvitation", "retryInvitationDelivery", "acceptInvitation":
+			case "previewInvitation", "ownerInvitations", "invitationAction", "createTargetedInvitation", "createSharedInvitation", "renewSharedInvitation", "resendInvitation", "revokeInvitation", "retryInvitationDelivery", "acceptInvitation":
 				if len(fields) != 1 {
 					return func(context.Context) *graphql.Response {
 						return &graphql.Response{Errors: gqlerror.List{&gqlerror.Error{Message: "Submit one invitation operation per request.", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}}}

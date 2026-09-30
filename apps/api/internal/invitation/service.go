@@ -1,5 +1,5 @@
-// Package invitation implements targeted capabilities without public transport or
-// provider delivery. All mutations use verified request context and database locks.
+// Package invitation implements targeted and shared invitation capabilities.
+// All mutations use verified request context and database locks.
 package invitation
 
 import (
@@ -50,7 +50,7 @@ type Service struct {
 	provider  auth.CurrentEmailProvider
 }
 
-// New wires backend-only dependencies; no operation is published to GraphQL here.
+// New wires backend-only dependencies for invitation application operations.
 func New(db *database.DB, p *Protector, provider auth.CurrentEmailProvider) (*Service, error) {
 	if db == nil || p == nil {
 		return nil, Unavailable
@@ -157,7 +157,7 @@ func (s *Service) Revoke(ctx context.Context, group, invite, key uuid.UUID) (Res
 	return s.owner(ctx, "REVOKE", group, invite, key, "")
 }
 func (s *Service) owner(ctx context.Context, op string, group, invite, key uuid.UUID, email string) (Result, error) {
-	if group == uuid.Nil || key == uuid.Nil || (op != "CREATE" && invite == uuid.Nil) {
+	if group == uuid.Nil || key == uuid.Nil || (op != "CREATE" && op != "CREATE_SHARED" && invite == uuid.Nil) {
 		return Result{}, Outcome("INVALID_INPUT")
 	}
 	parts := []string{"v1", op, group.String(), invite.String(), email}
@@ -181,13 +181,13 @@ func (s *Service) owner(ctx context.Context, op string, group, invite, key uuid.
 		}
 		var hash, cipher []byte
 		var tokenVersion string
-		if op == "CREATE" {
+		if op == "CREATE" || op == "CREATE_SHARED" {
 			token, h, err := s.protector.NewToken()
 			if err != nil {
 				return err
 			}
 			hash = h
-			cipher, tokenVersion, err = s.protector.Encrypt([]byte(token), "TARGETED:"+newID.String())
+			cipher, tokenVersion, err = s.protector.Encrypt([]byte(token), tokenPurpose(op)+":"+newID.String())
 			if err != nil {
 				return err
 			}
@@ -220,6 +220,7 @@ func (s *Service) owner(ctx context.Context, op string, group, invite, key uuid.
 
 // ListedInvitation is owner-only recipient data; it contains no recoverable token.
 type ListedInvitation struct {
+	Kind      string
 	ID        uuid.UUID
 	Recipient *string
 	ExpiresAt time.Time
@@ -232,14 +233,14 @@ type ListedInvitation struct {
 func (s *Service) List(ctx context.Context, group uuid.UUID, after *uuid.UUID, limit int) ([]ListedInvitation, error) {
 	var result []ListedInvitation
 	err := s.transaction(ctx, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id,recipient,expires_at,lifecycle,action_id,delivery FROM app.invitation_list($1,$2,$3)`, group, after, limit)
+		rows, err := tx.Query(ctx, `SELECT id,recipient,expires_at,lifecycle,action_id,delivery,kind FROM app.invitation_list($1,$2,$3)`, group, after, limit)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var i ListedInvitation
-			if err := rows.Scan(&i.ID, &i.Recipient, &i.ExpiresAt, &i.Lifecycle, &i.ActionID, &i.Delivery); err != nil {
+			if err := rows.Scan(&i.ID, &i.Recipient, &i.ExpiresAt, &i.Lifecycle, &i.ActionID, &i.Delivery, &i.Kind); err != nil {
 				return err
 			}
 			result = append(result, i)
@@ -287,7 +288,8 @@ func (s *Service) Eligible(ctx context.Context, token, email string) (bool, erro
 
 var rollbackOutcome = errors.New("rollback non-admission")
 
-// Accept recovers actor-bound history first. Fresh provider evidence is fetched
+// Accept consumes targeted invitations or reuses shared links for first-time
+// membership only. It recovers actor-bound history first. Fresh evidence is fetched
 // outside locks; stale evidence rolls back provisioning and retries at most twice.
 func (s *Service) Accept(ctx context.Context, token string, key uuid.UUID) (Result, error) {
 	hash := TokenHash(token)

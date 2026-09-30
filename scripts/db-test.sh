@@ -49,27 +49,32 @@ cp supabase/migrations/*.sql "$stage/supabase/migrations/"
 # Seed a real #75 group before the additive group-creation migration. Compare
 # its complete rows afterwards, proving IDs, ownership and designation survive.
 group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
-household_migration="$stage/supabase/migrations/20261006000000_household_designation.sql"
+household_migration="$stage/supabase/migrations/20261005000000_household_designation.sql"
 mv "$household_migration" "$stage/household-designation.sql"
 mv "$group_migration" "$stage/group-creation.sql"
-repayment_migration="$stage/supabase/migrations/20261005000000_repayments.sql"
+repayment_migration="$stage/supabase/migrations/20261006000000_repayments.sql"
 mv "$repayment_migration" "$stage/repayments.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
+mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/shared-invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
 mv "$stage/group-metadata-read.sql" "$stage/supabase/migrations/20261004000000_group_metadata_read.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
-# Apply financial history before Household designation, matching version order.
+# Preserve the existing identity/group/Household fixture through the new
+# designation foundation as well. Neither ownership nor installation identity
+# may infer a partner or alter an existing membership.
+mv "$stage/household-designation.sql" "$household_migration"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgraded.sql
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/repayment_upgrade.sql
 mv "$stage/repayments.sql" "$repayment_migration"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/repayment_upgraded.sql
-# Preserve the existing identity/group/Household fixture through designation.
-# Neither ownership nor installation identity may infer a partner or alter a membership.
-mv "$stage/household-designation.sql" "$household_migration"
+# Apply shared links after all earlier upgrade fixtures; each migration version
+# is unique so Supabase records and replays the sequence deterministically.
+mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261007000000_shared_invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
-docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
