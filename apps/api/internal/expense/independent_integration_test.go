@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestIndependentFinancialRecoveryAndPagination(t *testing.T) {
@@ -214,12 +216,15 @@ func TestIndependentFinancialRecoveryAndPagination(t *testing.T) {
 	})
 	t.Run("later transaction cannot add same-group zero allocation", func(t *testing.T) {
 		raw, _ := ledger.ParseID(original.Record.ExpenseID, "Expense")
+		insertAccepted := false
 		err := db.WithIdentity(ctx, id(1), func(tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, `INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor) VALUES($1,$2,$3,0)`, raw, id(201), id(303))
+			insertAccepted = err == nil
 			return err
 		})
-		if err == nil {
-			t.Fatal("old expense accepted a new zero-share participant in a later transaction")
+		var constraint *pgconn.PgError
+		if !insertAccepted || !errors.As(err, &constraint) || constraint.Code != "23514" {
+			t.Fatalf("expected deferred immutability constraint, got %v (insert accepted=%v)", err, insertAccepted)
 		}
 		var count int
 		if err = admin.QueryRow(ctx, `SELECT count(*) FROM app.allocations WHERE expense_id=$1`, raw).Scan(&count); err != nil || count != 2 {
