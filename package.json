@@ -16,7 +16,9 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "pnpm --filter @kami-split/web typecheck && tsc --project tsconfig.docs.json --noEmit",
     "test": "pnpm --filter @kami-split/web test",
-    "test:watch": "pnpm --filter @kami-split/web test:watch"
+    "test:watch": "pnpm --filter @kami-split/web test:watch",
+    "relay:generate": "node scripts/relay/generate.mjs",
+    "relay:check": "node scripts/relay/generate.mjs --validate"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

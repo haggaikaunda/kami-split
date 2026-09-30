@@ -2,11 +2,11 @@
 
 ## Current application
 
-The web application is a seeded UX preview with in-memory data and simulated access controls. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#implementation-guides). Existing feature documentation stays at its original paths to preserve links.
+The web application includes an [authenticated expense journey](relay-expenses.md) at `/groups` alongside explicitly labeled seeded preview routes with in-memory data and simulated access controls. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#implementation-guides). Existing feature documentation stays at its original paths to preserve links.
 
 ## Backend and planned features
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. The internal [Household partner designation](household-designation.md) adds explicit consent and lifecycle invalidation; dashboard reads remain separate. Financial browser integration remains separate. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. The internal [Household partner designation](household-designation.md) adds explicit consent and lifecycle invalidation; dashboard reads remain separate. The [Relay expense journey](relay-expenses.md) connects real financial browser reads, creation and recovery. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
 
 ## Architecture decisions
 
@@ -27,3 +27,7 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 The [administrative bootstrap runbook](bootstrap.md) covers explicit first-account
 and Household creation, safe retries, and the ordinary verified-email recovery
 flow. Hosted execution requires separate authorization.
+
+## Authenticated financial browser
+
+The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. Other preview routes remain explicitly simulated.

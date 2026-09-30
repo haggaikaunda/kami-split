@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HouseholdCommandsProvider } from '@/components/household-controller';
 import { ExpenseDeletionProvider } from '@/components/expense-delete';
@@ -15,6 +16,7 @@ export function ApplicationFrame({
 }) {
   const path = usePathname();
   if (
+    path === '/groups' ||
     path === '/sign-in' ||
     path === '/join' ||
     path === '/account' ||
@@ -28,6 +30,13 @@ export function ApplicationFrame({
         <ExpenseCreationProvider>
           <ExpenseDeletionProvider>
             <HouseholdCommandsProvider>
+              <div
+                role="note"
+                style={{ padding: '0.5rem', textAlign: 'center' }}
+              >
+                Demo preview · simulated data.{' '}
+                <Link href="/groups">Open your real groups</Link>
+              </div>
               <NavigationShell detail={detail}>{children}</NavigationShell>
             </HouseholdCommandsProvider>
           </ExpenseDeletionProvider>

@@ -1,6 +1,6 @@
 # Targeted onboarding, sessions and delivery
 
-Issue #80 connects the [targeted invitation service](targeted-invitations.md) to Supabase Auth, Resend, thin GraphQL operations and real browser routes. It does not add invitation persistence, shared links, financial browser integration or hosted resources. The existing expense API is preserved. The financial screens remain a seeded preview; `/preview/sign-in` preserves the old account simulation. `/sign-in`, `/join`, `/auth/confirm`, `/auth/password` and `/account` use actual configured services and never render mock group data.
+Issue #80 connects the [targeted invitation service](targeted-invitations.md) to Supabase Auth, Resend, thin GraphQL operations and real browser routes. It does not add invitation persistence, shared links, financial browser integration or hosted resources. The existing expense API is preserved. The [Relay expense journey](relay-expenses.md) at `/groups` now uses these sessions; remaining financial preview screens stay simulated; `/preview/sign-in` preserves the old account simulation. `/sign-in`, `/join`, `/auth/confirm`, `/auth/password` and `/account` use actual configured services and never render mock group data.
 
 ## Configuration and boundaries
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { FinancialSession } from '@/components/groups/session';
 import { ApplicationFrame } from '@/components/application-frame';
 import './overview.css';
 import './styles.css';
@@ -22,7 +23,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Suspense fallback={<p role="status">Loading navigation…</p>}>
-          <ApplicationFrame detail={detail}>{children}</ApplicationFrame>
+          <FinancialSession>
+            <ApplicationFrame detail={detail}>{children}</ApplicationFrame>
+          </FinancialSession>
         </Suspense>
       </body>
     </html>

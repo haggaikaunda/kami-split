@@ -1,6 +1,6 @@
 # Testing strategy
 
-Tests demonstrate behavior rather than mirror implementation. Financial browser previews use an asynchronous in-memory adapter; real onboarding uses configured Auth/API services. The Go API separately implements verified authentication, persisted expense creation/recovery and authorized balance/read operations, plus internal targeted invitation/admission/delivery recovery. These paths have real Supabase/PostgreSQL integration coverage. [Public onboarding](application/onboarding.md) has actual provider/HTTP integration and browser coverage. Financial browser Relay integration (#83) remains deferred; mock financial UI tests do not demonstrate its completion. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
+Tests demonstrate behavior rather than mirror implementation. Financial browser previews use an asynchronous in-memory adapter; real onboarding uses configured Auth/API services. The Go API separately implements verified authentication, persisted expense creation/recovery and authorized balance/read operations, plus internal targeted invitation/admission/delivery recovery. These paths have real Supabase/PostgreSQL integration coverage. [Public onboarding](application/onboarding.md) has actual provider/HTTP integration and browser coverage. The [authenticated Relay journey](application/relay-expenses.md) adds real financial browser integration (#83); mock financial UI tests do not demonstrate its completion. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
 
 ## Current coverage
 
@@ -21,6 +21,7 @@ The web baseline after PR #51 is **325 passing tests in 54 files** (September 26
 Use Node 24 and the pnpm version pinned in `package.json`, then run sequentially:
 
 ```bash
+pnpm relay:check
 pnpm format:check
 pnpm lint
 pnpm typecheck
@@ -48,6 +49,6 @@ The final pass covers 320/390/768/1280px, actual 200% root text, keyboard dialog
 
 ## Remaining integration and feature coverage
 
-Financial browser Relay integration still needs acceptance coverage under #83; onboarding acceptance is documented in its guide. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
+Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
 
 Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).

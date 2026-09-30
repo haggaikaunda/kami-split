@@ -8,6 +8,7 @@ export default defineConfig([
   { settings: { next: { rootDir: 'apps/web/' } } },
   globalIgnores([
     '**/.next/**',
+    '**/relay/__generated__/**',
     '**/coverage/**',
     '**/playwright-report/**',
     'docs/design/prototype/**',

@@ -3,7 +3,7 @@
 Issue #82 implements the reviewed [first-expense contract](proposals/first-expense/contract.md)
 and [shared identity and money rules](proposals/first-expense/shared.md). The
 running SDL is in [packages/schema](../../packages/schema/README.md). The web
-preview still uses its mock DataPort; the real UI migration is #83. Invitations,
+preview keeps its mock DataPort; the separate [authenticated journey](relay-expenses.md) uses Relay for #83. Invitations,
 administrative bootstrap, edits, deletion, trip/group
 creation, and uploaded receipt files remain separate work.
 
