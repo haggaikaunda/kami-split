@@ -333,6 +333,97 @@ func TestIdentityIndependent(t *testing.T) {
 			}
 		}
 	})
+	t.Run("owner transfer and target inactivation serialize", func(t *testing.T) {
+		// Privileged fixture operations exercise constraints, not a transfer service.
+		for _, transferFirst := range []bool{false, true} {
+			tx, e := admin.Begin(ctx)
+			if e != nil {
+				t.Fatal(e)
+			}
+			first := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.memberships SET active=false WHERE id='%s'`, id(22))
+			second := fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; SET CONSTRAINTS ALL IMMEDIATE`, id(22), id(11))
+			if transferFirst {
+				first, second = second, first+`; SET CONSTRAINTS ALL IMMEDIATE`
+			}
+			if _, e = tx.Exec(ctx, first); e != nil {
+				t.Fatal(e)
+			}
+			done := make(chan error, 1)
+			go func() {
+				other, e := pgx.Connect(ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
+				if e != nil {
+					done <- e
+					return
+				}
+				defer other.Close(context.Background())
+				ot, e := other.Begin(ctx)
+				if e != nil {
+					done <- e
+					return
+				}
+				defer ot.Rollback(context.Background())
+				_, e = ot.Exec(ctx, second)
+				if e == nil {
+					e = ot.Commit(ctx)
+				}
+				done <- e
+			}()
+			select {
+			case e := <-done:
+				t.Fatalf("competing owner change did not wait: %v", e)
+			case <-time.After(75 * time.Millisecond):
+			}
+			if e = tx.Commit(ctx); e != nil {
+				t.Fatal(e)
+			}
+			if e = <-done; e == nil {
+				t.Fatal("incompatible owner changes both committed")
+			}
+			var owners int
+			if e = admin.QueryRow(ctx, `SELECT count(*) FROM app.groups g JOIN app.memberships m ON m.id=g.owner_membership_id AND m.group_id=g.id AND m.active WHERE g.id=$1`, id(11)).Scan(&owners); e != nil || owners != 1 {
+				t.Fatalf("owner invariant %d %v", owners, e)
+			}
+			exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'; COMMIT`, id(22), id(21), id(11)))
+		}
+	})
+	t.Run("disable commits before waiting authorization", func(t *testing.T) {
+		// Both actor and participant eligibility must be rechecked after user locks.
+		exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.memberships SET active=true WHERE id='%s'; RESET ROLE`, id(23)))
+		for _, participant := range []bool{true, false} {
+			victim := 1
+			actor := 1
+			members := []pgtype.UUID{}
+			if participant {
+				victim = 3
+				actor = 2
+				members = []pgtype.UUID{uid(23)}
+			}
+			tx, e := admin.Begin(ctx)
+			if e != nil {
+				t.Fatal(e)
+			}
+			if _, e = tx.Exec(ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'`, id(victim))); e != nil {
+				t.Fatal(e)
+			}
+			started := make(chan struct{})
+			done := make(chan error, 1)
+			go func() {
+				done <- db.WithIdentity(ctx, id(actor), func(rt pgx.Tx) error { close(started); return database.LockGroupWrite(ctx, rt, uid(11), members) })
+			}()
+			<-started
+			select {
+			case e := <-done:
+				t.Fatalf("did not wait on disable: %v", e)
+			case <-time.After(75 * time.Millisecond):
+			}
+			if e = tx.Commit(ctx); e != nil {
+				t.Fatal(e)
+			}
+			if e = <-done; e == nil {
+				t.Fatal("disabled eligibility accepted")
+			}
+		}
+	})
 	t.Run("managed Auth deletion no relink", func(t *testing.T) {
 		if _, e := admin.Exec(ctx, `DELETE FROM auth.users WHERE id='`+id(2)+`'`); e == nil {
 			t.Fatal("enabled Auth deletion accepted")
