@@ -1,0 +1,76 @@
+.onboarding {
+  box-sizing: border-box;
+  width: min(100%, 44rem);
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  overflow-wrap: anywhere;
+}
+.onboarding header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.onboarding h1 {
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
+  line-height: 1.2;
+}
+.onboarding form,
+.onboarding section,
+.onboarding-session,
+.onboarding aside {
+  display: grid;
+  gap: 0.8rem;
+  margin-block: 1.5rem;
+}
+.onboarding input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.8rem;
+  font: inherit;
+  border: 1px solid #65756b;
+  border-radius: 0.5rem;
+  background: white;
+  color: #182b21;
+}
+.onboarding button {
+  min-height: 2.75rem;
+  padding: 0.8rem 1rem;
+  font: inherit;
+  border: 1px solid #29533c;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #245037;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.onboarding button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.onboarding :focus-visible {
+  outline: 3px solid #98650a;
+  outline-offset: 3px;
+}
+.onboarding nav,
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.onboarding li {
+  padding-block: 1rem;
+}
+.onboarding ul {
+  padding-left: 1.25rem;
+}
+.onboarding-error {
+  color: #912e21;
+}
+.onboarding [role='status'],
+.onboarding [role='alert'] {
+  min-height: 1.5em;
+}

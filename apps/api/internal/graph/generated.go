@@ -128,6 +128,32 @@ type ComplexityRoot struct {
 		Status func(childComplexity int) int
 	}
 
+	InvitationActionResult struct {
+		ActionID           func(childComplexity int) int
+		CommittedExpiresAt func(childComplexity int) int
+		CurrentExpiresAt   func(childComplexity int) int
+		Delivery           func(childComplexity int) int
+		GroupID            func(childComplexity int) int
+		HasAccess          func(childComplexity int) int
+		InvitationID       func(childComplexity int) int
+		Lifecycle          func(childComplexity int) int
+		Outcome            func(childComplexity int) int
+	}
+
+	InvitationDeliveryResult struct {
+		Status func(childComplexity int) int
+	}
+
+	InvitationPreview struct {
+		GroupName          func(childComplexity int) int
+		InviterDisplayName func(childComplexity int) int
+	}
+
+	InvitationProblem struct {
+		Code    func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	MemberPosition struct {
 		Member    func(childComplexity int) int
 		NetMinor  func(childComplexity int) int
@@ -144,7 +170,12 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateExpense func(childComplexity int, input model.CreateExpenseInput) int
+		AcceptInvitation         func(childComplexity int, token string, key ledger.OperationKey) int
+		CreateExpense            func(childComplexity int, input model.CreateExpenseInput) int
+		CreateTargetedInvitation func(childComplexity int, groupID string, email string, key ledger.OperationKey) int
+		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		RetryInvitationDelivery  func(childComplexity int, actionID string) int
+		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 	}
 
 	Obligation struct {
@@ -167,6 +198,20 @@ type ComplexityRoot struct {
 		State func(childComplexity int) int
 	}
 
+	OwnerInvitation struct {
+		ActionID  func(childComplexity int) int
+		Delivery  func(childComplexity int) int
+		ExpiresAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Lifecycle func(childComplexity int) int
+		Recipient func(childComplexity int) int
+	}
+
+	OwnerInvitationPage struct {
+		Items      func(childComplexity int) int
+		NextCursor func(childComplexity int) int
+	}
+
 	PageInfo struct {
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
@@ -180,11 +225,14 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ExpenseOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Group            func(childComplexity int, id string) int
-		Health           func(childComplexity int) int
-		Node             func(childComplexity int, id string) int
-		Viewer           func(childComplexity int) int
+		ExpenseOperation  func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Group             func(childComplexity int, id string) int
+		Health            func(childComplexity int) int
+		InvitationAction  func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
+		Node              func(childComplexity int, id string) int
+		OwnerInvitations  func(childComplexity int, groupID string, first int, after *string) int
+		PreviewInvitation func(childComplexity int, token string) int
+		Viewer            func(childComplexity int) int
 	}
 
 	ValidationProblem struct {
@@ -212,12 +260,20 @@ type GroupResolver interface {
 }
 type MutationResolver interface {
 	CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error)
+	CreateTargetedInvitation(ctx context.Context, groupID string, email string, key ledger.OperationKey) (model.InvitationResult, error)
+	ResendInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
+	RevokeInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
+	RetryInvitationDelivery(ctx context.Context, actionID string) (model.InvitationDelivery, error)
+	AcceptInvitation(ctx context.Context, token string, key ledger.OperationKey) (model.InvitationResult, error)
 }
 type QueryResolver interface {
 	Viewer(ctx context.Context) (model.ViewerResult, error)
 	Node(ctx context.Context, id string) (model.Node, error)
 	Group(ctx context.Context, id string) (model.GroupResult, error)
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
+	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
+	OwnerInvitations(ctx context.Context, groupID string, first int, after *string) (model.OwnerInvitationsResult, error)
+	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
 
@@ -597,6 +653,94 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Health.Status(childComplexity), true
 
+	case "InvitationActionResult.actionID":
+		if e.ComplexityRoot.InvitationActionResult.ActionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.ActionID(childComplexity), true
+	case "InvitationActionResult.committedExpiresAt":
+		if e.ComplexityRoot.InvitationActionResult.CommittedExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.CommittedExpiresAt(childComplexity), true
+	case "InvitationActionResult.currentExpiresAt":
+		if e.ComplexityRoot.InvitationActionResult.CurrentExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.CurrentExpiresAt(childComplexity), true
+	case "InvitationActionResult.delivery":
+		if e.ComplexityRoot.InvitationActionResult.Delivery == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.Delivery(childComplexity), true
+	case "InvitationActionResult.groupID":
+		if e.ComplexityRoot.InvitationActionResult.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.GroupID(childComplexity), true
+	case "InvitationActionResult.hasAccess":
+		if e.ComplexityRoot.InvitationActionResult.HasAccess == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.HasAccess(childComplexity), true
+	case "InvitationActionResult.invitationID":
+		if e.ComplexityRoot.InvitationActionResult.InvitationID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.InvitationID(childComplexity), true
+	case "InvitationActionResult.lifecycle":
+		if e.ComplexityRoot.InvitationActionResult.Lifecycle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.Lifecycle(childComplexity), true
+	case "InvitationActionResult.outcome":
+		if e.ComplexityRoot.InvitationActionResult.Outcome == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationActionResult.Outcome(childComplexity), true
+
+	case "InvitationDeliveryResult.status":
+		if e.ComplexityRoot.InvitationDeliveryResult.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationDeliveryResult.Status(childComplexity), true
+
+	case "InvitationPreview.groupName":
+		if e.ComplexityRoot.InvitationPreview.GroupName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationPreview.GroupName(childComplexity), true
+	case "InvitationPreview.inviterDisplayName":
+		if e.ComplexityRoot.InvitationPreview.InviterDisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationPreview.InviterDisplayName(childComplexity), true
+
+	case "InvitationProblem.code":
+		if e.ComplexityRoot.InvitationProblem.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationProblem.Code(childComplexity), true
+	case "InvitationProblem.message":
+		if e.ComplexityRoot.InvitationProblem.Message == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvitationProblem.Message(childComplexity), true
+
 	case "MemberPosition.member":
 		if e.ComplexityRoot.MemberPosition.Member == nil {
 			break
@@ -653,6 +797,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Membership.Status(childComplexity), true
 
+	case "Mutation.acceptInvitation":
+		if e.ComplexityRoot.Mutation.AcceptInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_acceptInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AcceptInvitation(childComplexity, args["token"].(string), args["key"].(ledger.OperationKey)), true
 	case "Mutation.createExpense":
 		if e.ComplexityRoot.Mutation.CreateExpense == nil {
 			break
@@ -664,6 +819,50 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateExpense(childComplexity, args["input"].(model.CreateExpenseInput)), true
+	case "Mutation.createTargetedInvitation":
+		if e.ComplexityRoot.Mutation.CreateTargetedInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTargetedInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateTargetedInvitation(childComplexity, args["groupID"].(string), args["email"].(string), args["key"].(ledger.OperationKey)), true
+	case "Mutation.resendInvitation":
+		if e.ComplexityRoot.Mutation.ResendInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resendInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResendInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
+	case "Mutation.retryInvitationDelivery":
+		if e.ComplexityRoot.Mutation.RetryInvitationDelivery == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_retryInvitationDelivery_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RetryInvitationDelivery(childComplexity, args["actionID"].(string)), true
+	case "Mutation.revokeInvitation":
+		if e.ComplexityRoot.Mutation.RevokeInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_revokeInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RevokeInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -716,6 +915,56 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OperationProgress.State(childComplexity), true
+
+	case "OwnerInvitation.actionID":
+		if e.ComplexityRoot.OwnerInvitation.ActionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.ActionID(childComplexity), true
+	case "OwnerInvitation.delivery":
+		if e.ComplexityRoot.OwnerInvitation.Delivery == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.Delivery(childComplexity), true
+	case "OwnerInvitation.expiresAt":
+		if e.ComplexityRoot.OwnerInvitation.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.ExpiresAt(childComplexity), true
+	case "OwnerInvitation.id":
+		if e.ComplexityRoot.OwnerInvitation.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.ID(childComplexity), true
+	case "OwnerInvitation.lifecycle":
+		if e.ComplexityRoot.OwnerInvitation.Lifecycle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.Lifecycle(childComplexity), true
+	case "OwnerInvitation.recipient":
+		if e.ComplexityRoot.OwnerInvitation.Recipient == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitation.Recipient(childComplexity), true
+
+	case "OwnerInvitationPage.items":
+		if e.ComplexityRoot.OwnerInvitationPage.Items == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitationPage.Items(childComplexity), true
+	case "OwnerInvitationPage.nextCursor":
+		if e.ComplexityRoot.OwnerInvitationPage.NextCursor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OwnerInvitationPage.NextCursor(childComplexity), true
 
 	case "PageInfo.endCursor":
 		if e.ComplexityRoot.PageInfo.EndCursor == nil {
@@ -784,6 +1033,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Health(childComplexity), true
 
+	case "Query.invitationAction":
+		if e.ComplexityRoot.Query.InvitationAction == nil {
+			break
+		}
+
+		args, err := ec.field_Query_invitationAction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.InvitationAction(childComplexity, args["kind"].(model.InvitationOperation), args["key"].(ledger.OperationKey)), true
 	case "Query.node":
 		if e.ComplexityRoot.Query.Node == nil {
 			break
@@ -795,6 +1055,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Node(childComplexity, args["id"].(string)), true
+	case "Query.ownerInvitations":
+		if e.ComplexityRoot.Query.OwnerInvitations == nil {
+			break
+		}
+
+		args, err := ec.field_Query_ownerInvitations_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.OwnerInvitations(childComplexity, args["groupID"].(string), args["first"].(int), args["after"].(*string)), true
+	case "Query.previewInvitation":
+		if e.ComplexityRoot.Query.PreviewInvitation == nil {
+			break
+		}
+
+		args, err := ec.field_Query_previewInvitation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PreviewInvitation(childComplexity, args["token"].(string)), true
 	case "Query.viewer":
 		if e.ComplexityRoot.Query.Viewer == nil {
 			break
@@ -1723,6 +2005,339 @@ type Problem {
   message: String!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/onboarding.graphql", Input: `"""
+Safe invitation outcomes; receipts never authorize group access.
+"""
+enum InvitationOutcome {
+  """
+  Saved as evaluated by the invitation service.
+  """
+  SAVED
+  """
+  Existing as evaluated by the invitation service.
+  """
+  EXISTING
+  """
+  Applied as evaluated by the invitation service.
+  """
+  APPLIED
+  """
+  Admitted as evaluated by the invitation service.
+  """
+  ADMITTED
+  """
+  Already member as evaluated by the invitation service.
+  """
+  ALREADY_MEMBER
+  """
+  Historical acceptance as evaluated by the invitation service.
+  """
+  HISTORICAL_ACCEPTANCE
+  """
+  Already accepted as evaluated by the invitation service.
+  """
+  ALREADY_ACCEPTED
+  """
+  Already revoked as evaluated by the invitation service.
+  """
+  ALREADY_REVOKED
+  """
+  Key reused as evaluated by the invitation service.
+  """
+  KEY_REUSED
+  """
+  Not observed as evaluated by the invitation service.
+  """
+  NOT_OBSERVED
+  """
+  Rate limited as evaluated by the invitation service.
+  """
+  RATE_LIMITED
+  """
+  Wrong account as evaluated by the invitation service.
+  """
+  WRONG_ACCOUNT
+  """
+  Unavailable link as evaluated by the invitation service.
+  """
+  UNAVAILABLE_LINK
+  """
+  New targeted invitation required as evaluated by the invitation service.
+  """
+  NEW_TARGETED_INVITATION_REQUIRED
+}
+"""
+Original operation kind for actor-bound recovery.
+"""
+enum InvitationOperation {
+  """
+  Recover the original create action.
+  """
+  CREATE
+  """
+  Recover the original resend action.
+  """
+  RESEND
+  """
+  Recover the original revoke action.
+  """
+  REVOKE
+  """
+  Recover the original accept action.
+  """
+  ACCEPT
+}
+"""
+Safe failure without recipient, token or provider details.
+"""
+type InvitationProblem {
+  """
+  Allowlisted safe error code, never provider text.
+  """
+  code: String!
+  """
+  Safe recovery guidance.
+  """
+  message: String!
+}
+"""
+A valid capability discloses only these two names.
+"""
+type InvitationPreview {
+  """
+  Group display name, not financial access.
+  """
+  groupName: String!
+  """
+  Original inviter display name, never email.
+  """
+  inviterDisplayName: String!
+}
+"""
+Original committed result with separately observed current state.
+"""
+type InvitationActionResult {
+  """
+  Typed InvitationAction ID when an action exists.
+  """
+  actionID: ID
+  """
+  Typed Invitation ID when known and authorized.
+  """
+  invitationID: ID
+  """
+  Typed Group ID; still requires independent authorization.
+  """
+  groupID: ID
+  """
+  Outcome of the original action.
+  """
+  outcome: InvitationOutcome!
+  """
+  Expiry recorded by the original action, never a new extension.
+  """
+  committedExpiresAt: DateTime
+  """
+  Currently observed expiry, independent of original action.
+  """
+  currentExpiresAt: DateTime
+  """
+  Current safe lifecycle when known.
+  """
+  lifecycle: String
+  """
+  Current delivery status; PROVIDER_ACCEPTED is not recipient delivery.
+  """
+  delivery: String
+  """
+  Current access observation, never an authorization credential.
+  """
+  hasAccess: Boolean!
+}
+"""
+Current-owner projection; no token or full link.
+"""
+type OwnerInvitation {
+  """
+  Typed Invitation ID.
+  """
+  id: ID!
+  """
+  Recipient only while outstanding; purged on terminal transition.
+  """
+  recipient: String
+  """
+  Current expiry; viewing does not renew.
+  """
+  expiresAt: DateTime!
+  """
+  OUTSTANDING, EXPIRED, ACCEPTED or REVOKED.
+  """
+  lifecycle: String!
+  """
+  Latest safe typed InvitationAction ID.
+  """
+  actionID: ID
+  """
+  Current latest send status.
+  """
+  delivery: String!
+}
+"""
+Owner-only UUID-ordered page, refresh to discover concurrent insertions.
+"""
+type OwnerInvitationPage {
+  """
+  At most first invitations in exclusive ID order.
+  """
+  items: [OwnerInvitation!]!
+  """
+  Last Invitation ID when a full page may have a successor.
+  """
+  nextCursor: ID
+}
+"""
+Safe attempt status; recover original owner action for durable state.
+"""
+type InvitationDeliveryResult {
+  """
+  ATTEMPTED or NOT_CLAIMABLE; ATTEMPTED does not assert delivery.
+  """
+  status: String!
+}
+"""
+Valid two-field preview or generic unavailable link.
+"""
+union InvitationPreviewResult = InvitationPreview | InvitationProblem
+"""
+Saved action or safe failure. Errors do not prove a write did not commit.
+"""
+union InvitationResult = InvitationActionResult | InvitationProblem
+"""
+Owner-only page or safe failure.
+"""
+union OwnerInvitationsResult = OwnerInvitationPage | InvitationProblem
+"""
+Delivery attempt outcome or safe failure.
+"""
+union InvitationDelivery = InvitationDeliveryResult | InvitationProblem
+extend type Query {
+  """
+  Public capability preview; invalid, expired and terminal links are indistinguishable.
+  """
+  previewInvitation(
+    """
+    High-entropy capability from the invitation; never log or persist in browser storage.
+    """
+    token: String!
+  ): InvitationPreviewResult!
+  """
+  Current owner only; first is 1..50 and after is an exclusive typed Invitation ID.
+  """
+  ownerInvitations(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Page size from 1 through 50.
+    """
+    first: Int! = 20
+    """
+    Exclusive typed Invitation cursor from the prior page.
+    """
+    after: ID
+  ): OwnerInvitationsResult!
+  """
+  Recover this actor's same operation; NOT_OBSERVED cannot rule out an in-flight commit.
+  """
+  invitationAction(
+    """
+    Original action kind, unchanged during recovery.
+    """
+    kind: InvitationOperation!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}
+extend type Mutation {
+  """
+  Save targeted invitation; EXISTING does not renew or request delivery.
+  """
+  createTargetedInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Target email under the shared canonical comparison policy; never retarget an old invitation.
+    """
+    email: String!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Deliberate renewal with same link; repeat original key to recover without extending again.
+  """
+  resendInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Typed Invitation ID within the specified group.
+    """
+    id: ID!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Terminal revoke; cannot remove existing memberships or revive an accepted invitation.
+  """
+  revokeInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Typed Invitation ID within the specified group.
+    """
+    id: ID!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Send/retry committed action through its stable provider key within the recovery window.
+  """
+  retryInvitationDelivery(
+    """
+    Existing typed InvitationAction ID; current authority and retry window are checked.
+    """
+    actionID: ID!
+  ): InvitationDelivery!
+  """
+  Explicit admission with fresh current verified email; only #79 writes membership state.
+  """
+  acceptInvitation(
+    """
+    High-entropy capability from the invitation; never log or persist in browser storage.
+    """
+    token: String!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/schema.graphql", Input: `extend type Query {
   """
   Public availability check; requires no authentication and does not check database readiness.
@@ -1929,6 +2544,24 @@ func (ec *executionContext) childFields_OperationAllocation(ctx context.Context,
 	return nil, fmt.Errorf("no field named %q was found under type OperationAllocation", field.Name)
 }
 
+func (ec *executionContext) childFields_OwnerInvitation(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_OwnerInvitation_id(ctx, field)
+	case "recipient":
+		return ec.fieldContext_OwnerInvitation_recipient(ctx, field)
+	case "expiresAt":
+		return ec.fieldContext_OwnerInvitation_expiresAt(ctx, field)
+	case "lifecycle":
+		return ec.fieldContext_OwnerInvitation_lifecycle(ctx, field)
+	case "actionID":
+		return ec.fieldContext_OwnerInvitation_actionID(ctx, field)
+	case "delivery":
+		return ec.fieldContext_OwnerInvitation_delivery(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type OwnerInvitation", field.Name)
+}
+
 func (ec *executionContext) childFields_PageInfo(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "hasPreviousPage":
@@ -2089,6 +2722,28 @@ func (ec *executionContext) field_Group_expenses_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_acceptInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "token",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["token"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createExpense_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2100,6 +2755,110 @@ func (ec *executionContext) field_Mutation_createExpense_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createTargetedInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resendInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_retryInvitationDelivery_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "actionID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["actionID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_revokeInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg2
 	return args, nil
 }
 
@@ -2153,6 +2912,28 @@ func (ec *executionContext) field_Query_group_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_invitationAction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.InvitationOperation, error) {
+			return ec.unmarshalNInvitationOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOperation(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2164,6 +2945,50 @@ func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_ownerInvitations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupID",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "after",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_previewInvitation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "token",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["token"] = arg0
 	return args, nil
 }
 
@@ -3676,6 +4501,328 @@ func (ec *executionContext) fieldContext_Health_status(_ context.Context, field 
 	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _InvitationActionResult_actionID(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_actionID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_actionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_invitationID(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_invitationID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InvitationID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_invitationID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_groupID(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_groupID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_groupID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_outcome(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_outcome(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Outcome, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationOutcome) graphql.Marshaler {
+			return ec.marshalNInvitationOutcome2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOutcome(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_outcome(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type InvitationOutcome does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_committedExpiresAt(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_committedExpiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CommittedExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ledger.DateTime) graphql.Marshaler {
+			return ec.marshalODateTime2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_committedExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_currentExpiresAt(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_currentExpiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ledger.DateTime) graphql.Marshaler {
+			return ec.marshalODateTime2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_currentExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_lifecycle(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_lifecycle(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Lifecycle, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_lifecycle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_delivery(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_delivery(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Delivery, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_delivery(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationActionResult_hasAccess(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationActionResult_hasAccess(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HasAccess, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationActionResult_hasAccess(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationActionResult", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationDeliveryResult_status(ctx context.Context, field graphql.CollectedField, obj *model.InvitationDeliveryResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationDeliveryResult_status(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationDeliveryResult_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationDeliveryResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationPreview_groupName(ctx context.Context, field graphql.CollectedField, obj *model.InvitationPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationPreview_groupName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationPreview_groupName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationPreview_inviterDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.InvitationPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationPreview_inviterDisplayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InviterDisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationPreview_inviterDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationProblem_code(ctx context.Context, field graphql.CollectedField, obj *model.InvitationProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationProblem_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationProblem_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InvitationProblem_message(ctx context.Context, field graphql.CollectedField, obj *model.InvitationProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvitationProblem_message(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InvitationProblem_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvitationProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _MemberPosition_member(ctx context.Context, field graphql.CollectedField, obj *model.MemberPosition) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3936,6 +5083,226 @@ func (ec *executionContext) fieldContext_Mutation_createExpense(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createTargetedInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createTargetedInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateTargetedInvitation(ctx, fc.Args["groupID"].(string), fc.Args["email"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createTargetedInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createTargetedInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resendInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_resendInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResendInvitation(ctx, fc.Args["groupID"].(string), fc.Args["id"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_resendInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resendInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_revokeInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_revokeInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RevokeInvitation(ctx, fc.Args["groupID"].(string), fc.Args["id"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_revokeInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_revokeInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_retryInvitationDelivery(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_retryInvitationDelivery(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RetryInvitationDelivery(ctx, fc.Args["actionID"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationDelivery) graphql.Marshaler {
+			return ec.marshalNInvitationDelivery2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationDelivery(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_retryInvitationDelivery(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationDelivery does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_retryInvitationDelivery_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_acceptInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_acceptInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AcceptInvitation(ctx, fc.Args["token"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_acceptInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_acceptInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Obligation_from(ctx context.Context, field graphql.CollectedField, obj *model.Obligation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4136,6 +5503,199 @@ func (ec *executionContext) _OperationProgress_state(ctx context.Context, field 
 }
 func (ec *executionContext) fieldContext_OperationProgress_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OperationProgress", field, false, false, errors.New("field of type OperationState does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_id(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_recipient(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_recipient(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Recipient, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_recipient(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_expiresAt(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_expiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.DateTime) graphql.Marshaler {
+			return ec.marshalNDateTime2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_lifecycle(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_lifecycle(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Lifecycle, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_lifecycle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_actionID(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_actionID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_actionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitation_delivery(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitation_delivery(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Delivery, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitation_delivery(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitation", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OwnerInvitationPage_items(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitationPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitationPage_items(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Items, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.OwnerInvitation) graphql.Marshaler {
+			return ec.marshalNOwnerInvitation2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitationPage_items(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OwnerInvitationPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_OwnerInvitation(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OwnerInvitationPage_nextCursor(ctx context.Context, field graphql.CollectedField, obj *model.OwnerInvitationPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OwnerInvitationPage_nextCursor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NextCursor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OwnerInvitationPage_nextCursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OwnerInvitationPage", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
@@ -4425,6 +5985,138 @@ func (ec *executionContext) fieldContext_Query_expenseOperation(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_expenseOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_previewInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_previewInvitation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PreviewInvitation(ctx, fc.Args["token"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationPreviewResult) graphql.Marshaler {
+			return ec.marshalNInvitationPreviewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationPreviewResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_previewInvitation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationPreviewResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_previewInvitation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ownerInvitations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_ownerInvitations(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().OwnerInvitations(ctx, fc.Args["groupID"].(string), fc.Args["first"].(int), fc.Args["after"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.OwnerInvitationsResult) graphql.Marshaler {
+			return ec.marshalNOwnerInvitationsResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitationsResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_ownerInvitations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type OwnerInvitationsResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_ownerInvitations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invitationAction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_invitationAction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().InvitationAction(ctx, fc.Args["kind"].(model.InvitationOperation), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+			return ec.marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_invitationAction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type InvitationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_invitationAction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -6059,6 +7751,87 @@ func (ec *executionContext) _GroupResult(ctx context.Context, sel ast.SelectionS
 	}
 }
 
+func (ec *executionContext) _InvitationDelivery(ctx context.Context, sel ast.SelectionSet, obj model.InvitationDelivery) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.InvitationProblem:
+		return ec._InvitationProblem(ctx, sel, &obj)
+	case *model.InvitationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationProblem(ctx, sel, obj)
+	case model.InvitationDeliveryResult:
+		return ec._InvitationDeliveryResult(ctx, sel, &obj)
+	case *model.InvitationDeliveryResult:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationDeliveryResult(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of InvitationDelivery must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _InvitationPreviewResult(ctx context.Context, sel ast.SelectionSet, obj model.InvitationPreviewResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.InvitationProblem:
+		return ec._InvitationProblem(ctx, sel, &obj)
+	case *model.InvitationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationProblem(ctx, sel, obj)
+	case model.InvitationPreview:
+		return ec._InvitationPreview(ctx, sel, &obj)
+	case *model.InvitationPreview:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationPreview(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of InvitationPreviewResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _InvitationResult(ctx context.Context, sel ast.SelectionSet, obj model.InvitationResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.InvitationProblem:
+		return ec._InvitationProblem(ctx, sel, &obj)
+	case *model.InvitationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationProblem(ctx, sel, obj)
+	case model.InvitationActionResult:
+		return ec._InvitationActionResult(ctx, sel, &obj)
+	case *model.InvitationActionResult:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationActionResult(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of InvitationResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
 func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj model.Node) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -6137,6 +7910,33 @@ func (ec *executionContext) _OperationResult(ctx context.Context, sel ast.Select
 			return typedObj
 		} else {
 			panic(fmt.Errorf("unexpected type %T; non-generated variants of OperationResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _OwnerInvitationsResult(ctx context.Context, sel ast.SelectionSet, obj model.OwnerInvitationsResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.OwnerInvitationPage:
+		return ec._OwnerInvitationPage(ctx, sel, &obj)
+	case *model.OwnerInvitationPage:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OwnerInvitationPage(ctx, sel, obj)
+	case model.InvitationProblem:
+		return ec._InvitationProblem(ctx, sel, &obj)
+	case *model.InvitationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InvitationProblem(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of OwnerInvitationsResult must implement graphql.Marshaler", obj))
 		}
 	}
 }
@@ -6860,6 +8660,208 @@ func (ec *executionContext) _Health(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var invitationActionResultImplementors = []string{"InvitationActionResult", "InvitationResult"}
+
+func (ec *executionContext) _InvitationActionResult(ctx context.Context, sel ast.SelectionSet, obj *model.InvitationActionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invitationActionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvitationActionResult")
+		case "actionID":
+			out.Values[i] = ec._InvitationActionResult_actionID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "invitationID":
+			out.Values[i] = ec._InvitationActionResult_invitationID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "groupID":
+			out.Values[i] = ec._InvitationActionResult_groupID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "outcome":
+			out.Values[i] = ec._InvitationActionResult_outcome(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "committedExpiresAt":
+			out.Values[i] = ec._InvitationActionResult_committedExpiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "currentExpiresAt":
+			out.Values[i] = ec._InvitationActionResult_currentExpiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lifecycle":
+			out.Values[i] = ec._InvitationActionResult_lifecycle(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "delivery":
+			out.Values[i] = ec._InvitationActionResult_delivery(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "hasAccess":
+			out.Values[i] = ec._InvitationActionResult_hasAccess(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var invitationDeliveryResultImplementors = []string{"InvitationDeliveryResult", "InvitationDelivery"}
+
+func (ec *executionContext) _InvitationDeliveryResult(ctx context.Context, sel ast.SelectionSet, obj *model.InvitationDeliveryResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invitationDeliveryResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvitationDeliveryResult")
+		case "status":
+			out.Values[i] = ec._InvitationDeliveryResult_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var invitationPreviewImplementors = []string{"InvitationPreview", "InvitationPreviewResult"}
+
+func (ec *executionContext) _InvitationPreview(ctx context.Context, sel ast.SelectionSet, obj *model.InvitationPreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invitationPreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvitationPreview")
+		case "groupName":
+			out.Values[i] = ec._InvitationPreview_groupName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inviterDisplayName":
+			out.Values[i] = ec._InvitationPreview_inviterDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var invitationProblemImplementors = []string{"InvitationProblem", "InvitationPreviewResult", "InvitationResult", "OwnerInvitationsResult", "InvitationDelivery"}
+
+func (ec *executionContext) _InvitationProblem(ctx context.Context, sel ast.SelectionSet, obj *model.InvitationProblem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invitationProblemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvitationProblem")
+		case "code":
+			out.Values[i] = ec._InvitationProblem_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._InvitationProblem_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var memberPositionImplementors = []string{"MemberPosition"}
 
 func (ec *executionContext) _MemberPosition(ctx context.Context, sel ast.SelectionSet, obj *model.MemberPosition) graphql.Marshaler {
@@ -6994,6 +8996,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createExpense":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createExpense(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createTargetedInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createTargetedInvitation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resendInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resendInvitation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revokeInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_revokeInvitation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retryInvitationDelivery":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_retryInvitationDelivery(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "acceptInvitation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_acceptInvitation(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7168,6 +9205,112 @@ func (ec *executionContext) _OperationProgress(ctx context.Context, sel ast.Sele
 		case "state":
 			out.Values[i] = ec._OperationProgress_state(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var ownerInvitationImplementors = []string{"OwnerInvitation"}
+
+func (ec *executionContext) _OwnerInvitation(ctx context.Context, sel ast.SelectionSet, obj *model.OwnerInvitation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ownerInvitationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OwnerInvitation")
+		case "id":
+			out.Values[i] = ec._OwnerInvitation_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recipient":
+			out.Values[i] = ec._OwnerInvitation_recipient(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._OwnerInvitation_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lifecycle":
+			out.Values[i] = ec._OwnerInvitation_lifecycle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actionID":
+			out.Values[i] = ec._OwnerInvitation_actionID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "delivery":
+			out.Values[i] = ec._OwnerInvitation_delivery(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var ownerInvitationPageImplementors = []string{"OwnerInvitationPage", "OwnerInvitationsResult"}
+
+func (ec *executionContext) _OwnerInvitationPage(ctx context.Context, sel ast.SelectionSet, obj *model.OwnerInvitationPage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ownerInvitationPageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OwnerInvitationPage")
+		case "items":
+			out.Values[i] = ec._OwnerInvitationPage_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextCursor":
+			out.Values[i] = ec._OwnerInvitationPage_nextCursor(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -7383,6 +9526,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_expenseOperation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "previewInvitation":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_previewInvitation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "ownerInvitations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_ownerInvitations(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invitationAction":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invitationAction(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -8274,6 +10483,56 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) marshalNInvitationDelivery2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationDelivery(ctx context.Context, sel ast.SelectionSet, v model.InvitationDelivery) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvitationDelivery(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNInvitationOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOperation(ctx context.Context, v any) (model.InvitationOperation, error) {
+	var res model.InvitationOperation
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInvitationOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOperation(ctx context.Context, sel ast.SelectionSet, v model.InvitationOperation) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNInvitationOutcome2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOutcome(ctx context.Context, v any) (model.InvitationOutcome, error) {
+	var res model.InvitationOutcome
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInvitationOutcome2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationOutcome(ctx context.Context, sel ast.SelectionSet, v model.InvitationOutcome) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNInvitationPreviewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationPreviewResult(ctx context.Context, sel ast.SelectionSet, v model.InvitationPreviewResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvitationPreviewResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInvitationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐInvitationResult(ctx context.Context, sel ast.SelectionSet, v model.InvitationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvitationResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNMemberPosition2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMemberPositionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MemberPosition) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -8436,6 +10695,42 @@ func (ec *executionContext) unmarshalNOperationState2githubᚗcomᚋhaggaikaunda
 
 func (ec *executionContext) marshalNOperationState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOperationState(ctx context.Context, sel ast.SelectionSet, v model.OperationState) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNOwnerInvitation2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.OwnerInvitation) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNOwnerInvitation2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitation(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOwnerInvitation2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitation(ctx context.Context, sel ast.SelectionSet, v *model.OwnerInvitation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OwnerInvitation(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNOwnerInvitationsResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐOwnerInvitationsResult(ctx context.Context, sel ast.SelectionSet, v model.OwnerInvitationsResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OwnerInvitationsResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
@@ -8729,6 +11024,22 @@ func (ec *executionContext) unmarshalODate2ᚖgithubᚗcomᚋhaggaikaundaᚋkami
 }
 
 func (ec *executionContext) marshalODate2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx context.Context, sel ast.SelectionSet, v *ledger.Date) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalODateTime2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx context.Context, v any) (*ledger.DateTime, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(ledger.DateTime)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODateTime2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx context.Context, sel ast.SelectionSet, v *ledger.DateTime) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

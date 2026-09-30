@@ -1,4 +1,4 @@
-import { EntryPreview } from '@/components/entry-preview';
+import { OnboardingEntry } from '@/components/onboarding/entry';
 export default function Page() {
-  return <EntryPreview />;
+  return <OnboardingEntry mode="sign-in" />;
 }

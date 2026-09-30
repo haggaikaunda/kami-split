@@ -137,7 +137,7 @@ func validUUID(s string) bool {
 }
 
 // ParseID verifies the exact version, type and canonical UUID v4 representation.
-// An empty expectedType permits any of the supported node types.
+// An empty expectedType permits any supported node type.
 func ParseID(public, expectedType string) (string, error) {
 	if len(public) > 64 {
 		return "", errors.New("invalid public ID")
@@ -147,7 +147,7 @@ func ParseID(public, expectedType string) (string, error) {
 		return "", errors.New("invalid public ID")
 	}
 	switch p[1] {
-	case "Viewer", "Group", "Membership", "Expense", "Repayment":
+	case "Viewer", "Group", "Membership", "Expense", "Repayment", "Invitation", "InvitationAction":
 	default:
 		return "", errors.New("invalid public ID")
 	}
