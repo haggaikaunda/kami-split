@@ -15,6 +15,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 )
 
@@ -98,8 +99,26 @@ func run() int {
 		logger.Error("invalid or missing cursor signing configuration")
 		return 1
 	}
-	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors}})
-	if err := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...).Run(ctx); err != nil {
+	invitations, err := onboarding.Load(os.LookupEnv, db)
+	if err != nil || (invitations != nil && verifier == nil) {
+		logger.Error("invalid onboarding configuration")
+		return 1
+	}
+	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}})
+	application := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...)
+	if invitations != nil {
+		handler, err := onboarding.NewHandler(invitations, verifier, os.Getenv("ONBOARDING_ORIGIN"), os.Getenv("ONBOARDING_AUTH_ADMIN_KEY"))
+		if err != nil {
+			logger.Error("invalid onboarding handler configuration")
+			return 1
+		}
+		contextCtx, cancelContexts := context.WithCancel(ctx)
+		contextsDone := make(chan struct{})
+		go func() { defer close(contextsDone); handler.Run(contextCtx) }()
+		defer func() { cancelContexts(); <-contextsDone }()
+		application.Use(handler.Wrap)
+	}
+	if err := application.Run(ctx); err != nil {
 		logger.Error("server stopped unexpectedly")
 		return 1
 	}

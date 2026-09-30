@@ -29,8 +29,9 @@ enabled = false
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = []
+additional_redirect_urls = ["http://127.0.0.1:3000/auth/confirm**"]
 enable_signup = false
+jwt_expiry = 900
 
 [auth.email]
 # Enable the email/password provider; global auth.enable_signup remains false.
@@ -56,3 +57,11 @@ enabled = false
 
 [edge_runtime]
 enabled = false
+
+[auth.email.template.invite]
+subject = "Verify your Kami Split account"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Kami Split password"
+content_path = "./supabase/templates/recovery.html"

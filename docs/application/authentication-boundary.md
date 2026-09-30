@@ -80,9 +80,7 @@ public EC P-256 signing keys are accepted. Requests normally verify locally.
   This does not invalidate upstream caches or promise instantaneous global key or
   session revocation. Each API instance must receive the operation.
 
-Current verified-email proof for invitation acceptance remains #79/#80 work:
-a signed, stale JWT email is not evidence that the email is currently verified.
-Access-token lifetime and logout scope remain the existing tracked decisions.
+The [onboarding adapter](onboarding.md) fetches fresh current verified email with this request’s bearer before #79 admission. A stale JWT email is never verification evidence. Local Auth uses the approved 15-minute access-token lifetime and current-session logout; the separate provider email observation has a five-second bound.
 
 ## Verification
 

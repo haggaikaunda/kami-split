@@ -15,6 +15,7 @@ trap cleanup EXIT
 mkdir -p "$stage/supabase"
 cp supabase/config.toml "$stage/supabase/"
 cp -R supabase/seeds "$stage/supabase/"
+cp -R supabase/templates "$stage/supabase/"
 mkdir -p "$stage/supabase/migrations"
 # Start with the provider plus the already shipped #74 foundation only.
 cp supabase/migrations/20260929000000_foundation.sql "$stage/supabase/migrations/"
@@ -112,6 +113,7 @@ import json, os, subprocess, sys
 with open(sys.argv[1]) as status_file:
     status = json.load(status_file)
 env = os.environ.copy()
+env["TEST_SMTP_URL"] = status["INBUCKET_URL"]
 env["TEST_AUTH_URL"] = status["API_URL"].rstrip("/") + "/auth/v1"
 env["TEST_AUTH_ANON_KEY"] = status["ANON_KEY"]
 env["TEST_AUTH_SERVICE_KEY"] = status["SERVICE_ROLE_KEY"]
@@ -120,7 +122,7 @@ env["TEST_AUTH_SERVICE_KEY"] = status["SERVICE_ROLE_KEY"]
 sys.exit(subprocess.run([
     "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
     "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
-    "./internal/expense/...", "./internal/graph/...",
+    "./internal/expense/...", "./internal/graph/...", "./internal/onboarding/...",
 ], env=env).returncode)
 PROVIDER_TEST
 cd "$root"

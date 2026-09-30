@@ -37,6 +37,21 @@ type GroupResult interface {
 	IsGroupResult()
 }
 
+// Delivery attempt outcome or safe failure.
+type InvitationDelivery interface {
+	IsInvitationDelivery()
+}
+
+// Valid two-field preview or generic unavailable link.
+type InvitationPreviewResult interface {
+	IsInvitationPreviewResult()
+}
+
+// Saved action or safe failure. Errors do not prove a write did not commit.
+type InvitationResult interface {
+	IsInvitationResult()
+}
+
 // A typed ks1 public identity. Every lookup requires current authorization; IDs confer no access.
 type Node interface {
 	IsNode()
@@ -47,6 +62,11 @@ type Node interface {
 // Currently authorized recovery of an original attempt; missing results do not establish noncommit.
 type OperationResult interface {
 	IsOperationResult()
+}
+
+// Owner-only page or safe failure.
+type OwnerInvitationsResult interface {
+	IsOwnerInvitationsResult()
 }
 
 // Own application identity, own access state, or unavailable read; no peer user directory.
@@ -370,6 +390,64 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// Original committed result with separately observed current state.
+type InvitationActionResult struct {
+	// Typed InvitationAction ID when an action exists.
+	ActionID *string `json:"actionID,omitempty"`
+	// Typed Invitation ID when known and authorized.
+	InvitationID *string `json:"invitationID,omitempty"`
+	// Typed Group ID; still requires independent authorization.
+	GroupID *string `json:"groupID,omitempty"`
+	// Outcome of the original action.
+	Outcome InvitationOutcome `json:"outcome"`
+	// Expiry recorded by the original action, never a new extension.
+	CommittedExpiresAt *ledger.DateTime `json:"committedExpiresAt,omitempty"`
+	// Currently observed expiry, independent of original action.
+	CurrentExpiresAt *ledger.DateTime `json:"currentExpiresAt,omitempty"`
+	// Current safe lifecycle when known.
+	Lifecycle *string `json:"lifecycle,omitempty"`
+	// Current delivery status; PROVIDER_ACCEPTED is not recipient delivery.
+	Delivery *string `json:"delivery,omitempty"`
+	// Current access observation, never an authorization credential.
+	HasAccess bool `json:"hasAccess"`
+}
+
+func (InvitationActionResult) IsInvitationResult() {}
+
+// Safe attempt status; recover original owner action for durable state.
+type InvitationDeliveryResult struct {
+	// ATTEMPTED or NOT_CLAIMABLE; ATTEMPTED does not assert delivery.
+	Status string `json:"status"`
+}
+
+func (InvitationDeliveryResult) IsInvitationDelivery() {}
+
+// A valid capability discloses only these two names.
+type InvitationPreview struct {
+	// Group display name, not financial access.
+	GroupName string `json:"groupName"`
+	// Original inviter display name, never email.
+	InviterDisplayName string `json:"inviterDisplayName"`
+}
+
+func (InvitationPreview) IsInvitationPreviewResult() {}
+
+// Safe failure without recipient, token or provider details.
+type InvitationProblem struct {
+	// Allowlisted safe error code, never provider text.
+	Code string `json:"code"`
+	// Safe recovery guidance.
+	Message string `json:"message"`
+}
+
+func (InvitationProblem) IsInvitationPreviewResult() {}
+
+func (InvitationProblem) IsInvitationResult() {}
+
+func (InvitationProblem) IsOwnerInvitationsResult() {}
+
+func (InvitationProblem) IsInvitationDelivery() {}
+
 // Complete individual position including retained inactive-member history.
 type MemberPosition struct {
 	// Retained group membership attributed by the complete history.
@@ -442,6 +520,32 @@ type OperationProgress struct {
 func (OperationProgress) IsCreateExpenseResult() {}
 
 func (OperationProgress) IsOperationResult() {}
+
+// Current-owner projection; no token or full link.
+type OwnerInvitation struct {
+	// Typed Invitation ID.
+	ID string `json:"id"`
+	// Recipient only while outstanding; purged on terminal transition.
+	Recipient *string `json:"recipient,omitempty"`
+	// Current expiry; viewing does not renew.
+	ExpiresAt ledger.DateTime `json:"expiresAt"`
+	// OUTSTANDING, EXPIRED, ACCEPTED or REVOKED.
+	Lifecycle string `json:"lifecycle"`
+	// Latest safe typed InvitationAction ID.
+	ActionID *string `json:"actionID,omitempty"`
+	// Current latest send status.
+	Delivery string `json:"delivery"`
+}
+
+// Owner-only UUID-ordered page, refresh to discover concurrent insertions.
+type OwnerInvitationPage struct {
+	// At most first invitations in exclusive ID order.
+	Items []*OwnerInvitation `json:"items"`
+	// Last Invitation ID when a full page may have a successor.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+func (OwnerInvitationPage) IsOwnerInvitationsResult() {}
 
 // Forward pagination metadata, including whether eligible earlier rows exist at the same anchor.
 type PageInfo struct {
@@ -759,6 +863,164 @@ func (e *GroupKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e GroupKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Original operation kind for actor-bound recovery.
+type InvitationOperation string
+
+const (
+	// Recover the original create action.
+	InvitationOperationCreate InvitationOperation = "CREATE"
+	// Recover the original resend action.
+	InvitationOperationResend InvitationOperation = "RESEND"
+	// Recover the original revoke action.
+	InvitationOperationRevoke InvitationOperation = "REVOKE"
+	// Recover the original accept action.
+	InvitationOperationAccept InvitationOperation = "ACCEPT"
+)
+
+var AllInvitationOperation = []InvitationOperation{
+	InvitationOperationCreate,
+	InvitationOperationResend,
+	InvitationOperationRevoke,
+	InvitationOperationAccept,
+}
+
+func (e InvitationOperation) IsValid() bool {
+	switch e {
+	case InvitationOperationCreate, InvitationOperationResend, InvitationOperationRevoke, InvitationOperationAccept:
+		return true
+	}
+	return false
+}
+
+func (e InvitationOperation) String() string {
+	return string(e)
+}
+
+func (e *InvitationOperation) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InvitationOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InvitationOperation", str)
+	}
+	return nil
+}
+
+func (e InvitationOperation) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InvitationOperation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InvitationOperation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Safe invitation outcomes; receipts never authorize group access.
+type InvitationOutcome string
+
+const (
+	// Saved as evaluated by the invitation service.
+	InvitationOutcomeSaved InvitationOutcome = "SAVED"
+	// Existing as evaluated by the invitation service.
+	InvitationOutcomeExisting InvitationOutcome = "EXISTING"
+	// Applied as evaluated by the invitation service.
+	InvitationOutcomeApplied InvitationOutcome = "APPLIED"
+	// Admitted as evaluated by the invitation service.
+	InvitationOutcomeAdmitted InvitationOutcome = "ADMITTED"
+	// Already member as evaluated by the invitation service.
+	InvitationOutcomeAlreadyMember InvitationOutcome = "ALREADY_MEMBER"
+	// Historical acceptance as evaluated by the invitation service.
+	InvitationOutcomeHistoricalAcceptance InvitationOutcome = "HISTORICAL_ACCEPTANCE"
+	// Already accepted as evaluated by the invitation service.
+	InvitationOutcomeAlreadyAccepted InvitationOutcome = "ALREADY_ACCEPTED"
+	// Already revoked as evaluated by the invitation service.
+	InvitationOutcomeAlreadyRevoked InvitationOutcome = "ALREADY_REVOKED"
+	// Key reused as evaluated by the invitation service.
+	InvitationOutcomeKeyReused InvitationOutcome = "KEY_REUSED"
+	// Not observed as evaluated by the invitation service.
+	InvitationOutcomeNotObserved InvitationOutcome = "NOT_OBSERVED"
+	// Rate limited as evaluated by the invitation service.
+	InvitationOutcomeRateLimited InvitationOutcome = "RATE_LIMITED"
+	// Wrong account as evaluated by the invitation service.
+	InvitationOutcomeWrongAccount InvitationOutcome = "WRONG_ACCOUNT"
+	// Unavailable link as evaluated by the invitation service.
+	InvitationOutcomeUnavailableLink InvitationOutcome = "UNAVAILABLE_LINK"
+	// New targeted invitation required as evaluated by the invitation service.
+	InvitationOutcomeNewTargetedInvitationRequired InvitationOutcome = "NEW_TARGETED_INVITATION_REQUIRED"
+)
+
+var AllInvitationOutcome = []InvitationOutcome{
+	InvitationOutcomeSaved,
+	InvitationOutcomeExisting,
+	InvitationOutcomeApplied,
+	InvitationOutcomeAdmitted,
+	InvitationOutcomeAlreadyMember,
+	InvitationOutcomeHistoricalAcceptance,
+	InvitationOutcomeAlreadyAccepted,
+	InvitationOutcomeAlreadyRevoked,
+	InvitationOutcomeKeyReused,
+	InvitationOutcomeNotObserved,
+	InvitationOutcomeRateLimited,
+	InvitationOutcomeWrongAccount,
+	InvitationOutcomeUnavailableLink,
+	InvitationOutcomeNewTargetedInvitationRequired,
+}
+
+func (e InvitationOutcome) IsValid() bool {
+	switch e {
+	case InvitationOutcomeSaved, InvitationOutcomeExisting, InvitationOutcomeApplied, InvitationOutcomeAdmitted, InvitationOutcomeAlreadyMember, InvitationOutcomeHistoricalAcceptance, InvitationOutcomeAlreadyAccepted, InvitationOutcomeAlreadyRevoked, InvitationOutcomeKeyReused, InvitationOutcomeNotObserved, InvitationOutcomeRateLimited, InvitationOutcomeWrongAccount, InvitationOutcomeUnavailableLink, InvitationOutcomeNewTargetedInvitationRequired:
+		return true
+	}
+	return false
+}
+
+func (e InvitationOutcome) String() string {
+	return string(e)
+}
+
+func (e *InvitationOutcome) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InvitationOutcome(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InvitationOutcome", str)
+	}
+	return nil
+}
+
+func (e InvitationOutcome) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InvitationOutcome) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InvitationOutcome) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

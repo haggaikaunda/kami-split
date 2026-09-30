@@ -62,8 +62,17 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 			}
 		}
 		protected := false
-		for _, field := range graphql.CollectFields(operation, operation.Operation.SelectionSet, nil) {
-			if field.Name != "health" && field.Name != "__typename" && field.Name != "__schema" && field.Name != "__type" {
+		fields := graphql.CollectFields(operation, operation.Operation.SelectionSet, nil)
+		for _, field := range fields {
+			switch field.Name {
+			case "previewInvitation", "ownerInvitations", "invitationAction", "createTargetedInvitation", "resendInvitation", "revokeInvitation", "retryInvitationDelivery", "acceptInvitation":
+				if len(fields) != 1 {
+					return func(context.Context) *graphql.Response {
+						return &graphql.Response{Errors: gqlerror.List{&gqlerror.Error{Message: "Submit one invitation operation per request.", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}}}
+					}
+				}
+			}
+			if field.Name != "previewInvitation" && field.Name != "health" && field.Name != "__typename" && field.Name != "__schema" && field.Name != "__type" {
 				protected = true
 			}
 		}
@@ -190,3 +199,6 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 		return err
 	}
 }
+
+// Use wraps the configured handler before serving; callers must not mutate a running server.
+func (s *Server) Use(wrap func(http.Handler) http.Handler) { s.http.Handler = wrap(s.http.Handler) }

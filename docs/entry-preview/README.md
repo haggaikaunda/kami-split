@@ -2,7 +2,7 @@
 
 ## Production onboarding boundary
 
-This page records the simulated entry UX. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b1-explicit-administrative-bootstrap-o09) approves an operator-created first Auth account and empty USD Household with ordinary emailed password recovery and verification required. There is no production first-group setup screen or bootstrap invitation. Ordinary invitation onboarding and recovery are separately implemented through #79/#80; bootstrap is #81. This decision does not claim those flows are delivered.
+This page records the simulated entry UX, now available at `/preview/sign-in`. Real `/sign-in` and invitation entry are documented in [onboarding](../application/onboarding.md). [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b1-explicit-administrative-bootstrap-o09) approves an operator-created first Auth account and empty USD Household with ordinary emailed password recovery and verification required. There is no production first-group setup screen or bootstrap invitation. Ordinary invitation onboarding and recovery are separately implemented through #79/#80; bootstrap is #81. The ADR itself is a policy record; current implementation and validation are recorded in the onboarding guide.
 
 ## Seeded preview
 
