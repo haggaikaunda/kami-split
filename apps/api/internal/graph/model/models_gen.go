@@ -523,6 +523,8 @@ func (OperationProgress) IsOperationResult() {}
 
 // Current-owner projection; no token or full link.
 type OwnerInvitation struct {
+	// TARGETED or SHARED; never capability material.
+	Kind string `json:"kind"`
 	// Typed Invitation ID.
 	ID string `json:"id"`
 	// Recipient only while outstanding; purged on terminal transition.
@@ -872,6 +874,10 @@ func (e GroupKind) MarshalJSON() ([]byte, error) {
 type InvitationOperation string
 
 const (
+	// Recover creation of a reusable shared link.
+	InvitationOperationCreateShared InvitationOperation = "CREATE_SHARED"
+	// Recover deliberate shared-link renewal.
+	InvitationOperationRenewShared InvitationOperation = "RENEW_SHARED"
 	// Recover the original create action.
 	InvitationOperationCreate InvitationOperation = "CREATE"
 	// Recover the original resend action.
@@ -883,6 +889,8 @@ const (
 )
 
 var AllInvitationOperation = []InvitationOperation{
+	InvitationOperationCreateShared,
+	InvitationOperationRenewShared,
 	InvitationOperationCreate,
 	InvitationOperationResend,
 	InvitationOperationRevoke,
@@ -891,7 +899,7 @@ var AllInvitationOperation = []InvitationOperation{
 
 func (e InvitationOperation) IsValid() bool {
 	switch e {
-	case InvitationOperationCreate, InvitationOperationResend, InvitationOperationRevoke, InvitationOperationAccept:
+	case InvitationOperationCreateShared, InvitationOperationRenewShared, InvitationOperationCreate, InvitationOperationResend, InvitationOperationRevoke, InvitationOperationAccept:
 		return true
 	}
 	return false

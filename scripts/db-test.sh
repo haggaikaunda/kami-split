@@ -51,10 +51,12 @@ cp supabase/migrations/*.sql "$stage/supabase/migrations/"
 group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
 mv "$group_migration" "$stage/group-creation.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
+mv "$stage/supabase/migrations/20261005000000_shared_invitations.sql" "$stage/shared-invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
 mv "$stage/group-metadata-read.sql" "$stage/supabase/migrations/20261004000000_group_metadata_read.sql"
+mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261005000000_shared_invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER

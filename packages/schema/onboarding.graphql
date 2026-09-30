@@ -64,6 +64,14 @@ Original operation kind for actor-bound recovery.
 """
 enum InvitationOperation {
   """
+  Recover creation of a reusable shared link.
+  """
+  CREATE_SHARED
+  """
+  Recover deliberate shared-link renewal.
+  """
+  RENEW_SHARED
+  """
   Recover the original create action.
   """
   CREATE
@@ -151,6 +159,10 @@ type InvitationActionResult {
 Current-owner projection; no token or full link.
 """
 type OwnerInvitation {
+  """
+  TARGETED or SHARED; never capability material.
+  """
+  kind: String!
   """
   Typed Invitation ID.
   """
@@ -326,6 +338,39 @@ extend type Mutation {
     token: String!
     """
     Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}
+
+extend type Mutation {
+  """
+  Current owner creates or retrieves one shared link, with no email or implicit renewal.
+  """
+  createSharedInvitation(
+    """
+    Owner's group.
+    """
+    groupID: ID!
+    """
+    Original action key retained through uncertain responses.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Current owner explicitly renews the same non-revoked link for seven days; no email.
+  """
+  renewSharedInvitation(
+    """
+    Owner's group.
+    """
+    groupID: ID!
+    """
+    Existing shared invitation.
+    """
+    id: ID!
+    """
+    Original action key retained through uncertain responses.
     """
     key: OperationKey!
   ): InvitationResult!

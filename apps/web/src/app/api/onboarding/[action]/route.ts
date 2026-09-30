@@ -7,6 +7,7 @@ export async function POST(
   if (
     ![
       'start',
+      'copy-shared',
       'preview',
       'provision',
       'recover',
