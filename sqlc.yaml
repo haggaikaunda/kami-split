@@ -1,6 +1,6 @@
 version: '2'
 sql:
-  # No production queries exist yet. Keep this fixture out of app migrations.
+  # Disposable generation probe remains separate from production objects.
   - engine: postgresql
     schema: apps/api/internal/database/sqlctest/schema.sql
     queries: apps/api/internal/database/sqlctest/query.sql
@@ -8,4 +8,13 @@ sql:
       go:
         package: sqlctest
         out: apps/api/internal/database/sqlctest
+        sql_package: pgx/v5
+  - engine: postgresql
+    schema: supabase/schemas
+    queries: apps/api/internal/database/identityquery/query.sql
+    gen:
+      go:
+        omit_unused_structs: true
+        package: identityquery
+        out: apps/api/internal/database/identityquery
         sql_package: pgx/v5
