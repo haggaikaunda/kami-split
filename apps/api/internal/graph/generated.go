@@ -103,8 +103,11 @@ type ComplexityRoot struct {
 		Currency         func(childComplexity int) int
 		Expenses         func(childComplexity int, first int, after *string, filter *model.ExpenseFilter) int
 		ID               func(childComplexity int) int
+		IsHousehold      func(childComplexity int) int
+		Kind             func(childComplexity int) int
 		Members          func(childComplexity int) int
 		Name             func(childComplexity int) int
+		Trip             func(childComplexity int) int
 		ViewerMembership func(childComplexity int) int
 	}
 
@@ -118,10 +121,39 @@ type ComplexityRoot struct {
 		TotalExpenseMinor func(childComplexity int) int
 	}
 
+	GroupCreationCompleted struct {
+		CreatedAt           func(childComplexity int) int
+		CreatorMembershipID func(childComplexity int) int
+		GroupID             func(childComplexity int) int
+		OperationKey        func(childComplexity int) int
+	}
+
+	GroupCreationConflict struct {
+		OperationKey func(childComplexity int) int
+	}
+
+	GroupCreationNotStarted struct {
+		OperationKey func(childComplexity int) int
+	}
+
+	GroupCreationRejected struct {
+		Fields       func(childComplexity int) int
+		OperationKey func(childComplexity int) int
+	}
+
 	GroupSummary struct {
-		Currency func(childComplexity int) int
-		ID       func(childComplexity int) int
-		Name     func(childComplexity int) int
+		Currency    func(childComplexity int) int
+		ID          func(childComplexity int) int
+		IsHousehold func(childComplexity int) int
+		Kind        func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Trip        func(childComplexity int) int
+	}
+
+	GroupTrip struct {
+		Destination func(childComplexity int) int
+		EndDate     func(childComplexity int) int
+		StartDate   func(childComplexity int) int
 	}
 
 	Health struct {
@@ -145,6 +177,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateExpense func(childComplexity int, input model.CreateExpenseInput) int
+		CreateGroup   func(childComplexity int, input model.CreateGroupInput) int
 	}
 
 	Obligation struct {
@@ -180,11 +213,12 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ExpenseOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Group            func(childComplexity int, id string) int
-		Health           func(childComplexity int) int
-		Node             func(childComplexity int, id string) int
-		Viewer           func(childComplexity int) int
+		ExpenseOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Group                  func(childComplexity int, id string) int
+		GroupCreationOperation func(childComplexity int, operationKey ledger.OperationKey) int
+		Health                 func(childComplexity int) int
+		Node                   func(childComplexity int, id string) int
+		Viewer                 func(childComplexity int) int
 	}
 
 	ValidationProblem struct {
@@ -196,6 +230,7 @@ type ComplexityRoot struct {
 		DisplayName     func(childComplexity int) int
 		Groups          func(childComplexity int) int
 		ID              func(childComplexity int) int
+		Today           func(childComplexity int) int
 	}
 
 	ViewerAccess struct {
@@ -212,12 +247,14 @@ type GroupResolver interface {
 }
 type MutationResolver interface {
 	CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error)
+	CreateGroup(ctx context.Context, input model.CreateGroupInput) (model.CreateGroupResult, error)
 }
 type QueryResolver interface {
 	Viewer(ctx context.Context) (model.ViewerResult, error)
 	Node(ctx context.Context, id string) (model.Node, error)
 	Group(ctx context.Context, id string) (model.GroupResult, error)
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
+	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
 
@@ -509,6 +546,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Group.ID(childComplexity), true
+	case "Group.isHousehold":
+		if e.ComplexityRoot.Group.IsHousehold == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Group.IsHousehold(childComplexity), true
+	case "Group.kind":
+		if e.ComplexityRoot.Group.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Group.Kind(childComplexity), true
 	case "Group.members":
 		if e.ComplexityRoot.Group.Members == nil {
 			break
@@ -521,6 +570,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Group.Name(childComplexity), true
+	case "Group.trip":
+		if e.ComplexityRoot.Group.Trip == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Group.Trip(childComplexity), true
 	case "Group.viewerMembership":
 		if e.ComplexityRoot.Group.ViewerMembership == nil {
 			break
@@ -571,6 +626,58 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.GroupBalances.TotalExpenseMinor(childComplexity), true
 
+	case "GroupCreationCompleted.createdAt":
+		if e.ComplexityRoot.GroupCreationCompleted.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationCompleted.CreatedAt(childComplexity), true
+	case "GroupCreationCompleted.creatorMembershipId":
+		if e.ComplexityRoot.GroupCreationCompleted.CreatorMembershipID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationCompleted.CreatorMembershipID(childComplexity), true
+	case "GroupCreationCompleted.groupId":
+		if e.ComplexityRoot.GroupCreationCompleted.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationCompleted.GroupID(childComplexity), true
+	case "GroupCreationCompleted.operationKey":
+		if e.ComplexityRoot.GroupCreationCompleted.OperationKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationCompleted.OperationKey(childComplexity), true
+
+	case "GroupCreationConflict.operationKey":
+		if e.ComplexityRoot.GroupCreationConflict.OperationKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationConflict.OperationKey(childComplexity), true
+
+	case "GroupCreationNotStarted.operationKey":
+		if e.ComplexityRoot.GroupCreationNotStarted.OperationKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationNotStarted.OperationKey(childComplexity), true
+
+	case "GroupCreationRejected.fields":
+		if e.ComplexityRoot.GroupCreationRejected.Fields == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationRejected.Fields(childComplexity), true
+	case "GroupCreationRejected.operationKey":
+		if e.ComplexityRoot.GroupCreationRejected.OperationKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupCreationRejected.OperationKey(childComplexity), true
+
 	case "GroupSummary.currency":
 		if e.ComplexityRoot.GroupSummary.Currency == nil {
 			break
@@ -583,12 +690,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.GroupSummary.ID(childComplexity), true
+	case "GroupSummary.isHousehold":
+		if e.ComplexityRoot.GroupSummary.IsHousehold == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupSummary.IsHousehold(childComplexity), true
+	case "GroupSummary.kind":
+		if e.ComplexityRoot.GroupSummary.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupSummary.Kind(childComplexity), true
 	case "GroupSummary.name":
 		if e.ComplexityRoot.GroupSummary.Name == nil {
 			break
 		}
 
 		return e.ComplexityRoot.GroupSummary.Name(childComplexity), true
+	case "GroupSummary.trip":
+		if e.ComplexityRoot.GroupSummary.Trip == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupSummary.Trip(childComplexity), true
+
+	case "GroupTrip.destination":
+		if e.ComplexityRoot.GroupTrip.Destination == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupTrip.Destination(childComplexity), true
+	case "GroupTrip.endDate":
+		if e.ComplexityRoot.GroupTrip.EndDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupTrip.EndDate(childComplexity), true
+	case "GroupTrip.startDate":
+		if e.ComplexityRoot.GroupTrip.StartDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupTrip.StartDate(childComplexity), true
 
 	case "Health.status":
 		if e.ComplexityRoot.Health.Status == nil {
@@ -664,6 +808,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateExpense(childComplexity, args["input"].(model.CreateExpenseInput)), true
+	case "Mutation.createGroup":
+		if e.ComplexityRoot.Mutation.CreateGroup == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createGroup_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateGroup(childComplexity, args["input"].(model.CreateGroupInput)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -777,6 +932,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Group(childComplexity, args["id"].(string)), true
+	case "Query.groupCreationOperation":
+		if e.ComplexityRoot.Query.GroupCreationOperation == nil {
+			break
+		}
+
+		args, err := ec.field_Query_groupCreationOperation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.GroupCreationOperation(childComplexity, args["operationKey"].(ledger.OperationKey)), true
 	case "Query.health":
 		if e.ComplexityRoot.Query.Health == nil {
 			break
@@ -833,6 +999,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Viewer.ID(childComplexity), true
+	case "Viewer.today":
+		if e.ComplexityRoot.Viewer.Today == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Viewer.Today(childComplexity), true
 
 	case "ViewerAccess.state":
 		if e.ComplexityRoot.ViewerAccess.State == nil {
@@ -850,8 +1022,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateExpenseInput,
+		ec.unmarshalInputCreateGroupInput,
 		ec.unmarshalInputExactAllocationInput,
 		ec.unmarshalInputExpenseFilter,
+		ec.unmarshalInputGroupTripInput,
 	)
 	first := true
 
@@ -1056,6 +1230,10 @@ Safe failures that disclose neither private existence nor infrastructure details
 """
 enum ProblemCode {
   """
+  Enabled caller lacks current designated group-creation authority.
+  """
+  FORBIDDEN
+  """
   Missing or currently unauthorized resource, without distinguishing private existence.
   """
   NOT_FOUND
@@ -1165,9 +1343,13 @@ type Viewer implements Node {
   """
   displayName: String!
   """
-  Informational designated-creator capability; no group-creation mutation is exposed here.
+  Informational designated-creator capability; creation always rechecks current authority.
   """
   canCreateGroups: Boolean!
+  """
+  UTC calendar date sampled once for this response; use for trip status and defaults.
+  """
+  today: Date!
   """
   Currently accessible active groups sorted by canonical group ID; never a manufactured bootstrap group.
   """
@@ -1186,6 +1368,18 @@ type ViewerAccess {
 One currently accessible group; no cross-group financial aggregation.
 """
 type GroupSummary {
+  """
+  Derived classification; absence of trip metadata means ORDINARY.
+  """
+  kind: GroupKind!
+  """
+  Trip metadata only for this currently accessible group; ordinary groups return null.
+  """
+  trip: GroupTrip
+  """
+  Whether this authorized group is the designated household; never reveals another group ID.
+  """
+  isHousehold: Boolean!
   """
   Stable typed public ID; possession does not authorize access.
   """
@@ -1207,6 +1401,18 @@ union GroupResult = Group | Problem
 Currently authorized group projections; selected members, expense page and complete balances share one statement snapshot.
 """
 type Group implements Node {
+  """
+  Derived classification; absence of trip metadata means ORDINARY.
+  """
+  kind: GroupKind!
+  """
+  Trip metadata only for this currently accessible group; ordinary groups return null.
+  """
+  trip: GroupTrip
+  """
+  Whether this authorized group is the designated household; never reveals another group ID.
+  """
+  isHousehold: Boolean!
   """
   Stable typed public ID; possession does not authorize access.
   """
@@ -1723,6 +1929,165 @@ type Problem {
   message: String!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/groups.graphql", Input: `"""
+Classification derived from the optional trip extension; access and ledgers remain group-local.
+"""
+enum GroupKind {
+  """
+  An ordinary group, including the separately designated household.
+  """
+  ORDINARY
+  """
+  A group with travel metadata; dates never restrict financial history.
+  """
+  TRIP
+}
+"""
+Immutable creation metadata; inclusive Gregorian dates, independent of expense dates.
+"""
+type GroupTrip {
+  """
+  Exact destination content, including whitespace; absent input becomes empty.
+  """
+  destination: String!
+  """
+  Inclusive first travel date.
+  """
+  startDate: Date!
+  """
+  Inclusive last travel date, at or after startDate.
+  """
+  endDate: Date!
+}
+"""
+Trip creation fields; destination is optional, dates are required.
+"""
+input GroupTripInput {
+  """
+  Absent or null means empty; at most 200 Unicode scalar values, no NUL.
+  """
+  destination: String
+  """
+  Valid Gregorian YYYY-MM-DD in years 0001 through 9999.
+  """
+  startDate: Date!
+  """
+  Valid Gregorian date at or after startDate; equal dates are allowed.
+  """
+  endDate: Date!
+}
+"""
+Identity-scoped frozen creation intent; actor and USD currency are server supplied.
+"""
+input CreateGroupInput {
+  """
+  Client-generated key scoped to the verified creator and CREATE_GROUP; retain through uncertainty.
+  """
+  operationKey: OperationKey!
+  """
+  Trim ASCII space/tab/CR/LF; require 1–120 Unicode scalars, without NUL or surrogate code points.
+  """
+  name: String!
+  """
+  Explicit classification; no inferred household or inherited membership.
+  """
+  kind: GroupKind!
+  """
+  Required for TRIP, absent or null for ORDINARY.
+  """
+  trip: GroupTripInput
+}
+extend type Mutation {
+  """
+  Create a group with its creator as sole owner, or recover identical intent; no financial entries are created.
+  """
+  createGroup(
+    """
+    Frozen identity-scoped intent; changed input requires a new key after rejection.
+    """
+    input: CreateGroupInput!
+  ): CreateGroupResult!
+}
+extend type Query {
+  """
+  Self-only recovery requiring current enabled creator authority and access to any completed group.
+  """
+  groupCreationOperation(
+    """
+    Original operation key; possession grants no access.
+    """
+    operationKey: OperationKey!
+  ): GroupCreationOperationResult!
+}
+"""
+Durable success/rejection, conflicting intent, or safe access/unavailable problem; transport loss remains unknown.
+"""
+union CreateGroupResult =
+  | GroupCreationCompleted
+  | GroupCreationRejected
+  | GroupCreationConflict
+  | Problem
+"""
+Original outcome or not-started observation under current authorization; refresh Group separately.
+"""
+union GroupCreationOperationResult =
+  | GroupCreationCompleted
+  | GroupCreationRejected
+  | GroupCreationNotStarted
+  | Problem
+"""
+Immutable original creation identity; current names, metadata and balances require a fresh authorized Group read.
+"""
+type GroupCreationCompleted {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+  """
+  Original stable Group ID; current access was checked before disclosure.
+  """
+  groupId: ID!
+  """
+  Original creator Membership ID, regardless of later ownership changes.
+  """
+  creatorMembershipId: ID!
+  """
+  Original durable creation timestamp.
+  """
+  createdAt: DateTime!
+}
+"""
+Durable domain rejection with no group created; correction requires a new key.
+"""
+type GroupCreationRejected {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+  """
+  Safe retained validation errors.
+  """
+  fields: [FieldProblem!]!
+}
+"""
+OPERATION_CONFLICT: the key already names different canonical input; the original result is unchanged.
+"""
+type GroupCreationConflict {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+}
+"""
+NOT_STARTED: no committed attempt is visible; an in-flight request may still commit. Retry only identical intent.
+"""
+type GroupCreationNotStarted {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/schema.graphql", Input: `extend type Query {
   """
   Public availability check; requires no authentication and does not check database readiness.
@@ -1859,6 +2224,12 @@ func (ec *executionContext) childFields_FieldProblem(ctx context.Context, field 
 
 func (ec *executionContext) childFields_GroupSummary(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "kind":
+		return ec.fieldContext_GroupSummary_kind(ctx, field)
+	case "trip":
+		return ec.fieldContext_GroupSummary_trip(ctx, field)
+	case "isHousehold":
+		return ec.fieldContext_GroupSummary_isHousehold(ctx, field)
 	case "id":
 		return ec.fieldContext_GroupSummary_id(ctx, field)
 	case "name":
@@ -1867,6 +2238,18 @@ func (ec *executionContext) childFields_GroupSummary(ctx context.Context, field 
 		return ec.fieldContext_GroupSummary_currency(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type GroupSummary", field.Name)
+}
+
+func (ec *executionContext) childFields_GroupTrip(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "destination":
+		return ec.fieldContext_GroupTrip_destination(ctx, field)
+	case "startDate":
+		return ec.fieldContext_GroupTrip_startDate(ctx, field)
+	case "endDate":
+		return ec.fieldContext_GroupTrip_endDate(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type GroupTrip", field.Name)
 }
 
 func (ec *executionContext) childFields_Health(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2103,6 +2486,20 @@ func (ec *executionContext) field_Mutation_createExpense_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.CreateGroupInput, error) {
+			return ec.unmarshalNCreateGroupInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateGroupInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2136,6 +2533,20 @@ func (ec *executionContext) field_Query_expenseOperation_args(ctx context.Contex
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_groupCreationOperation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "operationKey",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["operationKey"] = arg0
 	return args, nil
 }
 
@@ -3205,6 +3616,84 @@ func (ec *executionContext) fieldContext_FieldProblem_message(_ context.Context,
 	return graphql.NewScalarFieldContext("FieldProblem", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Group_kind(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Group_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+			return ec.marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Group_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type GroupKind does not have child fields"))
+}
+
+func (ec *executionContext) _Group_trip(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Group_trip(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Trip, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.GroupTrip) graphql.Marshaler {
+			return ec.marshalOGroupTrip2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTrip(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Group_trip(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Group",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GroupTrip(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Group_isHousehold(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Group_isHousehold(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsHousehold, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Group_isHousehold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Group_id(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3584,6 +4073,277 @@ func (ec *executionContext) fieldContext_GroupBalances_settled(_ context.Context
 	return graphql.NewScalarFieldContext("GroupBalances", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _GroupCreationCompleted_operationKey(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationCompleted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationCompleted_operationKey(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OperationKey, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationCompleted_operationKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationCompleted", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationCompleted_groupId(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationCompleted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationCompleted_groupId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationCompleted_groupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationCompleted", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationCompleted_creatorMembershipId(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationCompleted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationCompleted_creatorMembershipId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatorMembershipID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationCompleted_creatorMembershipId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationCompleted", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationCompleted_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationCompleted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationCompleted_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.DateTime) graphql.Marshaler {
+			return ec.marshalNDateTime2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationCompleted_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationCompleted", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationConflict_operationKey(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationConflict) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationConflict_operationKey(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OperationKey, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationConflict_operationKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationConflict", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationNotStarted_operationKey(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationNotStarted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationNotStarted_operationKey(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OperationKey, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationNotStarted_operationKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationNotStarted", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationRejected_operationKey(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationRejected) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationRejected_operationKey(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OperationKey, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationRejected_operationKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupCreationRejected", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _GroupCreationRejected_fields(ctx context.Context, field graphql.CollectedField, obj *model.GroupCreationRejected) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupCreationRejected_fields(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Fields, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.FieldProblem) graphql.Marshaler {
+			return ec.marshalNFieldProblem2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐFieldProblemᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupCreationRejected_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupCreationRejected",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FieldProblem(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupSummary_kind(ctx context.Context, field graphql.CollectedField, obj *model.GroupSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupSummary_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+			return ec.marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupSummary_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupSummary", field, false, false, errors.New("field of type GroupKind does not have child fields"))
+}
+
+func (ec *executionContext) _GroupSummary_trip(ctx context.Context, field graphql.CollectedField, obj *model.GroupSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupSummary_trip(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Trip, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.GroupTrip) graphql.Marshaler {
+			return ec.marshalOGroupTrip2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTrip(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_GroupSummary_trip(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GroupTrip(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupSummary_isHousehold(ctx context.Context, field graphql.CollectedField, obj *model.GroupSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupSummary_isHousehold(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsHousehold, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupSummary_isHousehold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupSummary", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _GroupSummary_id(ctx context.Context, field graphql.CollectedField, obj *model.GroupSummary) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3651,6 +4411,75 @@ func (ec *executionContext) _GroupSummary_currency(ctx context.Context, field gr
 }
 func (ec *executionContext) fieldContext_GroupSummary_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("GroupSummary", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _GroupTrip_destination(ctx context.Context, field graphql.CollectedField, obj *model.GroupTrip) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupTrip_destination(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Destination, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupTrip_destination(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupTrip", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _GroupTrip_startDate(ctx context.Context, field graphql.CollectedField, obj *model.GroupTrip) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupTrip_startDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupTrip_startDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupTrip", field, false, false, errors.New("field of type Date does not have child fields"))
+}
+
+func (ec *executionContext) _GroupTrip_endDate(ctx context.Context, field graphql.CollectedField, obj *model.GroupTrip) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupTrip_endDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupTrip_endDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupTrip", field, false, false, errors.New("field of type Date does not have child fields"))
 }
 
 func (ec *executionContext) _Health_status(ctx context.Context, field graphql.CollectedField, obj *model.Health) (ret graphql.Marshaler) {
@@ -3930,6 +4759,50 @@ func (ec *executionContext) fieldContext_Mutation_createExpense(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createExpense_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createGroup(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateGroup(ctx, fc.Args["input"].(model.CreateGroupInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.CreateGroupResult) graphql.Marshaler {
+			return ec.marshalNCreateGroupResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateGroupResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CreateGroupResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4431,6 +5304,50 @@ func (ec *executionContext) fieldContext_Query_expenseOperation(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_groupCreationOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_groupCreationOperation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().GroupCreationOperation(ctx, fc.Args["operationKey"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupCreationOperationResult) graphql.Marshaler {
+			return ec.marshalNGroupCreationOperationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupCreationOperationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_groupCreationOperation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type GroupCreationOperationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_groupCreationOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4638,6 +5555,29 @@ func (ec *executionContext) _Viewer_canCreateGroups(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_Viewer_canCreateGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Viewer", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Viewer_today(ctx context.Context, field graphql.CollectedField, obj *model.Viewer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Viewer_today(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Today, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Viewer_today(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Viewer", field, false, false, errors.New("field of type Date does not have child fields"))
 }
 
 func (ec *executionContext) _Viewer_groups(ctx context.Context, field graphql.CollectedField, obj *model.Viewer) (ret graphql.Marshaler) {
@@ -5865,6 +6805,57 @@ func (ec *executionContext) unmarshalInputCreateExpenseInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateGroupInput(ctx context.Context, obj any) (model.CreateGroupInput, error) {
+	var it model.CreateGroupInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"operationKey", "name", "kind", "trip"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "operationKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("operationKey"))
+			data, err := ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OperationKey = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "kind":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+			data, err := ec.unmarshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Kind = data
+		case "trip":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trip"))
+			data, err := ec.unmarshalOGroupTripInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTripInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Trip = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputExactAllocationInput(ctx context.Context, obj any) (model.ExactAllocationInput, error) {
 	var it model.ExactAllocationInput
 	if obj == nil {
@@ -5953,6 +6944,50 @@ func (ec *executionContext) unmarshalInputExpenseFilter(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGroupTripInput(ctx context.Context, obj any) (model.GroupTripInput, error) {
+	var it model.GroupTripInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"destination", "startDate", "endDate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "destination":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("destination"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Destination = data
+		case "startDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startDate"))
+			data, err := ec.unmarshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartDate = data
+		case "endDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endDate"))
+			data, err := ec.unmarshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndDate = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -6028,6 +7063,88 @@ func (ec *executionContext) _CreateExpenseResult(ctx context.Context, sel ast.Se
 			return typedObj
 		} else {
 			panic(fmt.Errorf("unexpected type %T; non-generated variants of CreateExpenseResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _CreateGroupResult(ctx context.Context, sel ast.SelectionSet, obj model.CreateGroupResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.GroupCreationRejected:
+		return ec._GroupCreationRejected(ctx, sel, &obj)
+	case *model.GroupCreationRejected:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationRejected(ctx, sel, obj)
+	case model.GroupCreationConflict:
+		return ec._GroupCreationConflict(ctx, sel, &obj)
+	case *model.GroupCreationConflict:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationConflict(ctx, sel, obj)
+	case model.GroupCreationCompleted:
+		return ec._GroupCreationCompleted(ctx, sel, &obj)
+	case *model.GroupCreationCompleted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationCompleted(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of CreateGroupResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _GroupCreationOperationResult(ctx context.Context, sel ast.SelectionSet, obj model.GroupCreationOperationResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.GroupCreationRejected:
+		return ec._GroupCreationRejected(ctx, sel, &obj)
+	case *model.GroupCreationRejected:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationRejected(ctx, sel, obj)
+	case model.GroupCreationNotStarted:
+		return ec._GroupCreationNotStarted(ctx, sel, &obj)
+	case *model.GroupCreationNotStarted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationNotStarted(ctx, sel, obj)
+	case model.GroupCreationCompleted:
+		return ec._GroupCreationCompleted(ctx, sel, &obj)
+	case *model.GroupCreationCompleted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupCreationCompleted(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of GroupCreationOperationResult must implement graphql.Marshaler", obj))
 		}
 	}
 }
@@ -6617,6 +7734,21 @@ func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, ob
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Group")
+		case "kind":
+			out.Values[i] = ec._Group_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "trip":
+			out.Values[i] = ec._Group_trip(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isHousehold":
+			out.Values[i] = ec._Group_isHousehold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "id":
 			out.Values[i] = ec._Group_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -6774,6 +7906,178 @@ func (ec *executionContext) _GroupBalances(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var groupCreationCompletedImplementors = []string{"GroupCreationCompleted", "CreateGroupResult", "GroupCreationOperationResult"}
+
+func (ec *executionContext) _GroupCreationCompleted(ctx context.Context, sel ast.SelectionSet, obj *model.GroupCreationCompleted) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupCreationCompletedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupCreationCompleted")
+		case "operationKey":
+			out.Values[i] = ec._GroupCreationCompleted_operationKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupId":
+			out.Values[i] = ec._GroupCreationCompleted_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "creatorMembershipId":
+			out.Values[i] = ec._GroupCreationCompleted_creatorMembershipId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._GroupCreationCompleted_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupCreationConflictImplementors = []string{"GroupCreationConflict", "CreateGroupResult"}
+
+func (ec *executionContext) _GroupCreationConflict(ctx context.Context, sel ast.SelectionSet, obj *model.GroupCreationConflict) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupCreationConflictImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupCreationConflict")
+		case "operationKey":
+			out.Values[i] = ec._GroupCreationConflict_operationKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupCreationNotStartedImplementors = []string{"GroupCreationNotStarted", "GroupCreationOperationResult"}
+
+func (ec *executionContext) _GroupCreationNotStarted(ctx context.Context, sel ast.SelectionSet, obj *model.GroupCreationNotStarted) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupCreationNotStartedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupCreationNotStarted")
+		case "operationKey":
+			out.Values[i] = ec._GroupCreationNotStarted_operationKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupCreationRejectedImplementors = []string{"GroupCreationRejected", "CreateGroupResult", "GroupCreationOperationResult"}
+
+func (ec *executionContext) _GroupCreationRejected(ctx context.Context, sel ast.SelectionSet, obj *model.GroupCreationRejected) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupCreationRejectedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupCreationRejected")
+		case "operationKey":
+			out.Values[i] = ec._GroupCreationRejected_operationKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fields":
+			out.Values[i] = ec._GroupCreationRejected_fields(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var groupSummaryImplementors = []string{"GroupSummary"}
 
 func (ec *executionContext) _GroupSummary(ctx context.Context, sel ast.SelectionSet, obj *model.GroupSummary) graphql.Marshaler {
@@ -6786,6 +8090,21 @@ func (ec *executionContext) _GroupSummary(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GroupSummary")
+		case "kind":
+			out.Values[i] = ec._GroupSummary_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "trip":
+			out.Values[i] = ec._GroupSummary_trip(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "isHousehold":
+			out.Values[i] = ec._GroupSummary_isHousehold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "id":
 			out.Values[i] = ec._GroupSummary_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -6798,6 +8117,54 @@ func (ec *executionContext) _GroupSummary(ctx context.Context, sel ast.Selection
 			}
 		case "currency":
 			out.Values[i] = ec._GroupSummary_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupTripImplementors = []string{"GroupTrip"}
+
+func (ec *executionContext) _GroupTrip(ctx context.Context, sel ast.SelectionSet, obj *model.GroupTrip) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupTripImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupTrip")
+		case "destination":
+			out.Values[i] = ec._GroupTrip_destination(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startDate":
+			out.Values[i] = ec._GroupTrip_startDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endDate":
+			out.Values[i] = ec._GroupTrip_endDate(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -6994,6 +8361,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createExpense":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createExpense(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createGroup":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createGroup(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7244,7 +8618,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult"}
+var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "CreateGroupResult", "GroupCreationOperationResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -7395,6 +8769,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "groupCreationOperation":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_groupCreationOperation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "health":
 			field := field
 
@@ -7514,6 +8910,11 @@ func (ec *executionContext) _Viewer(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "canCreateGroups":
 			out.Values[i] = ec._Viewer_canCreateGroups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "today":
+			out.Values[i] = ec._Viewer_today(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -8060,6 +9461,21 @@ func (ec *executionContext) marshalNCreateExpenseResult2githubᚗcomᚋhaggaikau
 	return ec._CreateExpenseResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCreateGroupInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateGroupInput(ctx context.Context, v any) (model.CreateGroupInput, error) {
+	res, err := ec.unmarshalInputCreateGroupInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCreateGroupResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateGroupResult(ctx context.Context, sel ast.SelectionSet, v model.CreateGroupResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CreateGroupResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx context.Context, v any) (model.Currency, error) {
 	var res model.Currency
 	err := res.UnmarshalGQL(v)
@@ -8165,6 +9581,26 @@ func (ec *executionContext) marshalNFieldProblem2ᚖgithubᚗcomᚋhaggaikaunda�
 		return graphql.Null
 	}
 	return ec._FieldProblem(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGroupCreationOperationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupCreationOperationResult(ctx context.Context, sel ast.SelectionSet, v model.GroupCreationOperationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GroupCreationOperationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx context.Context, v any) (model.GroupKind, error) {
+	var res model.GroupKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx context.Context, sel ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNGroupResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupResult(ctx context.Context, sel ast.SelectionSet, v model.GroupResult) graphql.Marshaler {
@@ -8764,6 +10200,21 @@ func (ec *executionContext) unmarshalOExpenseFilter2ᚖgithubᚗcomᚋhaggaikaun
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputExpenseFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOGroupTrip2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTrip(ctx context.Context, sel ast.SelectionSet, v *model.GroupTrip) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GroupTrip(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGroupTripInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTripInput(ctx context.Context, v any) (*model.GroupTripInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGroupTripInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
