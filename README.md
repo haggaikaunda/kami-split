@@ -8,7 +8,7 @@ The approved UX tracker [#13](https://github.com/haggaikaunda/kami-split/issues/
 
 ## Repository layout
 
-The Next.js application lives in `apps/web`. `apps/api` contains a health-only Go + gqlgen server, and `packages/schema` owns its SDL-first contract. See the [API README](apps/api/README.md) for Docker Compose and native Go commands, and [database development](docs/application/database-development.md) for local Supabase, restricted roles, and database verification. Documentation and automation remain at the root. See [repository layout and deployment](docs/repository-layout.md) for configuration ownership and hosting follow-up. Financial API features and Relay integration are deferred.
+The Next.js application lives in `apps/web` and still uses its mock DataPort. `apps/api` implements verified authentication, persisted expense creation/recovery, authorized reads and complete balances in Go + gqlgen; `packages/schema` owns the SDL-first contract. Internal targeted invitation, admission and delivery-recovery operations are implemented. Public onboarding transport remains #80 and browser Relay integration remains #83; expense editing/deletion, settlements and imports are deferred. See the [API README](apps/api/README.md) for Docker Compose and native Go commands, [database development](docs/application/database-development.md) for local Supabase and restricted-role verification, and [repository layout and deployment](docs/repository-layout.md) for configuration ownership. Documentation and automation remain at the root.
 
 ## Run locally
 
@@ -57,4 +57,6 @@ pnpm test
 pnpm build
 ```
 
-The post-LAN-fix baseline is **325 tests in 54 files**, including 24 axe-backed accessibility tests. This count is a dated checkpoint, not a permanent target. See [testing strategy](docs/testing-strategy.md) for coverage and limitations, and [contributing](CONTRIBUTING.md) for the required issue, independent testing/review, and CI workflow.
+For API and persistence changes, also run `make api-check`, `make db-generation-check` and `make db-test`; the latter exercises real Supabase/PostgreSQL migration, authorization and race-enabled integration checks. Required CI runs the web and API verification paths for every PR.
+
+The post-LAN-fix web baseline is **325 tests in 54 files**, including 24 axe-backed accessibility tests. This count is a dated checkpoint, not a permanent target. See [testing strategy](docs/testing-strategy.md) for coverage and limitations, and [contributing](CONTRIBUTING.md) for the required issue, independent testing/review, and CI workflow.

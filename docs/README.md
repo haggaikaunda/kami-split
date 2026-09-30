@@ -1,13 +1,13 @@
 # Documentation
 
-Current state: the seeded UX is complete, followed by the LAN HTTP compatibility fix, as of September 26, 2026. Start with the [project README](../README.md) to run the app or preview it on a phone. Read [product scope](product-scope.md) before treating any simulated account or financial flow as a production service.
+The seeded web UX was completed with the LAN HTTP compatibility fix as of September 26, 2026, and still uses in-memory data. The separate Go API now implements verified authentication, persisted expenses and balances, and internal targeted invitation operations; public onboarding (#80) and browser Relay integration (#83) remain deferred. See the [current API architecture](application/api-architecture.md). Start with the [project README](../README.md) to run the app or preview it on a phone. Read [product scope](product-scope.md) before treating any simulated account or financial flow as a production service.
 
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
 
 ## Documentation sections
 
 - [Agent documentation](agents/README.md): delivery instructions and Go engineering conventions.
-- [Application documentation](application/README.md): current implementation references and planned API architecture.
+- [Application documentation](application/README.md): current web/API implementation references and deferred features.
 
 - [Architecture decisions](application/decisions/README.md): accepted production design, including [bootstrap, groups and invitations](application/decisions/003-bootstrap-groups-and-invitations.md) and [group balances, membership and recovery](application/decisions/004-group-balances-membership-and-recovery.md), distinct from the seeded preview.
 
