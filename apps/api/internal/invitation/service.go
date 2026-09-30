@@ -1,5 +1,5 @@
-// Package invitation implements targeted capabilities without public transport or
-// provider delivery. All mutations use verified request context and database locks.
+// Package invitation implements targeted and shared invitation capabilities.
+// All mutations use verified request context and database locks.
 package invitation
 
 import (
@@ -50,7 +50,7 @@ type Service struct {
 	provider  auth.CurrentEmailProvider
 }
 
-// New wires backend-only dependencies; no operation is published to GraphQL here.
+// New wires backend-only dependencies for invitation application operations.
 func New(db *database.DB, p *Protector, provider auth.CurrentEmailProvider) (*Service, error) {
 	if db == nil || p == nil {
 		return nil, Unavailable
@@ -288,7 +288,8 @@ func (s *Service) Eligible(ctx context.Context, token, email string) (bool, erro
 
 var rollbackOutcome = errors.New("rollback non-admission")
 
-// Accept recovers actor-bound history first. Fresh provider evidence is fetched
+// Accept consumes targeted invitations or reuses shared links for first-time
+// membership only. It recovers actor-bound history first. Fresh evidence is fetched
 // outside locks; stale evidence rolls back provisioning and retries at most twice.
 func (s *Service) Accept(ctx context.Context, token string, key uuid.UUID) (Result, error) {
 	hash := TokenHash(token)
