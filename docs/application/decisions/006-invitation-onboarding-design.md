@@ -1,6 +1,6 @@
 # ADR-006: Coordinated invitation and onboarding design
 
-- Status: accepted owner policies; engineering recommendations and remaining owner choices under review.
+- Status: accepted owner policies, including I1–I5; engineering protocols require implementation validation.
 - Decision record date: 2026-09-30.
 - Scope: #79 persistence/lifecycle/admission and #80 Auth/browser/email/thin adapter.
 
@@ -12,13 +12,21 @@ links without application email, and immediate eligible first-time admission aft
 explicit Join, including forwarded recipients. These refine the targeted-only
 wording in ADR-002 O01 and ADR-003 B5; they do not change targeted terminal states.
 
-A shared join does not consume the link. Former-member shared-link policy is still
-open: old saved links cannot silently undo departure/removal, and targeted-only is
-not approved. Same membership identity, ordinary role, full history and disabled
-account denial remain fixed by ADR-004. The decision sheet distinguishes five
-remaining owner choices from concrete engineering recommendations. It does not
-reopen #77/#93, ship features, grant database privileges, publish SDL or provision
-hosted resources. #78 is a prerequisite for affected implementation, not design.
+A shared join does not consume the link. The authoritative
+[owner I1–I5 decisions](https://github.com/haggaikaunda/kami-split/pull/101#issuecomment-5904210048)
+require new targeted invitations for former-member return; shared links admit
+first-time members only. No shared readmission grant system is required. Stable
+membership identity, ordinary role, full history and disabled-account denial remain
+fixed. I2 approves one outstanding shared link/no use cap/current-owner management;
+I3 requires terminal recipient/token cleanup and bounded delivery-material recovery;
+I4 approves 15-minute access tokens and current-session logout.
+
+Targeted invitations (#79) and onboarding (#80) are on #73’s critical path.
+Reusable shared-link implementation is separately tracked in
+[#108](https://github.com/haggaikaunda/kami-split/issues/108), without blocking it.
+#78 is complete. After this design is reviewed/merged, #79 proceeds through normal
+implementation gates; its issue stays open until implementation criteria pass.
+This record does not itself ship features, publish SDL or provision resources.
 
 [Technical recommendations](../proposals/invitations/technical.md) specify kind-based
 storage, lifecycle/lock/clock protocol, bounded external current-email evidence,

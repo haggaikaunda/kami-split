@@ -3,14 +3,18 @@
 This is an engineering proposal under the [decision sheet](README.md), not a
 runtime schema, migration or second source of invitation policy.
 
-## Storage and capability boundaries (#79)
+## Storage and capability boundaries (#79 targeted; #108 shared)
+
+Implement the TARGETED path in #79. All SHARED-specific storage, operations,
+Auth/UI behavior and tests below describe #108’s follow-on contract, not #79/#80
+critical-path requirements. Do not build unused shared lifecycle or grant machinery.
 
 Use an explicit TARGETED / SHARED kind, never infer shared authorization from a
 null email. Invitation has UUID, immutable group/kind/creator, created sequence,
 expiry, revoked timestamp, token hash, ciphertext/key version, and targeted-only
 recipient comparison key / accepted actor / membership outcome. CHECK constraints
 keep kind-specific columns consistent. Partial unique (group,email_key) covers
-unaccepted/unrevoked targeted rows, without filtering expiry. Under proposed I2 a
+unaccepted/unrevoked targeted rows, without filtering expiry. Under approved I2 a
 partial unique group index covers unrevoked shared rows. Shared rows have no global
 accepted state. Expiry is derived, not a terminal state or background cleanup job.
 
@@ -18,7 +22,7 @@ Tokens use 32 CSPRNG bytes, unpadded base64url, SHA-256 lookup hash, AES-256-GCM
 recoverable copy with unique nonce and invitation ID/kind as authenticated data.
 Only owner copy operation for shared links and authorized delivery materialization
 can recover plaintext. Ordinary lists/actions/receipts never return tokens.
-Targeted accepted/revoked transitions clear ciphertext atomically. Shared joins do
+Targeted accepted/revoked transitions clear ciphertext and recipient email/comparison data atomically. Shared joins do
 not clear it; revocation does. Expired outstanding links retain ciphertext. Key
 rotation reencrypts under a new version without changing plaintext/hash/link;
 missing key or failed authentication is unavailable, never token regeneration.
@@ -99,10 +103,10 @@ point; a transaction may finish committing just after the expiry instant. The
 clock is injectable in tests through a test seam, never a caller-selected deadline.
 
 Owner actions recheck the group owner pointer and enabled actor under locks. Group
-ownership transfer uses the same group lock. I2 would preserve link validity while
+ownership transfer uses the same group lock. Approved I2 preserves link validity while
 transferring management to the current owner; former owners cannot copy/renew/revoke.
 The preview's inviter label is original creator's current minimal display name,
-not an email or historical profile snapshot; this choice requires I2 approval.
+not an email or historical profile snapshot; validate this minimal projection in implementation.
 
 Targeted acceptance compares current verified evidence, consumes once, provisions
 application identity if necessary, inserts or reactivates the permanent membership,
@@ -122,17 +126,15 @@ A failed transaction leaves no user/membership/action residue. Unknown commit us
 the same key for recovery, not a new operation. Token expiry/revocation never
 inactivates already-admitted memberships.
 
-For I1, add a nonfinancial membership departure generation and group lifecycle
-sequence, separate from #76's financial Revision. Every future departure/removal
-increments generation under the group lock. Owner readmission grant binds membership,
-current departure generation, current owner tenure and optional shared invitation;
-expires in seven days, can be revoked and is consumed atomically with admission.
-Do not expose a first-time approval queue. New owner tenure or new departure makes
-old grants ineligible. Grant revocation and consumption take the same group/invitation/grant locks: revocation-first denies admission; admission-first reports consumed without removing membership. Renewal never refreshes a readmission grant. Targeted new
-invitation must have issuance sequence greater than last departure sequence;
-resend does not change issuance. Same-identity return remains ordinary membership.
-No departure/transfer service is implemented here; its eventual writes must honor
-these invariants and tests use narrow synthetic fixtures.
+Approved I1 requires a new targeted invitation for every former-member return.
+Old accepted links never reactivate membership; shared links always deny inactive
+members, including after renewal. Implement no shared readmission grants or
+owner-tenure/departure-generation authorization system. Targeted admission reuses
+the permanent membership ID, sets ordinary membership and never changes ownership
+or group-creation grants. Engineering must ensure an invitation predating departure
+cannot become a new readmission capability through resend; choose the smallest
+reliable persisted lifecycle ordering and test it with synthetic departure fixtures.
+Departure/transfer services remain outside this assignment.
 
 ## Commit and delivery handoff (#79 persistence, #80 transport)
 
@@ -148,7 +150,10 @@ Materialize a stable encrypted message snapshot for the action (recipient/link/
 expiry/text version), with no raw token in logs or normal queries. Provider key is
 stable for that delivery intent, not regenerated per HTTP try. A retry uses identical
 payload/key; a later deliberate resend is a new action and provider key. Snapshot
-retention follows I3. Clear snapshots at terminal transitions, and recheck terminal
+retention follows approved I3: retain only for bounded uncertain-send recovery,
+purge when recovery is no longer needed and at the recovery-window deadline.
+Select and test a reliable purge mechanism rather than leaving expired material
+indefinitely. Clear snapshots at terminal transitions, and recheck terminal
 state/current owner before claiming retry. An already-transmitted message may arrive
 late; it cannot restore the invitation. Never hold DB locks across provider calls.
 
@@ -210,25 +215,26 @@ user caches. Account change/logout clears private state and replaces request epo
 late previous-epoch responses cannot restore it. Persist only operation key/kind and
 safe recovery context in tab sessionStorage, clear on logout/account switch; tokens,
 passwords and recipient email are excluded. Cross-device/tab-close recovery is not
-promised. Ordinary logout/session-token settings require I4 approval.
+promised. Ordinary logout explicitly uses current-session scope and explains other devices
+may remain signed in. Use the approved 15-minute access-token lifetime; engineering
+selects and validates clock tolerance, refresh and independent Auth token durations.
 
 The proposed thin contract uses #76 typed public IDs, OperationKey, explicit union
 outcomes, 401 for invalid authentication and 503 for unavailable verification. Add
 Invitation and InvitationAction ID types through reviewed contract extension; these
 IDs never grant permission. Do not publish fields in health-only runtime SDL early.
 
-| Operation sketch                                                                           | Authorization and result                                                                                                                                                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| previewInvitation(token)                                                                   | Public valid capability: groupName and inviterDisplayName only. Otherwise UNAVAILABLE_LINK, no names/recipient/account status; malformed and unknown indistinguishable.                                                                                                                                                   |
-| ownerInvitations(groupID, first, after)                                                    | Current enabled owner; safe ID/kind/lifecycle/expiry/targeted recipient and action send status. Paginated max 50, stable createdAt/ID cursor, no link/token.                                                                                                                                                              |
-| createTargetedInvitation(groupID,email,key)                                                | Current owner; SAVED or EXISTING, invitation state and separate delivery state. Duplicate does not send.                                                                                                                                                                                                                  |
-| resendInvitation(id,key) / revokeInvitation(id,key)                                        | Current owner; APPLIED, ALREADY_ACCEPTED, ALREADY_REVOKED, RATE_LIMITED, KEY_REUSED or safe denial/unavailable.                                                                                                                                                                                                           |
-| createSharedInvitation(groupID,key) / renewSharedInvitation(id,key)                        | Current owner; lifecycle result, NOT_REQUESTED delivery; duplicate create does not renew.                                                                                                                                                                                                                                 |
-| copySharedInvitation(id)                                                                   | Current owner, explicit sensitive no-store response; no expiry change or application email. Expired link may be copied with expiry warning, revoked cannot.                                                                                                                                                               |
-| acceptInvitation(token,key)                                                                | Verified actor/evidence; ADMITTED, ALREADY_MEMBER, HISTORICAL_ACCEPTANCE_NO_ACCESS, WRONG_ACCOUNT, VERIFY_EMAIL, UNAVAILABLE_LINK, READMISSION_AUTHORIZATION_REQUIRED, ACCESS_DISABLED or UNAVAILABLE. No group projection until currently admitted.                                                                      |
-| ownerInvitationAction(key,kind) / retryInvitationDelivery(actionID)                        | Same actor and current management authority; original result plus current state, no sensitive snapshot/token; retry never extends expiry.                                                                                                                                                                                 |
-| admissionAction(key)                                                                       | Same verified Auth subject as original acceptance, including an unprovisioned actor after rollback; historical result plus current access, no group projection while inactive/disabled. No owner role or renewed email-match requirement just to recover the historical result. Another subject/account gets safe denial. |
-| authorizeSharedReadmission(membershipID,linkID,key) / revokeSharedReadmission(grantID,key) | Only if I1 approved: current owner; seven-day grant for current departure/owner generation, auditable/revocable; no member directory exposed to link holders.                                                                                                                                                             |
+| Operation sketch                                                    | Authorization and result                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| previewInvitation(token)                                            | Public valid capability: groupName and inviterDisplayName only. Otherwise UNAVAILABLE_LINK, no names/recipient/account status; malformed and unknown indistinguishable.                                                                                                                                                   |
+| ownerInvitations(groupID, first, after)                             | Current enabled owner; safe ID/kind/lifecycle/expiry/targeted recipient and action send status. Paginated max 50, stable createdAt/ID cursor, no link/token.                                                                                                                                                              |
+| createTargetedInvitation(groupID,email,key)                         | Current owner; SAVED or EXISTING, invitation state and separate delivery state. Duplicate does not send.                                                                                                                                                                                                                  |
+| resendInvitation(id,key) / revokeInvitation(id,key)                 | Current owner; APPLIED, ALREADY_ACCEPTED, ALREADY_REVOKED, RATE_LIMITED, KEY_REUSED or safe denial/unavailable.                                                                                                                                                                                                           |
+| createSharedInvitation(groupID,key) / renewSharedInvitation(id,key) | Current owner; lifecycle result, NOT_REQUESTED delivery; duplicate create does not renew.                                                                                                                                                                                                                                 |
+| copySharedInvitation(id)                                            | Current owner, explicit sensitive no-store response; no expiry change or application email. Expired link may be copied with expiry warning, revoked cannot.                                                                                                                                                               |
+| acceptInvitation(token,key)                                         | Verified actor/evidence; ADMITTED, ALREADY_MEMBER, HISTORICAL_ACCEPTANCE_NO_ACCESS, WRONG_ACCOUNT, VERIFY_EMAIL, UNAVAILABLE_LINK, NEW_TARGETED_INVITATION_REQUIRED, ACCESS_DISABLED or UNAVAILABLE. No group projection until currently admitted.                                                                        |
+| ownerInvitationAction(key,kind) / retryInvitationDelivery(actionID) | Same actor and current management authority; original result plus current state, no sensitive snapshot/token; retry never extends expiry.                                                                                                                                                                                 |
+| admissionAction(key)                                                | Same verified Auth subject as original acceptance, including an unprovisioned actor after rollback; historical result plus current access, no group projection while inactive/disabled. No owner role or renewed email-match requirement just to recover the historical result. Another subject/account gets safe denial. |
 
 Preview invalidity is generic publicly; current owners get exact lifecycle states.
 WRONG_ACCOUNT/VERIFY_EMAIL never echo the target address. Accepted targeted link
