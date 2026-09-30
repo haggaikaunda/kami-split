@@ -1,6 +1,6 @@
 # Targeted invitation operations
 
-Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. [Onboarding](onboarding.md) adds the #80 Auth/provider adapters, email transport, reviewed invitation SDL and browser experience over this service. The existing expense API remains intact; financial browser screens remain a preview. Reusable shared links reuse this model as described below.
+Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. [Onboarding](onboarding.md) adds the #80 Auth/provider adapters, email transport, reviewed invitation SDL and browser experience over this service. The existing expense API remains intact; the [Relay expense journey](relay-expenses.md) connects the first real financial browser slice alongside labeled preview routes. Reusable shared links reuse this model as described below.
 
 ## Concrete #80 handoff
 

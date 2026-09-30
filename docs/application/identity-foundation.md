@@ -6,7 +6,7 @@ accepted policy comes from ADR-001 through ADR-005. This guide describes the ide
 boundary used by the implemented [verified request identity](authentication-boundary.md),
 [persisted expenses](persisted-expenses.md), and internal [targeted invitations](targeted-invitations.md).
 [Onboarding transport](onboarding.md) and [operator bootstrap](bootstrap.md) are
-implemented. Browser Relay integration remains #83; ownership transfer and
+implemented. The [Relay expense journey](relay-expenses.md) connects the first financial browser slice (#83); ownership transfer and
 departure require their separately owned work.
 
 The private `app` schema now holds users, groups, permanent memberships and an
