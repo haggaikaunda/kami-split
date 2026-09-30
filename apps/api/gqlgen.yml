@@ -11,3 +11,27 @@ resolver:
   dir: internal/graph
   package: graph
   filename_template: '{name}.resolvers.go'
+models:
+  MinorUnits:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.MinorUnits
+  Revision:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.Revision
+  Date:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.Date
+  DateTime:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.DateTime
+  OperationKey:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.OperationKey
+  Group:
+    fields:
+      expenses:
+        resolver: true
+    extraFields:
+      Snapshot:
+        type: github.com/haggaikaunda/kami-split/apps/api/internal/expense.Snapshot
+      PageError:
+        type: string
+      PageRequest:
+        type: github.com/haggaikaunda/kami-split/apps/api/internal/expense.PageRequest
+      Filter:
+        type: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.Filter

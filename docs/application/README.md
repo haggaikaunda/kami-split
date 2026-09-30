@@ -4,10 +4,9 @@
 
 The web application is a seeded UX preview with in-memory data and simulated access controls. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#implementation-guides). Existing feature documentation stays at its original paths to preserve links.
 
-## Backend scaffold and planned features
+## Backend and planned features
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. A health-only scaffold and [local database foundation](database-development.md) exist; the [identity/membership database boundary](identity-foundation.md) is implemented.
-[Verified request identity](authentication-boundary.md) and internal [targeted invitation operations](targeted-invitations.md) are implemented. Financial operations and the #80 Auth/browser/email integration remain planned. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The #80 Auth/browser/email adapters and real web integration remain separate. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
 
 ## Architecture decisions
 
@@ -17,6 +16,8 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 
 [Bootstrap, group boundaries and invitation lifecycle](decisions/003-bootstrap-groups-and-invitations.md) records the #77 baseline, preview differences and separately owned follow-up decisions. Transfer, full trips and consolidated reporting remain deferred.
 
-[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). Algorithm, schema and contract work remain gated; the preview does not yet simplify debts.
+[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). The reviewed first-expense contract and its server implementation now provide deterministic simplification; the preview remains separate.
 
 [Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. No creation API or real trip UI is implemented by that document.
+
+[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation and settlement capability have explicit follow-up gates; spending/history formulas remain deferred.

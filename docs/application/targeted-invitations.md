@@ -1,6 +1,6 @@
 # Targeted invitation operations
 
-Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. The public GraphQL schema remains health-only and the web application remains a preview. [#80](https://github.com/haggaikaunda/kami-split/issues/80) owns the Auth/provider adapters, actual email transport, reviewed onboarding SDL and browser experience. Reusable shared links remain [#108](https://github.com/haggaikaunda/kami-split/issues/108); no shared-link lifecycle or readmission grants are implemented here.
+Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. No invitation fields are added to the public GraphQL schema; the existing authenticated expense API remains intact and the web application remains a preview. [#80](https://github.com/haggaikaunda/kami-split/issues/80) owns the Auth/provider adapters, actual email transport, reviewed onboarding SDL and browser experience. Reusable shared links remain [#108](https://github.com/haggaikaunda/kami-split/issues/108); no shared-link lifecycle or readmission grants are implemented here.
 
 ## Concrete #80 handoff
 
@@ -38,7 +38,7 @@ The migration adds invitation/action/delivery tables with RLS enabled and no dir
 
 One outstanding recipient per group includes expired rows. Create/resend expiry is seven days from the serialized decision. Accepted/revoked records never revive; acceptance-first leaves membership in place when later revoke reports already accepted. Revocation-first denies admission. A failed acceptance rolls back application-user provisioning, membership and action changes together.
 
-A membership departure receives a monotonic order value. An inactive member needs a newly created targeted invitation after that departure; resending an older invitation does not change its issuance order. Readmission preserves the membership ID and restores ordinary membership/full-history eligibility without changing owner or designated-creator pointers. Future departure/transfer implementations must respect the same user/group locking protocol. Financial history reads remain separately implemented; #79 adds no financial service.
+A membership departure receives a monotonic order value. An inactive member needs a newly created targeted invitation after that departure; resending an older invitation does not change its issuance order. Readmission preserves the membership ID and restores ordinary membership/full-history eligibility without changing owner or designated-creator pointers. Future departure/transfer implementations must respect the same user/group locking protocol. The existing [persisted expense reads](persisted-expenses.md) authorize through this stable membership boundary; #79 adds no financial service.
 
 ## Token, delivery and retention
 

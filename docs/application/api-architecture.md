@@ -2,9 +2,8 @@
 
 ## Status
 
-A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. Local Supabase, pgxpool and disposable sqlc verification are implemented; see [database development](database-development.md). The [identity foundation](identity-foundation.md) implements private identities,
-groups, memberships and transaction-bound reads. Internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission; public onboarding adapters remain #80. Financial persistence remains
-unimplemented. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
+The Go + gqlgen API in `apps/api` implements public health and authenticated expense operations, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. Local Supabase, pgxpool and disposable sqlc verification are implemented; see [database development](database-development.md). The [identity foundation](identity-foundation.md) implements private identities,
+groups, memberships and transaction-bound reads. [Persisted expenses](persisted-expenses.md) implement atomic financial creation, audit/recovery, authorized projections and complete balances. Internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission; public onboarding adapters remain #80. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 ## Responsibilities
 
@@ -21,7 +20,7 @@ An expense mutation must atomically preserve the expense state, its audit histor
 
 Use integer minor units, explicit currency, checked arithmetic, and a documented wire range. Amounts paid and owed each reconcile to the expense total; net positions sum to zero per currency; settlements change payer and recipient positions equally and oppositely. Retain auditable history for edits and deletions.
 
-[ADR-004 C3](decisions/004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) requires a key known by the client before the initial write. Persist allocations and a recoverable result with the expense and audit atomically and durably; concurrent same-key/same-canonical-input retries and restart recovery have one effect. Server-derived actor, explicit group and operation bind recovery under the reviewed scope, with current authorization on retries and receipt reads. Changed-input reuse cannot create/overwrite the original expense. Recover the immutable original outcome, then read fresh authorized balances as needed; neither missing receipt nor cached balance proves current state. #76 retains the concrete protocol, mismatch, key retention and transport choices.
+[ADR-004 C3](decisions/004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) requires a key known by the client before the initial write. Persist allocations and a recoverable result with the expense and audit atomically and durably; concurrent same-key/same-canonical-input retries and restart recovery have one effect. Server-derived actor, explicit group and operation bind recovery under the reviewed scope, with current authorization on retries and receipt reads. Changed-input reuse cannot create/overwrite the original expense. Recover the immutable original outcome, then read fresh authorized balances as needed; neither missing receipt nor cached balance proves current state. #76 finalized the concrete protocol, mismatch, retention and transport choices implemented by #82.
 
 ## Contract and reads
 
@@ -31,7 +30,7 @@ Define stable identity and cursor pagination for Relay. Compute complete balance
 
 Map expected validation, access, version-conflict, and duplicate-operation outcomes consistently. Do not expose SQL, credentials, or private data in client errors or logs. Request cancellation propagates to database and external I/O.
 
-[ADR-004 C1/C2](decisions/004-group-balances-membership-and-recovery.md#c1-automatic-simplification-within-one-group-and-currency) requires automatic repayment simplification from complete individual group/currency nets, preserving historical attribution and inactive-member financial contributions. Original pairwise relationships are not additional debts. Every individual net must be zero to call a group settled. The target’s zero net is the departure/removal financial condition; ownership, account and authorization checks remain separate, and the eventual balance check/transition must be atomic against competing writes. Matching, representations and concrete concurrency protocol remain reviewed design.
+[ADR-004 C1/C2](decisions/004-group-balances-membership-and-recovery.md#c1-automatic-simplification-within-one-group-and-currency) requires automatic repayment simplification from complete individual group/currency nets, preserving historical attribution and inactive-member financial contributions. Original pairwise relationships are not additional debts. Every individual net must be zero to call a group settled. The target’s zero net is the departure/removal financial condition; ownership, account and authorization checks remain separate, and the eventual balance check/transition must be atomic against competing writes. Matching, representations and the financial concurrency protocol follow the finalized first-expense contract; membership departure mutations remain deferred.
 
 ## Future integrations
 
@@ -43,7 +42,7 @@ See the [Go engineering guide](../agents/go-guidelines.md) for code and testing 
 
 [ADR-001](decisions/001-backend-foundation.md) is the canonical record of the accepted platform, USD money representation, and membership policies. Consult the [open-decision register](decisions/open-decisions.md) before treating unresolved details as requirements.
 
-[ADR-002](decisions/002-authentication-and-database-operations.md) adds the accepted session/JWKS policy, transaction-local identity with RLS, stable-only tooling, GitHub Actions migration deployment, and free-plan backup constraint. Local database tooling is implemented; the [verified identity boundary](authentication-boundary.md) is implemented; production operations and business resolvers remain planned.
+[ADR-002](decisions/002-authentication-and-database-operations.md) adds the accepted session/JWKS policy, transaction-local identity with RLS, stable-only tooling, GitHub Actions migration deployment, and free-plan backup constraint. Local database tooling is implemented; the [verified identity boundary](authentication-boundary.md) is implemented; expense business resolvers are implemented; hosted production operations remain separate.
 
 [ADR-003](decisions/003-bootstrap-groups-and-invitations.md) records the administrative bootstrap exception, separate group ledgers and invitation lifecycle/token protection. Each expense and settlement belongs to exactly one group; trip membership grants no household access. Future dashboard repayment shortcuts retain the original group and never duplicate or offset records across groups. The preview's embedded trips and pending members are not production schema.
 

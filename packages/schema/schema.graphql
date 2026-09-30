@@ -1,7 +1,4 @@
-"""
-Minimal scaffold API; no financial or authenticated operations yet.
-"""
-type Query {
+extend type Query {
   """
   Public availability check; requires no authentication and does not check database readiness.
   """

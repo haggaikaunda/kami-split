@@ -111,6 +111,24 @@ env["TEST_AUTH_SERVICE_KEY"] = status["SERVICE_ROLE_KEY"]
 sys.exit(subprocess.run([
     "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
     "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
+    "./internal/expense/...", "./internal/graph/...",
 ], env=env).returncode)
 PROVIDER_TEST
 cd "$root"
+
+# Prove financial history can survive a normal full schema+data dump/replay.
+# Clone the real provider database solely to retain managed Auth dependencies,
+# then remove only app from the disposable clone and restore the actual dump.
+# Superuser is used only inside this local disposable verification container.
+docker exec "$container" pg_dump -U supabase_admin -d postgres --schema app > "$stage/financial-backup.sql"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS false"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d template1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'postgres'"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "CREATE DATABASE kami_restore TEMPLATE postgres"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS true"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d kami_restore -c "DROP SCHEMA app CASCADE"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d kami_restore < "$stage/financial-backup.sql"
+for db in postgres kami_restore; do
+  docker exec "$container" pg_dump -U supabase_admin -d "$db" --schema app \
+    | sed '/^\\restrict /d; /^\\unrestrict /d' > "$stage/$db-restored.sql"
+done
+diff -u "$stage/postgres-restored.sql" "$stage/kami_restore-restored.sql"
