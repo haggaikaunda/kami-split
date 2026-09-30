@@ -43,7 +43,11 @@ type Failure string
 func (f Failure) Error() string { return string(f) }
 
 // Service uses only verified identity and transaction-local authorized statements.
-type Service struct{ DB *database.DB }
+type Service struct{ db *database.DB }
+
+// New constructs expense operations with a fixed database dependency. A nil
+// database supports health-only startup; authenticated operations remain unavailable.
+func New(db *database.DB) *Service { return &Service{db: db} }
 
 func uuidValue(raw string) pgtype.UUID { var id pgtype.UUID; _ = id.Scan(raw); return id }
 func rawID(value, kind string) (string, error) {
@@ -84,7 +88,7 @@ func (s *Service) transaction(ctx context.Context, fn func(pgx.Tx, auth.Actor) e
 	// Preserve domain/permission outcomes through WithActor's intentionally safe
 	// database error boundary; failed callbacks still cause transaction rollback.
 	var operationErr error
-	err := auth.WithActor(ctx, s.DB, func(tx pgx.Tx, actor auth.Actor) error { operationErr = fn(tx, actor); return operationErr })
+	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, actor auth.Actor) error { operationErr = fn(tx, actor); return operationErr })
 	if operationErr != nil {
 		return safeError(operationErr)
 	}

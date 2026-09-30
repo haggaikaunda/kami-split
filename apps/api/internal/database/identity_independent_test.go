@@ -123,12 +123,12 @@ func TestIdentityIndependent(t *testing.T) {
 			}
 		}
 		for _, sql := range []string{`SELECT * FROM app.users`, `SELECT * FROM app.installation`, `SELECT user_id FROM app.memberships`, `SELECT created_at FROM app.groups`, `SELECT * FROM auth.users`, `SET ROLE kami_migrator`, `CREATE TABLE app.denied75(id int)`, `UPDATE app.memberships SET active=false`, `DELETE FROM app.groups`, `TRUNCATE app.memberships`, `SELECT app.preserve_user_identity()`, `SELECT app.verified_subject()`} {
-			if _, e := db.Pool.Exec(ctx, sql); e == nil {
+			if _, e := database.IntegrationPool(db).Exec(ctx, sql); e == nil {
 				t.Fatalf("runtime allowed %s", sql)
 			}
 		}
 		for _, s := range []string{"", "malformed", id(99), id(3)} {
-			tx, e := db.Pool.Begin(ctx)
+			tx, e := database.IntegrationPool(db).Begin(ctx)
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -220,7 +220,7 @@ func TestIdentityIndependent(t *testing.T) {
 				t.Fatalf("%s: %v", mode, e)
 			}
 			var allowed bool
-			e = db.Pool.QueryRow(ctx, `SELECT app.can_read_group($1)`, id(11)).Scan(&allowed)
+			e = database.IntegrationPool(db).QueryRow(ctx, `SELECT app.can_read_group($1)`, id(11)).Scan(&allowed)
 			if e != nil || allowed {
 				t.Fatalf("context leaked after %s: %v %v", mode, allowed, e)
 			}
@@ -304,7 +304,7 @@ func TestIdentityIndependent(t *testing.T) {
 	})
 	t.Run("read locks block revocation", func(t *testing.T) {
 		for _, disable := range []bool{false, true} {
-			rt, e := db.Pool.Begin(ctx)
+			rt, e := database.IntegrationPool(db).Begin(ctx)
 			if e != nil {
 				t.Fatal(e)
 			}

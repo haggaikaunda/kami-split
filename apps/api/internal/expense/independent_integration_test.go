@@ -88,7 +88,7 @@ func TestIndependentFinancialRecoveryAndPagination(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		service = &expense.Service{DB: db}
+		service = expense.New(db)
 		endpoint = httptest.NewServer(verifier.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var req struct {
 				Input ledger.Input
