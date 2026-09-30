@@ -49,6 +49,9 @@ func (v *Verifier) verify(ctx context.Context, raw string) (string, error) {
 	}, jwt.WithValidMethods([]string{"ES256"}), jwt.WithIssuer(v.config.Issuer), jwt.WithAudience(v.config.Audience), jwt.WithExpirationRequired(), jwt.WithIssuedAt(), jwt.WithLeeway(30*time.Second), jwt.WithTimeFunc(v.now), jwt.WithStrictDecoding())
 	if err != nil {
 		if errors.Is(err, Unavailable) {
+			if operation, ok := diagnostic.Operation(err); ok {
+				return "", diagnostic.Wrap(Unavailable, err, operation)
+			}
 			return "", Unavailable
 		}
 		return "", Unauthenticated

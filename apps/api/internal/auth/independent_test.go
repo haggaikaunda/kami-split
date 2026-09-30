@@ -68,14 +68,14 @@ func TestIndependentRealTokensAcrossFailedRefreshAndRemoval(t *testing.T) {
 	raw := signFixture(t, key, claims, nil)
 	v.fetch = func(context.Context) ([]byte, error) { return nil, errors.New("secret upstream failure") }
 	clock = clock.Add(time.Hour)
-	if v.Warm(context.Background()) != Unavailable {
+	if !errors.Is(v.Warm(context.Background()), Unavailable) {
 		t.Fatal("refresh unexpectedly succeeded")
 	}
 	if got, err := v.verify(context.Background(), raw); err != nil || got != fixtureSubject {
 		t.Fatalf("fresh known key lost during outage: %s %v", got, err)
 	}
 	clock = now.Add(2 * time.Hour)
-	if _, err := v.verify(context.Background(), raw); err != Unavailable {
+	if _, err := v.verify(context.Background(), raw); !errors.Is(err, Unavailable) {
 		t.Fatalf("stale key authorized: %v", err)
 	}
 	v.Invalidate()

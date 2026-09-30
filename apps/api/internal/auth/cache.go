@@ -13,6 +13,7 @@ import (
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 )
 
 const maxKeyAge = 2 * time.Hour
@@ -50,6 +51,7 @@ type Verifier struct {
 	scheduled   time.Time
 	failures    int
 	lastFailed  bool
+	lastError   error
 	epoch       uint64
 	refreshing  chan struct{}
 }
@@ -65,19 +67,19 @@ func New(c Config) (*Verifier, error) {
 	v.fetch = func(ctx context.Context) ([]byte, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.JWKSURL, nil)
 		if err != nil {
-			return nil, Unavailable
+			return nil, diagnostic.Wrap(Unavailable, err, "auth.jwks_request")
 		}
 		response, err := client.Do(req)
 		if err != nil {
-			return nil, Unavailable
+			return nil, diagnostic.Wrap(Unavailable, err, "auth.jwks_fetch")
 		}
 		defer response.Body.Close()
 		if response.StatusCode != http.StatusOK {
-			return nil, Unavailable
+			return nil, diagnostic.Wrap(Unavailable, nil, "auth.jwks_status")
 		}
 		body, err := io.ReadAll(io.LimitReader(response.Body, (64<<10)+1))
 		if err != nil || len(body) > 64<<10 {
-			return nil, Unavailable
+			return nil, diagnostic.Wrap(Unavailable, err, "auth.jwks_body")
 		}
 		return body, nil
 	}
@@ -124,6 +126,7 @@ func (v *Verifier) Invalidate() {
 	v.scheduled = time.Time{}
 	v.failures = 0
 	v.lastFailed = false
+	v.lastError = nil
 }
 
 // Run refreshes hourly with up to five minutes of jitter and retries failed fetches
@@ -162,14 +165,21 @@ func (v *Verifier) refresh(ctx context.Context) error {
 		v.mu.Lock()
 		defer v.mu.Unlock()
 		if v.lastFailed || !v.usable(v.now()) {
+			if v.lastError != nil {
+				return v.lastError
+			}
 			return Unavailable
 		}
 		return nil
 	}
 	if v.now().Before(v.nextAttempt) {
 		failed := v.lastFailed || !v.usable(v.now())
+		lastError := v.lastError
 		v.mu.Unlock()
 		if failed {
+			if lastError != nil {
+				return lastError
+			}
 			return Unavailable
 		}
 		return nil
@@ -196,18 +206,23 @@ func (v *Verifier) refresh(ctx context.Context) error {
 	if err != nil {
 		v.failures++
 		v.lastFailed = true
+		if _, ok := diagnostic.Operation(err); !ok {
+			err = diagnostic.Wrap(Unavailable, err, "auth.jwks_refresh")
+		}
+		v.lastError = err
 		backoff := time.Second << min(v.failures-1, 9)
 		if backoff > 5*time.Minute {
 			backoff = 5 * time.Minute
 		}
 		v.nextAttempt = now.Add(backoff)
 		v.scheduled = v.nextAttempt
-		return Unavailable
+		return err
 	}
 	v.set = set
 	v.success = now
 	v.failures = 0
 	v.lastFailed = false
+	v.lastError = nil
 	// All successful fetches rate-limit unknown-key probes across every request.
 	v.nextAttempt = now.Add(30 * time.Second)
 	v.scheduled = now.Add(time.Hour + v.jitter())
@@ -229,18 +244,18 @@ func parseSet(body []byte) (keySet, error) {
 		} `json:"keys"`
 	}
 	if err := json.Unmarshal(body, &document); err != nil || document.Keys == nil {
-		return keySet{}, Unavailable
+		return keySet{}, diagnostic.Wrap(Unavailable, err, "auth.jwks_document")
 	}
 	ids := make(map[string]bool, len(document.Keys))
 	for _, key := range document.Keys {
 		if key.KID == "" || len(key.KID) > 256 || ids[key.KID] || key.KTY != "EC" || key.CRV != "P-256" || (key.ALG != "" && key.ALG != "ES256") || (key.USE != "" && key.USE != "sig") || key.D != "" {
-			return keySet{}, Unavailable
+			return keySet{}, diagnostic.Wrap(Unavailable, nil, "auth.jwks_keys")
 		}
 		ids[key.KID] = true
 	}
 	keys, err := keyfunc.NewJWKSetJSON(body)
 	if err != nil {
-		return keySet{}, Unavailable
+		return keySet{}, diagnostic.Wrap(Unavailable, err, "auth.jwks_keys")
 	}
 	return keySet{keys: keys, ids: ids}, nil
 }
@@ -255,7 +270,7 @@ func (v *Verifier) lookup(ctx context.Context, token *jwt.Token) (any, error) {
 	v.mu.Unlock()
 	if !known {
 		if err := v.refresh(ctx); err != nil {
-			return nil, Unavailable
+			return nil, err
 		}
 	}
 	v.mu.Lock()

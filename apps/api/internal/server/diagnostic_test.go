@@ -3,13 +3,18 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
@@ -105,5 +110,43 @@ func TestIndependentReadinessOwnershipAcrossConstructors(t *testing.T) {
 				t.Fatal("constructor retained caller slice")
 			}
 		})
+	}
+}
+
+func TestPreExecutionJWKSFailureIsSafelyCorrelated(t *testing.T) {
+	remote := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(503)
+		_, _ = w.Write([]byte("private provider body"))
+	}))
+	defer remote.Close()
+	verifier, err := auth.New(auth.Config{Issuer: "https://auth.example.invalid", Audience: "authenticated", JWKSURL: remote.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{})
+	token.Header["kid"] = "new-key"
+	raw, err := token.SignedString(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	s := NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}), slog.New(slog.NewJSONHandler(&logs, nil)), verifier)
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(`{"query":"{ viewer { __typename } }"}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer "+raw)
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	if w.Code != 503 || !strings.Contains(w.Body.String(), "AUTH_UNAVAILABLE") {
+		t.Fatalf("auth contract changed: %d %s", w.Code, w.Body.String())
+	}
+	if strings.Count(logs.String(), "graphql execution failed") != 1 || !strings.Contains(logs.String(), "auth.jwks_status") || !strings.Contains(logs.String(), w.Header().Get("X-Request-ID")) {
+		t.Fatal("missing correlated auth event")
+	}
+	if strings.Contains(logs.String()+w.Body.String(), raw) || strings.Contains(logs.String()+w.Body.String(), "private provider body") {
+		t.Fatal("auth secret leaked")
 	}
 }
