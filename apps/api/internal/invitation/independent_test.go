@@ -315,14 +315,12 @@ func TestIndependentDifferentGroupsAndOwnerIsolation(t *testing.T) {
 
 func TestIndependentReadmissionRestoresActualFinancialHistory(t *testing.T) {
 	f := newFixture(t)
-	// Remove only this synthetic ledger before the shared fixture removes its group.
-	t.Cleanup(func() {
-		for _, table := range []string{"expense_operations", "expense_audit", "allocations", "expenses"} {
-			if _, err := f.admin.Exec(context.Background(), "DELETE FROM app."+table+" WHERE group_id=$1", f.group); err != nil {
-				t.Errorf("ledger fixture cleanup: %v", err)
-			}
-		}
-	})
+	// Retain immutable financial fixtures for dump/replay checks until the isolated
+	// Supabase project is destroyed. No production RLS or grants are altered.
+	f.retainData = true
+	f.exec(`RESET ROLE`)
+	f.exec(`UPDATE auth.users SET email=id::text||'@example.invalid' WHERE id IN ($1,$2)`, f.owner, f.member)
+	f.exec(`SET ROLE kami_migrator`)
 	finances := &expense.Service{DB: f.db}
 	_, oldToken := f.create("member@example.invalid")
 	joined, err := f.service.Accept(f.actor(f.member), oldToken, uuid.New())

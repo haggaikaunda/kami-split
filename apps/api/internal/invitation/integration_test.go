@@ -40,6 +40,7 @@ type fixture struct {
 	provider             *fixtureProvider
 	verifier             *auth.Verifier
 	signing              *ecdsa.PrivateKey
+	retainData           bool
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -107,6 +108,12 @@ func newFixture(t *testing.T) *fixture {
 	f.exec(`SET ROLE kami_migrator`)
 	t.Cleanup(func() {
 		cleanup := context.Background()
+		defer db.Close()
+		defer admin.Close(cleanup)
+		// Financial-history fixtures stay intact for the disposable dump/replay check.
+		if f.retainData {
+			return
+		}
 		_, err := admin.Exec(cleanup, `BEGIN;SET LOCAL ROLE kami_migrator;
  DELETE FROM app.invitation_delivery WHERE action_id IN (SELECT id FROM app.invitation_actions WHERE group_id='`+f.group.String()+`');
  DELETE FROM app.invitation_actions WHERE group_id='`+f.group.String()+`';DELETE FROM app.invitations WHERE group_id='`+f.group.String()+`';
@@ -116,8 +123,6 @@ func newFixture(t *testing.T) *fixture {
 		if err != nil {
 			t.Errorf("cleanup: %v", err)
 		}
-		db.Close()
-		_ = admin.Close(cleanup)
 	})
 	return f
 }
