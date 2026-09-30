@@ -123,6 +123,7 @@ sys.exit(subprocess.run([
     "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
     "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
     "./internal/expense/...", "./internal/graph/...", "./internal/onboarding/...",
+    "./internal/bootstrap/...",
 ], env=env).returncode)
 PROVIDER_TEST
 cd "$root"

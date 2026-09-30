@@ -15,8 +15,8 @@ application identity are distinct. There are no production identities in migrati
 A deferred composite owner foreign key requires one same-group active membership
 at commit. OWNER is derived from that pointer, never a second mutable role flag.
 The installation's explicit creator identity is independent of the group's owner.
-Bootstrap execution remains #81; use its reviewed advisory-lock and safe-rerun
-protocol rather than inferring rights from the first account.
+The [operator bootstrap procedure](bootstrap.md) implements #81 with its reviewed
+advisory-lock and safe-rerun protocol, never inferring rights from the first account.
 
 Direct runtime access has column-only group/membership reads and narrow helper
 execution. It cannot directly write these identity tables, read users/installation or managed Auth, create schema
