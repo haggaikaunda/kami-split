@@ -22,8 +22,8 @@ Direct runtime access has column-only group/membership reads and narrow helper
 execution. It cannot directly write these identity tables, read users/installation or managed Auth, create schema
 objects, assume the owner role, or bypass RLS. Browser and service roles cannot
 access the private schema. SECURITY DEFINER helpers use a fixed catalog/temp search
-path and fully qualified app names. Their owner bypasses RLS only on these identity
-tables to avoid recursive policies. Financial tables separately enforce forced RLS;
+path and fully qualified app names. Identity helpers rely on owner bypass on the identity tables to avoid recursive
+policies. Financial tables separately enforce forced RLS;
 the identity helpers do not grant a financial bypass.
 Function default PUBLIC execution remains revoked.
 
