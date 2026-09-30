@@ -455,6 +455,7 @@ func TestIndependentExpenseRevisionExhaustionIsDurableAndHasNoFinancialEffect(t 
 	injectAdminFixture := f.injectAdminFixture
 	// Admin-only fault fixture reaches the otherwise impractical int64 boundary.
 	injectAdminFixture(t, "expenses", `UPDATE app.expenses SET revision=9223372036854775807 WHERE group_id=$1 AND revision=4`, id(201))
+	injectAdminFixture(t, "financial_records", `UPDATE app.financial_records SET revision=9223372036854775807 WHERE group_id=$1 AND revision=4`, id(201))
 	exhausted := input
 	exhausted.Key = uuid.NewString()
 	out := create(exhausted)

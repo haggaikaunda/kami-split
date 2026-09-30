@@ -1,4 +1,4 @@
-// Package expense owns authorized expense operations and their transaction boundaries.
+// Package expense owns group financial operations and their shared transaction boundaries.
 package expense
 
 import (
@@ -31,10 +31,19 @@ type Record struct {
 	Revision                                                                 int64
 }
 
-// Outcome distinguishes durable commitment/rejection from transient uncertainty.
+// RepaymentRecord is immutable actual-transfer history with original provenance.
+type RepaymentRecord struct {
+	RepaymentID, GroupID, CreatorMembershipID, SenderMembershipID, RecipientMembershipID string
+	AmountMinor                                                                          int64
+	Currency, EffectiveDate, Note, CommittedAt                                           string
+	Revision                                                                             int64
+}
+
+// Outcome is the durable result shared by the two financial operation kinds.
 type Outcome struct {
 	Kind, Key string
 	Record    *Record
+	Repayment *RepaymentRecord `json:",omitempty"`
 	Fields    []ledger.FieldProblem
 }
 
@@ -102,9 +111,9 @@ func (s *Service) transaction(ctx context.Context, fn func(pgx.Tx, auth.Actor) e
 	}
 	return safeError(err)
 }
-func lookup(ctx context.Context, tx pgx.Tx, group, key string) (Outcome, []byte, []byte, error) {
+func lookup(ctx context.Context, tx pgx.Tx, group, key, kind string) (Outcome, []byte, []byte, error) {
 	var result Outcome
-	row, err := expensequery.New(tx).ExpenseOperation(ctx, expensequery.ExpenseOperationParams{GroupID: uuidValue(group), Key: uuidValue(key)})
+	row, err := expensequery.New(tx).FinancialOperation(ctx, expensequery.FinancialOperationParams{GroupID: uuidValue(group), Key: uuidValue(key), OperationKind: kind})
 	if err != nil {
 		return result, nil, nil, err
 	}

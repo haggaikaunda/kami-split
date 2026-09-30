@@ -11,25 +11,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const expenseOperation = `-- name: ExpenseOperation :one
+const financialOperation = `-- name: FinancialOperation :one
 SELECT canonical, canonical_hash, outcome FROM app.expense_operations
-WHERE group_id=$1 AND key=$2 AND operation_kind='CREATE_EXPENSE'
+WHERE group_id=$1 AND key=$2 AND operation_kind=$3
 `
 
-type ExpenseOperationParams struct {
-	GroupID pgtype.UUID
-	Key     pgtype.UUID
+type FinancialOperationParams struct {
+	GroupID       pgtype.UUID
+	Key           pgtype.UUID
+	OperationKind string
 }
 
-type ExpenseOperationRow struct {
+type FinancialOperationRow struct {
 	Canonical     []byte
 	CanonicalHash []byte
 	Outcome       []byte
 }
 
-func (q *Queries) ExpenseOperation(ctx context.Context, arg ExpenseOperationParams) (ExpenseOperationRow, error) {
-	row := q.db.QueryRow(ctx, expenseOperation, arg.GroupID, arg.Key)
-	var i ExpenseOperationRow
+func (q *Queries) FinancialOperation(ctx context.Context, arg FinancialOperationParams) (FinancialOperationRow, error) {
+	row := q.db.QueryRow(ctx, financialOperation, arg.GroupID, arg.Key, arg.OperationKind)
+	var i FinancialOperationRow
 	err := row.Scan(&i.Canonical, &i.CanonicalHash, &i.Outcome)
 	return i, err
 }
@@ -118,29 +119,95 @@ func (q *Queries) InsertExpense(ctx context.Context, arg InsertExpenseParams) (p
 	return created_at, err
 }
 
-const storeExpenseOperation = `-- name: StoreExpenseOperation :exec
-INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,expense_id,outcome)
-VALUES($1,$2,'CREATE_EXPENSE',$3,'create-expense-v1',$4,$5,$6,$7)
+const insertRepayment = `-- name: InsertRepayment :one
+INSERT INTO app.repayments(id,group_id,creator_id,sender_id,recipient_id,amount_minor,currency,effective_date,note,revision)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at
 `
 
-type StoreExpenseOperationParams struct {
-	ActorUserID   pgtype.UUID
+type InsertRepaymentParams struct {
+	ID            pgtype.UUID
 	GroupID       pgtype.UUID
-	Key           pgtype.UUID
-	Canonical     []byte
-	CanonicalHash []byte
-	ExpenseID     pgtype.UUID
-	Outcome       []byte
+	CreatorID     pgtype.UUID
+	SenderID      pgtype.UUID
+	RecipientID   pgtype.UUID
+	AmountMinor   int64
+	Currency      string
+	EffectiveDate pgtype.Date
+	Note          string
+	Revision      int64
 }
 
-func (q *Queries) StoreExpenseOperation(ctx context.Context, arg StoreExpenseOperationParams) error {
-	_, err := q.db.Exec(ctx, storeExpenseOperation,
+func (q *Queries) InsertRepayment(ctx context.Context, arg InsertRepaymentParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, insertRepayment,
+		arg.ID,
+		arg.GroupID,
+		arg.CreatorID,
+		arg.SenderID,
+		arg.RecipientID,
+		arg.AmountMinor,
+		arg.Currency,
+		arg.EffectiveDate,
+		arg.Note,
+		arg.Revision,
+	)
+	var created_at pgtype.Timestamptz
+	err := row.Scan(&created_at)
+	return created_at, err
+}
+
+const insertRepaymentAudit = `-- name: InsertRepaymentAudit :exec
+INSERT INTO app.repayment_audit(repayment_id,group_id,actor_user_id,creator_id,event,committed_at)
+VALUES($1,$2,$3,$4,'RECORD_REPAYMENT',$5)
+`
+
+type InsertRepaymentAuditParams struct {
+	RepaymentID pgtype.UUID
+	GroupID     pgtype.UUID
+	ActorUserID pgtype.UUID
+	CreatorID   pgtype.UUID
+	CommittedAt pgtype.Timestamptz
+}
+
+func (q *Queries) InsertRepaymentAudit(ctx context.Context, arg InsertRepaymentAuditParams) error {
+	_, err := q.db.Exec(ctx, insertRepaymentAudit,
+		arg.RepaymentID,
+		arg.GroupID,
+		arg.ActorUserID,
+		arg.CreatorID,
+		arg.CommittedAt,
+	)
+	return err
+}
+
+const storeFinancialOperation = `-- name: StoreFinancialOperation :exec
+INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,expense_id,repayment_id,outcome)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+`
+
+type StoreFinancialOperationParams struct {
+	ActorUserID      pgtype.UUID
+	GroupID          pgtype.UUID
+	OperationKind    string
+	Key              pgtype.UUID
+	CanonicalVersion string
+	Canonical        []byte
+	CanonicalHash    []byte
+	ExpenseID        pgtype.UUID
+	RepaymentID      pgtype.UUID
+	Outcome          []byte
+}
+
+func (q *Queries) StoreFinancialOperation(ctx context.Context, arg StoreFinancialOperationParams) error {
+	_, err := q.db.Exec(ctx, storeFinancialOperation,
 		arg.ActorUserID,
 		arg.GroupID,
+		arg.OperationKind,
 		arg.Key,
+		arg.CanonicalVersion,
 		arg.Canonical,
 		arg.CanonicalHash,
 		arg.ExpenseID,
+		arg.RepaymentID,
 		arg.Outcome,
 	)
 	return err
