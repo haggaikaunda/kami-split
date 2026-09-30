@@ -15,7 +15,7 @@ CREATE TABLE app.expenses (
  payer_id uuid NOT NULL,
  total_minor bigint NOT NULL CHECK(total_minor BETWEEN 1 AND 999999999),
  currency text NOT NULL CHECK(currency='USD'),
- description text NOT NULL CHECK(char_length(description) BETWEEN 1 AND 120 AND description=btrim(description, E' \t\r\n')),
+ description text NOT NULL CHECK(char_length(description)>=1 AND char_length(description)<=120 AND description=btrim(description, E' \t\r\n')),
  effective_date date NOT NULL CHECK(effective_date BETWEEN DATE '0001-01-01' AND DATE '9999-12-31'),
  category text NOT NULL CHECK(category IN ('DINING','GROCERIES','ACCOMMODATION','TRANSPORT','ACTIVITIES','HOME','OTHER')),
  note text NOT NULL CHECK(char_length(note)<=2000),

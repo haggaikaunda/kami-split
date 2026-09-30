@@ -52,6 +52,7 @@ func TestIndependentFinancialRecoveryAndPagination(t *testing.T) {
  INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES('%s','%s','%s','Tester A'),('%s','%s','%s','Tester B');
  INSERT INTO app.groups(id,name,owner_membership_id) VALUES('%s','Independent','%s');
  INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s'),('%s','%s','%s');COMMIT;`, id(1), id(2), id(101), id(1), id(1), id(102), id(2), id(2), id(201), id(301), id(301), id(201), id(101), id(302), id(201), id(102)))
+	exec(fmt.Sprintf(`INSERT INTO auth.users(id,email) VALUES('%s','independent82c@example.invalid'); BEGIN; SET LOCAL ROLE kami_migrator; INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES('%s','%s','%s','Tester C'); INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s'); COMMIT;`, id(3), id(103), id(3), id(3), id(303), id(201), id(103)))
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -209,6 +210,20 @@ func TestIndependentFinancialRecoveryAndPagination(t *testing.T) {
 		}
 		if expenses != 1 || allocations != 2 || audits != 1 || receipts != 1 {
 			t.Fatalf("effects %d %d %d %d", expenses, allocations, audits, receipts)
+		}
+	})
+	t.Run("later transaction cannot add same-group zero allocation", func(t *testing.T) {
+		raw, _ := ledger.ParseID(original.Record.ExpenseID, "Expense")
+		err := db.WithIdentity(ctx, id(1), func(tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor) VALUES($1,$2,$3,0)`, raw, id(201), id(303))
+			return err
+		})
+		if err == nil {
+			t.Fatal("old expense accepted a new zero-share participant in a later transaction")
+		}
+		var count int
+		if err = admin.QueryRow(ctx, `SELECT count(*) FROM app.allocations WHERE expense_id=$1`, raw).Scan(&count); err != nil || count != 2 {
+			t.Fatalf("history changed: %d %v", count, err)
 		}
 	})
 	t.Run("zero-share participant matches filter", func(t *testing.T) {
