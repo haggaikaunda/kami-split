@@ -1,0 +1,158 @@
+"""
+Classification derived from the optional trip extension; access and ledgers remain group-local.
+"""
+enum GroupKind {
+  """
+  An ordinary group, including the separately designated household.
+  """
+  ORDINARY
+  """
+  A group with travel metadata; dates never restrict financial history.
+  """
+  TRIP
+}
+"""
+Immutable creation metadata; inclusive Gregorian dates, independent of expense dates.
+"""
+type GroupTrip {
+  """
+  Exact destination content, including whitespace; absent input becomes empty.
+  """
+  destination: String!
+  """
+  Inclusive first travel date.
+  """
+  startDate: Date!
+  """
+  Inclusive last travel date, at or after startDate.
+  """
+  endDate: Date!
+}
+"""
+Trip creation fields; destination is optional, dates are required.
+"""
+input GroupTripInput {
+  """
+  Absent or null means empty; at most 200 Unicode scalar values, no NUL.
+  """
+  destination: String
+  """
+  Valid Gregorian YYYY-MM-DD in years 0001 through 9999.
+  """
+  startDate: Date!
+  """
+  Valid Gregorian date at or after startDate; equal dates are allowed.
+  """
+  endDate: Date!
+}
+"""
+Identity-scoped frozen creation intent; actor and USD currency are server supplied.
+"""
+input CreateGroupInput {
+  """
+  Client-generated key scoped to the verified creator and CREATE_GROUP; retain through uncertainty.
+  """
+  operationKey: OperationKey!
+  """
+  Trim ASCII space/tab/CR/LF; require 1–120 Unicode scalars, without NUL or surrogate code points.
+  """
+  name: String!
+  """
+  Explicit classification; no inferred household or inherited membership.
+  """
+  kind: GroupKind!
+  """
+  Required for TRIP, absent or null for ORDINARY.
+  """
+  trip: GroupTripInput
+}
+extend type Mutation {
+  """
+  Create a group with its creator as sole owner, or recover identical intent; no financial entries are created.
+  """
+  createGroup(
+    """
+    Frozen identity-scoped intent; changed input requires a new key after rejection.
+    """
+    input: CreateGroupInput!
+  ): CreateGroupResult!
+}
+extend type Query {
+  """
+  Self-only recovery requiring current enabled creator authority and access to any completed group.
+  """
+  groupCreationOperation(
+    """
+    Original operation key; possession grants no access.
+    """
+    operationKey: OperationKey!
+  ): GroupCreationOperationResult!
+}
+"""
+Durable success/rejection, conflicting intent, or safe access/unavailable problem; transport loss remains unknown.
+"""
+union CreateGroupResult =
+  | GroupCreationCompleted
+  | GroupCreationRejected
+  | GroupCreationConflict
+  | Problem
+"""
+Original outcome or not-started observation under current authorization; refresh Group separately.
+"""
+union GroupCreationOperationResult =
+  | GroupCreationCompleted
+  | GroupCreationRejected
+  | GroupCreationNotStarted
+  | Problem
+"""
+Immutable original creation identity; current names, metadata and balances require a fresh authorized Group read.
+"""
+type GroupCreationCompleted {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+  """
+  Original stable Group ID; current access was checked before disclosure.
+  """
+  groupId: ID!
+  """
+  Original creator Membership ID, regardless of later ownership changes.
+  """
+  creatorMembershipId: ID!
+  """
+  Original durable creation timestamp.
+  """
+  createdAt: DateTime!
+}
+"""
+Durable domain rejection with no group created; correction requires a new key.
+"""
+type GroupCreationRejected {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+  """
+  Safe retained validation errors.
+  """
+  fields: [FieldProblem!]!
+}
+"""
+OPERATION_CONFLICT: the key already names different canonical input; the original result is unchanged.
+"""
+type GroupCreationConflict {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+}
+"""
+NOT_STARTED: no committed attempt is visible; an in-flight request may still commit. Retry only identical intent.
+"""
+type GroupCreationNotStarted {
+  """
+  Original identity-scoped attempt key.
+  """
+  operationKey: OperationKey!
+}

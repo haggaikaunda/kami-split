@@ -22,9 +22,34 @@ type CreateExpenseResult interface {
 	IsCreateExpenseResult()
 }
 
+// Durable success/rejection, conflicting intent, or safe access/unavailable problem; transport loss remains unknown.
+type CreateGroupResult interface {
+	IsCreateGroupResult()
+}
+
+// Original outcome or not-started observation under current authorization; refresh Group separately.
+type GroupCreationOperationResult interface {
+	IsGroupCreationOperationResult()
+}
+
 // An authorized complete group projection or safe problem.
 type GroupResult interface {
 	IsGroupResult()
+}
+
+// Delivery attempt outcome or safe failure.
+type InvitationDelivery interface {
+	IsInvitationDelivery()
+}
+
+// Valid two-field preview or generic unavailable link.
+type InvitationPreviewResult interface {
+	IsInvitationPreviewResult()
+}
+
+// Saved action or safe failure. Errors do not prove a write did not commit.
+type InvitationResult interface {
+	IsInvitationResult()
 }
 
 // A typed ks1 public identity. Every lookup requires current authorization; IDs confer no access.
@@ -37,6 +62,11 @@ type Node interface {
 // Currently authorized recovery of an original attempt; missing results do not establish noncommit.
 type OperationResult interface {
 	IsOperationResult()
+}
+
+// Owner-only page or safe failure.
+type OwnerInvitationsResult interface {
+	IsOwnerInvitationsResult()
 }
 
 // Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
@@ -88,6 +118,18 @@ type CreateExpenseInput struct {
 	Split SplitMode `json:"split"`
 	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
 	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+}
+
+// Identity-scoped frozen creation intent; actor and USD currency are server supplied.
+type CreateGroupInput struct {
+	// Client-generated key scoped to the verified creator and CREATE_GROUP; retain through uncertainty.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Trim ASCII space/tab/CR/LF; require 1–120 Unicode scalars, without NUL or surrogate code points.
+	Name string `json:"name"`
+	// Explicit classification; no inferred household or inherited membership.
+	Kind GroupKind `json:"kind"`
+	// Required for TRIP, absent or null for ORDINARY.
+	Trip *GroupTripInput `json:"trip,omitempty"`
 }
 
 // One selected participant and its nonnegative exact share, including zero.
@@ -219,6 +261,12 @@ type FieldProblem struct {
 
 // Currently authorized group projections; selected members, expense page and complete balances share one statement snapshot.
 type Group struct {
+	// Derived classification; absence of trip metadata means ORDINARY.
+	Kind GroupKind `json:"kind"`
+	// Trip metadata only for this currently accessible group; ordinary groups return null.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this authorized group is the designated household; never reveals another group ID.
+	IsHousehold bool `json:"isHousehold"`
 	// Stable typed public ID; possession does not authorize access.
 	ID string `json:"id"`
 	// Current authorized group label.
@@ -269,8 +317,58 @@ type GroupBalances struct {
 
 func (GroupBalances) IsBalanceResult() {}
 
+// Immutable original creation identity; current names, metadata and balances require a fresh authorized Group read.
+type GroupCreationCompleted struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Original stable Group ID; current access was checked before disclosure.
+	GroupID string `json:"groupId"`
+	// Original creator Membership ID, regardless of later ownership changes.
+	CreatorMembershipID string `json:"creatorMembershipId"`
+	// Original durable creation timestamp.
+	CreatedAt ledger.DateTime `json:"createdAt"`
+}
+
+func (GroupCreationCompleted) IsCreateGroupResult() {}
+
+func (GroupCreationCompleted) IsGroupCreationOperationResult() {}
+
+// OPERATION_CONFLICT: the key already names different canonical input; the original result is unchanged.
+type GroupCreationConflict struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+}
+
+func (GroupCreationConflict) IsCreateGroupResult() {}
+
+// NOT_STARTED: no committed attempt is visible; an in-flight request may still commit. Retry only identical intent.
+type GroupCreationNotStarted struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+}
+
+func (GroupCreationNotStarted) IsGroupCreationOperationResult() {}
+
+// Durable domain rejection with no group created; correction requires a new key.
+type GroupCreationRejected struct {
+	// Original identity-scoped attempt key.
+	OperationKey ledger.OperationKey `json:"operationKey"`
+	// Safe retained validation errors.
+	Fields []*FieldProblem `json:"fields"`
+}
+
+func (GroupCreationRejected) IsCreateGroupResult() {}
+
+func (GroupCreationRejected) IsGroupCreationOperationResult() {}
+
 // One currently accessible group; no cross-group financial aggregation.
 type GroupSummary struct {
+	// Derived classification; absence of trip metadata means ORDINARY.
+	Kind GroupKind `json:"kind"`
+	// Trip metadata only for this currently accessible group; ordinary groups return null.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this authorized group is the designated household; never reveals another group ID.
+	IsHousehold bool `json:"isHousehold"`
 	// Stable typed public ID; possession does not authorize access.
 	ID string `json:"id"`
 	// Current authorized group label.
@@ -279,11 +377,89 @@ type GroupSummary struct {
 	Currency Currency `json:"currency"`
 }
 
+// Immutable creation metadata; inclusive Gregorian dates, independent of expense dates.
+type GroupTrip struct {
+	// Exact destination content, including whitespace; absent input becomes empty.
+	Destination string `json:"destination"`
+	// Inclusive first travel date.
+	StartDate ledger.Date `json:"startDate"`
+	// Inclusive last travel date, at or after startDate.
+	EndDate ledger.Date `json:"endDate"`
+}
+
+// Trip creation fields; destination is optional, dates are required.
+type GroupTripInput struct {
+	// Absent or null means empty; at most 200 Unicode scalar values, no NUL.
+	Destination *string `json:"destination,omitempty"`
+	// Valid Gregorian YYYY-MM-DD in years 0001 through 9999.
+	StartDate ledger.Date `json:"startDate"`
+	// Valid Gregorian date at or after startDate; equal dates are allowed.
+	EndDate ledger.Date `json:"endDate"`
+}
+
 // Process-level GraphQL availability, not database or financial readiness.
 type Health struct {
 	// Returns "ok" when the GraphQL health resolver responds; does not indicate database or financial readiness.
 	Status string `json:"status"`
 }
+
+// Original committed result with separately observed current state.
+type InvitationActionResult struct {
+	// Typed InvitationAction ID when an action exists.
+	ActionID *string `json:"actionID,omitempty"`
+	// Typed Invitation ID when known and authorized.
+	InvitationID *string `json:"invitationID,omitempty"`
+	// Typed Group ID; still requires independent authorization.
+	GroupID *string `json:"groupID,omitempty"`
+	// Outcome of the original action.
+	Outcome InvitationOutcome `json:"outcome"`
+	// Expiry recorded by the original action, never a new extension.
+	CommittedExpiresAt *ledger.DateTime `json:"committedExpiresAt,omitempty"`
+	// Currently observed expiry, independent of original action.
+	CurrentExpiresAt *ledger.DateTime `json:"currentExpiresAt,omitempty"`
+	// Current safe lifecycle when known.
+	Lifecycle *string `json:"lifecycle,omitempty"`
+	// Current delivery status; PROVIDER_ACCEPTED is not recipient delivery.
+	Delivery *string `json:"delivery,omitempty"`
+	// Current access observation, never an authorization credential.
+	HasAccess bool `json:"hasAccess"`
+}
+
+func (InvitationActionResult) IsInvitationResult() {}
+
+// Safe attempt status; recover original owner action for durable state.
+type InvitationDeliveryResult struct {
+	// ATTEMPTED or NOT_CLAIMABLE; ATTEMPTED does not assert delivery.
+	Status string `json:"status"`
+}
+
+func (InvitationDeliveryResult) IsInvitationDelivery() {}
+
+// A valid capability discloses only these two names.
+type InvitationPreview struct {
+	// Group display name, not financial access.
+	GroupName string `json:"groupName"`
+	// Original inviter display name, never email.
+	InviterDisplayName string `json:"inviterDisplayName"`
+}
+
+func (InvitationPreview) IsInvitationPreviewResult() {}
+
+// Safe failure without recipient, token or provider details.
+type InvitationProblem struct {
+	// Allowlisted safe error code, never provider text.
+	Code string `json:"code"`
+	// Safe recovery guidance.
+	Message string `json:"message"`
+}
+
+func (InvitationProblem) IsInvitationPreviewResult() {}
+
+func (InvitationProblem) IsInvitationResult() {}
+
+func (InvitationProblem) IsOwnerInvitationsResult() {}
+
+func (InvitationProblem) IsInvitationDelivery() {}
 
 // Complete individual position including retained inactive-member history.
 type MemberPosition struct {
@@ -368,6 +544,32 @@ func (OperationProgress) IsRecordRepaymentResult() {}
 
 func (OperationProgress) IsRepaymentOperationResult() {}
 
+// Current-owner projection; no token or full link.
+type OwnerInvitation struct {
+	// Typed Invitation ID.
+	ID string `json:"id"`
+	// Recipient only while outstanding; purged on terminal transition.
+	Recipient *string `json:"recipient,omitempty"`
+	// Current expiry; viewing does not renew.
+	ExpiresAt ledger.DateTime `json:"expiresAt"`
+	// OUTSTANDING, EXPIRED, ACCEPTED or REVOKED.
+	Lifecycle string `json:"lifecycle"`
+	// Latest safe typed InvitationAction ID.
+	ActionID *string `json:"actionID,omitempty"`
+	// Current latest send status.
+	Delivery string `json:"delivery"`
+}
+
+// Owner-only UUID-ordered page, refresh to discover concurrent insertions.
+type OwnerInvitationPage struct {
+	// At most first invitations in exclusive ID order.
+	Items []*OwnerInvitation `json:"items"`
+	// Last Invitation ID when a full page may have a successor.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+func (OwnerInvitationPage) IsOwnerInvitationsResult() {}
+
 // Forward pagination metadata, including whether eligible earlier rows exist at the same anchor.
 type PageInfo struct {
 	// False on the first page; otherwise an eligible tuple exists at or above the supplied boundary.
@@ -397,6 +599,10 @@ func (Problem) IsBalanceResult() {}
 func (Problem) IsCreateExpenseResult() {}
 
 func (Problem) IsOperationResult() {}
+
+func (Problem) IsCreateGroupResult() {}
+
+func (Problem) IsGroupCreationOperationResult() {}
 
 func (Problem) IsRecordRepaymentResult() {}
 
@@ -533,8 +739,10 @@ type Viewer struct {
 	ID string `json:"id"`
 	// Current minimal display label; not an immutable name snapshot.
 	DisplayName string `json:"displayName"`
-	// Informational designated-creator capability; no group-creation mutation is exposed here.
+	// Informational designated-creator capability; creation always rechecks current authority.
 	CanCreateGroups bool `json:"canCreateGroups"`
+	// UTC calendar date sampled once for this response; use for trip status and defaults.
+	Today ledger.Date `json:"today"`
 	// Currently accessible active groups sorted by canonical group ID; never a manufactured bootstrap group.
 	Groups []*GroupSummary `json:"groups"`
 }
@@ -740,6 +948,222 @@ func (e Currency) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Classification derived from the optional trip extension; access and ledgers remain group-local.
+type GroupKind string
+
+const (
+	// An ordinary group, including the separately designated household.
+	GroupKindOrdinary GroupKind = "ORDINARY"
+	// A group with travel metadata; dates never restrict financial history.
+	GroupKindTrip GroupKind = "TRIP"
+)
+
+var AllGroupKind = []GroupKind{
+	GroupKindOrdinary,
+	GroupKindTrip,
+}
+
+func (e GroupKind) IsValid() bool {
+	switch e {
+	case GroupKindOrdinary, GroupKindTrip:
+		return true
+	}
+	return false
+}
+
+func (e GroupKind) String() string {
+	return string(e)
+}
+
+func (e *GroupKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = GroupKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid GroupKind", str)
+	}
+	return nil
+}
+
+func (e GroupKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *GroupKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e GroupKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Original operation kind for actor-bound recovery.
+type InvitationOperation string
+
+const (
+	// Recover the original create action.
+	InvitationOperationCreate InvitationOperation = "CREATE"
+	// Recover the original resend action.
+	InvitationOperationResend InvitationOperation = "RESEND"
+	// Recover the original revoke action.
+	InvitationOperationRevoke InvitationOperation = "REVOKE"
+	// Recover the original accept action.
+	InvitationOperationAccept InvitationOperation = "ACCEPT"
+)
+
+var AllInvitationOperation = []InvitationOperation{
+	InvitationOperationCreate,
+	InvitationOperationResend,
+	InvitationOperationRevoke,
+	InvitationOperationAccept,
+}
+
+func (e InvitationOperation) IsValid() bool {
+	switch e {
+	case InvitationOperationCreate, InvitationOperationResend, InvitationOperationRevoke, InvitationOperationAccept:
+		return true
+	}
+	return false
+}
+
+func (e InvitationOperation) String() string {
+	return string(e)
+}
+
+func (e *InvitationOperation) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InvitationOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InvitationOperation", str)
+	}
+	return nil
+}
+
+func (e InvitationOperation) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InvitationOperation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InvitationOperation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Safe invitation outcomes; receipts never authorize group access.
+type InvitationOutcome string
+
+const (
+	// Saved as evaluated by the invitation service.
+	InvitationOutcomeSaved InvitationOutcome = "SAVED"
+	// Existing as evaluated by the invitation service.
+	InvitationOutcomeExisting InvitationOutcome = "EXISTING"
+	// Applied as evaluated by the invitation service.
+	InvitationOutcomeApplied InvitationOutcome = "APPLIED"
+	// Admitted as evaluated by the invitation service.
+	InvitationOutcomeAdmitted InvitationOutcome = "ADMITTED"
+	// Already member as evaluated by the invitation service.
+	InvitationOutcomeAlreadyMember InvitationOutcome = "ALREADY_MEMBER"
+	// Historical acceptance as evaluated by the invitation service.
+	InvitationOutcomeHistoricalAcceptance InvitationOutcome = "HISTORICAL_ACCEPTANCE"
+	// Already accepted as evaluated by the invitation service.
+	InvitationOutcomeAlreadyAccepted InvitationOutcome = "ALREADY_ACCEPTED"
+	// Already revoked as evaluated by the invitation service.
+	InvitationOutcomeAlreadyRevoked InvitationOutcome = "ALREADY_REVOKED"
+	// Key reused as evaluated by the invitation service.
+	InvitationOutcomeKeyReused InvitationOutcome = "KEY_REUSED"
+	// Not observed as evaluated by the invitation service.
+	InvitationOutcomeNotObserved InvitationOutcome = "NOT_OBSERVED"
+	// Rate limited as evaluated by the invitation service.
+	InvitationOutcomeRateLimited InvitationOutcome = "RATE_LIMITED"
+	// Wrong account as evaluated by the invitation service.
+	InvitationOutcomeWrongAccount InvitationOutcome = "WRONG_ACCOUNT"
+	// Unavailable link as evaluated by the invitation service.
+	InvitationOutcomeUnavailableLink InvitationOutcome = "UNAVAILABLE_LINK"
+	// New targeted invitation required as evaluated by the invitation service.
+	InvitationOutcomeNewTargetedInvitationRequired InvitationOutcome = "NEW_TARGETED_INVITATION_REQUIRED"
+)
+
+var AllInvitationOutcome = []InvitationOutcome{
+	InvitationOutcomeSaved,
+	InvitationOutcomeExisting,
+	InvitationOutcomeApplied,
+	InvitationOutcomeAdmitted,
+	InvitationOutcomeAlreadyMember,
+	InvitationOutcomeHistoricalAcceptance,
+	InvitationOutcomeAlreadyAccepted,
+	InvitationOutcomeAlreadyRevoked,
+	InvitationOutcomeKeyReused,
+	InvitationOutcomeNotObserved,
+	InvitationOutcomeRateLimited,
+	InvitationOutcomeWrongAccount,
+	InvitationOutcomeUnavailableLink,
+	InvitationOutcomeNewTargetedInvitationRequired,
+}
+
+func (e InvitationOutcome) IsValid() bool {
+	switch e {
+	case InvitationOutcomeSaved, InvitationOutcomeExisting, InvitationOutcomeApplied, InvitationOutcomeAdmitted, InvitationOutcomeAlreadyMember, InvitationOutcomeHistoricalAcceptance, InvitationOutcomeAlreadyAccepted, InvitationOutcomeAlreadyRevoked, InvitationOutcomeKeyReused, InvitationOutcomeNotObserved, InvitationOutcomeRateLimited, InvitationOutcomeWrongAccount, InvitationOutcomeUnavailableLink, InvitationOutcomeNewTargetedInvitationRequired:
+		return true
+	}
+	return false
+}
+
+func (e InvitationOutcome) String() string {
+	return string(e)
+}
+
+func (e *InvitationOutcome) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InvitationOutcome(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InvitationOutcome", str)
+	}
+	return nil
+}
+
+func (e InvitationOutcome) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InvitationOutcome) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InvitationOutcome) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 // Current role derived from the group owner membership, independently of financial position.
 type MembershipRole string
 
@@ -921,6 +1345,8 @@ func (e OperationState) MarshalJSON() ([]byte, error) {
 type ProblemCode string
 
 const (
+	// Enabled caller lacks current designated group-creation authority.
+	ProblemCodeForbidden ProblemCode = "FORBIDDEN"
 	// Missing or currently unauthorized resource, without distinguishing private existence.
 	ProblemCodeNotFound ProblemCode = "NOT_FOUND"
 	// The requested outcome could not be safely established; never assume an empty ledger.
@@ -934,6 +1360,7 @@ const (
 )
 
 var AllProblemCode = []ProblemCode{
+	ProblemCodeForbidden,
 	ProblemCodeNotFound,
 	ProblemCodeUnavailable,
 	ProblemCodeInvalidCursor,
@@ -943,7 +1370,7 @@ var AllProblemCode = []ProblemCode{
 
 func (e ProblemCode) IsValid() bool {
 	switch e {
-	case ProblemCodeNotFound, ProblemCodeUnavailable, ProblemCodeInvalidCursor, ProblemCodeInvalidInput, ProblemCodeAmountOverflow:
+	case ProblemCodeForbidden, ProblemCodeNotFound, ProblemCodeUnavailable, ProblemCodeInvalidCursor, ProblemCodeInvalidInput, ProblemCodeAmountOverflow:
 		return true
 	}
 	return false

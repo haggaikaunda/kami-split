@@ -189,3 +189,8 @@ func RequireRequest(ctx context.Context) error {
 	_, err := requestIdentity(ctx)
 	return err
 }
+
+// VerifiedSubject returns only server-verified request evidence. It grants no
+// application access; operations must recheck enabled identity and authorization
+// transactionally before reading or writing data.
+func VerifiedSubject(ctx context.Context) (string, error) { return requestIdentity(ctx) }

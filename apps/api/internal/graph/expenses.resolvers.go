@@ -75,9 +75,10 @@ func (r *queryResolver) Viewer(ctx context.Context) (model.ViewerResult, error) 
 	if v.State != "" {
 		return &model.ViewerAccess{State: model.AccessState(v.State)}, nil
 	}
-	viewer := &model.Viewer{ID: v.ID, DisplayName: v.DisplayName, CanCreateGroups: v.CanCreateGroups, Groups: []*model.GroupSummary{}}
+	viewer := &model.Viewer{ID: v.ID, DisplayName: v.DisplayName, CanCreateGroups: v.CanCreateGroups, Today: responseToday(ctx), Groups: []*model.GroupSummary{}}
 	for _, g := range v.Groups {
-		viewer.Groups = append(viewer.Groups, &model.GroupSummary{ID: g.ID, Name: g.Name, Currency: model.Currency(g.Currency)})
+		kind, trip := mapTrip(g.Trip)
+		viewer.Groups = append(viewer.Groups, &model.GroupSummary{Kind: kind, Trip: trip, IsHousehold: g.IsHousehold, ID: g.ID, Name: g.Name, Currency: model.Currency(g.Currency)})
 	}
 	return viewer, nil
 }

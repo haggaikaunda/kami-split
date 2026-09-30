@@ -1,6 +1,6 @@
 # Testing strategy
 
-Tests demonstrate behavior rather than mirror implementation. The browser UI still uses an asynchronous in-memory adapter. The Go API separately implements verified authentication, persisted expense creation/recovery and authorized balance/read operations, plus internal targeted invitation/admission/delivery recovery. These paths have real Supabase/PostgreSQL integration coverage. Public onboarding transport (#80) and browser Relay integration (#83) remain deferred; mock UI tests do not demonstrate their completion. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
+Tests demonstrate behavior rather than mirror implementation. Financial browser previews use an asynchronous in-memory adapter; real onboarding uses configured Auth/API services. The Go API separately implements verified authentication, persisted expense creation/recovery and authorized balance/read operations, plus internal targeted invitation/admission/delivery recovery. These paths have real Supabase/PostgreSQL integration coverage. [Public onboarding](application/onboarding.md) has actual provider/HTTP integration and browser coverage. Financial browser Relay integration (#83) remains deferred; mock financial UI tests do not demonstrate its completion. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
 
 ## Current coverage
 
@@ -11,7 +11,7 @@ Tests demonstrate behavior rather than mirror implementation. The browser UI sti
 - **LAN compatibility:** helper and actual-provider tests remove `crypto.randomUUID` while retaining cryptographic `getRandomValues`; verify UUID format, distinct visits, stable draft IDs and duplicate-safe deletion/household recovery.
 - **API behavior:** HTTP lifecycle/readiness, verified JWT/JWKS request identity, safe errors, exact-money rules, canonical operation inputs, signed cursors and authenticated GraphQL operations.
 - **Real database integration:** migration upgrade/fresh replay and desired-schema/ACL comparison, runtime-role and cross-user/group denial, transaction-local identity cleanup, revocation/ownership locks, atomic expense/allocation/audit/result writes, duplicate and mismatch recovery, complete balances, pagination, rollback and response/COMMIT uncertainty, and financial dump/replay.
-- **Internal invitations:** capability preview/eligibility, actor-bound admission, current provider email evidence, lifecycle races, durable delivery recovery, and maintenance cleanup against actual local Supabase/PostgreSQL. This does not claim the deferred public onboarding journey is connected.
+- **Internal invitations:** capability preview/eligibility, actor-bound admission, current provider email evidence, lifecycle races, durable delivery recovery, and maintenance cleanup against actual local Supabase/PostgreSQL. The onboarding suite additionally connects actual provider emails, callback state, owner HTTP operations and admission.
 - **Manual browser acceptance:** actual app interactions recorded in feature PRs and the [final report](accessibility/README.md), with a [criterion matrix](accessibility/criterion-matrix.md) for P01–P10/N01–N07. The LAN origin was additionally verified through rendered overview and add/preserve/resume/save in [PR #51](https://github.com/haggaikaunda/kami-split/pull/51).
 
 The web baseline after PR #51 is **325 passing tests in 54 files** (September 26, 2026). Earlier reports retain their at-the-time counts. There is no checked-in automated browser E2E runner; `pnpm test` runs Vitest, not the manual acceptance walkthroughs.
@@ -48,6 +48,6 @@ The final pass covers 320/390/768/1280px, actual 200% root text, keyboard dialog
 
 ## Remaining integration and feature coverage
 
-Public onboarding and browser Relay integration need acceptance coverage when implemented under #80/#83. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
+Financial browser Relay integration still needs acceptance coverage under #83; onboarding acceptance is documented in its guide. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
 
 Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).

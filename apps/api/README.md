@@ -1,6 +1,6 @@
 # Go GraphQL server
 
-Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). Internal targeted invitation, admission and durable delivery recovery are also implemented; public invitation/onboarding transport remains #80. The web preview still uses its in-memory DataPort; Relay integration remains #83.
+Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). Internal targeted invitation, admission and durable delivery recovery are also implemented; [onboarding transport](../../docs/application/onboarding.md) connects provider adapters, invitation SDL and browser entry. The web preview still uses its in-memory DataPort; Relay integration remains #83.
 
 ## Run locally
 
@@ -52,6 +52,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 - `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and thin handwritten transport mapping.
+- `internal/group`: verified identity-scoped group creation and durable recovery; see [the group contract](../../packages/schema/README.md#group-creation-and-discovery).
 - `internal/expense`: authorized reads, transactional writes and same-attempt recovery.
 - `internal/ledger`: pure exact-money, canonical-input, split, balance and cursor rules.
 - [`packages/schema`](../../packages/schema/README.md): authoritative SDL consumed by `gqlgen.yml`.

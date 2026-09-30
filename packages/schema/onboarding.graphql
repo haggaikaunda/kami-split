@@ -1,0 +1,332 @@
+"""
+Safe invitation outcomes; receipts never authorize group access.
+"""
+enum InvitationOutcome {
+  """
+  Saved as evaluated by the invitation service.
+  """
+  SAVED
+  """
+  Existing as evaluated by the invitation service.
+  """
+  EXISTING
+  """
+  Applied as evaluated by the invitation service.
+  """
+  APPLIED
+  """
+  Admitted as evaluated by the invitation service.
+  """
+  ADMITTED
+  """
+  Already member as evaluated by the invitation service.
+  """
+  ALREADY_MEMBER
+  """
+  Historical acceptance as evaluated by the invitation service.
+  """
+  HISTORICAL_ACCEPTANCE
+  """
+  Already accepted as evaluated by the invitation service.
+  """
+  ALREADY_ACCEPTED
+  """
+  Already revoked as evaluated by the invitation service.
+  """
+  ALREADY_REVOKED
+  """
+  Key reused as evaluated by the invitation service.
+  """
+  KEY_REUSED
+  """
+  Not observed as evaluated by the invitation service.
+  """
+  NOT_OBSERVED
+  """
+  Rate limited as evaluated by the invitation service.
+  """
+  RATE_LIMITED
+  """
+  Wrong account as evaluated by the invitation service.
+  """
+  WRONG_ACCOUNT
+  """
+  Unavailable link as evaluated by the invitation service.
+  """
+  UNAVAILABLE_LINK
+  """
+  New targeted invitation required as evaluated by the invitation service.
+  """
+  NEW_TARGETED_INVITATION_REQUIRED
+}
+"""
+Original operation kind for actor-bound recovery.
+"""
+enum InvitationOperation {
+  """
+  Recover the original create action.
+  """
+  CREATE
+  """
+  Recover the original resend action.
+  """
+  RESEND
+  """
+  Recover the original revoke action.
+  """
+  REVOKE
+  """
+  Recover the original accept action.
+  """
+  ACCEPT
+}
+"""
+Safe failure without recipient, token or provider details.
+"""
+type InvitationProblem {
+  """
+  Allowlisted safe error code, never provider text.
+  """
+  code: String!
+  """
+  Safe recovery guidance.
+  """
+  message: String!
+}
+"""
+A valid capability discloses only these two names.
+"""
+type InvitationPreview {
+  """
+  Group display name, not financial access.
+  """
+  groupName: String!
+  """
+  Original inviter display name, never email.
+  """
+  inviterDisplayName: String!
+}
+"""
+Original committed result with separately observed current state.
+"""
+type InvitationActionResult {
+  """
+  Typed InvitationAction ID when an action exists.
+  """
+  actionID: ID
+  """
+  Typed Invitation ID when known and authorized.
+  """
+  invitationID: ID
+  """
+  Typed Group ID; still requires independent authorization.
+  """
+  groupID: ID
+  """
+  Outcome of the original action.
+  """
+  outcome: InvitationOutcome!
+  """
+  Expiry recorded by the original action, never a new extension.
+  """
+  committedExpiresAt: DateTime
+  """
+  Currently observed expiry, independent of original action.
+  """
+  currentExpiresAt: DateTime
+  """
+  Current safe lifecycle when known.
+  """
+  lifecycle: String
+  """
+  Current delivery status; PROVIDER_ACCEPTED is not recipient delivery.
+  """
+  delivery: String
+  """
+  Current access observation, never an authorization credential.
+  """
+  hasAccess: Boolean!
+}
+"""
+Current-owner projection; no token or full link.
+"""
+type OwnerInvitation {
+  """
+  Typed Invitation ID.
+  """
+  id: ID!
+  """
+  Recipient only while outstanding; purged on terminal transition.
+  """
+  recipient: String
+  """
+  Current expiry; viewing does not renew.
+  """
+  expiresAt: DateTime!
+  """
+  OUTSTANDING, EXPIRED, ACCEPTED or REVOKED.
+  """
+  lifecycle: String!
+  """
+  Latest safe typed InvitationAction ID.
+  """
+  actionID: ID
+  """
+  Current latest send status.
+  """
+  delivery: String!
+}
+"""
+Owner-only UUID-ordered page, refresh to discover concurrent insertions.
+"""
+type OwnerInvitationPage {
+  """
+  At most first invitations in exclusive ID order.
+  """
+  items: [OwnerInvitation!]!
+  """
+  Last Invitation ID when a full page may have a successor.
+  """
+  nextCursor: ID
+}
+"""
+Safe attempt status; recover original owner action for durable state.
+"""
+type InvitationDeliveryResult {
+  """
+  ATTEMPTED or NOT_CLAIMABLE; ATTEMPTED does not assert delivery.
+  """
+  status: String!
+}
+"""
+Valid two-field preview or generic unavailable link.
+"""
+union InvitationPreviewResult = InvitationPreview | InvitationProblem
+"""
+Saved action or safe failure. Errors do not prove a write did not commit.
+"""
+union InvitationResult = InvitationActionResult | InvitationProblem
+"""
+Owner-only page or safe failure.
+"""
+union OwnerInvitationsResult = OwnerInvitationPage | InvitationProblem
+"""
+Delivery attempt outcome or safe failure.
+"""
+union InvitationDelivery = InvitationDeliveryResult | InvitationProblem
+extend type Query {
+  """
+  Public capability preview; invalid, expired and terminal links are indistinguishable.
+  """
+  previewInvitation(
+    """
+    High-entropy capability from the invitation; never log or persist in browser storage.
+    """
+    token: String!
+  ): InvitationPreviewResult!
+  """
+  Current owner only; first is 1..50 and after is an exclusive typed Invitation ID.
+  """
+  ownerInvitations(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Page size from 1 through 50.
+    """
+    first: Int! = 20
+    """
+    Exclusive typed Invitation cursor from the prior page.
+    """
+    after: ID
+  ): OwnerInvitationsResult!
+  """
+  Recover this actor's same operation; NOT_OBSERVED cannot rule out an in-flight commit.
+  """
+  invitationAction(
+    """
+    Original action kind, unchanged during recovery.
+    """
+    kind: InvitationOperation!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}
+extend type Mutation {
+  """
+  Save targeted invitation; EXISTING does not renew or request delivery.
+  """
+  createTargetedInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Target email under the shared canonical comparison policy; never retarget an old invitation.
+    """
+    email: String!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Deliberate renewal with same link; repeat original key to recover without extending again.
+  """
+  resendInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Typed Invitation ID within the specified group.
+    """
+    id: ID!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Terminal revoke; cannot remove existing memberships or revive an accepted invitation.
+  """
+  revokeInvitation(
+    """
+    Typed Group ID; current owner authority is independently checked.
+    """
+    groupID: ID!
+    """
+    Typed Invitation ID within the specified group.
+    """
+    id: ID!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+  """
+  Send/retry committed action through its stable provider key within the recovery window.
+  """
+  retryInvitationDelivery(
+    """
+    Existing typed InvitationAction ID; current authority and retry window are checked.
+    """
+    actionID: ID!
+  ): InvitationDelivery!
+  """
+  Explicit admission with fresh current verified email; only #79 writes membership state.
+  """
+  acceptInvitation(
+    """
+    High-entropy capability from the invitation; never log or persist in browser storage.
+    """
+    token: String!
+    """
+    Original actor-bound attempt UUID, generated before initial submission.
+    """
+    key: OperationKey!
+  ): InvitationResult!
+}

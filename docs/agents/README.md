@@ -8,4 +8,4 @@ Start with the repository [agent instructions](../../AGENTS.md) and [delivery wo
 - [Go engineering guide](go-guidelines.md): rationale, selected external conventions, and verification expectations.
 - [Application documentation](../application/README.md): current behavior and planned architecture.
 
-The existing web application and its test suite remain the implementation baseline. The Go API implements verified identity, authorized persisted expenses and complete balances, plus internal targeted invitation/admission/delivery recovery. Public onboarding transport and browser integration remain separate work.
+The existing web application and its test suite remain the implementation baseline. The Go API implements verified identity, authorized persisted expenses and complete balances, plus internal targeted invitation/admission/delivery recovery. Targeted onboarding connects the real Auth/email/browser entry journey; financial browser integration remains separate work.

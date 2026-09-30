@@ -127,6 +127,10 @@ Safe failures that disclose neither private existence nor infrastructure details
 """
 enum ProblemCode {
   """
+  Enabled caller lacks current designated group-creation authority.
+  """
+  FORBIDDEN
+  """
   Missing or currently unauthorized resource, without distinguishing private existence.
   """
   NOT_FOUND
@@ -236,9 +240,13 @@ type Viewer implements Node {
   """
   displayName: String!
   """
-  Informational designated-creator capability; no group-creation mutation is exposed here.
+  Informational designated-creator capability; creation always rechecks current authority.
   """
   canCreateGroups: Boolean!
+  """
+  UTC calendar date sampled once for this response; use for trip status and defaults.
+  """
+  today: Date!
   """
   Currently accessible active groups sorted by canonical group ID; never a manufactured bootstrap group.
   """
@@ -257,6 +265,18 @@ type ViewerAccess {
 One currently accessible group; no cross-group financial aggregation.
 """
 type GroupSummary {
+  """
+  Derived classification; absence of trip metadata means ORDINARY.
+  """
+  kind: GroupKind!
+  """
+  Trip metadata only for this currently accessible group; ordinary groups return null.
+  """
+  trip: GroupTrip
+  """
+  Whether this authorized group is the designated household; never reveals another group ID.
+  """
+  isHousehold: Boolean!
   """
   Stable typed public ID; possession does not authorize access.
   """
@@ -278,6 +298,18 @@ union GroupResult = Group | Problem
 Currently authorized group projections; selected members, expense page and complete balances share one statement snapshot.
 """
 type Group implements Node {
+  """
+  Derived classification; absence of trip metadata means ORDINARY.
+  """
+  kind: GroupKind!
+  """
+  Trip metadata only for this currently accessible group; ordinary groups return null.
+  """
+  trip: GroupTrip
+  """
+  Whether this authorized group is the designated household; never reveals another group ID.
+  """
+  isHousehold: Boolean!
   """
   Stable typed public ID; possession does not authorize access.
   """

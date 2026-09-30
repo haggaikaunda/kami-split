@@ -190,7 +190,7 @@ func TestRepaymentGraphQLCurrentAuthorizationAndValidation(t *testing.T) {
 	if foreign["data"].(map[string]any)["node"] != nil {
 		t.Fatal(foreign)
 	}
-	for _, change := range []map[string]any{{"amountMinor": "0"}, {"amountMinor": "1000000000"}, {"currency": "EUR"}, {"senderId": f.public("Membership", 304)}, {"recipientId": f.public("Membership", 301)}} {
+	for _, change := range []map[string]any{{"amountMinor": "0"}, {"amountMinor": "1000000000"}, {"senderId": f.public("Membership", 304)}, {"recipientId": f.public("Membership", 301)}} {
 		attempt := repaymentGQLInput(f)
 		for k, v := range change {
 			attempt[k] = v
@@ -211,6 +211,11 @@ func TestRepaymentGraphQLCurrentAuthorizationAndValidation(t *testing.T) {
 		if out["errors"] == nil {
 			t.Fatal(out)
 		}
+	}
+	unsupported := repaymentGQLInput(f)
+	unsupported["currency"] = "EUR"
+	if out := repaymentGraphQL(t, f, 1, repaymentMutation, map[string]any{"input": unsupported}); out["errors"] == nil {
+		t.Fatal(out)
 	}
 	unauth := repaymentGraphQL(t, f, 0, repaymentMutation, map[string]any{"input": in})
 	if unauth["errors"] == nil {
