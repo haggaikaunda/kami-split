@@ -19,3 +19,5 @@ shared-link implementation is tracked separately in #108. Runtime proof remains 
 [ADR-006: Ordinary and trip-group creation](006-group-creation.md) defines the #85 design-only extension, its contract, UI adaptation and ordered follow-up work. Adoption and implementation are separate.
 
 [ADR-007: Household dashboard](007-household-dashboard.md) specifies #86’s consolidated overview and shared group repayment entry, with explicit policy deferrals and [implementation slices](../proposals/household-dashboard-slices.md). It adds no running API or UI.
+
+[ADR-008: Household partner policy](008-household-partner-policy.md) records owner-approved #109 designation, consent, lifecycle and dashboard eligibility policy, including larger Households and no owner self-invitation. Independent adoption remains required; this document delivers no implementation.
