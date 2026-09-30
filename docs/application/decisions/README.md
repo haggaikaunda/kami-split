@@ -10,3 +10,5 @@ Clarify these documents through reviewed PRs as we learn. Preserve stable IDs. F
 records the accepted #75/#76 design and P1–P4 decisions, including lifetime-of-
 financial-history operation recovery records. Uploaded receipt attachments remain
 deferred. Design acceptance does not claim implementation; delivery gates still apply.
+
+[ADR-006: Ordinary and trip-group creation](006-group-creation.md) defines the #85 design-only extension, its contract, UI adaptation and ordered follow-up work. Adoption and implementation are separate.
