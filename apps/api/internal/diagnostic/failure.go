@@ -12,11 +12,20 @@ type failure struct {
 	operation      string
 }
 
-func (f *failure) Error() string   { return f.outcome.Error() }
-func (f *failure) Unwrap() []error { return []error{f.outcome, f.cause} }
+// Error exposes only the safe application outcome.
+func (f *failure) Error() string { return f.outcome.Error() }
+
+// Unwrap permits internal inspection without formatting private diagnostics.
+func (f *failure) Unwrap() []error {
+	if f.cause == nil {
+		return []error{f.outcome}
+	}
+	return []error{f.outcome, f.cause}
+}
 
 // Wrap preserves errors.Is/As for the public outcome and private cause. Operation
 // must be a static server-defined label, never request or dependency content.
+// Outcome must be non-nil and contain only a safe application message; cause may be nil.
 func Wrap(outcome, cause error, operation string) error {
 	return &failure{outcome: outcome, cause: cause, operation: operation}
 }
