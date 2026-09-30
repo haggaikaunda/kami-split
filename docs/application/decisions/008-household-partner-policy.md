@@ -1,10 +1,10 @@
 # ADR-008: Household partner designation policy
 
-- Status: Proposal for #109; owner agreement and independent design review pending.
+- Status: Owner-approved policy for #109; final review and PR adoption required.
 - Basis: adopted ADR-007 / #86, implemented #75 and adopted #85.
 - Scope: policy and engineering design only; no schema, API or UI implementation.
 
-## Proposed owner decisions
+## Owner-approved decisions
 
 The current enabled, linked Household owner may propose two distinct stable
 application-user identities as the household pair. Ownership authorizes proposing,
@@ -12,6 +12,21 @@ not automatic designation: both proposed partners must explicitly accept the exa
 pair and proposal version while enabled, Auth-linked and active Household members.
 The owner may be one partner, but ownership, installation creator permission,
 invitations, email addresses and member ordering never imply partnership.
+
+Household membership is not capped at two people. The designated pair remains
+exactly two consenting members for this dashboard; it is not the Household member
+list. For example, A may be the active owner while B and C are the pair, with A,
+B and C all Household members. A retains ordinary Household ledger access but
+does not gain pair-dashboard access. Every authorized Household member can read
+the Household ledger under existing group rules; pair designation does not make
+expenses private from other Household members.
+
+The owner is already an active member through bootstrap/group creation or authorized
+ownership transfer and must never invite themselves. If selected as a partner, the
+owner explicitly confirms the designation using that existing identity/membership;
+no new invitation, membership or onboarding is needed. This extends ADR-003 B3's
+initial couple use case to larger Households without changing per-group admission
+or the two-person dashboard pair.
 
 No pre-onboarding placeholder, email designation or invitation acceptance counts as
 partner consent. Ordinary #79/#80 admission establishes identity and membership
@@ -49,8 +64,10 @@ only ordinary/trip groups where both are currently active members. No other Hous
 member, owner or friend gets dashboard permission from that role alone. Ordinary
 individual group access and complete lifetime financial history are unchanged.
 
-These are proposed product choices, not recorded owner approval. #109 cannot close
-until the owner agrees and the design passes independent review.
+The owner approved proceeding with this policy in the #109 delivery conversation,
+explicitly retaining households with more than two members and requiring no
+self-invitation by the owner. PR #126 records that agreement. Design adoption and
+independent final-head review remain required; approval does not deliver runtime features.
 
 ## Stable identity, consent and audit
 
@@ -117,7 +134,9 @@ late responses after access loss. Financial revisions do not prove current eligi
 | D9: loading/error    | Discovery/revalidation failure hides sensitive cached labels and all totals; no zero/settled claim. Ineligible pair does not become a partial dashboard.                                                                                                                |
 | D10: partial rows    | Only freshly authorized eligible rows may show unavailable summaries. A complete H row may render; every overview total stays absent and incomplete is explicit.                                                                                                        |
 
-Independent review must also cover nonpartner owner denial, stale/duplicate consent,
+Independent review must also cover three-member Household A/B/C with owner A and
+pair B/C (ordinary ledger access for A, dashboard denial for A), owner A choosing
+A/B without self-invitation or duplicate membership, stale/duplicate consent,
 proposal cancellation, ownership transfer, separation with nonzero financial balances,
 account recovery, first-designation races and canonical lock ordering. These are
 requirements for future execution tests, not claims of runtime verification.
