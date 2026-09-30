@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -238,36 +239,54 @@ func TestHouseholdIndependentFirstProposalAndConsentRaces(t *testing.T) {
 	householdWant(t, f, 2, "READ", 0, 0, 0, "ACTIVE")
 }
 
-func TestHouseholdIndependentDisableWaitRevalidates(t *testing.T) {
-	f := householdFixture(t)
-	version := householdActive(t, f)
-	tx, err := f.admin.Begin(f.ctx)
-	if err != nil {
-		t.Fatal(err)
+func TestHouseholdIndependentAccountLossWaitRevalidates(t *testing.T) {
+	for _, mode := range []string{"disable", "unlink", "delete"} {
+		t.Run(mode, func(t *testing.T) {
+			f := householdFixture(t)
+			version := householdActive(t, f)
+			tx, err := f.admin.Begin(f.ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback(context.Background())
+			if _, err = tx.Exec(f.ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'`, f.id(3))); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "unlink" {
+				if _, err := tx.Exec(f.ctx, `UPDATE app.users SET live_auth_id=NULL WHERE id=$1`, f.id(3)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "delete" {
+				if _, err := tx.Exec(f.ctx, `RESET ROLE`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := tx.Exec(f.ctx, `DELETE FROM auth.users WHERE id=$1`, f.id(3)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			type answer struct {
+				r householdResult
+				e error
+			}
+			done := make(chan answer, 1)
+			go func() { r, e := householdCall(f, 2, "CONSENT", version, 2, 3); done <- answer{r, e} }()
+			select {
+			case got := <-done:
+				t.Fatalf("consent did not serialize with disable: %+v", got)
+			case <-time.After(100 * time.Millisecond):
+			}
+			if err := tx.Commit(f.ctx); err != nil {
+				t.Fatal(err)
+			}
+			got := <-done
+			if got.e != nil || got.r.State != "CONFLICT" {
+				t.Fatalf("stale consent after disable: %+v", got)
+			}
+			householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
+
+		})
 	}
-	defer tx.Rollback(context.Background())
-	if _, err = tx.Exec(f.ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'`, f.id(3))); err != nil {
-		t.Fatal(err)
-	}
-	type answer struct {
-		r householdResult
-		e error
-	}
-	done := make(chan answer, 1)
-	go func() { r, e := householdCall(f, 2, "CONSENT", version, 2, 3); done <- answer{r, e} }()
-	select {
-	case got := <-done:
-		t.Fatalf("consent did not serialize with disable: %+v", got)
-	case <-time.After(100 * time.Millisecond):
-	}
-	if err := tx.Commit(f.ctx); err != nil {
-		t.Fatal(err)
-	}
-	got := <-done
-	if got.e != nil || got.r.State != "CONFLICT" {
-		t.Fatalf("stale consent after disable: %+v", got)
-	}
-	householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
 }
 
 func TestHouseholdIndependentCancellationAndTerminationRaces(t *testing.T) {
@@ -305,6 +324,112 @@ func TestHouseholdIndependentCancellationAndTerminationRaces(t *testing.T) {
 				if state.State == "ACTIVE" && a.r.State != "CONFLICT" && b.r.State != "CONFLICT" {
 					t.Fatal("finalization won but cancellation did not conflict", a, b)
 				}
+			}
+		})
+	}
+}
+
+func TestHouseholdIndependentRemovalReadmissionRaceKeepsInvalidation(t *testing.T) {
+	f := householdFixture(t)
+	version := householdActive(t, f)
+	tx, err := f.admin.Begin(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(f.ctx, `SELECT app.household_lifecycle_lock(ARRAY[$1::uuid])`, f.id(3)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(f.ctx, `UPDATE app.memberships SET active=false WHERE id=$1`, f.id(23)); err != nil {
+		t.Fatal(err)
+	}
+	// Even leave/rejoin in one transaction must not restore old consent.
+	if _, err := tx.Exec(f.ctx, `UPDATE app.memberships SET active=true WHERE id=$1`, f.id(23)); err != nil {
+		t.Fatal(err)
+	}
+	type answer struct {
+		r householdResult
+		e error
+	}
+	done := make(chan answer, 1)
+	go func() { r, e := householdCall(f, 2, "CONSENT", version, 2, 3); done <- answer{r, e} }()
+	select {
+	case got := <-done:
+		t.Fatalf("consent bypassed lifecycle lock: %+v", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := tx.Commit(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+	got := <-done
+	if got.e != nil || got.r.State != "CONFLICT" {
+		t.Fatalf("leave/rejoin retained old consent: %+v", got)
+	}
+	householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
+}
+
+func TestHouseholdIndependentCanonicalUserLockOrder(t *testing.T) {
+	for _, operation := range []string{"proposal", "bulk_disable"} {
+		t.Run(operation, func(t *testing.T) {
+			f := householdFixture(t)
+			held, err := f.admin.Begin(f.ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer held.Rollback(context.Background())
+			if _, err := held.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := held.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE`, f.id(1)); err != nil {
+				t.Fatal(err)
+			}
+			writer, err := pgx.Connect(f.ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer writer.Close(context.Background())
+			done := make(chan error, 1)
+			go func() {
+				if operation == "proposal" {
+					_, err := householdCall(f, 1, "PROPOSE", 0, 2, 3)
+					done <- err
+					return
+				}
+				_, err := writer.Exec(f.ctx, `SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id IN ('75000000-0000-4000-8000-000000000003','75000000-0000-4000-8000-000000000001')`)
+				done <- err
+			}()
+			select {
+			case err := <-done:
+				t.Fatalf("operation skipped first user lock: %v", err)
+			case <-time.After(100 * time.Millisecond):
+			}
+			probe, err := pgx.Connect(f.ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer probe.Close(context.Background())
+			check, err := probe.Begin(f.ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer check.Rollback(context.Background())
+			if _, err := check.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := check.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE NOWAIT`, f.id(3)); err != nil {
+				t.Fatal("later user acquired before earlier user", err)
+			}
+			if err := check.Rollback(f.ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := held.Commit(f.ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := <-done; err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
