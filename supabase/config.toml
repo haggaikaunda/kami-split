@@ -33,7 +33,9 @@ additional_redirect_urls = []
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+# Enable the email/password provider; global auth.enable_signup remains false.
+# The local provider integration test asserts uninvited signup is rejected.
+enable_signup = true
 enable_confirmations = true
 
 [studio]

@@ -91,8 +91,26 @@ diff -u "$stage/postgres.acl" "$stage/fresh.acl"
 # migration replay, followed by real authenticated runtime integration tests.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
 scripts/check-sqlc.sh
+# Keep local synthetic provider credentials out of command output and arguments.
+# The disposable directory is removed by the existing cleanup trap.
+scripts/db-tool.sh supabase status --output json --workdir "$stage" > "$stage/auth-status.json"
+chmod 600 "$stage/auth-status.json"
 cd apps/api
 TEST_DATABASE_URL="postgres://kami_api:kami-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
 TEST_DATABASE_ADMIN_URL="postgres://postgres:postgres@127.0.0.1:$port/postgres?sslmode=disable" \
-  go test -race -tags=integration -count=1 ./internal/database/... ./internal/auth/...
+  python3 - "$stage/auth-status.json" <<'PROVIDER_TEST'
+import json, os, subprocess, sys
+with open(sys.argv[1]) as status_file:
+    status = json.load(status_file)
+env = os.environ.copy()
+env["TEST_AUTH_URL"] = status["API_URL"].rstrip("/") + "/auth/v1"
+env["TEST_AUTH_ANON_KEY"] = status["ANON_KEY"]
+env["TEST_AUTH_SERVICE_KEY"] = status["SERVICE_ROLE_KEY"]
+# Database permission probes temporarily change cluster roles; packages sharing
+# this cluster must run serially. Tests inside each package still exercise races.
+sys.exit(subprocess.run([
+    "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
+    "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
+], env=env).returncode)
+PROVIDER_TEST
 cd "$root"

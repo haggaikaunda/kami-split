@@ -40,6 +40,13 @@ func run() int {
 			return 1
 		}
 		defer db.Close()
+		maintenanceCtx, cancelMaintenance := context.WithCancel(ctx)
+		maintenanceDone := make(chan struct{})
+		go func() {
+			defer close(maintenanceDone)
+			db.RunInvitationMaintenance(maintenanceCtx, func() { logger.Error("invitation cleanup unavailable") })
+		}()
+		defer func() { cancelMaintenance(); <-maintenanceDone }()
 		dependencies = append(dependencies, db)
 	} else {
 		logger.Info("health-only development mode; database readiness disabled")

@@ -16,7 +16,11 @@ import (
 )
 
 type identityKey struct{}
+
+// A nonzero-size allocation distinguishes independent authenticated requests.
+type requestMarker struct{ value byte }
 type identity struct {
+	marker  *requestMarker
 	subject string
 	err     error
 }
@@ -65,7 +69,7 @@ func (v *Verifier) verify(ctx context.Context, raw string) (string, error) {
 // WithActor. Client metadata and request inputs cannot construct this context key.
 func (v *Verifier) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		evidence := identity{err: Unauthenticated}
+		evidence := identity{err: Unauthenticated, marker: &requestMarker{}}
 		headers := r.Header.Values("Authorization")
 		if len(headers) == 1 {
 			parts := strings.Fields(headers[0])

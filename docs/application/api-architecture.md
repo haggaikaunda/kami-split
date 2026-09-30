@@ -3,7 +3,7 @@
 ## Status
 
 A health-only Go + gqlgen scaffold exists in `apps/api`, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. The responsibilities below describe the intended business backend. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. Local Supabase, pgxpool and disposable sqlc verification are implemented; see [database development](database-development.md). The [identity foundation](identity-foundation.md) implements private identities,
-groups, memberships and transaction-bound reads; financial persistence remains
+groups, memberships and transaction-bound reads. Internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission; public onboarding adapters remain #80. Financial persistence remains
 unimplemented. The web UI currently uses its mock DataPort; Relay integration is future work. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 ## Responsibilities
