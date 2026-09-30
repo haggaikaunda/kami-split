@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph/model"
@@ -42,7 +43,8 @@ func mapExpense(r expense.Record, m map[string]*model.Membership) *model.Expense
 }
 func mapGroup(ctx context.Context, s expense.Snapshot) *model.Group {
 	m := members(s)
-	g := &model.Group{ID: s.ID, Name: s.Name, Currency: model.Currency(s.Currency), ViewerMembership: m[s.ViewerMembershipID], Members: []*model.Membership{}, Snapshot: s}
+	kind, trip := mapTrip(s.Trip)
+	g := &model.Group{Kind: kind, Trip: trip, IsHousehold: s.IsHousehold, ID: s.ID, Name: s.Name, Currency: model.Currency(s.Currency), ViewerMembership: m[s.ViewerMembershipID], Members: []*model.Membership{}, Snapshot: s}
 	for _, member := range s.Members {
 		g.Members = append(g.Members, m[member.ID])
 	}
@@ -167,4 +169,11 @@ func nodeKind(id string) string {
 		return ""
 	}
 	return parts[1]
+}
+
+func mapTrip(trip *database.GroupTripInput) (model.GroupKind, *model.GroupTrip) {
+	if trip == nil {
+		return model.GroupKindOrdinary, nil
+	}
+	return model.GroupKindTrip, &model.GroupTrip{Destination: trip.Destination, StartDate: ledger.Date(trip.StartDate), EndDate: ledger.Date(trip.EndDate)}
 }
