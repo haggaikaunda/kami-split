@@ -1,31 +1,32 @@
 # Group repayment contract — #110
 
-Status: working design; the owner decisions below and independent review are
-required before implementation. This document does not expose a running API.
-[Issue #110](https://github.com/haggaikaunda/kami-split/issues/110) requires a
-small reviewed design PR before persistence/API work. Its prerequisites #82 and
-#86 are complete. [ADR-007](../../decisions/007-household-dashboard.md) supplies
-the group boundary and D2–D4 probes; dashboard queries are not a dependency.
+Status: finalized contract for review; implementation follows adoption of this
+PR. This document does not expose a running API. Prerequisites #82 and #86 are
+complete. [Issue #110](https://github.com/haggaikaunda/kami-split/issues/110) requires
+a reviewed design before persistence/API work. [ADR-007](../../decisions/007-household-dashboard.md)
+supplies the group boundary and D2–D4 probes; dashboard queries are not a dependency.
 
-## Owner decisions awaiting agreement
+## Approved owner decisions
 
-These recommendations are proposals, not approved policy or preview parity.
+[Owner approval](https://github.com/haggaikaunda/kami-split/pull/127#issuecomment-5906321888)
+resolves R1–R3:
 
-| Gate                  | Recommendation                                                                                                        | Alternatives requiring an explicit decision                                                                          |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| R1: creator authority | Any currently authorized active member may record a repayment; preserve server-derived creator separately from sender | Sender only, or sender/recipient only                                                                                |
-| R2: payment amount    | Allow partial repayment; cap it at the current simplified sender-to-recipient obligation under the write lock         | Allow excess/otherwise unmatched actual repayments with explicit acknowledgment and resulting reversed/new positions |
-| R3: counterparties    | Both must be active, enabled, linked members of the target group                                                      | Permit retained inactive counterparties under an explicitly approved eligibility rule                                |
+- **R1:** Any currently authorized active group member may record a repayment.
+  Preserve server-derived creator/audit identity separately from sender/recipient.
+- **R2:** Allow partial repayments and overpayments, including transfers outside
+  current simplified edges or in a previously settled group. They record actual
+  transfers and may create or reverse positions. No obligation cap, required
+  matching edge, balance-version precondition or acknowledgment boolean is added.
+  The explicit named-group/people/amount submission records the caller's intent.
+- **R3:** New repayments require distinct active, enabled, linked members of the
+  target group as sender and recipient. Historical outcomes remain recoverable
+  after later counterparty inactivity when the actor still has current access.
 
-R2's cap would reject a real transfer made outside the current simplified edge;
-this is a product restriction, not a financial conservation requirement. A stale
-form may therefore be rejected after another expense changes matching. No
-acknowledgment field should be implemented unless that alternative is approved.
-R3 concerns new writes only: an original committed outcome remains recoverable
-when a counterparty subsequently becomes inactive, provided the actor still has
-current access. No departure, correction, edit or reversal policy is implied.
+No departure, correction, edit or reversal policy is implied. Simplification
+never writes synthetic repayments. The numeric per-record ceiling is independent
+of an obligation: 1..999999999 cents, matching the existing financial record limit.
 
-## Proposed operation and validation
+## Operation and validation
 
 Use one explicit-group `recordRepayment` and corresponding actor-scoped
 `repaymentOperation` lookup. Input contains groupId, key, senderId, recipientId,
@@ -33,8 +34,7 @@ amountMinor, currency, effectiveDate and note. The server derives creator and
 actor from verified identity. IDs use the existing canonical Group/Membership
 encoding. Sender and recipient must be distinct and belong to that group.
 
-Proposed record bounds are 1..999999999 cents, USD only; finalize these with this
-design. Reuse the implemented MinorUnits, OperationKey, Date and Revision
+Record bounds are 1..999999999 cents, USD only. Reuse the implemented MinorUnits, OperationKey, Date and Revision
 coercion. Note defaults to empty and preserves whitespace, permits 0..2000
 Unicode scalar values, and rejects NUL/unpaired surrogates. Reuse the existing
 Gregorian date range 0001–9999 without inventing a future-date ban. Scalars and
@@ -49,8 +49,8 @@ balances belong in a durable outcome. Current authorized reads resolve labels
 and complete balances separately. Add authorized repayment-by-ID/history reads
 as part of the API slice so users can inspect actual records after losing a
 client key. History is append-only, bounded and paginated using the existing
-signed forward cursor approach with a repayment-specific cursor scope; finalize
-its SDL/examples before implementing the API. No dashboard fields are required.
+signed forward cursor approach with a repayment-specific cursor scope;
+Its contract is specified in [technical design](technical.md). No dashboard fields are required.
 
 ## Financial projection and shared revision
 
@@ -79,8 +79,8 @@ maximum across expenses and repayments, reject exhaustion, allocate exactly
 next +1, and include both in complete read revisions. Expense creation must use
 this same rule. Preserve existing expense revision values and cursor anchors;
 repayment does not add an expense edge. Test interleaved writes and old cursors.
-Database enforcement of cross-kind revision uniqueness must be resolved in the
-persistence design, rather than relying on each table's individual UNIQUE key.
+A shared financial-record registry enforces cross-kind revision uniqueness as
+specified in [technical design](technical.md).
 
 ## Transaction, authorization and durable recovery
 
@@ -111,8 +111,7 @@ state; a definitive semantic rejection retains only its durable attempt result.
 
 Reuse existing committed/validation/mismatch/NOT_OBSERVED/UNKNOWN/NOT_FOUND
 semantics. Current actor authorization precedes recovery, even for old records.
-Same-key retry returns the original result before revalidating counterparties or
-R2's current obligation. Different keys are different actual transfer claims;
+Same-key retry returns the original result before revalidating counterparties. Different keys are different actual transfer claims;
 idempotency does not deduplicate by date/people/amount. Timeout around commit
 never proves failure. Retry only the original key/input, including after restart
 or navigation to another group. Successful recovery then refreshes complete
@@ -120,24 +119,24 @@ balances; failed refresh does not turn a committed repayment into a failed save.
 
 ## Acceptance evidence required for implementation
 
-| Probe                | Expected evidence                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| D2                   | H A→B 2000 and T B→A 2000 remain separate; paying H changes H alone                                                                                          |
-| D3                   | Same-group three-member cycle has each net zero, no obligations; R2 governs attempted new payment                                                            |
-| D4                   | A owes B 2000, B owes C 2000; one A→C payment clears all positions with no B payment                                                                         |
-| Exact validation     | Zero, negative, excessive, malformed amounts; foreign/self counterparties; USD/date/note bounds; R1–R3 policy cases                                          |
-| Authorization        | Absent/forged identity, disabled actor, inactive actor, cross-group node/history/operation access denied under restricted role                               |
-| Duplicate safety     | Concurrent identical keys and restart yield one effect; changed canonical input mismatches; operation kind/group/actor remain separate                       |
-| Recovery             | Lost response before/after commit, long-lived recovery, original outcome versus newer balances; inactive counterparty replay and actor access loss           |
-| Races                | Membership removal/account disable against write; expense versus repayment and distinct repayment attempts serialize; stale obligation validation follows R2 |
-| Atomicity            | Inject failure at record, audit, revision and outcome stages; no partial effect or orphan success; constraints reject later attachments                      |
-| Arithmetic           | Wide intermediate cancellation, aggregate/net/revision overflow, retained inactive history and conservation; no partial settled result                       |
-| Migration/regression | Fresh replay, populated upgrade, desired-schema agreement, expense recovery/cursors unchanged, generation and required CI                                    |
+| Probe                | Expected evidence                                                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D2                   | H A→B 2000 and T B→A 2000 remain separate; paying H changes H alone                                                                                                    |
+| D3                   | Same-group three-member cycle has each net zero, no obligations; a new actual payment is allowed and creates equal/opposite positions                                  |
+| D4                   | A owes B 2000, B owes C 2000; one A→C payment clears all positions with no B payment                                                                                   |
+| Exact validation     | Zero, negative, excessive, malformed amounts; foreign/self counterparties; USD/date/note bounds; R1–R3 policy cases                                                    |
+| Authorization        | Absent/forged identity, disabled actor, inactive actor, cross-group node/history/operation access denied under restricted role                                         |
+| Duplicate safety     | Concurrent identical keys and restart yield one effect; changed canonical input mismatches; operation kind/group/actor remain separate                                 |
+| Recovery             | Lost response before/after commit, long-lived recovery, original outcome versus newer balances; inactive counterparty replay and actor access loss                     |
+| Races                | Membership removal/account disable against write; expense versus repayment and distinct repayment attempts serialize; changed obligations do not cap an actual payment |
+| Atomicity            | Inject failure at record, audit, revision and outcome stages; no partial effect or orphan success; constraints reject later attachments                                |
+| Arithmetic           | Wide intermediate cancellation, aggregate/net/revision overflow, retained inactive history and conservation; no partial settled result                                 |
+| Migration/regression | Fresh replay, populated upgrade, desired-schema agreement, expense recovery/cursors unchanged, generation and required CI                                              |
 
 ## Delivery order
 
-1. Resolve R1–R3, finalize concrete schema/operation examples and persistence
-   constraints, and adopt the independently reviewed design PR.
+1. Adopt this independently reviewed contract and its technical design after
+   required final-head checks.
 2. Implement the smallest complete internal persistence operation with audit,
    recovery and complete projections together; independent PostgreSQL testing.
 3. Expose only implemented, tested SDL/resolvers and authorized history/recovery;
