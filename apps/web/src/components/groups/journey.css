@@ -95,3 +95,21 @@
   border-bottom: 1px solid #a0aaa3;
   padding-block: 0.5rem;
 }
+
+/* Preserve usable native date segments at 320px even with enlarged text. */
+@media (max-width: 480px) {
+  .financial-journey {
+    padding: 8px;
+  }
+  .financial-journey header,
+  .financial-journey section,
+  .financial-recovery {
+    padding: 8px;
+  }
+  .financial-journey fieldset {
+    padding: 4px;
+  }
+  .financial-journey input[type='date'] {
+    padding-inline: 4px;
+  }
+}
