@@ -43,7 +43,7 @@ BEGIN
  SELECT * INTO d FROM app.household_designation_guard WHERE singleton FOR UPDATE;
  PERFORM g.id FROM app.groups g JOIN app.installation i ON i.household_group_id=g.id ORDER BY g.id FOR UPDATE OF g;
  IF (owner_change AND d.state='PENDING') OR
-    (NOT owner_change AND actor IN (d.first_user_id,d.second_user_id) AND d.state IN ('PENDING','ACTIVE','SUSPENDED')) THEN
+    (NOT owner_change AND (actor IN (d.first_user_id,d.second_user_id) OR (d.state='PENDING' AND actor=d.proposer_user_id)) AND d.state IN ('PENDING','ACTIVE','SUSPENDED')) THEN
   UPDATE app.household_designation_guard SET version=version+1,
    state=CASE WHEN d.state='PENDING' THEN 'CANCELLED' ELSE 'SUSPENDED' END,
    first_consented=false,second_consented=false WHERE singleton;
