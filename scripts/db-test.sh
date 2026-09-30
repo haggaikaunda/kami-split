@@ -52,15 +52,14 @@ group_migration="$stage/supabase/migrations/20261003000000_group_creation.sql"
 household_migration="$stage/supabase/migrations/20261005000000_household_designation.sql"
 mv "$household_migration" "$stage/household-designation.sql"
 mv "$group_migration" "$stage/group-creation.sql"
-repayment_migration="$stage/supabase/migrations/20261005000000_repayments.sql"
+repayment_migration="$stage/supabase/migrations/20261006000000_repayments.sql"
 mv "$repayment_migration" "$stage/repayments.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
-mv "$stage/supabase/migrations/20261005000000_shared_invitations.sql" "$stage/shared-invitations.sql"
+mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/shared-invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
 mv "$stage/group-metadata-read.sql" "$stage/supabase/migrations/20261004000000_group_metadata_read.sql"
-mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261005000000_shared_invitations.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Preserve the existing identity/group/Household fixture through the new
 # designation foundation as well. Neither ownership nor installation identity
@@ -72,6 +71,10 @@ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d post
 mv "$stage/repayments.sql" "$repayment_migration"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/repayment_upgraded.sql
+# Apply shared links after all earlier upgrade fixtures; each migration version
+# is unique so Supabase records and replays the sequence deterministically.
+mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261007000000_shared_invitations.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
