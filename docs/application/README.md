@@ -21,3 +21,5 @@ The web application is a seeded UX preview with in-memory data and simulated acc
 [Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. No creation API or real trip UI is implemented by that document.
 
 [Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation and settlement capability have explicit follow-up gates; spending/history formulas remain deferred.
+
+- [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.

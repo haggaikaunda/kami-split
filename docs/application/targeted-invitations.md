@@ -1,6 +1,6 @@
 # Targeted invitation operations
 
-Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. No invitation fields are added to the public GraphQL schema; the existing authenticated expense API remains intact and the web application remains a preview. [#80](https://github.com/haggaikaunda/kami-split/issues/80) owns the Auth/provider adapters, actual email transport, reviewed onboarding SDL and browser experience. Reusable shared links remain [#108](https://github.com/haggaikaunda/kami-split/issues/108); no shared-link lifecycle or readmission grants are implemented here.
+Issue #79 implements the targeted critical path approved in [ADR-006](decisions/006-invitation-onboarding-design.md). The Go service, migration and restricted database functions are internal application boundaries. [Onboarding](onboarding.md) adds the #80 Auth/provider adapters, email transport, reviewed invitation SDL and browser experience over this service. The existing expense API remains intact; financial browser screens remain a preview. Reusable shared links remain [#108](https://github.com/haggaikaunda/kami-split/issues/108); no shared-link lifecycle or readmission grants are implemented here.
 
 ## Concrete #80 handoff
 

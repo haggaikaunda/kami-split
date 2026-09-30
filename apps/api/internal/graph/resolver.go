@@ -3,11 +3,13 @@ package graph
 import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
 )
 
 // Resolver maps the approved transport to application operations. Cursor keys
 // are deployment-managed and survive application restarts.
 type Resolver struct {
-	Expenses *expense.Service
-	Cursors  *ledger.CursorCodec
+	Expenses    *expense.Service
+	Cursors     *ledger.CursorCodec
+	Invitations *onboarding.Factory
 }

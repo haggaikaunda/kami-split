@@ -36,7 +36,8 @@ export function NavigationShell({
       </a>
       <header className="shell-brand">
         <Link href="/">Kami Split</Link>
-        <Link href="/sign-in">Account preview</Link>
+        <Link href="/preview/sign-in">Account preview</Link>
+        <Link href="/sign-in">Sign in</Link>
       </header>
       <nav className="shell-nav" aria-label="Main navigation">
         {destinations.map((item) => (

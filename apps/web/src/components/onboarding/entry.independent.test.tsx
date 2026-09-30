@@ -1,0 +1,309 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
+import { OnboardingEntry } from './entry';
+import {
+  RequestEpoch,
+  readAttempt,
+  saveAttempt,
+} from '@/lib/onboarding/client';
+const sdk = vi.hoisted(() => ({
+  session: {
+    user: { id: 'alice', email: 'alice@example.test' },
+    access_token: 'alice-token',
+  } as object | null,
+  changed: (_event: string, _session: object | null) => {
+    void _event;
+    void _session;
+  },
+  updateUser: vi.fn(),
+}));
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    auth: {
+      getSession: async () => ({ data: { session: sdk.session } }),
+      onAuthStateChange: (changed: typeof sdk.changed) => {
+        sdk.changed = changed;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
+      setSession: async () => ({ error: null }),
+      updateUser: sdk.updateUser,
+    },
+  }),
+}));
+vi.mock('next/link', () => ({ default: 'a' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+let container: HTMLDivElement;
+let root: Root;
+let requests: {
+  path: string;
+  body: Record<string, unknown>;
+  signal?: AbortSignal;
+}[];
+let respond: (path: string, body: Record<string, unknown>) => Promise<unknown>;
+const key = '12345678-1234-1234-1234-123456789012';
+beforeEach(() => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  sessionStorage.clear();
+  sdk.session = {
+    user: { id: 'alice', email: 'alice@example.test' },
+    access_token: 'alice-token',
+  };
+  requests = [];
+  respond = async (path) =>
+    path === '/api/onboarding-config'
+      ? { url: 'https://example.test', key: 'public' }
+      : { groupName: 'Private group', inviterDisplayName: 'Owner' };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, options?: RequestInit) => {
+      const body = JSON.parse(String(options?.body ?? '{}'));
+      requests.push({ path, body, signal: options?.signal as AbortSignal });
+      const value = await respond(path, body);
+      return { ok: true, json: async () => value };
+    }),
+  );
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+    callback();
+    return 1;
+  });
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+});
+const render = async (mode: Parameters<typeof OnboardingEntry>[0]['mode']) => {
+  await act(async () => root.render(<OnboardingEntry mode={mode} />));
+};
+const button = (name: string) =>
+  [...container.querySelectorAll('button')].find(
+    (item) => item.textContent === name,
+  )!;
+const click = async (name: string) => {
+  await act(async () => button(name).click());
+};
+it('aborts requests and rejects late results when transport ignores abort', async () => {
+  const epoch = new RequestEpoch();
+  let resolve!: (value: string) => void;
+  let signal!: AbortSignal;
+  const pending = epoch.run((value) => {
+    signal = value;
+    return new Promise<string>((done) => {
+      resolve = done;
+    });
+  });
+  const rejected = expect(pending).rejects.toThrow('SESSION_CHANGED');
+  epoch.reset();
+  expect(signal.aborted).toBe(true);
+  resolve('private');
+  await rejected;
+  await expect(epoch.run(async () => 'fresh')).resolves.toBe('fresh');
+});
+it('retains original operation context across storage reloads', () => {
+  const attempt = {
+    kind: 'RESEND' as const,
+    key,
+    groupID: 'original-group',
+    invitationID: 'original-invitation',
+  };
+  saveAttempt(attempt);
+  expect(readAttempt()).toEqual(attempt);
+  saveAttempt(null);
+  expect(readAttempt()).toBeNull();
+});
+it('deduplicates clicks and preserves interrupted acceptance through uncertain recovery', async () => {
+  await render('join');
+  let reject!: (error: Error) => void;
+  respond = async () =>
+    new Promise((_resolve, fail) => {
+      reject = fail;
+    });
+  await act(async () => {
+    button('Join group').click();
+    button('Join group').click();
+  });
+  expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
+    1,
+  );
+  const original = readAttempt();
+  expect(original?.kind).toBe('ACCEPT');
+  await act(async () => reject(new Error('UNAVAILABLE')));
+  expect(button('Join group').disabled).toBe(true);
+  expect(readAttempt()).toEqual(original);
+  respond = async (_path, body) => {
+    expect(body.variables).toEqual({ kind: 'ACCEPT', key: original!.key });
+    return { data: { invitationAction: { outcome: 'NOT_OBSERVED' } } };
+  };
+  await click('Recover original action');
+  expect(readAttempt()).toEqual(original);
+  respond = async () => ({
+    data: {
+      invitationAction: { outcome: 'HISTORICAL_ACCEPTANCE', hasAccess: false },
+    },
+  });
+  await click('Recover original action');
+  expect(readAttempt()).toBeNull();
+  expect(container.textContent).toContain('you no longer have access');
+});
+it('discards late acceptance after account switch and clears private context', async () => {
+  await render('join');
+  let resolve!: (value: unknown) => void;
+  respond = async (path) =>
+    path.endsWith('/accept')
+      ? new Promise((done) => {
+          resolve = done;
+        })
+      : {};
+  await click('Join group');
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'bob', email: 'bob@example.test' },
+      access_token: 'bob-token',
+    }),
+  );
+  expect(readAttempt()).toBeNull();
+  expect(container.textContent).not.toContain('Private group');
+  await act(async () =>
+    resolve({ code: 'APPLIED', hasAccess: true, groupID: 'secret' }),
+  );
+  expect(container.textContent).not.toContain('You have joined');
+});
+it('aborts acceptance on unmount and preserves original recovery', async () => {
+  await render('join');
+  let resolve!: (value: unknown) => void;
+  respond = async () =>
+    new Promise((done) => {
+      resolve = done;
+    });
+  await click('Join group');
+  const original = readAttempt();
+  const request = requests.find((item) => item.path.endsWith('/accept'))!;
+  await act(async () => root.render(<p>Elsewhere</p>));
+  expect(request.signal!.aborted).toBe(true);
+  await act(async () => resolve({ code: 'APPLIED', hasAccess: true }));
+  expect(readAttempt()).toEqual(original);
+});
+it('explains session expiration and prevents a second acceptance', async () => {
+  await render('join');
+  respond = async () => {
+    throw new Error('UNAUTHENTICATED');
+  };
+  await click('Join group');
+  expect(container.textContent).toContain('Your session has expired');
+  expect(readAttempt()?.kind).toBe('ACCEPT');
+  expect(button('Join group').disabled).toBe(true);
+});
+it('does not show old account password success after an account switch', async () => {
+  let resolve!: (value: unknown) => void;
+  sdk.updateUser.mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  await render('password');
+  await act(async () =>
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'bob', email: 'bob@example.test' },
+      access_token: 'bob-token',
+    }),
+  );
+  await act(async () => resolve({ error: null }));
+  expect(container.textContent).not.toContain('Password saved');
+});
+it('recovers an uncertain resend with its original key after remount without sending another email', async () => {
+  respond = async (_path, body) => {
+    const query = String(body.query);
+    if (query.includes('viewer'))
+      return {
+        data: {
+          viewer: {
+            __typename: 'Viewer',
+            groups: [{ id: 'group-a', name: 'House' }],
+          },
+        },
+      };
+    if (query.includes('ownerInvitations'))
+      return {
+        data: {
+          ownerInvitations: {
+            items: [
+              {
+                id: 'invite-a',
+                recipient: 'friend@example.test',
+                expiresAt: '2026-10-01T00:00:00Z',
+                lifecycle: 'PENDING',
+                delivery: 'UNKNOWN',
+                actionID: 'old-send',
+              },
+            ],
+            nextCursor: null,
+          },
+        },
+      };
+    if (query.includes('resendInvitation')) throw new Error('UNAVAILABLE');
+    throw new Error('Unexpected request');
+  };
+  await render('invitations');
+  await click('Load my groups');
+  await click('Manage invitations for House');
+  await click('Resend and renew for seven days');
+  const original = readAttempt();
+  expect(original).toMatchObject({
+    kind: 'RESEND',
+    groupID: 'group-a',
+    invitationID: 'invite-a',
+  });
+  expect(button('Resend and renew for seven days').disabled).toBe(true);
+  await act(async () => root.render(<p>Elsewhere</p>));
+  await render('invitations');
+  respond = async (_path, body) => {
+    expect(body.variables).toEqual({ kind: 'RESEND', key: original!.key });
+    return {
+      data: {
+        invitationAction: {
+          outcome: 'APPLIED',
+          delivery: 'UNKNOWN',
+          committedExpiresAt: '2026-10-07T00:00:00Z',
+          currentExpiresAt: '2026-10-08T00:00:00Z',
+        },
+      },
+    };
+  };
+  await click('Recover original action');
+  expect(readAttempt()).toBeNull();
+  expect(container.textContent).toContain('Expiry saved by this action');
+  expect(container.textContent).toContain('Current expiry');
+  expect(
+    requests.filter((item) =>
+      String(item.body.query).includes('resendInvitation'),
+    ),
+  ).toHaveLength(1);
+  expect(
+    requests.filter((item) =>
+      String(item.body.query).includes('retryInvitationDelivery'),
+    ),
+  ).toHaveLength(0);
+});
+it('rejects malformed callback fragments and removes credentials from the address', async () => {
+  sdk.session = null;
+  window.history.replaceState(
+    null,
+    '',
+    '/auth/confirm#token_hash=invalid&type=invite&state=state',
+  );
+  await render('confirm');
+  expect(window.location.hash).toBe('');
+  expect(container.textContent).toContain('invalid, expired');
+  expect(button('Continue with email link')).toBeUndefined();
+});
