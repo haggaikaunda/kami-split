@@ -1,8 +1,13 @@
 package graph
 
-// This file will not be regenerated automatically.
-//
-// It serves as dependency injection for your app, add any dependencies you require
-// here.
+import (
+	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+)
 
-type Resolver struct{}
+// Resolver maps the approved transport to application operations. Cursor keys
+// are deployment-managed and survive application restarts.
+type Resolver struct {
+	Expenses *expense.Service
+	Cursors  *ledger.CursorCodec
+}

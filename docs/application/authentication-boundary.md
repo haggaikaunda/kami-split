@@ -2,9 +2,7 @@
 
 Issue #78 implements the actor boundary specified by ADR-002 using
 `golang-jwt/jwt/v5 v5.3.1` and `MicahParks/keyfunc/v3 v3.8.2`. These were the
-latest stable module releases checked at implementation. The checked-in GraphQL
-schema remains health-only. No business field, onboarding path, session lookup,
-revocation database, invitation service or hosted configuration is introduced.
+latest stable module releases checked at implementation. Issue #82 now exposes the reviewed [business expense fields](persisted-expenses.md) using this boundary. Onboarding, session lookup, a revocation database, invitation service and hosted configuration remain outside this authentication implementation.
 
 ## Configuration and request flow
 
@@ -35,11 +33,7 @@ alone grants no group authority. Callbacks must use their transaction and the
 reviewed group locking/authorization helpers, never the pool. Authorization is
 rechecked per operation; no account or membership status enters the key cache.
 
-`Verifier.Protect` is the reusable protected HTTP wrapper. The server deliberately
-uses `Authenticate` for the still-public GraphQL health schema, so missing/invalid
-credentials do not alter health. Future business resolvers must invoke
-`WithActor` and map its outcomes at the owning transport boundary; attaching
-middleware alone does not authorize a resolver. The lower-level
+`Verifier.Protect` is the reusable protected HTTP wrapper. The server uses `Authenticate` so missing/invalid credentials do not alter public health. A pre-execution check requires verified credentials for business selections; application operations then invoke `WithActor` and map its outcomes at the owning transport boundary. Attaching middleware alone does not authorize a resolver. The lower-level
 `DB.WithIdentity(subject, ...)` remains a trusted internal/database-test primitive,
 not a request-facing API.
 
@@ -48,9 +42,7 @@ not a request-facing API.
 Missing/invalid credentials map to HTTP 401 with safe GraphQL code
 `UNAUTHENTICATED`; verification or database unavailability maps to HTTP 503
 `UNAVAILABLE`, consistent with #76. The current protected HTTP boundary maps
-DISABLED and UNPROVISIONED to HTTP 403 with their distinct safe codes. The future
-#76 ViewerAccess resolver may expose these self-only states without admitting
-business access; it is not implemented here. Unexpected dependency/callback
+DISABLED and UNPROVISIONED to HTTP 403 with their distinct safe codes. The implemented `viewer` resolver exposes these self-only states as `ViewerAccess` without admitting group access. Unexpected dependency/callback
 errors are reduced to UNAVAILABLE, with no SQL/provider error details or request
 payloads exposed. No token/key contents are logged.
 

@@ -1,6 +1,6 @@
 # Go GraphQL server
 
-Health-only scaffold using Go **1.27.1**, gqlgen **v0.17.95**, and `net/http`. An optional pgxpool database boundary supports local Supabase. Authentication, financial operations, and Relay integration remain unimplemented. The web preview still uses its in-memory DataPort.
+Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). The web preview still uses its in-memory DataPort; Relay integration remains #83.
 
 ## Run locally
 
@@ -24,7 +24,7 @@ docker compose logs api
 docker compose down
 ```
 
-Compose builds from the repository root so the module and shared SDL remain in one build context. Port 8080 is exposed on host loopback only. The runtime container uses an unprivileged user, read-only filesystem, dropped capabilities, and a readiness health check. Rebuild after source changes; this scaffold does not provide hot reload. Compose's stop grace period exceeds the configured application shutdown timeout.
+Compose builds from the repository root so the module and shared SDL remain in one build context. Port 8080 is exposed on host loopback only. The runtime container uses an unprivileged user, read-only filesystem, dropped capabilities, and a readiness health check. Rebuild after source changes; the server does not provide hot reload. Compose's stop grace period exceeds the configured application shutdown timeout.
 
 The Dockerfile also has a `verify` target:
 
@@ -49,7 +49,9 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 - `internal/config`: validated configuration.
 - `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
-- `internal/graph`: generated execution/models and handwritten resolver implementations.
+- `internal/graph`: generated execution/models and thin handwritten transport mapping.
+- `internal/expense`: authorized reads, transactional writes and same-attempt recovery.
+- `internal/ledger`: pure exact-money, canonical-input, split, balance and cursor rules.
 - [`packages/schema`](../../packages/schema/README.md): authoritative SDL consumed by `gqlgen.yml`.
 
 From root:
@@ -66,8 +68,8 @@ make api-check
 
 `go.mod` pins gqlgen as a tool dependency. Edit SDL and handwritten resolvers, then regenerate committed artifacts; never patch generated execution/model output. Resolver scaffolding preserves handwritten implementations on regeneration.
 
-Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s write/60s idle timeouts. Request IDs are server-generated. Logs omit request bodies and error/panic payloads. No playground, WebSocket transport, CORS integration, or production TLS/deployment is configured.
+Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s write/60s idle timeouts, and a 10s GraphQL execution context deadline that cancels database lock waits. Request IDs are server-generated. Logs omit request bodies and error/panic payloads. No playground, WebSocket transport, CORS integration, or production TLS/deployment is configured.
 
 Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending this scaffold.
 
-See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. The public GraphQL schema remains health-only.
+See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. Protected startup additionally requires `CURSOR_ACTIVE_KEY_ID` and `CURSOR_SIGNING_KEYS`; see [cursor configuration and operating limits](../../docs/application/persisted-expenses.md#configuration-and-limits). Public health remains unauthenticated.

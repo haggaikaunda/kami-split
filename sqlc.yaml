@@ -18,3 +18,12 @@ sql:
         package: identityquery
         out: apps/api/internal/database/identityquery
         sql_package: pgx/v5
+  - engine: postgresql
+    schema: supabase/schemas
+    queries: apps/api/internal/database/expensequery/query.sql
+    gen:
+      go:
+        omit_unused_structs: true
+        package: expensequery
+        out: apps/api/internal/database/expensequery
+        sql_package: pgx/v5

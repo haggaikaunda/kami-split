@@ -15,8 +15,3 @@ import (
 func (r *queryResolver) Health(ctx context.Context) (*model.Health, error) {
 	return &model.Health{Status: "ok"}, nil
 }
-
-// Query returns QueryResolver implementation.
-func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
-
-type queryResolver struct{ *Resolver }
