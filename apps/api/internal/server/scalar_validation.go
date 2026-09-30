@@ -4,6 +4,8 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/vektah/gqlparser/v2/ast"
+	"strings"
+	"unicode/utf8"
 )
 
 // gqlgen unmarshals custom scalar arguments while resolving a field. Preflight
@@ -27,6 +29,9 @@ func validOperationScalars(operation *graphql.OperationContext, schema *ast.Sche
 			return valueValid(kind.Elem, value)
 		}
 		switch kind.Name() {
+		case "String":
+			text, ok := value.(string)
+			return ok && utf8.ValidString(text) && !strings.ContainsRune(text, 0)
 		case "MinorUnits":
 			var v ledger.MinorUnits
 			return v.UnmarshalGQL(value) == nil

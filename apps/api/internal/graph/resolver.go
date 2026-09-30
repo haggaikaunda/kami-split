@@ -2,6 +2,7 @@ package graph
 
 import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
 )
@@ -10,6 +11,7 @@ import (
 // are deployment-managed and survive application restarts.
 type Resolver struct {
 	Expenses    *expense.Service
+	Groups      *group.Service
 	Cursors     *ledger.CursorCodec
 	Invitations *onboarding.Factory
 }

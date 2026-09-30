@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
@@ -21,6 +22,8 @@ type PageRequest struct {
 // Snapshot is a complete group projection from one freshly authorized SQL statement.
 type Snapshot struct {
 	ID, Name, Currency, ViewerMembershipID string
+	Trip                                   *database.GroupTripInput
+	IsHousehold                            bool
 	Members                                []Member
 	Records                                []Record
 	Revision, Total                        int64
@@ -38,7 +41,11 @@ type Viewer struct {
 }
 
 // Summary contains no financial values and no unrelated identity details.
-type Summary struct{ ID, Name, Currency string }
+type Summary struct {
+	ID, Name, Currency string
+	Trip               *database.GroupTripInput
+	IsHousehold        bool
+}
 
 // ReadViewer exposes disabled/unprovisioned states without granting group access.
 func (s *Service) ReadViewer(ctx context.Context) (Viewer, error) {
@@ -50,15 +57,23 @@ func (s *Service) ReadViewer(ctx context.Context) (Viewer, error) {
 		}
 		result.ID = ledger.PublicID("Viewer", raw)
 		result.Groups = []Summary{}
-		rows, e := tx.Query(ctx, `SELECT id::text,name,currency FROM app.groups ORDER BY id`)
+		rows, e := tx.Query(ctx, `SELECT g.id::text,g.name,g.currency,
+ (SELECT jsonb_build_object('destination',t.destination,'startDate',to_char(t.start_date,'YYYY-MM-DD'),'endDate',to_char(t.end_date,'YYYY-MM-DD')) FROM app.group_trip t WHERE t.group_id=g.id),
+ app.is_household_group(g.id) FROM app.groups g ORDER BY g.id`)
 		if e != nil {
 			return e
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var g Summary
-			if e = rows.Scan(&g.ID, &g.Name, &g.Currency); e != nil {
+			var trip []byte
+			if e = rows.Scan(&g.ID, &g.Name, &g.Currency, &trip, &g.IsHousehold); e != nil {
 				return e
+			}
+			if trip != nil {
+				if e = json.Unmarshal(trip, &g.Trip); e != nil {
+					return e
+				}
 			}
 			g.ID = ledger.PublicID("Group", g.ID)
 			result.Groups = append(result.Groups, g)
@@ -153,6 +168,8 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 	}
 	var data struct {
 		ID, Name, Currency, ViewerMembershipID, Total string
+		Trip                                          *database.GroupTripInput
+		IsHousehold                                   bool
 		Revision                                      int64
 		Members                                       []Member
 		Records                                       []Record
@@ -168,7 +185,7 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 	if page.Anchor != nil && (*page.Anchor < 0 || *page.Anchor > data.Revision) {
 		return result, Failure("INVALID_CURSOR")
 	}
-	result = Snapshot{ID: ledger.PublicID("Group", data.ID), Name: data.Name, Currency: data.Currency, ViewerMembershipID: ledger.PublicID("Membership", data.ViewerMembershipID), Members: data.Members, Records: data.Records, Revision: data.Revision, HasPrevious: data.HasPrevious, Positions: []ledger.Position{}}
+	result = Snapshot{ID: ledger.PublicID("Group", data.ID), Name: data.Name, Currency: data.Currency, Trip: data.Trip, IsHousehold: data.IsHousehold, ViewerMembershipID: ledger.PublicID("Membership", data.ViewerMembershipID), Members: data.Members, Records: data.Records, Revision: data.Revision, HasPrevious: data.HasPrevious, Positions: []ledger.Position{}}
 	total, ok := new(big.Int).SetString(data.Total, 10)
 	if !ok || !total.IsInt64() || total.Sign() < 0 {
 		result.BalanceError = "AMOUNT_OVERFLOW"
@@ -243,6 +260,8 @@ filtered AS (
  FROM members m
 )
 SELECT jsonb_build_object('ID',v.id,'Name',v.name,'Currency',v.currency,'ViewerMembershipID',v.viewer,
+ 'IsHousehold',app.is_household_group(v.id),
+ 'Trip',(SELECT jsonb_build_object('destination',t.destination,'startDate',to_char(t.start_date,'YYYY-MM-DD'),'endDate',to_char(t.end_date,'YYYY-MM-DD')) FROM app.group_trip t WHERE t.group_id=v.id),
  'Revision',(SELECT n FROM revision),'Total',(SELECT coalesce(sum(total_minor),0)::text FROM app.expenses WHERE group_id=$1),
  'ValidParticipant',($6::uuid IS NULL OR EXISTS(SELECT FROM members WHERE id=$6)),
  'HasPrevious',($8::date IS NOT NULL AND EXISTS(SELECT FROM filtered e WHERE (e.effective_date,e.created_at,e.id)>=($8::date,$9::timestamptz,$10::uuid))),
