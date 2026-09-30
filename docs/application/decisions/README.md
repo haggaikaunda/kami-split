@@ -17,3 +17,5 @@ records #79/#80 owner-approved follow-ups including I1–I5 and engineering prot
 shared-link implementation is tracked separately in #108. Runtime proof remains required.
 
 [ADR-006: Ordinary and trip-group creation](006-group-creation.md) defines the #85 design-only extension, its contract, UI adaptation and ordered follow-up work. Adoption and implementation are separate.
+
+[ADR-007: Household dashboard](007-household-dashboard.md) specifies #86’s consolidated overview and shared group repayment entry, with explicit policy deferrals and [implementation slices](../proposals/household-dashboard-slices.md). It adds no running API or UI.
