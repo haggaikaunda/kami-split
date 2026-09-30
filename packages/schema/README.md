@@ -1,6 +1,6 @@
 # GraphQL contract
 
-`schema.graphql` and `expenses.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose public health plus authenticated viewer/group/member reads, paginated expenses, complete balances, expense creation and same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) for exact-money, authorization, recovery and pagination semantics.
+`schema.graphql`, `expenses.graphql` and `repayments.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose public health plus authenticated viewer/group/member reads, paginated expenses, complete balances, expense creation, actual group repayments, authorized repayment history and same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) for exact-money, authorization, recovery and pagination semantics.
 
 Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. The future Relay compiler will consume this same contract; Relay is not installed yet.
 

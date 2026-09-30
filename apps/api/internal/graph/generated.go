@@ -105,6 +105,7 @@ type ComplexityRoot struct {
 		ID               func(childComplexity int) int
 		Members          func(childComplexity int) int
 		Name             func(childComplexity int) int
+		Repayments       func(childComplexity int, first int, after *string) int
 		ViewerMembership func(childComplexity int) int
 	}
 
@@ -129,10 +130,12 @@ type ComplexityRoot struct {
 	}
 
 	MemberPosition struct {
-		Member    func(childComplexity int) int
-		NetMinor  func(childComplexity int) int
-		OwedMinor func(childComplexity int) int
-		PaidMinor func(childComplexity int) int
+		Member        func(childComplexity int) int
+		NetMinor      func(childComplexity int) int
+		OwedMinor     func(childComplexity int) int
+		PaidMinor     func(childComplexity int) int
+		ReceivedMinor func(childComplexity int) int
+		SentMinor     func(childComplexity int) int
 	}
 
 	Membership struct {
@@ -144,7 +147,8 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateExpense func(childComplexity int, input model.CreateExpenseInput) int
+		CreateExpense   func(childComplexity int, input model.CreateExpenseInput) int
+		RecordRepayment func(childComplexity int, input model.RecordRepaymentInput) int
 	}
 
 	Obligation struct {
@@ -180,11 +184,56 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ExpenseOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Group            func(childComplexity int, id string) int
-		Health           func(childComplexity int) int
-		Node             func(childComplexity int, id string) int
-		Viewer           func(childComplexity int) int
+		ExpenseOperation   func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Group              func(childComplexity int, id string) int
+		Health             func(childComplexity int) int
+		Node               func(childComplexity int, id string) int
+		RepaymentOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Viewer             func(childComplexity int) int
+	}
+
+	Repayment struct {
+		AmountMinor   func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		Creator       func(childComplexity int) int
+		Currency      func(childComplexity int) int
+		EffectiveDate func(childComplexity int) int
+		GroupID       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Note          func(childComplexity int) int
+		Recipient     func(childComplexity int) int
+		Revision      func(childComplexity int) int
+		Sender        func(childComplexity int) int
+	}
+
+	RepaymentCommitted struct {
+		Key    func(childComplexity int) int
+		Record func(childComplexity int) int
+	}
+
+	RepaymentConnection struct {
+		Edges    func(childComplexity int) int
+		PageInfo func(childComplexity int) int
+		Revision func(childComplexity int) int
+	}
+
+	RepaymentEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
+	RepaymentOperationRecord struct {
+		AmountMinor           func(childComplexity int) int
+		CommittedAt           func(childComplexity int) int
+		CreatorMembershipID   func(childComplexity int) int
+		Currency              func(childComplexity int) int
+		EffectiveDate         func(childComplexity int) int
+		GroupID               func(childComplexity int) int
+		Note                  func(childComplexity int) int
+		RecipientMembershipID func(childComplexity int) int
+		RepaymentID           func(childComplexity int) int
+		Revision              func(childComplexity int) int
+		SenderMembershipID    func(childComplexity int) int
 	}
 
 	ValidationProblem struct {
@@ -209,15 +258,19 @@ type ComplexityRoot struct {
 
 type GroupResolver interface {
 	Expenses(ctx context.Context, obj *model.Group, first int, after *string, filter *model.ExpenseFilter) (*model.ExpenseConnection, error)
+
+	Repayments(ctx context.Context, obj *model.Group, first int, after *string) (*model.RepaymentConnection, error)
 }
 type MutationResolver interface {
 	CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error)
+	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
 type QueryResolver interface {
 	Viewer(ctx context.Context) (model.ViewerResult, error)
 	Node(ctx context.Context, id string) (model.Node, error)
 	Group(ctx context.Context, id string) (model.GroupResult, error)
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
+	RepaymentOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.RepaymentOperationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
 
@@ -521,6 +574,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Group.Name(childComplexity), true
+	case "Group.repayments":
+		if e.ComplexityRoot.Group.Repayments == nil {
+			break
+		}
+
+		args, err := ec.field_Group_repayments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Group.Repayments(childComplexity, args["first"].(int), args["after"].(*string)), true
 	case "Group.viewerMembership":
 		if e.ComplexityRoot.Group.ViewerMembership == nil {
 			break
@@ -621,6 +685,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MemberPosition.PaidMinor(childComplexity), true
+	case "MemberPosition.receivedMinor":
+		if e.ComplexityRoot.MemberPosition.ReceivedMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MemberPosition.ReceivedMinor(childComplexity), true
+	case "MemberPosition.sentMinor":
+		if e.ComplexityRoot.MemberPosition.SentMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MemberPosition.SentMinor(childComplexity), true
 
 	case "Membership.canParticipate":
 		if e.ComplexityRoot.Membership.CanParticipate == nil {
@@ -664,6 +740,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateExpense(childComplexity, args["input"].(model.CreateExpenseInput)), true
+	case "Mutation.recordRepayment":
+		if e.ComplexityRoot.Mutation.RecordRepayment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordRepayment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordRepayment(childComplexity, args["input"].(model.RecordRepaymentInput)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -795,12 +882,202 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Node(childComplexity, args["id"].(string)), true
+	case "Query.repaymentOperation":
+		if e.ComplexityRoot.Query.RepaymentOperation == nil {
+			break
+		}
+
+		args, err := ec.field_Query_repaymentOperation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.RepaymentOperation(childComplexity, args["groupId"].(string), args["key"].(ledger.OperationKey)), true
 	case "Query.viewer":
 		if e.ComplexityRoot.Query.Viewer == nil {
 			break
 		}
 
 		return e.ComplexityRoot.Query.Viewer(childComplexity), true
+
+	case "Repayment.amountMinor":
+		if e.ComplexityRoot.Repayment.AmountMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.AmountMinor(childComplexity), true
+	case "Repayment.createdAt":
+		if e.ComplexityRoot.Repayment.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.CreatedAt(childComplexity), true
+	case "Repayment.creator":
+		if e.ComplexityRoot.Repayment.Creator == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Creator(childComplexity), true
+	case "Repayment.currency":
+		if e.ComplexityRoot.Repayment.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Currency(childComplexity), true
+	case "Repayment.effectiveDate":
+		if e.ComplexityRoot.Repayment.EffectiveDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.EffectiveDate(childComplexity), true
+	case "Repayment.groupId":
+		if e.ComplexityRoot.Repayment.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.GroupID(childComplexity), true
+	case "Repayment.id":
+		if e.ComplexityRoot.Repayment.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.ID(childComplexity), true
+	case "Repayment.note":
+		if e.ComplexityRoot.Repayment.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Note(childComplexity), true
+	case "Repayment.recipient":
+		if e.ComplexityRoot.Repayment.Recipient == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Recipient(childComplexity), true
+	case "Repayment.revision":
+		if e.ComplexityRoot.Repayment.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Revision(childComplexity), true
+	case "Repayment.sender":
+		if e.ComplexityRoot.Repayment.Sender == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Repayment.Sender(childComplexity), true
+
+	case "RepaymentCommitted.key":
+		if e.ComplexityRoot.RepaymentCommitted.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentCommitted.Key(childComplexity), true
+	case "RepaymentCommitted.record":
+		if e.ComplexityRoot.RepaymentCommitted.Record == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentCommitted.Record(childComplexity), true
+
+	case "RepaymentConnection.edges":
+		if e.ComplexityRoot.RepaymentConnection.Edges == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentConnection.Edges(childComplexity), true
+	case "RepaymentConnection.pageInfo":
+		if e.ComplexityRoot.RepaymentConnection.PageInfo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentConnection.PageInfo(childComplexity), true
+	case "RepaymentConnection.revision":
+		if e.ComplexityRoot.RepaymentConnection.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentConnection.Revision(childComplexity), true
+
+	case "RepaymentEdge.cursor":
+		if e.ComplexityRoot.RepaymentEdge.Cursor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentEdge.Cursor(childComplexity), true
+	case "RepaymentEdge.node":
+		if e.ComplexityRoot.RepaymentEdge.Node == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentEdge.Node(childComplexity), true
+
+	case "RepaymentOperationRecord.amountMinor":
+		if e.ComplexityRoot.RepaymentOperationRecord.AmountMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.AmountMinor(childComplexity), true
+	case "RepaymentOperationRecord.committedAt":
+		if e.ComplexityRoot.RepaymentOperationRecord.CommittedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.CommittedAt(childComplexity), true
+	case "RepaymentOperationRecord.creatorMembershipId":
+		if e.ComplexityRoot.RepaymentOperationRecord.CreatorMembershipID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.CreatorMembershipID(childComplexity), true
+	case "RepaymentOperationRecord.currency":
+		if e.ComplexityRoot.RepaymentOperationRecord.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.Currency(childComplexity), true
+	case "RepaymentOperationRecord.effectiveDate":
+		if e.ComplexityRoot.RepaymentOperationRecord.EffectiveDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.EffectiveDate(childComplexity), true
+	case "RepaymentOperationRecord.groupId":
+		if e.ComplexityRoot.RepaymentOperationRecord.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.GroupID(childComplexity), true
+	case "RepaymentOperationRecord.note":
+		if e.ComplexityRoot.RepaymentOperationRecord.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.Note(childComplexity), true
+	case "RepaymentOperationRecord.recipientMembershipId":
+		if e.ComplexityRoot.RepaymentOperationRecord.RecipientMembershipID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.RecipientMembershipID(childComplexity), true
+	case "RepaymentOperationRecord.repaymentId":
+		if e.ComplexityRoot.RepaymentOperationRecord.RepaymentID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.RepaymentID(childComplexity), true
+	case "RepaymentOperationRecord.revision":
+		if e.ComplexityRoot.RepaymentOperationRecord.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.Revision(childComplexity), true
+	case "RepaymentOperationRecord.senderMembershipId":
+		if e.ComplexityRoot.RepaymentOperationRecord.SenderMembershipID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RepaymentOperationRecord.SenderMembershipID(childComplexity), true
 
 	case "ValidationProblem.fields":
 		if e.ComplexityRoot.ValidationProblem.Fields == nil {
@@ -852,6 +1129,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateExpenseInput,
 		ec.unmarshalInputExactAllocationInput,
 		ec.unmarshalInputExpenseFilter,
+		ec.unmarshalInputRecordRepaymentInput,
 	)
 	first := true
 
@@ -1441,7 +1719,7 @@ type GroupBalances {
   """
   totalExpenseMinor: MinorUnits!
   """
-  Complete individual paid, owed and net amounts, including retained inactive members.
+  Complete individual paid, owed, sent, received and net amounts, including retained inactive members.
   """
   positions: [MemberPosition!]!
   """
@@ -1470,9 +1748,17 @@ type MemberPosition {
   """
   owedMinor: MinorUnits!
   """
-  Exact paid minus owed; positive is owed to this member, negative is owed by this member.
+  Exact paid minus owed plus sent minus received; positive is owed to this member, negative is owed by this member.
   """
   netMinor: MinorUnits!
+  """
+  Complete nonnegative actual repayments sent, including retained inactive history.
+  """
+  sentMinor: MinorUnits!
+  """
+  Complete nonnegative actual repayments received, including retained inactive history.
+  """
+  receivedMinor: MinorUnits!
 }
 """
 Deterministic simplified current obligation; historical payer relationships are not additional debts.
@@ -1692,7 +1978,7 @@ The scoped key already identifies a different canonical intent; original data is
 """
 type OperationMismatch {
   """
-  Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+  Original client-created attempt key, scoped to the authenticated actor, group and financial operation kind.
   """
   key: OperationKey!
 }
@@ -1701,7 +1987,7 @@ Transient knowledge about the original attempt; preserve its key, frozen input a
 """
 type OperationProgress {
   """
-  Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
+  Original client-created attempt key, scoped to the authenticated actor, group and financial operation kind.
   """
   key: OperationKey!
   """
@@ -1721,6 +2007,249 @@ type Problem {
   Safe human explanation without SQL, tokens or private identities.
   """
   message: String!
+}
+`, BuiltIn: false},
+	{Name: "../../../../packages/schema/repayments.graphql", Input: `"""
+An actual transfer recorded within one explicitly authorized group. Creator is server-derived; no money is moved.
+"""
+input RecordRepaymentInput {
+  """
+  Explicit group; never inferred from a dashboard or another record.
+  """
+  groupId: ID!
+  """
+  Original actor/group/RECORD_REPAYMENT attempt key; preserve it through uncertainty.
+  """
+  key: OperationKey!
+  """
+  Active enabled linked sender Membership in this group.
+  """
+  senderId: ID!
+  """
+  Distinct active enabled linked recipient Membership in this group.
+  """
+  recipientId: ID!
+  """
+  Positive USD cents, 1..999999999; overpayments and unmatched actual transfers are allowed.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only; no conversion.
+  """
+  currency: Currency!
+  """
+  Actual transfer calendar date, Gregorian years 0001 through 9999.
+  """
+  effectiveDate: Date!
+  """
+  Preserved note, at most 2000 Unicode scalar values; no NUL or unpaired surrogates.
+  """
+  note: String! = ""
+}
+
+extend type Mutation {
+  """
+  Record one actual transfer atomically with audit and recoverable outcome. Any currently authorized active member may record it; creator may differ from sender and recipient.
+  """
+  recordRepayment(
+    """
+    Frozen explicit-group transfer intent and original retry key.
+    """
+    input: RecordRepaymentInput!
+  ): RecordRepaymentResult!
+}
+extend type Query {
+  """
+  Recover the original actor-scoped repayment outcome under current group access; missing does not prove noncommit.
+  """
+  repaymentOperation(
+    """
+    Original attempt's group; navigation never changes recovery scope.
+    """
+    groupId: ID!
+    """
+    Original actor/group/RECORD_REPAYMENT key.
+    """
+    key: OperationKey!
+  ): RepaymentOperationResult!
+}
+extend type Group {
+  """
+  Authorized append-only transfer history ordered by date, commit timestamp and ID descending. A page's inclusion revision can be older than separately refreshed balances. Pagination failures return null with a safe field error.
+  """
+  repayments(
+    """
+    Bounded forward page size, 1..100, default 20.
+    """
+    first: Int! = 20
+    """
+    Signed repayment-only cursor; expense cursors are not interchangeable.
+    """
+    after: String
+  ): RepaymentConnection
+}
+"""
+Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
+"""
+union RecordRepaymentResult =
+  | RepaymentCommitted
+  | ValidationProblem
+  | OperationMismatch
+  | OperationProgress
+  | Problem
+"""
+Currently authorized original result or transient missing/unknown state. Refresh balances separately.
+"""
+union RepaymentOperationResult =
+  | RepaymentCommitted
+  | ValidationProblem
+  | OperationProgress
+  | Problem
+
+"""
+Immutable successful transfer outcome; does not contain current labels or balances.
+"""
+type RepaymentCommitted {
+  """
+  Original actor/group/RECORD_REPAYMENT key.
+  """
+  key: OperationKey!
+  """
+  Original immutable financial values and commit provenance.
+  """
+  record: RepaymentOperationRecord!
+}
+
+"""
+Immutable original transfer values retained for the lifetime of financial history. Membership IDs are historical values, not access grants.
+"""
+type RepaymentOperationRecord {
+  """
+  Original committed Repayment ID.
+  """
+  repaymentId: ID!
+  """
+  Original group, never redirected by navigation.
+  """
+  groupId: ID!
+  """
+  Server-derived membership of the person who recorded this transfer.
+  """
+  creatorMembershipId: ID!
+  """
+  Original sender membership.
+  """
+  senderMembershipId: ID!
+  """
+  Original recipient membership.
+  """
+  recipientMembershipId: ID!
+  """
+  Exact positive USD cents; can exceed the historical simplified obligation.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only.
+  """
+  currency: Currency!
+  """
+  Recorded calendar date of the actual transfer.
+  """
+  effectiveDate: Date!
+  """
+  Original note, preserving whitespace.
+  """
+  note: String!
+  """
+  Original database commit-provenance timestamp in UTC.
+  """
+  committedAt: DateTime!
+  """
+  Original shared group financial revision; not a current balance revision.
+  """
+  revision: Revision!
+}
+
+"""
+Currently authorized append-only actual transfer with minimal current member labels; history retains inactive attribution.
+"""
+type Repayment implements Node {
+  """
+  Stable typed Repayment identity.
+  """
+  id: ID!
+  """
+  The single group containing this transfer.
+  """
+  groupId: ID!
+  """
+  Person who recorded the transfer; independent of sender and recipient.
+  """
+  creator: Membership!
+  """
+  Historical sender with currently authorized minimal identification.
+  """
+  sender: Membership!
+  """
+  Historical recipient with currently authorized minimal identification.
+  """
+  recipient: Membership!
+  """
+  Exact positive USD cents; can exceed the historical simplified obligation.
+  """
+  amountMinor: MinorUnits!
+  """
+  USD only.
+  """
+  currency: Currency!
+  """
+  Recorded calendar date of the actual transfer.
+  """
+  effectiveDate: Date!
+  """
+  Original note, preserving whitespace.
+  """
+  note: String!
+  """
+  Immutable record timestamp in UTC.
+  """
+  createdAt: DateTime!
+  """
+  Shared group financial revision produced by this transfer.
+  """
+  revision: Revision!
+}
+
+"""
+Bounded authorized repayment history, pinned to its initial financial inclusion revision.
+"""
+type RepaymentConnection {
+  """
+  Actual records only; no simplified or synthetic transfers.
+  """
+  edges: [RepaymentEdge!]!
+  """
+  Forward traversal boundaries; an empty successful list has null cursors.
+  """
+  pageInfo: PageInfo!
+  """
+  Inclusion anchor for this traversal, not a cache validator for authorization or labels.
+  """
+  revision: Revision!
+}
+
+"""
+One actual transfer and its signed traversal boundary.
+"""
+type RepaymentEdge {
+  """
+  Signed group/repayment-scope/revision/order boundary.
+  """
+  cursor: String!
+  """
+  Currently authorized transfer and minimal profiles.
+  """
+  node: Repayment!
 }
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/schema.graphql", Input: `extend type Query {
@@ -1887,6 +2416,10 @@ func (ec *executionContext) childFields_MemberPosition(ctx context.Context, fiel
 		return ec.fieldContext_MemberPosition_owedMinor(ctx, field)
 	case "netMinor":
 		return ec.fieldContext_MemberPosition_netMinor(ctx, field)
+	case "sentMinor":
+		return ec.fieldContext_MemberPosition_sentMinor(ctx, field)
+	case "receivedMinor":
+		return ec.fieldContext_MemberPosition_receivedMinor(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type MemberPosition", field.Name)
 }
@@ -1941,6 +2474,84 @@ func (ec *executionContext) childFields_PageInfo(ctx context.Context, field grap
 		return ec.fieldContext_PageInfo_endCursor(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+}
+
+func (ec *executionContext) childFields_Repayment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Repayment_id(ctx, field)
+	case "groupId":
+		return ec.fieldContext_Repayment_groupId(ctx, field)
+	case "creator":
+		return ec.fieldContext_Repayment_creator(ctx, field)
+	case "sender":
+		return ec.fieldContext_Repayment_sender(ctx, field)
+	case "recipient":
+		return ec.fieldContext_Repayment_recipient(ctx, field)
+	case "amountMinor":
+		return ec.fieldContext_Repayment_amountMinor(ctx, field)
+	case "currency":
+		return ec.fieldContext_Repayment_currency(ctx, field)
+	case "effectiveDate":
+		return ec.fieldContext_Repayment_effectiveDate(ctx, field)
+	case "note":
+		return ec.fieldContext_Repayment_note(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_Repayment_createdAt(ctx, field)
+	case "revision":
+		return ec.fieldContext_Repayment_revision(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Repayment", field.Name)
+}
+
+func (ec *executionContext) childFields_RepaymentConnection(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "edges":
+		return ec.fieldContext_RepaymentConnection_edges(ctx, field)
+	case "pageInfo":
+		return ec.fieldContext_RepaymentConnection_pageInfo(ctx, field)
+	case "revision":
+		return ec.fieldContext_RepaymentConnection_revision(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RepaymentConnection", field.Name)
+}
+
+func (ec *executionContext) childFields_RepaymentEdge(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "cursor":
+		return ec.fieldContext_RepaymentEdge_cursor(ctx, field)
+	case "node":
+		return ec.fieldContext_RepaymentEdge_node(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RepaymentEdge", field.Name)
+}
+
+func (ec *executionContext) childFields_RepaymentOperationRecord(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "repaymentId":
+		return ec.fieldContext_RepaymentOperationRecord_repaymentId(ctx, field)
+	case "groupId":
+		return ec.fieldContext_RepaymentOperationRecord_groupId(ctx, field)
+	case "creatorMembershipId":
+		return ec.fieldContext_RepaymentOperationRecord_creatorMembershipId(ctx, field)
+	case "senderMembershipId":
+		return ec.fieldContext_RepaymentOperationRecord_senderMembershipId(ctx, field)
+	case "recipientMembershipId":
+		return ec.fieldContext_RepaymentOperationRecord_recipientMembershipId(ctx, field)
+	case "amountMinor":
+		return ec.fieldContext_RepaymentOperationRecord_amountMinor(ctx, field)
+	case "currency":
+		return ec.fieldContext_RepaymentOperationRecord_currency(ctx, field)
+	case "effectiveDate":
+		return ec.fieldContext_RepaymentOperationRecord_effectiveDate(ctx, field)
+	case "note":
+		return ec.fieldContext_RepaymentOperationRecord_note(ctx, field)
+	case "committedAt":
+		return ec.fieldContext_RepaymentOperationRecord_committedAt(ctx, field)
+	case "revision":
+		return ec.fieldContext_RepaymentOperationRecord_revision(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RepaymentOperationRecord", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2089,12 +2700,48 @@ func (ec *executionContext) field_Group_expenses_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Group_repayments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "after",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createExpense_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.CreateExpenseInput, error) {
 			return ec.unmarshalNCreateExpenseInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateExpenseInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_recordRepayment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.RecordRepaymentInput, error) {
+			return ec.unmarshalNRecordRepaymentInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -2164,6 +2811,28 @@ func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_repaymentOperation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
 	return args, nil
 }
 
@@ -3405,6 +4074,50 @@ func (ec *executionContext) fieldContext_Group_balances(_ context.Context, field
 	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type BalanceResult does not have child fields"))
 }
 
+func (ec *executionContext) _Group_repayments(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Group_repayments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Group().Repayments(ctx, obj, fc.Args["first"].(int), fc.Args["after"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.RepaymentConnection) graphql.Marshaler {
+			return ec.marshalORepaymentConnection2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentConnection(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Group_repayments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Group",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RepaymentConnection(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Group_repayments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GroupBalances_groupId(ctx context.Context, field graphql.CollectedField, obj *model.GroupBalances) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3777,6 +4490,52 @@ func (ec *executionContext) fieldContext_MemberPosition_netMinor(_ context.Conte
 	return graphql.NewScalarFieldContext("MemberPosition", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
 }
 
+func (ec *executionContext) _MemberPosition_sentMinor(ctx context.Context, field graphql.CollectedField, obj *model.MemberPosition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MemberPosition_sentMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SentMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MemberPosition_sentMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MemberPosition", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _MemberPosition_receivedMinor(ctx context.Context, field graphql.CollectedField, obj *model.MemberPosition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MemberPosition_receivedMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReceivedMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MemberPosition_receivedMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MemberPosition", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
 func (ec *executionContext) _Membership_id(ctx context.Context, field graphql.CollectedField, obj *model.Membership) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3930,6 +4689,50 @@ func (ec *executionContext) fieldContext_Mutation_createExpense(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createExpense_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_recordRepayment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordRepayment(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordRepayment(ctx, fc.Args["input"].(model.RecordRepaymentInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.RecordRepaymentResult) graphql.Marshaler {
+			return ec.marshalNRecordRepaymentResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordRepayment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RecordRepaymentResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordRepayment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4431,6 +5234,50 @@ func (ec *executionContext) fieldContext_Query_expenseOperation(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_repaymentOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_repaymentOperation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().RepaymentOperation(ctx, fc.Args["groupId"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.RepaymentOperationResult) graphql.Marshaler {
+			return ec.marshalNRepaymentOperationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentOperationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_repaymentOperation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RepaymentOperationResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_repaymentOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4537,6 +5384,736 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Repayment_id(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_groupId(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_groupId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_groupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_creator(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_creator(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Creator, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_creator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Repayment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Repayment_sender(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_sender(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sender, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_sender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Repayment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Repayment_recipient(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_recipient(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Recipient, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_recipient(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Repayment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Repayment_amountMinor(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_amountMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AmountMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_currency(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_effectiveDate(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_effectiveDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_effectiveDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type Date does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_note(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.DateTime) graphql.Marshaler {
+			return ec.marshalNDateTime2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _Repayment_revision(ctx context.Context, field graphql.CollectedField, obj *model.Repayment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Repayment_revision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Repayment_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Repayment", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentCommitted_key(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentCommitted_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentCommitted_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentCommitted", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentCommitted_record(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentCommitted_record(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Record, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.RepaymentOperationRecord) graphql.Marshaler {
+			return ec.marshalNRepaymentOperationRecord2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentOperationRecord(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentCommitted_record(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepaymentCommitted",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RepaymentOperationRecord(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepaymentConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentConnection_edges(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.RepaymentEdge) graphql.Marshaler {
+			return ec.marshalNRepaymentEdge2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentEdgeᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepaymentConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RepaymentEdge(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepaymentConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentConnection_pageInfo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
+			return ec.marshalNPageInfo2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepaymentConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PageInfo(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepaymentConnection_revision(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentConnection_revision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentConnection_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentConnection", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentEdge_cursor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentEdge", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentEdge_node(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Repayment) graphql.Marshaler {
+			return ec.marshalNRepayment2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepayment(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepaymentEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Repayment(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_repaymentId(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_repaymentId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RepaymentID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_repaymentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_groupId(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_groupId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_groupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_creatorMembershipId(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_creatorMembershipId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatorMembershipID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_creatorMembershipId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_senderMembershipId(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_senderMembershipId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SenderMembershipID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_senderMembershipId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_recipientMembershipId(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_recipientMembershipId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RecipientMembershipID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_recipientMembershipId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_amountMinor(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_amountMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AmountMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_currency(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_effectiveDate(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_effectiveDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_effectiveDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type Date does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_note(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_committedAt(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_committedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CommittedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.DateTime) graphql.Marshaler {
+			return ec.marshalNDateTime2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_committedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _RepaymentOperationRecord_revision(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentOperationRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RepaymentOperationRecord_revision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RepaymentOperationRecord_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type Revision does not have child fields"))
 }
 
 func (ec *executionContext) _ValidationProblem_fields(ctx context.Context, field graphql.CollectedField, obj *model.ValidationProblem) (ret graphql.Marshaler) {
@@ -5953,6 +7530,89 @@ func (ec *executionContext) unmarshalInputExpenseFilter(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRecordRepaymentInput(ctx context.Context, obj any) (model.RecordRepaymentInput, error) {
+	var it model.RecordRepaymentInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["note"]; !present {
+		asMap["note"] = ""
+	}
+
+	fieldsInOrder := [...]string{"groupId", "key", "senderId", "recipientId", "amountMinor", "currency", "effectiveDate", "note"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "groupId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupID = data
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "senderId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("senderId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SenderID = data
+		case "recipientId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("recipientId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RecipientID = data
+		case "amountMinor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amountMinor"))
+			data, err := ec.unmarshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AmountMinor = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "effectiveDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveDate"))
+			data, err := ec.unmarshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveDate = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -6070,6 +7730,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Viewer(ctx, sel, obj)
+	case model.Repayment:
+		return ec._Repayment(ctx, sel, &obj)
+	case *model.Repayment:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Repayment(ctx, sel, obj)
 	case model.Membership:
 		return ec._Membership(ctx, sel, &obj)
 	case *model.Membership:
@@ -6137,6 +7804,95 @@ func (ec *executionContext) _OperationResult(ctx context.Context, sel ast.Select
 			return typedObj
 		} else {
 			panic(fmt.Errorf("unexpected type %T; non-generated variants of OperationResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _RecordRepaymentResult(ctx context.Context, sel ast.SelectionSet, obj model.RecordRepaymentResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ValidationProblem:
+		return ec._ValidationProblem(ctx, sel, &obj)
+	case *model.ValidationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ValidationProblem(ctx, sel, obj)
+	case model.RepaymentCommitted:
+		return ec._RepaymentCommitted(ctx, sel, &obj)
+	case *model.RepaymentCommitted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._RepaymentCommitted(ctx, sel, obj)
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.OperationProgress:
+		return ec._OperationProgress(ctx, sel, &obj)
+	case *model.OperationProgress:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OperationProgress(ctx, sel, obj)
+	case model.OperationMismatch:
+		return ec._OperationMismatch(ctx, sel, &obj)
+	case *model.OperationMismatch:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OperationMismatch(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of RecordRepaymentResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _RepaymentOperationResult(ctx context.Context, sel ast.SelectionSet, obj model.RepaymentOperationResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ValidationProblem:
+		return ec._ValidationProblem(ctx, sel, &obj)
+	case *model.ValidationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ValidationProblem(ctx, sel, obj)
+	case model.RepaymentCommitted:
+		return ec._RepaymentCommitted(ctx, sel, &obj)
+	case *model.RepaymentCommitted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._RepaymentCommitted(ctx, sel, obj)
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.OperationProgress:
+		return ec._OperationProgress(ctx, sel, &obj)
+	case *model.OperationProgress:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OperationProgress(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of RepaymentOperationResult must implement graphql.Marshaler", obj))
 		}
 	}
 }
@@ -6685,6 +8441,44 @@ func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "repayments":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Group_repayments(ctx, field, obj)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6892,6 +8686,16 @@ func (ec *executionContext) _MemberPosition(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "sentMinor":
+			out.Values[i] = ec._MemberPosition_sentMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "receivedMinor":
+			out.Values[i] = ec._MemberPosition_receivedMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6994,6 +8798,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createExpense":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createExpense(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordRepayment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordRepayment(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7110,7 +8921,7 @@ func (ec *executionContext) _OperationAllocation(ctx context.Context, sel ast.Se
 	return out
 }
 
-var operationMismatchImplementors = []string{"OperationMismatch", "CreateExpenseResult"}
+var operationMismatchImplementors = []string{"OperationMismatch", "CreateExpenseResult", "RecordRepaymentResult"}
 
 func (ec *executionContext) _OperationMismatch(ctx context.Context, sel ast.SelectionSet, obj *model.OperationMismatch) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, operationMismatchImplementors)
@@ -7148,7 +8959,7 @@ func (ec *executionContext) _OperationMismatch(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var operationProgressImplementors = []string{"OperationProgress", "CreateExpenseResult", "OperationResult"}
+var operationProgressImplementors = []string{"OperationProgress", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _OperationProgress(ctx context.Context, sel ast.SelectionSet, obj *model.OperationProgress) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, operationProgressImplementors)
@@ -7244,7 +9055,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult"}
+var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -7395,6 +9206,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "repaymentOperation":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_repaymentOperation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "health":
 			field := field
 
@@ -7452,7 +9285,317 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
-var validationProblemImplementors = []string{"ValidationProblem", "CreateExpenseResult", "OperationResult"}
+var repaymentImplementors = []string{"Repayment", "Node"}
+
+func (ec *executionContext) _Repayment(ctx context.Context, sel ast.SelectionSet, obj *model.Repayment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repaymentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Repayment")
+		case "id":
+			out.Values[i] = ec._Repayment_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupId":
+			out.Values[i] = ec._Repayment_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "creator":
+			out.Values[i] = ec._Repayment_creator(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sender":
+			out.Values[i] = ec._Repayment_sender(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recipient":
+			out.Values[i] = ec._Repayment_recipient(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountMinor":
+			out.Values[i] = ec._Repayment_amountMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currency":
+			out.Values[i] = ec._Repayment_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveDate":
+			out.Values[i] = ec._Repayment_effectiveDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._Repayment_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Repayment_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._Repayment_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var repaymentCommittedImplementors = []string{"RepaymentCommitted", "RecordRepaymentResult", "RepaymentOperationResult"}
+
+func (ec *executionContext) _RepaymentCommitted(ctx context.Context, sel ast.SelectionSet, obj *model.RepaymentCommitted) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repaymentCommittedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepaymentCommitted")
+		case "key":
+			out.Values[i] = ec._RepaymentCommitted_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "record":
+			out.Values[i] = ec._RepaymentCommitted_record(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var repaymentConnectionImplementors = []string{"RepaymentConnection"}
+
+func (ec *executionContext) _RepaymentConnection(ctx context.Context, sel ast.SelectionSet, obj *model.RepaymentConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repaymentConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepaymentConnection")
+		case "edges":
+			out.Values[i] = ec._RepaymentConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageInfo":
+			out.Values[i] = ec._RepaymentConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._RepaymentConnection_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var repaymentEdgeImplementors = []string{"RepaymentEdge"}
+
+func (ec *executionContext) _RepaymentEdge(ctx context.Context, sel ast.SelectionSet, obj *model.RepaymentEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repaymentEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepaymentEdge")
+		case "cursor":
+			out.Values[i] = ec._RepaymentEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "node":
+			out.Values[i] = ec._RepaymentEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var repaymentOperationRecordImplementors = []string{"RepaymentOperationRecord"}
+
+func (ec *executionContext) _RepaymentOperationRecord(ctx context.Context, sel ast.SelectionSet, obj *model.RepaymentOperationRecord) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repaymentOperationRecordImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepaymentOperationRecord")
+		case "repaymentId":
+			out.Values[i] = ec._RepaymentOperationRecord_repaymentId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupId":
+			out.Values[i] = ec._RepaymentOperationRecord_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "creatorMembershipId":
+			out.Values[i] = ec._RepaymentOperationRecord_creatorMembershipId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "senderMembershipId":
+			out.Values[i] = ec._RepaymentOperationRecord_senderMembershipId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recipientMembershipId":
+			out.Values[i] = ec._RepaymentOperationRecord_recipientMembershipId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountMinor":
+			out.Values[i] = ec._RepaymentOperationRecord_amountMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currency":
+			out.Values[i] = ec._RepaymentOperationRecord_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveDate":
+			out.Values[i] = ec._RepaymentOperationRecord_effectiveDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._RepaymentOperationRecord_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "committedAt":
+			out.Values[i] = ec._RepaymentOperationRecord_committedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._RepaymentOperationRecord_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var validationProblemImplementors = []string{"ValidationProblem", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _ValidationProblem(ctx context.Context, sel ast.SelectionSet, obj *model.ValidationProblem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, validationProblemImplementors)
@@ -8458,6 +10601,77 @@ func (ec *executionContext) marshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋka
 	return v
 }
 
+func (ec *executionContext) unmarshalNRecordRepaymentInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentInput(ctx context.Context, v any) (model.RecordRepaymentInput, error) {
+	res, err := ec.unmarshalInputRecordRepaymentInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRecordRepaymentResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentResult(ctx context.Context, sel ast.SelectionSet, v model.RecordRepaymentResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecordRepaymentResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRepayment2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepayment(ctx context.Context, sel ast.SelectionSet, v *model.Repayment) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Repayment(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRepaymentEdge2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RepaymentEdge) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRepaymentEdge2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentEdge(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRepaymentEdge2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentEdge(ctx context.Context, sel ast.SelectionSet, v *model.RepaymentEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RepaymentEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRepaymentOperationRecord2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentOperationRecord(ctx context.Context, sel ast.SelectionSet, v *model.RepaymentOperationRecord) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RepaymentOperationRecord(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRepaymentOperationResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentOperationResult(ctx context.Context, sel ast.SelectionSet, v model.RepaymentOperationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RepaymentOperationResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx context.Context, v any) (ledger.Revision, error) {
 	var res ledger.Revision
 	err := res.UnmarshalGQL(v)
@@ -8790,6 +11004,13 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsp
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORepaymentConnection2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentConnection(ctx context.Context, sel ast.SelectionSet, v *model.RepaymentConnection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepaymentConnection(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

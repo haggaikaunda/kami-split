@@ -1,14 +1,15 @@
 # Group repayment persistence
 
-The internal application operation implements the [approved #110 contract](proposals/repayments/README.md).
+The application operation and authenticated GraphQL API implement the [approved #110 contract](proposals/repayments/README.md).
 Any currently authorized active group member can record an actual transfer between
 distinct active, enabled, linked same-group memberships. The server derives creator
 separately from sender/recipient. Partial repayments, overpayments and transfers
 without a current simplified edge are allowed. No payment processing occurs.
 
-This persistence slice adds no GraphQL repayment mutation or browser form. The
-follow-on API slice must add authorized history and operation recovery before the
-feature is available to users; #110 remains open until that work passes its gates.
+The API exposes `recordRepayment`, actor-scoped `repaymentOperation`, authorized
+Repayment nodes and `Group.repayments` history. The web preview is unchanged;
+#112 owns shared form integration. Recording a repayment uses the same explicit
+group regardless of future UI entry point.
 
 ## Exact balances and atomic history
 
@@ -47,3 +48,31 @@ concurrent retries, commit-response loss, membership/account races and rollback.
 `make db-test` checks populated expense upgrade/backfill, fresh replay, schema and
 grant consistency, integration behavior and full financial backup/restore. Required
 root checks, sqlc/gqlgen drift and independent review remain delivery gates.
+
+## API and history
+
+`RecordRepaymentInput` carries explicit group/key/sender/recipient, canonical
+string cents, USD, calendar date and preserved note. Creator is never an input.
+Success returns only the original immutable transfer record. Same-key changed
+payload returns OperationMismatch; missing recovery returns NOT_OBSERVED, never
+proof of noncommit. Current actor access is required even for an old result.
+Another authorized group member can read history but cannot read the creator's
+private attempt outcome. Minimal member labels come from fresh authorized reads.
+
+`Group.repayments(first: 20, after: ...)` accepts 1–100 entries and returns a
+nullable Relay connection ordered by effectiveDate/createdAt/ID descending.
+Only one distinct repayments selection per Group projection is supported;
+aliasing multiple history requests returns INVALID_INPUT at those fields.
+Cursors use existing persistent signing keys with a repayment-specific scope.
+They pin financial inclusion to the initial revision; new or backdated entries
+require a new traversal. Expense cursors remain compatible with their existing
+encoding and are never accepted for repayment history. Invalid or unavailable
+pagination returns a null field with a safe error, not an empty successful page.
+
+The repayment page and its member labels share one statement snapshot after
+current actor/group locking. A separately resolved balance/expense field can
+observe another financial revision; the connection exposes its own anchor.
+GroupBalances positions now expose exact sentMinor and receivedMinor as well as
+paidMinor, owedMinor and netMinor. A balance refresh includes complete history,
+independent of either page's inclusion anchor. Existing request body, complexity,
+identity, deadline and diagnostic boundaries also apply to these operations.

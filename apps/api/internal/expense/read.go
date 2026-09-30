@@ -98,7 +98,9 @@ func (s *Service) Locate(ctx context.Context, id, kind string) (string, error) {
 	var group string
 	err = s.transaction(ctx, func(tx pgx.Tx, _ auth.Actor) error {
 		query := `SELECT group_id::text FROM app.memberships WHERE id=$1`
-		if kind == "Expense" {
+		if kind == "Repayment" {
+			query = `SELECT group_id::text FROM app.repayments WHERE id=$1`
+		} else if kind == "Expense" {
 			query = `SELECT group_id::text FROM app.expenses WHERE id=$1`
 		}
 		return tx.QueryRow(ctx, query, raw).Scan(&group)

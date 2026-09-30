@@ -107,7 +107,7 @@ groupId, creatorMembershipId, senderMembershipId, recipientMembershipId,
 amountMinor, currency, effectiveDate, note, committedAt and revision. Membership
 IDs here are historical values, not nested authorization bypasses.
 
-A Repayment Node exposes id, group, creator, sender, recipient, amountMinor,
+A Repayment Node exposes id, groupId, creator, sender, recipient, amountMinor,
 currency, effectiveDate, note, createdAt and revision using freshly authorized
 minimal Membership fields. Node lookup reauthorizes the containing group before
 returning labels. Add `Group.repayments(first: Int = 20, after: String)` as a

@@ -115,6 +115,19 @@ func (r *queryResolver) Node(ctx context.Context, id string) (model.Node, error)
 			return nil, fieldError(string(problem(ctx, err).Code))
 		}
 	}
+	if kind == "Repayment" {
+		data, err := r.Expenses.ReadRepayments(ctx, groupID, expense.PageRequest{First: 1}, &id)
+		if err == expense.Failure("NOT_FOUND") {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fieldError(string(problem(ctx, err).Code))
+		}
+		if len(data.Records) == 0 {
+			return nil, nil
+		}
+		return mapRepayment(data.Records[0], members(expense.Snapshot{Members: data.Members})), nil
+	}
 	if kind == "Expense" {
 		snapshot, err := r.Expenses.ReadExpense(ctx, groupID, id)
 		if err == expense.Failure("NOT_FOUND") {
