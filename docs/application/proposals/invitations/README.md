@@ -106,14 +106,15 @@ or moderation policy; do not introduce email merging to simulate that guarantee.
 ## Readiness and smallest dependency order
 
 Neither complete issue is implementation-ready: I1–I5 need explicit resolution,
-the technical proposal needs review, and affected production work needs #75/#78.
+the technical proposal needs review, and affected production work needs #78.
+#75 is complete through merged PR #98; reuse its implemented foundation.
 This is a completed design proposal, not a claim of provider/runtime proof.
 Design review and a synthetic Auth compatibility experiment can proceed now.
 
 1. Merge the coordinated design after decisions, independent review and required
    checks. Record approved/deferred scope explicitly; keep both feature issues open.
-2. Complete #75 restricted identity/membership foundation, then #78 verified
-   identity/context. #74 tooling is reused. Synthetic owners avoid a dependency on
+2. Reuse completed #75 restricted identity/membership foundation (PR #98), then
+   complete #78 verified identity/context. #74 tooling is reused. Synthetic owners avoid a dependency on
    operational #81 bootstrap.
 3. #79 targeted storage/token/owner lifecycle plus atomic action/delivery intent.
    Restricted-role and race tests; no exposed unfinished SDL. Then targeted atomic
