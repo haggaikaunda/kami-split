@@ -113,6 +113,15 @@ explicit desired-state reconciliation, not experimental generation:
 4. `scripts/db-tool.sh supabase migration up --local` applies pending local history.
 5. Run `make db-test`, then all repository checks. Never edit an applied migration.
 
+Migration versions must be unique across branches before merging. Repayments retain
+`20261005000000`; Household designation uses `20261006000000` after resolving a
+pre-deployment collision. Both SQL bodies are unchanged. If a local database
+recorded Household designation under the old repayment version, do not blindly
+reapply or mark migrations complete: inspect its migration history and actual
+schema first. Recreate only explicitly disposable test data; preserve valued
+local data and reconcile its history against the installed schema before upgrading.
+This correction does not repair existing database histories automatically.
+
 The #75 test upgrades the shipped #74 foundation and separately runs fresh
 replay plus migration up with an applied history. Desired-schema comparison uses
 a clone of the disposable provider baseline, retaining real Auth objects.
