@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
@@ -203,12 +205,14 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 		}
 		return cookies[0]
 	}
-	cookie := start(deliveryToken)
+	originalCapability := deliveryToken
+	originalDigest := hex.EncodeToString(invitation.TokenHash(originalCapability))
+	cookie := start(originalCapability)
 	_, preview := post("/onboarding/preview", map[string]string{}, "", cookie)
 	if len(preview) != 2 || preview["groupName"] != "Independent household" || preview["inviterDisplayName"] != "Independent owner" {
 		t.Fatal("preview leaked or omitted fields")
 	}
-	_, wrong := post("/onboarding/accept", map[string]string{"key": uuid.NewString()}, strangerAccess, cookie)
+	_, wrong := post("/onboarding/accept", map[string]string{"key": uuid.NewString(), "tokenDigest": originalDigest}, strangerAccess, cookie)
 	if wrong["code"] != "WRONG_ACCOUNT" {
 		t.Fatal("unrelated user not denied")
 	}
@@ -216,7 +220,7 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	if err := admin.QueryRow(ctx, `SELECT count(*) FROM app.users WHERE auth_subject=$1`, stranger).Scan(&count); err != nil || count != 0 {
 		t.Fatal("wrong-account acceptance left app identity")
 	}
-	_, generic := post("/onboarding/provision", map[string]string{"email": newEmail}, "", cookie)
+	_, generic := post("/onboarding/provision", map[string]string{"email": newEmail, "tokenDigest": originalDigest}, "", cookie)
 	if generic["code"] != "CHECK_EMAIL" {
 		t.Fatal("eligible provisioning failed")
 	}
@@ -228,22 +232,41 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	session := provider("/verify", "", map[string]string{"type": "invite", "token_hash": challenge})
 	newAccess := session["access_token"].(string)
 	newSubject := session["user"].(map[string]any)["id"].(string)
+	entry := create(existingEmail)
+	send(entry["actionID"])
+	existingDigest := hex.EncodeToString(invitation.TokenHash(deliveryToken))
+	existingCookie := start(deliveryToken)
 	operation := uuid.NewString()
-	_, accepted := post("/onboarding/accept", map[string]string{"key": operation}, newAccess, cookie)
+	// Tab A keeps its reviewed capability while tab B replaces the shared cookie.
+	// Both first completion and original-key recovery must reject that mismatch.
+	for _, payload := range []map[string]string{{"key": operation, "tokenDigest": originalDigest}, {"key": uuid.NewString(), "tokenDigest": originalDigest}, {"key": uuid.NewString()}} {
+		response, result := post("/onboarding/accept", payload, newAccess, existingCookie)
+		if response.Code != 409 || result["code"] != "ORIGINAL_LINK_REQUIRED" {
+			t.Fatal("cross-tab first acceptance changed invitation")
+		}
+	}
+	response, result := post("/onboarding/provision", map[string]string{"email": existingEmail, "tokenDigest": originalDigest}, "", existingCookie)
+	if response.Code != 409 || result["code"] != "ORIGINAL_LINK_REQUIRED" {
+		t.Fatal("cross-tab provisioning changed invitation")
+	}
+
+	_, accepted := post("/onboarding/accept", map[string]string{"key": operation, "tokenDigest": originalDigest}, newAccess, cookie)
 	if accepted["code"] != "ADMITTED" || accepted["hasAccess"] != true || accepted["groupID"] != groupID {
 		t.Fatal("verified new account not admitted")
 	}
-	_, repeated := post("/onboarding/accept", map[string]string{"key": operation}, newAccess, cookie)
+	_, repeated := post("/onboarding/accept", map[string]string{"key": operation, "tokenDigest": originalDigest}, newAccess, cookie)
 	if repeated["hasAccess"] != true {
 		t.Fatal("same-action recovery lost admission")
 	}
 	if err := admin.QueryRow(ctx, `SELECT count(*) FROM app.memberships m JOIN app.users u ON u.id=m.user_id WHERE u.auth_subject=$1 AND m.group_id=$2`, newSubject, group).Scan(&count); err != nil || count != 1 {
 		t.Fatal("repeated admission duplicated membership")
 	}
-	entry := create(existingEmail)
-	send(entry["actionID"])
-	existingCookie := start(deliveryToken)
-	_, admitted := post("/onboarding/accept", map[string]string{"key": uuid.NewString()}, existingAccess, existingCookie)
+	response, result = post("/onboarding/accept", map[string]string{"key": operation, "tokenDigest": originalDigest}, newAccess, existingCookie)
+	if response.Code != 409 || result["code"] != "ORIGINAL_LINK_REQUIRED" {
+		t.Fatal("cross-tab same-key retry changed invitation")
+	}
+
+	_, admitted := post("/onboarding/accept", map[string]string{"key": uuid.NewString(), "tokenDigest": existingDigest}, existingAccess, existingCookie)
 	if admitted["code"] != "ADMITTED" {
 		t.Fatal("existing account admission failed")
 	}
@@ -254,7 +277,7 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	if _, err := admin.Exec(ctx, `UPDATE app.users SET enabled=false WHERE id=$1`, existingUser); err != nil {
 		t.Fatal(err)
 	}
-	_, disabled := post("/onboarding/accept", map[string]string{"key": uuid.NewString()}, existingAccess, existingCookie)
+	_, disabled := post("/onboarding/accept", map[string]string{"key": uuid.NewString(), "tokenDigest": existingDigest}, existingAccess, existingCookie)
 	if disabled["hasAccess"] == true || disabled["code"] == "ADMITTED" {
 		t.Fatal("disabled application identity regained access")
 	}

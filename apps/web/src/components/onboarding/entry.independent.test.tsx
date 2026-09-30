@@ -46,6 +46,7 @@ const key = '12345678-1234-1234-1234-123456789012';
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   sessionStorage.clear();
+  sessionStorage.setItem('kami-onboarding-link-digest', 'a'.repeat(64));
   sdk.session = {
     user: { id: 'alice', email: 'alice@example.test' },
     access_token: 'alice-token',
@@ -322,7 +323,10 @@ it('resubmits an unobserved acceptance with the original key after an offline fa
   expect(readAttempt()).toEqual(original);
   respond = async (path, body) => {
     expect(path).toBe('/api/onboarding/accept');
-    expect(body).toEqual({ key: original.key });
+    expect(body).toEqual({
+      key: original.key,
+      tokenDigest: original.tokenDigest,
+    });
     return { code: 'APPLIED', groupID: 'group-a', hasAccess: true };
   };
   await click('Retry original action with the same key');
@@ -419,4 +423,59 @@ it('blocks retry when the current invitation differs from the retained acceptanc
     0,
   );
   expect(readAttempt()?.key).toBe(key);
+});
+it('binds initial and retried acceptance to the original tab invitation when the shared cookie changes', async () => {
+  const originalDigest = 'a'.repeat(64);
+  sessionStorage.setItem('kami-onboarding-link-digest', originalDigest);
+  window.history.replaceState(null, '', '/join');
+  await render('join');
+  const originalFetch = vi.mocked(fetch).getMockImplementation()!;
+  const attempts: Record<string, unknown>[] = [];
+  vi.mocked(fetch).mockImplementation(async (path, options) => {
+    if (path === '/api/onboarding/accept') {
+      attempts.push(JSON.parse(String(options?.body)));
+      // Another tab replaced the shared cookie with invitation B. The server
+      // rejects this tab's invitation A binding instead of admitting B.
+      return {
+        ok: false,
+        json: async () => ({ code: 'ORIGINAL_LINK_REQUIRED' }),
+      } as Response;
+    }
+    return originalFetch(path, options);
+  });
+  await click('Join group');
+  const original = readAttempt()!;
+  expect(original.tokenDigest).toBe(originalDigest);
+  expect(attempts).toEqual([
+    { key: original.key, tokenDigest: originalDigest },
+  ]);
+  expect(container.textContent).not.toContain('You have joined the group');
+  await click('Retry original action with the same key');
+  expect(attempts).toEqual([
+    { key: original.key, tokenDigest: originalDigest },
+    { key: original.key, tokenDigest: originalDigest },
+  ]);
+  expect(readAttempt()).toEqual(original);
+  expect(container.textContent).not.toContain('You have joined the group');
+});
+it('asks a fresh tab to reopen the original invitation without creating an unrecoverable attempt', async () => {
+  sessionStorage.removeItem('kami-onboarding-link-digest');
+  window.history.replaceState(null, '', '/join');
+  await render('join');
+  await click('Join group');
+  expect(container.textContent).toContain(
+    'Reopen the original application invitation link in this tab',
+  );
+  expect(readAttempt()).toBeNull();
+  expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
+    0,
+  );
+});
+it('removes the tab invitation binding and pending action when the session signs out', async () => {
+  saveAttempt({ kind: 'ACCEPT', key, tokenDigest: 'a'.repeat(64) });
+  await render('join');
+  await act(async () => sdk.changed('SIGNED_OUT', null));
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBeNull();
+  expect(readAttempt()).toBeNull();
+  expect(container.textContent).not.toContain('Private group');
 });

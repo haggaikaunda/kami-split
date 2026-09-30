@@ -41,6 +41,10 @@ type Receipt = {
   hasAccess?: boolean;
 };
 const messages: Record<string, string> = {
+  INVALID_EMAIL: 'Enter a valid email address. No invitation was saved.',
+  INVALID_INPUT: 'Check the original action inputs before submitting again.',
+  ORIGINAL_LINK_REQUIRED:
+    'Reopen the original application invitation link in this tab. Another tab may have changed the current invitation, or this email callback opened in a new tab.',
   UNAVAILABLE:
     'This service is temporarily unavailable. If you submitted an action, recover its result before trying a new action.',
   UNAUTHENTICATED: 'Your session has expired. Sign in again to continue.',
@@ -582,6 +586,10 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                     void run(async () => {
                       const out = await call('/api/onboarding/provision', {
                         email,
+                        tokenDigest:
+                          sessionStorage.getItem(
+                            'kami-onboarding-link-digest',
+                          ) ?? '',
                       });
                       tell(out.message);
                     })
@@ -602,16 +610,19 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
               disabled={busy || !!attempt}
               onClick={() =>
                 void run(async () => {
+                  const tokenDigest = sessionStorage.getItem(
+                    'kami-onboarding-link-digest',
+                  );
+                  if (!tokenDigest) throw new Error('ORIGINAL_LINK_REQUIRED');
                   const value: Attempt = {
                     kind: 'ACCEPT',
                     key: crypto.randomUUID(),
-                    tokenDigest:
-                      sessionStorage.getItem('kami-onboarding-link-digest') ??
-                      undefined,
+                    tokenDigest,
                   };
                   pending(value);
                   const out = await call('/api/onboarding/accept', {
                     key: value.key,
+                    tokenDigest: value.tokenDigest,
                   });
                   showReceipt({
                     outcome: out.code,
@@ -852,6 +863,7 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
                         throw new Error('ORIGINAL_LINK_REQUIRED');
                       const out = await call('/api/onboarding/accept', {
                         key: attempt.key,
+                        tokenDigest: attempt.tokenDigest,
                       });
                       showReceipt({
                         outcome: out.code,

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -177,10 +179,11 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Token string `json:"token"`
-		Email string `json:"email"`
-		Key   string `json:"key"`
-		State string `json:"state"`
+		Token       string `json:"token"`
+		Email       string `json:"email"`
+		Key         string `json:"key"`
+		State       string `json:"state"`
+		TokenDigest string `json:"tokenDigest"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192))
 	decoder.DisallowUnknownFields()
@@ -255,6 +258,21 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respond(w, 503, map[string]string{"code": "UNAVAILABLE"})
 		return
+	}
+	if path == "accept" {
+		if err := auth.RequireRequest(ctx); err != nil {
+			respond(w, 401, map[string]string{"code": safeOutcome(err)})
+			return
+		}
+	}
+	if path == "accept" || path == "provision" {
+		// Bind this tab's explicit action to its original capability. A shared
+		// browser cookie may have been replaced by another tab's invitation.
+		expected := hex.EncodeToString(invitation.TokenHash(string(token)))
+		if expected == "" || subtle.ConstantTimeCompare([]byte(in.TokenDigest), []byte(expected)) != 1 {
+			respond(w, 409, map[string]string{"code": "ORIGINAL_LINK_REQUIRED"})
+			return
+		}
 	}
 	switch path {
 	case "preview":
