@@ -19,7 +19,7 @@ func (d *DB) WithIdentity(ctx context.Context, subject string, fn func(pgx.Tx) e
 	if err := id.Scan(subject); err != nil || !id.Valid || fmt.Sprintf("%x-%x-%x-%x-%x", id.Bytes[0:4], id.Bytes[4:6], id.Bytes[6:8], id.Bytes[8:10], id.Bytes[10:16]) != subject {
 		return errors.New("invalid verified subject")
 	}
-	return pgx.BeginTxFunc(ctx, d.Pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+	return pgx.BeginTxFunc(ctx, d.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_catalog.set_config('app.verified_sub', $1, true)`, subject); err != nil {
 			return fmt.Errorf("bind verified identity: %w", err)
 		}
@@ -99,7 +99,22 @@ func LockGroupWrite(ctx context.Context, tx pgx.Tx, group pgtype.UUID, members [
 	return err
 }
 
+// GroupSummary is the stable group-list projection admitted by RLS.
+type GroupSummary struct {
+	ID       pgtype.UUID
+	Name     string
+	Currency string
+}
+
 // ListGroups returns only groups admitted by RLS in the current transaction.
-func ListGroups(ctx context.Context, tx pgx.Tx) ([]identityquery.ListGroupsRow, error) {
-	return identityquery.New(tx).ListGroups(ctx)
+func ListGroups(ctx context.Context, tx pgx.Tx) ([]GroupSummary, error) {
+	rows, err := identityquery.New(tx).ListGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var groups []GroupSummary
+	for _, row := range rows {
+		groups = append(groups, GroupSummary{ID: row.ID, Name: row.Name, Currency: row.Currency})
+	}
+	return groups, nil
 }

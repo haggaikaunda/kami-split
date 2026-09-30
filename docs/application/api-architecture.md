@@ -12,6 +12,12 @@ groups, memberships and transaction-bound reads. [Persisted expenses](persisted-
 - Pure financial code validates exact amounts, splits, and settlement effects without importing gqlgen or database libraries.
 - Persistence code executes explicit queries and constraints. Helpers do not secretly commit part of a larger application operation.
 
+The database owns its private runtime pool. Capability preview and eligibility use
+narrow invitation persistence methods without manufacturing actor identity; admission
+rechecks authorization. Raw pool access exists only in integration-tagged builds
+for permission probes and fault injection. The invitation package owns recurring
+cleanup orchestration, with cancellation and completion owned by the server.
+
 Prefer a single cohesive backend with explicit constructors and narrowly scoped packages. No microservices, generic repository framework, or fixed hierarchy of layers is required.
 
 ## Financial mutations

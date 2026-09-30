@@ -5,6 +5,7 @@ package invitation
 import (
 	"context"
 	"encoding/json"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"testing"
 	"time"
 
@@ -37,7 +38,7 @@ func TestSerializedInvitationRaces(t *testing.T) {
 			if tc.first == "RESEND" {
 				f.exec(`UPDATE app.invitations SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1`, created.InvitationID)
 			}
-			tx, err := f.db.Pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+			tx, err := database.IntegrationPool(f.db).BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 			if err != nil {
 				t.Fatal(err)
 			}

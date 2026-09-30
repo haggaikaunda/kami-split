@@ -255,7 +255,8 @@ func (s *Service) Preview(ctx context.Context, token string) (Preview, error) {
 	if hash == nil {
 		return p, Outcome("UNAVAILABLE_LINK")
 	}
-	err := s.db.Pool.QueryRow(ctx, `SELECT group_name,inviter_name FROM app.invitation_preview($1)`, hash).Scan(&p.GroupName, &p.InviterName)
+	projection, err := s.db.PreviewInvitation(ctx, hash)
+	p.GroupName, p.InviterName = projection.GroupName, projection.InviterName
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, Outcome("UNAVAILABLE_LINK")
 	}
@@ -273,8 +274,7 @@ func (s *Service) Eligible(ctx context.Context, token, email string) (bool, erro
 	if hash == nil {
 		return false, nil
 	}
-	var ok bool
-	err = s.db.Pool.QueryRow(ctx, `SELECT app.invitation_eligible($1,$2)`, hash, canonical).Scan(&ok)
+	ok, err := s.db.InvitationEligible(ctx, hash, canonical)
 	return ok, safe(err)
 }
 

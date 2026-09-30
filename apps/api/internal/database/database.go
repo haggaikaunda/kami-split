@@ -91,7 +91,7 @@ func (c Config) poolConfig() (*pgxpool.Config, error) {
 
 // DB owns a bounded pool. Callers must release acquired connections before Close.
 type DB struct {
-	Pool    *pgxpool.Pool
+	pool    *pgxpool.Pool
 	timeout time.Duration
 }
 
@@ -104,7 +104,7 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	if err != nil {
 		return nil, errors.New("create database pool")
 	}
-	db := &DB{Pool: pool, timeout: c.Timeout}
+	db := &DB{pool: pool, timeout: c.Timeout}
 	probe, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	// SELECT 1 / Ping does not require pg_monitor or privileges on provider internals.
@@ -124,10 +124,10 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 func (d *DB) Ready(ctx context.Context) error {
 	probe, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
-	if err := d.Pool.Ping(probe); err != nil {
+	if err := d.pool.Ping(probe); err != nil {
 		return fmt.Errorf("database unavailable")
 	}
 	return nil
 }
 
-func (d *DB) Close() { d.Pool.Close() }
+func (d *DB) Close() { d.pool.Close() }
