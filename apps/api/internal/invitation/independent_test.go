@@ -247,3 +247,60 @@ func TestIndependentRuntimePurgeWithoutInvitationTraffic(t *testing.T) {
 		t.Fatal("maintenance reported failure")
 	}
 }
+
+func TestIndependentDifferentGroupsAndOwnerIsolation(t *testing.T) {
+	left, right := newFixture(t), newFixture(t)
+	type answer struct {
+		r   Result
+		err error
+	}
+	done := make(chan answer, 2)
+	for _, f := range []*fixture{left, right} {
+		actor := f.actor(f.owner)
+		go func(f *fixture) {
+			r, err := f.service.Create(actor, f.group, "same.target@example.invalid", uuid.New())
+			done <- answer{r, err}
+		}(f)
+	}
+	first, second := <-done, <-done
+	requireOutcome(t, first.r, first.err, "SAVED")
+	requireOutcome(t, second.r, second.err, "SAVED")
+	if first.r.InvitationID == second.r.InvitationID || first.r.GroupID == second.r.GroupID {
+		t.Fatal("different groups shared invitation")
+	}
+	target := first.r
+	if target.GroupID != right.group {
+		target = second.r
+	}
+	lock, err := left.admin.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Rollback(context.Background())
+	if _, err = lock.Exec(context.Background(), `SELECT id FROM app.groups WHERE id=$1 FOR UPDATE`, left.group); err != nil {
+		t.Fatal(err)
+	}
+	independent, cancel := context.WithTimeout(right.actor(right.owner), 2*time.Second)
+	defer cancel()
+	independentResult, err := right.service.Create(independent, right.group, "independent.target@example.invalid", uuid.New())
+	requireOutcome(t, independentResult, err, "SAVED")
+	if err := lock.Rollback(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	caller := left.actor(left.owner)
+	if _, err := left.service.Create(caller, right.group, "other@example.invalid", uuid.New()); err == nil {
+		t.Fatal("cross-group create allowed")
+	}
+	if _, err := left.service.List(caller, right.group, nil, 50); err == nil {
+		t.Fatal("cross-group list allowed")
+	}
+	if _, err := left.service.Resend(caller, right.group, target.InvitationID, uuid.New()); err == nil {
+		t.Fatal("cross-group resend allowed")
+	}
+	if _, err := left.service.Revoke(caller, right.group, target.InvitationID, uuid.New()); err == nil {
+		t.Fatal("cross-group revoke allowed")
+	}
+	if _, err := left.service.Resend(caller, left.group, target.InvitationID, uuid.New()); err == nil {
+		t.Fatal("foreign invitation accepted under owned group")
+	}
+}
