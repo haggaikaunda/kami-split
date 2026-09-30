@@ -77,8 +77,10 @@ wire int64 bounds, TypeScript branded strings and bigint; no GraphQL Int, Number
 or parseFloat aggregate arithmetic. Per-member net magnitude and nonnegative
 aggregate maxima are 9223372036854775807 cents. Cross-group gross sums are checked
 against the same maximum before serialization; overflow means AMOUNT_OVERFLOW and
-no totals, not clipping or a wrapped net. Record repayment bounds remain
-1..999999999 cents. Display currency and exact cents, including
+no totals, not clipping or a wrapped net. Proposed repayment bounds are
+1..999999999 cents, matching the preview record limit; #110 must finalize this
+validation rule in its reviewed settlement contract. #76 defines expense inputs,
+not an implemented or approved repayment endpoint. Display currency and exact cents, including
 `"9007199254740993"` → `$90,071,992,547,409.93 USD`. Amount inputs use #76's decimal
 text parsing; no rounding or currency conversion.
 
