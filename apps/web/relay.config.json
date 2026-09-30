@@ -1,0 +1,14 @@
+{
+  "src": "./src/lib/relay",
+  "schema": "../../.tools/relay-schema.graphql",
+  "language": "typescript",
+  "artifactDirectory": "./src/lib/relay/__generated__",
+  "customScalarTypes": {
+    "MinorUnits": "string",
+    "Revision": "string",
+    "Date": "string",
+    "DateTime": "string",
+    "OperationKey": "string"
+  },
+  "eagerEsModules": true
+}

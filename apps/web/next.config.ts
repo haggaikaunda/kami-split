@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
       '/join',
       '/sign-in',
       '/account',
+      '/groups',
       '/invitations',
       '/auth/:path*',
       '/api/:path*',

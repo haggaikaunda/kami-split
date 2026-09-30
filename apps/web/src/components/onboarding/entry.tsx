@@ -969,6 +969,9 @@ export function OnboardingEntry({ mode }: { mode: Mode }) {
             </section>
           )}
           <nav aria-label="Account navigation">
+            {session && (
+              <Link href="/groups">Open your groups and expenses</Link>
+            )}
             <Link href="/account">Your account</Link>
             <Link href="/join">Return to invitation</Link>
             {!session && (

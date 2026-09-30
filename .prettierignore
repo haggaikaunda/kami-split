@@ -6,3 +6,5 @@ next-env.d.ts
 .tools
 supabase/.temp
 supabase/.branches
+
+apps/web/src/lib/relay/__generated__
