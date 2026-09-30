@@ -2,6 +2,7 @@ package expense
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
@@ -31,5 +32,12 @@ func TestExpectedExpenseOutcomesRemainQuiet(t *testing.T) {
 		if _, ok := diagnostic.Operation(safeError(original)); ok {
 			t.Fatal("expected outcome marked unexpected")
 		}
+	}
+}
+
+func TestSafeErrorDoesNotExposeExpectedWrapperText(t *testing.T) {
+	err := safeError(fmt.Errorf("private dependency text: %w", Failure("INVALID_INPUT")))
+	if err.Error() != "INVALID_INPUT" {
+		t.Fatal("private wrapper exposed")
 	}
 }

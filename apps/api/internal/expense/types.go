@@ -61,7 +61,10 @@ func safeError(err error) error {
 	}
 	var failure Failure
 	if errors.As(err, &failure) {
-		return err
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(failure, err, operation)
+		}
+		return failure
 	}
 	var authError auth.Outcome
 	if errors.As(err, &authError) {

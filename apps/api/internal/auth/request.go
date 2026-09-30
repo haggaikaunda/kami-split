@@ -152,7 +152,10 @@ func WithActor(ctx context.Context, db *database.DB, fn func(pgx.Tx, Actor) erro
 	}
 	var outcome Outcome
 	if errors.As(err, &outcome) {
-		return err
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(outcome, err, operation)
+		}
+		return outcome
 	}
 	return diagnostic.Wrap(Unavailable, err, "auth.transaction")
 }

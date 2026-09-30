@@ -2,6 +2,7 @@ package invitation
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
@@ -23,6 +24,15 @@ func TestSafeInvitationFailurePreservesCause(t *testing.T) {
 	for _, original := range []error{Outcome("NOT_CLAIMABLE"), Outcome("INVALID_INPUT"), &pgconn.PgError{Code: "42501"}, auth.VerifyEmail} {
 		if _, ok := diagnostic.Operation(safe(original)); ok {
 			t.Fatal("expected failure marked unexpected")
+		}
+	}
+}
+
+func TestSafeInvitationDoesNotExposeWrapperText(t *testing.T) {
+	for _, outcome := range []error{Outcome("INVALID_INPUT"), auth.Unauthenticated} {
+		err := safe(fmt.Errorf("private recipient: %w", outcome))
+		if err.Error() != outcome.Error() {
+			t.Fatal("private wrapper exposed")
 		}
 	}
 }

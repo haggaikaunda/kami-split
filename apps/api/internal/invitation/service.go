@@ -69,11 +69,17 @@ func safe(err error) error {
 	}
 	var outcome Outcome
 	if errors.As(err, &outcome) {
-		return err
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(outcome, err, operation)
+		}
+		return outcome
 	}
 	var authentication auth.Outcome
 	if errors.As(err, &authentication) {
-		return err
+		if operation, ok := diagnostic.Operation(err); ok {
+			return diagnostic.Wrap(authentication, err, operation)
+		}
+		return authentication
 	}
 	var databaseError *pgconn.PgError
 	if errors.As(err, &databaseError) && databaseError.Code == "42501" {
