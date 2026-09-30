@@ -236,3 +236,21 @@ func TestRepaymentGraphQLCurrentAuthorizationAndValidation(t *testing.T) {
 		t.Fatal(history)
 	}
 }
+
+func TestRepaymentGraphQLOmittedNoteMatchesExplicitEmptyRetry(t *testing.T) {
+	f := newExpenseFixture(t)
+	in := repaymentGQLInput(f)
+	delete(in, "note")
+	original := repaymentGQLRecord(t, f, 3, in)
+	if original["__typename"] != "RepaymentCommitted" || original["record"].(map[string]any)["note"] != "" {
+		t.Fatal(original)
+	}
+	in["note"] = ""
+	retry := repaymentGQLRecord(t, f, 3, in)
+	if !reflect.DeepEqual(original, retry) {
+		t.Fatalf("default note changed attempt: %v vs %v", original, retry)
+	}
+	if counts := repaymentCounts(t, f); counts != [4]int{1, 1, 1, 2} {
+		t.Fatal(counts)
+	}
+}
