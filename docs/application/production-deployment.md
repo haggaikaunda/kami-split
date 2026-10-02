@@ -100,6 +100,8 @@ service, secret payload, or billable always-on compute was created in this step.
   `kami-split-invitation-keys`, `kami-split-onboarding-auth-admin-key`, and
   `kami-split-resend-api-key`. The runtime identity has Secret Accessor on only
   these five containers. No container has a secret version yet.
+- The project-created default Compute Engine service account has no project-level
+  `Editor` grant. Application workloads use the dedicated identities above.
 
 Cloud Run creation remains deferred until an immutable API image and the named
 Secret Manager values are ready. Adding a version is a separate operator action;
@@ -245,9 +247,6 @@ Before enabling deployment, record and verify these operator-supplied values:
 
 - `us-west1` is already selected from the actual Supabase region for the
   confirmed `kami-finances-production` Google Cloud project.
-- Confirm no workload uses the default Compute Engine service account, then
-  remove its project-level `Editor` grant. The application uses the dedicated
-  runtime and deployment identities above.
 - Hosted Supabase Auth and JWKS endpoints, publishable key, database endpoints, and connection ceiling after project provisioning completes.
 - Canonical Vercel production origin, organization ID, and project ID.
 - Verified invitation sender domain/address.
