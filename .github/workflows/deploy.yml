@@ -343,9 +343,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          pnpm dlx vercel@59.19.1 promote "$DEPLOYMENT_URL" \
-            --yes \
-            --token "$VERCEL_TOKEN"
+          node scripts/vercel-promote.mjs
 
       - name: Verify hosted application
         shell: bash
