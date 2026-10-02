@@ -33,15 +33,3 @@ jobs:
         run: |
           echo "Web: $WEB_RESULT; API: $API_RESULT"
           test "$WEB_RESULT" = success && test "$API_RESULT" = success
-  deploy:
-    name: Production deployment
-    needs: verify
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
-    secrets:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
