@@ -28,7 +28,7 @@ func TestAuthenticationReadinessPreservesPublicHealth(t *testing.T) {
 	for _, tc := range []struct {
 		path, method, body string
 		status             int
-	}{{"/healthz", "GET", "", 200}, {"/readyz", "GET", "", 503}, {"/graphql", "POST", `{"query":"{ health { status } }"}`, 200}} {
+	}{{"/health", "GET", "", 200}, {"/ready", "GET", "", 503}, {"/healthz", "GET", "", 200}, {"/readyz", "GET", "", 503}, {"/graphql", "POST", `{"query":"{ health { status } }"}`, 200}} {
 		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer malformed")

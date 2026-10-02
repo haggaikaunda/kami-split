@@ -263,10 +263,13 @@ and recheck it after any compute-plan change. Raising the instance cap first
 requires durable shared onboarding context (or a separately reviewed routing
 design), measured traffic, and a confirmed total connection budget.
 
-The container liveness endpoint is `/healthz`. Deployment readiness and the
-post-deploy API smoke check use `/readyz`, which checks the configured database
+The container liveness endpoint is `/health`. Deployment readiness and the
+post-deploy API smoke check use `/ready`, which checks the configured database
 and authentication key source. The public GraphQL health field is an additional
-transport assertion, not a substitute for dependency readiness.
+transport assertion, not a substitute for dependency readiness. Production probes
+use these Cloud Run-safe paths to avoid routing limitations affecting paths ending
+in `z`. The equivalent `/healthz` and `/readyz` endpoints remain available for
+local development and backward compatibility.
 
 ## Vercel production configuration
 
@@ -321,7 +324,7 @@ Secret Manager versions, builds and pushes an API image tagged with the triggeri
 commit SHA, resolves that tag to its immutable digest, applies migrations with
 the pinned Supabase CLI, deploys a new Cloud Run revision from the digest and
 pinned secret versions, and verifies that exact tagged revision
-through `/healthz` and `/readyz` before explicitly directing 100% of service
+through `/health` and `/ready` before explicitly directing 100% of service
 traffic to it. Existing services receive a candidate with zero traffic (`--no-traffic`). For the
 first deployment only, a successful empty service lookup permits creation without
 that flag because Cloud Run rejects it for a new service. The first revision is
@@ -364,7 +367,7 @@ For an incident that cannot wait for a PR:
 
 1. Confirm the last known-good revision still references enabled numeric Secret
    Manager versions, then direct 100% of `kami-split-api` traffic in `us-west1`
-   to that revision. Verify `/healthz` and `/readyz` on the service URL.
+   to that revision. Verify `/health` and `/ready` on the service URL.
 2. If the web release is incompatible with that API, use Vercel's production
    rollback to restore the matching known-good deployment and verify
    `https://finances.mckardah.com` plus its GraphQL health request.

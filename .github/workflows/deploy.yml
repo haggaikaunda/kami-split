@@ -192,9 +192,9 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${CANDIDATE_URL}/healthz"
+            --retry-delay 2 "${CANDIDATE_URL}/health"
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${CANDIDATE_URL}/readyz"
+            --retry-delay 2 "${CANDIDATE_URL}/ready"
 
       - name: Promote and verify API revision
         id: service
@@ -218,9 +218,9 @@ jobs:
             <<< "$service_json")"
           [[ "$serving_revision" == "$CANDIDATE_REVISION" ]]
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${SERVICE_URL}/healthz"
+            --retry-delay 2 "${SERVICE_URL}/health"
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${SERVICE_URL}/readyz"
+            --retry-delay 2 "${SERVICE_URL}/ready"
           gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
