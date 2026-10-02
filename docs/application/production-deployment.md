@@ -342,9 +342,12 @@ Only after the API passes readiness does the web job use a pinned Vercel CLI
 release to create a staged production build with the exact API, Supabase, and
 canonical-origin settings. Read-only preflight checks exercise the staged page,
 public Supabase configuration route, and GraphQL health request before the build
-is promoted to the production domain. The same checks then run against the
-canonical domain. A failed migration, API deployment, web build, or staged
-preflight therefore leaves the existing web deployment in place instead of
+is promoted to the production domain. Generated deployment URLs remain protected
+by Vercel Deployment Protection: staged checks use the pinned `vercel curl`
+command with the existing `VERCEL_TOKEN` to authenticate and obtain the protection
+bypass automatically. The same checks then run as ordinary anonymous `curl`
+requests against the canonical production domain to prove public reachability.
+A failed migration, API deployment, web build, or staged preflight therefore leaves the existing web deployment in place instead of
 publishing a knowingly incompatible frontend.
 
 ## Deploy, rollback, and recovery
