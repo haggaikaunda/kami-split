@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: API checks
+  source:
+    name: Go source checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -19,14 +19,36 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
+      - run: make api-check
+
+  database:
+    name: Database integration checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
       - name: Install pinned database tools
         run: make db-tools
       - run: make db-generation-check
+      # db-test owns its unique disposable project and EXIT-trap cleanup.
       - run: make db-test
-      - run: make api-check
+
+  runtime:
+    name: Container and local startup checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned database tools
+        run: make db-tools
       - run: docker compose config --quiet
-      - run: docker build --target verify -f apps/api/Dockerfile .
-      - run: docker compose up --build --wait api
+      # Build the production image once; both startup modes use this runner's image.
+      - run: docker compose build api
+      - run: docker compose up --no-build --wait api
       - name: Smoke test container GraphQL
         run: |
           curl --fail --silent --show-error -H 'Content-Type: application/json' \
@@ -34,6 +56,9 @@ jobs:
             | python3 -c 'import json,sys; assert json.load(sys.stdin) == {"data":{"health":{"status":"ok"}}}'
       - run: docker compose down
       - name: Coordinated local database and API readiness
-        run: make dev-up
+        run: make dev-up DEV_BUILD_FLAG=--no-build
+      # Separate cleanup steps ensure Supabase stops even if Compose cleanup fails.
       - if: always()
-        run: make dev-down
+        run: docker compose -f compose.yaml -f compose.database.yaml down
+      - if: always()
+        run: make db-stop

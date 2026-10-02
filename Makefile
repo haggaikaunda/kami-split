@@ -39,8 +39,11 @@ db-start:
 db-stop:
 	./scripts/db-tool.sh supabase stop
 
+# CI reuses its already-built production image; local startup builds by default.
+DEV_BUILD_FLAG ?= --build
+
 dev-up: db-start
-	docker compose -f compose.yaml -f compose.database.yaml up --build --wait api
+	docker compose -f compose.yaml -f compose.database.yaml up $(DEV_BUILD_FLAG) --wait api
 
 dev-down:
 	docker compose -f compose.yaml -f compose.database.yaml down

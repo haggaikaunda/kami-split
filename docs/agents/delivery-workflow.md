@@ -38,17 +38,31 @@ have no path filters, inherited secrets, or child concurrency groups.
 
 `web.yml` owns pnpm/Node setup, the root-lockfile cache, repository-wide formatting
 (exactly once), lint, type checking, web tests, and the Next.js build, in order.
-`api.yml` owns Go setup and the Go-module cache, pinned database tool setup,
-sqlc generation drift, isolated Supabase migration/permission/integration checks,
-`make api-check` (formatting,
-module integrity, vet, regular and race tests, build, generation drift), Docker
-Compose validation, the Docker verification stage, Compose readiness, and the live
-GraphQL response assertion. It also checks coordinated database/API startup.
-Compose and local Supabase cleanup always run, including after failure.
-Each child checks out the repository on its own runner and has a 15-minute limit.
+`api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted
+runner with a 15-minute limit:
+
+- **Go source checks:** Go setup/module cache, Cloud Run traffic-selection tests,
+  and authoritative `make api-check` coverage (formatting, module integrity, vet,
+  regular/race tests, build, and gqlgen generation drift).
+- **Database integration checks:** Go setup/module cache, pinned database tools,
+  sqlc drift, and `make db-test` migration/permission/integration/reset/replay and
+  dump/restore checks. The script owns a unique disposable Supabase project and
+  an EXIT trap for cleanup.
+- **Container and local startup checks:** pinned database tools, Compose
+  validation, one production image build, readiness and live GraphQL smoke,
+  then coordinated Supabase/API startup via `make dev-up DEV_BUILD_FLAG=--no-build`.
+  Both startup modes reuse the same runner-local image; normal `make dev-up`
+  still builds by default. Separate unconditional Compose and Supabase cleanup
+  steps ensure either cleanup is attempted even if the other fails.
+
+Runner isolation prevents cross-job port/project conflicts and teardown. No Docker
+state is assumed to be shared across runners. The Dockerfile's `verify` target
+remains available for manual use, but CI does not duplicate host Go verification
+through it. Web checks retain their own runner and 15-minute limit.
 
 The one-minute **Verify** job waits for both calls with `always()`, then explicitly
-requires both results to equal `success`. Failure, cancellation, or skipping of
+requires both results to equal `success`. The reusable API result aggregates all
+three required jobs; none is optional or uses `continue-on-error`. Failure, cancellation, or skipping of
 either dependency cannot produce a passing gate. Child checks have distinct names;
 branch protections should continue to require **Verify**. Do not change protections
 to accommodate this layout.

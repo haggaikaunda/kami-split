@@ -32,6 +32,8 @@ The Dockerfile also has a `verify` target:
 docker build --target verify -f apps/api/Dockerfile .
 ```
 
+This optional manual target is not run in CI, where `make api-check` owns source verification. CI builds the production image once and reuses it for both health-only and coordinated database startup (`make dev-up DEV_BUILD_FLAG=--no-build`).
+
 That target runs formatting, vet, race tests, build, and module/generation reproducibility checks. Runtime binaries are built without CGO; the verification stage retains a C compiler for race tests. Supabase CLI owns local PostgreSQL/Auth. `make dev-up` adds the database Compose override and coordinates both stacks; `make dev-down` stops them without deleting development data.
 
 ## Configuration
