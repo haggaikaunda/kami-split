@@ -138,10 +138,13 @@ web origin checked by both sides of the proxy.
 
 ## GitHub production environment
 
-The GitHub `production` environment owns deployment selection and credentials.
-Pull-request workflows must not receive this environment or any of its secrets.
-Environment protection should restrict deployment to `main` and may require an
-operator approval if the repository plan supports it.
+The GitHub `production` environment owns deployment selection variables. The
+three deploy-runner credentials are repository secrets that the `main`-only CI
+caller passes by explicit name to the reusable production workflow; do not use
+`secrets: inherit`. Pull-request jobs do not call the production workflow and
+must not receive these credentials. Environment protection should restrict
+deployment to `main` and may require an operator approval if the repository plan
+supports it.
 
 Repository or environment variables are non-secret identifiers:
 
@@ -167,8 +170,9 @@ Repository or environment variables are non-secret identifiers:
 | `VERCEL_ORG_ID`                            | Vercel account or team identifier that owns the project.                                                 |
 | `VERCEL_PROJECT_ID`                        | Vercel project identifier for `kami-split-web`.                                                          |
 
-Environment secrets are credentials needed by the deployment runner, not API
-runtime configuration:
+Repository secrets are credentials needed by the deployment runner, not API
+runtime configuration. The caller forwards only these names to the reusable
+workflow:
 
 | Secret                  | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
