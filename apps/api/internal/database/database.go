@@ -76,6 +76,9 @@ func (c Config) poolConfig() (*pgxpool.Config, error) {
 	if mode != "verify-full" && mode != "disable" {
 		return nil, errors.New("DATABASE_URL requires sslmode=verify-full (or disable for local Supabase)")
 	}
+	if mode == "verify-full" && q.Get("sslrootcert") == "" {
+		return nil, errors.New("DATABASE_URL requires sslrootcert with sslmode=verify-full")
+	}
 	if mode == "disable" && u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost" && u.Hostname() != "::1" && u.Hostname() != "supabase_db_kami-split" {
 		return nil, errors.New("unencrypted database connections are local-only")
 	}

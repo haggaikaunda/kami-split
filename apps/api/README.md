@@ -69,9 +69,19 @@ make api-check
 
 `api-check` runs formatting, module integrity, vet, regular/race tests, build, and generation drift against committed API/schema files. Commit intentional changes before the final drift check; tracked differences or untracked API/schema files fail it. Race tests require a supported platform and C compiler. Run `make db-test` for required real Supabase/PostgreSQL migration, permission and race-enabled integration verification, and `make db-generation-check` for sqlc drift. Root pnpm checks remain required.
 
-`go.mod` pins gqlgen as a tool dependency. Edit SDL and handwritten resolvers, then regenerate committed artifacts; never patch generated execution/model output. Resolver scaffolding preserves handwritten implementations on regeneration.
+`go.mod` pins gqlgen as a tool dependency. Edit SDL and handwritten resolvers,
+then regenerate committed artifacts; never patch generated execution/model
+output. Resolver scaffolding preserves handwritten implementations on
+regeneration.
 
-Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s write/60s idle timeouts, and a 10s GraphQL execution context deadline that cancels database lock waits. Request IDs are server-generated. Logs omit request bodies and error/panic payloads. No playground, WebSocket transport, or broad browser CORS integration is configured. Cloud Run owns production TLS and the gated deployment workflow is documented in [production deployment configuration](../../docs/application/production-deployment.md); its environment and secret versions are configured, and the first live revision awaits the reviewed production merge.
+Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser
+tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s
+write/60s idle timeouts, and a 10s GraphQL execution context deadline that
+cancels database lock waits. Request IDs are server-generated. Logs omit request
+bodies and error/panic payloads. No playground, WebSocket transport, or broad
+browser CORS integration is configured. Cloud Run owns production TLS and the
+gated deployment workflow and remaining operator configuration are documented
+in [production deployment configuration](../../docs/application/production-deployment.md).
 
 Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending the API.
 

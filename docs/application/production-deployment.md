@@ -103,6 +103,10 @@ zero.
   `kami-split-resend-api-key`. The runtime identity has Secret Accessor on only
   these five containers. Each container has an enabled initial version; payloads
   are not stored in GitHub or the repository.
+- `kami-split-supabase-ca` is a separate global Secret Manager container because
+  Cloud Run does not support regional secrets for file-volume mounts. The runtime
+  identity also has Secret Accessor on only this global container; the deployment
+  identity has no payload access.
 - The project-created default Compute Engine service account has no project-level
   `Editor` grant. Application workloads use the dedicated identities above.
 - Vercel project `kami-split-web` uses repository root `apps/web`, has
@@ -167,6 +171,7 @@ Repository or environment variables are non-secret identifiers:
 | `PRODUCTION_API_ORIGIN`                    | Optional first run; when set, must equal the discovered HTTPS Cloud Run origin without a trailing slash. |
 | `INVITATION_FROM`                          | Verified sender address `invites@finances.mckardah.com`.                                                 |
 | `DATABASE_URL_SECRET_VERSION`              | Positive numeric version of `kami-split-database-url` selected for the release.                          |
+| `SUPABASE_CA_SECRET_VERSION`               | Positive numeric version of `kami-split-supabase-ca` selected for the release.                           |
 | `CURSOR_SIGNING_KEYS_SECRET_VERSION`       | Positive numeric version of `kami-split-cursor-signing-keys` selected for the release.                   |
 | `INVITATION_KEYS_SECRET_VERSION`           | Positive numeric version of `kami-split-invitation-keys` selected for the release.                       |
 | `ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION` | Positive numeric version of `kami-split-onboarding-auth-admin-key` selected for the release.             |
@@ -216,13 +221,27 @@ PR jobs, workflow logs, or command output.
 | `ONBOARDING_ORIGIN`          | Exact `PRODUCTION_WEB_ORIGIN`.                                                                      |
 | `INVITATION_FROM`            | Verified production sender address.                                                                 |
 
-| Secret Manager value                   | Runtime contract                                                                                   |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `kami-split-database-url`              | Restricted `kami_api` PostgreSQL URL with `sslmode=verify-full`; never a migration or owner login. |
-| `kami-split-cursor-signing-keys`       | JSON keyring consumed by `CURSOR_SIGNING_KEYS`.                                                    |
-| `kami-split-invitation-keys`           | JSON keyring consumed by `INVITATION_KEYS`.                                                        |
-| `kami-split-onboarding-auth-admin-key` | Supabase Auth administrative credential consumed by `ONBOARDING_AUTH_ADMIN_KEY`.                   |
-| `kami-split-resend-api-key`            | Delivery credential consumed by `RESEND_API_KEY`.                                                  |
+| Secret Manager value                   | Runtime contract                                                                                                                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kami-split-database-url`              | Restricted `kami_api` PostgreSQL URL with `sslmode=verify-full&sslrootcert=/var/run/secrets/kami-split/supabase-ca.crt`; never a migration or owner login.                             |
+| `kami-split-supabase-ca`               | Global (not regional) secret containing the Supabase project server root certificate, mounted read-only at `/var/run/secrets/kami-split/supabase-ca.crt`; it is public trust material. |
+| `kami-split-cursor-signing-keys`       | JSON keyring consumed by `CURSOR_SIGNING_KEYS`.                                                                                                                                        |
+| `kami-split-invitation-keys`           | JSON keyring consumed by `INVITATION_KEYS`.                                                                                                                                            |
+| `kami-split-onboarding-auth-admin-key` | Supabase Auth administrative credential consumed by `ONBOARDING_AUTH_ADMIN_KEY`.                                                                                                       |
+| `kami-split-resend-api-key`            | Delivery credential consumed by `RESEND_API_KEY`.                                                                                                                                      |
+
+Download the CA certificate from the selected Supabase project's Database
+Settings and store its PEM bytes as a version of a **global**
+`kami-split-supabase-ca` Secret Manager container; do not select a regional
+secret because Cloud Run secret-volume mounts do not support them. Grant
+`roles/secretmanager.secretAccessor` on only that secret to
+`kami-split-api@kami-finances-production.iam.gserviceaccount.com`. Although a
+root certificate is public trust material rather than a credential, Secret
+Manager gives Cloud Run a read-only file mount and lets each release pin the
+exact certificate version. The URL must name that mounted path; downloading or
+storing the certificate without `sslrootcert` does not configure pgx to use it.
+Rotate the CA and URL selections together when Supabase replaces the project
+certificate.
 
 `CURSOR_ACTIVE_KEY_ID` and `INVITATION_ACTIVE_KEY_ID` are non-secret identifiers
 that select entries in their secret keyrings. Key rotation adds a new key,

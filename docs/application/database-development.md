@@ -1,9 +1,11 @@
 # Local database foundation
 
-Issue #74 introduces local PostgreSQL/Auth and a Go connection boundary. There
-is now an [identity/membership foundation](identity-foundation.md) from #75, with
-private tables, RLS and transaction-bound reads. Auth middleware, business
-GraphQL operations and hosted resources remain deferred. Supabase owns its containers; Compose owns only Go.
+Issue #74 introduced local PostgreSQL/Auth and the Go connection boundary. The
+current API includes the [identity/membership foundation](identity-foundation.md),
+verified Auth middleware, and database-backed GraphQL operations. Production
+uses hosted Supabase and the controlled workflow in
+[production deployment](production-deployment.md); this guide remains the source
+for local database development. Supabase owns its containers; Compose owns only Go.
 
 ## Prerequisites and pins
 
@@ -67,10 +69,13 @@ does not claim migrations are up to date. With authentication configured, readin
 
 Explicit empty settings and orphan pool settings fail. Only `sslmode` and
 `sslrootcert` URL options are accepted, preventing URL overrides of pool limits
-or session roles. Hosted URLs require `sslmode=verify-full`; `disable` is accepted
-only for loopback and the named local Supabase container. Direct PostgreSQL is
-the default; a verified TLS session-pool endpoint can be configured later.
-Transaction pooling is not configured. Idle connections expire after 5 minutes;
+or session roles. Hosted URLs require both `sslmode=verify-full` and an explicit
+`sslrootcert`; production mounts Supabase's project CA certificate from Secret
+Manager and references that file in the URL. `disable` is accepted only for
+loopback and the named local Supabase container. Direct PostgreSQL is
+the default where the runtime supports its IPv6 endpoint; production uses the
+verified TLS session pooler for IPv4 connectivity. Transaction pooling is not
+configured. Idle connections expire after 5 minutes;
 connection lifetime is 30 minutes, minimum pool size zero. Shutdown drains HTTP,
 then closes the pool. Future users of `Pool` must release acquisitions promptly.
 Configuration/startup logs and HTTP readiness errors never include the URL,
@@ -96,9 +101,9 @@ implement separately approved RLS policies. Browser roles and
 for the owner globally because per-schema revocation cannot remove PostgreSQL's
 global PUBLIC EXECUTE default. No monitoring privileges are granted for probes.
 
-The migration owner deliberately has no password. A future controlled deployment
-must use a separate migration credential authorized to assume it; the API never
-receives that credential. Local `postgres` supplies bootstrap capability. Local
+The migration owner deliberately has no password. The controlled production
+deployment uses a separate migration credential authorized to assume it; the API
+never receives that credential. Local `postgres` supplies bootstrap capability. Local
 passwords are synthetic and assigned only in `supabase/seeds/local.sql`, separate
 from migrations. Seeds currently contain no fabricated domain records.
 
@@ -126,8 +131,9 @@ The #75 test upgrades the shipped #74 foundation and separately runs fresh
 replay plus migration up with an applied history. Desired-schema comparison uses
 a clone of the disposable provider baseline, retaining real Auth objects.
 Future migrations must add fixtures for upgrades from their prior release and
-prove preservation of real existing data. Hosted deployment, backups and recovery
-remain open decisions; no remote reset or deployment command is provided here.
+prove preservation of real existing data. Hosted deployment and recovery follow
+[production deployment](production-deployment.md); no remote reset command is
+provided here.
 
 References: [Supabase migrations](https://supabase.com/docs/guides/local-development/database-migrations),
 [declarative tooling and caveats](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
