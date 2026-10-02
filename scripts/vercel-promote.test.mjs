@@ -11,6 +11,7 @@ const env = {
   VERCEL_ORG_ID: 'team_expected',
   VERCEL_PROJECT_ID: 'prj_expected',
   DEPLOYMENT_URL: 'https://candidate.vercel.app',
+  PRODUCTION_WEB_ORIGIN: 'https://finances.mckardah.com',
 };
 const candidate = {
   id: 'dpl_candidate',
@@ -22,15 +23,10 @@ const candidate = {
   target: 'production',
 };
 const project = { id: env.VERCEL_PROJECT_ID, accountId: env.VERCEL_ORG_ID };
-const state = (jobStatus, overrides = {}) => ({
-  ...project,
-  lastAliasRequest: {
-    jobStatus,
-    requestedAt: 10,
-    type: 'promote',
-    toDeploymentId: candidate.id,
-  },
-  targets: { production: { id: candidate.id } },
+const alias = (deploymentId = candidate.id, overrides = {}) => ({
+  alias: 'finances.mckardah.com',
+  projectId: env.VERCEL_PROJECT_ID,
+  deploymentId,
   ...overrides,
 });
 const reply = (body, status = 200) => ({ body, status });
@@ -73,12 +69,17 @@ async function run(responses, options = {}) {
   assert.equal(responses.length, 0, 'Expected API request did not occur');
   for (const { url, init } of calls) {
     assert.equal(url.origin, 'https://api.vercel.com');
-    assert.equal(url.search, '?teamId=team_expected');
+    assert.equal(url.searchParams.get('teamId'), env.VERCEL_ORG_ID);
+    assert.equal(
+      url.searchParams.get('projectId'),
+      url.pathname.startsWith('/v4/aliases/') ? env.VERCEL_PROJECT_ID : null,
+    );
     assert.equal(init.headers.Authorization, `Bearer ${env.VERCEL_TOKEN}`);
     assert.equal(init.headers['x-vercel-protection-bypass'], undefined);
     assert.equal(init.redirect, 'error');
     assert.ok(init.signal instanceof AbortSignal);
   }
+  assert.ok(calls.filter(({ init }) => init.method === 'POST').length <= 1);
   assert.doesNotMatch(
     output.join('\n'),
     /dummy-token|dummy-bypass|Bearer|sensitive-body/,
@@ -95,59 +96,50 @@ async function fails(responses, options = {}) {
 const lookup = () => [reply(candidate), reply(project)];
 const accepted = () => [...lookup(), reply({}, 202)];
 
-test('pending/in-progress then success confirms the immutable candidate', async () => {
+test('old deployment then candidate confirms the immutable candidate', async () => {
   const result = await run([
     ...accepted(),
-    reply(state('pending')),
-    reply(state('in-progress')),
-    reply(state('succeeded')),
+    reply(alias('dpl_old')),
+    reply(alias()),
   ]);
   assert.equal(result.code, 0);
   assert.equal(result.hostedRuns, 1);
-  assert.equal(result.sleeps, 2);
+  assert.equal(result.sleeps, 1);
   assert.deepEqual(
     result.calls.map(({ url, init }) => [init.method, url.pathname]),
     [
       ['GET', '/v13/deployments/candidate.vercel.app'],
       ['GET', '/v9/projects/prj_expected'],
       ['POST', '/v10/projects/prj_expected/promote/dpl_candidate'],
-      ['GET', '/v9/projects/prj_expected'],
-      ['GET', '/v9/projects/prj_expected'],
-      ['GET', '/v9/projects/prj_expected'],
+      ['GET', '/v4/aliases/finances.mckardah.com'],
+      ['GET', '/v4/aliases/finances.mckardah.com'],
     ],
   );
   assert.equal(result.calls[2].init.body, '{}');
 });
 
-test('201 still waits for success; team is optional when ownerId proves ownership', async () => {
-  const result = await run([
-    reply({ ...candidate, team: undefined }),
-    reply(project),
-    reply({}, 201),
-    reply(state('succeeded')),
-  ]);
-  assert.equal(result.code, 0);
-});
-
-test('queued request waits through absent and old records instead of accepting old success', async () => {
-  const old = state('succeeded', {
-    lastAliasRequest: {
-      ...state('succeeded').lastAliasRequest,
-      requestedAt: 5,
-    },
+for (const status of [201, 202]) {
+  test(`${status}: alias already points to candidate on first check`, async () => {
+    const result = await run([
+      reply({ ...candidate, team: undefined }),
+      // Unobservable/stale project promotion state has no role in confirmation.
+      reply({
+        ...project,
+        lastAliasRequest: { jobStatus: 'unknown' },
+        targets: { production: { id: 'dpl_old' } },
+      }),
+      reply({}, status),
+      reply(alias()),
+    ]);
+    assert.equal(result.code, 0);
+    assert.equal(result.sleeps, 0);
+    assert.equal(result.hostedRuns, 1);
+    assert.equal(
+      result.calls.filter(({ init }) => init.method === 'POST').length,
+      1,
+    );
   });
-  const result = await run([
-    reply(candidate),
-    reply(old),
-    reply({}, 202),
-    reply(project),
-    reply(old),
-    reply(state('pending')),
-    reply(state('succeeded')),
-  ]);
-  assert.equal(result.code, 0);
-  assert.equal(result.sleeps, 3);
-});
+}
 
 for (const status of [301, 401, 403, 404, 429, 500]) {
   test(`lookup HTTP ${status} never mutates production`, async () => {
@@ -187,81 +179,118 @@ for (const status of [200, 204, 302, 400, 401, 403, 409, 422, 500]) {
     ]);
   });
 }
-for (const jobStatus of ['failed', 'skipped', 'unknown', 'queued', undefined]) {
-  test(`promotion state ${jobStatus} fails closed`, async () => {
-    await fails([...accepted(), reply(state(jobStatus))]);
+for (const [label, value] of Object.entries({
+  'wrong project': alias(candidate.id, { projectId: 'prj_other' }),
+  'missing project': alias(candidate.id, { projectId: undefined }),
+  'missing deployment': alias(undefined, { deploymentId: undefined }),
+  'empty project': alias(candidate.id, { projectId: '' }),
+  'empty deployment': alias(''),
+  'invalid deployment': alias('../candidate'),
+  'wrong hostname': alias(candidate.id, { alias: 'other.example.com' }),
+  'missing hostname': alias(candidate.id, { alias: undefined }),
+  'redirect alias': alias(candidate.id, {
+    redirect: 'https://other.example.com',
+  }),
+  'deleted alias': alias(candidate.id, { deletedAt: 1 }),
+  null: null,
+  array: [],
+  string: 'sensitive-body',
+  number: 42,
+  'empty object': {},
+})) {
+  test(`malformed/unsafe alias fails closed: ${label}`, async () => {
+    await fails([...accepted(), reply(value)]);
   });
 }
-for (const change of [
-  { toDeploymentId: 'dpl_other' },
-  { type: 'rollback' },
-  { requestedAt: undefined },
+for (const status of [
+  201, 202, 204, 301, 302, 307, 308, 400, 401, 403, 404, 410, 429, 500, 503,
 ]) {
-  test(`mismatched/malformed promotion: ${JSON.stringify(change)}`, async () => {
+  test(`alias HTTP ${status} fails closed`, async () => {
     await fails([
       ...accepted(),
-      reply(
-        state('succeeded', {
-          lastAliasRequest: {
-            ...state('succeeded').lastAliasRequest,
-            ...change,
-          },
-        }),
-      ),
+      { status, raw: status === 204 ? null : 'sensitive-body' },
     ]);
   });
 }
-for (const target of [{ production: { id: 'dpl_other' } }, {}]) {
-  test(`success requires matching production target: ${JSON.stringify(target)}`, async () => {
-    await fails([
-      ...accepted(),
-      reply(state('succeeded', { targets: target })),
-    ]);
-  });
-}
-test('ownership change during polling fails', async () => {
-  await fails([
-    ...accepted(),
-    reply(state('succeeded', { accountId: 'team_other' })),
-  ]);
-});
-test('polling HTTP error fails', async () => {
-  await fails([...accepted(), reply({}, 503)]);
-});
-for (const value of [state('pending'), project]) {
-  test(`three minute timeout bounds ${value.lastAliasRequest ? 'pending' : 'absent'} state`, async () => {
-    const result = await fails([
-      ...accepted(),
-      ...Array.from({ length: 90 }, () => reply(value)),
-    ]);
-    assert.equal(result.clock, 180_000);
-  });
-}
-test('old success cannot confirm a new request and times out', async () => {
-  const old = state('succeeded');
+test('three minute overall timeout while alias still points to old deployment', async () => {
   const result = await fails([
-    reply(candidate),
-    reply(old),
-    reply({}, 202),
-    ...Array.from({ length: 90 }, () => reply(old)),
+    ...accepted(),
+    ...Array.from({ length: 90 }, () => reply(alias('dpl_old'))),
+  ]);
+  assert.equal(result.clock, 180_000);
+  assert.deepEqual(result.output, ['Promotion timed out.']);
+});
+test('lookups and POST consume the same overall deadline', async () => {
+  const result = await fails([
+    { ...reply(candidate), elapsed: 20_000 },
+    { ...reply(project), elapsed: 20_000 },
+    { ...reply({}, 202), elapsed: 20_000 },
+    ...Array.from({ length: 60 }, () => reply(alias('dpl_old'))),
   ]);
   assert.equal(result.clock, 180_000);
 });
 test('a response arriving after the deadline cannot succeed', async () => {
-  await fails([
-    ...accepted(),
-    { ...reply(state('succeeded')), elapsed: 180_000 },
-  ]);
+  await fails([...accepted(), { ...reply(alias()), elapsed: 180_000 }]);
 });
-test('transport errors and invalid JSON never leak provider data or credentials', async () => {
-  await fails([
-    {
-      error: new Error(
-        `Bearer ${env.VERCEL_TOKEN} ${env.VERCEL_AUTOMATION_BYPASS_SECRET}`,
-      ),
-    },
-  ]);
-  await fails([{ status: 200, raw: `sensitive-body ${env.VERCEL_TOKEN}` }]);
+for (const prefix of [[], lookup(), accepted()]) {
+  test(`transport errors at request ${prefix.length + 1} are sanitized and never retried`, async () => {
+    await fails([
+      ...prefix,
+      {
+        error: new Error(
+          `Bearer ${env.VERCEL_TOKEN} ${env.VERCEL_AUTOMATION_BYPASS_SECRET}`,
+        ),
+      },
+    ]);
+  });
+}
+for (const prefix of [[], [reply(candidate)], accepted()]) {
+  test(`invalid JSON at request ${prefix.length + 1} never leaks provider data`, async () => {
+    await fails([
+      ...prefix,
+      {
+        status: 200,
+        raw: `sensitive-body ${env.VERCEL_TOKEN} ${env.VERCEL_AUTOMATION_BYPASS_SECRET}`,
+      },
+    ]);
+  });
+}
+for (const origin of [
+  undefined,
+  '',
+  'http://example.com',
+  'https://user:secret@example.com',
+  'https://example.com/path',
+  'https://example.com?secret=value',
+  'https://example.com#fragment',
+  'https://example.com:8443',
+  'https://example.com:443',
+  'https://example.com/../',
+  'https://example.com\\@evil.com',
+  'https://example.com\n',
+  'https://%65xample.com',
+  'https://-bad.example.com',
+  'https://127.0.0.1',
+  'https://[::1]',
+  '//example.com',
+]) {
+  test(`unsafe production origin rejected before mutation: ${JSON.stringify(origin)}`, async () => {
+    await fails([], { env: { PRODUCTION_WEB_ORIGIN: origin } });
+  });
+}
+test('production alias derives from configured HTTPS origin, normalizing case and optional slash', async () => {
+  const result = await run(
+    [
+      ...accepted(),
+      reply(alias(candidate.id, { alias: 'production.example.org' })),
+    ],
+    { env: { PRODUCTION_WEB_ORIGIN: 'https://Production.Example.org/' } },
+  );
+  assert.equal(result.code, 0);
+  assert.equal(
+    result.calls.at(-1).url.pathname,
+    '/v4/aliases/production.example.org',
+  );
 });
 for (const deploymentUrl of [
   'https://evil.example',
@@ -299,6 +328,10 @@ test('workflow gates promotion/hosted checks and keeps credentials step scoped',
     assert.doesNotMatch(step, /\n        (?:if|continue-on-error):/);
     assert.match(step, /set -euo pipefail/);
   }
+  assert.match(
+    job,
+    /PRODUCTION_WEB_ORIGIN: \$\{\{ vars.PRODUCTION_WEB_ORIGIN \}\}/,
+  );
   assert.match(promotion, /node scripts\/vercel-promote.mjs/);
   assert.match(promotion, /VERCEL_TOKEN: \$\{\{ secrets.VERCEL_TOKEN \}\}/);
   assert.doesNotMatch(promotion, /vercel@|BYPASS/);
@@ -316,8 +349,8 @@ test('workflow gates promotion/hosted checks and keeps credentials step scoped',
 for (const success of [true, false]) {
   test(`CLI exit gates the next shell command (${success ? 'success' : 'failure'})`, () => {
     const fixtures = success
-      ? [...accepted(), reply(state('succeeded'))]
-      : [reply({ message: env.VERCEL_TOKEN }, 403)];
+      ? [...accepted(), reply(alias())]
+      : [...accepted(), reply(alias(candidate.id, { projectId: 'prj_other' }))];
     const preload = `const replies = ${JSON.stringify(fixtures)};
       globalThis.fetch = async () => {
         const reply = replies.shift();

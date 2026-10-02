@@ -362,15 +362,21 @@ publishing a knowingly incompatible frontend.
 
 ## Direct REST promotion with project-scoped credentials
 
-The production evidence in [#151](https://github.com/haggaikaunda/kami-split/issues/151)
-proves candidate deployment and the protected staged checks from
-[#153](https://github.com/haggaikaunda/kami-split/pull/153). The remaining CLI
-promotion fails during user/team identity resolution (`User not found. (404)`),
-before issuing promotion. The upstream
-[project-scoped token limitation](https://github.com/vercel/vercel/issues/17506)
-affects other CLI commands too. Keep the existing project-scoped `VERCEL_TOKEN`;
-do not broaden it to work around identity lookup. Candidate deployment still uses
-`vercel deploy --prod --skip-domain`, and staged verification stays unchanged.
+The [post-#154 production run](https://github.com/haggaikaunda/kami-split/actions/runs/37073505726/job/111058667386)
+proved candidate deployment, protected staged verification, and the direct REST
+promotion request. Production switched successfully, but the script timed out
+waiting for project `lastAliasRequest` / `targets.production` state that was not
+observable as expected with the project-scoped response. Hosted verification was
+correctly skipped. Confirmation now reads the canonical production alias directly;
+the three-minute timeout is unchanged.
+
+The REST path avoids the CLI's user/team identity lookup failure documented in
+[#151](https://github.com/haggaikaunda/kami-split/issues/151) and the upstream
+[project-scoped token limitation](https://github.com/vercel/vercel/issues/17506).
+Keep the existing project-scoped `VERCEL_TOKEN`; do not broaden it. Candidate
+deployment still uses `vercel deploy --prod --skip-domain`, and the protected
+staged verification from [#153](https://github.com/haggaikaunda/kami-split/pull/153)
+stays unchanged.
 
 `scripts/vercel-promote.mjs` uses Vercel's public REST contract, checked against
 the [OpenAPI specification](https://openapi.vercel.sh) on 2026-10-02:
@@ -383,24 +389,29 @@ the [OpenAPI specification](https://openapi.vercel.sh) on 2026-10-02:
    ownership fields fail closed.
 2. [Get the configured project](https://vercel.com/docs/rest-api/projects/find-a-project-by-id-or-name)
    with `GET /v9/projects/{VERCEL_PROJECT_ID}?teamId={VERCEL_ORG_ID}`. Require
-   exact `id` and `accountId` matches before mutation, and again on every poll.
+   exact `id` and `accountId` matches before mutation.
 3. [Request promotion](https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment)
    with `POST /v10/projects/{VERCEL_PROJECT_ID}/promote/{deploymentId}`,
    explicit `teamId`, Bearer authentication, and JSON `{}`. This is a documented
    public endpoint, not just an internal CLI path. Only its documented 201/202
    responses are accepted; neither means promotion is complete. No POST retry
    occurs after an ambiguous transport failure.
-4. Poll the same project every two seconds. The overall deadline is three minutes,
-   including lookups and submission; each HTTP request has a maximum 30-second
-   deadline capped by remaining time. Wait through absent or previous alias
-   records, which can occur while promotion is queued. A new `lastAliasRequest`
-   must have `requestedAt` greater than the pre-request record, `type == promote`,
-   and `toDeploymentId` equal to the resolved candidate ID. Only `pending` and
-   `in-progress` continue polling. `succeeded` additionally requires
-   `targets.production.id` equal to that same ID. Fail on `failed`, `skipped`,
-   unknown/malformed states, a new request for another deployment/operation,
-   mismatched production target, HTTP errors, or timeout. Old success is never
-   accepted as confirmation of this request.
+4. [Get the production alias](https://vercel.com/docs/rest-api/aliases/get-an-alias)
+   with `GET /v4/aliases/{hostname}?teamId={VERCEL_ORG_ID}&projectId={VERCEL_PROJECT_ID}`.
+   Derive the hostname from `PRODUCTION_WEB_ORIGIN`, requiring an HTTPS DNS origin
+   without credentials, a port, path (except an optional trailing slash), query,
+   or fragment. Poll every two seconds. Require the returned `alias` to match the
+   hostname, `projectId` to match the configured project, and a valid immutable
+   `deploymentId`. Only an exact match to the candidate ID confirms success,
+   including when the first poll already matches. An old deployment mapping is
+   normal pending propagation. Project `lastAliasRequest` and `targets.production`
+   no longer determine completion. Missing/malformed identity fields, wrong
+   project/hostname, redirect or deleted aliases, HTTP errors, invalid JSON, and
+   transport failures fail closed. HTTP redirects are never followed.
+5. Keep the overall three-minute deadline, including lookups and submission;
+   each HTTP request has a maximum 30-second deadline capped by remaining time.
+   An alias still pointing to an old deployment at the deadline fails closed;
+   a matching response arriving after the deadline cannot confirm success.
 
 All requests go only to the fixed Vercel API origin, with redirects rejected.
 The token is step-scoped; response bodies, headers, and raw transport errors are

@@ -18,6 +18,7 @@ export async function promote(env, dependencies = {}) {
     VERCEL_ORG_ID: teamId,
     VERCEL_PROJECT_ID: projectId,
     DEPLOYMENT_URL: deploymentUrl,
+    PRODUCTION_WEB_ORIGIN: productionOrigin,
   } = env;
   requireCondition(
     typeof token === 'string' &&
@@ -31,6 +32,16 @@ export async function promote(env, dependencies = {}) {
       /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app\/?$/.test(deploymentUrl),
     'Invalid candidate deployment URL.',
   );
+  // Accept only an HTTPS DNS origin, not credentials, ports, paths or URL
+  // normalization tricks. The configured host is data in a fixed API path.
+  requireCondition(
+    typeof productionOrigin === 'string' &&
+      /^https:\/\/(?=.{1,253}\/?$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\/?$/.test(
+        productionOrigin,
+      ),
+    'Invalid production web origin.',
+  );
+  const productionHostname = new URL(productionOrigin).hostname;
   const hostname = new URL(deploymentUrl).hostname;
   const deadline = now() + 180_000;
   function remaining() {
@@ -42,6 +53,9 @@ export async function promote(env, dependencies = {}) {
     const signal = AbortSignal.timeout(Math.min(30_000, remaining()));
     const url = new URL(path, 'https://api.vercel.com');
     url.searchParams.set('teamId', teamId);
+    if (path.startsWith('/v4/aliases/')) {
+      url.searchParams.set('projectId', projectId);
+    }
     try {
       const response = await request(url, {
         method,
@@ -95,47 +109,34 @@ export async function promote(env, dependencies = {}) {
     );
     return project;
   }
-  const before = await getProject();
-  const previousRequest = before.lastAliasRequest?.requestedAt ?? 0;
-  requireCondition(
-    Number.isFinite(previousRequest) && previousRequest >= 0,
-    'Invalid previous promotion timestamp.',
-  );
+  await getProject();
   await api(
     `/v10/projects/${encodeURIComponent(projectId)}/promote/${encodeURIComponent(deployment.id)}`,
     'POST',
   );
   for (;;) {
-    const project = await getProject();
-    const state = project.lastAliasRequest;
-    // A queued request may not yet have replaced the previous alias request.
-    if (state != null) {
-      requireCondition(
-        ['pending', 'in-progress', 'succeeded', 'failed', 'skipped'].includes(
-          state.jobStatus,
-        ) &&
-          Number.isFinite(state.requestedAt) &&
-          state.requestedAt > 0,
-        'Unknown or malformed promotion state.',
-      );
-      if (state.requestedAt > previousRequest) {
-        requireCondition(
-          state.type === 'promote' && state.toDeploymentId === deployment.id,
-          'Promotion refers to a different deployment or operation.',
-        );
-        requireCondition(
-          state.jobStatus !== 'failed' && state.jobStatus !== 'skipped',
-          'Promotion failed or was skipped.',
-        );
-        if (state.jobStatus === 'succeeded') {
-          requireCondition(
-            project.targets?.production?.id === deployment.id,
-            'Promoted production target does not match the candidate.',
-          );
-          return deployment.id;
-        }
-      }
-    }
+    const alias = await api(
+      `/v4/aliases/${encodeURIComponent(productionHostname)}`,
+    );
+    requireCondition(
+      alias !== null &&
+        typeof alias === 'object' &&
+        !Array.isArray(alias) &&
+        alias.alias === productionHostname &&
+        typeof alias.projectId === 'string' &&
+        /^prj_[a-zA-Z0-9]+$/.test(alias.projectId) &&
+        typeof alias.deploymentId === 'string' &&
+        /^dpl_[a-zA-Z0-9]+$/.test(alias.deploymentId) &&
+        alias.redirect == null &&
+        alias.deletedAt == null,
+      'Malformed or unsafe production alias.',
+    );
+    requireCondition(
+      alias.projectId === projectId,
+      'Production alias project ownership mismatch.',
+    );
+    if (alias.deploymentId === deployment.id) return deployment.id;
+    // The previous deployment is normal while the canonical alias propagates.
     await wait(Math.min(2_000, remaining()));
   }
 }
