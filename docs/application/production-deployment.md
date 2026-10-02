@@ -157,6 +157,7 @@ Repository or environment variables are non-secret identifiers:
 | `SUPABASE_PUBLISHABLE_KEY`       | Publishable/anonymous key for the selected project.                                                      |
 | `PRODUCTION_WEB_ORIGIN`          | Canonical HTTPS web origin without a trailing slash.                                                     |
 | `PRODUCTION_API_ORIGIN`          | Optional first run; when set, must equal the discovered HTTPS Cloud Run origin without a trailing slash. |
+| `INVITATION_FROM`                | Verified sender address `invites@finances.mckardah.com`.                                                 |
 | `VERCEL_ORG_ID`                  | Vercel account or team identifier that owns the project.                                                 |
 | `VERCEL_PROJECT_ID`              | Vercel project identifier for `kami-split-web`.                                                          |
 
@@ -275,8 +276,12 @@ The reusable production workflow is called by `ci.yml` only for a successful
 concurrency group, validates the selected project identifiers, builds and pushes
 an API image tagged with the commit SHA, resolves that tag to its immutable
 digest, applies migrations with the pinned Supabase CLI, deploys a new Cloud Run
-revision from the digest, and verifies `/healthz` and `/readyz`. Missing or
-inconsistent configuration fails before authentication, migration, or deployment.
+revision from the digest with zero traffic, and verifies that exact tagged
+revision through `/healthz` and `/readyz` before explicitly directing 100% of
+service traffic to it. Core API configuration is validated before authentication,
+migration, or deployment. Web-specific configuration and the optional canonical
+API-origin assertion are validated after the API is healthy but before Vercel is
+changed.
 Only after the API passes readiness does the web job use a pinned Vercel CLI
 release to create a staged production build with the exact API, Supabase, and
 canonical-origin settings. Read-only preflight checks exercise the staged page,
@@ -317,7 +322,12 @@ For an incident that cannot wait for a PR:
 
 Use `gcloud run services update-traffic kami-split-api --region us-west1
 --project kami-finances-production --to-revisions REVISION=100` for the emergency
-API traffic change. Use `vercel rollback DEPLOYMENT_URL` for the web rollback;
+API traffic change. The next workflow stages and tests its exact candidate, then
+explicitly assigns that revision 100% of traffic; it does not rely on Cloud Run's
+remembered traffic split. To restore Cloud Run's default behavior outside the
+workflow, use `gcloud run services update-traffic kami-split-api --region us-west1
+--project kami-finances-production --to-latest`, but still reconcile `main` and
+run the workflow afterward. Use `vercel rollback DEPLOYMENT_URL` for the web rollback;
 Vercel Hobby plans support rolling back to the immediately previous production
 deployment. `vercel rollback status` inspects the active rollback and
 `vercel promote DEPLOYMENT_URL` restores a selected deployment when undoing it.

@@ -101,17 +101,21 @@ jobs:
           ./scripts/db-tool.sh supabase db push --linked --dry-run
           ./scripts/db-tool.sh supabase db push --linked
 
-      - name: Deploy Cloud Run revision
+      - name: Deploy staged Cloud Run revision
+        id: candidate
         shell: bash
         env:
           IMAGE_REF: ${{ steps.image.outputs.ref }}
         run: |
           set -euo pipefail
           supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          candidate_tag="candidate-${GITHUB_SHA:0:12}"
           gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
             --image "$IMAGE_REF" \
+            --no-traffic \
+            --tag "$candidate_tag" \
             --service-account "$GCP_RUNTIME_SERVICE_ACCOUNT" \
             --port 8080 \
             --cpu 1 \
@@ -125,20 +129,62 @@ jobs:
             --set-secrets "DATABASE_URL=kami-split-database-url:latest,CURSOR_SIGNING_KEYS=kami-split-cursor-signing-keys:latest,INVITATION_KEYS=kami-split-invitation-keys:latest,ONBOARDING_AUTH_ADMIN_KEY=kami-split-onboarding-auth-admin-key:latest,RESEND_API_KEY=kami-split-resend-api-key:latest" \
             --quiet
 
-      - name: Verify deployed API readiness
-        id: service
+          service_json="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format=json)"
+          revision_name="$(jq --raw-output '.status.latestReadyRevisionName' <<< "$service_json")"
+          candidate_url="$(jq --raw-output --arg tag "$candidate_tag" \
+            '.status.traffic[] | select(.tag == $tag) | .url' <<< "$service_json")"
+          service_url="$(jq --raw-output '.status.url' <<< "$service_json")"
+          [[ "$revision_name" == "${GCP_CLOUD_RUN_SERVICE}-"* ]]
+          [[ "$candidate_url" == https://* ]]
+          [[ "$service_url" == https://* ]]
+          echo "revision=$revision_name" >> "$GITHUB_OUTPUT"
+          echo "tag=$candidate_tag" >> "$GITHUB_OUTPUT"
+          echo "url=$candidate_url" >> "$GITHUB_OUTPUT"
+          echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify staged API readiness
         shell: bash
+        env:
+          CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
         run: |
           set -euo pipefail
-          service_url="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${CANDIDATE_URL}/healthz"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${CANDIDATE_URL}/readyz"
+
+      - name: Promote and verify API revision
+        id: service
+        shell: bash
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
+          SERVICE_URL: ${{ steps.candidate.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --to-revisions "${CANDIDATE_REVISION}=100" \
+            --quiet
+          service_json="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
-            --format='value(status.url)')"
-          [[ "$service_url" == https://* ]]
+            --format=json)"
+          serving_revision="$(jq --raw-output \
+            '.status.traffic[] | select(.percent == 100) | .revisionName' \
+            <<< "$service_json")"
+          [[ "$serving_revision" == "$CANDIDATE_REVISION" ]]
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${service_url}/healthz"
+            --retry-delay 2 "${SERVICE_URL}/healthz"
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            --retry-delay 2 "${service_url}/readyz"
-          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+            --retry-delay 2 "${SERVICE_URL}/readyz"
+          gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --remove-tags "$CANDIDATE_TAG" \
+            --quiet
+          echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
 
   web:
     name: Deploy web

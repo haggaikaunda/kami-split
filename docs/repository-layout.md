@@ -25,8 +25,8 @@ Vercel for the web application, Cloud Run for the Go API, hosted Supabase, and a
 serialized GitHub Actions production deployment after the existing CI gate. The
 [production deployment configuration](application/production-deployment.md)
 defines resource names, provisioned Google Cloud foundations, configuration
-ownership, and the provider values that must be supplied before the first live
-deployment. It does not claim that production is already serving traffic.
+ownership, completed provider setup, and first-deployment operating procedures.
+It does not claim that production is already serving traffic.
 
 For any externally managed web hosting project, the owner must update its application/root-directory setting from the repository root to **`apps/web`** before its next deployment. Keep the entire repository available as the workspace installation/build context, including the root package manifest, `pnpm-workspace.yaml` and lockfile. Enable access to files outside the application directory if the host requires that setting.
 
@@ -36,4 +36,4 @@ For any externally managed web hosting project, the owner must update its applic
 - Start from repository root: `pnpm start --hostname 0.0.0.0 --port 4200`; from application root: the same command. Replace 4200 with the host's assigned port.
 - Build output: `apps/web/.next` relative to the repository, or `.next` relative to the application root. Use the host's Next.js runtime support; this is not a static export.
 
-Next.js tracing and Turbopack roots explicitly point to the repository so workspace dependencies are available. The Go API has separate root make commands and Docker Compose setup, documented in [API setup](../apps/api/README.md). CI runs Go, generation, actual Supabase migration/permission/race integration, and container/readiness checks alongside the web checks. A successful `main` push calls the serialized production workflow only after the required **Verify** job; the first live API and Vercel deployments remain pending operator configuration.
+Next.js tracing and Turbopack roots explicitly point to the repository so workspace dependencies are available. The Go API has separate root make commands and Docker Compose setup, documented in [API setup](../apps/api/README.md). CI runs Go, generation, actual Supabase migration/permission/race integration, and container/readiness checks alongside the web checks. A successful `main` push calls the serialized production workflow only after the required **Verify** job. Provider configuration is complete; the first live API and Vercel deployments await a reviewed merge to `main`.
