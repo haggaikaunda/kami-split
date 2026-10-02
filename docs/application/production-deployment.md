@@ -9,10 +9,10 @@ the only deployment orchestrator. This document defines names, configuration
 ownership, the provisioned production foundation, and operating procedures. It
 does not store a credential or authorize deploying from a pull request.
 
-There is one `production` environment and no staging environment. Merges to
+There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
-and the reusable deployment also uses a non-canceling `production` concurrency
+and the standalone deployment workflow uses a non-canceling `production` concurrency
 group, so a new merge waits for an in-progress migration and deployment instead
 of interrupting it.
 
@@ -28,10 +28,10 @@ display labels. Provider account and locality values remain explicit inputs.
 | Google Cloud project ID           | `kami-finances-production`                                                    |
 | Google Cloud project number       | `598147484786`                                                                |
 | Google Cloud billing              | Linked; billing account identifier is not stored in the repository            |
-| GitHub environment                | `production`                                                                  |
+| GitHub environment                | `Production`                                                                  |
 | Deployment concurrency group      | `production`                                                                  |
 | Artifact Registry repository      | `kami-split`                                                                  |
-| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${GITHUB_SHA}` |
+| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${DEPLOY_SHA}` |
 | Cloud Run service                 | `kami-split-api`                                                              |
 | Cloud Run runtime service account | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`             |
 | GitHub deployer service account   | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`   |
@@ -115,9 +115,14 @@ zero.
   allows the `/auth/confirm` callback, disables public signup, requires email
   confirmation, and uses branded invitation and password-reset templates.
 
-Never put a secret payload in a command argument, repository file, or workflow
-log. Secret versions are maintained directly in Secret Manager and referenced by
-Cloud Run.
+Never put an API runtime or database secret payload in a command argument,
+repository file, or workflow log. Secret versions are maintained directly in
+Secret Manager and referenced by Cloud Run. Vercel's documented CI
+authentication is the narrow exception: the GitHub-masked `VERCEL_TOKEN` is
+available only to the credential-validation and pinned Vercel
+CLI steps on an ephemeral hosted runner, and the CLI receives it through its
+documented `--token` flag. Do not echo it, enable shell tracing, forward it to the
+application build/runtime, or reuse this exception for another credential.
 
 | Selected Supabase value             | Production selection                         |
 | ----------------------------------- | -------------------------------------------- |
@@ -138,10 +143,12 @@ web origin checked by both sides of the proxy.
 
 ## GitHub production environment
 
-The GitHub `production` environment owns deployment selection and credentials.
-Pull-request workflows must not receive this environment or any of its secrets.
-Environment protection should restrict deployment to `main` and may require an
-operator approval if the repository plan supports it.
+The GitHub `Production` environment owns deployment selection variables and the
+three deploy-runner credentials. The standalone deployment workflow binds that
+environment only after a successful `CI` workflow triggered by a push to `main`;
+pull-request CI cannot receive these credentials. Environment protection should
+restrict deployment to `main` and may require an operator approval if the
+repository plan supports it.
 
 Repository or environment variables are non-secret identifiers:
 
@@ -168,7 +175,9 @@ Repository or environment variables are non-secret identifiers:
 | `VERCEL_PROJECT_ID`                        | Vercel project identifier for `kami-split-web`.                                                          |
 
 Environment secrets are credentials needed by the deployment runner, not API
-runtime configuration:
+runtime configuration. Each secret is scoped to only the validation and provider
+steps that consume it; checkout, setup, build, readiness, and smoke-test steps do
+not receive these credentials:
 
 | Secret                  | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
@@ -279,23 +288,25 @@ The following operator selections have been recorded and verified:
 - Hosted Supabase Auth/JWKS endpoints, publishable key, restricted runtime
   database URL, and migration credential are configured.
 - The canonical Vercel production origin, organization ID, and project ID are in
-  the GitHub `production` environment.
+  the GitHub `Production` environment.
 - The invitation sender domain and address are verified.
 - The Cloud Run service URL is discovered during deployment and must be recorded
   as `PRODUCTION_API_ORIGIN` after the first successful run.
 
-The reusable production workflow is called by `ci.yml` only for a successful
-`main` push after the required `Verify` job. It uses a non-canceling production
-concurrency group inside a non-canceling `main` CI run, validates the selected
-project identifiers and numeric Secret Manager versions, builds and pushes an
-API image tagged with the commit SHA, resolves that tag to its immutable digest,
-applies migrations with the pinned Supabase CLI, deploys a new Cloud Run revision
-from the digest and pinned secret versions with zero traffic, and verifies that
-exact tagged revision through `/healthz` and `/readyz` before explicitly directing
-100% of service traffic to it. Core API configuration is validated before
-authentication, migration, or deployment. Web-specific configuration and the
-optional canonical API-origin assertion are validated after the API is healthy
-but before Vercel is changed.
+The standalone production workflow listens for completion of `CI` on `main` and
+runs only when the triggering CI event was a successful push. It checks out and
+deploys the exact triggering `workflow_run.head_sha`, not the deployment
+workflow's own default-branch SHA. Its non-canceling `production` concurrency
+group queues releases, validates the selected project identifiers and numeric
+Secret Manager versions, builds and pushes an API image tagged with the triggering
+commit SHA, resolves that tag to its immutable digest, applies migrations with
+the pinned Supabase CLI, deploys a new Cloud Run revision from the digest and
+pinned secret versions with zero traffic, and verifies that exact tagged revision
+through `/healthz` and `/readyz` before explicitly directing 100% of service
+traffic to it. Core API configuration is validated before authentication,
+migration, or deployment. Web-specific configuration and the optional canonical
+API-origin assertion are validated after the API is healthy but before Vercel is
+changed.
 Only after the API passes readiness does the web job use a pinned Vercel CLI
 release to create a staged production build with the exact API, Supabase, and
 canonical-origin settings. Read-only preflight checks exercise the staged page,

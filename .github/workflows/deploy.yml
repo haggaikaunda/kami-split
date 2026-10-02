@@ -1,7 +1,10 @@
 name: Production deployment
 
 on:
-  workflow_call:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,9 +17,13 @@ concurrency:
 jobs:
   api:
     name: Deploy API
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
+    environment: Production
     outputs:
       service_url: ${{ steps.service.outputs.url }}
     env:
@@ -36,13 +43,17 @@ jobs:
       INVITATION_KEYS_SECRET_VERSION: ${{ vars.INVITATION_KEYS_SECRET_VERSION }}
       ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION: ${{ vars.ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION }}
       RESEND_API_KEY_SECRET_VERSION: ${{ vars.RESEND_API_KEY_SECRET_VERSION }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Validate production selection
         shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
           required=(
@@ -54,7 +65,7 @@ jobs:
             DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
             INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
             RESEND_API_KEY_SECRET_VERSION
-            SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD
+            SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD DEPLOY_SHA
           )
           for name in "${required[@]}"; do
             if [[ -z "${!name:-}" ]]; then
@@ -69,6 +80,7 @@ jobs:
           [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
           [[ "$PRODUCTION_WEB_ORIGIN" == https://* ]]
           [[ "$PRODUCTION_WEB_ORIGIN" != */ ]]
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
           secret_versions=(
             DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
             INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
@@ -99,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           registry="${GCP_REGION}-docker.pkg.dev"
-          image_tag="${registry}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/api:${GITHUB_SHA}"
+          image_tag="${registry}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/api:${DEPLOY_SHA}"
           gcloud auth configure-docker "$registry" --quiet
           docker build --target runtime --tag "$image_tag" --file apps/api/Dockerfile .
           docker push "$image_tag"
@@ -114,6 +126,9 @@ jobs:
 
       - name: Apply production database migrations
         shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
           ./scripts/db-tool.sh supabase link --project-ref "$SUPABASE_PROJECT_REF"
@@ -128,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
-          candidate_tag="candidate-${GITHUB_SHA:0:12}"
+          candidate_tag="candidate-${DEPLOY_SHA:0:12}"
           gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
@@ -210,7 +225,7 @@ jobs:
     needs: api
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
+    environment: Production
     env:
       API_ORIGIN: ${{ needs.api.outputs.service_url }}
       CONFIGURED_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
@@ -219,9 +234,10 @@ jobs:
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: pnpm/action-setup@v6
         with:
@@ -233,6 +249,8 @@ jobs:
 
       - name: Validate web deployment selection
         shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           required=(
@@ -257,6 +275,8 @@ jobs:
       - name: Deploy web to Vercel
         id: deployment
         shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
@@ -304,6 +324,7 @@ jobs:
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           pnpm dlx vercel@59.19.1 promote "$DEPLOYMENT_URL" \
