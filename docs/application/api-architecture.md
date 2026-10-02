@@ -61,6 +61,12 @@ for `errors.Is`/`errors.As` through `internal/diagnostic`; their `Error` text st
 safe. Callers must never serialize the cause or log the error object. Diagnostic
 operation labels are static server-defined strings, never request values.
 
+Temporary deployment instrumentation for #145 is an exception: `database.Open`
+logs the underlying pool-creation and startup-probe errors to stderr before
+returning the same safe errors. No configuration payloads are explicitly logged.
+Remove or harden these two logs after diagnosing the production failure in #140;
+underlying driver errors can include connection metadata or server-provided text.
+
 The GraphQL boundary installs a request-scoped diagnostic sink and emits at most
 one structured failure event per request with a generated request ID and static
 operation label. Resolver union mappings and expense uncertainty mappings report

@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"time"
@@ -109,6 +110,8 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
+		// Temporary deployment diagnosis (#145); remove or harden after #140 is diagnosed.
+		slog.Error("database pool creation failed", "error", err)
 		return nil, diagnostic.Wrap(errors.New("create database pool"), err, "database.open")
 	}
 	db := &DB{pool: pool, timeout: c.Timeout}
@@ -123,6 +126,8 @@ func Open(ctx context.Context, c Config) (*DB, error) {
  FROM pg_roles WHERE rolname = current_user`).Scan(&safe)
 	if err != nil {
 		pool.Close()
+		// Temporary deployment diagnosis (#145); remove or harden after #140 is diagnosed.
+		slog.Error("database startup probe failed", "error", err)
 		return nil, diagnostic.Wrap(errors.New("database startup or runtime-role validation failed"), err, "database.startup")
 	}
 	if !safe {
