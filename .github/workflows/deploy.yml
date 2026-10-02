@@ -1,0 +1,137 @@
+name: Production deployment
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+      GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
+      GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      INVITATION_FROM: ${{ vars.INVITATION_FROM }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate production selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            GCP_PROJECT_ID GCP_REGION GCP_ARTIFACT_REPOSITORY
+            GCP_CLOUD_RUN_SERVICE GCP_RUNTIME_SERVICE_ACCOUNT
+            GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT
+            SUPABASE_PROJECT_REF SUPABASE_PUBLISHABLE_KEY
+            PRODUCTION_WEB_ORIGIN INVITATION_FROM
+            SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required production setting: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$GCP_PROJECT_ID" == "kami-finances-production" ]]
+          [[ "$GCP_REGION" == "us-west1" ]]
+          [[ "$GCP_ARTIFACT_REPOSITORY" == "kami-split" ]]
+          [[ "$GCP_CLOUD_RUN_SERVICE" == "kami-split-api" ]]
+          [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" == https://* ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" != */ ]]
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Build and publish immutable API image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${GCP_REGION}-docker.pkg.dev"
+          image_tag="${registry}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/api:${GITHUB_SHA}"
+          gcloud auth configure-docker "$registry" --quiet
+          docker build --target runtime --tag "$image_tag" --file apps/api/Dockerfile .
+          docker push "$image_tag"
+          digest="$(gcloud artifacts docker images describe "$image_tag" \
+            --format='value(image_summary.digest)')"
+          [[ "$digest" == sha256:* ]]
+          image_ref="${image_tag%:*}@${digest}"
+          echo "ref=$image_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Install pinned database tools
+        run: make db-tools
+
+      - name: Apply production database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/db-tool.sh supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          ./scripts/db-tool.sh supabase db push --linked --dry-run
+          ./scripts/db-tool.sh supabase db push --linked
+
+      - name: Deploy Cloud Run revision
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$IMAGE_REF" \
+            --service-account "$GCP_RUNTIME_SERVICE_ACCOUNT" \
+            --port 8080 \
+            --cpu 1 \
+            --memory 512Mi \
+            --cpu-throttling \
+            --min-instances 0 \
+            --max-instances 1 \
+            --timeout 60s \
+            --allow-unauthenticated \
+            --set-env-vars "API_ADDR=:8080,API_SHUTDOWN_TIMEOUT=5s,DATABASE_MAX_CONNS=5,DATABASE_TIMEOUT=2s,AUTH_ISSUER=${supabase_origin}/auth/v1,AUTH_AUDIENCE=authenticated,AUTH_JWKS_URL=${supabase_origin}/auth/v1/.well-known/jwks.json,ONBOARDING_AUTH_URL=${supabase_origin}/auth/v1,ONBOARDING_AUTH_PUBLIC_KEY=${SUPABASE_PUBLISHABLE_KEY},ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN},INVITATION_FROM=${INVITATION_FROM},CURSOR_ACTIVE_KEY_ID=production-v1,INVITATION_ACTIVE_KEY_ID=production-v1" \
+            --set-secrets "DATABASE_URL=kami-split-database-url:latest,CURSOR_SIGNING_KEYS=kami-split-cursor-signing-keys:latest,INVITATION_KEYS=kami-split-invitation-keys:latest,ONBOARDING_AUTH_ADMIN_KEY=kami-split-onboarding-auth-admin-key:latest,RESEND_API_KEY=kami-split-resend-api-key:latest" \
+            --quiet
+
+      - name: Verify deployed API readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format='value(status.url)')"
+          [[ "$service_url" == https://* ]]
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${service_url}/healthz"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${service_url}/readyz"

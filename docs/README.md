@@ -3,6 +3,9 @@
 The seeded web UX was completed with the LAN HTTP compatibility fix as of September 26, 2026, and still uses in-memory data. The separate Go API now implements verified authentication, persisted expenses and balances, and internal targeted invitation operations; [targeted onboarding](application/onboarding.md) is connected under #80, and the [authenticated expense journey](application/relay-expenses.md) connects financial browser reads, creation and recovery through Relay (#83). See the [current API architecture](application/api-architecture.md). Start with the [project README](../README.md) to run the app or preview it on a phone. Read [product scope](product-scope.md) before treating any simulated account or financial flow as a production service.
 
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
+The [production deployment configuration](application/production-deployment.md)
+records the approved #140 hosting and environment contract; provisioning and
+deployment evidence is tracked there as each provider stage is completed.
 
 ## Documentation sections
 
