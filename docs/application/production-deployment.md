@@ -123,9 +123,10 @@ Never put an API runtime or database secret payload in a command argument,
 repository file, or workflow log. Secret versions are maintained directly in
 Secret Manager and referenced by Cloud Run. Vercel's documented CI
 authentication is the narrow exception: the GitHub-masked `VERCEL_TOKEN` is
-available only to the credential-validation and pinned Vercel
-CLI steps on an ephemeral hosted runner, and the CLI receives it through its
-documented `--token` flag. Do not echo it, enable shell tracing, forward it to the
+available only to credential validation, pinned Vercel deployment, and direct REST
+promotion on an ephemeral hosted runner. The deployment CLI receives it through
+its documented `--token` flag; the promotion script reads it from the step
+environment and sends it only as a Bearer header to `https://api.vercel.com`. Do not echo it, enable shell tracing, forward it to the
 application build/runtime, or reuse this exception for another credential. The GitHub-masked
 `VERCEL_AUTOMATION_BYPASS_SECRET` is separately scoped to web configuration
 validation and protected candidate probes. Those probes pass it only in the
@@ -194,7 +195,7 @@ credentials:
 | --------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `SUPABASE_ACCESS_TOKEN`           | Authenticate the pinned Supabase CLI for the selected project.                                    |
 | `SUPABASE_DB_PASSWORD`            | Apply committed migrations with the migration identity; never pass it to the API.                 |
-| `VERCEL_TOKEN`                    | Deploy the selected Vercel project from GitHub Actions.                                           |
+| `VERCEL_TOKEN`                    | Deploy and promote only the selected Vercel project from GitHub Actions.                          |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Existing Vercel Protection Bypass for Automation secret; required for protected candidate probes. |
 
 Google Cloud authentication uses GitHub OIDC and Workload Identity Federation.
@@ -359,6 +360,63 @@ requests against the canonical production domain to prove public reachability.
 A failed migration, API deployment, web build, or staged preflight therefore leaves the existing web deployment in place instead of
 publishing a knowingly incompatible frontend.
 
+## Direct REST promotion with project-scoped credentials
+
+The production evidence in [#151](https://github.com/haggaikaunda/kami-split/issues/151)
+proves candidate deployment and the protected staged checks from
+[#153](https://github.com/haggaikaunda/kami-split/pull/153). The remaining CLI
+promotion fails during user/team identity resolution (`User not found. (404)`),
+before issuing promotion. The upstream
+[project-scoped token limitation](https://github.com/vercel/vercel/issues/17506)
+affects other CLI commands too. Keep the existing project-scoped `VERCEL_TOKEN`;
+do not broaden it to work around identity lookup. Candidate deployment still uses
+`vercel deploy --prod --skip-domain`, and staged verification stays unchanged.
+
+`scripts/vercel-promote.mjs` uses Vercel's public REST contract, checked against
+the [OpenAPI specification](https://openapi.vercel.sh) on 2026-10-02:
+
+1. [Get the deployment by URL](https://vercel.com/docs/rest-api/deployments/get-a-deployment-by-id-or-url)
+   with `GET /v13/deployments/{hostname}?teamId={VERCEL_ORG_ID}`. Require its
+   immutable `id`, exact candidate `url`, `READY` state, production target,
+   `projectId == VERCEL_PROJECT_ID`, and `ownerId == VERCEL_ORG_ID`. If a `team`
+   object is present, its ID must also match. Reduced/public responses missing
+   ownership fields fail closed.
+2. [Get the configured project](https://vercel.com/docs/rest-api/projects/find-a-project-by-id-or-name)
+   with `GET /v9/projects/{VERCEL_PROJECT_ID}?teamId={VERCEL_ORG_ID}`. Require
+   exact `id` and `accountId` matches before mutation, and again on every poll.
+3. [Request promotion](https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment)
+   with `POST /v10/projects/{VERCEL_PROJECT_ID}/promote/{deploymentId}`,
+   explicit `teamId`, Bearer authentication, and JSON `{}`. This is a documented
+   public endpoint, not just an internal CLI path. Only its documented 201/202
+   responses are accepted; neither means promotion is complete. No POST retry
+   occurs after an ambiguous transport failure.
+4. Poll the same project every two seconds. The overall deadline is three minutes,
+   including lookups and submission; each HTTP request has a maximum 30-second
+   deadline capped by remaining time. Wait through absent or previous alias
+   records, which can occur while promotion is queued. A new `lastAliasRequest`
+   must have `requestedAt` greater than the pre-request record, `type == promote`,
+   and `toDeploymentId` equal to the resolved candidate ID. Only `pending` and
+   `in-progress` continue polling. `succeeded` additionally requires
+   `targets.production.id` equal to that same ID. Fail on `failed`, `skipped`,
+   unknown/malformed states, a new request for another deployment/operation,
+   mismatched production target, HTTP errors, or timeout. Old success is never
+   accepted as confirmation of this request.
+
+All requests go only to the fixed Vercel API origin, with redirects rejected.
+The token is step-scoped; response bodies, headers, and raw transport errors are
+never logged. The promotion step receives no automation-bypass secret.
+Deployment Protection remains enabled. Only a zero exit after confirmed success
+allows the unchanged, anonymous `Verify hosted application` step to check
+`https://finances.mckardah.com`; that step receives neither Vercel credential nor
+bypass header. A timeout or ambiguous failure may leave provider work in flight:
+inspect the provider state before rerunning; the script does not attempt rollback.
+
+`node --test scripts/vercel-promote.test.mjs` runs credential-free transport and
+clock simulations plus workflow boundary assertions in web CI. These checks do
+not prove live provider integration. Keep #151 open until a post-merge run proves
+candidate deployment, protected staged verification, confirmed REST promotion of
+the intended candidate, and anonymous production verification in that order.
+
 ## Deploy, rollback, and recovery
 
 Normal production deployment is automatic: merge the reviewed PR to `main` and
@@ -399,7 +457,10 @@ workflow, use `gcloud run services update-traffic kami-split-api --region us-wes
 run the workflow afterward. Use `vercel rollback DEPLOYMENT_URL` for the web rollback;
 Vercel Hobby plans support rolling back to the immediately previous production
 deployment. `vercel rollback status` inspects the active rollback and
-`vercel promote DEPLOYMENT_URL` restores a selected deployment when undoing it.
+`vercel promote DEPLOYMENT_URL` is a CLI restoration option only for credentials
+that support its identity lookup. The project-scoped CI credential intentionally
+uses the verified direct REST flow above instead; do not broaden that credential
+for recovery.
 
 ## Future staging environment
 
