@@ -126,7 +126,12 @@ authentication is the narrow exception: the GitHub-masked `VERCEL_TOKEN` is
 available only to the credential-validation and pinned Vercel
 CLI steps on an ephemeral hosted runner, and the CLI receives it through its
 documented `--token` flag. Do not echo it, enable shell tracing, forward it to the
-application build/runtime, or reuse this exception for another credential.
+application build/runtime, or reuse this exception for another credential. The GitHub-masked
+`VERCEL_AUTOMATION_BYPASS_SECRET` is separately scoped to web configuration
+validation and protected candidate probes. Those probes pass it only in the
+`x-vercel-protection-bypass` request header. Never echo it, enable shell tracing
+or curl verbose/trace logging, or forward it to application build/runtime settings
+or the promoted production-domain checks.
 
 | Selected Supabase value             | Production selection                         |
 | ----------------------------------- | -------------------------------------------- |
@@ -148,7 +153,7 @@ web origin checked by both sides of the proxy.
 ## GitHub production environment
 
 The GitHub `Production` environment owns deployment selection variables and the
-three deploy-runner credentials. The standalone deployment workflow binds that
+four deploy-runner credentials. The standalone deployment workflow binds that
 environment only after a successful `CI` workflow triggered by a push to `main`;
 pull-request CI cannot receive these credentials. Environment protection should
 restrict deployment to `main` and may require an operator approval if the
@@ -181,14 +186,16 @@ Repository or environment variables are non-secret identifiers:
 
 Environment secrets are credentials needed by the deployment runner, not API
 runtime configuration. Each secret is scoped to only the validation and provider
-steps that consume it; checkout, setup, build, readiness, and smoke-test steps do
-not receive these credentials:
+steps that consume it. The automation-bypass secret is also available to the
+protected staged web probes; anonymous hosted verification receives no deployment
+credentials:
 
-| Secret                  | Purpose                                                                           |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN` | Authenticate the pinned Supabase CLI for the selected project.                    |
-| `SUPABASE_DB_PASSWORD`  | Apply committed migrations with the migration identity; never pass it to the API. |
-| `VERCEL_TOKEN`          | Deploy the selected Vercel project from GitHub Actions.                           |
+| Secret                            | Purpose                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`           | Authenticate the pinned Supabase CLI for the selected project.                                    |
+| `SUPABASE_DB_PASSWORD`            | Apply committed migrations with the migration identity; never pass it to the API.                 |
+| `VERCEL_TOKEN`                    | Deploy the selected Vercel project from GitHub Actions.                                           |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Existing Vercel Protection Bypass for Automation secret; required for protected candidate probes. |
 
 Google Cloud authentication uses GitHub OIDC and Workload Identity Federation.
 Do not create or store a service-account JSON key. Limit the provider attribute
@@ -343,9 +350,11 @@ release to create a staged production build with the exact API, Supabase, and
 canonical-origin settings. Read-only preflight checks exercise the staged page,
 public Supabase configuration route, and GraphQL health request before the build
 is promoted to the production domain. Generated deployment URLs remain protected
-by Vercel Deployment Protection: staged checks use the pinned `vercel curl`
-command with the existing `VERCEL_TOKEN` to authenticate and obtain the protection
-bypass automatically. The same checks then run as ordinary anonymous `curl`
+by Vercel Deployment Protection: all three staged checks use ordinary `curl`
+with `x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}`, sourced
+from the existing GitHub `Production` environment secret. Web configuration
+validation rejects a missing secret before creating a candidate; staged probes
+do not depend on Vercel CLI identity resolution. The same checks then run as ordinary anonymous `curl`
 requests against the canonical production domain to prove public reachability.
 A failed migration, API deployment, web build, or staged preflight therefore leaves the existing web deployment in place instead of
 publishing a knowingly incompatible frontend.
