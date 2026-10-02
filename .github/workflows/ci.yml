@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:
@@ -33,3 +33,11 @@ jobs:
         run: |
           echo "Web: $WEB_RESULT; API: $API_RESULT"
           test "$WEB_RESULT" = success && test "$API_RESULT" = success
+  deploy:
+    name: Production deployment
+    needs: verify
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml

@@ -28,6 +28,12 @@ The [administrative bootstrap runbook](bootstrap.md) covers explicit first-accou
 and Household creation, safe retries, and the ordinary verified-email recovery
 flow. Hosted execution requires separate authorization.
 
+The [production deployment configuration](production-deployment.md) records the
+approved #140 Vercel, Cloud Run, Supabase, and GitHub environment contract. It
+records the provisioned provider foundation, completed production configuration,
+gated API and web deployment workflow, and operating procedures without claiming
+that the application is already serving production traffic.
+
 ## Authenticated financial browser
 
 The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. Other preview routes remain explicitly simulated.

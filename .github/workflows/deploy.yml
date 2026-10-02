@@ -1,0 +1,332 @@
+name: Production deployment
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    outputs:
+      service_url: ${{ steps.service.outputs.url }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+      GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
+      GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      INVITATION_FROM: ${{ vars.INVITATION_FROM }}
+      DATABASE_URL_SECRET_VERSION: ${{ vars.DATABASE_URL_SECRET_VERSION }}
+      CURSOR_SIGNING_KEYS_SECRET_VERSION: ${{ vars.CURSOR_SIGNING_KEYS_SECRET_VERSION }}
+      INVITATION_KEYS_SECRET_VERSION: ${{ vars.INVITATION_KEYS_SECRET_VERSION }}
+      ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION: ${{ vars.ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION }}
+      RESEND_API_KEY_SECRET_VERSION: ${{ vars.RESEND_API_KEY_SECRET_VERSION }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate production selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            GCP_PROJECT_ID GCP_REGION GCP_ARTIFACT_REPOSITORY
+            GCP_CLOUD_RUN_SERVICE GCP_RUNTIME_SERVICE_ACCOUNT
+            GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT
+            SUPABASE_PROJECT_REF SUPABASE_PUBLISHABLE_KEY
+            PRODUCTION_WEB_ORIGIN INVITATION_FROM
+            DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
+            INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
+            RESEND_API_KEY_SECRET_VERSION
+            SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required production setting: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$GCP_PROJECT_ID" == "kami-finances-production" ]]
+          [[ "$GCP_REGION" == "us-west1" ]]
+          [[ "$GCP_ARTIFACT_REPOSITORY" == "kami-split" ]]
+          [[ "$GCP_CLOUD_RUN_SERVICE" == "kami-split-api" ]]
+          [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" == https://* ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" != */ ]]
+          secret_versions=(
+            DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
+            INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
+            RESEND_API_KEY_SECRET_VERSION
+          )
+          for name in "${secret_versions[@]}"; do
+            [[ "${!name}" =~ ^[1-9][0-9]*$ ]] || {
+              echo "Production secret version must be a positive integer: $name" >&2
+              exit 1
+            }
+          done
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Build and publish immutable API image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${GCP_REGION}-docker.pkg.dev"
+          image_tag="${registry}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}/api:${GITHUB_SHA}"
+          gcloud auth configure-docker "$registry" --quiet
+          docker build --target runtime --tag "$image_tag" --file apps/api/Dockerfile .
+          docker push "$image_tag"
+          digest="$(gcloud artifacts docker images describe "$image_tag" \
+            --format='value(image_summary.digest)')"
+          [[ "$digest" == sha256:* ]]
+          image_ref="${image_tag%:*}@${digest}"
+          echo "ref=$image_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Install pinned database tools
+        run: make db-tools
+
+      - name: Apply production database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/db-tool.sh supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          ./scripts/db-tool.sh supabase db push --linked --dry-run
+          ./scripts/db-tool.sh supabase db push --linked
+
+      - name: Deploy staged Cloud Run revision
+        id: candidate
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          candidate_tag="candidate-${GITHUB_SHA:0:12}"
+          gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --image "$IMAGE_REF" \
+            --no-traffic \
+            --tag "$candidate_tag" \
+            --service-account "$GCP_RUNTIME_SERVICE_ACCOUNT" \
+            --port 8080 \
+            --cpu 1 \
+            --memory 512Mi \
+            --cpu-throttling \
+            --min-instances 0 \
+            --max-instances 1 \
+            --timeout 60s \
+            --allow-unauthenticated \
+            --set-env-vars "API_ADDR=:8080,API_SHUTDOWN_TIMEOUT=5s,DATABASE_MAX_CONNS=5,DATABASE_TIMEOUT=2s,AUTH_ISSUER=${supabase_origin}/auth/v1,AUTH_AUDIENCE=authenticated,AUTH_JWKS_URL=${supabase_origin}/auth/v1/.well-known/jwks.json,ONBOARDING_AUTH_URL=${supabase_origin}/auth/v1,ONBOARDING_AUTH_PUBLIC_KEY=${SUPABASE_PUBLISHABLE_KEY},ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN},INVITATION_FROM=${INVITATION_FROM},CURSOR_ACTIVE_KEY_ID=production-v1,INVITATION_ACTIVE_KEY_ID=production-v1" \
+            --set-secrets "DATABASE_URL=kami-split-database-url:${DATABASE_URL_SECRET_VERSION},CURSOR_SIGNING_KEYS=kami-split-cursor-signing-keys:${CURSOR_SIGNING_KEYS_SECRET_VERSION},INVITATION_KEYS=kami-split-invitation-keys:${INVITATION_KEYS_SECRET_VERSION},ONBOARDING_AUTH_ADMIN_KEY=kami-split-onboarding-auth-admin-key:${ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION},RESEND_API_KEY=kami-split-resend-api-key:${RESEND_API_KEY_SECRET_VERSION}" \
+            --quiet
+
+          service_json="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format=json)"
+          revision_name="$(jq --raw-output '.status.latestReadyRevisionName' <<< "$service_json")"
+          candidate_url="$(jq --raw-output --arg tag "$candidate_tag" \
+            '.status.traffic[] | select(.tag == $tag) | .url' <<< "$service_json")"
+          service_url="$(jq --raw-output '.status.url' <<< "$service_json")"
+          [[ "$revision_name" == "${GCP_CLOUD_RUN_SERVICE}-"* ]]
+          [[ "$candidate_url" == https://* ]]
+          [[ "$service_url" == https://* ]]
+          echo "revision=$revision_name" >> "$GITHUB_OUTPUT"
+          echo "tag=$candidate_tag" >> "$GITHUB_OUTPUT"
+          echo "url=$candidate_url" >> "$GITHUB_OUTPUT"
+          echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify staged API readiness
+        shell: bash
+        env:
+          CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${CANDIDATE_URL}/healthz"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${CANDIDATE_URL}/readyz"
+
+      - name: Promote and verify API revision
+        id: service
+        shell: bash
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
+          SERVICE_URL: ${{ steps.candidate.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --to-revisions "${CANDIDATE_REVISION}=100" \
+            --quiet
+          service_json="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" --region "$GCP_REGION" \
+            --format=json)"
+          serving_revision="$(jq --raw-output \
+            '.status.traffic[] | select(.percent == 100) | .revisionName' \
+            <<< "$service_json")"
+          [[ "$serving_revision" == "$CANDIDATE_REVISION" ]]
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${SERVICE_URL}/healthz"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 "${SERVICE_URL}/readyz"
+          gcloud run services update-traffic "$GCP_CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --remove-tags "$CANDIDATE_TAG" \
+            --quiet
+          echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+
+  web:
+    name: Deploy web
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      API_ORIGIN: ${{ needs.api.outputs.service_url }}
+      CONFIGURED_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validate web deployment selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            API_ORIGIN PRODUCTION_WEB_ORIGIN SUPABASE_PROJECT_REF
+            SUPABASE_PUBLISHABLE_KEY VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required production setting: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$API_ORIGIN" == https://* ]]
+          [[ "$API_ORIGIN" != */ ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" == "https://finances.mckardah.com" ]]
+          [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
+          if [[ -n "$CONFIGURED_API_ORIGIN" && "$CONFIGURED_API_ORIGIN" != "$API_ORIGIN" ]]; then
+            echo "PRODUCTION_API_ORIGIN does not match the deployed Cloud Run service URL" >&2
+            exit 1
+          fi
+
+      - name: Deploy web to Vercel
+        id: deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          deployment_url="$(pnpm dlx vercel@59.19.1 deploy \
+            --prod \
+            --skip-domain \
+            --yes \
+            --archive=tgz \
+            --token "$VERCEL_TOKEN" \
+            --env "ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN}" \
+            --env "ONBOARDING_API_URL=${API_ORIGIN}" \
+            --env "ONBOARDING_PUBLIC_SUPABASE_URL=${supabase_origin}" \
+            --env "ONBOARDING_PUBLIC_SUPABASE_KEY=${SUPABASE_PUBLISHABLE_KEY}" \
+            --build-env "ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN}" \
+            --build-env "ONBOARDING_API_URL=${API_ORIGIN}" \
+            --build-env "ONBOARDING_PUBLIC_SUPABASE_URL=${supabase_origin}" \
+            --build-env "ONBOARDING_PUBLIC_SUPABASE_KEY=${SUPABASE_PUBLISHABLE_KEY}")"
+          [[ "$deployment_url" == https://* ]]
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify staged web deployment
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${DEPLOYMENT_URL}/" > /dev/null
+          config="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${DEPLOYMENT_URL}/api/onboarding-config")"
+          jq --exit-status \
+            --arg url "$supabase_origin" \
+            --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            '.url == $url and .key == $key' <<< "$config" > /dev/null
+          health="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 \
+            --header "Origin: ${PRODUCTION_WEB_ORIGIN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"{ health { status } }"}' \
+            "${DEPLOYMENT_URL}/api/graphql")"
+          jq --exit-status '.data.health.status == "ok"' <<< "$health" > /dev/null
+
+      - name: Promote verified web deployment
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
+        run: |
+          set -euo pipefail
+          pnpm dlx vercel@59.19.1 promote "$DEPLOYMENT_URL" \
+            --yes \
+            --token "$VERCEL_TOKEN"
+
+      - name: Verify hosted application
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${PRODUCTION_WEB_ORIGIN}/" > /dev/null
+          config="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${PRODUCTION_WEB_ORIGIN}/api/onboarding-config")"
+          jq --exit-status \
+            --arg url "$supabase_origin" \
+            --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            '.url == $url and .key == $key' <<< "$config" > /dev/null
+          health="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 \
+            --header "Origin: ${PRODUCTION_WEB_ORIGIN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"{ health { status } }"}' \
+            "${PRODUCTION_WEB_ORIGIN}/api/graphql")"
+          jq --exit-status '.data.health.status == "ok"' <<< "$health" > /dev/null
