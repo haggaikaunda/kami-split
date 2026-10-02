@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
+    outputs:
+      service_url: ${{ steps.service.outputs.url }}
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION }}
@@ -124,6 +126,7 @@ jobs:
             --quiet
 
       - name: Verify deployed API readiness
+        id: service
         shell: bash
         run: |
           set -euo pipefail
@@ -135,3 +138,130 @@ jobs:
             --retry-delay 2 "${service_url}/healthz"
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
             --retry-delay 2 "${service_url}/readyz"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+
+  web:
+    name: Deploy web
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      API_ORIGIN: ${{ needs.api.outputs.service_url }}
+      CONFIGURED_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validate web deployment selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            API_ORIGIN PRODUCTION_WEB_ORIGIN SUPABASE_PROJECT_REF
+            SUPABASE_PUBLISHABLE_KEY VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required production setting: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$API_ORIGIN" == https://* ]]
+          [[ "$API_ORIGIN" != */ ]]
+          [[ "$PRODUCTION_WEB_ORIGIN" == "https://finances.mckardah.com" ]]
+          [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
+          if [[ -n "$CONFIGURED_API_ORIGIN" && "$CONFIGURED_API_ORIGIN" != "$API_ORIGIN" ]]; then
+            echo "PRODUCTION_API_ORIGIN does not match the deployed Cloud Run service URL" >&2
+            exit 1
+          fi
+
+      - name: Deploy web to Vercel
+        id: deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          deployment_url="$(pnpm dlx vercel@59.19.1 deploy \
+            --prod \
+            --skip-domain \
+            --yes \
+            --archive=tgz \
+            --token "$VERCEL_TOKEN" \
+            --env "ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN}" \
+            --env "ONBOARDING_API_URL=${API_ORIGIN}" \
+            --env "ONBOARDING_PUBLIC_SUPABASE_URL=${supabase_origin}" \
+            --env "ONBOARDING_PUBLIC_SUPABASE_KEY=${SUPABASE_PUBLISHABLE_KEY}" \
+            --build-env "ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN}" \
+            --build-env "ONBOARDING_API_URL=${API_ORIGIN}" \
+            --build-env "ONBOARDING_PUBLIC_SUPABASE_URL=${supabase_origin}" \
+            --build-env "ONBOARDING_PUBLIC_SUPABASE_KEY=${SUPABASE_PUBLISHABLE_KEY}")"
+          [[ "$deployment_url" == https://* ]]
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify staged web deployment
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${DEPLOYMENT_URL}/" > /dev/null
+          config="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${DEPLOYMENT_URL}/api/onboarding-config")"
+          jq --exit-status \
+            --arg url "$supabase_origin" \
+            --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            '.url == $url and .key == $key' <<< "$config" > /dev/null
+          health="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 \
+            --header "Origin: ${PRODUCTION_WEB_ORIGIN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"{ health { status } }"}' \
+            "${DEPLOYMENT_URL}/api/graphql")"
+          jq --exit-status '.data.health.status == "ok"' <<< "$health" > /dev/null
+
+      - name: Promote verified web deployment
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
+        run: |
+          set -euo pipefail
+          pnpm dlx vercel@59.19.1 promote "$DEPLOYMENT_URL" \
+            --yes \
+            --token "$VERCEL_TOKEN"
+
+      - name: Verify hosted application
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${PRODUCTION_WEB_ORIGIN}/" > /dev/null
+          config="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 "${PRODUCTION_WEB_ORIGIN}/api/onboarding-config")"
+          jq --exit-status \
+            --arg url "$supabase_origin" \
+            --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            '.url == $url and .key == $key' <<< "$config" > /dev/null
+          health="$(curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --retry-delay 3 \
+            --header "Origin: ${PRODUCTION_WEB_ORIGIN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"{ health { status } }"}' \
+            "${PRODUCTION_WEB_ORIGIN}/api/graphql")"
+          jq --exit-status '.data.health.status == "ok"' <<< "$health" > /dev/null

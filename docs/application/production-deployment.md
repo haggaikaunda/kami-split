@@ -6,9 +6,8 @@ Issue [#140](https://github.com/haggaikaunda/kami-split/issues/140) approves
 the first production deployment: Vercel for the web application, Google Cloud
 Run for the Go API, hosted Supabase for Auth/PostgreSQL, and GitHub Actions as
 the only deployment orchestrator. This document defines names, configuration
-ownership, provisioned Google Cloud foundation, and the remaining
-operator-supplied values. It does not store a credential or authorize deploying
-from a pull request.
+ownership, the provisioned production foundation, and operating procedures. It
+does not store a credential or authorize deploying from a pull request.
 
 There is one `production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
@@ -61,10 +60,12 @@ is `us-west1`, Google Cloud's Oregon region, for Cloud Run and Artifact
 Registry. Do not default locality from a developer workstation or GitHub runner
 location.
 
-## Provisioned Google Cloud foundation
+## Provisioned production foundation
 
-The following production foundation was provisioned on 2026-10-01. No Cloud Run
-service, secret payload, or billable always-on compute was created in this step.
+The following production foundation was provisioned on 2026-10-01. The first
+successful production workflow creates the Cloud Run service; there is no
+billable always-on compute because the service keeps a minimum instance count of
+zero.
 
 - Enabled APIs: Cloud Run Admin, Artifact Registry, Secret Manager, IAM Service
   Account Credentials, Security Token Service, and Cloud Resource Manager.
@@ -95,17 +96,27 @@ service, secret payload, or billable always-on compute was created in this step.
   identity to the `kami-split-api` service in `us-west1`, allowing the workflow
   to maintain that service's unauthenticated invoker policy without granting
   general Cloud Run administration.
-- Empty regional Secret Manager containers were created in `us-west1` for
+- Regional Secret Manager containers were created in `us-west1` for
   `kami-split-database-url`, `kami-split-cursor-signing-keys`,
   `kami-split-invitation-keys`, `kami-split-onboarding-auth-admin-key`, and
   `kami-split-resend-api-key`. The runtime identity has Secret Accessor on only
-  these five containers. No container has a secret version yet.
+  these five containers. Each container has an enabled initial version; payloads
+  are not stored in GitHub or the repository.
 - The project-created default Compute Engine service account has no project-level
   `Editor` grant. Application workloads use the dedicated identities above.
+- Vercel project `kami-split-web` uses repository root `apps/web`, has
+  provider-native Git deployment disabled, and owns the custom production domain
+  `finances.mckardah.com`.
+- The Resend sending domain is verified through Squarespace DNS. Hosted Supabase
+  uses its restricted SMTP credential with sender
+  `invites@finances.mckardah.com` and customer-facing name `Kami Finances`.
+- Hosted Supabase Auth uses `https://finances.mckardah.com` as its Site URL,
+  allows the `/auth/confirm` callback, disables public signup, requires email
+  confirmation, and uses branded invitation and password-reset templates.
 
-Cloud Run creation remains deferred until an immutable API image and the named
-Secret Manager values are ready. Adding a version is a separate operator action;
-never put a payload in a command argument, repository file, or workflow log.
+Never put a secret payload in a command argument, repository file, or workflow
+log. Secret versions are maintained directly in Secret Manager and referenced by
+Cloud Run.
 
 | Selected Supabase value             | Production selection                         |
 | ----------------------------------- | -------------------------------------------- |
@@ -133,21 +144,21 @@ operator approval if the repository plan supports it.
 
 Repository or environment variables are non-secret identifiers:
 
-| Variable                         | Contract                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `GCP_PROJECT_ID`                 | Selected Google Cloud project ID.                                                                   |
-| `GCP_REGION`                     | `us-west1`.                                                                                         |
-| `GCP_ARTIFACT_REPOSITORY`        | `kami-split`.                                                                                       |
-| `GCP_CLOUD_RUN_SERVICE`          | `kami-split-api`.                                                                                   |
-| `GCP_RUNTIME_SERVICE_ACCOUNT`    | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`.                                  |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/598147484786/locations/global/workloadIdentityPools/github-actions/providers/kami-split`. |
-| `GCP_DEPLOY_SERVICE_ACCOUNT`     | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`.                        |
-| `SUPABASE_PROJECT_REF`           | `zlxpapkxacnwnmgagbth`.                                                                             |
-| `SUPABASE_PUBLISHABLE_KEY`       | Publishable/anonymous key for the selected project.                                                 |
-| `PRODUCTION_WEB_ORIGIN`          | Canonical HTTPS web origin without a trailing slash.                                                |
-| `PRODUCTION_API_ORIGIN`          | Canonical HTTPS Cloud Run origin without a trailing slash.                                          |
-| `VERCEL_ORG_ID`                  | Vercel account or team identifier that owns the project.                                            |
-| `VERCEL_PROJECT_ID`              | Vercel project identifier for `kami-split-web`.                                                     |
+| Variable                         | Contract                                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GCP_PROJECT_ID`                 | Selected Google Cloud project ID.                                                                        |
+| `GCP_REGION`                     | `us-west1`.                                                                                              |
+| `GCP_ARTIFACT_REPOSITORY`        | `kami-split`.                                                                                            |
+| `GCP_CLOUD_RUN_SERVICE`          | `kami-split-api`.                                                                                        |
+| `GCP_RUNTIME_SERVICE_ACCOUNT`    | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`.                                       |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/598147484786/locations/global/workloadIdentityPools/github-actions/providers/kami-split`.      |
+| `GCP_DEPLOY_SERVICE_ACCOUNT`     | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`.                             |
+| `SUPABASE_PROJECT_REF`           | `zlxpapkxacnwnmgagbth`.                                                                                  |
+| `SUPABASE_PUBLISHABLE_KEY`       | Publishable/anonymous key for the selected project.                                                      |
+| `PRODUCTION_WEB_ORIGIN`          | Canonical HTTPS web origin without a trailing slash.                                                     |
+| `PRODUCTION_API_ORIGIN`          | Optional first run; when set, must equal the discovered HTTPS Cloud Run origin without a trailing slash. |
+| `VERCEL_ORG_ID`                  | Vercel account or team identifier that owns the project.                                                 |
+| `VERCEL_PROJECT_ID`              | Vercel project identifier for `kami-split-web`.                                                          |
 
 Environment secrets are credentials needed by the deployment runner, not API
 runtime configuration:
@@ -221,7 +232,11 @@ Vercel uses Node 24, pnpm 11.25.0, the repository lockfile, and the existing
 monorepo build commands described in [repository layout](../repository-layout.md).
 Provider-native Git push deployment must not race GitHub Actions; production is
 deployed by the serialized GitHub workflow after migrations and API readiness
-succeed.
+succeed. The workflow passes the Cloud Run URL discovered during that same run
+to Vercel, which allows the initial deployment before a Cloud Run service URL is
+known. After the first successful run, record that URL as
+`PRODUCTION_API_ORIGIN`; later runs fail before web deployment if the configured
+value and actual service URL differ.
 
 | Vercel production variable       | Value                                             |
 | -------------------------------- | ------------------------------------------------- |
@@ -243,15 +258,17 @@ callback paths required by the onboarding guide. Production migration execution
 uses the pinned Supabase CLI and committed `supabase/migrations`; the API never
 migrates on startup and the deployment workflow never resets production.
 
-Before enabling deployment, record and verify these operator-supplied values:
+The following operator selections have been recorded and verified:
 
-- `us-west1` is already selected from the actual Supabase region for the
+- `us-west1` was selected from the actual Supabase region for the
   confirmed `kami-finances-production` Google Cloud project.
-- Hosted Supabase Auth and JWKS endpoints, publishable key, database endpoints, and connection ceiling after project provisioning completes.
-- Canonical Vercel production origin, organization ID, and project ID.
-- Verified invitation sender domain/address.
-- Cloud Run service URL after the first immutable image and runtime secrets are
-  ready.
+- Hosted Supabase Auth/JWKS endpoints, publishable key, restricted runtime
+  database URL, and migration credential are configured.
+- The canonical Vercel production origin, organization ID, and project ID are in
+  the GitHub `production` environment.
+- The invitation sender domain and address are verified.
+- The Cloud Run service URL is discovered during deployment and must be recorded
+  as `PRODUCTION_API_ORIGIN` after the first successful run.
 
 The reusable production workflow is called by `ci.yml` only for a successful
 `main` push after the required `Verify` job. It uses a non-canceling production
@@ -260,5 +277,56 @@ an API image tagged with the commit SHA, resolves that tag to its immutable
 digest, applies migrations with the pinned Supabase CLI, deploys a new Cloud Run
 revision from the digest, and verifies `/healthz` and `/readyz`. Missing or
 inconsistent configuration fails before authentication, migration, or deployment.
-Vercel deployment remains to be added after its project identifiers and canonical
-production origin are available.
+Only after the API passes readiness does the web job use a pinned Vercel CLI
+release to create a staged production build with the exact API, Supabase, and
+canonical-origin settings. Read-only preflight checks exercise the staged page,
+public Supabase configuration route, and GraphQL health request before the build
+is promoted to the production domain. The same checks then run against the
+canonical domain. A failed migration, API deployment, web build, or staged
+preflight therefore leaves the existing web deployment in place instead of
+publishing a knowingly incompatible frontend.
+
+## Deploy, rollback, and recovery
+
+Normal production deployment is automatic: merge the reviewed PR to `main` and
+allow the required `Verify` job to pass. The production job is serialized and
+cannot be canceled by a later merge. Do not deploy locally or directly from a
+provider dashboard. To redeploy the same commit after a transient provider
+failure, rerun the failed GitHub Actions workflow. Confirm both Cloud Run
+readiness endpoints and the hosted smoke checks before considering the run
+recovered.
+
+The normal rollback path is a new reviewed PR that reverts or fixes the change,
+followed by the same workflow. Database migrations are forward-only: never reset
+production or apply an unreviewed destructive down migration. If a schema change
+must be repaired, add a safe forward migration that remains compatible with the
+currently deployed API and web application.
+
+For an incident that cannot wait for a PR:
+
+1. In Cloud Run, direct 100% of `kami-split-api` traffic in `us-west1` to the
+   last known-good revision. Verify `/healthz` and `/readyz` on the service URL.
+2. If the web release is incompatible with that API, use Vercel's production
+   rollback to restore the matching known-good deployment and verify
+   `https://finances.mckardah.com` plus its GraphQL health request.
+3. Record the incident and immediately reconcile `main` with a revert or fix.
+   Provider rollback changes are temporary state; the next successful workflow
+   otherwise replaces them.
+4. Run the complete production workflow again so the repository, API revision,
+   database state, and web deployment return to one auditable version.
+
+Use `gcloud run services update-traffic kami-split-api --region us-west1
+--project kami-finances-production --to-revisions REVISION=100` for the emergency
+API traffic change. Use `vercel rollback DEPLOYMENT_URL` for the web rollback;
+Vercel Hobby plans support rolling back to the immediately previous production
+deployment. `vercel rollback status` inspects the active rollback and
+`vercel promote DEPLOYMENT_URL` restores a selected deployment when undoing it.
+
+## Future staging environment
+
+Add staging as separate provider resources and a separate GitHub environment,
+never as alternate values in `production`. Give it its own Supabase project,
+Cloud Run service/runtime secrets, Vercel project/domain, Workload Identity
+restriction, and non-canceling concurrency group. Reuse the same ordered flow:
+checks, migration, immutable API deployment, readiness, web deployment, then
+hosted read-only smoke tests.
