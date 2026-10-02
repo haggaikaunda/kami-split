@@ -31,6 +31,11 @@ jobs:
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
       INVITATION_FROM: ${{ vars.INVITATION_FROM }}
+      DATABASE_URL_SECRET_VERSION: ${{ vars.DATABASE_URL_SECRET_VERSION }}
+      CURSOR_SIGNING_KEYS_SECRET_VERSION: ${{ vars.CURSOR_SIGNING_KEYS_SECRET_VERSION }}
+      INVITATION_KEYS_SECRET_VERSION: ${{ vars.INVITATION_KEYS_SECRET_VERSION }}
+      ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION: ${{ vars.ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION }}
+      RESEND_API_KEY_SECRET_VERSION: ${{ vars.RESEND_API_KEY_SECRET_VERSION }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
@@ -46,6 +51,9 @@ jobs:
             GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT
             SUPABASE_PROJECT_REF SUPABASE_PUBLISHABLE_KEY
             PRODUCTION_WEB_ORIGIN INVITATION_FROM
+            DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
+            INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
+            RESEND_API_KEY_SECRET_VERSION
             SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD
           )
           for name in "${required[@]}"; do
@@ -61,6 +69,17 @@ jobs:
           [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
           [[ "$PRODUCTION_WEB_ORIGIN" == https://* ]]
           [[ "$PRODUCTION_WEB_ORIGIN" != */ ]]
+          secret_versions=(
+            DATABASE_URL_SECRET_VERSION CURSOR_SIGNING_KEYS_SECRET_VERSION
+            INVITATION_KEYS_SECRET_VERSION ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION
+            RESEND_API_KEY_SECRET_VERSION
+          )
+          for name in "${secret_versions[@]}"; do
+            [[ "${!name}" =~ ^[1-9][0-9]*$ ]] || {
+              echo "Production secret version must be a positive integer: $name" >&2
+              exit 1
+            }
+          done
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -126,7 +145,7 @@ jobs:
             --timeout 60s \
             --allow-unauthenticated \
             --set-env-vars "API_ADDR=:8080,API_SHUTDOWN_TIMEOUT=5s,DATABASE_MAX_CONNS=5,DATABASE_TIMEOUT=2s,AUTH_ISSUER=${supabase_origin}/auth/v1,AUTH_AUDIENCE=authenticated,AUTH_JWKS_URL=${supabase_origin}/auth/v1/.well-known/jwks.json,ONBOARDING_AUTH_URL=${supabase_origin}/auth/v1,ONBOARDING_AUTH_PUBLIC_KEY=${SUPABASE_PUBLISHABLE_KEY},ONBOARDING_ORIGIN=${PRODUCTION_WEB_ORIGIN},INVITATION_FROM=${INVITATION_FROM},CURSOR_ACTIVE_KEY_ID=production-v1,INVITATION_ACTIVE_KEY_ID=production-v1" \
-            --set-secrets "DATABASE_URL=kami-split-database-url:latest,CURSOR_SIGNING_KEYS=kami-split-cursor-signing-keys:latest,INVITATION_KEYS=kami-split-invitation-keys:latest,ONBOARDING_AUTH_ADMIN_KEY=kami-split-onboarding-auth-admin-key:latest,RESEND_API_KEY=kami-split-resend-api-key:latest" \
+            --set-secrets "DATABASE_URL=kami-split-database-url:${DATABASE_URL_SECRET_VERSION},CURSOR_SIGNING_KEYS=kami-split-cursor-signing-keys:${CURSOR_SIGNING_KEYS_SECRET_VERSION},INVITATION_KEYS=kami-split-invitation-keys:${INVITATION_KEYS_SECRET_VERSION},ONBOARDING_AUTH_ADMIN_KEY=kami-split-onboarding-auth-admin-key:${ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION},RESEND_API_KEY=kami-split-resend-api-key:${RESEND_API_KEY_SECRET_VERSION}" \
             --quiet
 
           service_json="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
