@@ -115,9 +115,13 @@ zero.
   allows the `/auth/confirm` callback, disables public signup, requires email
   confirmation, and uses branded invitation and password-reset templates.
 
-Never put a secret payload in a command argument, repository file, or workflow
-log. Secret versions are maintained directly in Secret Manager and referenced by
-Cloud Run.
+Never put an API runtime or database secret payload in a command argument,
+repository file, or workflow log. Secret versions are maintained directly in
+Secret Manager and referenced by Cloud Run. Vercel's documented CI
+authentication is the narrow exception: the explicitly forwarded, GitHub-masked
+`VERCEL_TOKEN` is supplied only to the pinned Vercel CLI's `--token` flag on an
+ephemeral hosted runner. Do not echo it, enable shell tracing, forward it to the
+application build/runtime, or reuse this exception for another credential.
 
 | Selected Supabase value             | Production selection                         |
 | ----------------------------------- | -------------------------------------------- |
