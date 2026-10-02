@@ -135,7 +135,7 @@ jobs:
           ./scripts/db-tool.sh supabase db push --linked --dry-run
           ./scripts/db-tool.sh supabase db push --linked
 
-      - name: Deploy staged Cloud Run revision
+      - name: Deploy candidate Cloud Run revision
         id: candidate
         shell: bash
         env:
@@ -144,11 +144,16 @@ jobs:
           set -euo pipefail
           supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
           candidate_tag="candidate-${DEPLOY_SHA:0:12}"
+          traffic_flag="$(bash scripts/cloud-run-traffic-flag.sh)"
+          traffic_args=()
+          if [[ -n "$traffic_flag" ]]; then
+            traffic_args+=("$traffic_flag")
+          fi
           gcloud run deploy "$GCP_CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
             --image "$IMAGE_REF" \
-            --no-traffic \
+            "${traffic_args[@]}" \
             --tag "$candidate_tag" \
             --service-account "$GCP_RUNTIME_SERVICE_ACCOUNT" \
             --port 8080 \
