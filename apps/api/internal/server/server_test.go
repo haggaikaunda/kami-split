@@ -82,7 +82,7 @@ func TestLifecycle(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Serve(ctx, listener) }()
 	client := &http.Client{Timeout: time.Second}
-	for _, path := range []string{"/healthz", "/readyz"} {
+	for _, path := range []string{"/health", "/healthz", "/ready", "/readyz"} {
 		resp, err := client.Get("http://" + listener.Addr().String() + path)
 		if err != nil {
 			t.Fatal(err)
@@ -258,5 +258,48 @@ func TestShutdownDrainsActiveRequest(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("drain blocked")
+	}
+}
+
+func TestProbeAliases(t *testing.T) {
+	dependency := &diagnosticReadiness{}
+	s := New(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}), slog.New(slog.NewTextHandler(io.Discard, nil)), dependency)
+	for _, tc := range []struct {
+		name          string
+		serving       bool
+		dependencyErr error
+		wantReady     int
+	}{
+		{"before serving", false, nil, 503},
+		{"serving", true, nil, 200},
+		{"dependency unavailable", true, errors.New("private dependency failure"), 503},
+		{"dependency recovered", true, nil, 200},
+		{"shutting down", false, nil, 503},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s.ready.Store(tc.serving)
+			dependency.err = tc.dependencyErr
+			for _, probe := range []struct {
+				path   string
+				status int
+			}{{"/health", 200}, {"/ready", tc.wantReady}} {
+				alias := httptest.NewRecorder()
+				legacy := httptest.NewRecorder()
+				s.Handler().ServeHTTP(alias, httptest.NewRequest(http.MethodGet, probe.path, nil))
+				s.Handler().ServeHTTP(legacy, httptest.NewRequest(http.MethodGet, probe.path+"z", nil))
+				wantBody := ""
+				if probe.status == 503 {
+					wantBody = "not ready\n"
+				}
+				if alias.Code != probe.status || legacy.Code != probe.status || alias.Body.String() != wantBody || legacy.Body.String() != wantBody {
+					t.Fatalf("%s: alias %d %q; legacy %d %q", probe.path, alias.Code, alias.Body.String(), legacy.Code, legacy.Body.String())
+				}
+				for _, header := range []string{"Content-Type", "X-Content-Type-Options"} {
+					if alias.Header().Get(header) != legacy.Header().Get(header) {
+						t.Errorf("%s: different %s", probe.path, header)
+					}
+				}
+			}
+		})
 	}
 }

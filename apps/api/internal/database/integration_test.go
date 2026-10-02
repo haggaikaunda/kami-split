@@ -171,13 +171,17 @@ func TestDatabaseIntegration(t *testing.T) {
 			}
 		}
 		status("/readyz", 200)
+		status("/ready", 200)
 		exec(`ALTER ROLE kami_api NOLOGIN; SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename='kami_api'`)
 		defer exec(`ALTER ROLE kami_api LOGIN`)
 		database.IntegrationPool(db).Reset()
 		status("/readyz", 503)
+		status("/ready", 503)
 		status("/healthz", 200)
+		status("/health", 200)
 		exec(`ALTER ROLE kami_api LOGIN`)
 		status("/readyz", 200)
+		status("/ready", 200)
 		stop()
 		if err := <-done; err != nil {
 			t.Fatal(err)

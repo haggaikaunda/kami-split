@@ -113,8 +113,8 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		return diagnostic.Wrap(errors.New("internal server error"), nil, "graphql.panic")
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
-	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+	health := func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }
+	ready := func(w http.ResponseWriter, r *http.Request) {
 		if !s.ready.Load() {
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
@@ -126,7 +126,11 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 			}
 		}
 		w.WriteHeader(http.StatusOK)
-	})
+	}
+	mux.HandleFunc("/health", health)
+	mux.HandleFunc("/healthz", health)
+	mux.HandleFunc("/ready", ready)
+	mux.HandleFunc("/readyz", ready)
 	graphqlHandler := graphTransport(gql)
 	inner := graphqlHandler
 	graphqlHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
