@@ -67,10 +67,13 @@ does not claim migrations are up to date. With authentication configured, readin
 
 Explicit empty settings and orphan pool settings fail. Only `sslmode` and
 `sslrootcert` URL options are accepted, preventing URL overrides of pool limits
-or session roles. Hosted URLs require `sslmode=verify-full`; `disable` is accepted
-only for loopback and the named local Supabase container. Direct PostgreSQL is
-the default; a verified TLS session-pool endpoint can be configured later.
-Transaction pooling is not configured. Idle connections expire after 5 minutes;
+or session roles. Hosted URLs require both `sslmode=verify-full` and an explicit
+`sslrootcert`; production mounts Supabase's project CA certificate from Secret
+Manager and references that file in the URL. `disable` is accepted only for
+loopback and the named local Supabase container. Direct PostgreSQL is
+the default where the runtime supports its IPv6 endpoint; production uses the
+verified TLS session pooler for IPv4 connectivity. Transaction pooling is not
+configured. Idle connections expire after 5 minutes;
 connection lifetime is 30 minutes, minimum pool size zero. Shutdown drains HTTP,
 then closes the pool. Future users of `Pool` must release acquisitions promptly.
 Configuration/startup logs and HTTP readiness errors never include the URL,

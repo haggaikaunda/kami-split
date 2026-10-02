@@ -14,7 +14,8 @@ func TestConfiguration(t *testing.T) {
 	}{
 		{"health only", nil, false},
 		{"local", map[string]string{"DATABASE_URL": valid}, false},
-		{"remote verified", map[string]string{"DATABASE_URL": "postgres://kami_api:x@db.example.com/postgres?sslmode=verify-full"}, false},
+		{"remote verified", map[string]string{"DATABASE_URL": "postgres://kami_api:x@db.example.com/postgres?sslmode=verify-full&sslrootcert=system"}, false},
+		{"remote missing CA", map[string]string{"DATABASE_URL": "postgres://kami_api:x@db.example.com/postgres?sslmode=verify-full"}, true},
 		{"empty", map[string]string{"DATABASE_URL": ""}, true},
 		{"malformed", map[string]string{"DATABASE_URL": "secret%%%"}, true},
 		{"missing user", map[string]string{"DATABASE_URL": "postgres://localhost/postgres?sslmode=disable"}, true},
