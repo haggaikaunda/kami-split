@@ -301,9 +301,18 @@ group queues releases, validates the selected project identifiers and numeric
 Secret Manager versions, builds and pushes an API image tagged with the triggering
 commit SHA, resolves that tag to its immutable digest, applies migrations with
 the pinned Supabase CLI, deploys a new Cloud Run revision from the digest and
-pinned secret versions with zero traffic, and verifies that exact tagged revision
+pinned secret versions, and verifies that exact tagged revision
 through `/healthz` and `/readyz` before explicitly directing 100% of service
-traffic to it. Core API configuration is validated before authentication,
+traffic to it. Existing services receive a candidate with zero traffic (`--no-traffic`). For the
+first deployment only, a successful empty service lookup permits creation without
+that flag because Cloud Run rejects it for a new service. The first revision is
+therefore reachable before the workflow readiness checks; no prior API revision
+exists to preserve. Web deployment still waits for candidate and service readiness.
+Failed or unexpected service lookups stop deployment instead of being treated as
+service absence. `bash scripts/cloud-run-traffic-flag-test.sh` exercises first
+creation, existing-service staging, and lookup failure paths in API CI.
+
+Core API configuration is validated before authentication,
 migration, or deployment. Web-specific configuration and the optional canonical
 API-origin assertion are validated after the API is healthy but before Vercel is
 changed.

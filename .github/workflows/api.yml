@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - name: Test Cloud Run traffic selection
+        run: bash scripts/cloud-run-traffic-flag-test.sh
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/api/go.mod
