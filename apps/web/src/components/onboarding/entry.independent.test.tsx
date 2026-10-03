@@ -340,6 +340,14 @@ it('verifies the email, sets a password and returns to explicit invitation admis
     root.render(<OnboardingEntry key="password" mode="password" />),
   );
   await act(async () => {
+    const input = container.querySelector('#new-password') as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(input, 'SyntheticPassword162!');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => {
     container
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
