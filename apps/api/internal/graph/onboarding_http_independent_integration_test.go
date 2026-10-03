@@ -33,19 +33,41 @@ import (
 )
 
 func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
+	for _, keys := range []struct {
+		name, public, admin string
+	}{
+		{"legacy", os.Getenv("TEST_AUTH_ANON_KEY"), os.Getenv("TEST_AUTH_SERVICE_KEY")},
+		{"modern", os.Getenv("TEST_AUTH_PUBLISHABLE_KEY"), os.Getenv("TEST_AUTH_SECRET_KEY")},
+	} {
+		t.Run(keys.name, func(t *testing.T) {
+			if keys.public == "" || keys.admin == "" {
+				t.Fatal("disposable Auth keys required")
+			}
+			independentHTTPOnboardingRoundTrip(t, keys.public, keys.admin)
+		})
+	}
+}
+
+func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
+	t.Helper()
 	ctx := context.Background()
-	base, anon, adminKey := os.Getenv("TEST_AUTH_URL"), os.Getenv("TEST_AUTH_ANON_KEY"), os.Getenv("TEST_AUTH_SERVICE_KEY")
+	base := os.Getenv("TEST_AUTH_URL")
 	if !strings.HasPrefix(base, "http://127.0.0.1:") {
 		t.Fatal("disposable provider required")
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
-	provider := func(path, bearer string, payload any) map[string]any {
+	provider := func(method, path, bearer string, payload any) map[string]any {
 		t.Helper()
 		raw, _ := json.Marshal(payload)
-		req, _ := http.NewRequest("POST", base+path, bytes.NewReader(raw))
+		req, _ := http.NewRequest(method, base+path, bytes.NewReader(raw))
 		req.Header.Set("apikey", anon)
 		req.Header.Set("Content-Type", "application/json")
-		if bearer != "" {
+		if bearer == adminKey {
+			req.Header.Set("apikey", adminKey)
+			if !strings.HasPrefix(adminKey, "sb_secret_") {
+				req.Header.Set("Authorization", "Bearer "+adminKey)
+			}
+		} else if bearer != "" {
 			req.Header.Set("Authorization", "Bearer "+bearer)
 		}
 		resp, err := client.Do(req)
@@ -67,8 +89,8 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	account := func(label string) (string, string, string) {
 		t.Helper()
 		email := label + "+" + suffix + "@example.invalid"
-		u := provider("/admin/users", adminKey, map[string]any{"email": email, "password": password, "email_confirm": true})
-		s := provider("/token?grant_type=password", "", map[string]any{"email": email, "password": password})
+		u := provider(http.MethodPost, "/admin/users", adminKey, map[string]any{"email": email, "password": password, "email_confirm": true})
+		s := provider(http.MethodPost, "/token?grant_type=password", "", map[string]any{"email": email, "password": password})
 		return u["id"].(string), email, s["access_token"].(string)
 	}
 	owner, _, ownerAccess := account("owner-http80")
@@ -79,6 +101,18 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer admin.Close(ctx)
+	authAdmin, err := pgx.Connect(ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer authAdmin.Close(ctx)
+	assertAuthUsers := func(email string, want int) {
+		t.Helper()
+		var count int
+		if err := authAdmin.QueryRow(ctx, `SELECT count(*) FROM auth.users WHERE email=$1`, email).Scan(&count); err != nil || count != want {
+			t.Fatalf("Auth identity count: got %d, want %d (query failed: %t)", count, want, err != nil)
+		}
+	}
 	db, err := database.Open(ctx, database.Config{URL: os.Getenv("TEST_DATABASE_URL"), MaxConns: 5, Timeout: time.Second})
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +170,8 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	if err != nil || verifier.Warm(ctx) != nil {
 		t.Fatal("verifier setup failed")
 	}
-	h, err := onboarding.NewHandler(factory, verifier, "http://127.0.0.1:3000", adminKey)
+	var providerLogs bytes.Buffer
+	h, err := onboarding.NewHandler(factory, verifier, "http://127.0.0.1:3000", adminKey, slog.New(slog.NewJSONHandler(&providerLogs, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,18 +255,78 @@ func TestIndependentHTTPOnboardingRoundTrip(t *testing.T) {
 	if err := admin.QueryRow(ctx, `SELECT count(*) FROM app.users WHERE auth_subject=$1`, stranger).Scan(&count); err != nil || count != 0 {
 		t.Fatal("wrong-account acceptance left app identity")
 	}
-	_, generic := post("/onboarding/provision", map[string]string{"email": newEmail, "tokenDigest": originalDigest}, "", cookie)
-	if generic["code"] != "CHECK_EMAIL" {
+	assertAuthUsers(newEmail, 0)
+	if strings.HasPrefix(adminKey, "sb_secret_") {
+		// Reproduce the deployed pre-fix header pair against the real disposable
+		// gateway; a publishable apikey cannot authorize a secret-key bearer.
+		raw, err := json.Marshal(map[string]string{"email": newEmail})
+		if err != nil {
+			t.Fatal("pre-fix probe encoding failed")
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/invite", bytes.NewReader(raw))
+		if err != nil {
+			t.Fatal("pre-fix probe request invalid")
+		}
+		req.Header.Set("apikey", anon)
+		req.Header.Set("Authorization", "Bearer "+adminKey)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal("pre-fix probe transport failed")
+		}
+		resp.Body.Close()
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			t.Fatal("pre-fix modern-key headers unexpectedly provisioned account")
+		}
+		t.Logf("pre-fix modern-key header pair rejected with HTTP %d", resp.StatusCode)
+		assertAuthUsers(newEmail, 0)
+	}
+	wrongEmail := "wrong-http162+" + suffix + "@example.invalid"
+	wrongResponse, wrongProvision := post("/onboarding/provision", map[string]string{"email": wrongEmail, "tokenDigest": originalDigest}, "", cookie)
+	assertAuthUsers(wrongEmail, 0)
+	if !strings.Contains(providerLogs.String(), `"outcome":"ineligible"`) {
+		t.Fatal("ineligible provisioning omitted server diagnostic")
+	}
+	genericResponse, generic := post("/onboarding/provision", map[string]string{"email": newEmail, "tokenDigest": originalDigest}, "", cookie)
+	if genericResponse.Code != http.StatusOK || generic["code"] != "CHECK_EMAIL" {
 		t.Fatal("eligible provisioning failed")
+	}
+	if wrongResponse.Code != genericResponse.Code || wrongResponse.Body.String() != genericResponse.Body.String() || wrongProvision["code"] != "CHECK_EMAIL" {
+		t.Fatal("wrong email provisioning disclosed eligibility")
+	}
+	assertAuthUsers(newEmail, 1)
+	if !strings.Contains(providerLogs.String(), `"outcome":"accepted"`) {
+		t.Fatal("accepted provisioning omitted server diagnostic")
+	}
+	for _, sensitive := range []string{newEmail, wrongEmail, originalCapability, originalDigest, adminKey, anon, cookie.Value} {
+		if strings.Contains(providerLogs.String(), sensitive) {
+			t.Fatal("provisioning diagnostic disclosed sensitive input")
+		}
 	}
 	challenge, state := independentDeliveredChallenge(t, client, newEmail)
 	_, callback := post("/onboarding/callback-state", map[string]string{"state": state}, "", cookie)
 	if callback["code"] != "READY" {
 		t.Fatal("actual email browser state rejected")
 	}
-	session := provider("/verify", "", map[string]string{"type": "invite", "token_hash": challenge})
+	session := provider(http.MethodPost, "/verify", "", map[string]string{"type": "invite", "token_hash": challenge})
 	newAccess := session["access_token"].(string)
 	newSubject := session["user"].(map[string]any)["id"].(string)
+	// The browser's /auth/password step updates the verified session before
+	// returning to the original invitation for explicit admission.
+	provider(http.MethodPut, "/user", newAccess, map[string]string{"password": password})
+	signedIn := provider(http.MethodPost, "/token?grant_type=password", "", map[string]string{"email": newEmail, "password": password})
+	if signedIn["user"].(map[string]any)["id"] != newSubject {
+		t.Fatal("password sign-in changed the verified identity")
+	}
+	newAccess = signedIn["access_token"].(string)
+	repeatResponse, _ := post("/onboarding/provision", map[string]string{"email": newEmail, "tokenDigest": originalDigest}, "", cookie)
+	if repeatResponse.Code != genericResponse.Code || repeatResponse.Body.String() != genericResponse.Body.String() {
+		t.Fatal("repeated provisioning disclosed existing account")
+	}
+	assertAuthUsers(newEmail, 1)
+	if err := admin.QueryRow(ctx, `SELECT count(*) FROM app.memberships m JOIN app.users u ON u.id=m.user_id WHERE u.auth_subject=$1 AND m.group_id=$2`, newSubject, group).Scan(&count); err != nil || count != 0 {
+		t.Fatal("provisioning or verification admitted without explicit acceptance")
+	}
 	entry := create(existingEmail)
 	send(entry["actionID"])
 	existingDigest := hex.EncodeToString(invitation.TokenHash(deliveryToken))
@@ -377,6 +472,9 @@ func independentDeliveredChallenge(t *testing.T, client *http.Client, email stri
 				}
 				fragment, e := url.ParseQuery(u.Fragment)
 				if e == nil && fragment.Get("type") == "invite" && fragment.Get("token_hash") != "" && fragment.Get("state") != "" {
+					if u.Scheme != "http" || u.Host != "127.0.0.1:3000" || u.Path != "/auth/confirm" {
+						t.Fatal("verification email did not target the configured confirmation page")
+					}
 					return fragment.Get("token_hash"), fragment.Get("state")
 				}
 			}

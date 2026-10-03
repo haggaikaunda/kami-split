@@ -1,7 +1,6 @@
 package onboarding
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
@@ -10,9 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -40,18 +39,20 @@ type Handler struct {
 	factory          *Factory
 	verifier         *auth.Verifier
 	origin, adminKey string
+	logger           *slog.Logger
 	client           *http.Client
 	mu               sync.Mutex
 	contexts         map[string]browserContext
 	budgets          map[string]budget
 }
 
-// NewHandler requires a configured origin and isolated server-only Auth key.
-func NewHandler(f *Factory, v *auth.Verifier, origin, adminKey string) (*Handler, error) {
-	if f == nil || f.Sender == nil || v == nil || adminKey == "" || origin != f.Sender.origin {
+// NewHandler requires a configured origin, isolated server-only Auth key, and
+// logger for sanitized provider outcomes. Credentials and request values are never logged.
+func NewHandler(f *Factory, v *auth.Verifier, origin, adminKey string, logger *slog.Logger) (*Handler, error) {
+	if logger == nil || f == nil || f.Sender == nil || v == nil || adminKey == "" || origin != f.Sender.origin {
 		return nil, invitation.Unavailable
 	}
-	return &Handler{factory: f, verifier: v, origin: origin, adminKey: adminKey, client: &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, contexts: map[string]browserContext{}, budgets: map[string]budget{}}, nil
+	return &Handler{factory: f, verifier: v, origin: origin, adminKey: adminKey, logger: logger, client: &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, contexts: map[string]browserContext{}, budgets: map[string]budget{}}, nil
 }
 
 // Run removes expired capability ciphertext and budgets once per minute. The
@@ -319,27 +320,36 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		generic := map[string]string{"code": "CHECK_EMAIL", "message": "If this address is eligible, check your email. Existing accounts can sign in or reset their password."}
 		email, err := auth.CanonicalEmail(in.Email)
 		if err != nil {
+			h.providerOutcome(ctx, path, "invalid_email", 0)
 			respond(w, 200, generic)
 			return
 		}
 		digest, err := h.factory.protector.ActionDigest([]byte("provider:"+email), "")
 		if err != nil {
+			h.providerOutcome(ctx, path, "digest_failure", 0)
 			respond(w, 200, generic)
 			return
 		}
 		if !h.allow("email:"+base64.RawURLEncoding.EncodeToString(digest), 2) || !h.allow("provider", 20) {
+			h.providerOutcome(ctx, path, "rate_limited", 0)
 			respond(w, 200, generic)
 			return
 		}
 		if path == "provision" {
 			eligible, err := service.Eligible(ctx, string(token), email)
 			if err != nil || !eligible {
+				outcome := "ineligible"
+				if err != nil {
+					outcome = "eligibility_failure"
+				}
+				h.providerOutcome(ctx, path, outcome, 0)
 				respond(w, 200, generic)
 				return
 			}
 		}
 		state, err := randomContext()
 		if err != nil {
+			h.providerOutcome(ctx, path, "state_failure", 0)
 			respond(w, 200, generic)
 			return
 		}
@@ -351,27 +361,11 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		if !exists {
+			h.providerOutcome(ctx, path, "context_lost", 0)
 			respond(w, 200, generic)
 			return
 		}
-		endpoint := "/recover"
-		bearer := h.factory.apiKey
-		if path == "provision" {
-			endpoint = "/invite"
-			bearer = h.adminKey
-		}
-		body, _ := json.Marshal(map[string]string{"email": email})
-		endpoint += "?redirect_to=" + url.QueryEscape(h.origin+"/auth/confirm#state="+state)
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.factory.authURL+endpoint, bytes.NewReader(body))
-		if err == nil {
-			req.Header.Set("apikey", h.factory.apiKey)
-			req.Header.Set("Authorization", "Bearer "+bearer)
-			req.Header.Set("Content-Type", "application/json")
-			response, sendErr := h.client.Do(req)
-			if sendErr == nil {
-				_ = response.Body.Close()
-			}
-		}
+		h.sendProvider(ctx, path, email, state)
 		respond(w, 200, generic)
 	case "accept":
 		var key ledger.OperationKey

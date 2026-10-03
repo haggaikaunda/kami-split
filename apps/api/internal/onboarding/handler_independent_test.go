@@ -8,6 +8,8 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -33,7 +35,7 @@ func independentHandler(t *testing.T, provider http.Handler) *Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := NewHandler(&Factory{db: &database.DB{}, protector: p, authURL: server.URL, apiKey: "public", Sender: sender}, v, "https://kami.example", "private-admin")
+	h, err := NewHandler(&Factory{db: &database.DB{}, protector: p, authURL: server.URL, apiKey: "public", Sender: sender}, v, "https://kami.example", "private-admin", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
