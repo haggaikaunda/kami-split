@@ -7,38 +7,40 @@ the first production deployment: Vercel for the web application, Google Cloud
 Run for the Go API, hosted Supabase for Auth/PostgreSQL, and GitHub Actions as
 the only deployment orchestrator. This document defines names, configuration
 ownership, the provisioned production foundation, and operating procedures. It
-does not store a credential or authorize deploying from a pull request.
+does not store a credential. Explicitly authorized API rehearsals use the production
+resources under the boundaries described below.
 
 There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
 and the standalone deployment workflow uses a non-canceling `production` concurrency
-group, so a new merge waits for an in-progress migration and deployment instead
-of interrupting it.
+group shared with rehearsals and cleanup. All three use `queue: max` so pending
+operations queue rather than replacing one another (up to GitHub’s 100-run
+limit). A full queue or operator cancellation requires a manual retry.
 
 ## Resource identity
 
 Stable names avoid making workflow behavior depend on provider-generated
 display labels. Provider account and locality values remain explicit inputs.
 
-| Resource                          | Stable name or format                                                         |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| Google Cloud project display name | `Kami Finances Production`                                                    |
-| Google Cloud project parent       | `No organization`                                                             |
-| Google Cloud project ID           | `kami-finances-production`                                                    |
-| Google Cloud project number       | `598147484786`                                                                |
-| Google Cloud billing              | Linked; billing account identifier is not stored in the repository            |
-| GitHub environment                | `Production`                                                                  |
-| Deployment concurrency group      | `production`                                                                  |
-| Artifact Registry repository      | `kami-split`                                                                  |
-| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${DEPLOY_SHA}` |
-| Cloud Run service                 | `kami-split-api`                                                              |
-| Cloud Run runtime service account | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`             |
-| GitHub deployer service account   | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`   |
-| Workload Identity pool            | `github-actions`                                                              |
-| Workload Identity provider        | `kami-split`                                                                  |
-| Vercel project                    | `kami-split-web`                                                              |
-| Vercel root directory             | `apps/web`                                                                    |
+| Resource                          | Stable name or format                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Google Cloud project display name | `Kami Finances Production`                                                                                           |
+| Google Cloud project parent       | `No organization`                                                                                                    |
+| Google Cloud project ID           | `kami-finances-production`                                                                                           |
+| Google Cloud project number       | `598147484786`                                                                                                       |
+| Google Cloud billing              | Linked; billing account identifier is not stored in the repository                                                   |
+| GitHub environment                | `Production`                                                                                                         |
+| Deployment concurrency group      | `production`                                                                                                         |
+| Artifact Registry repository      | `kami-split`                                                                                                         |
+| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${DEPLOY_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}` |
+| Cloud Run service                 | `kami-split-api`                                                                                                     |
+| Cloud Run runtime service account | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`                                                    |
+| GitHub deployer service account   | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`                                          |
+| Workload Identity pool            | `github-actions`                                                                                                     |
+| Workload Identity provider        | `kami-split`                                                                                                         |
+| Vercel project                    | `kami-split-web`                                                                                                     |
+| Vercel root directory             | `apps/web`                                                                                                           |
 
 The Google Cloud display name intentionally differs from the GitHub repository
 `haggaikaunda/kami-split`. The display name can change, but the confirmed project
@@ -154,9 +156,10 @@ web origin checked by both sides of the proxy.
 ## GitHub production environment
 
 The GitHub `Production` environment owns deployment selection variables and the
-four deploy-runner credentials. The standalone deployment workflow binds that
-environment only after a successful `CI` workflow triggered by a push to `main`;
-pull-request CI cannot receive these credentials. Environment protection should
+four deploy-runner credentials. The release workflow binds that environment after a successful `CI` workflow
+triggered by a push to `main`. The manual API rehearsal and trusted PR-close
+cleanup also bind it from `main`; ordinary pull-request CI cannot receive these
+credentials. Environment protection should
 restrict deployment to `main` and may require an operator approval if the
 repository plan supports it.
 
@@ -329,7 +332,7 @@ deploys the exact triggering `workflow_run.head_sha`, not the deployment
 workflow's own default-branch SHA. Its non-canceling `production` concurrency
 group queues releases, validates the selected project identifiers and numeric
 Secret Manager versions, builds and pushes an API image tagged with the triggering
-commit SHA, resolves that tag to its immutable digest, applies migrations with
+commit SHA, run ID, and attempt, resolves that tag to its immutable digest, applies migrations with
 the pinned Supabase CLI, deploys a new Cloud Run revision from the digest and
 pinned secret versions, and verifies that exact tagged revision
 through `/health` and `/ready` before explicitly directing 100% of service
@@ -427,6 +430,84 @@ clock simulations plus workflow boundary assertions in web CI. These checks do
 not prove live provider integration. Keep #151 open until a post-merge run proves
 candidate deployment, protected staged verification, confirmed REST promotion of
 the intended candidate, and anonymous production verification in that order.
+
+## Pre-merge API deployment rehearsal
+
+Issue [#156](https://github.com/haggaikaunda/kami-split/issues/156) adds the
+**API deployment rehearsal** workflow. Dispatch `rehearse.yml` from `main` with
+an open same-repository PR number and its exact 40-character head SHA. The PR must
+target `main` and have a successful GitHub Actions `Verify` check on that commit.
+A changed head or closed PR is rejected, including a recheck immediately before
+deployment. Fork PRs and dispatches from other branches cannot deploy.
+
+Dispatch is explicit operator authorization to run the selected code with the
+production API runtime identity and pinned runtime secrets. Zero service traffic
+does not sandbox code: startup code and callers using the public tagged URL can
+exercise that revision's capabilities. Approve the selected code before dispatch;
+this is not an execution environment for untrusted contributions or write-path
+experiments. The current `Production` environment has no required reviewers or
+branch policy; workflow guards and the existing main-only Google WIF condition
+remain essential. No IAM grant or secret access is expanded by this workflow.
+
+`api-deploy.yml` shares validation, image publication, pinned database tools,
+candidate runtime configuration, and probes between rehearsal and release. The
+workflow's trusted commit supplies deployment scripts and Supabase configuration;
+the exact selected commit is checked out separately under `source/`, with checkout
+credentials disabled. Only that directory is the Docker build context, excluding
+Google's generated runner credential file. Candidate migration input is limited
+to regular SQL files; candidate deployment scripts and Makefiles never run on the
+credentialed host. Images are deployed by digest after publication. Image tags include SHA, run ID,
+and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
+
+Rehearsal runs only `supabase db push --linked --dry-run`. It never reaches the
+release-only migration application or promotion step and has no Vercel job.
+Dry-run reports pending migrations and CLI validation; it does **not** prove SQL
+will execute successfully against production. Real isolated database CI remains
+required. Code needing unapplied schema may fail candidate readiness, which is an
+expected limitation of rehearsing against the current production schema.
+
+An existing service with 100% allocation to explicitly named serving revisions is
+required. Rehearsal fails closed for first-service creation or `LATEST` routing.
+It deploys with `--no-traffic`, then checks `/health`, `/ready`, and the read-only
+GraphQL health query through the tagged candidate URL. The tag is resolved back
+to the expected immutable revision, and serving revision percentages are compared
+before and after deployment even when probes fail. Release retains the original
+first-service bootstrap and candidate → verify → promote flow.
+
+Each rehearsal revision is named
+`kami-split-api-pr-<PR>-<SHA12>-<run-id>-<attempt>` and carries purpose, PR number,
+and full commit SHA labels. Run identity avoids name conflicts on retries of the
+same commit. A stable `pr-<PR>` tag moves to the newest successfully deployed
+candidate; a subsequent probe failure retains that candidate for diagnosis.
+Failure before deployment retains the previous tag. A provider deployment failure
+may leave either candidate associated with the tag; the run fails and the service
+traffic assertion still executes. Revision identity, rather than the tag, is the
+permanent provenance record.
+
+Closing the PR, merged or abandoned, triggers trusted `pull_request_target`
+cleanup, which never checks out PR code. It removes only `pr-<PR>` and confirms
+normal traffic is unchanged. The rehearsal also checks for closure during its run
+and performs cleanup in that case. Reopened PRs retain their tag. Cleanup can be
+retried through `rehearsal-cleanup.yml` with a closed PR number; provider failures,
+operator cancellations, or queue overflow require that retry. Removing the tag
+removes its direct routing after propagation; it does not delete the revision,
+revoke credentials, or undo in-flight work. Inactive revisions remain available
+for provenance under normal Cloud Run lifecycle management. Images are retained
+independently; there is no ad hoc Artifact Registry deletion.
+
+Bootstrap requires the reviewed workflow to land on `main` before GitHub accepts
+its first manual dispatch. Keep #156 open through live validation: use an open,
+passing PR to rehearse, record its SHA/image digest/revision and unchanged traffic,
+then verify close cleanup. Repository delivery gates still apply to the foundation
+merge. Do not relax WIF or environment controls to run the new workflow from its
+feature branch.
+
+Offline command-stub tests run with
+`node --test scripts/deployment/*.test.mjs` in API CI. Provider integration evidence
+must come from actual GitHub Actions runs; stubs do not establish live behavior.
+See [GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
+and [Cloud Run revision traffic](https://docs.cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
+for the provider behavior used here.
 
 ## Deploy, rollback, and recovery
 
