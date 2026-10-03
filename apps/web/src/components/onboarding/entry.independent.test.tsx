@@ -563,13 +563,14 @@ it('asks a fresh tab to reopen the original invitation without creating an unrec
     0,
   );
 });
-it('removes the tab invitation binding and pending action when the session signs out', async () => {
+it('removes local invitation state on passive signout without clearing another tab context', async () => {
   saveAttempt({ kind: 'ACCEPT', key, tokenDigest: 'a'.repeat(64) });
   await render('join');
   await act(async () => sdk.changed('SIGNED_OUT', null));
   expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBeNull();
   expect(readAttempt()).toBeNull();
   expect(container.textContent).not.toContain('Private group');
+  expect(requests.some((r) => r.path.endsWith('/clear'))).toBe(false);
 });
 
 it('copies shared links without renewing or sending and deliberately renews with recovery', async () => {
@@ -1004,4 +1005,18 @@ it('replaces a same-route callback without verifying it on hash navigation', asy
   expect(
     requests.find((r) => r.path.endsWith('/callback-state'))?.body,
   ).toEqual({ state: 'new-state' });
+});
+
+it('explicit ordinary signout clears the shared server context and local state', async () => {
+  const prior = respond;
+  respond = async (path, body) =>
+    path === '/api/graphql'
+      ? { data: { viewer: { __typename: 'Viewer', groups: [] } } }
+      : prior(path, body);
+  await render('account');
+  await click('Sign out of this session');
+  expect(requests.filter((r) => r.path.endsWith('/clear'))).toHaveLength(1);
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBeNull();
+  expect(container.textContent).not.toContain('alice@example.test');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in');
 });

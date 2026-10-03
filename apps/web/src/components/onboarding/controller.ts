@@ -162,11 +162,9 @@ export function useOnboarding(mode: Mode, fragment?: string) {
               sessionStorage.removeItem('kami-onboarding-link-digest');
               setAttempt(null);
               setPreview(null);
-              void fetch('/api/onboarding/clear', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: '{}',
-              });
+              // Auth events are broadcast across tabs. Only the explicit
+              // sign-out initiator clears the shared server context; a passive
+              // observer must not erase another tab's invitation switch.
               contextReady.current = false;
             }
             if (current)
