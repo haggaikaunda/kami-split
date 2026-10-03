@@ -128,9 +128,7 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 		w.WriteHeader(http.StatusOK)
 	}
 	mux.HandleFunc("/health", health)
-	mux.HandleFunc("/healthz", health)
 	mux.HandleFunc("/ready", ready)
-	mux.HandleFunc("/readyz", ready)
 	graphqlHandler := graphTransport(gql)
 	inner := graphqlHandler
 	graphqlHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

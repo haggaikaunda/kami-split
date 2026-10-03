@@ -279,8 +279,7 @@ post-deploy API smoke check use `/ready`, which checks the configured database
 and authentication key source. The public GraphQL health field is an additional
 transport assertion, not a substitute for dependency readiness. Production probes
 use these Cloud Run-safe paths to avoid routing limitations affecting paths ending
-in `z`. The equivalent `/healthz` and `/readyz` endpoints remain available for
-local development and backward compatibility.
+in `z`. Local development uses the same canonical endpoints.
 
 ## Vercel production configuration
 

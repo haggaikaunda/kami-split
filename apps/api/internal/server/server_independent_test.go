@@ -52,7 +52,7 @@ func TestIndependentBindFailureDoesNotBecomeReady(t *testing.T) {
 		t.Fatal("occupied address accepted")
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/readyz", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/ready", nil))
 	if rec.Code != 503 {
 		t.Fatalf("ready after bind failure: %d", rec.Code)
 	}

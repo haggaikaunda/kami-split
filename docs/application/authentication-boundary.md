@@ -46,8 +46,8 @@ DISABLED and UNPROVISIONED to HTTP 403 with their distinct safe codes. The imple
 errors are reduced to UNAVAILABLE, with no SQL/provider error details or request
 payloads exposed. No token/key contents are logged.
 
-`/healthz` and GraphQL `health` remain public liveness checks. With auth configured,
-`/readyz` additionally requires a successfully warmed, nonempty JWKS cache younger
+`/health` and GraphQL `health` remain public liveness checks. With auth configured,
+`/ready` additionally requires a successfully warmed, nonempty JWKS cache younger
 than two hours and the existing database readiness check. Failed warmup starts
 an unready process whose owned refresh loop retries; it never allows protected
 requests through. Public health does not imply protected readiness.
