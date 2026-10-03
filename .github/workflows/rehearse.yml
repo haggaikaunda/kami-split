@@ -1,0 +1,36 @@
+name: API deployment rehearsal
+run-name: Rehearse PR #${{ inputs.pr }} at ${{ inputs.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open same-repository PR number (explicit authorization to run its code with production runtime access)
+        required: true
+        type: string
+      sha:
+        description: Exact 40-character current PR head SHA with passing Verify CI
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  rehearsal:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/api-deploy.yml
+    with:
+      mode: rehearsal
+      sha: ${{ inputs.sha }}
+      pr: ${{ inputs.pr }}
+    secrets: inherit

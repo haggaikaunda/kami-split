@@ -1,0 +1,123 @@
+name: Shared API deployment
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      pr:
+        default: ''
+        type: string
+    outputs:
+      service_url:
+        value: ${{ jobs.api.outputs.service_url }}
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  actions: read
+  id-token: write
+
+jobs:
+  api:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: Production
+    outputs:
+      service_url: ${{ steps.service.outputs.url }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+      GCP_CLOUD_RUN_SERVICE: ${{ vars.GCP_CLOUD_RUN_SERVICE }}
+      GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      INVITATION_FROM: ${{ vars.INVITATION_FROM }}
+      DATABASE_URL_SECRET_VERSION: ${{ vars.DATABASE_URL_SECRET_VERSION }}
+      SUPABASE_CA_SECRET_VERSION: ${{ vars.SUPABASE_CA_SECRET_VERSION }}
+      CURSOR_SIGNING_KEYS_SECRET_VERSION: ${{ vars.CURSOR_SIGNING_KEYS_SECRET_VERSION }}
+      INVITATION_KEYS_SECRET_VERSION: ${{ vars.INVITATION_KEYS_SECRET_VERSION }}
+      ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION: ${{ vars.ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION }}
+      RESEND_API_KEY_SECRET_VERSION: ${{ vars.RESEND_API_KEY_SECRET_VERSION }}
+      DEPLOY_SHA: ${{ inputs.sha }}
+      DEPLOY_MODE: ${{ inputs.mode }}
+      PR_NUMBER: ${{ inputs.pr }}
+    steps:
+      # Deployment control always comes from the trusted workflow commit.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Validate selected commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deployment/select.mjs
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.sha }}
+          path: source
+          persist-credentials: false
+      - name: Validate production selection
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: bash scripts/deployment/validate.sh
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Build and publish immutable API image
+        id: image
+        run: bash scripts/deployment/image.sh
+      - name: Install pinned database tools
+        run: make db-tools
+      - name: Check or apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: bash scripts/deployment/migrate.sh
+      - name: Record production traffic
+        if: inputs.mode == 'rehearsal'
+        run: bash scripts/deployment/traffic.sh before
+      - name: Recheck open PR before deployment
+        if: inputs.mode == 'rehearsal'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deployment/select.mjs
+      - name: Deploy candidate Cloud Run revision
+        id: candidate
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: bash scripts/deployment/candidate.sh
+      - name: Verify candidate
+        env:
+          CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
+        run: bash scripts/deployment/probe.sh
+      - name: Verify unchanged production traffic
+        if: always() && inputs.mode == 'rehearsal'
+        run: bash scripts/deployment/traffic.sh after
+      - name: Clean up if PR closed during rehearsal
+        if: always() && inputs.mode == 'rehearsal' && steps.candidate.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/deployment/cleanup.sh
+      - name: Promote and verify API revision
+        if: inputs.mode == 'release'
+        id: service
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
+          SERVICE_URL: ${{ steps.candidate.outputs.service_url }}
+        run: bash scripts/deployment/promote.sh
