@@ -22,8 +22,8 @@ production credentials are required.
 ```sh
 make db-tools
 make dev-up
-curl --fail http://127.0.0.1:8080/readyz
-curl --fail http://127.0.0.1:8080/healthz
+curl --fail http://127.0.0.1:8080/ready
+curl --fail http://127.0.0.1:8080/health
 make dev-down
 ```
 
@@ -53,11 +53,11 @@ ports for concurrent development stacks. Do not use a global Docker prune or
 stop another project's containers to resolve conflicts.
 
 Without `DATABASE_URL`, `make api-run` and base `docker compose up --build --wait`
-retain the health-only development mode. `/readyz` then means HTTP is serving
+retain the health-only development mode. `/ready` then means HTTP is serving
 and not shutting down. With the URL present, startup must connect and validate
-the runtime role before binding HTTP. `/readyz` additionally performs a bounded
+the runtime role before binding HTTP. `/ready` additionally performs a bounded
 pool ping on every request and returns 503 on failure, including pool exhaustion.
-It recovers when connectivity returns. `/healthz` and the GraphQL health field
+It recovers when connectivity returns. `/health` and the GraphQL health field
 remain process/transport checks, independent of database availability. Readiness
 does not claim migrations are up to date. With authentication configured, readiness also checks the [bounded JWKS cache](authentication-boundary.md).
 

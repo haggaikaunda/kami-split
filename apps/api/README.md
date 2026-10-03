@@ -11,7 +11,7 @@ make api-run
 curl -H 'Content-Type: application/json' -d '{"query":"{ health { status } }"}' http://127.0.0.1:8080/graphql
 ```
 
-Run the curl command in a second terminal. The response is `{"data":{"health":{"status":"ok"}}}`. `/health` (alias `/healthz`) reports process liveness; `/ready` (alias `/readyz`) reports whether the server is serving and not shutting down. Production Cloud Run probes use `/health` and `/ready`; the existing local endpoints remain supported. With no `DATABASE_URL`, neither claims database readiness. For database-backed readiness, local startup, restricted roles and integration checks, see [database development](../../docs/application/database-development.md).
+Run the curl command in a second terminal. The response is `{"data":{"health":{"status":"ok"}}}`. `/health` reports process liveness; `/ready` reports whether the server is serving and not shutting down. Both production Cloud Run and local Compose probes use these endpoints. With no `DATABASE_URL`, neither claims database readiness. For database-backed readiness, local startup, restricted roles and integration checks, see [database development](../../docs/application/database-development.md).
 
 ## Docker development
 

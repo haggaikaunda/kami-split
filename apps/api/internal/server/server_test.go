@@ -66,10 +66,23 @@ func repeatedFields(n int) string {
 	return b.String()
 }
 
+func TestRetiredHealthEndpoints(t *testing.T) {
+	s := newTestServer()
+	for _, path := range []string{"/healthz", "/readyz"} {
+		t.Run(path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("retired endpoint status = %d, want 404", w.Code)
+			}
+		})
+	}
+}
+
 func TestLifecycle(t *testing.T) {
 	s := newTestServer()
 	w := httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/readyz", nil))
+	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/ready", nil))
 	if w.Code != 503 {
 		t.Fatal("ready before serving")
 	}
@@ -82,7 +95,7 @@ func TestLifecycle(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Serve(ctx, listener) }()
 	client := &http.Client{Timeout: time.Second}
-	for _, path := range []string{"/health", "/healthz", "/ready", "/readyz"} {
+	for _, path := range []string{"/health", "/ready"} {
 		resp, err := client.Get("http://" + listener.Addr().String() + path)
 		if err != nil {
 			t.Fatal(err)
@@ -102,7 +115,7 @@ func TestLifecycle(t *testing.T) {
 		t.Fatal("shutdown blocked")
 	}
 	w = httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/readyz", nil))
+	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/ready", nil))
 	if w.Code != 503 {
 		t.Fatal("ready after shutdown")
 	}

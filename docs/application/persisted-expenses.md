@@ -92,11 +92,11 @@ requests explicitly; member lists and complete financial positions are never
 silently truncated. Pagination errors return `expenses: null` plus a field error,
 not an empty successful connection. GraphQL execution has a 10-second context deadline below the 15-second socket write timeout. It cancels database lock waits and propagates request cancellation; uncertain commit outcomes require same-attempt recovery.
 
-Public `/healthz` and GraphQL `health` remain available without credentials.
+Public `/health` and GraphQL `health` remain available without credentials.
 Business operations require verified credentials; invalid credentials return
 HTTP 401 and verification infrastructure failure returns HTTP 503. Parse,
 validation and scalar-coercion errors use HTTP 400; expected domain results use
-unions. `/readyz` checks configured dependencies and is not a statement that the
+unions. `/ready` checks configured dependencies and is not a statement that the
 bootstrap or invited-user journey is complete.
 
 ## Verification

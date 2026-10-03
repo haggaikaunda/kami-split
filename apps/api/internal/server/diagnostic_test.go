@@ -74,7 +74,7 @@ func TestReadinessDependenciesAreOwnedWithoutAuthentication(t *testing.T) {
 	dependencies[0] = diagnosticReadiness{errors.New("failed")}
 	s.ready.Store(true)
 	w := httptest.NewRecorder()
-	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/readyz", nil))
+	s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/ready", nil))
 	if w.Code != 200 {
 		t.Fatal("caller changed retained dependency slice")
 	}
@@ -105,7 +105,7 @@ func TestIndependentReadinessOwnershipAcrossConstructors(t *testing.T) {
 			}
 			dependencies[0] = diagnosticReadiness{errors.New("replacement")}
 			s.ready.Store(true)
-			s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/readyz", nil))
+			s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/ready", nil))
 			if calls != 1 {
 				t.Fatal("constructor retained caller slice")
 			}
