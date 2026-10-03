@@ -241,6 +241,13 @@ PR jobs, workflow logs, or command output.
 | `kami-split-onboarding-auth-admin-key` | Supabase Auth administrative credential consumed by `ONBOARDING_AUTH_ADMIN_KEY`.                                                                                                       |
 | `kami-split-resend-api-key`            | Delivery credential consumed by `RESEND_API_KEY`.                                                                                                                                      |
 
+For Auth provisioning, use the same project's modern `sb_secret_` key (or legacy
+service-role JWT) as the admin secret. The API sends it in `apikey` for eligible
+invitations; modern keys must not be sent as bearer JWTs. Recovery uses the public
+key. A generic `CHECK_EMAIL` response does not confirm provisioning: inspect the
+sanitized `onboarding.auth_provider` outcome/status described in
+[onboarding diagnostics](onboarding.md#auth-provisioning-diagnostics-and-key-compatibility).
+
 Download the CA certificate from the selected Supabase project's Database
 Settings and store its PEM bytes as a version of a **global**
 `kami-split-supabase-ca` Secret Manager container; do not select a regional

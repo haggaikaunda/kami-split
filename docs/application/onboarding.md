@@ -57,3 +57,30 @@ The fresh `/user` adapter uses the exact verified request bearer, refuses redire
 `make db-test` uses disposable local Auth/PostgreSQL and actual Mailpit messages, proving disabled public signup, invite/recovery verification without auto-confirm, password establishment, repeated invites, same existing identity, fresh email evidence, 900-second sessions, refresh and current-session logout. Independent HTTP tests exercise the configured API, owner actions, synthetic delivery, provisioning and admission under the restricted role. Existing invitation race/retention tests remain authoritative for persistence.
 
 Focused adapter tests cover recipient/link and byte-identical retry payloads, definite/uncertain outcomes, redirects, malformed provider responses, origin checks, context expiry, callback replay, rate limits and GraphQL authentication/alias rejection. Independent UI tests cover double submission, uncertain acceptance/resend, original-key recovery, navigation/unmount, session expiration and account switching, including a regression for late password-update feedback. Real Chromium acceptance uses only synthetic local accounts and an HTTP email sink. Hosted SMTP delivery, physical devices and spoken assistive technology are not claimed by local verification.
+
+### Auth provisioning diagnostics and key compatibility
+
+The eligible `/invite` request uses `ONBOARDING_AUTH_ADMIN_KEY` in `apikey`;
+recovery uses `ONBOARDING_AUTH_PUBLIC_KEY`. Modern `sb_secret_` and
+`sb_publishable_` keys are not JWTs and are never placed in `Authorization`.
+Legacy service-role/anonymous JWT keys retain the matching bearer header.
+See Supabase's [key migration contract](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys).
+User-authenticated `/user` requests continue to carry the user's verified bearer.
+
+The HTTP handler owns structured `onboarding.auth_provider` diagnostics, with
+static `operation` and `outcome` labels and, when available, numeric HTTP `status`.
+`ineligible` means the invitation/email pair failed eligibility;
+`eligibility_failure` means that check could not complete. `transport_failure`
+means no usable provider response, `provider_failure` means non-2xx (including
+redirects), and `accepted` means a 2xx provider response, not confirmed delivery
+or admission. Rate-limited and invalid-email attempts have separate static
+outcomes. No email, credential, invitation, callback state, raw error or provider
+body is logged. The browser retains the identical `CHECK_EMAIL` response.
+
+Issue #162 traced the missing Auth user to the deployed modern secret key being
+sent as a bearer with the public `apikey`. The earlier integration suite supplied
+only legacy JWT keys, so it missed that mismatch. The disposable roundtrip now
+runs both key families, reproduces rejection of the old modern-key headers with
+no Auth identity created, and verifies real Mailpit delivery, password sign-in,
+explicit admission, and identity/membership deduplication. No production invitee
+is created by these tests.

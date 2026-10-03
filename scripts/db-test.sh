@@ -135,6 +135,8 @@ env["TEST_SMTP_URL"] = status["INBUCKET_URL"]
 env["TEST_AUTH_URL"] = status["API_URL"].rstrip("/") + "/auth/v1"
 env["TEST_AUTH_ANON_KEY"] = status["ANON_KEY"]
 env["TEST_AUTH_SERVICE_KEY"] = status["SERVICE_ROLE_KEY"]
+env["TEST_AUTH_PUBLISHABLE_KEY"] = status["PUBLISHABLE_KEY"]
+env["TEST_AUTH_SECRET_KEY"] = status["SECRET_KEY"]
 # Database permission probes temporarily change cluster roles; packages sharing
 # this cluster must run serially. Tests inside each package still exercise races.
 sys.exit(subprocess.run([
