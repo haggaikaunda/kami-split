@@ -66,19 +66,6 @@ func repeatedFields(n int) string {
 	return b.String()
 }
 
-func TestRetiredHealthEndpoints(t *testing.T) {
-	s := newTestServer()
-	for _, path := range []string{"/healthz", "/readyz"} {
-		t.Run(path, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
-			if w.Code != http.StatusNotFound {
-				t.Fatalf("retired endpoint status = %d, want 404", w.Code)
-			}
-		})
-	}
-}
-
 func TestLifecycle(t *testing.T) {
 	s := newTestServer()
 	w := httptest.NewRecorder()
@@ -274,7 +261,7 @@ func TestShutdownDrainsActiveRequest(t *testing.T) {
 	}
 }
 
-func TestProbeAliases(t *testing.T) {
+func TestCanonicalAndRetiredProbes(t *testing.T) {
 	dependency := &diagnosticReadiness{}
 	s := New(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}), slog.New(slog.NewTextHandler(io.Discard, nil)), dependency)
 	for _, tc := range []struct {
@@ -296,21 +283,19 @@ func TestProbeAliases(t *testing.T) {
 				path   string
 				status int
 			}{{"/health", 200}, {"/ready", tc.wantReady}} {
-				alias := httptest.NewRecorder()
+				canonical := httptest.NewRecorder()
 				legacy := httptest.NewRecorder()
-				s.Handler().ServeHTTP(alias, httptest.NewRequest(http.MethodGet, probe.path, nil))
+				s.Handler().ServeHTTP(canonical, httptest.NewRequest(http.MethodGet, probe.path, nil))
 				s.Handler().ServeHTTP(legacy, httptest.NewRequest(http.MethodGet, probe.path+"z", nil))
 				wantBody := ""
 				if probe.status == 503 {
 					wantBody = "not ready\n"
 				}
-				if alias.Code != probe.status || legacy.Code != probe.status || alias.Body.String() != wantBody || legacy.Body.String() != wantBody {
-					t.Fatalf("%s: alias %d %q; legacy %d %q", probe.path, alias.Code, alias.Body.String(), legacy.Code, legacy.Body.String())
+				if canonical.Code != probe.status || canonical.Body.String() != wantBody {
+					t.Fatalf("%s: canonical %d %q", probe.path, canonical.Code, canonical.Body.String())
 				}
-				for _, header := range []string{"Content-Type", "X-Content-Type-Options"} {
-					if alias.Header().Get(header) != legacy.Header().Get(header) {
-						t.Errorf("%s: different %s", probe.path, header)
-					}
+				if legacy.Code != http.StatusNotFound {
+					t.Errorf("%sz: retired endpoint status = %d, want 404", probe.path, legacy.Code)
 				}
 			}
 		})
