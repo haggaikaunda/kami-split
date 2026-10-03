@@ -223,6 +223,25 @@ test('image build failure prevents publication; success resolves immutable diges
   );
   assert.match(f.calls(), new RegExp(`api:${sha}`));
 });
+test('repeated publications retain commit identity with distinct immutable tags', (t) => {
+  const f = fixture(t);
+  assert.equal(f.run('image').status, 0);
+  assert.equal(f.run('image', { GITHUB_RUN_ATTEMPT: '2' }).status, 0);
+  const publications = f
+    .calls()
+    .split('\n')
+    .filter((line) => line.startsWith('docker push '));
+  assert.equal(publications.length, 2);
+  assert.ok(publications[0].endsWith(`api:${sha}-123456-1`));
+  assert.ok(publications[1].endsWith(`api:${sha}-123456-2`));
+  assert.notEqual(publications[0], publications[1]);
+  const references = readFileSync(f.env.GITHUB_OUTPUT, 'utf8')
+    .trim()
+    .split('\n');
+  assert.equal(references.length, 2);
+  for (const reference of references)
+    assert.match(reference, /\/api@sha256:[a-f0-9]{64}$/);
+});
 test('rehearsal migrations dry-run only, including failure; release applies after dry-run', (t) => {
   const f = fixture(t);
   assert.equal(f.run('migrate').status, 0);
