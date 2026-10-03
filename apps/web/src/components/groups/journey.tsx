@@ -30,7 +30,7 @@ function message(code: string) {
     return 'This expense page is no longer available. Restart the list.';
   return 'Financial data is unavailable. No zero balance or settled status can be established. Refresh to try again.';
 }
-export function GroupJourney() {
+export function GroupJourney({ initialGroup = '' }: { initialGroup?: string }) {
   const access = useFinancialSession();
   return (
     <main className="financial-journey" id="page-content">
@@ -49,15 +49,25 @@ export function GroupJourney() {
           your groups.
         </p>
       ) : (
-        <ViewerJourney key={access.scope.id} scope={access.scope} />
+        <ViewerJourney
+          key={access.scope.id}
+          scope={access.scope}
+          initialGroup={initialGroup}
+        />
       )}
     </main>
   );
 }
-function ViewerJourney({ scope }: { scope: FinancialScope }) {
+function ViewerJourney({
+  scope,
+  initialGroup,
+}: {
+  scope: FinancialScope;
+  initialGroup: string;
+}) {
   const [viewer, setViewer] = useState<Viewer>();
   const [error, setError] = useState('');
-  const [group, setGroup] = useState('');
+  const [group, setGroup] = useState(initialGroup);
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;

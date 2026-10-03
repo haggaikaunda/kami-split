@@ -52,3 +52,9 @@ The final pass covers 320/390/768/1280px, actual 200% root text, keyboard dialog
 Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
 
 Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).
+
+## Invitation onboarding regression coverage
+
+The onboarding component suite preserves account-switch/unmount cancellation, same-request recovery, cross-tab digest binding, and owner delivery uncertainty. Issue #164 adds anonymous targeted preview, explicit new/existing target continuation, password confirmation, shared email-only account start, automatic account group loading, and direct real-group success navigation. Provider and restricted database tests remain the authorization evidence; component mocks do not prove mailbox ownership or live eligibility. Browser acceptance additionally exercises real callback restoration, keyboard/focus, 320/390px layouts, doubled text and reduced motion.
+
+Issue #164 onboarding verification covers modern/legacy Auth headers, targeted `generate_link`/OTP continuation without extra mail, shared-link Mailpit verification and callback recovery, explicit admission, and durable concurrent claim/replay/resend denial. The disposable Supabase tests use synthetic recipients and do not substitute for authorized hosted rehearsal evidence.

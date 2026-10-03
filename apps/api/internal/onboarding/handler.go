@@ -283,7 +283,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if path == "accept" || path == "provision" {
+	if path == "accept" || path == "provision" || path == "targeted-continuation" {
 		// Bind this tab's explicit action to its original capability. A shared
 		// browser cookie may have been replaced by another tab's invitation.
 		expected := hex.EncodeToString(invitation.TokenHash(string(token)))
@@ -293,13 +293,15 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch path {
+	case "targeted-continuation":
+		h.targetedContinuation(ctx, w, string(token))
 	case "preview":
 		p, err := service.Preview(ctx, string(token))
 		if err != nil {
 			respond(w, 400, map[string]string{"code": "UNAVAILABLE_LINK"})
 			return
 		}
-		respond(w, 200, map[string]string{"groupName": p.GroupName, "inviterDisplayName": p.InviterName})
+		respond(w, 200, map[string]string{"groupName": p.GroupName, "inviterDisplayName": p.InviterName, "kind": p.Kind})
 	case "callback-state":
 		// Consume under the same lock used by start/clear, before Auth verification.
 		h.mu.Lock()
@@ -314,7 +316,17 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 			respond(w, 400, map[string]string{"code": "INVALID_CALLBACK"})
 			return
 		}
-		respond(w, 200, map[string]string{"code": "READY"})
+		result := map[string]string{"code": "READY"}
+		if len(token) > 0 {
+			p, err := service.Preview(ctx, string(token))
+			if err != nil {
+				respond(w, 400, map[string]string{"code": "UNAVAILABLE_LINK"})
+				return
+			}
+			result["tokenDigest"] = hex.EncodeToString(invitation.TokenHash(string(token)))
+			result["kind"], result["groupName"], result["inviterDisplayName"] = p.Kind, p.GroupName, p.InviterName
+		}
+		respond(w, 200, result)
 	case "provision", "recover":
 		// Same response shape for new/existing/ineligible accounts and provider errors.
 		generic := map[string]string{"code": "CHECK_EMAIL", "message": "If this address is eligible, check your email. Existing accounts can sign in or reset their password."}

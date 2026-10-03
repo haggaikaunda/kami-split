@@ -250,10 +250,11 @@ func (s *Service) List(ctx context.Context, group uuid.UUID, after *uuid.UUID, l
 	return result, err
 }
 
-// Preview reveals exactly two approved names for a live capability, never target email.
+// Preview reveals two approved names and invitation kind, never the target email.
 type Preview struct {
 	GroupName   string
 	InviterName string
+	Kind        string
 }
 
 // Preview validates a capability without granting group reads or consuming it.
@@ -264,7 +265,7 @@ func (s *Service) Preview(ctx context.Context, token string) (Preview, error) {
 		return p, Outcome("UNAVAILABLE_LINK")
 	}
 	projection, err := s.db.PreviewInvitation(ctx, hash)
-	p.GroupName, p.InviterName = projection.GroupName, projection.InviterName
+	p.GroupName, p.InviterName, p.Kind = projection.GroupName, projection.InviterName, projection.Kind
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, Outcome("UNAVAILABLE_LINK")
 	}

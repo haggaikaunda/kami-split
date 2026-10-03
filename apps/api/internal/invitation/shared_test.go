@@ -59,8 +59,8 @@ func TestSharedLifecycle(t *testing.T) {
 		t.Fatal("preview", preview, err)
 	}
 	eligible, err := f.service.Eligible(context.Background(), token.Value(), "member@example.invalid")
-	if err != nil || eligible {
-		t.Fatal("shared link must not provision Auth accounts", err)
+	if err != nil || !eligible {
+		t.Fatal("live shared link must permit independent email verification", err)
 	}
 	var wg sync.WaitGroup
 	results := make(chan Result, 8)

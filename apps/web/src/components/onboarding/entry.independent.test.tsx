@@ -32,6 +32,10 @@ vi.mock('@supabase/supabase-js', () => ({
       setSession: async () => ({ error: null }),
       updateUser: sdk.updateUser,
       verifyOtp: sdk.verifyOtp,
+      signOut: async () => {
+        sdk.changed('SIGNED_OUT', null);
+        return { error: null };
+      },
     },
   }),
 }));
@@ -50,6 +54,8 @@ let respond: (path: string, body: Record<string, unknown>) => Promise<unknown>;
 const key = '12345678-1234-1234-1234-123456789012';
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  window.history.replaceState(null, '', '/join');
+  sdk.updateUser.mockReset();
   sdk.verifyOtp.mockReset();
   sdk.replace.mockReset();
   sessionStorage.clear();
@@ -132,8 +138,8 @@ it('deduplicates clicks and preserves interrupted acceptance through uncertain r
       reject = fail;
     });
   await act(async () => {
-    button('Join group').click();
-    button('Join group').click();
+    button('Join Private group').click();
+    button('Join Private group').click();
   });
   expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
     1,
@@ -141,20 +147,20 @@ it('deduplicates clicks and preserves interrupted acceptance through uncertain r
   const original = readAttempt();
   expect(original?.kind).toBe('ACCEPT');
   await act(async () => reject(new Error('UNAVAILABLE')));
-  expect(button('Join group').disabled).toBe(true);
+  expect(button('Join Private group').disabled).toBe(true);
   expect(readAttempt()).toEqual(original);
   respond = async (_path, body) => {
     expect(body.variables).toEqual({ kind: 'ACCEPT', key: original!.key });
     return { data: { invitationAction: { outcome: 'NOT_OBSERVED' } } };
   };
-  await click('Recover original action');
+  await click('Check the original request');
   expect(readAttempt()).toEqual(original);
   respond = async () => ({
     data: {
       invitationAction: { outcome: 'HISTORICAL_ACCEPTANCE', hasAccess: false },
     },
   });
-  await click('Recover original action');
+  await click('Check the original request');
   expect(readAttempt()).toBeNull();
   expect(container.textContent).toContain('you no longer have access');
 });
@@ -167,7 +173,7 @@ it('discards late acceptance after account switch and clears private context', a
           resolve = done;
         })
       : {};
-  await click('Join group');
+  await click('Join Private group');
   await act(async () =>
     sdk.changed('SIGNED_IN', {
       user: { id: 'bob', email: 'bob@example.test' },
@@ -188,7 +194,7 @@ it('aborts acceptance on unmount and preserves original recovery', async () => {
     new Promise((done) => {
       resolve = done;
     });
-  await click('Join group');
+  await click('Join Private group');
   const original = readAttempt();
   const request = requests.find((item) => item.path.endsWith('/accept'))!;
   await act(async () => root.render(<p>Elsewhere</p>));
@@ -201,10 +207,10 @@ it('explains session expiration and prevents a second acceptance', async () => {
   respond = async () => {
     throw new Error('UNAUTHENTICATED');
   };
-  await click('Join group');
+  await click('Join Private group');
   expect(container.textContent).toContain('Your session has expired');
   expect(readAttempt()?.kind).toBe('ACCEPT');
-  expect(button('Join group').disabled).toBe(true);
+  expect(button('Join Private group').disabled).toBe(true);
 });
 it('does not show old account password success after an account switch', async () => {
   let resolve!: (value: unknown) => void;
@@ -288,7 +294,7 @@ it('recovers an uncertain resend with its original key after remount without sen
       },
     };
   };
-  await click('Recover original action');
+  await click('Check the original request');
   expect(readAttempt()).toBeNull();
   expect(container.textContent).toContain('Expiry saved by this action');
   expect(container.textContent).toContain('Current expiry');
@@ -340,12 +346,14 @@ it('verifies the email, sets a password and returns to explicit invitation admis
     root.render(<OnboardingEntry key="password" mode="password" />),
   );
   await act(async () => {
-    const input = container.querySelector('#new-password') as HTMLInputElement;
-    Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      'value',
-    )!.set!.call(input, 'SyntheticPassword162!');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const inputs = container.querySelectorAll('input[type=password]');
+    for (const input of inputs) {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      )!.set!.call(input, 'SyntheticPassword162!');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   });
   await act(async () => {
     container
@@ -356,9 +364,7 @@ it('verifies the email, sets a password and returns to explicit invitation admis
   expect(sdk.updateUser).toHaveBeenCalledWith({
     password: 'SyntheticPassword162!',
   });
-  expect(container.textContent).toContain(
-    'Password saved. Return to your invitation to explicitly join',
-  );
+  expect(container.textContent).toContain('Your account is ready');
   expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBe(
     'a'.repeat(64),
   );
@@ -376,7 +382,7 @@ it('verifies the email, sets a password and returns to explicit invitation admis
     }
     return defaultRespond(path, body);
   };
-  await click('Join group');
+  await click('Join Private group');
   expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
     1,
   );
@@ -400,12 +406,12 @@ it('resubmits an unobserved acceptance with the original key after an offline fa
   respond = async () => {
     throw new TypeError('Failed to fetch');
   };
-  await click('Join group');
+  await click('Join Private group');
   const original = readAttempt()!;
   respond = async () => ({
     data: { invitationAction: { outcome: 'NOT_OBSERVED' } },
   });
-  await click('Recover original action');
+  await click('Check the original request');
   expect(readAttempt()).toEqual(original);
   respond = async (path, body) => {
     expect(path).toBe('/api/onboarding/accept');
@@ -415,7 +421,7 @@ it('resubmits an unobserved acceptance with the original key after an offline fa
     });
     return { code: 'APPLIED', groupID: 'group-a', hasAccess: true };
   };
-  await click('Retry original action with the same key');
+  await click('Try the original request again');
   expect(readAttempt()).toBeNull();
   expect(container.textContent).toContain('You have joined the group');
   expect(
@@ -436,12 +442,12 @@ it('resubmits an unobserved resend after navigation using the retained group, in
   respond = async () => {
     throw new TypeError('Failed to fetch');
   };
-  await click('Retry original action with the same key');
+  await click('Try the original request again');
   expect(readAttempt()).toEqual(original);
   respond = async () => ({
     data: { invitationAction: { outcome: 'NOT_OBSERVED' } },
   });
-  await click('Recover original action');
+  await click('Check the original request');
   respond = async (_path, body) => {
     if (String(body.query).includes('resendInvitation')) {
       expect(body.variables).toEqual({
@@ -459,7 +465,7 @@ it('resubmits an unobserved resend after navigation using the retained group, in
     expect(body.variables).toEqual({ groupID: original.groupID, after: null });
     return { data: { ownerInvitations: { items: [], nextCursor: null } } };
   };
-  await click('Retry original action with the same key');
+  await click('Try the original request again');
   expect(readAttempt()).toBeNull();
   expect(
     requests.filter((item) =>
@@ -504,7 +510,7 @@ it('blocks retry when the current invitation differs from the retained acceptanc
   saveAttempt({ kind: 'ACCEPT', key, tokenDigest: 'original-digest' });
   sessionStorage.setItem('kami-onboarding-link-digest', 'different-digest');
   await render('join');
-  await click('Retry original action with the same key');
+  await click('Try the original request again');
   expect(requests.filter((item) => item.path.endsWith('/accept'))).toHaveLength(
     0,
   );
@@ -529,14 +535,14 @@ it('binds initial and retried acceptance to the original tab invitation when the
     }
     return originalFetch(path, options);
   });
-  await click('Join group');
+  await click('Join Private group');
   const original = readAttempt()!;
   expect(original.tokenDigest).toBe(originalDigest);
   expect(attempts).toEqual([
     { key: original.key, tokenDigest: originalDigest },
   ]);
   expect(container.textContent).not.toContain('You have joined the group');
-  await click('Retry original action with the same key');
+  await click('Try the original request again');
   expect(attempts).toEqual([
     { key: original.key, tokenDigest: originalDigest },
     { key: original.key, tokenDigest: originalDigest },
@@ -548,7 +554,7 @@ it('asks a fresh tab to reopen the original invitation without creating an unrec
   sessionStorage.removeItem('kami-onboarding-link-digest');
   window.history.replaceState(null, '', '/join');
   await render('join');
-  await click('Join group');
+  await click('Join Private group');
   expect(container.textContent).toContain(
     'Reopen the original application invitation link in this tab',
   );
@@ -632,4 +638,370 @@ it('copies shared links without renewing or sending and deliberately renews with
     ),
   ).toBe(false);
   expect(container.textContent).toContain('No invitation email was sent.');
+});
+
+it('keeps targeted preview anonymous and requires explicit proof before password setup', async () => {
+  sdk.session = null;
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/preview')
+      ? {
+          kind: 'TARGETED',
+          groupName: 'Household',
+          inviterDisplayName: 'Owner',
+        }
+      : path.endsWith('/targeted-continuation')
+        ? {
+            code: 'READY',
+            tokenHash: 'b'.repeat(64),
+            type: 'signup',
+            needsPassword: true,
+          }
+        : prior(path, body);
+  sdk.verifyOtp.mockResolvedValue({
+    data: {
+      session: {
+        user: { id: 'target', email: 'target@example.test' },
+        access_token: 'token',
+      },
+    },
+    error: null,
+  });
+  await render('join');
+  expect(container.querySelector('input[type=email]')).toBeNull();
+  expect(requests.some((r) => r.path.endsWith('/targeted-continuation'))).toBe(
+    false,
+  );
+  expect(container.textContent).not.toContain('target@example.test');
+  await click('Continue with invitation');
+  expect(sdk.verifyOtp).toHaveBeenCalledWith({
+    token_hash: 'b'.repeat(64),
+    type: 'signup',
+  });
+  expect(container.textContent).toContain('Create your Kami Split account');
+  expect(container.querySelectorAll('input[type=password]')).toHaveLength(2);
+  expect(
+    requests.some(
+      (r) => r.path.endsWith('/provision') || r.path.endsWith('/accept'),
+    ),
+  ).toBe(false);
+});
+it('continues existing targeted identity without password then explicitly admits and links to the group', async () => {
+  sdk.session = null;
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/preview')
+      ? {
+          kind: 'TARGETED',
+          groupName: 'Household',
+          inviterDisplayName: 'Owner',
+        }
+      : path.endsWith('/targeted-continuation')
+        ? {
+            code: 'READY',
+            tokenHash: 'b'.repeat(64),
+            type: 'magiclink',
+            needsPassword: false,
+          }
+        : path.endsWith('/accept')
+          ? { code: 'ADMITTED', groupID: 'group-a', hasAccess: true }
+          : prior(path, body);
+  sdk.verifyOtp.mockResolvedValue({
+    data: {
+      session: {
+        user: { id: 'target', email: 'target@example.test' },
+        access_token: 'token',
+      },
+    },
+    error: null,
+  });
+  await render('join');
+  await click('Continue with invitation');
+  expect(container.textContent).toContain('Ready to join Household');
+  expect(container.querySelector('input[type=password]')).toBeNull();
+  expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
+  await click('Join Household');
+  expect(
+    container.querySelector('a[href="/groups?group=group-a"]')?.textContent,
+  ).toBe('Open Household');
+});
+it('offers shared first-time verification with generic check-email and no admission', async () => {
+  sdk.session = null;
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/preview')
+      ? { kind: 'SHARED', groupName: 'Household', inviterDisplayName: 'Owner' }
+      : prior(path, body);
+  await render('join');
+  await click('Create an account');
+  expect(container.querySelector('input[type=email]')).not.toBeNull();
+  expect(container.querySelector('input[type=password]')).toBeNull();
+  await act(async () =>
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(container.textContent).toContain('Check your email');
+  expect(requests.filter((r) => r.path.endsWith('/provision'))).toHaveLength(1);
+  expect(
+    requests.some(
+      (r) =>
+        r.path.endsWith('/accept') || r.path.endsWith('/targeted-continuation'),
+    ),
+  ).toBe(false);
+  await click('Use a different email');
+  expect(container.querySelector('input[type=email]')).not.toBeNull();
+});
+it('loads ordinary account groups automatically and links directly to their real experience', async () => {
+  respond = async () => ({
+    data: {
+      viewer: {
+        __typename: 'Viewer',
+        groups: [{ id: 'group-a', name: 'Household' }],
+      },
+    },
+  });
+  await render('account');
+  expect(button('Load my groups')).toBeUndefined();
+  expect(
+    container.querySelector('a[href="/groups?group=group-a"]')?.textContent,
+  ).toBe('Household');
+});
+
+it('switches a wrong targeted account without losing the invitation or accepting it', async () => {
+  const prior = respond;
+  respond = async (path, body) => {
+    if (path.endsWith('/preview'))
+      return {
+        kind: 'TARGETED',
+        groupName: 'Household',
+        inviterDisplayName: 'Owner',
+      };
+    if (path.endsWith('/targeted-continuation'))
+      throw new Error('WRONG_ACCOUNT');
+    return prior(path, body);
+  };
+  await render('join');
+  await click('Continue with invitation');
+  expect(container.textContent).toContain(
+    'This invitation is for another account',
+  );
+  await click('Switch account');
+  expect(container.textContent).toContain('Owner invited you to Household');
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBe(
+    'a'.repeat(64),
+  );
+  expect(
+    requests.some(
+      (r) => r.path.endsWith('/clear') || r.path.endsWith('/accept'),
+    ),
+  ).toBe(false);
+});
+it('discards targeted proof when another account signs in during provider verification', async () => {
+  sdk.session = null;
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/preview')
+      ? {
+          kind: 'TARGETED',
+          groupName: 'Household',
+          inviterDisplayName: 'Owner',
+        }
+      : path.endsWith('/targeted-continuation')
+        ? {
+            code: 'READY',
+            tokenHash: 'b'.repeat(64),
+            type: 'magiclink',
+            needsPassword: false,
+          }
+        : prior(path, body);
+  let finish!: (value: unknown) => void;
+  sdk.verifyOtp.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render('join');
+  await click('Continue with invitation');
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'other', email: 'other@example.test' },
+      access_token: 'other',
+    }),
+  );
+  await act(async () =>
+    finish({
+      data: {
+        session: {
+          user: { id: 'target', email: 'target@example.test' },
+          access_token: 'token',
+        },
+      },
+      error: null,
+    }),
+  );
+  expect(container.textContent).not.toContain('target@example.test');
+  expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
+});
+it('restores invitation context in a fresh callback tab before password setup', async () => {
+  const verified = sdk.session;
+  sdk.session = null;
+  sessionStorage.removeItem('kami-onboarding-link-digest');
+  window.history.replaceState(
+    null,
+    '',
+    `/auth/confirm#token_hash=${'b'.repeat(64)}&type=invite&state=bound-state`,
+  );
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/callback-state')
+      ? {
+          tokenDigest: 'c'.repeat(64),
+          kind: 'SHARED',
+          groupName: 'Household',
+          inviterDisplayName: 'Owner',
+        }
+      : prior(path, body);
+  sdk.verifyOtp.mockResolvedValue({ data: { session: verified }, error: null });
+  await render('confirm');
+  await click('Continue with email link');
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBe(
+    'c'.repeat(64),
+  );
+  expect(sdk.replace).toHaveBeenCalledWith('/auth/password');
+  expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
+});
+it('rejects mismatched passwords and clears confirmation when the identity changes', async () => {
+  await render('password');
+  const fill = async (selector: string, value: string) => {
+    await act(async () => {
+      const input = container.querySelector(selector)!;
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      )!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+  await fill('#new-password', 'SyntheticPassword164!');
+  await act(async () =>
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(container.textContent).toContain('The passwords must match.');
+  expect(sdk.updateUser).not.toHaveBeenCalled();
+  const confirmation = container.querySelectorAll(
+    'input[type=password]',
+  )[1] as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(confirmation, 'SyntheticPassword164!');
+    confirmation.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'bob', email: 'bob@example.test' },
+      access_token: 'bob',
+    }),
+  );
+  expect(
+    [...container.querySelectorAll('input[type=password]')].every(
+      (input) => (input as HTMLInputElement).value === '',
+    ),
+  ).toBe(true);
+});
+
+it('scrubs a new same-route invitation and discards the previous success', async () => {
+  await render('join');
+  respond = async () => ({
+    code: 'ADMITTED',
+    groupID: 'old-group',
+    hasAccess: true,
+  });
+  await click('Join Private group');
+  expect(container.textContent).toContain('You joined Private group');
+  respond = async (path) =>
+    path.endsWith('/preview')
+      ? {
+          kind: 'SHARED',
+          groupName: 'New household',
+          inviterDisplayName: 'New owner',
+        }
+      : {};
+  await act(async () => {
+    window.history.replaceState(null, '', '/join#new-invitation-capability');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+  expect(window.location.hash).toBe('');
+  expect(container.textContent).not.toContain('You joined Private group');
+  expect(container.textContent).toContain('Ready to join New household');
+  expect(requests.findLast((r) => r.path.endsWith('/start'))?.body).toEqual({
+    token: 'new-invitation-capability',
+  });
+});
+it('blocks a different hash invitation while the original acceptance is unresolved', async () => {
+  await render('join');
+  respond = async () => {
+    throw new Error('UNAVAILABLE');
+  };
+  await click('Join Private group');
+  const original = readAttempt();
+  const startsBefore = requests.filter((r) => r.path.endsWith('/start')).length;
+  await act(async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/join#different-invitation-capability',
+    );
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+  expect(window.location.hash).toBe('');
+  expect(container.textContent).toContain(
+    'Reopen the original application invitation link',
+  );
+  expect(readAttempt()).toEqual(original);
+  expect(requests.filter((r) => r.path.endsWith('/start'))).toHaveLength(
+    startsBefore,
+  );
+  expect(container.textContent).not.toContain('Private group');
+});
+it('replaces a same-route callback without verifying it on hash navigation', async () => {
+  sdk.session = null;
+  window.history.replaceState(
+    null,
+    '',
+    `/auth/confirm#token_hash=${'a'.repeat(64)}&type=invite&state=old-state`,
+  );
+  await render('confirm');
+  await act(async () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/auth/confirm#token_hash=${'b'.repeat(64)}&type=invite&state=new-state`,
+    );
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+  expect(window.location.hash).toBe('');
+  expect(sdk.verifyOtp).not.toHaveBeenCalled();
+  sdk.verifyOtp.mockResolvedValue({
+    data: {
+      session: {
+        user: { id: 'new', email: 'new@example.test' },
+        access_token: 'token',
+      },
+    },
+    error: null,
+  });
+  await click('Continue with email link');
+  expect(sdk.verifyOtp).toHaveBeenCalledWith({
+    token_hash: 'b'.repeat(64),
+    type: 'invite',
+  });
+  expect(
+    requests.find((r) => r.path.endsWith('/callback-state'))?.body,
+  ).toEqual({ state: 'new-state' });
 });
