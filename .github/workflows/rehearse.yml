@@ -1,5 +1,5 @@
 name: API deployment rehearsal
-run-name: Rehearse PR #${{ inputs.pr }} at ${{ inputs.sha }}
+run-name: 'Rehearse PR #${{ inputs.pr }} at ${{ inputs.sha }}'
 
 on:
   workflow_dispatch:

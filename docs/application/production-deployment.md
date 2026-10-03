@@ -23,24 +23,24 @@ limit). A full queue or operator cancellation requires a manual retry.
 Stable names avoid making workflow behavior depend on provider-generated
 display labels. Provider account and locality values remain explicit inputs.
 
-| Resource                          | Stable name or format                                                         |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| Google Cloud project display name | `Kami Finances Production`                                                    |
-| Google Cloud project parent       | `No organization`                                                             |
-| Google Cloud project ID           | `kami-finances-production`                                                    |
-| Google Cloud project number       | `598147484786`                                                                |
-| Google Cloud billing              | Linked; billing account identifier is not stored in the repository            |
-| GitHub environment                | `Production`                                                                  |
-| Deployment concurrency group      | `production`                                                                  |
-| Artifact Registry repository      | `kami-split`                                                                  |
-| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${DEPLOY_SHA}` |
-| Cloud Run service                 | `kami-split-api`                                                              |
-| Cloud Run runtime service account | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`             |
-| GitHub deployer service account   | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`   |
-| Workload Identity pool            | `github-actions`                                                              |
-| Workload Identity provider        | `kami-split`                                                                  |
-| Vercel project                    | `kami-split-web`                                                              |
-| Vercel root directory             | `apps/web`                                                                    |
+| Resource                          | Stable name or format                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Google Cloud project display name | `Kami Finances Production`                                                                                           |
+| Google Cloud project parent       | `No organization`                                                                                                    |
+| Google Cloud project ID           | `kami-finances-production`                                                                                           |
+| Google Cloud project number       | `598147484786`                                                                                                       |
+| Google Cloud billing              | Linked; billing account identifier is not stored in the repository                                                   |
+| GitHub environment                | `Production`                                                                                                         |
+| Deployment concurrency group      | `production`                                                                                                         |
+| Artifact Registry repository      | `kami-split`                                                                                                         |
+| API image                         | `${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/kami-split/api:${DEPLOY_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}` |
+| Cloud Run service                 | `kami-split-api`                                                                                                     |
+| Cloud Run runtime service account | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`                                                    |
+| GitHub deployer service account   | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`                                          |
+| Workload Identity pool            | `github-actions`                                                                                                     |
+| Workload Identity provider        | `kami-split`                                                                                                         |
+| Vercel project                    | `kami-split-web`                                                                                                     |
+| Vercel root directory             | `apps/web`                                                                                                           |
 
 The Google Cloud display name intentionally differs from the GitHub repository
 `haggaikaunda/kami-split`. The display name can change, but the confirmed project
@@ -332,7 +332,7 @@ deploys the exact triggering `workflow_run.head_sha`, not the deployment
 workflow's own default-branch SHA. Its non-canceling `production` concurrency
 group queues releases, validates the selected project identifiers and numeric
 Secret Manager versions, builds and pushes an API image tagged with the triggering
-commit SHA, resolves that tag to its immutable digest, applies migrations with
+commit SHA, run ID, and attempt, resolves that tag to its immutable digest, applies migrations with
 the pinned Supabase CLI, deploys a new Cloud Run revision from the digest and
 pinned secret versions, and verifies that exact tagged revision
 through `/health` and `/ready` before explicitly directing 100% of service
@@ -456,7 +456,8 @@ the exact selected commit is checked out separately under `source/`, with checko
 credentials disabled. Only that directory is the Docker build context, excluding
 Google's generated runner credential file. Candidate migration input is limited
 to regular SQL files; candidate deployment scripts and Makefiles never run on the
-credentialed host. Images are deployed by digest after publication.
+credentialed host. Images are deployed by digest after publication. Image tags include SHA, run ID,
+and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
 
 Rehearsal runs only `supabase db push --linked --dry-run`. It never reaches the
 release-only migration application or promotion step and has no Vercel job.
