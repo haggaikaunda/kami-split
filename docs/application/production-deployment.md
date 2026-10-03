@@ -502,6 +502,29 @@ then verify close cleanup. Repository delivery gates still apply to the foundati
 merge. Do not relax WIF or environment controls to run the new workflow from its
 feature branch.
 
+### Operator commands
+
+Get the current PR SHA and inspect its checks before dispatch. Replace `158` with
+the intended PR number; selecting a commit authorizes its production runtime
+access under the trust boundary above.
+
+```sh
+pr_number=158
+pr_sha=$(gh pr view "$pr_number" --repo haggaikaunda/kami-split --json headRefOid --jq .headRefOid)
+gh pr checks "$pr_number" --repo haggaikaunda/kami-split
+gh workflow run rehearse.yml --repo haggaikaunda/kami-split --ref main -f pr="$pr_number" -f sha="$pr_sha"
+gh run list --repo haggaikaunda/kami-split --workflow rehearse.yml --limit 5
+```
+
+Inspect the selected run's candidate deployment outputs and probes. Repeating the
+same dispatch creates a distinct immutable image/revision and moves the stable PR
+tag. Closing the PR automatically removes that tag. If cleanup failed, retry it
+without changing normal production traffic:
+
+```sh
+gh workflow run rehearsal-cleanup.yml --repo haggaikaunda/kami-split --ref main -f pr="$pr_number"
+```
+
 Offline command-stub tests run with
 `node --test scripts/deployment/*.test.mjs` in API CI. Provider integration evidence
 must come from actual GitHub Actions runs; stubs do not establish live behavior.
