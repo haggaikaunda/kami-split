@@ -7,6 +7,7 @@ export async function POST(
   if (
     ![
       'start',
+      'targeted-continuation',
       'copy-shared',
       'preview',
       'provision',

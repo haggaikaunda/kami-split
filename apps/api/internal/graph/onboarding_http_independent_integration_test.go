@@ -28,6 +28,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -161,7 +162,64 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 		fmt.Fprint(w, `{"id":"synthetic-delivery"}`)
 	}))
 	defer mail.Close()
-	settings := map[string]string{"INVITATION_ACTIVE_KEY_ID": "test", "INVITATION_KEYS": `{"test":"` + base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{39}, 32)) + `"}`, "ONBOARDING_AUTH_URL": base, "ONBOARDING_AUTH_PUBLIC_KEY": anon, "RESEND_API_KEY": "synthetic", "ONBOARDING_ORIGIN": "http://127.0.0.1:3000", "INVITATION_FROM": "invites@example.invalid", "ONBOARDING_LOCAL_DELIVERY_URL": mail.URL}
+	// Interpose only a local synthetic transport for controlled failure/race tests.
+	var hookMu sync.Mutex
+	var targetHook func(map[string]any) bool
+	var failUser, failBeforeGeneration bool
+	providerProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hookMu.Lock()
+		blockedUser := failUser
+		blockedGeneration := failBeforeGeneration
+		hookMu.Unlock()
+		if r.URL.Path == "/admin/generate_link" && blockedGeneration {
+			w.WriteHeader(503)
+			return
+		}
+		if r.URL.Path == "/user" && blockedUser {
+			w.WriteHeader(503)
+			return
+		}
+		request, err := http.NewRequestWithContext(r.Context(), r.Method, base+r.URL.RequestURI(), r.Body)
+		if err != nil {
+			t.Error("proxy request invalid")
+			return
+		}
+		request.Header = r.Header.Clone()
+		response, err := client.Do(request)
+		if err != nil {
+			t.Error("proxy request failed")
+			w.WriteHeader(503)
+			return
+		}
+		defer response.Body.Close()
+		raw, err := io.ReadAll(response.Body)
+		if err != nil {
+			t.Error("proxy response failed")
+			return
+		}
+		if r.URL.Path == "/admin/generate_link" {
+			hookMu.Lock()
+			hook := targetHook
+			hookMu.Unlock()
+			if hook != nil {
+				payload := map[string]any{}
+				if json.Unmarshal(raw, &payload) != nil {
+					t.Error("proxy response invalid")
+					return
+				}
+				if hook(payload) {
+					w.WriteHeader(503)
+					return
+				}
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(response.StatusCode)
+		_, _ = w.Write(raw)
+	}))
+	defer providerProxy.Close()
+	setHook := func(hook func(map[string]any) bool) { hookMu.Lock(); targetHook = hook; hookMu.Unlock() }
+	settings := map[string]string{"INVITATION_ACTIVE_KEY_ID": "test", "INVITATION_KEYS": `{"test":"` + base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{39}, 32)) + `"}`, "ONBOARDING_AUTH_URL": providerProxy.URL, "ONBOARDING_AUTH_PUBLIC_KEY": anon, "RESEND_API_KEY": "synthetic", "ONBOARDING_ORIGIN": "http://127.0.0.1:3000", "INVITATION_FROM": "invites@example.invalid", "ONBOARDING_LOCAL_DELIVERY_URL": mail.URL}
 	factory, err := onboarding.Load(func(k string) (string, bool) { v, ok := settings[k]; return v, ok }, db)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +302,7 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 	originalDigest := hex.EncodeToString(invitation.TokenHash(originalCapability))
 	cookie := start(originalCapability)
 	_, preview := post("/onboarding/preview", map[string]string{}, "", cookie)
-	if len(preview) != 2 || preview["groupName"] != "Independent household" || preview["inviterDisplayName"] != "Independent owner" {
+	if len(preview) != 3 || preview["kind"] != "TARGETED" || preview["groupName"] != "Independent household" || preview["inviterDisplayName"] != "Independent owner" {
 		t.Fatal("preview leaked or omitted fields")
 	}
 	_, wrong := post("/onboarding/accept", map[string]string{"key": uuid.NewString(), "tokenDigest": originalDigest}, strangerAccess, cookie)
@@ -287,28 +345,52 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 	if !strings.Contains(providerLogs.String(), `"outcome":"ineligible"`) {
 		t.Fatal("ineligible provisioning omitted server diagnostic")
 	}
-	genericResponse, generic := post("/onboarding/provision", map[string]string{"email": newEmail, "tokenDigest": originalDigest}, "", cookie)
+	genericResponse, generic := post("/onboarding/provision", map[string]string{"email": "ineligible-" + newEmail, "tokenDigest": originalDigest}, "", cookie)
 	if genericResponse.Code != http.StatusOK || generic["code"] != "CHECK_EMAIL" {
 		t.Fatal("eligible provisioning failed")
 	}
 	if wrongResponse.Code != genericResponse.Code || wrongResponse.Body.String() != genericResponse.Body.String() || wrongProvision["code"] != "CHECK_EMAIL" {
 		t.Fatal("wrong email provisioning disclosed eligibility")
 	}
-	assertAuthUsers(newEmail, 1)
-	if !strings.Contains(providerLogs.String(), `"outcome":"accepted"`) {
-		t.Fatal("accepted provisioning omitted server diagnostic")
+	assertAuthUsers(newEmail, 0)
+	// GET scanners cannot consume the explicit continuation.
+	scanner := httptest.NewRequest(http.MethodGet, "/onboarding/targeted-continuation", nil)
+	scanner.AddCookie(cookie)
+	scannerOut := httptest.NewRecorder()
+	app.Handler().ServeHTTP(scannerOut, scanner)
+	if scannerOut.Code != 405 {
+		t.Fatal("scanner request accepted")
 	}
-	for _, sensitive := range []string{newEmail, wrongEmail, originalCapability, originalDigest, adminKey, anon, cookie.Value} {
+	hookMu.Lock()
+	failUser = true
+	hookMu.Unlock()
+	_, observationFailure := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": originalDigest}, strangerAccess, cookie)
+	hookMu.Lock()
+	failUser = false
+	hookMu.Unlock()
+	if observationFailure["code"] != "UNAVAILABLE" || !strings.Contains(providerLogs.String(), `"outcome":"email_observation_failure"`) {
+		t.Fatal("current-email provider failure lost safe owning diagnostic")
+	}
+	_, wrongTarget := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": originalDigest}, strangerAccess, cookie)
+	if wrongTarget["code"] != "WRONG_ACCOUNT" {
+		t.Fatal("wrong current account not rejected before claim")
+	}
+	_, continuation := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": originalDigest}, "", cookie)
+	if continuation["code"] != "READY" || continuation["needsPassword"] != true || continuation["type"] != "signup" {
+		t.Fatal("new targeted Auth continuation failed")
+	}
+	assertAuthUsers(newEmail, 1)
+	_, replay := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": originalDigest}, "", cookie)
+	if replay["code"] != "TARGET_CONTINUATION_USED" {
+		t.Fatal("targeted proof replay minted another token")
+	}
+	for _, sensitive := range []string{newEmail, wrongEmail, originalCapability, originalDigest, adminKey, anon, cookie.Value, continuation["tokenHash"].(string)} {
 		if strings.Contains(providerLogs.String(), sensitive) {
-			t.Fatal("provisioning diagnostic disclosed sensitive input")
+			t.Fatal("provider diagnostics exposed sensitive input")
 		}
 	}
-	challenge, state := independentDeliveredChallenge(t, client, newEmail)
-	_, callback := post("/onboarding/callback-state", map[string]string{"state": state}, "", cookie)
-	if callback["code"] != "READY" {
-		t.Fatal("actual email browser state rejected")
-	}
-	session := provider(http.MethodPost, "/verify", "", map[string]string{"type": "invite", "token_hash": challenge})
+	assertNoVerificationEmail(t, client, newEmail)
+	session := provider(http.MethodPost, "/verify", "", map[string]string{"type": continuation["type"].(string), "token_hash": continuation["tokenHash"].(string)})
 	newAccess := session["access_token"].(string)
 	newSubject := session["user"].(map[string]any)["id"].(string)
 	// The browser's /auth/password step updates the verified session before
@@ -331,6 +413,15 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 	send(entry["actionID"])
 	existingDigest := hex.EncodeToString(invitation.TokenHash(deliveryToken))
 	existingCookie := start(deliveryToken)
+	_, existingContinuation := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": existingDigest}, "", existingCookie)
+	if existingContinuation["code"] != "READY" || existingContinuation["needsPassword"] != false || existingContinuation["type"] != "magiclink" {
+		t.Fatal("existing targeted Auth continuation failed")
+	}
+	existingSession := provider(http.MethodPost, "/verify", "", map[string]string{"type": existingContinuation["type"].(string), "token_hash": existingContinuation["tokenHash"].(string)})
+	if existingSession["user"].(map[string]any)["id"] != existing {
+		t.Fatal("existing continuation changed identity")
+	}
+	existingAccess = existingSession["access_token"].(string)
 	operation := uuid.NewString()
 	// Tab A keeps its reviewed capability while tab B replaces the shared cookie.
 	// Both first completion and original-key recovery must reject that mismatch.
@@ -432,6 +523,131 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 	if denied["code"] != "ACCESS_DENIED" {
 		t.Fatal("nonowner inspected invitations")
 	}
+	// A reusable shared link starts independent verification for multiple accounts.
+	shared := gql(fmt.Sprintf(`mutation{createSharedInvitation(groupID:%q,key:%q)%s}`, groupID, uuid.NewString(), selection), ownerAccess, "createSharedInvitation")
+	_, copied := post("/onboarding/copy-shared", map[string]string{"groupID": groupID, "invitationID": shared["invitationID"].(string)}, ownerAccess, nil)
+	sharedToken := strings.Split(copied["link"].(string), "#")[1]
+	sharedDigest := hex.EncodeToString(invitation.TokenHash(sharedToken))
+	for index := 0; index < 2; index++ {
+		sharedCookie := start(sharedToken)
+		_, shortcut := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": sharedDigest}, "", sharedCookie)
+		if shortcut["code"] != "UNAVAILABLE_LINK" {
+			t.Fatal("shared link accepted as mailbox proof")
+		}
+		email := fmt.Sprintf("shared-http164-%d+%s@example.invalid", index, suffix)
+		_, sent := post("/onboarding/provision", map[string]string{"email": email, "tokenDigest": sharedDigest}, "", sharedCookie)
+		if sent["code"] != "CHECK_EMAIL" {
+			t.Fatal("shared verification not started")
+		}
+		challenge, state := independentDeliveredChallenge(t, client, email)
+		_, restored := post("/onboarding/callback-state", map[string]string{"state": state}, "", sharedCookie)
+		if restored["code"] != "READY" || restored["tokenDigest"] != sharedDigest || restored["kind"] != "SHARED" {
+			t.Fatal("shared callback did not recover original context")
+		}
+		verified := provider(http.MethodPost, "/verify", "", map[string]string{"type": "invite", "token_hash": challenge})
+		sharedAccess := verified["access_token"].(string)
+		subject := verified["user"].(map[string]any)["id"].(string)
+		provider(http.MethodPut, "/user", sharedAccess, map[string]string{"password": password})
+		if err := admin.QueryRow(ctx, `SELECT count(*) FROM app.users WHERE auth_subject=$1`, subject).Scan(&count); err != nil || count != 0 {
+			t.Fatal("shared verification created application membership")
+		}
+		_, joined := post("/onboarding/accept", map[string]string{"key": uuid.NewString(), "tokenDigest": sharedDigest}, sharedAccess, sharedCookie)
+		if joined["code"] != "ADMITTED" || joined["groupID"] != groupID {
+			t.Fatal("verified shared account not admitted")
+		}
+	}
+
+	// Auth uncertainty is durable across handler restart and a new browser context.
+	for _, lostAfterCommit := range []bool{false, true} {
+		failedEmail := fmt.Sprintf("failed-http164-%t+%s@example.invalid", lostAfterCommit, suffix)
+		failed := create(failedEmail)
+		send(failed["actionID"])
+		failedToken := deliveryToken
+		failedDigest := hex.EncodeToString(invitation.TokenHash(failedToken))
+		failedCookie := start(failedToken)
+		if lostAfterCommit {
+			setHook(func(map[string]any) bool { return true })
+		}
+		hookMu.Lock()
+		failBeforeGeneration = !lostAfterCommit
+		hookMu.Unlock()
+		_, failedResult := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": failedDigest}, "", failedCookie)
+		if failedResult["code"] != "TARGET_CONTINUATION_USED" || failedResult["tokenHash"] != nil {
+			t.Fatal("uncertain provider response released credentials")
+		}
+		setHook(nil)
+		hookMu.Lock()
+		failBeforeGeneration = false
+		hookMu.Unlock()
+		wantUsers := 0
+		if lostAfterCommit {
+			wantUsers = 1
+		}
+		assertAuthUsers(failedEmail, wantUsers)
+		restarted, err := onboarding.NewHandler(factory, verifier, "http://127.0.0.1:3000", adminKey, slog.New(slog.NewJSONHandler(&providerLogs, nil)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		app = serverForIndependent(factory, verifier)
+		app.Use(restarted.Wrap)
+		failedCookie = start(failedToken)
+		_, afterRestart := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": failedDigest}, "", failedCookie)
+		if afterRestart["code"] != "TARGET_CONTINUATION_USED" {
+			t.Fatal("restart reset durable Auth claim")
+		}
+		revokedFailed := gql(fmt.Sprintf(`mutation{revokeInvitation(groupID:%q,id:%q,key:%q)%s}`, groupID, failed["invitationID"], uuid.NewString(), selection), ownerAccess, "revokeInvitation")
+		if revokedFailed["outcome"] != "APPLIED" {
+			t.Fatal("failed invitation replacement revoke failed")
+		}
+		replacement := create(failedEmail)
+		send(replacement["actionID"])
+		replacementDigest := hex.EncodeToString(invitation.TokenHash(deliveryToken))
+		replacementCookie := start(deliveryToken)
+		_, replacementResult := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": replacementDigest}, "", replacementCookie)
+		if replacementResult["code"] != "READY" || replacementResult["needsPassword"] != true {
+			t.Fatal("replacement failed interrupted first-time setup")
+		}
+		replacementSession := provider(http.MethodPost, "/verify", "", map[string]string{"type": replacementResult["type"].(string), "token_hash": replacementResult["tokenHash"].(string)})
+		provider(http.MethodPut, "/user", replacementSession["access_token"].(string), map[string]string{"password": password})
+		assertAuthUsers(failedEmail, 1)
+
+	}
+
+	// A revocation or disabled application identity during provider I/O must
+	// suppress the generated OTP even though Auth has already created the user.
+	for _, change := range []string{"revoke", "disable"} {
+		email := change + "-http164+" + suffix + "@example.invalid"
+		pending := create(email)
+		send(pending["actionID"])
+		digest := hex.EncodeToString(invitation.TokenHash(deliveryToken))
+		pendingCookie := start(deliveryToken)
+		invitationID, err := ledger.ParseID(pending["invitationID"].(string), "Invitation")
+		if err != nil {
+			t.Fatal(err)
+		}
+		setHook(func(result map[string]any) bool {
+			var err error
+			if change == "revoke" {
+				_, err = admin.Exec(ctx, `UPDATE app.invitations SET revoked_at=clock_timestamp(),recipient=NULL,token_cipher=NULL,token_key=NULL WHERE id=$1`, invitationID)
+			} else {
+				_, err = admin.Exec(ctx, `INSERT INTO app.users(id,auth_subject,live_auth_id,display_name,enabled) VALUES($1,$1,$1,'Disabled fixture',false)`, result["id"])
+			}
+			if err != nil {
+				t.Error("concurrent lifecycle fixture failed", err)
+			}
+			return false
+		})
+		_, blocked := post("/onboarding/targeted-continuation", map[string]string{"tokenDigest": digest}, "", pendingCookie)
+		setHook(nil)
+		want := "UNAVAILABLE_LINK"
+		if change == "disable" {
+			want = "ACCESS_DISABLED"
+		}
+		if blocked["code"] != want || blocked["tokenHash"] != nil {
+			t.Fatal("lifecycle change released Auth continuation")
+		}
+	}
+
 }
 
 func serverForIndependent(factory *onboarding.Factory, verifier *auth.Verifier) *server.Server {
@@ -483,4 +699,17 @@ func independentDeliveredChallenge(t *testing.T, client *http.Client, email stri
 	}
 	t.Fatal("actual invitation verification email missing")
 	return "", ""
+}
+
+func assertNoVerificationEmail(t *testing.T, client *http.Client, email string) {
+	t.Helper()
+	response, err := client.Get(os.Getenv("TEST_SMTP_URL") + "/api/v1/search?query=" + url.QueryEscape("to:"+email))
+	if err != nil {
+		t.Fatal("SMTP unavailable")
+	}
+	defer response.Body.Close()
+	var box struct{ Messages []struct{ ID string } }
+	if json.NewDecoder(response.Body).Decode(&box) != nil || len(box.Messages) != 0 {
+		t.Fatal("targeted continuation sent an extra verification email")
+	}
 }

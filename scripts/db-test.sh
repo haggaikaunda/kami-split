@@ -56,6 +56,7 @@ repayment_migration="$stage/supabase/migrations/20261006000000_repayments.sql"
 mv "$repayment_migration" "$stage/repayments.sql"
 mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/group-metadata-read.sql"
 mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/shared-invitations.sql"
+mv "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql" "$stage/onboarding-continuation.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -74,6 +75,7 @@ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d post
 # Apply shared links after all earlier upgrade fixtures; each migration version
 # is unique so Supabase records and replays the sequence deterministically.
 mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261007000000_shared_invitations.sql"
+mv "$stage/onboarding-continuation.sql" "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.

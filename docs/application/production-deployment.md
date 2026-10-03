@@ -241,7 +241,7 @@ PR jobs, workflow logs, or command output.
 | `kami-split-onboarding-auth-admin-key` | Supabase Auth administrative credential consumed by `ONBOARDING_AUTH_ADMIN_KEY`.                                                                                                       |
 | `kami-split-resend-api-key`            | Delivery credential consumed by `RESEND_API_KEY`.                                                                                                                                      |
 
-For Auth provisioning, use the same project's modern `sb_secret_` key (or legacy
+For shared-link verification and targeted one-time Auth continuation, use the same project's modern `sb_secret_` key (or legacy
 service-role JWT) as the admin secret. The API sends it in `apikey` for eligible
 invitations; modern keys must not be sent as bearer JWTs. Recovery uses the public
 key. A generic `CHECK_EMAIL` response does not confirm provisioning: inspect the
@@ -591,3 +591,5 @@ Cloud Run service/runtime secrets, Vercel project/domain, Workload Identity
 restriction, and non-canceling concurrency group. Reuse the same ordered flow:
 checks, migration, immutable API deployment, readiness, web deployment, then
 hosted read-only smoke tests.
+
+Targeted invitations now use the supported Auth admin `generate_link` endpoint without a second email; shared-link signup still uses the configured invite SMTP template and browser-bound callback. Apply migration `20261008000000_onboarding_continuation.sql` before deploying this API. Retain the one-instance/sticky-routing context restriction described in [onboarding](onboarding.md). A consumed targeted Auth attempt requires ordinary account recovery or a replacement invitation; resending the same link does not renew login rights. Public signup remains disabled.

@@ -21,3 +21,5 @@ shared-link implementation is tracked separately in #108. Runtime proof remains 
 [ADR-007: Household dashboard](007-household-dashboard.md) specifies #86’s consolidated overview and shared group repayment entry, with explicit policy deferrals and [implementation slices](../proposals/household-dashboard-slices.md). It adds no running API or UI.
 
 [ADR-008: Household partner policy](008-household-partner-policy.md) records owner-approved #109 designation, consent, lifecycle and dashboard eligibility policy, including larger Households and no owner self-invitation. Independent adoption remains required; this document delivers no implementation.
+
+[ADR-009: Invitation-scoped Auth continuation](009-invitation-auth-continuation.md) records #164's one-email targeted setup, independently verified shared-link signup, durable one-use proof and explicit interruption/replacement recovery trade-off. It supersedes the earlier two-email/shared-provisioning restrictions while preserving explicit admission and disabled public signup.
