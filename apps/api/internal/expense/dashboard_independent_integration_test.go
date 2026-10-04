@@ -333,6 +333,86 @@ func TestIndependentDashboardAccountLossAndUnauthenticatedAccess(t *testing.T) {
 	}
 }
 
+func TestIndependentDashboardDesignationEndingWhileReadWaits(t *testing.T) {
+	f := independentDashboardFixture(t, 1, 2)
+	var version int64
+	independentDashboardExec(t, f, "SET ROLE kami_migrator")
+	if err := f.admin.QueryRow(f.ctx, `SELECT version FROM app.household_designation_guard`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	independentDashboardExec(t, f, "RESET ROLE")
+	ready, release, finished := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	go func() {
+		finished <- f.db.WithIdentity(f.ctx, f.id(1), func(tx pgx.Tx) error {
+			var raw []byte
+			if err := tx.QueryRow(f.ctx, `SELECT app.household_designation('END',$1,NULL,NULL)`, version).Scan(&raw); err != nil {
+				return err
+			}
+			close(ready)
+			<-release
+			return nil
+		})
+	}()
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+	select {
+	case <-ready:
+	case err := <-finished:
+		t.Fatalf("designation writer: %v", err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("designation writer never acquired guard")
+	}
+	type response struct {
+		status int
+		body   []byte
+		err    error
+	}
+	read := make(chan response, 1)
+	go func() {
+		status, body, err := groupHTTP(f, 1, independentDashboardQuery, nil)
+		read <- response{status, body, err}
+	}()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var n int
+		if err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%household_dashboard_lock%'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("read did not wait for designation guard")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	close(release)
+	released = true
+	if err := <-finished; err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Data   map[string]map[string]any
+		Errors []any
+	}
+	select {
+	case got := <-read:
+		if got.err != nil || got.status != 200 || json.Unmarshal(got.body, &result) != nil || len(result.Errors) > 0 {
+			t.Fatalf("race response: %s %v", got.body, got.err)
+		}
+	case <-time.After(7 * time.Second):
+		t.Fatal("read never resumed")
+	}
+	got := result.Data["householdDashboard"]
+	if got["state"] != "UNAVAILABLE" || got["totals"] != nil || len(got["spaces"].([]any)) != 1 {
+		t.Fatal("terminated sharing returned stale overview", got)
+	}
+}
+
 func TestIndependentDashboardNewEligibleGroupRestartsAndRemovalRechecks(t *testing.T) {
 	for _, addition := range []bool{true, false} {
 		t.Run(fmt.Sprint(addition), func(t *testing.T) {
@@ -365,6 +445,11 @@ func TestIndependentDashboardNewEligibleGroupRestartsAndRemovalRechecks(t *testi
 			// Observe the actual lock wait rather than assuming a scheduling delay.
 			deadline := time.Now().Add(3 * time.Second)
 			for {
+				// PostgreSQL caches activity statistics inside this writer
+				// transaction; each observation must refresh that snapshot.
+				if _, err := tx.Exec(f.ctx, `SELECT pg_stat_clear_snapshot()`); err != nil {
+					t.Fatal(err)
+				}
 				var n int
 				if err := tx.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%household_dashboard_lock%'`).Scan(&n); err != nil {
 					t.Fatal(err)
