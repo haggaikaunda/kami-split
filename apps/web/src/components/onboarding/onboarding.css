@@ -1,7 +1,8 @@
 .onboarding {
-  width: min(100%, 34rem);
+  width: min(100%, 36rem);
   min-height: 100svh;
-  padding: clamp(1rem, 4vw, 3rem) 1rem;
+  padding: clamp(1.5rem, 5vw, 4rem) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   display: grid;
   align-content: center;
   overflow-wrap: anywhere;
@@ -10,54 +11,89 @@
   width: min(100%, 54rem);
 }
 .onboarding-panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: clamp(1rem, 5vw, 2.5rem);
+  min-width: 0;
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 .onboarding header,
 .onboarding footer {
   text-align: center;
 }
 .onboarding header {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
   font-family: var(--font-display);
+  font-size: 1.125rem;
   font-weight: 800;
 }
-.onboarding header a {
+.onboarding-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-size);
   text-decoration: none;
 }
+.onboarding-brand span {
+  font-size: 1.75rem;
+}
 .onboarding footer {
-  padding: var(--space-6);
+  padding: var(--space-8) var(--space-2) 0;
   color: var(--color-muted);
   font-size: 0.875rem;
 }
 .onboarding h1 {
-  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
   margin: 0;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 .onboarding p {
   margin: 0;
+}
+.onboarding-panel > p {
+  color: var(--color-muted);
 }
 .onboarding form,
 .onboarding aside,
 .onboarding-actions {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
 }
-.onboarding .ui-card {
-  background: var(--color-canvas);
-  box-shadow: none;
-  padding: var(--space-4);
+.onboarding aside {
+  border-top: 1px solid var(--color-separator);
+  padding-top: var(--space-6);
 }
-.onboarding .ui-card h2 {
-  font-size: 1rem;
-  margin-bottom: var(--space-2);
+.onboarding-invitation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-balance);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
 }
-.onboarding .ui-card p {
-  font-size: 0.875rem;
+.onboarding-invitation > div {
+  min-width: 0;
+}
+.onboarding-invitation-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 2rem;
+}
+.onboarding-invitation h2 {
+  font-size: 1.25rem;
+  margin: 0 0 var(--space-2);
+}
+.onboarding-invitation p {
+  color: var(--color-muted);
+}
+.onboarding .ui-field {
+  margin-block: 0;
 }
 .onboarding .ui-button {
   width: 100%;
@@ -65,9 +101,24 @@
   text-align: center;
   text-decoration: none;
 }
+.onboarding .ui-button--secondary {
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.onboarding .ui-button--secondary:hover:not(:disabled) {
+  background: var(--color-subtle);
+}
+.onboarding-panel > a:not(.ui-button) {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  text-align: center;
+}
 .onboarding-art {
-  width: 11rem;
-  max-width: 100%;
+  width: min(100%, 15rem);
   height: auto;
   justify-self: center;
 }
@@ -80,6 +131,7 @@
 .onboarding-check input {
   width: 1.25rem;
   height: 1.25rem;
+  flex-shrink: 0;
 }
 .onboarding li {
   margin-block: var(--space-4);
@@ -91,7 +143,15 @@
 .onboarding [tabindex='-1']:empty {
   display: none;
 }
-
 .onboarding h1[tabindex='-1']:focus {
   outline: none;
+}
+@media (max-width: 390px) {
+  .onboarding-invitation {
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+  .onboarding-art {
+    width: min(100%, 12rem);
+  }
 }

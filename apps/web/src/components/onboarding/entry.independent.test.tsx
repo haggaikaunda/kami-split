@@ -939,7 +939,10 @@ it('scrubs a new same-route invitation and discards the previous success', async
   });
   expect(window.location.hash).toBe('');
   expect(container.textContent).not.toContain('You joined Private group');
-  expect(container.textContent).toContain('Ready to join New household');
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(container.textContent).toContain('Ready to join New household');
+  });
   expect(requests.findLast((r) => r.path.endsWith('/start'))?.body).toEqual({
     token: 'new-invitation-capability',
   });
@@ -1020,3 +1023,55 @@ it('explicit ordinary signout clears the shared server context and local state',
   expect(container.textContent).not.toContain('alice@example.test');
   expect(sdk.replace).toHaveBeenCalledWith('/sign-in');
 });
+
+it.each(['TARGETED', 'SHARED'])(
+  'presents one accessible %s invitation identity without disclosing extra preview fields',
+  async (kind) => {
+    sdk.session = null;
+    const prior = respond;
+    respond = async (path, body) =>
+      path.endsWith('/preview')
+        ? {
+            kind,
+            groupName: 'Our very long household name & friends',
+            inviterDisplayName: 'Alex & Sam',
+            email: 'private@example.test',
+            memberCount: 42,
+          }
+        : prior(path, body);
+    await render('join');
+    const identity = container.querySelector(
+      'section[aria-labelledby="invitation-group-name"]',
+    )!;
+    expect(identity.querySelector('h2')?.textContent).toBe(
+      'Our very long household name & friends',
+    );
+    expect(identity.textContent).toContain('Alex & Sam');
+    expect(container.querySelectorAll('#invitation-group-name')).toHaveLength(
+      1,
+    );
+    expect(container.textContent).not.toContain('private@example.test');
+    expect(identity.textContent).not.toContain('42');
+    expect(container.querySelectorAll('.onboarding-art')).toHaveLength(1);
+    expect(document.activeElement).toBe(container.querySelector('h1'));
+    if (kind === 'SHARED') {
+      await click('Create an account');
+      expect(document.activeElement).toBe(container.querySelector('h1'));
+      expect(container.querySelectorAll('#invitation-group-name')).toHaveLength(
+        1,
+      );
+      await act(async () => {
+        const input = container.querySelector('input[type=email]')!;
+        Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        )!.set!.call(input, 'synthetic@example.test');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await click('Continue');
+      expect(container.textContent).toContain('Check your email');
+      expect(document.activeElement).toBe(container.querySelector('h1'));
+    }
+    expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
+  },
+);
