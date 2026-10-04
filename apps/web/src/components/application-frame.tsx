@@ -16,6 +16,7 @@ export function ApplicationFrame({
 }) {
   const path = usePathname();
   if (
+    path === '/household/activity' ||
     path === '/groups' ||
     path === '/sign-in' ||
     path === '/join' ||
