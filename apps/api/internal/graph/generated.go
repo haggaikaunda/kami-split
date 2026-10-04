@@ -2888,23 +2888,41 @@ union HouseholdDashboardTotalsResult = HouseholdDashboardTotals | Problem
 One original authorized ledger, including current metadata and complete balances.
 """
 type HouseholdDashboardSpace {
-  """Original authorized Group ID for navigation; no aggregate repayment scope."""
+  """
+  Original authorized Group ID for navigation; no aggregate repayment scope.
+  """
   groupId: ID!
-  """Current authorized group label."""
+  """
+  Current authorized group label.
+  """
   name: String!
-  """Current ordinary/trip classification."""
+  """
+  Current ordinary/trip classification.
+  """
   kind: GroupKind!
-  """Current authorized travel metadata, independent of financial history."""
+  """
+  Current authorized travel metadata, independent of financial history.
+  """
   trip: GroupTrip
-  """Whether this source ledger is the installation Household."""
+  """
+  Whether this source ledger is the installation Household.
+  """
   isHousehold: Boolean!
-  """Original ledger currency; currently USD only."""
+  """
+  Original ledger currency; currently USD only.
+  """
   currency: Currency!
-  """Authorized historical profiles, without global user IDs or emails."""
+  """
+  Authorized historical profiles, without global user IDs or emails.
+  """
   members: [Membership!]!
-  """Viewer's independent membership in this original group."""
+  """
+  Viewer's independent membership in this original group.
+  """
   viewerMembership: Membership!
-  """Complete positions, obligations, settlement state and financial revision, or safe overflow."""
+  """
+  Complete positions, obligations, settlement state and financial revision, or safe overflow.
+  """
   balances: BalanceResult!
   """
   Exact viewer position in this space; absent if its balance is unavailable.
