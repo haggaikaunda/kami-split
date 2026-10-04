@@ -1,19 +1,21 @@
 # #86 delivery slices and acceptance trace
 
-Status: future work following adoption of [ADR-007](../decisions/007-household-dashboard.md).
-This design delivers no feature, migration or running SDL. Unresolved policy is
+Status: delivery map following adoption of [ADR-007](../decisions/007-household-dashboard.md).
+The original design delivered no runtime feature. #130 designation, #110 repayment
+persistence/API and #111 summary reads are implemented; #112 browser integration
+remains separate. Unresolved policy is
 explicitly deferred, not silently approved by a follow-up issue.
 
 | Slice                                                                         | Dependency / readiness                                                         | Deliverable                                                                                                                                                              |
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [#109 Pair policy](https://github.com/haggaikaunda/kami-split/issues/109)     | #86 adopted; owner agreement required                                          | Designation/change authority, pre-onboarding and disabled-partner policy, dashboard access, stable identity and compatible locks; separate implementation after review.  |
 | [#110 Group repayment](https://github.com/haggaikaunda/kami-split/issues/110) | #82; reviewed settlement permissions/validation contract before code           | Small design, persistence and API PRs for one group-specific actual repayment and same-attempt recovery. Reuse ledger/operation infrastructure; no dashboard dependency. |
-| [#111 Summary reads](https://github.com/haggaikaunda/kami-split/issues/111)   | #82, #109 policy and designation implementation; #104 metadata for trip labels | Complete authorized eligible-set query, exact aggregates and failure states; no settlement endpoint duplication.                                                         |
+| [#111 Summary reads](https://github.com/haggaikaunda/kami-split/issues/111)   | #82, #109 policy and designation implementation; #104 metadata for trip labels | Implemented complete authorized eligible-set query, signed viewer net, counts and simple expense face-value totals; no settlement duplication.                                                         |
 | [#112 UI integration](https://github.com/haggaikaunda/kami-split/issues/112)  | #83, #105, #111; #110 before repayment activation                              | First read-only dashboard, then shared detail/dashboard repayment form, refresh/recovery and accessible source restoration. Separate PRs keep each slice useful.         |
 
 #75 and #85 remain their delivered foundation/design scopes. #79/#80 own actual
 invitation/onboarding; no inferred partner admission. None of these slices blocks
-#73's single-group expense journey. Spending/average formulas and historical
+#73's single-group expense journey. Couple-spending/average formulas and historical
 reporting remain O19; refunds/corrections and settlement editing/reversal remain
 O11/O12. Add separate scoped issues only when those features are requested.
 

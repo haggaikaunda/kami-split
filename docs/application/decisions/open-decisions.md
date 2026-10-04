@@ -99,6 +99,22 @@ provider behavior and purge/retry mechanics within those approved boundaries.
 
 ### O19: #86 dashboard design and explicit deferrals
 
-[ADR-007](007-household-dashboard.md) specifies individual net/gross metrics, complete server-authorized eligible-group reads, group-local simplified obligation rows, failure states and one shared original-group repayment form/recovery path. Adoption requires independent requirements/final-diff review and required CI. [#109](https://github.com/haggaikaunda/kami-split/issues/109) retains owner agreement on pair designation/change, dashboard access and disabled-partner behavior before implementation. No inferred partner identity is approved. Spending/average formulas and historical reporting remain explicitly deferred; current complete group history follows ADR-004. [#110](https://github.com/haggaikaunda/kami-split/issues/110) gates settlement permissions/validation and persistence; [#111](https://github.com/haggaikaunda/kami-split/issues/111) and [#112](https://github.com/haggaikaunda/kami-split/issues/112) separate backend summaries and UI. No unfinished fields enter the running SDL or expand #73.
+[ADR-007](007-household-dashboard.md), refined by the owner-approved 2026-10-04
+#111 scope, specifies one signed informational viewer net, complete eligible-space
+and open-viewer-balance counts, and a simple total/count of active expense face
+values. Each expense belongs to its original group; repayments are excluded from
+spending. Complete source-group positions, settled states and obligations explain
+the net; zero cross-space net never settles source groups. Separate gross owe/owed
+cards are no longer required. Couple allocated-share spending, average-trip metrics,
+budgets, historical reports and currency conversion remain deferred. #169 owns
+structured-filter expense totals and #177 future full-text search. #112 owns the
+visual implementation. Only implemented reviewed fields may enter the running SDL.
 
-The [#109 policy (ADR-008)](008-household-partner-policy.md) addresses pair authority, consent, pre-onboarding, separation, disabled/unlinked accounts and compatible locks. Owner agreement includes larger Households with a distinct two-person dashboard pair and no owner self-invitation. Independent design adoption remains required. Spending formulas and historical reporting remain deferred; designation implementation is still a separate prerequisite for #111.
+The [#109 policy (ADR-008)](008-household-partner-policy.md) resolves pair authority,
+consent, separation, disabled/unlinked accounts and compatible locking. #130 delivers
+the designation foundation; #82 complete balances and #104 metadata reads provide
+the other #111 prerequisites. Household membership may exceed two and ownership
+alone grants no pair-dashboard access. No inferred partner identity is approved.
+Complete lifetime group history follows ADR-004; current eligibility controls the
+summary set. Settlement remains group-scoped under #110 and cannot act on a
+Household aggregate. These slices do not expand #73.

@@ -37,6 +37,16 @@ type GroupResult interface {
 	IsGroupResult()
 }
 
+// Authorized Household overview or safe access/discovery failure; never a repayment target.
+type HouseholdDashboardResult interface {
+	IsHouseholdDashboardResult()
+}
+
+// Complete exact totals or overflow, with no partial sum.
+type HouseholdDashboardTotalsResult interface {
+	IsHouseholdDashboardTotalsResult()
+}
+
 // Delivery attempt outcome or safe failure.
 type InvitationDelivery interface {
 	IsInvitationDelivery()
@@ -403,6 +413,60 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// Original ledgers and an explicit complete/incomplete/unavailable outcome.
+type HouseholdDashboard struct {
+	// Current completeness, independent of individual group settlement.
+	State HouseholdDashboardState `json:"state"`
+	// Complete eligible set, or Household-only fallback; excluded groups leave no trace.
+	Spaces []*HouseholdDashboardSpace `json:"spaces"`
+	// Complete checked totals, or safe amount failure; absent for unavailable sharing.
+	Totals HouseholdDashboardTotalsResult `json:"totals,omitempty"`
+}
+
+func (HouseholdDashboard) IsHouseholdDashboardResult() {}
+
+// One original authorized ledger, including current metadata and complete balances.
+type HouseholdDashboardSpace struct {
+	// Original authorized Group ID for navigation; no aggregate repayment scope.
+	GroupID string `json:"groupId"`
+	// Current authorized group label.
+	Name string `json:"name"`
+	// Current ordinary/trip classification.
+	Kind GroupKind `json:"kind"`
+	// Current authorized travel metadata, independent of financial history.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this source ledger is the installation Household.
+	IsHousehold bool `json:"isHousehold"`
+	// Original ledger currency; currently USD only.
+	Currency Currency `json:"currency"`
+	// Authorized historical profiles, without global user IDs or emails.
+	Members []*Membership `json:"members"`
+	// Viewer's independent membership in this original group.
+	ViewerMembership *Membership `json:"viewerMembership"`
+	// Complete positions, obligations, settlement state and financial revision, or safe overflow.
+	Balances BalanceResult `json:"balances"`
+	// Exact viewer position in this space; absent if its balance is unavailable.
+	ViewerNetMinor *ledger.MinorUnits `json:"viewerNetMinor,omitempty"`
+	// Complete active expense count, excluding actual repayments.
+	SharedExpenseCount ledger.MinorUnits `json:"sharedExpenseCount"`
+}
+
+// Checked totals across the complete eligible set; zero net never means settled.
+type HouseholdDashboardTotals struct {
+	// Signed sum of viewer positions: positive is owed, negative owes; informational only.
+	ViewerNetMinor ledger.MinorUnits `json:"viewerNetMinor"`
+	// Number of eligible spaces with a nonzero viewer position.
+	OpenBalanceCount ledger.MinorUnits `json:"openBalanceCount"`
+	// Number of complete currently eligible spaces, including Household.
+	ActiveSpaceCount ledger.MinorUnits `json:"activeSpaceCount"`
+	// Sum of original active expense face values, counted once; repayments excluded.
+	TotalSharedExpenseMinor ledger.MinorUnits `json:"totalSharedExpenseMinor"`
+	// Complete number of active expenses, independent of expense pagination.
+	TotalSharedExpenseCount ledger.MinorUnits `json:"totalSharedExpenseCount"`
+}
+
+func (HouseholdDashboardTotals) IsHouseholdDashboardTotalsResult() {}
+
 // Original committed result with separately observed current state.
 type InvitationActionResult struct {
 	// Typed InvitationAction ID when an action exists.
@@ -605,6 +669,10 @@ func (Problem) IsOperationResult() {}
 func (Problem) IsCreateGroupResult() {}
 
 func (Problem) IsGroupCreationOperationResult() {}
+
+func (Problem) IsHouseholdDashboardResult() {}
+
+func (Problem) IsHouseholdDashboardTotalsResult() {}
 
 func (Problem) IsRecordRepaymentResult() {}
 
@@ -1003,6 +1071,67 @@ func (e *GroupKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e GroupKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Completeness of the freshly authorized overview. No partial totals are returned.
+type HouseholdDashboardState string
+
+const (
+	// Every eligible space and total is complete.
+	HouseholdDashboardStateComplete HouseholdDashboardState = "COMPLETE"
+	// Eligible rows are authorized, but required financial data exceeds bounds.
+	HouseholdDashboardStateIncomplete HouseholdDashboardState = "INCOMPLETE"
+	// Only the authorized Household ledger is available; sharing is not finalized.
+	HouseholdDashboardStateUnavailable HouseholdDashboardState = "UNAVAILABLE"
+)
+
+var AllHouseholdDashboardState = []HouseholdDashboardState{
+	HouseholdDashboardStateComplete,
+	HouseholdDashboardStateIncomplete,
+	HouseholdDashboardStateUnavailable,
+}
+
+func (e HouseholdDashboardState) IsValid() bool {
+	switch e {
+	case HouseholdDashboardStateComplete, HouseholdDashboardStateIncomplete, HouseholdDashboardStateUnavailable:
+		return true
+	}
+	return false
+}
+
+func (e HouseholdDashboardState) String() string {
+	return string(e)
+}
+
+func (e *HouseholdDashboardState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HouseholdDashboardState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HouseholdDashboardState", str)
+	}
+	return nil
+}
+
+func (e HouseholdDashboardState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *HouseholdDashboardState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HouseholdDashboardState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
