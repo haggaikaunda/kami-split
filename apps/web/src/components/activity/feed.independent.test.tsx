@@ -153,7 +153,9 @@ it('reauthorizes the source feed before fetching detail and clears revoked histo
   );
   expect(boundary.requests).toHaveLength(2);
   expect(host.textContent).not.toContain('Alice');
-  expect(host.textContent).toContain('This record is unavailable');
+  expect(host.textContent).toContain('Activity access changed');
+  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.textContent).not.toContain('Trip');
 });
 it('rejects a detail from a different group and ignores late detail after close', async () => {
   await render();
@@ -231,4 +233,54 @@ it('removes history when freshly authorized detail belongs to another source gro
   expect(host.textContent).not.toContain('Private secret');
   expect(host.textContent).not.toContain('Alice');
   expect(host.textContent).toContain('Activity access changed');
+});
+
+it('removes current detail and source identity before paging reauthorization and keeps them absent on denial', async () => {
+  await render();
+  const page = {
+    ...connection(),
+    pageInfo: { hasNextPage: true, endCursor: 'next-cursor' },
+  };
+  await respond(page);
+  await click('Expense created');
+  await act(async () =>
+    boundary.requests[1].resolve?.({ householdActivity: page }),
+  );
+  await act(async () =>
+    boundary.requests[2].resolve?.({
+      node: {
+        __typename: 'Expense',
+        groupId: 'g',
+        description: 'Sensitive lunch',
+        totalMinor: '101',
+        currency: 'USD',
+        effectiveDate: '2026-09-01',
+      },
+    }),
+  );
+  expect(host.textContent).toContain('Sensitive lunch');
+  await click('Next activity page');
+  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.textContent).not.toContain('Sensitive lunch');
+  expect(host.textContent).not.toContain('Trip');
+  expect(boundary.requests.at(-1)?.variables).toMatchObject({
+    after: 'next-cursor',
+  });
+  await respond({ __typename: 'Problem' });
+  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.textContent).not.toContain('Trip');
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    'unavailable',
+  );
+});
+it('focus refresh recovers from an unavailable response with freshly authorized rows', async () => {
+  await render();
+  await act(async () => boundary.requests[0].error?.());
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.textContent).toContain('Loading activity');
+  await respond(connection());
+  expect(host.textContent).toContain('Alice');
+  expect(host.querySelector('[role="alert"]')).toBeNull();
 });

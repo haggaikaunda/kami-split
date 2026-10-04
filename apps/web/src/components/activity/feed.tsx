@@ -105,15 +105,22 @@ export function ActivityFeed({
     const accept = (reference: activityFeed$key) => {
       if (!live || !scope.isLive()) return;
       const result = readInlineData<activityFeed$key>(feedDocument, reference);
-      if (result.__typename === 'ActivityConnection') setPage(result);
-      else
+      if (result.__typename === 'ActivityConnection') {
+        setPage(result);
+        setError('');
+      } else {
+        setSelected(undefined);
+        setDetail(undefined);
         setError(
           'Activity is unavailable. Your access or this page may have changed. Refresh to try again.',
         );
+      }
       setLoading(false);
     };
     const fail = () => {
       if (live && scope.isLive()) {
+        setSelected(undefined);
+        setDetail(undefined);
         setError('Activity is unavailable. Refresh to try again.');
         setLoading(false);
       }
@@ -197,6 +204,7 @@ export function ActivityFeed({
       .catch(() => {
         if (live && scope.isLive()) {
           setPage(undefined);
+          setSelected(undefined);
           setDetail(undefined);
           setError('Activity access changed. Refresh to recheck access.');
           setDetailError('This record is unavailable.');
@@ -209,6 +217,7 @@ export function ActivityFeed({
   }, [scope, groupId, selected]);
   useEffect(() => {
     const refresh = () => {
+      setError('');
       setPage(undefined);
       setSelected(undefined);
       setDetail(undefined);
@@ -304,6 +313,9 @@ export function ActivityFeed({
               <button
                 type="button"
                 onClick={() => {
+                  setError('');
+                  setSelected(undefined);
+                  setDetail(undefined);
                   setPage(undefined);
                   setLoading(true);
                   setAfter(page.pageInfo.endCursor ?? null);
