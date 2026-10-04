@@ -8,11 +8,13 @@ import './styles.css';
 import './navigation.css';
 const bodyFont = localFont({
   src: './fonts/DMSans.ttf',
+  weight: '100 1000',
   variable: '--font-dm-sans',
   display: 'swap',
 });
 const displayFont = localFont({
   src: './fonts/Manrope.ttf',
+  weight: '200 800',
   variable: '--font-manrope',
   display: 'swap',
 });
