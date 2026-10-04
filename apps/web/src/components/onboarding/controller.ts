@@ -1,4 +1,5 @@
-'use client';
+import { financialReturn } from '@/lib/relay/discovery';
+('use client');
 import { explain } from './messages';
 import { useOwnerInvitations } from './owner-controller';
 import { useRouter } from 'next/navigation';
@@ -332,7 +333,11 @@ export function useOnboarding(mode: Mode, fragment?: string) {
         ? '/auth/password'
         : mode === 'join'
           ? '/join'
-          : '/account',
+          : mode === 'sign-in'
+            ? financialReturn(
+                new URLSearchParams(window.location.search).get('next'),
+              )
+            : '/account',
     );
   };
   function showReceipt(value: Receipt) {

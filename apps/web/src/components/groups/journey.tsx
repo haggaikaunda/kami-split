@@ -66,8 +66,12 @@ export function GroupJourney({
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
         <p>
-          <Link href="/sign-in">Sign in</Link> with your invited account to see
-          your groups.
+          <Link
+            href={`/sign-in?next=${encodeURIComponent(initialGroup ? `/groups/${encodeURIComponent(initialGroup)}${expense ? `/expenses/${encodeURIComponent(expense)}` : ''}` : trips ? '/trips' : '/groups')}`}
+          >
+            Sign in
+          </Link>{' '}
+          with your invited account to see your groups.
         </p>
       ) : (
         <ViewerJourney

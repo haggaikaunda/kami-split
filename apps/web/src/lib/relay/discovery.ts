@@ -12,3 +12,13 @@ export function tripState(
 export function groupHref(id: string) {
   return `/groups/${encodeURIComponent(id)}`;
 }
+
+/** Only internal financial routes may survive sign-in; never an external redirect. */
+export function financialReturn(value: string | null) {
+  return value &&
+    (value === '/groups' ||
+      value === '/trips' ||
+      /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(value))
+    ? value
+    : '/groups';
+}
