@@ -2,7 +2,11 @@
 
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
-and expenses** from the account navigation. Select an admitted group to read a
+and expenses** from the account navigation. Groups lists active authorized memberships; Trips filters that same list by trip metadata
+and server UTC date, with abstract covers and no partial-page totals. An accessible
+designated Household has a shortcut; friends receive no inferred household role.
+Canonical `/groups/:groupId` and `/groups/:groupId/expenses/:expenseId` routes
+recheck access and expense ownership. Select an admitted group to read a
 bounded expense connection, create an expense, and see complete server balances.
 The existing `ONBOARDING_ORIGIN`, `ONBOARDING_API_URL` and public Supabase
 configuration also serve this journey through the same-origin GraphQL proxy.
@@ -14,9 +18,10 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-Remaining preview routes are explicitly labeled simulated and link to `/groups`;
+Remaining preview routes (including seeded `/trips/:tripId`) are explicitly labeled simulated and link to `/groups`;
 they do not receive authenticated financial data. This slice does not implement
-expense edit/delete, group creation, repayments, trips or dashboard integration.
+expense edit/delete, group creation forms, repayments or dashboard integration.
+Trip dates affect status only; financial history remains complete and group-local.
 
 Expenses use the approved forward connection with pages of 20 and signed cursors.
 **Refresh group and restart list** resets the traversal after changes. Complete
@@ -84,3 +89,18 @@ storage failures, duplicate suppression, frozen retries, denied access and
 unmounted results. The PR records synthetic real-provider invitation, browser,
 PostgreSQL persistence, commit-loss, pagination, keyboard/focus and responsive
 verification with tested commit and explicit limitations.
+
+## Discovery and return navigation (#105)
+
+A normal card/expense activation captures an actor-session source visit with its
+filter URL, scroll and logical focus. Modified clicks use canonical standalone
+URLs. Back to source restores after a fresh authorized read; missing records focus
+the heading. Unknown visits fall back to Groups. Session replacement clears these
+private visits alongside financial drafts. Drafts continue to retain their original
+group. UTC midnight and foregrounding refresh discovery and temporarily hide stale
+fields; delayed responses cannot populate a different group/account visit.
+
+Expense pages are explicit bounded reads rather than accumulating a Relay
+connection across visits. Failed reads never establish an empty group or settled
+balance. New ordinary/trip groups reuse the same expense form and complete balances,
+without preview household trip pickers or repayment shortcuts.
