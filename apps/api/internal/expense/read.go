@@ -168,6 +168,12 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 	if err != nil {
 		return result, err
 	}
+	return decodeSnapshot(payload, page)
+}
+
+func decodeSnapshot(payload []byte, page PageRequest) (Snapshot, error) {
+	var result Snapshot
+	var err error
 	var data struct {
 		ID, Name, Currency, ViewerMembershipID, Total string
 		Trip                                          *database.GroupTripInput

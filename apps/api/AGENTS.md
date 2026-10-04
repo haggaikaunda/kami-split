@@ -6,6 +6,8 @@ These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [G
 
 The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Targeted invitation/onboarding, durable delivery recovery, and ordinary/trip group creation APIs are implemented; the [Relay expense journey](../../docs/application/relay-expenses.md) connects real group expense reads, creation and recovery (#83). The web preview uses its mock DataPort. Append-only repayment persistence and its authenticated API/history share the financial transaction/recovery engine. Expense editing/deletion and imports remain deferred to separately approved issues.
 
+The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page remains a separate #112 delivery.
+
 ## Design and implementation
 
 - Document every exported handwritten package declaration with its caller-visible contract. Preserve GraphQL descriptions on all public SDL declarations; do not manually document generated gqlgen/sqlc output.

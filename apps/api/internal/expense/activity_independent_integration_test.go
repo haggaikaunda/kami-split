@@ -4,6 +4,7 @@ package expense_test
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -92,9 +93,89 @@ func TestActivityIndependentCursorBindingsAndCurrentAuthorization(t *testing.T) 
 			t.Errorf("actor %d vars %v: %v", scenario.actor, scenario.variables, got)
 		}
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(301)))
+	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(302)))
 	vars["after"] = cursor
-	if got := independentActivity(t, f, 1, vars); got["__typename"] != "Problem" || got["code"] != "NOT_FOUND" {
+	if got := independentActivity(t, f, 2, vars); got["__typename"] != "Problem" || got["code"] != "NOT_FOUND" {
 		t.Fatal(got)
+	}
+}
+
+func TestActivityIndependentEqualTimestampTiePagination(t *testing.T) {
+	f := newExpenseFixture(t)
+	second := f.input
+	second.Key = uuid.NewString()
+	saved := f.create(1, second)
+	if saved.Kind != "COMMITTED" {
+		t.Fatal(saved)
+	}
+	repayment := repaymentGQLRecord(t, f, 3, repaymentGQLInput(f))
+	if repayment["__typename"] != "RepaymentCommitted" {
+		t.Fatal(repayment)
+	}
+	// Inject a historical equal-time fixture as the schema owner. Restore FORCE
+	// RLS under the same exclusive table locks before publishing the fixture.
+	tx, err := f.admin.Begin(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(f.ctx)
+	if _, err = tx.Exec(f.ctx, "SET LOCAL ROLE kami_migrator"); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"expenses", "repayments", "expense_audit", "repayment_audit"} {
+		if _, err = tx.Exec(f.ctx, "ALTER TABLE app."+table+" NO FORCE ROW LEVEL SECURITY"); err != nil {
+			t.Fatal(err)
+		}
+		column := "created_at"
+		if table == "expense_audit" || table == "repayment_audit" {
+			column = "committed_at"
+		}
+		if _, err = tx.Exec(f.ctx, "UPDATE app."+table+" SET "+column+"='2026-10-01T12:00:00.123456Z' WHERE group_id=$1", f.id(201)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = tx.Exec(f.ctx, "ALTER TABLE app."+table+" FORCE ROW LEVEL SECURITY"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = tx.Commit(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+	vars := map[string]any{"group": f.input.GroupID, "first": 1}
+	seen := []string{}
+	kinds := []string{}
+	for i := 0; i < 3; i++ {
+		page := independentActivity(t, f, 1, vars)
+		edges := page["edges"].([]any)
+		if len(edges) != 1 {
+			t.Fatal(page)
+		}
+		node := edges[0].(map[string]any)["node"].(map[string]any)
+		seen = append(seen, node["id"].(string))
+		kinds = append(kinds, node["kind"].(string))
+		if node["timestamp"] != "2026-10-01T12:00:00.123456Z" {
+			t.Fatal(node)
+		}
+		info := page["pageInfo"].(map[string]any)
+		if info["hasNextPage"] != (i < 2) {
+			t.Fatal(page)
+		}
+		vars["after"] = info["endCursor"]
+	}
+	if kinds[0] != "REPAYMENT_RECORDED" || kinds[1] != "EXPENSE_CREATED" || kinds[2] != "EXPENSE_CREATED" {
+		t.Fatal(kinds)
+	}
+	if seen[0] == seen[1] || seen[1] == seen[2] || seen[1] < seen[2] {
+		t.Fatal(seen)
+	}
+	delete(vars, "after")
+	vars["first"] = 100
+	all := independentActivity(t, f, 1, vars)["edges"].([]any)
+	for i, raw := range all {
+		if raw.(map[string]any)["node"].(map[string]any)["id"] != seen[i] {
+			t.Fatal(all, seen)
+		}
+	}
+	if !sort.StringsAreSorted([]string{seen[2], seen[1]}) {
+		t.Fatal(seen)
 	}
 }

@@ -3,9 +3,9 @@
 Issue #130 implements the internal designation foundation required by
 [ADR-008](decisions/008-household-partner-policy.md). `DB.HouseholdDesignation`
 accepts a previously verified Auth subject and owns a READ COMMITTED transaction.
-There is no public partner directory, GraphQL designation operation, dashboard
-summary query or UI in this slice. #111 remains responsible for authorized,
-complete Household overview reads.
+There is no public partner directory, GraphQL designation operation or UI in this
+slice. #111 implements the separate authorized complete `householdDashboard`
+summary query using this finalized designation foundation.
 
 ## Pair and consent
 

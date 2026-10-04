@@ -193,6 +193,34 @@ type ComplexityRoot struct {
 		Status func(childComplexity int) int
 	}
 
+	HouseholdDashboard struct {
+		Spaces func(childComplexity int) int
+		State  func(childComplexity int) int
+		Totals func(childComplexity int) int
+	}
+
+	HouseholdDashboardSpace struct {
+		Balances           func(childComplexity int) int
+		Currency           func(childComplexity int) int
+		GroupID            func(childComplexity int) int
+		IsHousehold        func(childComplexity int) int
+		Kind               func(childComplexity int) int
+		Members            func(childComplexity int) int
+		Name               func(childComplexity int) int
+		SharedExpenseCount func(childComplexity int) int
+		Trip               func(childComplexity int) int
+		ViewerMembership   func(childComplexity int) int
+		ViewerNetMinor     func(childComplexity int) int
+	}
+
+	HouseholdDashboardTotals struct {
+		ActiveSpaceCount        func(childComplexity int) int
+		OpenBalanceCount        func(childComplexity int) int
+		TotalSharedExpenseCount func(childComplexity int) int
+		TotalSharedExpenseMinor func(childComplexity int) int
+		ViewerNetMinor          func(childComplexity int) int
+	}
+
 	InvitationActionResult struct {
 		ActionID           func(childComplexity int) int
 		CommittedExpiresAt func(childComplexity int) int
@@ -303,6 +331,7 @@ type ComplexityRoot struct {
 		GroupCreationOperation func(childComplexity int, operationKey ledger.OperationKey) int
 		Health                 func(childComplexity int) int
 		HouseholdActivity      func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
+		HouseholdDashboard     func(childComplexity int) int
 		InvitationAction       func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
 		Node                   func(childComplexity int, id string) int
 		OwnerInvitations       func(childComplexity int, groupID string, first int, after *string) int
@@ -401,6 +430,7 @@ type QueryResolver interface {
 	GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
 	HouseholdActivity(ctx context.Context, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
 	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
+	HouseholdDashboard(ctx context.Context) (model.HouseholdDashboardResult, error)
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
 	OwnerInvitations(ctx context.Context, groupID string, first int, after *string) (model.OwnerInvitationsResult, error)
 	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
@@ -1026,6 +1056,123 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Health.Status(childComplexity), true
 
+	case "HouseholdDashboard.spaces":
+		if e.ComplexityRoot.HouseholdDashboard.Spaces == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboard.Spaces(childComplexity), true
+	case "HouseholdDashboard.state":
+		if e.ComplexityRoot.HouseholdDashboard.State == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboard.State(childComplexity), true
+	case "HouseholdDashboard.totals":
+		if e.ComplexityRoot.HouseholdDashboard.Totals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboard.Totals(childComplexity), true
+
+	case "HouseholdDashboardSpace.balances":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Balances == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Balances(childComplexity), true
+	case "HouseholdDashboardSpace.currency":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Currency(childComplexity), true
+	case "HouseholdDashboardSpace.groupId":
+		if e.ComplexityRoot.HouseholdDashboardSpace.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.GroupID(childComplexity), true
+	case "HouseholdDashboardSpace.isHousehold":
+		if e.ComplexityRoot.HouseholdDashboardSpace.IsHousehold == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.IsHousehold(childComplexity), true
+	case "HouseholdDashboardSpace.kind":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Kind(childComplexity), true
+	case "HouseholdDashboardSpace.members":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Members == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Members(childComplexity), true
+	case "HouseholdDashboardSpace.name":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Name(childComplexity), true
+	case "HouseholdDashboardSpace.sharedExpenseCount":
+		if e.ComplexityRoot.HouseholdDashboardSpace.SharedExpenseCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.SharedExpenseCount(childComplexity), true
+	case "HouseholdDashboardSpace.trip":
+		if e.ComplexityRoot.HouseholdDashboardSpace.Trip == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.Trip(childComplexity), true
+	case "HouseholdDashboardSpace.viewerMembership":
+		if e.ComplexityRoot.HouseholdDashboardSpace.ViewerMembership == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.ViewerMembership(childComplexity), true
+	case "HouseholdDashboardSpace.viewerNetMinor":
+		if e.ComplexityRoot.HouseholdDashboardSpace.ViewerNetMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardSpace.ViewerNetMinor(childComplexity), true
+
+	case "HouseholdDashboardTotals.activeSpaceCount":
+		if e.ComplexityRoot.HouseholdDashboardTotals.ActiveSpaceCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.ActiveSpaceCount(childComplexity), true
+	case "HouseholdDashboardTotals.openBalanceCount":
+		if e.ComplexityRoot.HouseholdDashboardTotals.OpenBalanceCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.OpenBalanceCount(childComplexity), true
+	case "HouseholdDashboardTotals.totalSharedExpenseCount":
+		if e.ComplexityRoot.HouseholdDashboardTotals.TotalSharedExpenseCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.TotalSharedExpenseCount(childComplexity), true
+	case "HouseholdDashboardTotals.totalSharedExpenseMinor":
+		if e.ComplexityRoot.HouseholdDashboardTotals.TotalSharedExpenseMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.TotalSharedExpenseMinor(childComplexity), true
+	case "HouseholdDashboardTotals.viewerNetMinor":
+		if e.ComplexityRoot.HouseholdDashboardTotals.ViewerNetMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.ViewerNetMinor(childComplexity), true
+
 	case "InvitationActionResult.actionID":
 		if e.ComplexityRoot.InvitationActionResult.ActionID == nil {
 			break
@@ -1500,6 +1647,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.HouseholdActivity(childComplexity, args["first"].(int), args["after"].(*string), args["filter"].(*model.ActivityFilter)), true
+	case "Query.householdDashboard":
+		if e.ComplexityRoot.Query.HouseholdDashboard == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.HouseholdDashboard(childComplexity), true
 
 	case "Query.invitationAction":
 		if e.ComplexityRoot.Query.InvitationAction == nil {
@@ -1877,113 +2030,6 @@ func newExecutionContext(
 }
 
 var sources = []*ast.Source{
-	{Name: "../../../../packages/schema/activity.graphql", Input: `"""
-Implemented immutable financial event kinds. Future mutations require explicit
-production audit contracts before extending this enum.
-"""
-enum ActivityKind {
-  """One committed expense creation."""
-  EXPENSE_CREATED
-  """One committed actual group repayment."""
-  REPAYMENT_RECORDED
-}
-
-"""Optional exact filters bound into every continuation cursor."""
-input ActivityFilter {
-  """Restrict the event kind; omitted means both supported kinds."""
-  kind: ActivityKind
-  """Restrict to one currently eligible source; excluded IDs are masked."""
-  sourceGroupId: ID
-}
-
-"""Minimal current authorized label for an immutable historical membership."""
-type ActivityIdentity {
-  """Stable same-source Membership ID, never a peer account identifier."""
-  id: ID!
-  """Current authorized display label, which may represent a historical member."""
-  displayName: String!
-}
-
-"""One immutable event, ordered by event time, kind and stable record UUID."""
-type ActivityEvent {
-  """Stable event identity independent of pagination and filters."""
-  id: ID!
-  """Current authorized Expense or Repayment ID; detail must reauthorize."""
-  recordId: ID!
-  """The supported committed mutation."""
-  kind: ActivityKind!
-  """Original source Group ID; financial boundaries remain independent."""
-  groupId: ID!
-  """Current authorized source label."""
-  groupName: String!
-  """Whether the source is the designated Household ledger."""
-  isHousehold: Boolean!
-  """Exact expense face value or actual repayment amount."""
-  amountMinor: MinorUnits!
-  """Original record currency."""
-  currency: Currency!
-  """Financial effective date, distinct from event order."""
-  effectiveDate: Date!
-  """Immutable recorded commit timestamp in UTC microseconds."""
-  timestamp: DateTime!
-  """Membership that committed this mutation."""
-  creator: ActivityIdentity!
-  """Expense payer; null for a repayment."""
-  payer: ActivityIdentity
-  """Repayment sender; null for an expense."""
-  sender: ActivityIdentity
-  """Repayment recipient; null for an expense."""
-  recipient: ActivityIdentity
-}
-
-"""A scope-bound position and its immutable event."""
-type ActivityEdge {
-  """Authenticated forward traversal boundary."""
-  cursor: String!
-  """One freshly authorized event."""
-  node: ActivityEvent!
-}
-
-"""Complete bounded event traversal, independent of financial record page sizes."""
-type ActivityConnection {
-  """Events from the fixed source revisions in deterministic descending order."""
-  edges: [ActivityEdge!]!
-  """Continuation metadata; refresh restarts with current authorization."""
-  pageInfo: PageInfo!
-}
-
-"""Safe failure or a complete authorized activity page."""
-union ActivityResult = ActivityConnection | Problem
-
-extend type Query {
-  """
-  Group-local immutable activity. Rechecks current access on every request.
-  Cursors bind actor, group, filters and financial revision.
-  """
-  groupActivity(
-    """Explicit authorized source group."""
-    groupId: ID!
-    """Page size between 1 and 100."""
-    first: Int! = 20
-    """Authenticated boundary from the same workspace and filters."""
-    after: String
-    """Exact supported event/source restrictions."""
-    filter: ActivityFilter
-  ): ActivityResult!
-  """
-  Same events across exactly the server-authorized Household dashboard eligible
-  set. No viewer-group discovery or client-side eligibility inference is used.
-  """
-  householdActivity(
-    """Page size between 1 and 100."""
-    first: Int! = 20
-    """Authenticated boundary from the same actor, eligible set and filters."""
-    after: String
-    """Exact supported event/source restrictions."""
-    filter: ActivityFilter
-  ): ActivityResult!
-}
-`, BuiltIn: false},
 	{Name: "../../../../packages/schema/expenses.graphql", Input: `"""
 Exact signed int64 cents, encoded only as canonical decimal strings; each field imposes its own monetary bounds.
 """
@@ -2820,6 +2866,187 @@ type Problem {
   message: String!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/financial-activity.graphql", Input: `"""
+Implemented immutable financial event kinds. Future mutations require explicit
+production audit contracts before extending this enum.
+"""
+enum ActivityKind {
+  """
+  One committed expense creation.
+  """
+  EXPENSE_CREATED
+  """
+  One committed actual group repayment.
+  """
+  REPAYMENT_RECORDED
+}
+
+"""
+Optional exact filters bound into every continuation cursor.
+"""
+input ActivityFilter {
+  """
+  Restrict the event kind; omitted means both supported kinds.
+  """
+  kind: ActivityKind
+  """
+  Restrict to one currently eligible source; excluded IDs are masked.
+  """
+  sourceGroupId: ID
+}
+
+"""
+Minimal current authorized label for an immutable historical membership.
+"""
+type ActivityIdentity {
+  """
+  Stable same-source Membership ID, never a peer account identifier.
+  """
+  id: ID!
+  """
+  Current authorized display label, which may represent a historical member.
+  """
+  displayName: String!
+}
+
+"""
+One immutable event, ordered by event time, kind and stable record UUID.
+"""
+type ActivityEvent {
+  """
+  Stable event identity independent of pagination and filters.
+  """
+  id: ID!
+  """
+  Current authorized Expense or Repayment ID; detail must reauthorize.
+  """
+  recordId: ID!
+  """
+  The supported committed mutation.
+  """
+  kind: ActivityKind!
+  """
+  Original source Group ID; financial boundaries remain independent.
+  """
+  groupId: ID!
+  """
+  Current authorized source label.
+  """
+  groupName: String!
+  """
+  Whether the source is the designated Household ledger.
+  """
+  isHousehold: Boolean!
+  """
+  Exact expense face value or actual repayment amount.
+  """
+  amountMinor: MinorUnits!
+  """
+  Original record currency.
+  """
+  currency: Currency!
+  """
+  Financial effective date, distinct from event order.
+  """
+  effectiveDate: Date!
+  """
+  Immutable recorded commit timestamp in UTC microseconds.
+  """
+  timestamp: DateTime!
+  """
+  Membership that committed this mutation.
+  """
+  creator: ActivityIdentity!
+  """
+  Expense payer; null for a repayment.
+  """
+  payer: ActivityIdentity
+  """
+  Repayment sender; null for an expense.
+  """
+  sender: ActivityIdentity
+  """
+  Repayment recipient; null for an expense.
+  """
+  recipient: ActivityIdentity
+}
+
+"""
+A scope-bound position and its immutable event.
+"""
+type ActivityEdge {
+  """
+  Authenticated forward traversal boundary.
+  """
+  cursor: String!
+  """
+  One freshly authorized event.
+  """
+  node: ActivityEvent!
+}
+
+"""
+Complete bounded event traversal, independent of financial record page sizes.
+"""
+type ActivityConnection {
+  """
+  Events from the fixed source revisions in deterministic descending order.
+  """
+  edges: [ActivityEdge!]!
+  """
+  Continuation metadata; refresh restarts with current authorization.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+Safe failure or a complete authorized activity page.
+"""
+union ActivityResult = ActivityConnection | Problem
+
+extend type Query {
+  """
+  Group-local immutable activity. Rechecks current access on every request.
+  Cursors bind actor, group, filters and financial revision.
+  """
+  groupActivity(
+    """
+    Explicit authorized source group.
+    """
+    groupId: ID!
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same workspace and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+  """
+  Same events across exactly the server-authorized Household dashboard eligible
+  set. No viewer-group discovery or client-side eligibility inference is used.
+  """
+  householdActivity(
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same actor, eligible set and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/groups.graphql", Input: `"""
 Classification derived from the optional trip extension; access and ledgers remain group-local.
 """
@@ -2977,6 +3204,129 @@ type GroupCreationNotStarted {
   Original identity-scoped attempt key.
   """
   operationKey: OperationKey!
+}
+`, BuiltIn: false},
+	{Name: "../../../../packages/schema/household.graphql", Input: `"""
+Authorized Household overview or safe access/discovery failure; never a repayment target.
+"""
+union HouseholdDashboardResult = HouseholdDashboard | Problem
+"""
+Completeness of the freshly authorized overview. No partial totals are returned.
+"""
+enum HouseholdDashboardState {
+  """
+  Every eligible space and total is complete.
+  """
+  COMPLETE
+  """
+  Eligible rows are authorized, but required financial data exceeds bounds.
+  """
+  INCOMPLETE
+  """
+  Only the authorized Household ledger is available; sharing is not finalized.
+  """
+  UNAVAILABLE
+}
+"""
+Original ledgers and an explicit complete/incomplete/unavailable outcome.
+"""
+type HouseholdDashboard {
+  """
+  Current completeness, independent of individual group settlement.
+  """
+  state: HouseholdDashboardState!
+  """
+  Complete eligible set, or Household-only fallback; excluded groups leave no trace.
+  """
+  spaces: [HouseholdDashboardSpace!]!
+  """
+  Complete checked totals, or safe amount failure; absent for unavailable sharing.
+  """
+  totals: HouseholdDashboardTotalsResult
+}
+"""
+Complete exact totals or overflow, with no partial sum.
+"""
+union HouseholdDashboardTotalsResult = HouseholdDashboardTotals | Problem
+"""
+One original authorized ledger, including current metadata and complete balances.
+"""
+type HouseholdDashboardSpace {
+  """
+  Original authorized Group ID for navigation; no aggregate repayment scope.
+  """
+  groupId: ID!
+  """
+  Current authorized group label.
+  """
+  name: String!
+  """
+  Current ordinary/trip classification.
+  """
+  kind: GroupKind!
+  """
+  Current authorized travel metadata, independent of financial history.
+  """
+  trip: GroupTrip
+  """
+  Whether this source ledger is the installation Household.
+  """
+  isHousehold: Boolean!
+  """
+  Original ledger currency; currently USD only.
+  """
+  currency: Currency!
+  """
+  Authorized historical profiles, without global user IDs or emails.
+  """
+  members: [Membership!]!
+  """
+  Viewer's independent membership in this original group.
+  """
+  viewerMembership: Membership!
+  """
+  Complete positions, obligations, settlement state and financial revision, or safe overflow.
+  """
+  balances: BalanceResult!
+  """
+  Exact viewer position in this space; absent if its balance is unavailable.
+  """
+  viewerNetMinor: MinorUnits
+  """
+  Complete active expense count, excluding actual repayments.
+  """
+  sharedExpenseCount: MinorUnits!
+}
+"""
+Checked totals across the complete eligible set; zero net never means settled.
+"""
+type HouseholdDashboardTotals {
+  """
+  Signed sum of viewer positions: positive is owed, negative owes; informational only.
+  """
+  viewerNetMinor: MinorUnits!
+  """
+  Number of eligible spaces with a nonzero viewer position.
+  """
+  openBalanceCount: MinorUnits!
+  """
+  Number of complete currently eligible spaces, including Household.
+  """
+  activeSpaceCount: MinorUnits!
+  """
+  Sum of original active expense face values, counted once; repayments excluded.
+  """
+  totalSharedExpenseMinor: MinorUnits!
+  """
+  Complete number of active expenses, independent of expense pagination.
+  """
+  totalSharedExpenseCount: MinorUnits!
+}
+extend type Query {
+  """
+  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  """
+  householdDashboard: HouseholdDashboardResult!
 }
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/onboarding.graphql", Input: `"""
@@ -3824,6 +4174,34 @@ func (ec *executionContext) childFields_Health(ctx context.Context, field graphq
 		return ec.fieldContext_Health_status(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Health", field.Name)
+}
+
+func (ec *executionContext) childFields_HouseholdDashboardSpace(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "groupId":
+		return ec.fieldContext_HouseholdDashboardSpace_groupId(ctx, field)
+	case "name":
+		return ec.fieldContext_HouseholdDashboardSpace_name(ctx, field)
+	case "kind":
+		return ec.fieldContext_HouseholdDashboardSpace_kind(ctx, field)
+	case "trip":
+		return ec.fieldContext_HouseholdDashboardSpace_trip(ctx, field)
+	case "isHousehold":
+		return ec.fieldContext_HouseholdDashboardSpace_isHousehold(ctx, field)
+	case "currency":
+		return ec.fieldContext_HouseholdDashboardSpace_currency(ctx, field)
+	case "members":
+		return ec.fieldContext_HouseholdDashboardSpace_members(ctx, field)
+	case "viewerMembership":
+		return ec.fieldContext_HouseholdDashboardSpace_viewerMembership(ctx, field)
+	case "balances":
+		return ec.fieldContext_HouseholdDashboardSpace_balances(ctx, field)
+	case "viewerNetMinor":
+		return ec.fieldContext_HouseholdDashboardSpace_viewerNetMinor(ctx, field)
+	case "sharedExpenseCount":
+		return ec.fieldContext_HouseholdDashboardSpace_sharedExpenseCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type HouseholdDashboardSpace", field.Name)
 }
 
 func (ec *executionContext) childFields_MemberPosition(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -7110,6 +7488,479 @@ func (ec *executionContext) fieldContext_Health_status(_ context.Context, field 
 	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _HouseholdDashboard_state(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboard_state(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.HouseholdDashboardState) graphql.Marshaler {
+			return ec.marshalNHouseholdDashboardState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboard_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboard", field, false, false, errors.New("field of type HouseholdDashboardState does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboard_spaces(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboard_spaces(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Spaces, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.HouseholdDashboardSpace) graphql.Marshaler {
+			return ec.marshalNHouseholdDashboardSpace2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardSpaceᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboard_spaces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HouseholdDashboard",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HouseholdDashboardSpace(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HouseholdDashboard_totals(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboard_totals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Totals, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.HouseholdDashboardTotalsResult) graphql.Marshaler {
+			return ec.marshalOHouseholdDashboardTotalsResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardTotalsResult(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboard_totals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboard", field, false, false, errors.New("field of type HouseholdDashboardTotalsResult does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_groupId(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_groupId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_groupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_name(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_kind(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+			return ec.marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type GroupKind does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_trip(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_trip(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Trip, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.GroupTrip) graphql.Marshaler {
+			return ec.marshalOGroupTrip2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTrip(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_trip(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HouseholdDashboardSpace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GroupTrip(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_isHousehold(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_isHousehold(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsHousehold, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_isHousehold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_currency(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_members(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_members(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Members, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembershipᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_members(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HouseholdDashboardSpace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_viewerMembership(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_viewerMembership(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerMembership, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_viewerMembership(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HouseholdDashboardSpace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_balances(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_balances(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Balances, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BalanceResult) graphql.Marshaler {
+			return ec.marshalNBalanceResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBalanceResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_balances(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type BalanceResult does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_viewerNetMinor(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_viewerNetMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerNetMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalOMinorUnits2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_viewerNetMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardSpace_sharedExpenseCount(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardSpace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardSpace_sharedExpenseCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SharedExpenseCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardSpace_sharedExpenseCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardSpace", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_viewerNetMinor(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_viewerNetMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerNetMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_viewerNetMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_openBalanceCount(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_openBalanceCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenBalanceCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_openBalanceCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_activeSpaceCount(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_activeSpaceCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActiveSpaceCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_activeSpaceCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_totalSharedExpenseMinor(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_totalSharedExpenseMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalSharedExpenseMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_totalSharedExpenseMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_totalSharedExpenseCount(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_totalSharedExpenseCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalSharedExpenseCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_totalSharedExpenseCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
 func (ec *executionContext) _InvitationActionResult_actionID(ctx context.Context, field graphql.CollectedField, obj *model.InvitationActionResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8975,6 +9826,29 @@ func (ec *executionContext) fieldContext_Query_groupCreationOperation(ctx contex
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Query_householdDashboard(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_householdDashboard(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().HouseholdDashboard(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.HouseholdDashboardResult) graphql.Marshaler {
+			return ec.marshalNHouseholdDashboardResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_householdDashboard(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type HouseholdDashboardResult does not have child fields"))
 }
 
 func (ec *executionContext) _Query_previewInvitation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -11858,6 +12732,60 @@ func (ec *executionContext) _GroupResult(ctx context.Context, sel ast.SelectionS
 	}
 }
 
+func (ec *executionContext) _HouseholdDashboardResult(ctx context.Context, sel ast.SelectionSet, obj model.HouseholdDashboardResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.HouseholdDashboard:
+		return ec._HouseholdDashboard(ctx, sel, &obj)
+	case *model.HouseholdDashboard:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._HouseholdDashboard(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of HouseholdDashboardResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _HouseholdDashboardTotalsResult(ctx context.Context, sel ast.SelectionSet, obj model.HouseholdDashboardTotalsResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.HouseholdDashboardTotals:
+		return ec._HouseholdDashboardTotals(ctx, sel, &obj)
+	case *model.HouseholdDashboardTotals:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._HouseholdDashboardTotals(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of HouseholdDashboardTotalsResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
 func (ec *executionContext) _InvitationDelivery(ctx context.Context, sel ast.SelectionSet, obj model.InvitationDelivery) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -13383,6 +14311,200 @@ func (ec *executionContext) _Health(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var householdDashboardImplementors = []string{"HouseholdDashboard", "HouseholdDashboardResult"}
+
+func (ec *executionContext) _HouseholdDashboard(ctx context.Context, sel ast.SelectionSet, obj *model.HouseholdDashboard) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, householdDashboardImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HouseholdDashboard")
+		case "state":
+			out.Values[i] = ec._HouseholdDashboard_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "spaces":
+			out.Values[i] = ec._HouseholdDashboard_spaces(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totals":
+			out.Values[i] = ec._HouseholdDashboard_totals(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var householdDashboardSpaceImplementors = []string{"HouseholdDashboardSpace"}
+
+func (ec *executionContext) _HouseholdDashboardSpace(ctx context.Context, sel ast.SelectionSet, obj *model.HouseholdDashboardSpace) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, householdDashboardSpaceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HouseholdDashboardSpace")
+		case "groupId":
+			out.Values[i] = ec._HouseholdDashboardSpace_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._HouseholdDashboardSpace_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._HouseholdDashboardSpace_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "trip":
+			out.Values[i] = ec._HouseholdDashboardSpace_trip(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "isHousehold":
+			out.Values[i] = ec._HouseholdDashboardSpace_isHousehold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currency":
+			out.Values[i] = ec._HouseholdDashboardSpace_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "members":
+			out.Values[i] = ec._HouseholdDashboardSpace_members(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerMembership":
+			out.Values[i] = ec._HouseholdDashboardSpace_viewerMembership(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "balances":
+			out.Values[i] = ec._HouseholdDashboardSpace_balances(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerNetMinor":
+			out.Values[i] = ec._HouseholdDashboardSpace_viewerNetMinor(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "sharedExpenseCount":
+			out.Values[i] = ec._HouseholdDashboardSpace_sharedExpenseCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var householdDashboardTotalsImplementors = []string{"HouseholdDashboardTotals", "HouseholdDashboardTotalsResult"}
+
+func (ec *executionContext) _HouseholdDashboardTotals(ctx context.Context, sel ast.SelectionSet, obj *model.HouseholdDashboardTotals) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, householdDashboardTotalsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HouseholdDashboardTotals")
+		case "viewerNetMinor":
+			out.Values[i] = ec._HouseholdDashboardTotals_viewerNetMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "openBalanceCount":
+			out.Values[i] = ec._HouseholdDashboardTotals_openBalanceCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "activeSpaceCount":
+			out.Values[i] = ec._HouseholdDashboardTotals_activeSpaceCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalSharedExpenseMinor":
+			out.Values[i] = ec._HouseholdDashboardTotals_totalSharedExpenseMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalSharedExpenseCount":
+			out.Values[i] = ec._HouseholdDashboardTotals_totalSharedExpenseCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var invitationActionResultImplementors = []string{"InvitationActionResult", "InvitationResult"}
 
 func (ec *executionContext) _InvitationActionResult(ctx context.Context, sel ast.SelectionSet, obj *model.InvitationActionResult) graphql.Marshaler {
@@ -14153,7 +15275,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ActivityResult", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "CreateGroupResult", "GroupCreationOperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
+var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "ActivityResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -14358,6 +15480,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_groupCreationOperation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "householdDashboard":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_householdDashboard(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -15692,6 +16836,52 @@ func (ec *executionContext) marshalNHealth2ᚖgithubᚗcomᚋhaggaikaundaᚋkami
 	return ec._Health(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHouseholdDashboardResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardResult(ctx context.Context, sel ast.SelectionSet, v model.HouseholdDashboardResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HouseholdDashboardResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNHouseholdDashboardSpace2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardSpaceᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.HouseholdDashboardSpace) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNHouseholdDashboardSpace2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardSpace(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHouseholdDashboardSpace2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardSpace(ctx context.Context, sel ast.SelectionSet, v *model.HouseholdDashboardSpace) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HouseholdDashboardSpace(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNHouseholdDashboardState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardState(ctx context.Context, v any) (model.HouseholdDashboardState, error) {
+	var res model.HouseholdDashboardState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHouseholdDashboardState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardState(ctx context.Context, sel ast.SelectionSet, v model.HouseholdDashboardState) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -16465,6 +17655,13 @@ func (ec *executionContext) unmarshalOGroupTripInput2ᚖgithubᚗcomᚋhaggaikau
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOHouseholdDashboardTotalsResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐHouseholdDashboardTotalsResult(ctx context.Context, sel ast.SelectionSet, v model.HouseholdDashboardTotalsResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HouseholdDashboardTotalsResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -16481,6 +17678,22 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	_ = ctx
 	res := graphql.MarshalID(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOMinorUnits2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx context.Context, v any) (*ledger.MinorUnits, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(ledger.MinorUnits)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMinorUnits2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx context.Context, sel ast.SelectionSet, v *ledger.MinorUnits) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalONode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐNode(ctx context.Context, sel ast.SelectionSet, v model.Node) graphql.Marshaler {
