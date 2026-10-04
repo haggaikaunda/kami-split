@@ -402,3 +402,20 @@ it('does not repeat focus or scroll on background remount, but permits another e
   expect(scroll).toHaveBeenCalledTimes(2);
   vi.unstubAllGlobals();
 });
+
+it('does not redirect a consumed source return when a later background group read is denied', async () => {
+  mock.path = '/groups/T';
+  mock.search = 'restore=consumed-return';
+  scope.restored.add('consumed-return');
+  await render(<GroupJourney initialGroup="T" />);
+  await respond(viewer());
+  await resolveGroup(groupResult('T'));
+  expect(host.textContent).toContain('Pre-trip booking');
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  await respond(viewer([groups[2]]));
+  await resolveGroup({ group: { __typename: 'Problem', code: 'NOT_FOUND' } });
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  expect(host.textContent).toContain('cannot access');
+});

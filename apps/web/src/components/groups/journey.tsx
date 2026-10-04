@@ -329,6 +329,7 @@ function GroupDetails({
       else {
         if (
           params.has('restore') &&
+          !scope.restored.has(params.get('restore')!) &&
           result?.group.__typename === 'Problem' &&
           result.group.code === 'NOT_FOUND'
         )
