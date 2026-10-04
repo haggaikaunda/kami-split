@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       '/sign-in',
       '/account',
       '/groups',
+      '/groups/:path*',
+      '/trips',
       '/invitations',
       '/auth/:path*',
       '/api/:path*',

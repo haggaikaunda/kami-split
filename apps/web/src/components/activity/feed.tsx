@@ -40,10 +40,10 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
         hrefFor={(section) =>
           section === 'Activity'
             ? groupId
-              ? `/groups/activity?group=${encodeURIComponent(groupId)}`
+              ? `/groups/${encodeURIComponent(groupId)}/activity`
               : '/household/activity'
             : groupId
-              ? `/groups?group=${encodeURIComponent(groupId)}&section=${section.toLowerCase()}`
+              ? `/groups/${encodeURIComponent(groupId)}?section=${section.toLowerCase()}`
               : `/groups?section=${section.toLowerCase()}`
         }
       />
@@ -372,9 +372,7 @@ export function ActivityFeed({
                   {detail.currency}
                 </p>
                 <p>Effective {detail.effectiveDate}</p>
-                <Link
-                  href={`/groups?group=${encodeURIComponent(detail.groupId)}`}
-                >
+                <Link href={`/groups/${encodeURIComponent(detail.groupId)}`}>
                   Open {selected.groupName}
                 </Link>
               </>

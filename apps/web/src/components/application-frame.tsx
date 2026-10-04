@@ -19,6 +19,7 @@ export function ApplicationFrame({
     path === '/household/activity' ||
     path === '/groups' ||
     path.startsWith('/groups/') ||
+    path === '/trips' ||
     path === '/sign-in' ||
     path === '/join' ||
     path === '/account' ||

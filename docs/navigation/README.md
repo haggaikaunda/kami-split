@@ -1,6 +1,6 @@
 # Responsive navigation and source restoration
 
-Issue [#17](https://github.com/haggaikaunda/kami-split/issues/17) introduced the Next App Router shell. Overview, History, Trips and Household now render the implemented shared-data journeys; account entry remains explicitly simulated. This document describes the current navigation contract and retains the original shell verification as historical evidence.
+Issue [#17](https://github.com/haggaikaunda/kami-split/issues/17) introduced the Next App Router shell. Overview, History, Household and seeded `/trips/:tripId` detail retain simulated shared-data journeys. `/groups`, canonical group/expense detail and `/trips` discovery use the authenticated Relay session; account entry uses real Auth. See the [authenticated journey](../application/relay-expenses.md#discovery-and-return-navigation-105) for its actor-scoped source visits and fresh-access restoration. This document describes the current navigation contract and retains the original shell verification as historical evidence.
 
 ## Per-visit return context
 
@@ -62,7 +62,7 @@ The implemented forms reconcile pending/unknown adapter outcomes before discardi
 
 ## Current navigation checks
 
-Run `pnpm dev`, or `pnpm dev --hostname localhost --port 4177` for a dedicated local test port at `http://localhost:4177`. The following routes use the shared session data:
+Run `pnpm dev`, or `pnpm dev --hostname localhost --port 4177` for a dedicated local test port at `http://localhost:4177`. The following historical preview checks use simulated shared session data:
 
 1. Open `/history?search=Poke&type=created`, select the expense, choose **Open full page**, and use browser Back/Forward. Check the same filters, source row focus and scroll.
 2. Open `/trips/maui?tab=expenses&search=Poke` and repeat the round trip. Its source visit must remain independent of History.

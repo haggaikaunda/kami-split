@@ -22,7 +22,7 @@ finalized eligible pair may receive Household plus spaces where both are current
 eligible. A viewer-only group contributes no events, identity, count or cursor.
 An unavailable designation returns an explicit failure rather than a partial feed.
 
-The authenticated web entry points are `/groups/activity?group=<Group ID>` and
+The authenticated web entry points are `/groups/<Group ID>/activity` (with a legacy query-route redirect) and
 `/household/activity`. Both use shared workspace primitives and the financial
 session scope. Each event labels its source and separates effective date from
 recorded event time. The initial UI filter is event type; the API also supports an

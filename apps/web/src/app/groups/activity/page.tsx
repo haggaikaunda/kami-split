@@ -1,9 +1,13 @@
-import { ActivityWorkspace } from '@/components/activity/feed';
+import { redirect } from 'next/navigation';
 export default async function ActivityPage({
   searchParams,
 }: {
   searchParams: Promise<{ group?: string }>;
 }) {
   const { group } = await searchParams;
-  return <ActivityWorkspace groupId={typeof group === 'string' ? group : ''} />;
+  redirect(
+    typeof group === 'string' && group
+      ? `/groups/${encodeURIComponent(group)}/activity`
+      : '/household/activity',
+  );
 }
