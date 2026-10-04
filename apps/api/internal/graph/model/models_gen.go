@@ -27,6 +27,11 @@ type CreateGroupResult interface {
 	IsCreateGroupResult()
 }
 
+// Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
+type ExpenseViewResult interface {
+	IsExpenseViewResult()
+}
+
 // Original outcome or not-started observation under current authorization; refresh Group separately.
 type GroupCreationOperationResult interface {
 	IsGroupCreationOperationResult()
@@ -227,6 +232,16 @@ type ExpenseFilter struct {
 	ParticipantID *string `json:"participantId,omitempty"`
 }
 
+// Complete filtered subtotal for an expense effective-date month at the traversal anchor.
+type ExpenseMonth struct {
+	// Gregorian YYYY-MM; travel dates do not restrict history.
+	Month string `json:"month"`
+	// Complete matching face-value subtotal, never a sum of loaded rows.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Complete matching expense count as a canonical exact string.
+	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
+}
+
 // Immutable successful operation values retained with financial history; neither current labels nor current balances.
 type ExpenseOperationRecord struct {
 	// Original stable Expense ID, reused on every successful retry of this attempt.
@@ -257,6 +272,32 @@ type ExpenseOperationRecord struct {
 	CommittedAt ledger.DateTime `json:"committedAt"`
 	// Original financial revision produced by this operation, never the current balance version.
 	Revision ledger.Revision `json:"revision"`
+}
+
+// One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
+type ExpenseView struct {
+	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Exact count of all matching expenses at the same anchor.
+	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
+	// Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
+	Months []*ExpenseMonth `json:"months"`
+	// Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+	Edges []*ExpenseViewEdge `json:"edges"`
+	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+	PageInfo *PageInfo `json:"pageInfo"`
+}
+
+func (ExpenseView) IsExpenseViewResult() {}
+
+// Original expense with currently authorized source-space metadata; no copied Household record.
+type ExpenseViewEdge struct {
+	// Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
+	Cursor string `json:"cursor"`
+	// Original expense and minimal currently authorized same-group profiles.
+	Node *Expense `json:"node"`
+	// Original source Group ID, current label/kind/currency/trip metadata.
+	Source *GroupSummary `json:"source"`
 }
 
 // Safe actionable validation detail without internal database information.
@@ -656,6 +697,8 @@ type Problem struct {
 	Message string `json:"message"`
 }
 
+func (Problem) IsExpenseViewResult() {}
+
 func (Problem) IsViewerResult() {}
 
 func (Problem) IsGroupResult() {}
@@ -787,6 +830,20 @@ type RepaymentOperationRecord struct {
 	CommittedAt ledger.DateTime `json:"committedAt"`
 	// Original shared group financial revision; not a current balance revision.
 	Revision ledger.Revision `json:"revision"`
+}
+
+// Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
+type StructuredExpenseFilter struct {
+	// One currently authorized eligible source Group ID; absent means All.
+	GroupID *string `json:"groupId,omitempty"`
+	// Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+	MemberID *string `json:"memberId,omitempty"`
+	// Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
+	From *ledger.Date `json:"from,omitempty"`
+	// Inclusive maximum effective date at or after from.
+	To *ledger.Date `json:"to,omitempty"`
+	// Authoritative category; absent means all categories.
+	Category *Category `json:"category,omitempty"`
 }
 
 // Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.

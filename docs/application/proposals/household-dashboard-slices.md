@@ -2,7 +2,7 @@
 
 Status: delivery map following adoption of [ADR-007](../decisions/007-household-dashboard.md).
 The original design delivered no runtime feature. #130 designation, #110 repayment
-persistence/API and #111 summary reads are implemented; #112 browser integration
+persistence/API, #111 summary reads and #169 structured-filtered expense views are implemented; #112 browser integration
 remains separate. Unresolved policy is
 explicitly deferred, not silently approved by a follow-up issue.
 
@@ -37,3 +37,14 @@ Design probes are reviewable expected outcomes, not tests asserting prose or
 claims of implemented UI/security. Required repository checks still run; independent
 testing reviews arithmetic, inclusion, recovery and source accuracy, while final-diff
 review checks the complete design against #86 and accepted decisions.
+
+## Structured expense views (#169)
+
+The API supports one forward chronological Household feed over the same authorized
+eligible spaces as #111, plus group-local parity. Complete filtered face-value
+spending totals/counts and monthly aggregates accompany each page, without using
+loaded rows as an aggregate. Source/category/member/inclusive-date filters and
+signed per-space anchors keep summaries and traversal consistent. Member matching
+is payer-or-explicit-participant, including zero shares, separate from the existing
+participant-only group connection. Every continuation revalidates current access.
+#177 retains all production text-search design; #112 owns browser presentation.

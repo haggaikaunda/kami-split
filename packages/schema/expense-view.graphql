@@ -1,0 +1,128 @@
+"""
+Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
+"""
+input StructuredExpenseFilter {
+  """
+  One currently authorized eligible source Group ID; absent means All.
+  """
+  groupId: ID
+  """
+  Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+  """
+  memberId: ID
+  """
+  Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
+  """
+  from: Date
+  """
+  Inclusive maximum effective date at or after from.
+  """
+  to: Date
+  """
+  Authoritative category; absent means all categories.
+  """
+  category: Category
+}
+"""
+Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
+"""
+union ExpenseViewResult = ExpenseView | Problem
+"""
+One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
+"""
+type ExpenseView {
+  """
+  Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Exact count of all matching expenses at the same anchor.
+  """
+  expenseCount: MinorUnits!
+  """
+  Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
+  """
+  months: [ExpenseMonth!]!
+  """
+  Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+  """
+  edges: [ExpenseViewEdge!]!
+  """
+  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+  """
+  pageInfo: PageInfo!
+}
+"""
+Complete filtered subtotal for an expense effective-date month at the traversal anchor.
+"""
+type ExpenseMonth {
+  """
+  Gregorian YYYY-MM; travel dates do not restrict history.
+  """
+  month: String!
+  """
+  Complete matching face-value subtotal, never a sum of loaded rows.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Complete matching expense count as a canonical exact string.
+  """
+  expenseCount: MinorUnits!
+}
+"""
+Original expense with currently authorized source-space metadata; no copied Household record.
+"""
+type ExpenseViewEdge {
+  """
+  Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
+  """
+  cursor: String!
+  """
+  Original expense and minimal currently authorized same-group profiles.
+  """
+  node: Expense!
+  """
+  Original source Group ID, current label/kind/currency/trip metadata.
+  """
+  source: GroupSummary!
+}
+extend type Query {
+  """
+  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  """
+  householdExpenses(
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary; filter/scope/eligibility changes require a new traversal.
+    """
+    after: String
+    """
+    Server-applied structured filters shared by page, total and month aggregates.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
+  """
+  Group/Trip parity for structured spending filters. Unfiltered GroupBalances and legacy participant-only Group.expenses remain unchanged.
+  """
+  groupExpenses(
+    """
+    Explicit original group; current enabled active access is required on every page.
+    """
+    groupId: ID!
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary for this group/filter/viewer; never proves current access.
+    """
+    after: String
+    """
+    Structured member/date/category filters; optional source must equal groupId.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
+}
