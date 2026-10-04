@@ -423,12 +423,12 @@ type MutationResolver interface {
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
 type QueryResolver interface {
+	GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
+	HouseholdActivity(ctx context.Context, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
 	Viewer(ctx context.Context) (model.ViewerResult, error)
 	Node(ctx context.Context, id string) (model.Node, error)
 	Group(ctx context.Context, id string) (model.GroupResult, error)
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
-	GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
-	HouseholdActivity(ctx context.Context, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
 	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
 	HouseholdDashboard(ctx context.Context) (model.HouseholdDashboardResult, error)
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
@@ -2206,6 +2206,47 @@ Public health and authenticated business reads. Business access is checked on ev
 """
 type Query {
   """
+  Group-local immutable activity. Rechecks current access on every request.
+  Cursors bind actor, group, filters and financial revision.
+  """
+  groupActivity(
+    """
+    Explicit authorized source group.
+    """
+    groupId: ID!
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same workspace and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+  """
+  Same events across exactly the server-authorized Household dashboard eligible
+  set. No viewer-group discovery or client-side eligibility inference is used.
+  """
+  householdActivity(
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same actor, eligible set and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+
+  """
   Resolve only the caller; enabled callers with no groups receive an empty group list.
   """
   viewer: ViewerResult!
@@ -3003,49 +3044,6 @@ type ActivityConnection {
 Safe failure or a complete authorized activity page.
 """
 union ActivityResult = ActivityConnection | Problem
-
-extend type Query {
-  """
-  Group-local immutable activity. Rechecks current access on every request.
-  Cursors bind actor, group, filters and financial revision.
-  """
-  groupActivity(
-    """
-    Explicit authorized source group.
-    """
-    groupId: ID!
-    """
-    Page size between 1 and 100.
-    """
-    first: Int! = 20
-    """
-    Authenticated boundary from the same workspace and filters.
-    """
-    after: String
-    """
-    Exact supported event/source restrictions.
-    """
-    filter: ActivityFilter
-  ): ActivityResult!
-  """
-  Same events across exactly the server-authorized Household dashboard eligible
-  set. No viewer-group discovery or client-side eligibility inference is used.
-  """
-  householdActivity(
-    """
-    Page size between 1 and 100.
-    """
-    first: Int! = 20
-    """
-    Authenticated boundary from the same actor, eligible set and filters.
-    """
-    after: String
-    """
-    Exact supported event/source restrictions.
-    """
-    filter: ActivityFilter
-  ): ActivityResult!
-}
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/groups.graphql", Input: `"""
 Classification derived from the optional trip extension; access and ledgers remain group-local.
@@ -9541,6 +9539,94 @@ func (ec *executionContext) fieldContext_Problem_message(_ context.Context, fiel
 	return graphql.NewScalarFieldContext("Problem", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Query_groupActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_groupActivity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().GroupActivity(ctx, fc.Args["groupId"].(string), fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.ActivityFilter))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ActivityResult) graphql.Marshaler {
+			return ec.marshalNActivityResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_groupActivity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ActivityResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_groupActivity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_householdActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_householdActivity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().HouseholdActivity(ctx, fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.ActivityFilter))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ActivityResult) graphql.Marshaler {
+			return ec.marshalNActivityResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_householdActivity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ActivityResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_householdActivity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_viewer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9690,94 +9776,6 @@ func (ec *executionContext) fieldContext_Query_expenseOperation(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_expenseOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_groupActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_groupActivity(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().GroupActivity(ctx, fc.Args["groupId"].(string), fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.ActivityFilter))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v model.ActivityResult) graphql.Marshaler {
-			return ec.marshalNActivityResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityResult(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_groupActivity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ActivityResult does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_groupActivity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_householdActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_householdActivity(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().HouseholdActivity(ctx, fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.ActivityFilter))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v model.ActivityResult) graphql.Marshaler {
-			return ec.marshalNActivityResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityResult(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_householdActivity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ActivityResult does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_householdActivity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -15338,6 +15336,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "groupActivity":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_groupActivity(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "householdActivity":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_householdActivity(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "viewer":
 			field := field
 
@@ -15414,50 +15456,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_expenseOperation(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "groupActivity":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_groupActivity(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "householdActivity":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_householdActivity(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

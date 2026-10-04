@@ -3,7 +3,7 @@ package expense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/google/uuid"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
@@ -113,7 +113,7 @@ func (s *Service) ReadActivity(ctx context.Context, in ActivityRequest, codec *l
 		if len(anchors) != len(ids) {
 			return Failure("UNAVAILABLE")
 		}
-		cursor := ledger.ActivityCursor{Version: 1, Actor: fmt.Sprint(actor.ID), Scope: scope, Source: source, EventKind: in.Kind, Anchors: anchors}
+		cursor := ledger.ActivityCursor{Version: 1, Actor: uuid.UUID(actor.ID.Bytes).String(), Scope: scope, Source: source, EventKind: in.Kind, Anchors: anchors}
 		if in.After != "" {
 			cursor, err = codec.DecodeActivity(in.After, cursor.Actor, scope, in.Kind, source, anchors)
 			if err != nil {

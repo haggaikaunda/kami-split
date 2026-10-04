@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7da9fc100d85773cc47855c91c6bb4ae>>
+ * @generated SignedSource<<6654913906918630d6693f5bd1baceb6>>
  * @lightSyntaxTransform
  */
 
@@ -276,31 +276,26 @@ return {
     "name": "activityHouseholdQuery",
     "selections": [
       {
-        "kind": "ClientExtension",
+        "alias": null,
+        "args": (v1/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "householdActivity",
+        "plural": false,
         "selections": [
           {
-            "alias": null,
-            "args": (v1/*:: as any*/),
-            "concreteType": null,
-            "kind": "LinkedField",
-            "name": "householdActivity",
-            "plural": false,
+            "kind": "InlineDataFragmentSpread",
+            "name": "activityFeed",
             "selections": [
-              {
-                "kind": "InlineDataFragmentSpread",
-                "name": "activityFeed",
-                "selections": [
-                  (v2/*:: as any*/),
-                  (v3/*:: as any*/),
-                  (v6/*:: as any*/)
-                ],
-                "args": null,
-                "argumentDefinitions": []
-              }
+              (v2/*:: as any*/),
+              (v3/*:: as any*/),
+              (v6/*:: as any*/)
             ],
-            "storageKey": null
+            "args": null,
+            "argumentDefinitions": []
           }
-        ]
+        ],
+        "storageKey": null
       }
     ],
     "type": "Query",
@@ -313,37 +308,32 @@ return {
     "name": "activityHouseholdQuery",
     "selections": [
       {
-        "kind": "ClientExtension",
+        "alias": null,
+        "args": (v1/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "householdActivity",
+        "plural": false,
         "selections": [
+          (v2/*:: as any*/),
           {
-            "alias": null,
-            "args": (v1/*:: as any*/),
-            "concreteType": null,
-            "kind": "LinkedField",
-            "name": "householdActivity",
-            "plural": false,
-            "selections": [
-              (v2/*:: as any*/),
-              {
-                "kind": "TypeDiscriminator",
-                "abstractKey": "__isActivityResult"
-              },
-              (v3/*:: as any*/),
-              (v6/*:: as any*/)
-            ],
-            "storageKey": null
-          }
-        ]
+            "kind": "TypeDiscriminator",
+            "abstractKey": "__isActivityResult"
+          },
+          (v3/*:: as any*/),
+          (v6/*:: as any*/)
+        ],
+        "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "08d395ce7c24b28970c7e76308a573ae",
+    "cacheID": "edc4f61f87da8e9c3fd6781daf78173c",
     "id": null,
     "metadata": {},
     "name": "activityHouseholdQuery",
     "operationKind": "query",
-    "text": null
+    "text": "query activityHouseholdQuery(\n  $after: String\n  $filter: ActivityFilter\n) {\n  householdActivity(first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        kind\n        groupId\n        groupName\n        isHousehold\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

@@ -18,6 +18,7 @@ export function ApplicationFrame({
   if (
     path === '/household/activity' ||
     path === '/groups' ||
+    path.startsWith('/groups/') ||
     path === '/sign-in' ||
     path === '/join' ||
     path === '/account' ||

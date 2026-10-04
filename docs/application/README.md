@@ -36,4 +36,4 @@ that the application is already serving production traffic.
 
 ## Authenticated financial browser
 
-The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. Other preview routes remain explicitly simulated.
+The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. Other preview routes remain explicitly simulated.

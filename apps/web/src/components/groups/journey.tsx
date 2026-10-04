@@ -221,6 +221,19 @@ function GroupDetails({
       <h2 ref={heading} tabIndex={-1}>
         {group?.name ?? 'Group expenses'}
       </h2>
+      {group && (
+        <nav aria-label="Group workspace">
+          <Link href={`/groups/activity?group=${encodeURIComponent(id)}`}>
+            Activity
+          </Link>
+          {group.isHousehold && (
+            <>
+              {' '}
+              · <Link href="/household/activity">Household activity</Link>
+            </>
+          )}
+        </nav>
+      )}
       {saved && <p role="status">{saved}</p>}
       <button disabled={busy} onClick={() => void read()}>
         Refresh group and restart list

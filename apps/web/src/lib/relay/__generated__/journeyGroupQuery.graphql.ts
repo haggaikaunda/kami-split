@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41ac93d2948dd6ff3a5d51eaea68ccaa>>
+ * @generated SignedSource<<5bc204708325363937bdf08c7faa6163>>
  * @lightSyntaxTransform
  */
 
@@ -91,6 +91,7 @@ export type journeyGroupQuery$data = {
       readonly revision: string;
     } | null | undefined;
     readonly id: string;
+    readonly isHousehold: boolean;
     readonly members: ReadonlyArray<{
       readonly canParticipate: boolean;
       readonly displayName: string;
@@ -184,34 +185,41 @@ v7 = {
   "name": "currency",
   "storageKey": null
 },
-v8 = [
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isHousehold",
+  "storageKey": null
+},
+v9 = [
   (v5/*:: as any*/)
 ],
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "Membership",
   "kind": "LinkedField",
   "name": "viewerMembership",
   "plural": false,
-  "selections": (v8/*:: as any*/),
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "displayName",
+  "selections": (v9/*:: as any*/),
   "storageKey": null
 },
 v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "status",
+  "name": "displayName",
   "storageKey": null
 },
 v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v13 = {
   "alias": null,
   "args": null,
   "concreteType": "Membership",
@@ -220,8 +228,8 @@ v12 = {
   "plural": true,
   "selections": [
     (v5/*:: as any*/),
-    (v10/*:: as any*/),
     (v11/*:: as any*/),
+    (v12/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -239,26 +247,26 @@ v12 = {
   ],
   "storageKey": null
 },
-v13 = {
+v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "revision",
   "storageKey": null
 },
-v14 = [
+v15 = [
   (v5/*:: as any*/),
-  (v10/*:: as any*/)
+  (v11/*:: as any*/)
 ],
-v15 = {
+v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "amountMinor",
   "storageKey": null
 },
-v16 = [
-  (v13/*:: as any*/),
+v17 = [
+  (v14/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -325,7 +333,7 @@ v16 = [
             "kind": "LinkedField",
             "name": "payer",
             "plural": false,
-            "selections": (v14/*:: as any*/),
+            "selections": (v15/*:: as any*/),
             "storageKey": null
           },
           {
@@ -343,10 +351,10 @@ v16 = [
                 "kind": "LinkedField",
                 "name": "participant",
                 "plural": false,
-                "selections": (v14/*:: as any*/),
+                "selections": (v15/*:: as any*/),
                 "storageKey": null
               },
-              (v15/*:: as any*/)
+              (v16/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -397,7 +405,7 @@ v16 = [
     "storageKey": null
   }
 ],
-v17 = {
+v18 = {
   "alias": null,
   "args": null,
   "concreteType": null,
@@ -417,7 +425,7 @@ v17 = {
           "name": "groupId",
           "storageKey": null
         },
-        (v13/*:: as any*/),
+        (v14/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -449,8 +457,8 @@ v17 = {
               "plural": false,
               "selections": [
                 (v5/*:: as any*/),
-                (v10/*:: as any*/),
-                (v11/*:: as any*/)
+                (v11/*:: as any*/),
+                (v12/*:: as any*/)
               ],
               "storageKey": null
             },
@@ -507,7 +515,7 @@ v17 = {
               "kind": "LinkedField",
               "name": "from",
               "plural": false,
-              "selections": (v14/*:: as any*/),
+              "selections": (v15/*:: as any*/),
               "storageKey": null
             },
             {
@@ -517,10 +525,10 @@ v17 = {
               "kind": "LinkedField",
               "name": "to",
               "plural": false,
-              "selections": (v14/*:: as any*/),
+              "selections": (v15/*:: as any*/),
               "storageKey": null
             },
-            (v15/*:: as any*/)
+            (v16/*:: as any*/)
           ],
           "storageKey": null
         }
@@ -531,7 +539,7 @@ v17 = {
   ],
   "storageKey": null
 },
-v18 = [
+v19 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -569,8 +577,9 @@ return {
               (v5/*:: as any*/),
               (v6/*:: as any*/),
               (v7/*:: as any*/),
-              (v9/*:: as any*/),
-              (v12/*:: as any*/),
+              (v8/*:: as any*/),
+              (v10/*:: as any*/),
+              (v13/*:: as any*/),
               {
                 "alias": "expenses",
                 "args": null,
@@ -578,10 +587,10 @@ return {
                 "kind": "LinkedField",
                 "name": "__journey_expenses_connection",
                 "plural": false,
-                "selections": (v16/*:: as any*/),
+                "selections": (v17/*:: as any*/),
                 "storageKey": null
               },
-              (v17/*:: as any*/)
+              (v18/*:: as any*/)
             ],
             "type": "Group",
             "abstractKey": null
@@ -618,35 +627,36 @@ return {
               (v5/*:: as any*/),
               (v6/*:: as any*/),
               (v7/*:: as any*/),
-              (v9/*:: as any*/),
-              (v12/*:: as any*/),
+              (v8/*:: as any*/),
+              (v10/*:: as any*/),
+              (v13/*:: as any*/),
               {
                 "alias": null,
-                "args": (v18/*:: as any*/),
+                "args": (v19/*:: as any*/),
                 "concreteType": "ExpenseConnection",
                 "kind": "LinkedField",
                 "name": "expenses",
                 "plural": false,
-                "selections": (v16/*:: as any*/),
+                "selections": (v17/*:: as any*/),
                 "storageKey": null
               },
               {
                 "alias": null,
-                "args": (v18/*:: as any*/),
+                "args": (v19/*:: as any*/),
                 "filters": null,
                 "handle": "connection",
                 "key": "journey_expenses",
                 "kind": "LinkedHandle",
                 "name": "expenses"
               },
-              (v17/*:: as any*/)
+              (v18/*:: as any*/)
             ],
             "type": "Group",
             "abstractKey": null
           },
           {
             "kind": "InlineFragment",
-            "selections": (v8/*:: as any*/),
+            "selections": (v9/*:: as any*/),
             "type": "Node",
             "abstractKey": "__isNode"
           }
@@ -656,7 +666,7 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6ba2d1f30032e325cd47bce0fb097ad6",
+    "cacheID": "f69c957becd4f9f603277a851c5b95f7",
     "id": null,
     "metadata": {
       "connection": [
@@ -673,11 +683,11 @@ return {
     },
     "name": "journeyGroupQuery",
     "operationKind": "query",
-    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      viewerMembership {\n        id\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n            __typename\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      isHousehold\n      viewerMembership {\n        id\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n            __typename\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "651a27f1d38a5e265048d842da3ea6b9";
+(node as any).hash = "15d71b150b60f39372c734840f365a7e";
 
 export default node;

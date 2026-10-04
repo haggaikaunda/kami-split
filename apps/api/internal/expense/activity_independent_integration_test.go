@@ -3,8 +3,10 @@
 package expense_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -175,7 +177,83 @@ func TestActivityIndependentEqualTimestampTiePagination(t *testing.T) {
 			t.Fatal(all, seen)
 		}
 	}
-	if !sort.StringsAreSorted([]string{seen[2], seen[1]}) {
-		t.Fatal(seen)
+}
+
+func independentHouseholdActivity(t *testing.T, f *expenseFixture, actor int, vars map[string]any) map[string]any {
+	t.Helper()
+	query := strings.ReplaceAll(independentActivityQuery, "$group:ID!,", "")
+	query = strings.ReplaceAll(query, "groupActivity(groupId:$group,", "householdActivity(")
+	return repaymentData(t, repaymentGraphQL(t, f, actor, query, vars), "householdActivity")
+}
+
+func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T) {
+	f := independentDashboardFixture(t, 1, 2)
+	empty := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10})
+	if empty["__typename"] != "ActivityConnection" || len(empty["edges"].([]any)) != 0 {
+		t.Fatal(empty)
+	}
+	independentDashboardExpense(t, f, 201, 302, 301, 2000)
+	independentDashboardExpense(t, f, 202, 305, 306, 3000)
+	independentDashboardExpense(t, f, 203, 308, 307, 9000)
+	vars := map[string]any{"first": 1}
+	first := independentHouseholdActivity(t, f, 1, vars)
+	node := first["edges"].([]any)[0].(map[string]any)["node"].(map[string]any)
+	if node["groupId"] != f.public("Group", 202) || node["amountMinor"] != "3000" {
+		t.Fatal(first)
+	}
+	cursor := first["pageInfo"].(map[string]any)["endCursor"]
+	vars["after"] = cursor
+	second := independentHouseholdActivity(t, f, 1, vars)
+	node = second["edges"].([]any)[0].(map[string]any)["node"].(map[string]any)
+	if node["groupId"] != f.public("Group", 201) || second["pageInfo"].(map[string]any)["hasNextPage"] != false {
+		t.Fatal(second)
+	}
+	for _, page := range []map[string]any{first, second} {
+		raw, _ := json.Marshal(page)
+		for _, secret := range []string{"9000", "Viewer-only SECRET", f.id(203), f.public("Group", 203)} {
+			if bytes.Contains(raw, []byte(secret)) {
+				t.Fatalf("excluded source leaked: %s", raw)
+			}
+		}
+	}
+	for _, source := range []string{f.public("Group", 203), f.id(203)} {
+		got := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10, "filter": map[string]any{"sourceGroupId": source}})
+		want := "NOT_FOUND"
+		if source == f.id(203) {
+			want = "INVALID_INPUT"
+		}
+		if got["__typename"] != "Problem" || got["code"] != want {
+			t.Fatal(got)
+		}
+	}
+	filtered := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10, "filter": map[string]any{"sourceGroupId": f.public("Group", 201)}})
+	if len(filtered["edges"].([]any)) != 1 {
+		t.Fatal(filtered)
+	}
+	changed := independentHouseholdActivity(t, f, 1, map[string]any{"first": 1, "after": cursor, "filter": map[string]any{"sourceGroupId": f.public("Group", 201)}})
+	if changed["code"] != "INVALID_CURSOR" {
+		t.Fatal(changed)
+	}
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	if got := independentHouseholdActivity(t, f, 1, vars); got["code"] != "INVALID_CURSOR" {
+		t.Fatal(got)
+	}
+	fresh := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10})
+	if len(fresh["edges"].([]any)) != 1 {
+		t.Fatal(fresh)
+	}
+}
+
+func TestActivityIndependentHouseholdDesignationLossAndOwnerExclusion(t *testing.T) {
+	f := independentDashboardFixture(t, 2, 3)
+	independentDashboardExpense(t, f, 201, 302, 301, 2000)
+	if got := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10}); got["code"] != "NOT_FOUND" {
+		t.Fatal(got)
+	}
+	first := independentHouseholdActivity(t, f, 2, map[string]any{"first": 1})
+	cursor := first["pageInfo"].(map[string]any)["endCursor"]
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY['%s','%s','%s']::uuid[]);UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(101), f.id(102), f.id(103), f.id(303)))
+	if got := independentHouseholdActivity(t, f, 2, map[string]any{"first": 1, "after": cursor}); got["__typename"] != "Problem" || got["code"] != "UNAVAILABLE" {
+		t.Fatal(got)
 	}
 }

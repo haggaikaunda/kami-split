@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import { WorkspaceHeader, WorkspaceTabs } from '@/components/primitives';
@@ -74,6 +74,8 @@ export function ActivityFeed({
   scope: FinancialScope;
   groupId: string;
 }) {
+  const detailRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [kind, setKind] = useState('');
   const source = '';
   const [version, setVersion] = useState(0);
@@ -96,12 +98,6 @@ export function ActivityFeed({
   };
   useEffect(() => {
     let live = true;
-    setLoading(true);
-    setError('');
-    // A response is rendered only after this request freshly authorizes the feed.
-    setPage(undefined);
-    setSelected(undefined);
-    setDetail(undefined);
     const filter = {
       kind: kind ? (kind as 'EXPENSE_CREATED' | 'REPAYMENT_RECORDED') : null,
       sourceGroupId: source || null,
@@ -149,9 +145,7 @@ export function ActivityFeed({
   useEffect(() => {
     if (!selected) return;
     let live = true;
-    setDetailLoading(true);
-    setDetailError('');
-    setDetail(undefined);
+    detailRef.current?.focus();
     // Reauthorize the feed and record together: Household eligibility can be
     // lost while ordinary group membership still permits the source record.
     const filter = { kind: null, sourceGroupId: selected.groupId };
@@ -264,8 +258,10 @@ export function ActivityFeed({
                 <li key={node.id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelected(node);
+                    onClick={(event) => {
+                      triggerRef.current = event.currentTarget;
+                      setDetailError('');
+                      setSelected({ ...node });
                       setDetail(undefined);
                       setDetailLoading(true);
                     }}
@@ -329,7 +325,7 @@ export function ActivityFeed({
           className="activity-detail"
           aria-label="Current record detail"
           tabIndex={-1}
-          ref={(element) => element?.focus()}
+          ref={detailRef}
         >
           <h2>Current record · {selected.groupName}</h2>
           <button
@@ -337,6 +333,7 @@ export function ActivityFeed({
             onClick={() => {
               setSelected(undefined);
               setDetail(undefined);
+              triggerRef.current?.focus();
             }}
           >
             Close detail

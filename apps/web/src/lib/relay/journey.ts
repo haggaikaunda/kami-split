@@ -36,6 +36,7 @@ export const journeyGroupQuery = graphql`
         id
         name
         currency
+        isHousehold
         viewerMembership {
           id
         }

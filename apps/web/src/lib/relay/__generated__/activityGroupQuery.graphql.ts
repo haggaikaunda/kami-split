@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<653434afd0192a072abbb7b0db7b25d7>>
+ * @generated SignedSource<<4ef2fed2ac290b820e8d636dbf14d843>>
  * @lightSyntaxTransform
  */
 
@@ -289,31 +289,26 @@ return {
     "name": "activityGroupQuery",
     "selections": [
       {
-        "kind": "ClientExtension",
+        "alias": null,
+        "args": (v3/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "groupActivity",
+        "plural": false,
         "selections": [
           {
-            "alias": null,
-            "args": (v3/*:: as any*/),
-            "concreteType": null,
-            "kind": "LinkedField",
-            "name": "groupActivity",
-            "plural": false,
+            "kind": "InlineDataFragmentSpread",
+            "name": "activityFeed",
             "selections": [
-              {
-                "kind": "InlineDataFragmentSpread",
-                "name": "activityFeed",
-                "selections": [
-                  (v4/*:: as any*/),
-                  (v5/*:: as any*/),
-                  (v8/*:: as any*/)
-                ],
-                "args": null,
-                "argumentDefinitions": []
-              }
+              (v4/*:: as any*/),
+              (v5/*:: as any*/),
+              (v8/*:: as any*/)
             ],
-            "storageKey": null
+            "args": null,
+            "argumentDefinitions": []
           }
-        ]
+        ],
+        "storageKey": null
       }
     ],
     "type": "Query",
@@ -330,37 +325,32 @@ return {
     "name": "activityGroupQuery",
     "selections": [
       {
-        "kind": "ClientExtension",
+        "alias": null,
+        "args": (v3/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "groupActivity",
+        "plural": false,
         "selections": [
+          (v4/*:: as any*/),
           {
-            "alias": null,
-            "args": (v3/*:: as any*/),
-            "concreteType": null,
-            "kind": "LinkedField",
-            "name": "groupActivity",
-            "plural": false,
-            "selections": [
-              (v4/*:: as any*/),
-              {
-                "kind": "TypeDiscriminator",
-                "abstractKey": "__isActivityResult"
-              },
-              (v5/*:: as any*/),
-              (v8/*:: as any*/)
-            ],
-            "storageKey": null
-          }
-        ]
+            "kind": "TypeDiscriminator",
+            "abstractKey": "__isActivityResult"
+          },
+          (v5/*:: as any*/),
+          (v8/*:: as any*/)
+        ],
+        "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "ff2324b98823d32fa8c666e698a7f8ba",
+    "cacheID": "87adc8dab84bcdedb74dabd7e2c1ade8",
     "id": null,
     "metadata": {},
     "name": "activityGroupQuery",
     "operationKind": "query",
-    "text": null
+    "text": "query activityGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: ActivityFilter\n) {\n  groupActivity(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        kind\n        groupId\n        groupName\n        isHousehold\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
