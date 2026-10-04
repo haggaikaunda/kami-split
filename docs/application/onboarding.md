@@ -2,6 +2,19 @@
 
 Issues #80 and #164 connect the [targeted invitation service](targeted-invitations.md) to Supabase Auth, Resend, thin GraphQL operations and real browser routes. Issue #164 adds single-email targeted continuation and independently verified first-time account creation through live shared links; global public signup remains disabled. The existing expense API is preserved. The [Relay expense journey](relay-expenses.md) at `/groups` now uses these sessions; remaining financial preview screens stay simulated; `/preview/sign-in` preserves the old account simulation. `/sign-in`, `/join`, `/auth/confirm`, `/auth/password` and `/account` use actual configured services and never render mock group data.
 
+## Presentation
+
+The real entry routes use the shared Quietly Warm tokens and loaded typography.
+A spacious canvas, decorative house illustration and one labelled group identity
+region provide invitation context; only the approved group name and inviter name
+are shown before authentication. Secondary actions use quiet text styling, while
+inputs, focus rings, status messages and explicit Join retain the existing accessible
+primitives. Account and invitation management use the same visual language without
+adding decorative context to their operational lists.
+
+This presentation does not change targeted mailbox proof, shared-link independent
+verification, password requirements, recovery, or account-switch context ownership.
+
 ## Configuration and boundaries
 
 The Go API requires its existing restricted `DATABASE_URL`, verified `AUTH_ISSUER` / `AUTH_AUDIENCE` / `AUTH_JWKS_URL`, and cursor signing configuration. Add all of:
