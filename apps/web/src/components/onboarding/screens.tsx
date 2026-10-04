@@ -1,19 +1,28 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button, Field, Card } from '@/components/primitives';
+import { Button, Field } from '@/components/primitives';
 import type { OnboardingController } from './controller';
 
 export function InvitationCard({ state: c }: { state: OnboardingController }) {
   if (!c.preview) return null;
   return (
-    <Card title={c.preview.groupName}>
-      <p>
-        {c.preview.kind === 'SHARED' ? 'Shared' : 'Invited'} by{' '}
-        {c.preview.inviterDisplayName}
-      </p>
-      {c.session && <p>Signed in as {c.session.user.email}</p>}
-    </Card>
+    <section
+      className="onboarding-invitation"
+      aria-labelledby="invitation-group-name"
+    >
+      <span className="onboarding-invitation-mark" aria-hidden="true">
+        ⌂
+      </span>
+      <div>
+        <h2 id="invitation-group-name">{c.preview.groupName}</h2>
+        <p>
+          {c.preview.kind === 'SHARED' ? 'Shared' : 'Invited'} by{' '}
+          {c.preview.inviterDisplayName}
+        </p>
+        {c.session && <p>Signed in as {c.session.user.email}</p>}
+      </div>
+    </section>
   );
 }
 export function HouseIllustration() {
@@ -166,6 +175,7 @@ export function InvitationScreens({
       <>
         <h1>This invitation is for another account</h1>
         <p>Switch accounts to continue with this invitation.</p>
+        <InvitationCard state={c} />
         <Button
           disabled={c.busy}
           onClick={() => void c.run(() => c.signOut(true))}
@@ -177,11 +187,11 @@ export function InvitationScreens({
   if (c.step === 'success' && c.receipt?.hasAccess && c.receipt.groupID)
     return (
       <>
-        <HouseIllustration />
         <h1>You joined {name}!</h1>
         <p>
           You can now see the group’s expenses and start splitting together.
         </p>
+        <InvitationCard state={c} />
         <Link
           className="ui-button ui-button--primary"
           href={`/groups?group=${encodeURIComponent(c.receipt.groupID)}`}
@@ -194,13 +204,13 @@ export function InvitationScreens({
   if (c.step === 'ready')
     return (
       <>
-        <HouseIllustration />
         <h1>Your account is ready</h1>
         <p>
           {c.preview
             ? `Continue to ${name} to finish joining the group.`
             : 'Your password has been saved.'}
         </p>
+        <InvitationCard state={c} />
         <Button
           onClick={() =>
             c.preview
@@ -288,7 +298,6 @@ export function InvitationScreens({
   if (c.session && (shared || c.step === 'join' || !c.preview?.kind))
     return (
       <>
-        <HouseIllustration />
         <h1>Ready to join {name}?</h1>
         <p>
           You’ll become an ordinary member and can see the group’s full expense
@@ -308,7 +317,6 @@ export function InvitationScreens({
     );
   return (
     <>
-      <HouseIllustration />
       <h1>
         {shared
           ? `Join ${name}`

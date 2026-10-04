@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
 import { useOnboarding, type Mode } from './controller';
-import { InvitationScreens, SignIn } from './screens';
+import { HouseIllustration, InvitationScreens, SignIn } from './screens';
 import { AccountPanel } from './account';
 import { ActionRecovery } from './recovery';
 import './onboarding.css';
@@ -66,8 +66,11 @@ function OnboardingVisit({
     >
       <div className="onboarding-panel" ref={panel}>
         <header>
-          <Link href="/account">❧ Kami Split</Link>
+          <Link href="/account" className="onboarding-brand">
+            <span aria-hidden="true">❧</span> Kami Split
+          </Link>
         </header>
+        {!account && <HouseIllustration />}
         {c.loading ? (
           <Status kind="pending">Loading secure account access…</Status>
         ) : (
