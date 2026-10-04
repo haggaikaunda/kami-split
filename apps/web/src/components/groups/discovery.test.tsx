@@ -77,6 +77,7 @@ const scope = {
   environment: {},
   isLive: () => true,
   visits: new Map(),
+  restored: new Set<string>(),
   dispose() {},
 };
 const groups = [

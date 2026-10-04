@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 /** No module singleton and no SSR private state. Disposal prevents normalization of late responses. */
 export function createScope(client: SupabaseClient, actor: string) {
   let live = true;
+  const restored = new Set<string>();
   const visits = new Map<
     string,
     { href: string; focus: string; scroll: number; group?: string }
@@ -52,12 +53,14 @@ export function createScope(client: SupabaseClient, actor: string) {
   return {
     actor,
     visits,
+    restored,
     id: crypto.randomUUID(),
     environment,
     isLive: () => live,
     dispose() {
       live = false;
       visits.clear();
+      restored.clear();
       for (const request of requests) request.abort();
       requests.clear();
     },

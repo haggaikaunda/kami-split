@@ -25,13 +25,22 @@ vi.mock('next/link', () => ({
     onNavigate,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    onNavigate?: () => void;
+    onNavigate?: (event: { preventDefault: () => void }) => void;
     scroll?: boolean;
   }) => {
-    void onNavigate;
     const { scroll, ...rest } = props;
     void scroll;
-    return <a {...rest}>{children}</a>;
+    return (
+      <a
+        {...rest}
+        onClick={(event) => {
+          event.preventDefault();
+          onNavigate?.(event);
+        }}
+      >
+        {children}
+      </a>
+    );
   },
 }));
 vi.mock('next/navigation', () => ({
@@ -81,6 +90,7 @@ const scope = {
   environment: {},
   isLive: () => true,
   visits: new Map(),
+  restored: new Set<string>(),
   dispose() {},
 };
 const groups = [
@@ -126,6 +136,7 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
   scope.visits.clear();
+  scope.restored.clear();
   mock.path = '/groups';
   mock.search = '';
   mock.push.mockReset();
@@ -329,6 +340,7 @@ it('restores logical focus and scroll only for an authorized source; missing sou
   await act(async () => frames.shift()!(0));
   expect(document.activeElement!.id).toBe('expense-target');
   expect(scroll).toHaveBeenLastCalledWith(0, 123);
+  mock.search = 'restore=missing-visit';
   await render(
     <>
       <h1 data-page-heading tabIndex={-1}>
@@ -340,5 +352,53 @@ it('restores logical focus and scroll only for an authorized source; missing sou
   await act(async () => frames.shift()!(0));
   expect(document.activeElement!.textContent).toBe('Groups');
   expect(scroll).toHaveBeenLastCalledWith(0, 0);
+  vi.unstubAllGlobals();
+});
+
+it('does not repeat focus or scroll on background remount, but permits another explicit source return', async () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  scope.visits.set('return', {
+    href: '/groups/T',
+    focus: 'expense-target',
+    scroll: 123,
+    group: 'T',
+  });
+  mock.search = 'restore=return';
+  const source = (key: string) => (
+    <>
+      <h1 data-page-heading tabIndex={-1}>
+        Groups
+      </h1>
+      <button id="reader-control">Reader control</button>
+      <Link id="expense-target" href="/groups/T">
+        Target
+      </Link>
+      <RestoreSource key={key} scope={scope as never} allowed={['T']} />
+    </>
+  );
+  await render(source('initial'));
+  await act(async () => frames.shift()!(0));
+  expect(document.activeElement!.id).toBe('expense-target');
+  expect(scroll).toHaveBeenCalledTimes(1);
+  host.querySelector<HTMLButtonElement>('#reader-control')!.focus();
+  await render(source('background-refresh'));
+  expect(frames).toHaveLength(0);
+  expect(document.activeElement!.id).toBe('reader-control');
+  expect(scroll).toHaveBeenCalledTimes(1);
+  mock.search = 'source=return';
+  await render(<SourceReturn scope={scope as never} />);
+  await act(async () => host.querySelector<HTMLAnchorElement>('a')!.click());
+  expect(scope.restored.has('return')).toBe(false);
+  mock.search = 'restore=return';
+  await render(source('explicit-return'));
+  await act(async () => frames.shift()!(0));
+  expect(document.activeElement!.id).toBe('expense-target');
+  expect(scroll).toHaveBeenCalledTimes(2);
   vi.unstubAllGlobals();
 });

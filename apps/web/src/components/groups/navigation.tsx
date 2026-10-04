@@ -55,6 +55,9 @@ export function SourceReturn({ scope }: { scope: FinancialScope }) {
           : '/groups'
       }
       scroll={false}
+      onNavigate={() => {
+        if (token) scope.restored.delete(token);
+      }}
     >
       {visit ? 'Back to source' : 'Back to Groups'}
     </Link>
@@ -72,10 +75,11 @@ export function RestoreSource({
   const token = params.get('restore');
   const ids = allowed.join('\n');
   useEffect(() => {
-    if (!token || !scope.isLive()) return;
+    if (!token || !scope.isLive() || scope.restored.has(token)) return;
     const visit = scope.visits.get(token);
     const frame = requestAnimationFrame(() => {
-      if (!scope.isLive()) return;
+      if (!scope.isLive() || scope.restored.has(token)) return;
+      scope.restored.add(token);
       const target =
         visit && (!visit.group || allowed.includes(visit.group))
           ? document.getElementById(visit.focus)
