@@ -160,6 +160,15 @@ function Examples() {
         integrated in later redesign slices.
       </p>
       <div className="preview-grid">
+        <Card title="Informational Household aggregate">
+          <SignedBalanceMetric
+            scope="household"
+            position="zero"
+            value="0.00"
+            currency="USD"
+            detail="2 spaces have open balances. Net zero does not mean the spaces are settled."
+          />
+        </Card>
         <Card title="Exact money" balance>
           <Money value="9,999,999.99" currency="USD" />
           <p>Paid amounts stay exact. Currency remains visible.</p>

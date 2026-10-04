@@ -599,11 +599,13 @@ export function SummaryMetric({
 /** Sign comes from exact domain arithmetic. The component never parses formatted money. */
 export function SignedBalanceMetric({
   position,
+  scope = 'group',
   value,
   currency,
   detail,
 }: {
   position: 'positive' | 'negative' | 'zero';
+  scope?: 'group' | 'household';
   value: string;
   currency: string;
   detail?: ReactNode;
@@ -616,7 +618,9 @@ export function SignedBalanceMetric({
             ? "You're owed"
             : position === 'negative'
               ? 'You owe'
-              : 'Settled'
+              : scope === 'household'
+                ? 'Net zero across spaces'
+                : 'Settled'
         }
         detail={detail}
       >

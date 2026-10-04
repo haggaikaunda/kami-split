@@ -89,3 +89,28 @@ it('exposes consistent workspace route links and specific expense/repayment cont
     act(() => root.unmount());
   }
 });
+
+it('does not describe a zero Household aggregate as settled', () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  try {
+    act(() =>
+      root.render(
+        <SignedBalanceMetric
+          scope="household"
+          position="zero"
+          value="0.00"
+          currency="USD"
+          detail="2 spaces have open balances"
+        />,
+      ),
+    );
+    expect(container.textContent).toContain('Net zero across spaces');
+    expect(container.textContent).toContain('2 spaces have open balances');
+    expect(container.textContent).not.toContain('Settled');
+    expect(container.querySelector('a, button')).toBeNull();
+  } finally {
+    act(() => root.unmount());
+  }
+});
