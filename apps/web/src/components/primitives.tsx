@@ -524,3 +524,224 @@ export function ChartTable({
     </section>
   );
 }
+
+/** Context belongs in the header; financial data stays on a plain surface. */
+export function WorkspaceHeader({
+  title,
+  context,
+  children,
+}: {
+  title: string;
+  context?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="ui-workspace-header">
+      <div>
+        {context && <div className="ui-workspace-context">{context}</div>}
+        <h1>{title}</h1>
+      </div>
+      {children}
+    </header>
+  );
+}
+
+export const workspaceSections = [
+  'Overview',
+  'Expenses',
+  'Balances',
+  'Activity',
+  'Members',
+] as const;
+export type WorkspaceSection = (typeof workspaceSections)[number];
+/** Route navigation uses links and aria-current, rather than in-page tab semantics. */
+export function WorkspaceTabs({
+  current,
+  hrefFor,
+  label = 'Workspace',
+}: {
+  current: WorkspaceSection;
+  hrefFor: (section: WorkspaceSection) => string;
+  label?: string;
+}) {
+  return (
+    <nav className="ui-workspace-tabs" aria-label={label}>
+      {workspaceSections.map((section) => (
+        <a
+          key={section}
+          href={hrefFor(section)}
+          aria-current={current === section ? 'page' : undefined}
+        >
+          {section}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+export function SummaryMetric({
+  label,
+  children,
+  detail,
+}: {
+  label: string;
+  children: ReactNode;
+  detail?: ReactNode;
+}) {
+  return (
+    <div className="ui-summary-metric">
+      <span className="ui-metric-label">{label}</span>
+      <strong className="ui-metric-value">{children}</strong>
+      {detail && <span className="ui-metric-detail">{detail}</span>}
+    </div>
+  );
+}
+/** Sign comes from exact domain arithmetic. The component never parses formatted money. */
+export function SignedBalanceMetric({
+  position,
+  value,
+  currency,
+  detail,
+}: {
+  position: 'positive' | 'negative' | 'zero';
+  value: string;
+  currency: string;
+  detail?: ReactNode;
+}) {
+  return (
+    <div className={`ui-signed-balance ui-signed-balance--${position}`}>
+      <SummaryMetric
+        label={
+          position === 'positive'
+            ? "You're owed"
+            : position === 'negative'
+              ? 'You owe'
+              : 'Settled'
+        }
+        detail={detail}
+      >
+        <Money value={value} currency={currency} />
+      </SummaryMetric>
+    </div>
+  );
+}
+
+export function SpaceChip({ children }: { children: ReactNode }) {
+  return <span className="ui-space-chip">{children}</span>;
+}
+
+/** A navigation row with visible source-space context and exact supplied money. */
+export function ExpenseRow({
+  href,
+  description,
+  metadata,
+  space,
+  value,
+  currency,
+}: {
+  href: string;
+  description: string;
+  metadata: ReactNode;
+  space: string;
+  value: string;
+  currency: string;
+}) {
+  return (
+    <a className="ui-expense-row" href={href}>
+      <span>
+        <strong>{description}</strong>
+        <span className="ui-row-detail">{metadata}</span>
+        <SpaceChip>{space}</SpaceChip>
+      </span>
+      <Money value={value} currency={currency} />
+    </a>
+  );
+}
+
+export function MonthSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section className="ui-month-section" aria-labelledby={id}>
+      <h2 id={id}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+export function FilterBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="ui-filter-bar" role="group" aria-label="Expense filters">
+      {children}
+    </div>
+  );
+}
+
+export function BalanceSpaceRow({
+  space,
+  href,
+  children,
+}: {
+  space: string;
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="ui-balance-row">
+      <a href={href}>
+        <SpaceChip>{space}</SpaceChip>
+      </a>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+export function MemberBalanceRow({
+  name,
+  children,
+}: {
+  name: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="ui-balance-row">
+      <Member name={name} />
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/** Only callers with an explicit group and counterparty may offer settlement entry. */
+export function RecommendedRepaymentRow({
+  group,
+  sender,
+  recipient,
+  value,
+  currency,
+  action,
+}: {
+  group: string;
+  sender: string;
+  recipient: string;
+  value: string;
+  currency: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="ui-repayment-row">
+      <div>
+        <strong>
+          {sender} pays {recipient}
+        </strong>
+        <span className="ui-row-detail">{group}</span>
+      </div>
+      <Money value={value} currency={currency} />
+      {action}
+    </div>
+  );
+}

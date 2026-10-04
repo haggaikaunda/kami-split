@@ -4,15 +4,20 @@
   --color-muted: #52645c;
   --color-primary: #245b42;
   --color-primary-hover: #17452f;
-  --color-canvas: #f5f7f3;
+  --color-canvas: #f8f7f3;
+  --color-subtle: #f3f5f1;
+  --color-separator: #e1e6e2;
+  --color-owes: #93421e;
+  --color-owes-surface: #fff1e8;
   --color-surface: #ffffff;
-  --color-balance: #e6f1dd;
+  --color-balance: #edf5ec;
   --color-border: #87968d;
   --color-danger: #9f2727;
   --color-error-surface: #fff0ed;
   --color-focus: #175db6;
-  --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Manrope', var(--font-body);
+  --font-body:
+    var(--font-dm-sans, 'DM Sans'), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope, 'Manrope'), var(--font-body);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -187,7 +192,7 @@ button:disabled {
 }
 .ui-card {
   min-width: 0;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-separator);
   border-radius: var(--radius-card);
   padding: var(--space-6);
   background: var(--color-surface);
@@ -301,7 +306,7 @@ th,
 td {
   text-align: start;
   padding: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-separator);
 }
 @media (max-width: 759px) {
   .ui-dialog {
@@ -342,4 +347,137 @@ td {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.ui-workspace-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-6);
+}
+.ui-workspace-header h1 {
+  margin-block: var(--space-2);
+}
+.ui-workspace-context,
+.ui-row-detail,
+.ui-metric-label,
+.ui-metric-detail {
+  color: var(--color-muted);
+}
+.ui-workspace-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-separator);
+}
+.ui-workspace-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  flex-shrink: 0;
+  padding: var(--space-3);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+.ui-workspace-tabs a[aria-current='page'] {
+  border-color: var(--color-primary);
+  font-weight: 700;
+}
+.ui-workspace-tabs a:hover {
+  background: var(--color-balance);
+}
+.ui-summary-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-6);
+}
+.ui-summary-metric {
+  overflow-wrap: anywhere;
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.ui-metric-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.125rem, 3vw, 2rem);
+}
+.ui-signed-balance {
+  min-width: 0;
+  border-radius: var(--radius-control);
+}
+.ui-signed-balance--positive {
+  color: var(--color-primary);
+  background: var(--color-balance);
+}
+.ui-signed-balance--negative {
+  color: var(--color-owes);
+  background: var(--color-owes-surface);
+}
+.ui-space-chip {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--color-subtle);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+.ui-row-detail {
+  display: block;
+}
+.ui-expense-row,
+.ui-balance-row,
+.ui-repayment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--color-separator);
+  overflow-wrap: anywhere;
+}
+.ui-expense-row {
+  min-height: var(--target-size);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+.ui-expense-row:hover {
+  background: var(--color-subtle);
+}
+.ui-expense-row > *,
+.ui-balance-row > *,
+.ui-repayment-row > * {
+  min-width: 0;
+}
+.ui-expense-row > .ui-money {
+  text-align: end;
+  flex: 0 0 40%;
+}
+.ui-balance-row > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+}
+.ui-balance-row > div {
+  max-width: 50%;
+}
+.ui-month-section {
+  margin-block: var(--space-6);
+}
+.ui-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+}
+.ui-filter-bar > * {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.ui-repayment-row {
+  flex-wrap: wrap;
 }
