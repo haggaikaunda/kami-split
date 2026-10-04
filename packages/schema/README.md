@@ -1,6 +1,6 @@
 # GraphQL contract
 
-`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql` and `onboarding.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, and ordinary/trip group creation. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
+`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `household.graphql` and `onboarding.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, and ordinary/trip group creation. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
 
 Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. The future Relay compiler will consume this same contract; Relay is not installed yet.
 
@@ -44,3 +44,7 @@ exposed. `Viewer.today` is sampled once per response in UTC, including aliases a
 node lookups. Clients derive trip status from inclusive dates and this value;
 trip dates never restrict expense history or writes. Metadata editing and
 classification conversion have no public endpoint.
+
+## Household overview
+
+`householdDashboard` discovers the complete currently eligible pair-shared set independently of expense pagination. Source space rows preserve exact complete balances, revision, members, current labels and trip metadata. `COMPLETE` includes checked informational totals; `INCOMPLETE` includes freshly authorized rows and an `AMOUNT_OVERFLOW` totals problem; `UNAVAILABLE` exposes only the authorized Household ledger without totals when sharing is not finalized. A finalized non-partner viewer receives `NOT_FOUND`, including an owner outside the pair. Whole-discovery failure returns `UNAVAILABLE` without rows. Counts use exact canonical `MinorUnits` strings. Zero informational net does not settle independent groups; no aggregate repayment target exists.

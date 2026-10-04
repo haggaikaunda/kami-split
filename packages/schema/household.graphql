@@ -1,0 +1,122 @@
+"""
+Authorized Household overview or safe access/discovery failure; never a repayment target.
+"""
+union HouseholdDashboardResult = HouseholdDashboard | Problem
+"""
+Completeness of the freshly authorized overview. No partial totals are returned.
+"""
+enum HouseholdDashboardState {
+  """
+  Every eligible space and total is complete.
+  """
+  COMPLETE
+  """
+  Eligible rows are authorized, but required financial data exceeds bounds.
+  """
+  INCOMPLETE
+  """
+  Only the authorized Household ledger is available; sharing is not finalized.
+  """
+  UNAVAILABLE
+}
+"""
+Original ledgers and an explicit complete/incomplete/unavailable outcome.
+"""
+type HouseholdDashboard {
+  """
+  Current completeness, independent of individual group settlement.
+  """
+  state: HouseholdDashboardState!
+  """
+  Complete eligible set, or Household-only fallback; excluded groups leave no trace.
+  """
+  spaces: [HouseholdDashboardSpace!]!
+  """
+  Complete checked totals, or safe amount failure; absent for unavailable sharing.
+  """
+  totals: HouseholdDashboardTotalsResult
+}
+"""
+Complete exact totals or overflow, with no partial sum.
+"""
+union HouseholdDashboardTotalsResult = HouseholdDashboardTotals | Problem
+"""
+One original authorized ledger, including current metadata and complete balances.
+"""
+type HouseholdDashboardSpace {
+  """
+  Original authorized Group ID for navigation; no aggregate repayment scope.
+  """
+  groupId: ID!
+  """
+  Current authorized group label.
+  """
+  name: String!
+  """
+  Current ordinary/trip classification.
+  """
+  kind: GroupKind!
+  """
+  Current authorized travel metadata, independent of financial history.
+  """
+  trip: GroupTrip
+  """
+  Whether this source ledger is the installation Household.
+  """
+  isHousehold: Boolean!
+  """
+  Original ledger currency; currently USD only.
+  """
+  currency: Currency!
+  """
+  Authorized historical profiles, without global user IDs or emails.
+  """
+  members: [Membership!]!
+  """
+  Viewer's independent membership in this original group.
+  """
+  viewerMembership: Membership!
+  """
+  Complete positions, obligations, settlement state and financial revision, or safe overflow.
+  """
+  balances: BalanceResult!
+  """
+  Exact viewer position in this space; absent if its balance is unavailable.
+  """
+  viewerNetMinor: MinorUnits
+  """
+  Complete active expense count, excluding actual repayments.
+  """
+  sharedExpenseCount: MinorUnits!
+}
+"""
+Checked totals across the complete eligible set; zero net never means settled.
+"""
+type HouseholdDashboardTotals {
+  """
+  Signed sum of viewer positions: positive is owed, negative owes; informational only.
+  """
+  viewerNetMinor: MinorUnits!
+  """
+  Number of eligible spaces with a nonzero viewer position.
+  """
+  openBalanceCount: MinorUnits!
+  """
+  Number of complete currently eligible spaces, including Household.
+  """
+  activeSpaceCount: MinorUnits!
+  """
+  Sum of original active expense face values, counted once; repayments excluded.
+  """
+  totalSharedExpenseMinor: MinorUnits!
+  """
+  Complete number of active expenses, independent of expense pagination.
+  """
+  totalSharedExpenseCount: MinorUnits!
+}
+extend type Query {
+  """
+  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  """
+  householdDashboard: HouseholdDashboardResult!
+}

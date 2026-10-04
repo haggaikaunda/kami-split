@@ -6,7 +6,7 @@ The web application includes an [authenticated expense journey](relay-expenses.m
 
 ## Backend and planned features
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. The internal [Household partner designation](household-designation.md) adds explicit consent and lifecycle invalidation; dashboard reads remain separate. The [Relay expense journey](relay-expenses.md) connects real financial browser reads, creation and recovery. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. The internal [Household partner designation](household-designation.md) adds explicit consent and lifecycle invalidation; the separate #111 `householdDashboard` implements coherent authorized summary reads. The [Relay expense journey](relay-expenses.md) connects real financial browser reads, creation and recovery. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
 
 ## Architecture decisions
 
@@ -20,7 +20,7 @@ The web application includes an [authenticated expense journey](relay-expenses.m
 
 [Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. No creation API or real trip UI is implemented by that document.
 
-[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation and settlement capability have explicit follow-up gates; spending/history formulas remain deferred.
+[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals; couple-spending/average/history formulas and #112 browser integration remain deferred.
 
 - [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
 

@@ -2,6 +2,8 @@
 
 Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). Internal targeted invitation, admission and durable delivery recovery are also implemented; [onboarding transport](../../docs/application/onboarding.md) connects provider adapters, invitation SDL and browser entry. The web preview keeps its in-memory DataPort; the separate [Relay expense journey](../../docs/application/relay-expenses.md) connects authenticated group expenses at `/groups` (#83).
 
+The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page remains a separate #112 delivery.
+
 ## Run locally
 
 Install Go 1.27.1 and make. From the repository root:
