@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f00f7316fd5871764bcb7f7111bbe4bf>>
+ * @generated SignedSource<<086dea1f410e63cf1a042a82713aeb88>>
  * @lightSyntaxTransform
  */
 
@@ -10,6 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type AccessState = "DISABLED" | "UNPROVISIONED" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 export type journeyViewerQuery$variables = Record<PropertyKey, never>;
 export type journeyViewerQuery$data = {
@@ -19,11 +20,19 @@ export type journeyViewerQuery$data = {
     readonly message: string;
   } | {
     readonly __typename: "Viewer";
+    readonly canCreateGroups: boolean;
     readonly displayName: string;
     readonly groups: ReadonlyArray<{
       readonly currency: Currency;
       readonly id: string;
+      readonly isHousehold: boolean;
+      readonly kind: GroupKind;
       readonly name: string;
+      readonly trip: {
+        readonly destination: string;
+        readonly endDate: string;
+        readonly startDate: string;
+      } | null | undefined;
     }>;
     readonly id: string;
     readonly today: string;
@@ -77,6 +86,13 @@ v2 = {
     {
       "alias": null,
       "args": null,
+      "kind": "ScalarField",
+      "name": "canCreateGroups",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
       "concreteType": "GroupSummary",
       "kind": "LinkedField",
       "name": "groups",
@@ -95,6 +111,52 @@ v2 = {
           "args": null,
           "kind": "ScalarField",
           "name": "currency",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "kind",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "isHousehold",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "GroupTrip",
+          "kind": "LinkedField",
+          "name": "trip",
+          "plural": false,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "destination",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "startDate",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "endDate",
+              "storageKey": null
+            }
+          ],
           "storageKey": null
         }
       ],
@@ -197,16 +259,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "21fb6e3c465ab6db3fbea17af815259f",
+    "cacheID": "a0de7f3d6ea07c3c91495c7651ae1031",
     "id": null,
     "metadata": {},
     "name": "journeyViewerQuery",
     "operationKind": "query",
-    "text": "query journeyViewerQuery {\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n      today\n      groups {\n        id\n        name\n        currency\n      }\n    }\n    ... on ViewerAccess {\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query journeyViewerQuery {\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n      today\n      canCreateGroups\n      groups {\n        id\n        name\n        currency\n        kind\n        isHousehold\n        trip {\n          destination\n          startDate\n          endDate\n        }\n      }\n    }\n    ... on ViewerAccess {\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3d4262432d9c5c73eafddbebeb236901";
+(node as any).hash = "af9ed08c9f00a95fa4ca58c6323c61be";
 
 export default node;
