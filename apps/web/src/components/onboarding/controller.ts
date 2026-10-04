@@ -1,5 +1,5 @@
+'use client';
 import { financialReturn } from '@/lib/relay/discovery';
-('use client');
 import { explain } from './messages';
 import { useOwnerInvitations } from './owner-controller';
 import { useRouter } from 'next/navigation';
