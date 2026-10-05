@@ -186,6 +186,16 @@ func (r *queryResolver) ExpenseOperation(ctx context.Context, groupID string, ke
 	return mapOutcome(out).(model.OperationResult), nil
 }
 
+// HouseholdExpenses is the resolver for the householdExpenses field.
+func (r *queryResolver) HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, "HOUSEHOLD", first, after, filter)
+}
+
+// GroupExpenses is the resolver for the groupExpenses field.
+func (r *queryResolver) GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, groupID, first, after, filter)
+}
+
 // Group returns GroupResolver implementation.
 func (r *Resolver) Group() GroupResolver { return &groupResolver{r} }
 

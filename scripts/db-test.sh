@@ -58,6 +58,7 @@ mv "$stage/supabase/migrations/20261004000000_group_metadata_read.sql" "$stage/g
 mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/shared-invitations.sql"
 mv "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql" "$stage/onboarding-continuation.sql"
 mv "$stage/supabase/migrations/20261009000000_household_dashboard.sql" "$stage/household-dashboard.sql"
+mv "$stage/supabase/migrations/20261010000000_expense_view.sql" "$stage/expense-view.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -78,6 +79,7 @@ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d post
 mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261007000000_shared_invitations.sql"
 mv "$stage/onboarding-continuation.sql" "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql"
 mv "$stage/household-dashboard.sql" "$stage/supabase/migrations/20261009000000_household_dashboard.sql"
+mv "$stage/expense-view.sql" "$stage/supabase/migrations/20261010000000_expense_view.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
