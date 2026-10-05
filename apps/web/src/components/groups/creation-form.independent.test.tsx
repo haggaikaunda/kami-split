@@ -8,7 +8,6 @@ import {
   creationInput,
   readCreation,
   saveCreation,
-  groupCreationStorageKey,
   type CreationDraft,
 } from '@/lib/relay/group-creation';
 import { CreationForm } from './creation-form';
@@ -168,5 +167,24 @@ it('hidden-tab completion retains its original attempt and does not redirect', a
   );
   expect(network.push).not.toHaveBeenCalled();
   expect(network.read).not.toHaveBeenCalled();
+  expect(readCreation('Viewer:A')?.attempt).toEqual(a);
+});
+it('hiding during the fresh completed-group read preserves recovery without navigation', async () => {
+  const a = frozen();
+  let resolveRead!: (value: typeof fresh) => void;
+  network.read
+    .mockResolvedValueOnce({ groupCreationOperation: completed(a) })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+  await render();
+  await act(async () => button('Check creation').click());
+  expect(network.read).toHaveBeenCalledTimes(2);
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+  await act(async () => resolveRead(fresh));
+  expect(network.push).not.toHaveBeenCalled();
   expect(readCreation('Viewer:A')?.attempt).toEqual(a);
 });
