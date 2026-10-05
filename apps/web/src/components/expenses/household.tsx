@@ -98,7 +98,6 @@ function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     viewer?.__typename !== 'Viewer'
   )
     return <p role="status">Loading complete Household access…</p>;
-  const household = dashboard.spaces.find((space) => space.isHousehold);
   return (
     <>
       <WorkspaceTabs
@@ -108,9 +107,7 @@ function HouseholdLedger({ scope }: { scope: FinancialScope }) {
             ? '/household/expenses'
             : section === 'Activity'
               ? '/household/activity'
-              : household
-                ? `/groups/${encodeURIComponent(household.groupId)}?tab=${section.toLowerCase()}`
-                : '/groups'
+              : `/household?tab=${section.toLowerCase()}`
         }
       />
       <ExpenseLedger

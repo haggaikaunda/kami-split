@@ -400,3 +400,19 @@ it('successful persisted creation refreshes owning household totals and eligible
   await respond(page());
   expect(host.textContent).toContain('$3.02');
 });
+it('returns from Expenses to canonical Household workspace tabs instead of group discovery', async () => {
+  await renderHousehold();
+  await respondContext(context('0'));
+  await respond(page([]));
+  expect(
+    [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+      a.getAttribute('href'),
+    ),
+  ).toEqual([
+    '/household?tab=overview',
+    '/household/expenses',
+    '/household?tab=balances',
+    '/household/activity',
+    '/household?tab=members',
+  ]);
+});

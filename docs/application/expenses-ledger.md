@@ -2,7 +2,7 @@
 
 Issue #170 connects `/household/expenses` and the Group/Trip **Expenses** tab
 (`/groups/{groupId}?tab=expenses`) to the structured expense views implemented
-in #169. Both render the same `ExpenseLedger`; the simulated `/household` setup
+in #169. Both render the same `ExpenseLedger`; the authenticated Household Overview/Balances/Members tabs remain at `/household`
 and preview financial routes remain separate.
 
 Household discovery uses `householdDashboard`, requiring `COMPLETE` eligibility.

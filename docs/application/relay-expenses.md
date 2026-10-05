@@ -123,3 +123,24 @@ repayment entry only on an explicit eligible sender/recipient row. Summary cards
 only disclose balance details. See [persisted repayments](persisted-repayments.md)
 for actual-transfer validation, frozen recovery scope and browser integration.
 Owner settings disclose current metadata; metadata editing remains unavailable.
+
+## Household workspace
+
+#112 connects `/household` to the complete authorized `householdDashboard` read.
+Overview shows expense face-value total/count, exact signed viewer net/open-space
+count, and eligible-space count in a horizontal row, followed by at most five
+source-attributed expenses from `householdExpenses`. Balances uses the complete
+server source set and never derives totals from the recent page. No Household
+settlement action exists: each row opens its original group's Balances surface.
+Zero aggregate with open sources stays open. Members separately reads the actual
+Household `Group.members`, including more than two members and historical profiles;
+only owners see existing invitation management. Activity reuses #172. #170 adds
+the shared [Expenses ledger](expenses-ledger.md) at `/household/expenses`; the
+Expenses tab opens it and legacy `?tab=expenses` links preserve their filters on
+redirect. Its navigation destination is distinct from Overview.
+
+Account changes, foreground revalidation, refresh and route changes remove prior
+private data before network-only reads. Failed/incomplete reads never fabricate
+zeros. Unavailable designation exposes only the server-authorized ledger fallback
+without a partner identity or suspension reason. Source return and browser Back
+restore focus/scroll after fresh authorization; a missing row uses the heading.

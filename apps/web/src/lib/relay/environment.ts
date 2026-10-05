@@ -16,6 +16,12 @@ export function createScope(client: SupabaseClient, actor: string) {
     { href: string; focus: string; scroll: number; group?: string }
   >();
   const requests = new Set<AbortController>();
+  const restoreHistory = () => {
+    const token = window.history.state?.financialRestore;
+    if (typeof token === 'string') restored.delete(token);
+  };
+  if (typeof window !== 'undefined')
+    window.addEventListener('popstate', restoreHistory);
   const environment = new Environment({
     network: Network.create(async (operation, variables) => {
       const controller = new AbortController();
@@ -61,6 +67,8 @@ export function createScope(client: SupabaseClient, actor: string) {
     isLive: () => live,
     dispose() {
       live = false;
+      if (typeof window !== 'undefined')
+        window.removeEventListener('popstate', restoreHistory);
       visits.clear();
       restored.clear();
       for (const request of requests) request.abort();

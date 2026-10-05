@@ -20,7 +20,7 @@ The web application includes an [authenticated expense journey](relay-expenses.m
 
 [Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. The design document itself implements no features; #104 implements the creation/metadata API and #105 implements authenticated discovery. Creation forms remain separate.
 
-[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas and #112 browser integration remain deferred.
+[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas remain deferred. Household Overview/Balances/Members integration is implemented by #112; the full [Expenses ledger](expenses-ledger.md) is implemented by #170.
 
 - [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
 
@@ -36,4 +36,4 @@ that the application is already serving production traffic.
 
 ## Authenticated financial browser
 
-The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. Other preview routes remain explicitly simulated.
+The [Relay expense journey](relay-expenses.md) connects admitted groups, structured Expenses ledgers, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. Other preview routes remain explicitly simulated.
