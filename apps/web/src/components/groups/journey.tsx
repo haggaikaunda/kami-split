@@ -327,6 +327,14 @@ function GroupDetails({
   const generation = useRef(0),
     live = useRef(true);
   const heading = useRef<HTMLHeadingElement>(null);
+  const savedStatus = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!saved || busy) return;
+    const frame = requestAnimationFrame(() => {
+      if (live.current && scope.isLive()) savedStatus.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [saved, busy, scope]);
   const read = async (cursor?: string | null) => {
     const ticket = ++generation.current;
     setBusy(true);
@@ -394,7 +402,11 @@ function GroupDetails({
           {busy ? 'Group access' : 'Group unavailable'}
         </h1>
       )}
-      {saved && <p role="status">{saved}</p>}
+      {saved && (
+        <p ref={savedStatus} role="status" tabIndex={-1}>
+          {saved}
+        </p>
+      )}
       <button
         disabled={busy}
         onClick={() => {

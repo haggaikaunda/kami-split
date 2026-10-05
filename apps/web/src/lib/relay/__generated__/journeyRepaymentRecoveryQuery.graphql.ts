@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41980d4e7d2bf945b6fc9f88000f68bf>>
+ * @generated SignedSource<<71e1f85565c190e39dabe6171cc36abb>>
  * @lightSyntaxTransform
  */
 
@@ -91,164 +91,159 @@ v3 = {
 },
 v4 = [
   {
-    "kind": "ClientExtension",
+    "alias": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "groupId",
+        "variableName": "groupId"
+      },
+      {
+        "kind": "Variable",
+        "name": "key",
+        "variableName": "key"
+      }
+    ],
+    "concreteType": null,
+    "kind": "LinkedField",
+    "name": "repaymentOperation",
+    "plural": false,
     "selections": [
       {
         "alias": null,
-        "args": [
-          {
-            "kind": "Variable",
-            "name": "groupId",
-            "variableName": "groupId"
-          },
-          {
-            "kind": "Variable",
-            "name": "key",
-            "variableName": "key"
-          }
-        ],
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "repaymentOperation",
-        "plural": false,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "__typename",
+        "storageKey": null
+      },
+      {
+        "kind": "InlineFragment",
         "selections": [
+          (v1/*:: as any*/),
           {
             "alias": null,
             "args": null,
-            "kind": "ScalarField",
-            "name": "__typename",
-            "storageKey": null
-          },
-          {
-            "kind": "InlineFragment",
+            "concreteType": "RepaymentOperationRecord",
+            "kind": "LinkedField",
+            "name": "record",
+            "plural": false,
             "selections": [
-              (v1/*:: as any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "RepaymentOperationRecord",
-                "kind": "LinkedField",
-                "name": "record",
-                "plural": false,
-                "selections": [
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "repaymentId",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "groupId",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "senderMembershipId",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "recipientMembershipId",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "amountMinor",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "currency",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "effectiveDate",
-                    "storageKey": null
-                  },
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "note",
-                    "storageKey": null
-                  }
-                ],
-                "storageKey": null
-              }
-            ],
-            "type": "RepaymentCommitted",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "FieldProblem",
-                "kind": "LinkedField",
-                "name": "fields",
-                "plural": true,
-                "selections": [
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "path",
-                    "storageKey": null
-                  },
-                  (v2/*:: as any*/),
-                  (v3/*:: as any*/)
-                ],
-                "storageKey": null
-              }
-            ],
-            "type": "ValidationProblem",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v1/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "state",
+                "name": "repaymentId",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "groupId",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "senderMembershipId",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "recipientMembershipId",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "amountMinor",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "currency",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "effectiveDate",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "note",
                 "storageKey": null
               }
             ],
-            "type": "OperationProgress",
-            "abstractKey": null
-          },
+            "storageKey": null
+          }
+        ],
+        "type": "RepaymentCommitted",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
           {
-            "kind": "InlineFragment",
+            "alias": null,
+            "args": null,
+            "concreteType": "FieldProblem",
+            "kind": "LinkedField",
+            "name": "fields",
+            "plural": true,
             "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "path",
+                "storageKey": null
+              },
               (v2/*:: as any*/),
               (v3/*:: as any*/)
             ],
-            "type": "Problem",
-            "abstractKey": null
+            "storageKey": null
           }
         ],
-        "storageKey": null
+        "type": "ValidationProblem",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v1/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "state",
+            "storageKey": null
+          }
+        ],
+        "type": "OperationProgress",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v2/*:: as any*/),
+          (v3/*:: as any*/)
+        ],
+        "type": "Problem",
+        "abstractKey": null
       }
-    ]
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -269,12 +264,12 @@ return {
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "b98ff3090e313692f85311e5216088f5",
+    "cacheID": "197eeeaa69ea5173361d0f4eadbead3d",
     "id": null,
     "metadata": {},
     "name": "journeyRepaymentRecoveryQuery",
     "operationKind": "query",
-    "text": null
+    "text": "query journeyRepaymentRecoveryQuery(\n  $groupId: ID!\n  $key: OperationKey!\n) {\n  repaymentOperation(groupId: $groupId, key: $key) {\n    __typename\n    ... on RepaymentCommitted {\n      key\n      record {\n        repaymentId\n        groupId\n        senderMembershipId\n        recipientMembershipId\n        amountMinor\n        currency\n        effectiveDate\n        note\n      }\n    }\n    ... on ValidationProblem {\n      fields {\n        path\n        code\n        message\n      }\n    }\n    ... on OperationProgress {\n      key\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n  }\n}\n"
   }
 };
 })();

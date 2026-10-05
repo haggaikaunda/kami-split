@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fabf545a4f05929295ac31daceebfbf9>>
+ * @generated SignedSource<<d3fca5d1b23cd2d2e3d0057bb55517db>>
  * @lightSyntaxTransform
  */
 
@@ -510,6 +510,82 @@ v16 = {
     },
     {
       "alias": null,
+      "args": [
+        {
+          "kind": "Literal",
+          "name": "first",
+          "value": 5
+        }
+      ],
+      "concreteType": "RepaymentConnection",
+      "kind": "LinkedField",
+      "name": "repayments",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "RepaymentEdge",
+          "kind": "LinkedField",
+          "name": "edges",
+          "plural": true,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "Repayment",
+              "kind": "LinkedField",
+              "name": "node",
+              "plural": false,
+              "selections": [
+                (v5/*:: as any*/),
+                (v15/*:: as any*/),
+                (v13/*:: as any*/),
+                (v10/*:: as any*/),
+                (v11/*:: as any*/),
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "sender",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "recipient",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                }
+              ],
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "PageInfo",
+          "kind": "LinkedField",
+          "name": "pageInfo",
+          "plural": false,
+          "selections": [
+            (v14/*:: as any*/)
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": "repayments(first:5)"
+    },
+    {
+      "alias": null,
       "args": null,
       "concreteType": null,
       "kind": "LinkedField",
@@ -635,87 +711,6 @@ v16 = {
         }
       ],
       "storageKey": null
-    },
-    {
-      "kind": "ClientExtension",
-      "selections": [
-        {
-          "alias": null,
-          "args": [
-            {
-              "kind": "Literal",
-              "name": "first",
-              "value": 5
-            }
-          ],
-          "concreteType": "RepaymentConnection",
-          "kind": "LinkedField",
-          "name": "repayments",
-          "plural": false,
-          "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "RepaymentEdge",
-              "kind": "LinkedField",
-              "name": "edges",
-              "plural": true,
-              "selections": [
-                {
-                  "alias": null,
-                  "args": null,
-                  "concreteType": "Repayment",
-                  "kind": "LinkedField",
-                  "name": "node",
-                  "plural": false,
-                  "selections": [
-                    (v5/*:: as any*/),
-                    (v15/*:: as any*/),
-                    (v13/*:: as any*/),
-                    (v10/*:: as any*/),
-                    (v11/*:: as any*/),
-                    {
-                      "alias": null,
-                      "args": null,
-                      "concreteType": "Membership",
-                      "kind": "LinkedField",
-                      "name": "sender",
-                      "plural": false,
-                      "selections": (v12/*:: as any*/),
-                      "storageKey": null
-                    },
-                    {
-                      "alias": null,
-                      "args": null,
-                      "concreteType": "Membership",
-                      "kind": "LinkedField",
-                      "name": "recipient",
-                      "plural": false,
-                      "selections": (v12/*:: as any*/),
-                      "storageKey": null
-                    }
-                  ],
-                  "storageKey": null
-                }
-              ],
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "PageInfo",
-              "kind": "LinkedField",
-              "name": "pageInfo",
-              "plural": false,
-              "selections": [
-                (v14/*:: as any*/)
-              ],
-              "storageKey": null
-            }
-          ],
-          "storageKey": "repayments(first:5)"
-        }
-      ]
     }
   ],
   "type": "Group",
@@ -783,12 +778,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "842e9cbc81a09ffba73559947bdd00a5",
+    "cacheID": "d14bcc61b9eae9a7cdfebd69d0e18e11",
     "id": null,
     "metadata": {},
     "name": "journeyGroupQuery",
     "operationKind": "query",
-    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      kind\n      isHousehold\n      trip {\n        destination\n        startDate\n        endDate\n      }\n      viewerMembership {\n        id\n        role\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      kind\n      isHousehold\n      trip {\n        destination\n        startDate\n        endDate\n      }\n      viewerMembership {\n        id\n        role\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      repayments(first: 5) {\n        edges {\n          node {\n            id\n            groupId\n            amountMinor\n            effectiveDate\n            note\n            sender {\n              id\n              displayName\n            }\n            recipient {\n              id\n              displayName\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();

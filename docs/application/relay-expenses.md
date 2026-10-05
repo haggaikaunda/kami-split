@@ -77,7 +77,7 @@ not automatically recreating a similar expense.
 ## Generation and verification
 
 `pnpm relay:generate` assembles the implemented `packages/schema/*.graphql` SDL
-in ignored `.tools` and compiles checked-in TypeScript operation artifacts.
+into a complete server schema in ignored `.tools`, resolving `extend type` fields before compiling checked-in TypeScript operation artifacts. This prevents Relay from treating persisted server operations as client-only fields. Wire-operation tests validate every compiled request against the authoritative SDL.
 `pnpm relay:check` validates schema/operation generation drift without changing
 artifacts and runs in required web CI. Scalar mappings are explicitly strings.
 Application modules import compiled artifacts directly, so no runtime GraphQL tag
