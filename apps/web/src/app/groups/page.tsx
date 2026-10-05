@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { GroupJourney } from '@/components/groups/journey';
 export default async function GroupsPage({
   searchParams,
@@ -5,5 +6,7 @@ export default async function GroupsPage({
   searchParams: Promise<{ group?: string }>;
 }) {
   const { group } = await searchParams;
-  return <GroupJourney initialGroup={typeof group === 'string' ? group : ''} />;
+  if (typeof group === 'string' && group)
+    redirect(`/groups/${encodeURIComponent(group)}`);
+  return <GroupJourney />;
 }

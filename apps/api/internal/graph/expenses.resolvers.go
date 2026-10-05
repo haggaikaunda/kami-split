@@ -63,6 +63,16 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 	return mapOutcome(out), nil
 }
 
+// GroupActivity is the resolver for the groupActivity field.
+func (r *queryResolver) GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error) {
+	return r.activity(ctx, groupID, first, after, filter), nil
+}
+
+// HouseholdActivity is the resolver for the householdActivity field.
+func (r *queryResolver) HouseholdActivity(ctx context.Context, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error) {
+	return r.activity(ctx, "", first, after, filter), nil
+}
+
 // Viewer is the resolver for the viewer field.
 func (r *queryResolver) Viewer(ctx context.Context) (model.ViewerResult, error) {
 	if r.Expenses == nil {
@@ -174,6 +184,16 @@ func (r *queryResolver) ExpenseOperation(ctx context.Context, groupID string, ke
 		return problem(ctx, err), nil
 	}
 	return mapOutcome(out).(model.OperationResult), nil
+}
+
+// HouseholdExpenses is the resolver for the householdExpenses field.
+func (r *queryResolver) HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, "HOUSEHOLD", first, after, filter)
+}
+
+// GroupExpenses is the resolver for the groupExpenses field.
+func (r *queryResolver) GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, groupID, first, after, filter)
 }
 
 // Group returns GroupResolver implementation.

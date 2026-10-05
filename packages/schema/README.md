@@ -1,8 +1,8 @@
 # GraphQL contract
 
-`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `household.graphql`, `structured-expenses.graphql` and `onboarding.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, and ordinary/trip group creation. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
+`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `household.graphql`, `financial-activity.graphql`, `structured-expenses.graphql` and `onboarding.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, ordinary/trip group creation, financial activity, and structured cross-space spending reads. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
 
-Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. The installed Relay compiler consumes this same contract. Run `pnpm relay:generate` to regenerate browser artifacts and `pnpm relay:check` to validate committed output; CI runs the drift check. Base type definitions must load before extensions in the combined SDL.
+Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. Pinned Relay tooling consumes the same authoritative SDL through `pnpm relay:generate`; `pnpm relay:check` verifies committed web artifact drift. Server root fields belong to the original Query definition so Relay emits executable server operations. Base type definitions must load before extensions in the combined SDL.
 
 Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript money logic and DataPort remain in `apps/web`; Go application operations own persisted financial rules. Language-neutral test fixtures may be shared when implemented.
 
@@ -44,6 +44,10 @@ exposed. `Viewer.today` is sampled once per response in UTC, including aliases a
 node lookups. Clients derive trip status from inclusive dates and this value;
 trip dates never restrict expense history or writes. Metadata editing and
 classification conversion have no public endpoint.
+
+## Activity
+
+`groupActivity` and `householdActivity` traverse persisted immutable expense-created and repayment-recorded events, ordered by event timestamp, kind and record UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same finalized-pair scope as `householdDashboard`, never client group filtering. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
 
 ## Household overview
 

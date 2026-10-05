@@ -12,6 +12,11 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
+// Safe failure or a complete authorized activity page.
+type ActivityResult interface {
+	IsActivityResult()
+}
+
 // Complete exact balances or an explicit failure; failure never means zero or settled.
 type BalanceResult interface {
 	IsBalanceResult()
@@ -97,6 +102,72 @@ type RepaymentOperationResult interface {
 // Own application identity, own access state, or unavailable read; no peer user directory.
 type ViewerResult interface {
 	IsViewerResult()
+}
+
+// Complete bounded event traversal, independent of financial record page sizes.
+type ActivityConnection struct {
+	// Events from the fixed source revisions in deterministic descending order.
+	Edges []*ActivityEdge `json:"edges"`
+	// Continuation metadata; refresh restarts with current authorization.
+	PageInfo *PageInfo `json:"pageInfo"`
+}
+
+func (ActivityConnection) IsActivityResult() {}
+
+// A scope-bound position and its immutable event.
+type ActivityEdge struct {
+	// Authenticated forward traversal boundary.
+	Cursor string `json:"cursor"`
+	// One freshly authorized event.
+	Node *ActivityEvent `json:"node"`
+}
+
+// One immutable event, ordered by event time, kind and stable record UUID.
+type ActivityEvent struct {
+	// Stable event identity independent of pagination and filters.
+	ID string `json:"id"`
+	// Current authorized Expense or Repayment ID; detail must reauthorize.
+	RecordID string `json:"recordId"`
+	// The supported committed mutation.
+	Kind ActivityKind `json:"kind"`
+	// Original source Group ID; financial boundaries remain independent.
+	GroupID string `json:"groupId"`
+	// Current authorized source label.
+	GroupName string `json:"groupName"`
+	// Whether the source is the designated Household ledger.
+	IsHousehold bool `json:"isHousehold"`
+	// Exact expense face value or actual repayment amount.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Original record currency.
+	Currency Currency `json:"currency"`
+	// Financial effective date, distinct from event order.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Immutable recorded commit timestamp in UTC microseconds.
+	Timestamp ledger.DateTime `json:"timestamp"`
+	// Membership that committed this mutation.
+	Creator *ActivityIdentity `json:"creator"`
+	// Expense payer; null for a repayment.
+	Payer *ActivityIdentity `json:"payer,omitempty"`
+	// Repayment sender; null for an expense.
+	Sender *ActivityIdentity `json:"sender,omitempty"`
+	// Repayment recipient; null for an expense.
+	Recipient *ActivityIdentity `json:"recipient,omitempty"`
+}
+
+// Optional exact filters bound into every continuation cursor.
+type ActivityFilter struct {
+	// Restrict the event kind; omitted means both supported kinds.
+	Kind *ActivityKind `json:"kind,omitempty"`
+	// Restrict to one currently eligible source; excluded IDs are masked.
+	SourceGroupID *string `json:"sourceGroupId,omitempty"`
+}
+
+// Minimal current authorized label for an immutable historical membership.
+type ActivityIdentity struct {
+	// Stable same-source Membership ID, never a peer account identifier.
+	ID string `json:"id"`
+	// Current authorized display label, which may represent a historical member.
+	DisplayName string `json:"displayName"`
 }
 
 // One explicit participant share; zero amounts still retain participation and history.
@@ -707,6 +778,8 @@ func (Problem) IsCreateExpenseResult() {}
 
 func (Problem) IsOperationResult() {}
 
+func (Problem) IsActivityResult() {}
+
 func (Problem) IsCreateGroupResult() {}
 
 func (Problem) IsGroupCreationOperationResult() {}
@@ -942,6 +1015,65 @@ func (e *AccessState) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccessState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Implemented immutable financial event kinds. Future mutations require explicit
+// production audit contracts before extending this enum.
+type ActivityKind string
+
+const (
+	// One committed expense creation.
+	ActivityKindExpenseCreated ActivityKind = "EXPENSE_CREATED"
+	// One committed actual group repayment.
+	ActivityKindRepaymentRecorded ActivityKind = "REPAYMENT_RECORDED"
+)
+
+var AllActivityKind = []ActivityKind{
+	ActivityKindExpenseCreated,
+	ActivityKindRepaymentRecorded,
+}
+
+func (e ActivityKind) IsValid() bool {
+	switch e {
+	case ActivityKindExpenseCreated, ActivityKindRepaymentRecorded:
+		return true
+	}
+	return false
+}
+
+func (e ActivityKind) String() string {
+	return string(e)
+}
+
+func (e *ActivityKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ActivityKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ActivityKind", str)
+	}
+	return nil
+}
+
+func (e ActivityKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ActivityKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ActivityKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

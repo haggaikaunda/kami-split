@@ -113,3 +113,20 @@
     padding-inline: 4px;
   }
 }
+.financial-cover {
+  min-height: 4rem;
+  padding: 1rem;
+  background: repeating-linear-gradient(
+    135deg,
+    #d7e8df,
+    #d7e8df 1rem,
+    #f4e4cf 1rem,
+    #f4e4cf 2rem
+  );
+  color: #173e29;
+  border-radius: 0.75rem;
+}
+.financial-journey a {
+  display: inline-block;
+  padding: 0.5rem;
+}

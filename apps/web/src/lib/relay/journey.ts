@@ -7,10 +7,18 @@ export const journeyViewerQuery = graphql`
         id
         displayName
         today
+        canCreateGroups
         groups {
           id
           name
           currency
+          kind
+          isHousehold
+          trip {
+            destination
+            startDate
+            endDate
+          }
         }
       }
       ... on ViewerAccess {
@@ -36,6 +44,13 @@ export const journeyGroupQuery = graphql`
         id
         name
         currency
+        kind
+        isHousehold
+        trip {
+          destination
+          startDate
+          endDate
+        }
         viewerMembership {
           id
         }
@@ -46,8 +61,7 @@ export const journeyGroupQuery = graphql`
           role
           canParticipate
         }
-        expenses(first: 20, after: $after)
-          @connection(key: "journey_expenses") {
+        expenses(first: 20, after: $after) {
           revision
           edges {
             cursor
@@ -181,6 +195,34 @@ export const journeyRecoveryQuery = graphql`
       ... on Problem {
         code
         message
+      }
+    }
+  }
+`;
+
+export const journeyExpenseQuery = graphql`
+  query journeyExpenseQuery($id: ID!) {
+    node(id: $id) {
+      __typename
+      ... on Expense {
+        id
+        groupId
+        description
+        effectiveDate
+        totalMinor
+        category
+        note
+        payer {
+          id
+          displayName
+        }
+        allocations {
+          participant {
+            id
+            displayName
+          }
+          amountMinor
+        }
       }
     }
   }
