@@ -375,6 +375,19 @@ function GroupDetails({
       <h2 ref={heading} tabIndex={-1} data-page-heading>
         {group?.name ?? 'Group unavailable'}
       </h2>
+      {group && (
+        <nav aria-label="Group workspace">
+          <Link href={`/groups/${encodeURIComponent(id)}/activity`}>
+            Activity
+          </Link>
+          {group.isHousehold && (
+            <>
+              {' '}
+              · <Link href="/household/activity">Household activity</Link>
+            </>
+          )}
+        </nav>
+      )}
       {saved && <p role="status">{saved}</p>}
       <button
         disabled={busy}

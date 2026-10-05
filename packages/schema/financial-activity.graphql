@@ -1,0 +1,137 @@
+"""
+Implemented immutable financial event kinds. Future mutations require explicit
+production audit contracts before extending this enum.
+"""
+enum ActivityKind {
+  """
+  One committed expense creation.
+  """
+  EXPENSE_CREATED
+  """
+  One committed actual group repayment.
+  """
+  REPAYMENT_RECORDED
+}
+
+"""
+Optional exact filters bound into every continuation cursor.
+"""
+input ActivityFilter {
+  """
+  Restrict the event kind; omitted means both supported kinds.
+  """
+  kind: ActivityKind
+  """
+  Restrict to one currently eligible source; excluded IDs are masked.
+  """
+  sourceGroupId: ID
+}
+
+"""
+Minimal current authorized label for an immutable historical membership.
+"""
+type ActivityIdentity {
+  """
+  Stable same-source Membership ID, never a peer account identifier.
+  """
+  id: ID!
+  """
+  Current authorized display label, which may represent a historical member.
+  """
+  displayName: String!
+}
+
+"""
+One immutable event, ordered by event time, kind and stable record UUID.
+"""
+type ActivityEvent {
+  """
+  Stable event identity independent of pagination and filters.
+  """
+  id: ID!
+  """
+  Current authorized Expense or Repayment ID; detail must reauthorize.
+  """
+  recordId: ID!
+  """
+  The supported committed mutation.
+  """
+  kind: ActivityKind!
+  """
+  Original source Group ID; financial boundaries remain independent.
+  """
+  groupId: ID!
+  """
+  Current authorized source label.
+  """
+  groupName: String!
+  """
+  Whether the source is the designated Household ledger.
+  """
+  isHousehold: Boolean!
+  """
+  Exact expense face value or actual repayment amount.
+  """
+  amountMinor: MinorUnits!
+  """
+  Original record currency.
+  """
+  currency: Currency!
+  """
+  Financial effective date, distinct from event order.
+  """
+  effectiveDate: Date!
+  """
+  Immutable recorded commit timestamp in UTC microseconds.
+  """
+  timestamp: DateTime!
+  """
+  Membership that committed this mutation.
+  """
+  creator: ActivityIdentity!
+  """
+  Expense payer; null for a repayment.
+  """
+  payer: ActivityIdentity
+  """
+  Repayment sender; null for an expense.
+  """
+  sender: ActivityIdentity
+  """
+  Repayment recipient; null for an expense.
+  """
+  recipient: ActivityIdentity
+}
+
+"""
+A scope-bound position and its immutable event.
+"""
+type ActivityEdge {
+  """
+  Authenticated forward traversal boundary.
+  """
+  cursor: String!
+  """
+  One freshly authorized event.
+  """
+  node: ActivityEvent!
+}
+
+"""
+Complete bounded event traversal, independent of financial record page sizes.
+"""
+type ActivityConnection {
+  """
+  Events from the fixed source revisions in deterministic descending order.
+  """
+  edges: [ActivityEdge!]!
+  """
+  Continuation metadata; refresh restarts with current authorization.
+  """
+  pageInfo: PageInfo!
+}
+
+"""
+Safe failure or a complete authorized activity page.
+"""
+union ActivityResult = ActivityConnection | Problem
