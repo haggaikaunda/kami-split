@@ -72,7 +72,8 @@ export function CreationForm({
   const alive = useRef(true),
     pending = useRef(false),
     status = useRef<HTMLParagraphElement>(null);
-  const current = () => alive.current && scope.isLive();
+  const current = () =>
+    alive.current && scope.isLive() && document.visibilityState !== 'hidden';
   useEffect(() => {
     alive.current = true;
     return () => {
