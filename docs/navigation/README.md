@@ -1,6 +1,6 @@
 # Production navigation and source restoration
 
-The root enters `/groups`. Group and Trip discovery use real authenticated membership reads; every Trip workspace is `/groups/:groupId`, with independent financial and authorization boundaries. Household provides five workspace tabs at `/household`. Account, invitation and Auth routes use real configured services.
+The root enters `/groups`. Group and Trip discovery use real authenticated membership reads; every Trip workspace is `/groups/:groupId`, with independent financial and authorization boundaries. Household provides five workspace tabs from `/household`, with its Expenses ledger at `/household/expenses`. Designated creator entry uses `/groups/new` with independent Group/Trip recovery. Account, invitation and Auth routes use real configured services.
 
 `FinancialSession` is the only root financial provider. `ScopedLink`, `SourceReturn` and `RestoreSource` in `components/groups/navigation.tsx` retain actor-scoped visits, filter URLs, scroll and logical focus. Restoration runs only after a fresh authorized source response; missing/ineligible targets fall back to the current heading. Logout/account changes dispose the scope and prevent old responses or source visits from populating another session.
 
