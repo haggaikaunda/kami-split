@@ -395,6 +395,10 @@ func TestIndependentExpenseViewMalformedAuthorizationAndNoSearchContract(t *test
 			if got["code"] != "INVALID_INPUT" {
 				t.Fatal("malformed empty identifier broadened scope", got)
 			}
+			denied := independentViewRead(t, f, 4, 1, "", filter, group, "Problem")
+			if denied["code"] != "NOT_FOUND" {
+				t.Fatal("malformed filter reported before access denial", denied)
+			}
 		}
 	}
 	for _, first := range []int{-1, 0, 101} {
