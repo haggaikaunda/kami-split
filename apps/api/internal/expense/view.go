@@ -16,13 +16,16 @@ import (
 
 // ExpenseViewRequest selects a structured-filtered spending traversal. Scope is
 // HOUSEHOLD or an explicit public Group ID. HasAfter distinguishes an explicitly
-// empty (invalid) cursor from omission. Cursor validation never grants access.
+// empty (invalid) cursor from omission. Filter presence distinguishes omitted
+// identifiers from supplied empty IDs. Cursor validation never grants access.
 type ExpenseViewRequest struct {
-	Scope    string
-	First    int
-	After    string
-	HasAfter bool
-	Filter   ledger.StructuredFilter
+	Scope               string
+	First               int
+	After               string
+	HasAfter            bool
+	GroupFilterPresent  bool
+	MemberFilterPresent bool
+	Filter              ledger.StructuredFilter
 }
 
 // SpendingMonth is a complete filtered calendar-month aggregate at the same
@@ -110,7 +113,8 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 			}
 			// Authorize before reporting malformed filter or cursor state. The query
 			// also authorizes each referenced group/member in the final statement snapshot.
-			if in.First < 1 || in.First > 100 || ledger.ValidateStructuredFilter(in.Filter) != nil {
+			if in.First < 1 || in.First > 100 || ledger.ValidateStructuredFilter(in.Filter) != nil ||
+				(in.GroupFilterPresent && in.Filter.GroupID == "") || (in.MemberFilterPresent && in.Filter.MemberID == "") {
 				return Failure("INVALID_INPUT")
 			}
 			if codec == nil {

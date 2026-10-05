@@ -19,9 +19,11 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	if filter != nil {
 		if filter.GroupID != nil {
 			request.Filter.GroupID = *filter.GroupID
+			request.GroupFilterPresent = true
 		}
 		if filter.MemberID != nil {
 			request.Filter.MemberID = *filter.MemberID
+			request.MemberFilterPresent = true
 		}
 		if filter.From != nil {
 			request.Filter.From = string(*filter.From)
