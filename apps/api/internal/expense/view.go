@@ -15,12 +15,14 @@ import (
 )
 
 // ExpenseViewRequest selects a structured-filtered spending traversal. Scope is
-// HOUSEHOLD or an explicit public Group ID. Cursor validation never grants access.
+// HOUSEHOLD or an explicit public Group ID. HasAfter distinguishes an explicitly
+// empty (invalid) cursor from omission. Cursor validation never grants access.
 type ExpenseViewRequest struct {
-	Scope  string
-	First  int
-	After  string
-	Filter ledger.StructuredFilter
+	Scope    string
+	First    int
+	After    string
+	HasAfter bool
+	Filter   ledger.StructuredFilter
 }
 
 // SpendingMonth is a complete filtered calendar-month aggregate at the same
@@ -115,7 +117,7 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 				return Failure("UNAVAILABLE")
 			}
 			var cursor *ledger.ExpenseViewCursor
-			if in.After != "" {
+			if in.HasAfter || in.After != "" {
 				decoded, err := codec.DecodeExpenseView(in.After, in.Scope, in.Filter)
 				if err != nil {
 					// Safe identifier existence is checked by an unanchored authorized read

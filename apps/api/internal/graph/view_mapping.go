@@ -14,6 +14,7 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	request := expense.ExpenseViewRequest{Scope: scope, First: first}
 	if after != nil {
 		request.After = *after
+		request.HasAfter = true
 	}
 	if filter != nil {
 		if filter.GroupID != nil {
