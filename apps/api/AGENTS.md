@@ -8,6 +8,17 @@ The API implements verified authentication, transaction-local identity, persiste
 
 The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page remains a separate #112 delivery.
 
+The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
+expense views with original-space attribution, complete face-value totals/counts,
+and complete monthly totals/counts independent of page size. Filters combine source
+group, category, inclusive dates and a same-group Membership ID matching the payer
+or an explicit participant (including zero-share participants). The legacy
+`Group.expenses` participant-only filter remains unchanged. Signed continuation
+cursors bind scope, filters, current authorized eligibility and per-space financial
+anchors; rows and summaries share the anchored dataset, while every request checks
+current access. Repayments never contribute to spending. Free-text search remains
+separate #177 scope; these reads introduce no search field or SQL text search.
+
 ## Design and implementation
 
 - Document every exported handwritten package declaration with its caller-visible contract. Preserve GraphQL descriptions on all public SDL declarations; do not manually document generated gqlgen/sqlc output.
