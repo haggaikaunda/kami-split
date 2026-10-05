@@ -37,6 +37,11 @@ export function ScopedLink({
           scroll: window.scrollY,
           group: match ? decodeURIComponent(match[1]) : undefined,
         });
+        // Preserve Next's state while marking the source history entry for browser Back.
+        window.history.replaceState(
+          { ...window.history.state, financialRestore: token },
+          '',
+        );
         router.push(`${href}${href.includes('?') ? '&' : '?'}source=${token}`);
       }}
     >
@@ -73,7 +78,19 @@ export function RestoreSource({
   allowed: readonly string[];
 }) {
   const params = useSearchParams();
-  const token = params.get('restore');
+  const historyToken =
+    typeof window !== 'undefined'
+      ? (window.history.state?.financialRestore as string | undefined)
+      : undefined;
+  const historyVisit = historyToken
+    ? scope.visits.get(historyToken)
+    : undefined;
+  // A Back entry can carry an older explicit restore query. Its own visit wins.
+  const token =
+    historyVisit &&
+    historyVisit.href === window.location.pathname + window.location.search
+      ? historyToken
+      : params.get('restore');
   const ids = allowed.join('\n');
   useEffect(() => {
     if (!token || !scope.isLive() || scope.restored.has(token)) return;

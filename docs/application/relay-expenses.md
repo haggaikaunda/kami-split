@@ -20,7 +20,7 @@ A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
 [Activity workspaces](activity.md) also use authenticated network-only financial reads at `/groups/:groupId/activity` and `/household/activity`, with fresh feed and node authorization on details. Remaining preview routes (including seeded `/trips/:tripId`) are explicitly labeled simulated and link to `/groups`;
 they do not receive authenticated financial data. This slice does not implement
-expense edit/delete, group creation forms or dashboard integration.
+expense edit/delete or group creation forms.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. Expenses retain their existing bounded
 read/form pending #170; Activity consumes the authenticated feed from #172.
@@ -120,3 +120,22 @@ repayment entry only on an explicit eligible sender/recipient row. Summary cards
 only disclose balance details. See [persisted repayments](persisted-repayments.md)
 for actual-transfer validation, frozen recovery scope and browser integration.
 Owner settings disclose current metadata; metadata editing remains unavailable.
+
+## Household workspace
+
+#112 connects `/household` to the complete authorized `householdDashboard` read.
+Overview shows expense face-value total/count, exact signed viewer net/open-space
+count, and eligible-space count in a horizontal row, followed by at most five
+source-attributed expenses from `householdExpenses`. Balances uses the complete
+server source set and never derives totals from the recent page. No Household
+settlement action exists: each row opens its original group's Balances surface.
+Zero aggregate with open sources stays open. Members separately reads the actual
+Household `Group.members`, including more than two members and historical profiles;
+only owners see existing invitation management. Activity reuses #172. The full
+Expenses tab remains #170; its navigation destination is distinct from Overview.
+
+Account changes, foreground revalidation, refresh and route changes remove prior
+private data before network-only reads. Failed/incomplete reads never fabricate
+zeros. Unavailable designation exposes only the server-authorized ledger fallback
+without a partner identity or suspension reason. Source return and browser Back
+restore focus/scroll after fresh authorization; a missing row uses the heading.

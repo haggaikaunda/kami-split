@@ -197,11 +197,7 @@ function ViewerJourney({
       <p>Signed in as {viewer.displayName}</p>
       {group && <SourceReturn scope={scope} />}
       {viewer.groups.find((item) => item.isHousehold) && (
-        <Link
-          href={`/groups/${encodeURIComponent(viewer.groups.find((item) => item.isHousehold)!.id)}`}
-        >
-          Household
-        </Link>
+        <Link href="/household">Household</Link>
       )}
       {!group && (
         <>
