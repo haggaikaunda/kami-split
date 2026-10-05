@@ -7,7 +7,7 @@ and server UTC date, with abstract covers and no partial-page totals. An accessi
 designated Household has a shortcut; friends receive no inferred household role.
 Canonical `/groups/:groupId` and `/groups/:groupId/expenses/:expenseId` routes
 recheck access and expense ownership. Select an admitted group to read a
-bounded expense connection, create an expense, and see complete server balances.
+structured expense view, create an expense, and see complete server balances.
 The existing `ONBOARDING_ORIGIN`, `ONBOARDING_API_URL` and public Supabase
 configuration also serve this journey through the same-origin GraphQL proxy.
 
@@ -20,14 +20,15 @@ A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
 [Activity workspaces](activity.md) also use authenticated network-only financial reads at `/groups/:groupId/activity` and `/household/activity`, with fresh feed and node authorization on details. Remaining preview routes (including seeded `/trips/:tripId`) are explicitly labeled simulated and link to `/groups`;
 they do not receive authenticated financial data. This slice does not implement
-expense edit/delete, group creation forms or dashboard integration.
+expense edit/delete or group creation forms.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
-and persisted group-local repayment entry. Expenses retain their existing bounded
-read/form pending #170; Activity consumes the authenticated feed from #172.
+and persisted group-local repayment entry. #170 adds the shared
+[production Expenses workspaces](expenses-ledger.md), including the complete
+Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
 Overview recent expenses use the original bounded connection; the Expenses tab
-uses the structured view described in the linked guide, with pages of 20 and signed cursors.
+uses the [structured view](expenses-ledger.md), with pages of 20 and signed cursors.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net
@@ -104,8 +105,9 @@ private visits alongside financial drafts. Drafts continue to retain their origi
 group. UTC midnight and foregrounding refresh discovery and temporarily hide stale
 fields; delayed responses cannot populate a different group/account visit.
 
-Expense pages are explicit bounded reads rather than accumulating a Relay
-connection across visits. Failed reads never establish an empty group or settled
+Overview recent expenses and standalone records are bounded reads. The Expenses
+ledger appends authorized structured pages within a visit while retaining complete
+server aggregates; it does not merge data from separate source visits. Failed reads never establish an empty group or settled
 balance. New ordinary/trip groups reuse the same expense form and complete balances,
 without preview household trip pickers or repayment shortcuts.
 

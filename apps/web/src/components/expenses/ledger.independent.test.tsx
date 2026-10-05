@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExpenseLedger } from './ledger';
+import { HouseholdExpenses } from './household';
 import type { FinancialScope } from '@/lib/relay/environment';
 const state = vi.hoisted(() => ({
   params: '',
@@ -56,8 +57,13 @@ vi.mock('relay-runtime', () => ({
     };
   },
 }));
+vi.mock('@/components/groups/session', () => ({
+  useFinancialSession: () => ({ scope, loading: false, error: '' }),
+}));
 vi.mock('@/components/groups/expense-form', () => ({
-  ExpenseForm: () => <p>Persisted form</p>,
+  ExpenseForm: ({ onCommitted }: { onCommitted: () => Promise<void> }) => (
+    <button onClick={() => void onCommitted()}>Commit persisted expense</button>
+  ),
 }));
 const spaces = [
   {
@@ -313,4 +319,84 @@ it('invalidates the source list when a freshly authorized deep-link node belongs
   expect(host.textContent).not.toContain('Private other-group expense');
   expect(host.textContent).toContain('Expense access changed');
   expect(state.replace).toHaveBeenCalled();
+});
+const context = (net: string, name = 'Home') => ({
+  viewer: { __typename: 'Viewer', today: '2026-09-03' },
+  householdDashboard: {
+    __typename: 'HouseholdDashboard',
+    state: 'COMPLETE',
+    totals: {
+      __typename: 'HouseholdDashboardTotals',
+      viewerNetMinor: net,
+      activeSpaceCount: '1',
+    },
+    spaces: [{ ...spaces[0], name }],
+  },
+});
+async function renderHousehold() {
+  await act(async () => root.render(<HouseholdExpenses />));
+}
+async function respondContext(value: unknown) {
+  const request = state.requests.findLast(
+    (r) => JSON.stringify(r.variables) === '{}',
+  )!;
+  await act(async () => request.next?.(value));
+}
+it('manual household refresh replaces net balance and eligible-space snapshot from its context owner', async () => {
+  await renderHousehold();
+  await respondContext(context('-101'));
+  await respond(page());
+  expect(host.textContent).toContain('$1.01');
+  expect(host.textContent).toContain('You owe');
+  await click('Refresh expenses');
+  expect(host.textContent).not.toContain('$1.01');
+  expect(host.textContent).toContain('Loading complete Household access');
+  await respondContext(context('205', 'New eligible space'));
+  await respond(page([]));
+  expect(host.textContent).toContain('$2.05');
+  expect(host.textContent).toContain("You're owed");
+  expect(host.querySelector('select[name="groupId"]')?.textContent).toContain(
+    'New eligible space',
+  );
+  expect(
+    host.querySelector('select[name="groupId"]')?.textContent,
+  ).not.toContain('Home');
+});
+it('foreground refresh rechecks the household owner and removes revoked spaces', async () => {
+  await renderHousehold();
+  await respondContext(context('-101'));
+  await respond(page());
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  expect(host.textContent).not.toContain('$1.01');
+  const revoked = context('0');
+  revoked.householdDashboard.spaces = [];
+  await respondContext(revoked);
+  await respond({
+    ...page([]),
+    totalExpenseMinor: '0',
+    expenseCount: '0',
+    months: [],
+  });
+  expect(
+    host.querySelector('select[name="groupId"]')?.textContent,
+  ).not.toContain('Home');
+  expect(
+    [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'Add expense',
+    )?.disabled,
+  ).toBe(true);
+});
+it('successful persisted creation refreshes owning household totals and eligible context', async () => {
+  state.params = 'create=home';
+  await renderHousehold();
+  await respondContext(context('-101'));
+  await respond(page());
+  await click('Commit persisted expense');
+  expect(host.textContent).toContain('Loading complete Household access');
+  expect(state.replace).toHaveBeenCalledWith('/household/expenses?', {
+    scroll: false,
+  });
+  await respondContext(context('302'));
+  await respond(page());
+  expect(host.textContent).toContain('$3.02');
 });

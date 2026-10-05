@@ -1,5 +1,11 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { fetchQuery, readInlineData } from 'relay-runtime';
@@ -61,7 +67,7 @@ function LedgerContent({
   net,
   activeSpaces,
   onDenied,
-  onCommitted,
+  onRefreshContext,
 }: {
   scope: FinancialScope;
   groupId?: string;
@@ -70,7 +76,7 @@ function LedgerContent({
   net?: string;
   activeSpaces?: string;
   onDenied: () => void;
-  onCommitted?: () => Promise<void> | void;
+  onRefreshContext?: () => Promise<void> | void;
 }) {
   const params = useSearchParams(),
     router = useRouter(),
@@ -112,6 +118,10 @@ function LedgerContent({
     setError('');
     setLoading(true);
     setVersion((v) => v + 1);
+  };
+  const refresh = () => {
+    reset();
+    void onRefreshContext?.();
   };
   useEffect(() => {
     let live = true;
@@ -167,18 +177,19 @@ function LedgerContent({
     // Parent owns the denial boundary; URL filters and scope own this traversal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, groupId, filterText, after, version]);
+  const refreshFromForeground = useEffectEvent(() => {
+    setNotice('Access is stale. Refreshing expenses…');
+    refresh();
+  });
   useEffect(() => {
-    const refresh = () => {
-      setNotice('Access is stale. Refreshing expenses…');
-      reset();
-    };
+    const refreshOnFocus = () => refreshFromForeground();
     const foreground = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') refreshOnFocus();
     };
-    window.addEventListener('focus', refresh);
+    window.addEventListener('focus', refreshOnFocus);
     document.addEventListener('visibilitychange', foreground);
     return () => {
-      window.removeEventListener('focus', refresh);
+      window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', foreground);
     };
   }, []);
@@ -327,7 +338,7 @@ function LedgerContent({
         >
           Filters{filterText ? ' · active' : ''}
         </button>
-        <button onClick={reset} disabled={loading}>
+        <button onClick={refresh} disabled={loading}>
           Refresh expenses
         </button>
         <button
@@ -539,7 +550,7 @@ function LedgerContent({
                   setNotice('Expense saved. Refreshing authorized expenses.');
                   reset();
                   close();
-                  await onCommitted?.();
+                  await onRefreshContext?.();
                 }}
                 onDenied={() => {
                   reset();

@@ -225,3 +225,26 @@
   font-size: 0.85rem;
   font-weight: normal;
 }
+.household-expenses > .ui-workspace-header {
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+}
+.household-expenses .ui-workspace-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.financial-journey .ledger-month {
+  margin-block: 1rem;
+  padding-block: 0;
+}
+.financial-journey .ledger-month header {
+  margin-block: 0.5rem;
+  padding-block: 0.5rem;
+}
+@media (max-width: 650px) {
+  .ledger-dialog {
+    padding-inline-start: max(1rem, env(safe-area-inset-left));
+    padding-inline-end: max(1rem, env(safe-area-inset-right));
+  }
+}

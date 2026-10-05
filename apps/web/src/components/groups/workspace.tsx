@@ -178,7 +178,7 @@ export function GroupWorkspace({
               : undefined
           }
           onDenied={onDenied}
-          onCommitted={onRefresh}
+          onRefreshContext={onRefresh}
         />
       ) : current === 'Members' ? (
         <section>

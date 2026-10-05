@@ -16,16 +16,6 @@ export function HouseholdExpenses() {
     <main className="financial-journey household-expenses" id="page-content">
       <Link href="/account">Kami Split · Account</Link>
       <WorkspaceHeader title="Household" context="Shared spaces" />
-      <WorkspaceTabs
-        current="Expenses"
-        hrefFor={(section) =>
-          section === 'Expenses'
-            ? '/household/expenses'
-            : section === 'Activity'
-              ? '/household/activity'
-              : `/groups?section=${section.toLowerCase()}`
-        }
-      />
       {access.loading ? (
         <p role="status">Loading secure access…</p>
       ) : access.error ? (
@@ -108,28 +98,43 @@ function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     viewer?.__typename !== 'Viewer'
   )
     return <p role="status">Loading complete Household access…</p>;
+  const household = dashboard.spaces.find((space) => space.isHousehold);
   return (
-    <ExpenseLedger
-      scope={scope}
-      spaces={dashboard.spaces}
-      today={viewer.today}
-      net={
-        dashboard.totals?.__typename === 'HouseholdDashboardTotals'
-          ? dashboard.totals.viewerNetMinor
-          : undefined
-      }
-      activeSpaces={
-        dashboard.totals?.__typename === 'HouseholdDashboardTotals'
-          ? dashboard.totals.activeSpaceCount
-          : undefined
-      }
-      onCommitted={refresh}
-      onDenied={() => {
-        setContext(undefined);
-        setError(
-          'Household access changed. Refresh to recheck eligible spaces.',
-        );
-      }}
-    />
+    <>
+      <WorkspaceTabs
+        current="Expenses"
+        hrefFor={(section) =>
+          section === 'Expenses'
+            ? '/household/expenses'
+            : section === 'Activity'
+              ? '/household/activity'
+              : household
+                ? `/groups/${encodeURIComponent(household.groupId)}?tab=${section.toLowerCase()}`
+                : '/groups'
+        }
+      />
+      <ExpenseLedger
+        scope={scope}
+        spaces={dashboard.spaces}
+        today={viewer.today}
+        net={
+          dashboard.totals?.__typename === 'HouseholdDashboardTotals'
+            ? dashboard.totals.viewerNetMinor
+            : undefined
+        }
+        activeSpaces={
+          dashboard.totals?.__typename === 'HouseholdDashboardTotals'
+            ? dashboard.totals.activeSpaceCount
+            : undefined
+        }
+        onRefreshContext={refresh}
+        onDenied={() => {
+          setContext(undefined);
+          setError(
+            'Household access changed. Refresh to recheck eligible spaces.',
+          );
+        }}
+      />
+    </>
   );
 }
