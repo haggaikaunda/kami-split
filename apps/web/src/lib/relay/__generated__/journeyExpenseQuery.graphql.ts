@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<95d52816f2744a2ea446f8d636f236c1>>
+ * @generated SignedSource<<943ba688ad2c76b4859d1169da03652b>>
  * @lightSyntaxTransform
  */
 
@@ -9,6 +9,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
+export type Currency = "USD" | "%future added value";
 export type journeyExpenseQuery$variables = {
   id: string;
 };
@@ -23,6 +24,12 @@ export type journeyExpenseQuery$data = {
       };
     }>;
     readonly category: Category;
+    readonly createdAt: string;
+    readonly creator: {
+      readonly displayName: string;
+      readonly id: string;
+    };
+    readonly currency: Currency;
     readonly description: string;
     readonly effectiveDate: string;
     readonly groupId: string;
@@ -105,14 +112,14 @@ v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "category",
+  "name": "currency",
   "storageKey": null
 },
 v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "note",
+  "name": "createdAt",
   "storageKey": null
 },
 v10 = [
@@ -130,12 +137,36 @@ v11 = {
   "args": null,
   "concreteType": "Membership",
   "kind": "LinkedField",
-  "name": "payer",
+  "name": "creator",
   "plural": false,
   "selections": (v10/*:: as any*/),
   "storageKey": null
 },
 v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "category",
+  "storageKey": null
+},
+v13 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "note",
+  "storageKey": null
+},
+v14 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Membership",
+  "kind": "LinkedField",
+  "name": "payer",
+  "plural": false,
+  "selections": (v10/*:: as any*/),
+  "storageKey": null
+},
+v15 = {
   "alias": null,
   "args": null,
   "concreteType": "Allocation",
@@ -190,7 +221,10 @@ return {
               (v8/*:: as any*/),
               (v9/*:: as any*/),
               (v11/*:: as any*/),
-              (v12/*:: as any*/)
+              (v12/*:: as any*/),
+              (v13/*:: as any*/),
+              (v14/*:: as any*/),
+              (v15/*:: as any*/)
             ],
             "type": "Expense",
             "abstractKey": null
@@ -228,7 +262,10 @@ return {
               (v8/*:: as any*/),
               (v9/*:: as any*/),
               (v11/*:: as any*/),
-              (v12/*:: as any*/)
+              (v12/*:: as any*/),
+              (v13/*:: as any*/),
+              (v14/*:: as any*/),
+              (v15/*:: as any*/)
             ],
             "type": "Expense",
             "abstractKey": null
@@ -239,16 +276,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "ae5f3d73cee9948ade6f10139854e44e",
+    "cacheID": "6a017fc2427ebfb9605e17a70efcdfb1",
     "id": null,
     "metadata": {},
     "name": "journeyExpenseQuery",
     "operationKind": "query",
-    "text": "query journeyExpenseQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      description\n      effectiveDate\n      totalMinor\n      category\n      note\n      payer {\n        id\n        displayName\n      }\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query journeyExpenseQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      description\n      effectiveDate\n      totalMinor\n      currency\n      createdAt\n      creator {\n        id\n        displayName\n      }\n      category\n      note\n      payer {\n        id\n        displayName\n      }\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a96b656ff31f0b61e04918ea54ef0eae";
+(node as any).hash = "b685532b53824c962541c1410cfa2832";
 
 export default node;

@@ -233,6 +233,12 @@ export const journeyExpenseQuery = graphql`
         description
         effectiveDate
         totalMinor
+        currency
+        createdAt
+        creator {
+          id
+          displayName
+        }
         category
         note
         payer {

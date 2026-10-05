@@ -18,6 +18,7 @@ export function ApplicationFrame({
   if (
     path === '/household' ||
     path === '/household/activity' ||
+    path === '/household/expenses' ||
     path === '/groups' ||
     path.startsWith('/groups/') ||
     path === '/trips' ||

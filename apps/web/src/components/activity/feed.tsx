@@ -44,7 +44,9 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
               : '/household/activity'
             : groupId
               ? `/groups/${encodeURIComponent(groupId)}?tab=${section.toLowerCase()}`
-              : `/groups?section=${section.toLowerCase()}`
+              : section === 'Expenses'
+                ? '/household/expenses'
+                : `/groups?section=${section.toLowerCase()}`
         }
       />
       {access.loading ? (

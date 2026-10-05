@@ -20,7 +20,7 @@ import {
 } from '@/components/primitives';
 import { ScopedLink } from './navigation';
 import { ActivityFeed } from '@/components/activity/feed';
-import { ExpenseForm } from './expense-form';
+import { ExpenseLedger } from '@/components/expenses/ledger';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
   journeyGroupQuery['response']['group'],
@@ -32,8 +32,8 @@ export function GroupWorkspace({
   today,
   repayment = false,
   completed = false,
-  onRefresh,
   onCommitted,
+  onRefresh,
   onDenied,
 }: {
   scope: FinancialScope;
@@ -158,33 +158,28 @@ export function GroupWorkspace({
           </section>
         </>
       ) : current === 'Expenses' ? (
-        <>
-          <section aria-labelledby="expenses-title">
-            <h2 id="expenses-title">Expenses</h2>
-            <Expenses scope={scope} group={group} />
-            {group.expenses?.pageInfo.hasNextPage && (
-              <button
-                onClick={() => {
-                  const query = new URLSearchParams(params);
-                  query.set('tab', 'expenses');
-                  query.set('after', group.expenses!.pageInfo.endCursor ?? '');
-                  router.push(`${base}?${query}`);
-                }}
-              >
-                Load more expenses
-              </button>
-            )}
-          </section>
-          <ExpenseForm
-            scope={scope}
-            group={group.id}
-            today={today}
-            payer={group.viewerMembership.id}
-            members={group.members}
-            onCommitted={onRefresh}
-            onDenied={onDenied}
-          />
-        </>
+        <ExpenseLedger
+          scope={scope}
+          groupId={group.id}
+          spaces={[
+            {
+              groupId: group.id,
+              name: group.name,
+              viewerMembership: group.viewerMembership,
+              members: group.members,
+            },
+          ]}
+          today={today}
+          net={
+            group.balances.__typename === 'GroupBalances'
+              ? group.balances.positions.find(
+                  (p) => p.member.id === group.viewerMembership.id,
+                )?.netMinor
+              : undefined
+          }
+          onDenied={onDenied}
+          onRefreshContext={onRefresh}
+        />
       ) : current === 'Members' ? (
         <section>
           <h2>Members</h2>

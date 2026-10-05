@@ -234,7 +234,7 @@ Use distinct “Household ledger” and “Household dashboard” links; group r
 canonical #85 group routes. The Household workspace at `/household` uses Overview, Expenses, Balances, Activity
 and Members; it does not replace independently authorized Groups access. Overview
 contains three horizontal metrics and at most five recent expenses. The complete
-Expenses implementation remains #170. Members reads actual `Group.members`, not
+Expenses implementation is delivered by #170. Members reads actual `Group.members`, not
 the designated pair, and exposes only existing owner invitation management.
 Source rows open `/groups/:groupId?tab=balances`; repayment entry remains on that
 original group's full-page route. Back restores source scroll and logical row focus

@@ -35,7 +35,7 @@ Selecting an event opens an inline current-record detail, rechecking the feed
 source eligibility as well as the current node authorization. Closing restores
 focus to the event trigger; the original group link preserves source context.
 Empty, filtered-empty, loading and unavailable states remain distinct. Activity
-routes bypass all simulated DataPort providers. Group Overview/Balances/Members and repayment integrate under #171; Household workspace navigation integrates under #112; the structured expense ledger remains #170.
+routes bypass all simulated DataPort providers. Group Overview/Balances/Members and repayment integrate under #171; Household workspace navigation integrates under #112; the shared [structured Expenses ledger](expenses-ledger.md) is implemented under #170.
 
 The PR is stacked on #111; its SQL discovery contract must be deployed first.
 There is no new mutation, data migration, or activity-event backfill.
