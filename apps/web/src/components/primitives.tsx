@@ -1,6 +1,8 @@
 'use client';
+import { AppIcon } from './workspace-identity';
 
 import {
+  Fragment,
   useEffect,
   useId,
   useRef,
@@ -129,7 +131,13 @@ export function Money({
 }) {
   return (
     <span className="ui-money">
-      {value} <span className="ui-currency">{currency}</span>
+      {value.split(/(?<=,)/).map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 && <wbr />}
+          {part}
+        </Fragment>
+      ))}{' '}
+      <span className="ui-currency">{currency}</span>
     </span>
   );
 }
@@ -530,18 +538,35 @@ export function WorkspaceHeader({
   title,
   context,
   children,
+  appearance,
 }: {
   title: string;
   context?: ReactNode;
   children?: ReactNode;
+  appearance?: 'household' | 'trip' | 'group';
 }) {
   return (
-    <header className="ui-workspace-header">
-      <div>
-        {context && <div className="ui-workspace-context">{context}</div>}
+    <header
+      className={`ui-workspace-header ${appearance ? `ui-workspace-header--${appearance}` : ''}`}
+    >
+      {appearance && (
+        <span className="workspace-identity-icon">
+          <AppIcon
+            name={
+              appearance === 'household'
+                ? 'home'
+                : appearance === 'trip'
+                  ? 'trip'
+                  : 'groups'
+            }
+          />
+        </span>
+      )}
+      <div className="workspace-heading">
         <h1 data-page-heading tabIndex={-1}>
           {title}
         </h1>
+        {context && <div className="ui-workspace-context">{context}</div>}
       </div>
       {children}
     </header>
@@ -602,12 +627,14 @@ export function SummaryMetric({
 export function SignedBalanceMetric({
   position,
   scope = 'group',
+  label,
   value,
   currency,
   detail,
 }: {
   position: 'positive' | 'negative' | 'zero';
   scope?: 'group' | 'household';
+  label?: string;
   value: string;
   currency: string;
   detail?: ReactNode;
@@ -616,13 +643,14 @@ export function SignedBalanceMetric({
     <div className={`ui-signed-balance ui-signed-balance--${position}`}>
       <SummaryMetric
         label={
-          position === 'positive'
+          label ??
+          (position === 'positive'
             ? "You're owed"
             : position === 'negative'
               ? 'You owe'
               : scope === 'household'
                 ? 'Net zero across spaces'
-                : 'Settled'
+                : 'Settled')
         }
         detail={detail}
       >

@@ -1,0 +1,22 @@
+# Shared visual foundation (#189)
+
+This slice applies Board A2/A6 and B1/B6 to the real Household Overview and Expenses routes, and B5/B7 to shared structured filters. Other mapped surfaces remain pending full adoption. Shared primitive changes also affect existing Group/Trip screens and retain their regression requirements.
+
+## Component rules
+
+- Warm canvas `#f8f7f3`, white cards, forest action `#00664d`, ink `#163744`, secondary slate `#566a80`; warm-clay owes remains separate from destructive errors.
+- Existing Manrope/DM Sans remain local. Headings use 24–32px, metrics 16–24px, supporting copy 13–14px at the default 16px root. All scale with root text; controls retain 44px targets.
+- Spacing follows the existing 4px scale. Controls use 8px radius, cards 12px, 1px quiet separators. Desktop navigation is 208px, the page has a 1248px maximum, and mobile navigation reserves bottom safe-area space.
+- Household metrics retain all three supported server totals in one horizontal row. Exact money permits breaks after grouping commas; extreme narrow layouts may wrap without truncation. No floating-point money calculations are introduced.
+- Shared line SVGs replace arbitrary category symbols. Initials remain the existing avatar fallback. Household header decoration is visible on desktop; phone composition follows A6's compact identity without artwork behind text.
+- Structured filters use the existing native modal dialog at all widths. Reset edits the draft; Apply updates the URL. Existing detail/create navigation, recovery and account ownership remain unchanged.
+
+## Artwork provenance
+
+`apps/web/public/art/household.png` is a new decorative asset created with the built-in imagegen tool for this project. It is independent from the original approved boards. It contains no UI, text, people or financial state. CSS supplies a white fallback, reserved geometry and decorative-only semantics.
+
+Prompt: “Use case: illustration-story. Create a wide decorative illustration for Kami Split's Household header. Warm paper-cut editorial style, elegant flat layered shapes, matching a refined expense-sharing app: a small cluster of cream cottages with terracotta roofs nestled among tall forest-green and sage trees, soft pale blue distant hills. Warm ivory background #f8f7f3. Panoramic 3:1 composition, houses and trees concentrated on the right half and abundant quiet ivory space on the left for real UI text. No text, no typography, no labels, no UI, no border. Palette forest/emerald, sage, sand, cream and restrained muted blue. Crisp refined shapes with subtle paper texture. This is a decorative local asset, not a screen mockup.”
+
+## Verification
+
+Final PR evidence records exact commits and browser screenshots. Synthetic browser responses exercise real production components; they do not establish backend authorization. Preserve the original published boards as the visual target. No entire issue acceptance is claimed by this focused foundation slice.

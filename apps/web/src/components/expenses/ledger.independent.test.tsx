@@ -156,7 +156,7 @@ async function respond(value: unknown, index = state.requests.length - 1) {
 }
 async function click(text: string) {
   const b = [...host.querySelectorAll('button')].find(
-    (b) => b.textContent === text,
+    (b) => (b.getAttribute('aria-label') ?? b.textContent) === text,
   )!;
   expect(b).toBeTruthy();
   await act(async () => b.click());
@@ -355,6 +355,7 @@ it('manual household refresh replaces net balance and eligible-space snapshot fr
   await respond(page([]));
   expect(host.textContent).toContain('$2.05');
   expect(host.textContent).toContain("You're owed");
+  await click('Filters');
   expect(host.querySelector('select[name="groupId"]')?.textContent).toContain(
     'New eligible space',
   );
@@ -377,6 +378,7 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
     expenseCount: '0',
     months: [],
   });
+  await click('Filters');
   expect(
     host.querySelector('select[name="groupId"]')?.textContent,
   ).not.toContain('Home');
@@ -415,4 +417,27 @@ it('returns from Expenses to canonical Household workspace tabs instead of group
     '/household/activity',
     '/household?tab=members',
   ]);
+});
+
+it('edits structured filters in a dialog and applies an explicit reset to the URL', async () => {
+  state.params = 'category=DINING&from=2026-09-01';
+  await render();
+  await respond(page());
+  expect(host.querySelector('form.ledger-filters')).toBeNull();
+  await click('Filters · active');
+  const category = host.querySelector<HTMLSelectElement>(
+    'select[name="category"]',
+  )!;
+  expect(category.value).toBe('DINING');
+  await click('Reset filters');
+  expect(category.value).toBe('');
+  expect(
+    host.querySelector<HTMLInputElement>('input[name="from"]')!.value,
+  ).toBe('');
+  expect(state.push).not.toHaveBeenCalled();
+  await click('Apply filters');
+  expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
+    scroll: false,
+  });
+  expect(host.querySelector('dialog')).toBeNull();
 });

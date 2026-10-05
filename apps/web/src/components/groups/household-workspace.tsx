@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { WorkspaceNavigation, AppIcon } from '@/components/workspace-identity';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { fetchQuery } from 'relay-runtime';
@@ -16,7 +17,6 @@ import {
   WorkspaceTabs,
   SummaryMetric,
   Money,
-  SpaceChip,
   MemberBalanceRow,
   workspaceSections,
   type WorkspaceSection,
@@ -63,15 +63,11 @@ export function HouseholdWorkspace({
       className="financial-journey group-workspace household-workspace"
       id="page-content"
     >
-      <nav aria-label="Financial navigation" className="household-space-nav">
-        <Link href="/household">Household</Link>
-        <Link href="/groups">Groups</Link>
-        <Link href="/trips">Trips</Link>
-        <Link href="/account">Account</Link>
-      </nav>
+      <WorkspaceNavigation />
       <WorkspaceHeader
         title="Household"
-        context={<SpaceChip>Shared spaces</SpaceChip>}
+        context="Shared expenses across home, trips and groups."
+        appearance="household"
       />
       <div
         onClick={(event) => {
@@ -220,7 +216,9 @@ export function HouseholdRead({
   }, [scope, current, version]);
   return (
     <>
-      <button onClick={reset}>Refresh Household</button>
+      <button className="household-refresh" onClick={reset}>
+        Refresh Household
+      </button>
       {error ? (
         <p role="alert">{error}</p>
       ) : !data ? (
@@ -450,6 +448,10 @@ export function HouseholdContent({
                           id={`household-expense-${node.id}`}
                           href={`/groups/${encodeURIComponent(source.id)}/expenses/${encodeURIComponent(node.id)}`}
                         >
+                          <AppIcon
+                            name="expense"
+                            className="recent-expense-icon"
+                          />
                           <span>
                             <strong>{node.description}</strong>
                             <span className="ui-row-detail">
