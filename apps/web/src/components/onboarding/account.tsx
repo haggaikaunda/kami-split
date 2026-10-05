@@ -26,7 +26,7 @@ export function AccountPanel({ state: c }: { state: OnboardingController }) {
   return (
     <>
       {(mode === 'account' || mode === 'invitations') && session && (
-        <section>
+        <section className="account-management">
           <Button
             tone="secondary"
             disabled={busy}
@@ -35,7 +35,7 @@ export function AccountPanel({ state: c }: { state: OnboardingController }) {
             {mode === 'account' ? 'Refresh groups' : 'Load my groups'}
           </Button>
           {groups.length > 0 && (
-            <ul>
+            <ul className="account-rows">
               {groups.map((item) => (
                 <li key={item.id}>
                   <Link href={`/groups?group=${encodeURIComponent(item.id)}`}>
@@ -101,7 +101,7 @@ export function AccountPanel({ state: c }: { state: OnboardingController }) {
                   Create invitation
                 </Button>
               </form>
-              <ul>
+              <ul className="account-rows">
                 {invites.map((item) => (
                   <li key={item.id}>
                     <strong>

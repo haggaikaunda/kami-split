@@ -269,7 +269,7 @@ function ViewerJourney({
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (
-            <ul>
+            <ul className="discovery-cards">
               {viewer.groups
                 .filter(
                   (item) =>
@@ -282,12 +282,10 @@ function ViewerJourney({
                 )
                 .map((item) => (
                   <li key={item.id}>
-                    {item.trip && (
-                      <div
-                        className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
-                        aria-hidden="true"
-                      />
-                    )}
+                    <div
+                      className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+                      aria-hidden="true"
+                    />
                     <ScopedLink
                       scope={scope}
                       id={`group-${item.id}`}

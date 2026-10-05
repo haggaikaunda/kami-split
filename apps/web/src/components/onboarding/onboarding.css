@@ -172,3 +172,48 @@
       max(0.5rem, env(safe-area-inset-right));
   }
 }
+
+.account-management {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.account-management h2 {
+  margin: 0.5rem 0 0;
+}
+.account-rows {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.account-rows > li {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+}
+.account-rows > li > a {
+  font-weight: 700;
+  min-height: var(--target-size);
+  display: flex;
+  align-items: center;
+}
+.account-rows p {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.account-management .ui-button--secondary {
+  border-color: var(--color-separator);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.account-management .onboarding-actions {
+  gap: 0.5rem;
+}
