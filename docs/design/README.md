@@ -1,4 +1,6 @@
-# Kami Split approved UX
+# Kami Split design references
+
+Current production visual acceptance is governed by [approved Board A and Board B](references/approved-ui/README.md) and issue #189. The specification and prototype below are the historical seeded UX archive.
 
 > Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
 

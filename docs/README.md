@@ -41,6 +41,10 @@ deployment evidence is tracked there as each provider stage is completed.
 
 The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CONTRIBUTING.md), and [agent instructions](../AGENTS.md) define issue, test, review and merge gates. GitHub is the source of truth for work status. The [completed implementation record](design/implementation-plan.md) links each UX issue to its merged PR.
 
+## Approved production visual references
+
+[Board A and Board B](design/references/approved-ui/README.md) are the required visual targets for #189, with original assets, panel mapping, semantic corrections and an implementation/evidence ledger.
+
 ## Approved design archive
 
 The [design index](design/README.md) archives the former seeded UX specification, navigation contracts and data-access design. The prototype and numbered issue specifications preserve the original approved scope. Historical readiness instructions and unchecked specification checkboxes are not an active backlog; completion and subsequent changes are recorded in GitHub and linked implementation guides.

@@ -1,6 +1,6 @@
 # Reference assets
 
-The executable design asset is the checked-in [prototype](../prototype/). No user-supplied Downloads files or credentials are embedded in the repository. The two concept screenshots discussed in the design conversation are inspiration; the consolidated specification and prototype capture the approved decisions without requiring those local files.
+The current production visual acceptance targets are the owner-approved [Board A and Board B](../references/approved-ui/README.md), published for #189. They are required references, not optional inspiration. The checked-in [prototype](../prototype/) and its asset notes below describe the historical seeded design; they do not override these boards or current product/API contracts.
 
 - Maui sample cover: [Jordan McQueen / Unsplash](https://unsplash.com/it/foto/onde-del-mare-che-si-infrangono-sugli-scogli-durante-il-giorno-u5hob7DWLbQ), image identifier `photo-1616398377801-d6a1a8705c98`.
 - Tahoe sample cover: [Peter Hulce / Unsplash](https://unsplash.com/photos/a-rocky-shore-with-clear-blue-water-and-mountains-in-the-background-nNCdDwX-lBY), image identifier `photo-1647285471436-9d1b1e9d6e47`.
