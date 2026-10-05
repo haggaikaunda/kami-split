@@ -1,4 +1,5 @@
 'use client';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
@@ -30,7 +31,8 @@ type Detail = activityDetailQuery['response']['node'];
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
-    <main className="activity-workspace" id="page-content">
+    <main className="financial-journey activity-workspace" id="page-content">
+      <WorkspaceNavigation />
       <WorkspaceHeader
         title="Activity"
         context={groupId ? 'Group workspace' : 'Household workspace'}

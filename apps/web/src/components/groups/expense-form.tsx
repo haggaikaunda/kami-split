@@ -216,7 +216,10 @@ export function ExpenseForm({
       submitted && checked.errors[key] ? `expense-${key}-error` : undefined,
   });
   return (
-    <section aria-labelledby="new-expense-title">
+    <section
+      className="financial-form-card"
+      aria-labelledby="new-expense-title"
+    >
       <h2 id="new-expense-title">Add expense</h2>
       <p>Record a shared expense in this group. No money is moved.</p>
       <p ref={status} role="status" tabIndex={-1} className="financial-notice">

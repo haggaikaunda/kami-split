@@ -114,17 +114,15 @@
   }
 }
 .financial-cover {
-  min-height: 4rem;
+  min-height: 8rem;
   padding: 1rem;
-  background: repeating-linear-gradient(
-    135deg,
-    #d7e8df,
-    #d7e8df 1rem,
-    #f4e4cf 1rem,
-    #f4e4cf 2rem
-  );
+  background: var(--color-balance) url('/art/household.png') right center /
+    cover no-repeat;
   color: var(--color-primary);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
+}
+.financial-cover--trip {
+  background-image: url('/art/trip.png');
 }
 .financial-journey a {
   display: inline-block;
@@ -143,25 +141,6 @@
 }
 .group-workspace-body .ui-workspace-header {
   border-bottom: 1px solid var(--color-separator);
-}
-.group-context-art {
-  width: 5rem;
-  height: 5rem;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--color-subtle);
-  color: var(--color-primary);
-  font-size: 2rem;
-}
-.group-workspace-body--trip .group-context-art {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--color-balance),
-    var(--color-balance) 1rem,
-    #f4e4cf 1rem,
-    #f4e4cf 2rem
-  );
 }
 .group-members-context {
   display: flex;
@@ -243,7 +222,7 @@
 .financial-journey .group-expense-list a {
   padding: 1rem;
 }
-.financial-journey .group-expense-list a > span:not(.ui-money) {
+.financial-journey .group-expense-list a > .expense-row-copy {
   flex: 1;
 }
 .financial-journey .ui-summary-metric {
@@ -259,4 +238,314 @@
   .financial-journey .group-expense-list a {
     padding: 0.75rem 0.5rem;
   }
+}
+
+/* Production adoption of A4/A5/A9/A10: context carries art, money stays on plain cards. */
+.financial-journey > .journey-page-heading {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.journey-page-heading:empty {
+  display: none;
+}
+.journey-viewer {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin-block: 0.5rem;
+  text-align: end;
+}
+.group-workspace .ui-workspace-header {
+  padding: 1.25rem;
+  border-radius: var(--radius-card);
+}
+.ui-workspace-header--trip {
+  background:
+    linear-gradient(90deg, #073d36ed, #073d3655),
+    url('/art/trip.png') center / cover;
+  color: white;
+  min-height: 13rem;
+}
+.ui-workspace-header--trip .ui-workspace-context,
+.ui-workspace-header--trip a {
+  color: white;
+}
+.ui-workspace-header--trip .ui-space-chip {
+  background: #ffffff24;
+  color: white;
+}
+.ui-workspace-header--trip .workspace-identity-icon {
+  background: #ffffffde;
+  color: var(--color-primary);
+}
+.ui-workspace-header--group {
+  background: var(--color-surface) url('/art/household.png') right center / auto
+    100% no-repeat;
+}
+.ui-workspace-header--group .workspace-heading {
+  background: #ffffffed;
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
+}
+.group-members-context {
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.group-members-context .ui-avatar {
+  width: 2rem;
+  height: 2rem;
+  flex-basis: 2rem;
+  border: 2px solid white;
+  font-size: 0.75rem;
+}
+.group-members-context .ui-member > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.group-header-actions {
+  font-size: 0.8125rem;
+  align-self: start;
+  max-width: 15rem;
+}
+.group-header-actions a {
+  min-height: var(--target-size);
+}
+.group-header-actions .group-settings summary {
+  padding: 0.5rem;
+}
+.group-header-actions details[open] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: 0.5rem;
+  border-radius: var(--radius-control);
+}
+.financial-journey .group-balances {
+  max-width: 48rem;
+}
+.group-balances > .ui-signed-balance {
+  max-width: 32rem;
+}
+.ui-balance-row {
+  background: var(--color-surface);
+  padding: 1rem;
+}
+.ui-balance-row p {
+  margin: 0.25rem 0;
+}
+.ui-balance-row p + p {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+.ui-repayment-row {
+  background: var(--color-balance);
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  margin-block: 0.75rem;
+}
+.household-balances {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+}
+.household-balances a {
+  padding-inline: 0.75rem;
+}
+.financial-journey .financial-form-card {
+  max-width: 42rem;
+  margin: 1.5rem auto;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+}
+.financial-form-card > p {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.financial-form-card > form > fieldset {
+  border: 0;
+  padding: 0;
+}
+.financial-form-card legend {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.financial-form-card fieldset fieldset {
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+  margin-block: 1rem;
+}
+.financial-form-card button[type='submit'] {
+  background: var(--color-primary);
+  color: white;
+  width: 100%;
+  margin: 1rem 0 0;
+}
+.financial-participant {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-separator);
+}
+.financial-participant > label {
+  flex: 1 1 12rem;
+}
+.financial-journey .expense-detail-card {
+  border: 0;
+  padding: 0;
+}
+.expense-detail-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.expense-detail-identity h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+}
+.expense-detail-identity time {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+.expense-detail-total {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 800;
+  margin-block: 1rem;
+}
+.expense-paid-by {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+.expense-detail-card .ui-avatar {
+  width: 2rem;
+  height: 2rem;
+  flex-basis: 2rem;
+  font-size: 0.75rem;
+}
+.expense-detail-fields {
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  margin-top: 1.5rem;
+}
+.expense-detail-fields > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-separator);
+}
+.expense-detail-fields > div:last-child {
+  border: 0;
+}
+.expense-detail-fields dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.expense-detail-fields dd {
+  margin: 0;
+}
+.expense-detail-fields dd > time {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+.financial-journey .expense-allocation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.expense-allocation-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+@media (max-width: 650px) {
+  .group-workspace .ui-workspace-header {
+    padding: 1rem;
+  }
+  .group-header-actions {
+    max-width: none;
+    width: 100%;
+  }
+  .group-header-actions > a,
+  .group-header-actions > details {
+    display: inline-block;
+  }
+  .group-members-context .ui-member {
+    flex: 0 0 auto;
+  }
+  .financial-journey .financial-form-card {
+    padding: 0.75rem;
+  }
+  .expense-detail-fields > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+}
+
+.group-expense-list .category-icon {
+  flex: 0 0 2.25rem;
+}
+.group-header-actions {
+  background: #ffffffed;
+  padding: 0.25rem;
+  border-radius: var(--radius-control);
+}
+.ui-workspace-header--trip .group-header-actions {
+  background: #073d36e6;
+}
+
+.group-workspace .journey-refresh {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.group-workspace .journey-refresh:hover:enabled {
+  background: var(--color-subtle);
+}
+
+.financial-journey .discovery-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.financial-journey .discovery-cards > li {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+}
+.discovery-cards .financial-cover {
+  border-radius: 0;
+}
+.financial-journey .discovery-cards a {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-size);
+  margin: 0.5rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.discovery-cards p {
+  margin: 0.5rem 1rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
 }

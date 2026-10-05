@@ -176,7 +176,7 @@ export function Member({
       .slice(0, 2)
       .join('') || '?';
   return (
-    <span className="ui-member">
+    <span className="ui-member" title={name}>
       <span className="ui-avatar" aria-hidden="true">
         {photo ? (
           <MemberPhoto key={photo} src={photo} initials={initials} />

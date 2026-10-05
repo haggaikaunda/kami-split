@@ -30,10 +30,10 @@
   text-align: right;
   flex: 0 0 40%;
 }
-.household-balance--positive {
+.household-balance--positive .ui-money {
   color: var(--color-primary);
 }
-.household-balance--negative {
+.household-balance--negative .ui-money {
   color: var(--color-owes);
 }
 @media (max-width: 360px) {
@@ -54,4 +54,18 @@
 }
 .household-workspace .household-refresh:hover:enabled {
   background: var(--color-subtle);
+}
+
+.household-source-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.household-source-name .app-icon {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.35rem;
+  border-radius: 50%;
+  background: var(--color-balance);
 }

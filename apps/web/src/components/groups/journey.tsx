@@ -1,4 +1,5 @@
 'use client';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -77,8 +78,8 @@ export function GroupJourney({
       className={`financial-journey ${initialGroup ? 'group-workspace' : ''}`}
       id="page-content"
     >
-      <header>
-        <Link href="/account">Kami Split · Account</Link>
+      <WorkspaceNavigation />
+      <header className="journey-page-heading">
         {!initialGroup && (
           <h1 data-page-heading tabIndex={-1}>
             {creation
@@ -90,11 +91,6 @@ export function GroupJourney({
                   : 'Your groups'}
           </h1>
         )}
-        <nav aria-label="Financial navigation">
-          <Link href="/groups">Groups</Link>
-          <Link href="/trips">Trips</Link>
-        </nav>
-        <p>Persisted expenses and complete balances</p>
       </header>
       {access.loading ? (
         <p role="status">Loading secure access…</p>
@@ -219,14 +215,10 @@ function ViewerJourney({
     );
   return (
     <>
-      <p>Signed in as {viewer.displayName}</p>
-      {group && <SourceReturn scope={scope} />}
-      {viewer.groups.find((item) => item.isHousehold) && (
-        <>
-          <Link href="/household">Household</Link>
-          <Link href="/household/expenses">Household expenses</Link>
-        </>
+      {!group && (
+        <p className="journey-viewer">Signed in as {viewer.displayName}</p>
       )}
+      {group && <SourceReturn scope={scope} />}
       {creation &&
         (viewer.canCreateGroups ? (
           <CreationForm
@@ -277,7 +269,7 @@ function ViewerJourney({
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (
-            <ul>
+            <ul className="discovery-cards">
               {viewer.groups
                 .filter(
                   (item) =>
@@ -290,15 +282,10 @@ function ViewerJourney({
                 )
                 .map((item) => (
                   <li key={item.id}>
-                    {item.trip && (
-                      <div
-                        className="financial-cover"
-                        role="img"
-                        aria-label="Abstract trip cover"
-                      >
-                        ◇
-                      </div>
-                    )}
+                    <div
+                      className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+                      aria-hidden="true"
+                    />
                     <ScopedLink
                       scope={scope}
                       id={`group-${item.id}`}
@@ -455,6 +442,9 @@ function GroupDetails({
         </p>
       )}
       <button
+        className="journey-refresh"
+        aria-label="Refresh group and restart list"
+        title="Refresh group and restart list"
         disabled={busy}
         onClick={() => {
           if (after) {
@@ -464,7 +454,7 @@ function GroupDetails({
           } else void read();
         }}
       >
-        Refresh group and restart list
+        Refresh
       </button>
       {busy ? (
         <p role="status">Loading current authorized group data…</p>

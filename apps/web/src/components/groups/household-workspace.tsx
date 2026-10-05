@@ -381,14 +381,18 @@ export function HouseholdContent({
                     href={`/groups/${encodeURIComponent(space.groupId)}?tab=balances`}
                   >
                     <span>
-                      <span aria-hidden="true">
-                        {space.isHousehold
-                          ? '⌂'
-                          : space.kind === 'TRIP'
-                            ? '◇'
-                            : '○'}{' '}
-                      </span>
-                      <strong>{space.name}</strong>
+                      <strong className="household-source-name">
+                        <AppIcon
+                          name={
+                            space.isHousehold
+                              ? 'home'
+                              : space.kind === 'TRIP'
+                                ? 'trip'
+                                : 'groups'
+                          }
+                        />
+                        {space.name}
+                      </strong>
                       <span className="ui-row-detail">{detail}</span>
                     </span>
                     <span>
@@ -452,7 +456,7 @@ export function HouseholdContent({
                             name="expense"
                             className="recent-expense-icon"
                           />
-                          <span>
+                          <span className="expense-row-copy">
                             <strong>{node.description}</strong>
                             <span className="ui-row-detail">
                               {source.name} ·{' '}

@@ -138,7 +138,7 @@ async function render(ui: React.ReactNode) {
 async function respond(data: unknown) {
   await act(async () => mock.requests.at(-1)!.next(data));
 }
-it('lists authorized groups without deriving totals and only shortcuts a designated household', async () => {
+it('keeps general navigation static while limiting source discovery to authorized groups', async () => {
   await render(<GroupJourney />);
   await respond(viewer());
   expect(host.querySelector('a[href="/household"]')?.textContent).toBe(
@@ -148,7 +148,10 @@ it('lists authorized groups without deriving totals and only shortcuts a designa
   expect(host.textContent).not.toContain('Total expenses');
   await render(<GroupJourney trips />);
   await respond(viewer([groups[1], groups[2]]));
-  expect(host.textContent).not.toContain('Household');
+  expect(host.querySelector('a[href="/household"]')?.textContent).toBe(
+    'Household',
+  );
+  expect(host.querySelector('a[href="/groups/H"]')).toBeNull();
   expect(host.textContent).not.toContain('Private household');
   expect(host.textContent).toContain('In progress');
   expect(host.textContent).not.toContain('Friends · Group');
