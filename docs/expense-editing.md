@@ -1,5 +1,7 @@
 # Expense editing
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](application/README.md).
+
 Issue [#21](https://github.com/haggaikaunda/kami-split/issues/21) adds Edit expense to current detail records. The existing expense form and integer validation are shared with creation. The complete record is prefilled, including explicit participant membership, zero shares, payer, effective date, trip, category and note. The original immutable snapshot and expected version are retained in the session draft; refreshes never silently rebase it.
 
 A successful update creates a revision and attributed activity through the async port, preserves the creator, and refreshes derived queries. Per-visit navigation returns to the same detail URL and presentation, preserving selected audit revision and source query state. Direct edit links have an explicit fallback to that expense. Creation retains its existing behavior and recovery tests.

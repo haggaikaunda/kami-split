@@ -1,5 +1,7 @@
 # Repayment recording
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production direction
 
 The household-only flow below is preserved seeded-preview behavior. The [persisted group repayment API and authenticated workspace](../application/persisted-repayments.md) implement real group-local recording under #110/#171; their partial/overpayment contract and frozen recovery are independent of the preview acknowledgment policy. Under [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment), every future settlement belongs to exactly one group, including a trip group. A dashboard shortcut opens that original group’s repayment form without a Household copy, cross-group netting or an overall debt to settle. Group-specific shortcut design is #86; settlement implementation remains outside #73. The preview’s lack of trip assignment is not a production prohibition on settling trip-group obligations.

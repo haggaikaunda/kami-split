@@ -261,6 +261,6 @@ names/amounts and vertical scroll. This document does not claim a live browser t
 | `components/session-command.tsx`                                            | Preserve frozen identity/recovery/source lifetime; replace current-household envelope capture and global new-repayment draft identity with original-group/attempt scoping.           |
 | `components/navigation/provider.tsx`, `links.tsx`, household/recovery docs  | Preserve source visits/focus/generation handling; canonical group routes, no lost-access cache or household fallback. Preview membership guards remain historical.                   |
 
-Keep existing seeded UI/tests and its historical documentation intact. Follow-on
+The executable seeded UI/tests were subsequently retired in #184; preserve only their historical documentation as evidence. Follow-on
 [delivery slices](../proposals/household-dashboard-slices.md) own implementation,
 acceptance tests and browser evidence; no migration, SDL, resolver or UI changes here.

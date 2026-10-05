@@ -1,6 +1,6 @@
 # Targeted onboarding, sessions and delivery
 
-Issues #80 and #164 connect the [targeted invitation service](targeted-invitations.md) to Supabase Auth, Resend, thin GraphQL operations and real browser routes. Issue #164 adds single-email targeted continuation and independently verified first-time account creation through live shared links; global public signup remains disabled. The existing expense API is preserved. The [Relay expense journey](relay-expenses.md) at `/groups` now uses these sessions; remaining financial preview screens stay simulated; `/preview/sign-in` preserves the old account simulation. `/sign-in`, `/join`, `/auth/confirm`, `/auth/password` and `/account` use actual configured services and never render mock group data.
+Issues #80 and #164 connect the [targeted invitation service](targeted-invitations.md) to Supabase Auth, Resend, thin GraphQL operations and real browser routes. Issue #164 adds single-email targeted continuation and independently verified first-time account creation through live shared links; global public signup remains disabled. The existing expense API is preserved. The [Relay expense journey](relay-expenses.md) at `/groups` now uses these sessions; the old financial preview and `/preview/sign-in` account simulation were removed in #184. `/sign-in`, `/join`, `/auth/confirm`, `/auth/password` and `/account` use actual configured services and never render mock group data.
 
 ## Presentation
 

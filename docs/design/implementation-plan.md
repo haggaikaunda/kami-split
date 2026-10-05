@@ -1,5 +1,7 @@
 # Completed implementation record
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 The seeded UX rollout is complete. Design [PR #12](https://github.com/haggaikaunda/kami-split/pull/12) merged as `869e1fd`; tracker [#13](https://github.com/haggaikaunda/kami-split/issues/13) and all child issues #14–31 are closed. Final accessibility/integration verification merged in PR #49 (`c9872e3`). The subsequent [LAN HTTP compatibility fix #51](https://github.com/haggaikaunda/kami-split/pull/51) merged as `67d5651`.
 
 This table preserves the approved dependency order and links completed work to its evidence. It is not an active queue. Each implementation PR records independent testing/review and CI; the [final report](../accessibility/README.md) and [criterion matrix](../accessibility/criterion-matrix.md) consolidate journey coverage and limits.

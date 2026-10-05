@@ -1,5 +1,7 @@
 # Implementation issue specifications
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../../application/README.md).
+
 These are the original approved acceptance-criteria snapshots for the completed issues #14–31. The checkboxes record specification text, not live completion status. Every issue is closed; see the [completed implementation record](../implementation-plan.md) for merged PRs and evidence. GitHub remains the source of truth for work status. New scope changes require reviewed specifications and a new approved issue.
 
 - [UX-01: Define exact-money and multi-member ledger rules](01.md)

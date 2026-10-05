@@ -1,5 +1,7 @@
 # Prototype verification for implementation agents
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Run both surfaces
 
 From repository root (no prototype dependencies):
