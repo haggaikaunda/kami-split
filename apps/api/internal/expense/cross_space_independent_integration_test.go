@@ -364,6 +364,15 @@ func TestIndependentExpenseViewDiscoveryRaceAndDeadline(t *testing.T) {
 
 func TestIndependentExpenseViewMalformedAuthorizationAndNoSearchContract(t *testing.T) {
 	f := independentViewDataset(t)
+	for _, target := range []struct {
+		query, field string
+		vars         map[string]any
+	}{{independentHouseholdViewQuery, "householdExpenses", map[string]any{"first": 1, "after": ""}}, {independentGroupViewQuery, "groupExpenses", map[string]any{"first": 1, "after": "", "group": f.public("Group", 201)}}} {
+		got := groupRequest(t, f, 1, target.query, target.vars, target.field, "Problem")
+		if got["code"] != "INVALID_CURSOR" || len(got) != 3 {
+			t.Fatal("explicit empty cursor became fresh traversal", got)
+		}
+	}
 	for _, first := range []int{-1, 0, 101} {
 		if got := independentViewRead(t, f, 1, first, "", nil, "", "Problem"); got["code"] != "INVALID_INPUT" {
 			t.Fatal("unbounded page accepted", got)
