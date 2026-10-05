@@ -1,10 +1,12 @@
 'use client';
+import { CategoryIcon } from '@/components/workspace-identity';
 import {
   useEffect,
   useEffectEvent,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -23,6 +25,7 @@ import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
 import {
+  containDialogFocus,
   SummaryMetric,
   SignedBalanceMetric,
   Money,
@@ -40,22 +43,29 @@ export type LedgerSpace = {
   members: readonly Member[];
 };
 const filterKeys = ['groupId', 'category', 'memberId', 'from', 'to'] as const;
-const categoryIcons: Record<string, string> = {
-  DINING: '♧',
-  GROCERIES: '◉',
-  ACCOMMODATION: '⌂',
-  TRANSPORT: '↗',
-  ACTIVITIES: '◇',
-  HOME: '▧',
-  OTHER: '○',
-};
-export function ExpenseLedger(props: Parameters<typeof LedgerContent>[0]) {
+export function ExpenseLedger(
+  props: Omit<
+    Parameters<typeof LedgerContent>[0],
+    'filterTrigger' | 'onFilterApply'
+  >,
+) {
   const params = useSearchParams();
   const filters = filterKeys.map((key) => params.get(key) ?? '').join('\n');
+  const filterTrigger = useRef<HTMLButtonElement>(null);
+  const restoreFilterScope = useRef<string | null>(null);
+  useEffect(() => {
+    if (restoreFilterScope.current === props.scope.id)
+      filterTrigger.current?.focus({ preventScroll: true });
+    restoreFilterScope.current = null;
+  }, [filters, props.scope.id]);
   return (
     <LedgerContent
       key={`${props.scope.id}:${props.groupId ?? 'household'}:${filters}`}
       {...props}
+      filterTrigger={filterTrigger}
+      onFilterApply={(next) => {
+        restoreFilterScope.current = next === filters ? null : props.scope.id;
+      }}
     />
   );
 }
@@ -68,7 +78,11 @@ function LedgerContent({
   activeSpaces,
   onDenied,
   onRefreshContext,
+  filterTrigger,
+  onFilterApply,
 }: {
+  filterTrigger: RefObject<HTMLButtonElement | null>;
+  onFilterApply: (filters: string) => void;
   scope: FinancialScope;
   groupId?: string;
   spaces: readonly LedgerSpace[];
@@ -225,6 +239,7 @@ function LedgerContent({
           filterKeys.map((key) => [key, String(data.get(key) || '')]),
         );
         if (groupId) patch.groupId = '';
+        onFilterApply(filterKeys.map((key) => patch[key]).join('\n'));
         reset();
         change({ ...patch, expense: null, expenseGroup: null, create: null });
         setFiltersOpen(false);
@@ -281,7 +296,25 @@ function LedgerContent({
         To
         <input name="to" type="date" defaultValue={params.get('to') ?? ''} />
       </label>
-      <button type="submit">Apply filters</button>
+      <div className="ledger-filter-actions">
+        <button
+          type="button"
+          onClick={(event) => {
+            const form = event.currentTarget.form;
+            if (form)
+              for (const field of Array.from(form.elements)) {
+                if (
+                  field instanceof HTMLInputElement ||
+                  field instanceof HTMLSelectElement
+                )
+                  field.value = '';
+              }
+          }}
+        >
+          Reset filters
+        </button>
+        <button type="submit">Apply filters</button>
+      </div>
     </form>
   );
   const createSpace = spaces.find((s) => s.groupId === create);
@@ -304,13 +337,17 @@ function LedgerContent({
         </SummaryMetric>
         {net === '0' ? (
           <SummaryMetric
-            label={groupId ? 'Your balance' : 'Net zero across spaces'}
-            detail="Unfiltered"
+            label={groupId ? 'Your balance' : 'Your net balance'}
+            detail={
+              groupId ? 'Unfiltered' : 'Net zero across spaces · unfiltered'
+            }
           >
             <Money value={money(net)} currency="USD" />
           </SummaryMetric>
         ) : net !== undefined ? (
           <SignedBalanceMetric
+            label={groupId ? 'Your balance' : 'Your net balance'}
+            scope={groupId ? 'group' : 'household'}
             position={
               minor(net) > 0n
                 ? 'positive'
@@ -318,9 +355,9 @@ function LedgerContent({
                   ? 'negative'
                   : 'zero'
             }
-            value={money(net).replace(/^-/, '')}
+            value={`${minor(net) > 0n ? '+' : ''}${money(net)}`}
             currency="USD"
-            detail="Unfiltered"
+            detail={`${minor(net) > 0n ? "You're owed" : 'You owe'} · unfiltered`}
           />
         ) : (
           <SummaryMetric label="Your balance">Unavailable</SummaryMetric>
@@ -333,13 +370,20 @@ function LedgerContent({
       </div>
       <div className="ledger-toolbar">
         <button
+          ref={filterTrigger}
           className="ledger-filter-button"
           onClick={() => setFiltersOpen(true)}
         >
           Filters{filterText ? ' · active' : ''}
         </button>
-        <button onClick={refresh} disabled={loading}>
-          Refresh expenses
+        <button
+          className="ledger-refresh"
+          aria-label="Refresh expenses"
+          title="Refresh expenses"
+          onClick={refresh}
+          disabled={loading}
+        >
+          <span aria-hidden="true">↻</span>
         </button>
         <button
           id="ledger-add"
@@ -353,9 +397,6 @@ function LedgerContent({
         >
           Add expense
         </button>
-      </div>
-      <div className="ledger-inline-filters" key={filterText}>
-        {filterForm}
       </div>
       {filterText && (
         <div className="ledger-active-filters">
@@ -447,12 +488,7 @@ function LedgerContent({
                               <time dateTime={node.effectiveDate}>
                                 {node.effectiveDate.slice(8)}
                               </time>
-                              <span
-                                aria-label={node.category.toLowerCase()}
-                                className="ledger-category"
-                              >
-                                {categoryIcons[node.category]}
-                              </span>
+                              <CategoryIcon category={node.category} />
                               <span className="ledger-description">
                                 <strong>{node.description}</strong>
                                 <span>
@@ -647,13 +683,24 @@ export function LedgerDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    ref.current?.showModal();
+    const dialog = ref.current!;
+    const trigger =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
   }, []);
   return (
     <dialog
       className="ledger-dialog"
       ref={ref}
       aria-label={title}
+      tabIndex={-1}
+      onKeyDown={(event) => containDialogFocus(event, ref.current)}
       onCancel={(e) => {
         e.preventDefault();
         onClose();

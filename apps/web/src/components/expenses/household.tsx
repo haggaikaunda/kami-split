@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import { fetchQuery } from 'relay-runtime';
 import contextDocument, {
   type expensesHouseholdContextQuery,
@@ -14,8 +15,12 @@ export function HouseholdExpenses() {
   const access = useFinancialSession();
   return (
     <main className="financial-journey household-expenses" id="page-content">
-      <Link href="/account">Kami Split · Account</Link>
-      <WorkspaceHeader title="Household" context="Shared spaces" />
+      <WorkspaceNavigation />
+      <WorkspaceHeader
+        title="Household"
+        context="Shared expenses across home, trips and groups."
+        appearance="household"
+      />
       {access.loading ? (
         <p role="status">Loading secure access…</p>
       ) : access.error ? (

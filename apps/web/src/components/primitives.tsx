@@ -1,12 +1,15 @@
 'use client';
+import { AppIcon } from './workspace-identity';
 
 import {
+  Fragment,
   useEffect,
   useId,
   useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type KeyboardEvent,
   type ReactNode,
   type RefObject,
   type Ref,
@@ -129,7 +132,13 @@ export function Money({
 }) {
   return (
     <span className="ui-money">
-      {value} <span className="ui-currency">{currency}</span>
+      {value.split(/(?<=,)/).map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 && <wbr />}
+          {part}
+        </Fragment>
+      ))}{' '}
+      <span className="ui-currency">{currency}</span>
     </span>
   );
 }
@@ -297,6 +306,41 @@ export function EmptyState({
   );
 }
 
+/** Wrap visible enabled controls inside a native modal, including reverse Tab. */
+export function containDialogFocus(
+  event: KeyboardEvent<HTMLDialogElement>,
+  fallback: HTMLElement | null,
+) {
+  if (event.key !== 'Tab') return;
+  const dialog = event.currentTarget;
+  const controls = Array.from(
+    dialog.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, summary, a[href], [tabindex]',
+    ),
+  ).filter(
+    (element) =>
+      element.tabIndex >= 0 &&
+      !element.matches(':disabled') &&
+      element.getClientRects().length > 0,
+  );
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first) {
+    event.preventDefault();
+    fallback?.focus();
+  } else if (
+    event.shiftKey &&
+    (!controls.includes(document.activeElement as HTMLElement) ||
+      document.activeElement === first)
+  ) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 type DialogProps = {
   open: boolean;
   title: string;
@@ -350,36 +394,7 @@ export function Dialog({
       ref={ref}
       aria-labelledby={titleId}
       className={`ui-dialog${panel ? ' ui-dialog--panel' : ''}`}
-      onKeyDown={(event) => {
-        if (event.key !== 'Tab') return;
-        const dialog = event.currentTarget;
-        const controls = Array.from(
-          dialog.querySelectorAll<HTMLElement>(
-            'button, input, select, textarea, summary, a[href], [tabindex]',
-          ),
-        ).filter(
-          (element) =>
-            element.tabIndex >= 0 &&
-            !element.matches(':disabled') &&
-            element.getClientRects().length > 0,
-        );
-        const first = controls[0];
-        const last = controls.at(-1);
-        if (!first) {
-          event.preventDefault();
-          heading.current?.focus();
-        } else if (
-          event.shiftKey &&
-          (!controls.includes(document.activeElement as HTMLElement) ||
-            document.activeElement === first)
-        ) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }}
+      onKeyDown={(event) => containDialogFocus(event, heading.current)}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -530,18 +545,35 @@ export function WorkspaceHeader({
   title,
   context,
   children,
+  appearance,
 }: {
   title: string;
   context?: ReactNode;
   children?: ReactNode;
+  appearance?: 'household' | 'trip' | 'group';
 }) {
   return (
-    <header className="ui-workspace-header">
-      <div>
-        {context && <div className="ui-workspace-context">{context}</div>}
+    <header
+      className={`ui-workspace-header ${appearance ? `ui-workspace-header--${appearance}` : ''}`}
+    >
+      {appearance && (
+        <span className="workspace-identity-icon">
+          <AppIcon
+            name={
+              appearance === 'household'
+                ? 'home'
+                : appearance === 'trip'
+                  ? 'trip'
+                  : 'groups'
+            }
+          />
+        </span>
+      )}
+      <div className="workspace-heading">
         <h1 data-page-heading tabIndex={-1}>
           {title}
         </h1>
+        {context && <div className="ui-workspace-context">{context}</div>}
       </div>
       {children}
     </header>
@@ -602,12 +634,14 @@ export function SummaryMetric({
 export function SignedBalanceMetric({
   position,
   scope = 'group',
+  label,
   value,
   currency,
   detail,
 }: {
   position: 'positive' | 'negative' | 'zero';
   scope?: 'group' | 'household';
+  label?: string;
   value: string;
   currency: string;
   detail?: ReactNode;
@@ -616,13 +650,14 @@ export function SignedBalanceMetric({
     <div className={`ui-signed-balance ui-signed-balance--${position}`}>
       <SummaryMetric
         label={
-          position === 'positive'
+          label ??
+          (position === 'positive'
             ? "You're owed"
             : position === 'negative'
               ? 'You owe'
               : scope === 'household'
                 ? 'Net zero across spaces'
-                : 'Settled'
+                : 'Settled')
         }
         detail={detail}
       >

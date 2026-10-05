@@ -1,16 +1,16 @@
 :root {
   color-scheme: light;
-  --color-ink: #18342b;
-  --color-muted: #52645c;
-  --color-primary: #245b42;
-  --color-primary-hover: #17452f;
+  --color-ink: #163744;
+  --color-muted: #566a80;
+  --color-primary: #00664d;
+  --color-primary-hover: #004d3b;
   --color-canvas: #f8f7f3;
   --color-subtle: #f3f5f1;
-  --color-separator: #e1e6e2;
+  --color-separator: #e4e9ec;
   --color-owes: #93421e;
   --color-owes-surface: #fff1e8;
   --color-surface: #ffffff;
-  --color-balance: #edf5ec;
+  --color-balance: #edf6f1;
   --color-border: #87968d;
   --color-danger: #9f2727;
   --color-error-surface: #fff0ed;
@@ -24,8 +24,8 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
-  --radius-control: 0.75rem;
-  --radius-card: 1.25rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
   --shadow-panel: 0 1rem 3rem #18342b26;
   --focus-ring: 3px solid var(--color-focus);
   --target-size: 44px;
@@ -57,10 +57,10 @@ h3 {
   overflow-wrap: anywhere;
 }
 h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 h2 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   margin-block: 0 var(--space-4);
 }
 h3 {
@@ -400,11 +400,14 @@ td {
   align-content: start;
   min-width: 0;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
 }
 .ui-metric-value {
   font-family: var(--font-display);
-  font-size: clamp(1.125rem, 3vw, 2rem);
+  font-size: clamp(1rem, 2vw, 1.5rem);
 }
 .ui-signed-balance {
   min-width: 0;
@@ -413,6 +416,10 @@ td {
 .ui-signed-balance--positive {
   color: var(--color-primary);
   background: var(--color-balance);
+}
+.ui-signed-balance .ui-summary-metric {
+  background: transparent;
+  height: 100%;
 }
 .ui-signed-balance--negative {
   color: var(--color-owes);
@@ -480,4 +487,189 @@ td {
 }
 .ui-repayment-row {
   flex-wrap: wrap;
+}
+
+/* Board A2/A6 and B1/B6: shared identity and persistent workspace navigation. */
+.app-icon {
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+.workspace-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #073d42;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.workspace-brand .app-icon {
+  fill: var(--color-primary);
+  color: var(--color-primary);
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.workspace-navigation {
+  background: var(--color-surface);
+}
+.workspace-navigation-links {
+  display: flex;
+}
+.workspace-navigation .workspace-navigation-links a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: var(--target-size);
+  padding: 0.65rem 0.75rem;
+  text-decoration: none;
+  color: var(--color-muted);
+  border-radius: var(--radius-control);
+}
+.workspace-navigation .workspace-navigation-links a[aria-current='page'] {
+  background: var(--color-balance);
+  color: var(--color-primary);
+  box-shadow: inset 3px 0 var(--color-primary);
+  font-weight: 700;
+}
+.workspace-navigation .workspace-navigation-links a:hover {
+  background: var(--color-subtle);
+}
+.workspace-heading {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.ui-workspace-header--household {
+  position: relative;
+  isolation: isolate;
+  gap: 0.85rem;
+}
+.ui-workspace-header--household::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 45%;
+  background: url('/art/household.png') right center / cover no-repeat;
+  opacity: 0.75;
+  z-index: -1;
+}
+.ui-workspace-header--household .workspace-heading {
+  padding-inline-end: 25%;
+}
+.workspace-identity-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  border-radius: 50%;
+  color: #94541d;
+  background: #fff0df;
+}
+.ui-workspace-context {
+  font-size: 0.875rem;
+}
+.ui-workspace-tabs {
+  font-size: 0.875rem;
+}
+.ui-metric-label,
+.ui-metric-detail {
+  font-size: 0.8125rem;
+}
+.category-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-balance);
+  color: var(--color-primary);
+}
+.category-icon--dining {
+  background: #fff1e0;
+  color: #a54c16;
+}
+.category-icon--accommodation,
+.category-icon--activities {
+  background: #eaf3ff;
+  color: #215791;
+}
+.category-icon .app-icon {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.recent-expense-icon {
+  color: var(--color-primary);
+}
+@media (min-width: 1000px) {
+  .financial-journey:has(> .workspace-navigation) {
+    max-width: 78rem;
+    padding: 1.5rem 2rem 2rem 16rem;
+  }
+  .financial-journey > .workspace-navigation {
+    position: fixed;
+    inset: 0 auto 0 max(0px, calc((100vw - 78rem) / 2));
+    width: 13rem;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 0.75rem;
+    border-right: 1px solid var(--color-separator);
+    z-index: 10;
+  }
+  .workspace-navigation-brand {
+    padding: 0 0.5rem 2rem;
+  }
+  .workspace-navigation-links {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+@media (max-width: 999px) {
+  .financial-journey:has(> .workspace-navigation) {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  .financial-journey > .workspace-navigation {
+    display: block;
+    border: 0;
+    margin: 0;
+    padding: 0.5rem 0;
+  }
+  .workspace-navigation-brand {
+    display: flex;
+    justify-content: center;
+  }
+  .workspace-navigation-links {
+    position: fixed;
+    inset: auto 0 0;
+    padding: 0.4rem max(0.5rem, env(safe-area-inset-right))
+      max(0.4rem, env(safe-area-inset-bottom))
+      max(0.5rem, env(safe-area-inset-left));
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-separator);
+    justify-content: space-around;
+    z-index: 10;
+  }
+  .workspace-navigation .workspace-navigation-links a {
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+  }
+  .workspace-navigation .workspace-navigation-links a[aria-current='page'] {
+    box-shadow: none;
+  }
+  .ui-workspace-header--household::before {
+    display: none;
+  }
+  .ui-workspace-header--household .workspace-heading {
+    padding-inline-end: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .ui-workspace-tabs {
+    gap: 0;
+  }
+  .ui-workspace-tabs a {
+    padding-inline: 0.35rem;
+  }
 }
