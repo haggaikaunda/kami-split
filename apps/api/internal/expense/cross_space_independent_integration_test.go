@@ -74,6 +74,12 @@ func independentViewExpense(t *testing.T, f *expenseFixture, group, payer, parti
 func independentViewDataset(t *testing.T) *expenseFixture {
 	t.Helper()
 	f := independentDashboardFixture(t, 1, 2)
+	t.Cleanup(func() {
+		independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;DELETE FROM app.group_trip WHERE group_id='%s';COMMIT`, f.id(202)))
+	})
+	// Travel dates are metadata: the September expense must remain visible
+	// even when its original trip's itinerary starts the following January.
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;INSERT INTO app.group_trip(group_id,destination,start_date,end_date) VALUES('%s','Original trip','2027-01-01','2027-01-02');COMMIT`, f.id(202)))
 	independentViewExpense(t, f, 201, 301, 302, 100, "2026-10-01", "HOME")
 	independentViewExpense(t, f, 201, 302, 301, 200, "2026-09-30", "DINING")
 	in := f.input
@@ -108,6 +114,13 @@ func TestIndependentExpenseViewStructuredTotalsMemberParityAndNoDisclosure(t *te
 	}
 	for _, edge := range full["edges"].([]any) {
 		e := edge.(map[string]any)
+		source := e["source"].(map[string]any)
+		if source["id"] == f.public("Group", 202) {
+			trip := source["trip"].(map[string]any)
+			if source["kind"] != "TRIP" || trip["destination"] != "Original trip" || trip["startDate"] != "2027-01-01" || trip["endDate"] != "2027-01-02" {
+				t.Fatal("trip provenance incomplete", source)
+			}
+		}
 		if e["node"].(map[string]any)["totalMinor"] == "9000" {
 			t.Fatal("excluded amount appeared in expense row", e)
 		}
@@ -374,6 +387,14 @@ func TestIndependentExpenseViewMalformedAuthorizationAndNoSearchContract(t *test
 		got := groupRequest(t, f, 1, target.query, target.vars, target.field, "Problem")
 		if got["code"] != "INVALID_CURSOR" || len(got) != 3 {
 			t.Fatal("explicit empty cursor became fresh traversal", got)
+		}
+	}
+	for _, group := range []string{"", f.public("Group", 201)} {
+		for _, filter := range []map[string]any{{"groupId": ""}, {"memberId": ""}} {
+			got := independentViewRead(t, f, 1, 1, "", filter, group, "Problem")
+			if got["code"] != "INVALID_INPUT" {
+				t.Fatal("malformed empty identifier broadened scope", got)
+			}
 		}
 	}
 	for _, first := range []int{-1, 0, 101} {
