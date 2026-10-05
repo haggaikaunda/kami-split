@@ -697,8 +697,6 @@ type Problem struct {
 	Message string `json:"message"`
 }
 
-func (Problem) IsExpenseViewResult() {}
-
 func (Problem) IsViewerResult() {}
 
 func (Problem) IsGroupResult() {}
@@ -720,6 +718,8 @@ func (Problem) IsHouseholdDashboardTotalsResult() {}
 func (Problem) IsRecordRepaymentResult() {}
 
 func (Problem) IsRepaymentOperationResult() {}
+
+func (Problem) IsExpenseViewResult() {}
 
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {

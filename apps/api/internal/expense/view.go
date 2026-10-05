@@ -84,7 +84,7 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 	}
 	for attempt := 0; attempt < 3; attempt++ {
 		var result ExpenseView
-		err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
+		err := s.transaction(ctx, func(tx pgx.Tx, _ auth.Actor) error {
 			var held viewScope
 			if group == "" {
 				var raw []byte

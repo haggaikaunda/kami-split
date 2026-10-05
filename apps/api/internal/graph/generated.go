@@ -415,8 +415,6 @@ type QueryResolver interface {
 	Node(ctx context.Context, id string) (model.Node, error)
 	Group(ctx context.Context, id string) (model.GroupResult, error)
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
-	HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
-	GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
 	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
 	HouseholdDashboard(ctx context.Context) (model.HouseholdDashboardResult, error)
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
@@ -424,6 +422,8 @@ type QueryResolver interface {
 	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
 	RepaymentOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.RepaymentOperationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
+	HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
+	GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -1963,135 +1963,6 @@ func newExecutionContext(
 }
 
 var sources = []*ast.Source{
-	{Name: "../../../../packages/schema/expense-view.graphql", Input: `"""
-Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
-"""
-input StructuredExpenseFilter {
-  """
-  One currently authorized eligible source Group ID; absent means All.
-  """
-  groupId: ID
-  """
-  Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
-  """
-  memberId: ID
-  """
-  Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
-  """
-  from: Date
-  """
-  Inclusive maximum effective date at or after from.
-  """
-  to: Date
-  """
-  Authoritative category; absent means all categories.
-  """
-  category: Category
-}
-"""
-Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
-"""
-union ExpenseViewResult = ExpenseView | Problem
-"""
-One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
-"""
-type ExpenseView {
-  """
-  Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
-  """
-  totalExpenseMinor: MinorUnits!
-  """
-  Exact count of all matching expenses at the same anchor.
-  """
-  expenseCount: MinorUnits!
-  """
-  Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
-  """
-  months: [ExpenseMonth!]!
-  """
-  Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
-  """
-  edges: [ExpenseViewEdge!]!
-  """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
-  """
-  pageInfo: PageInfo!
-}
-"""
-Complete filtered subtotal for an expense effective-date month at the traversal anchor.
-"""
-type ExpenseMonth {
-  """
-  Gregorian YYYY-MM; travel dates do not restrict history.
-  """
-  month: String!
-  """
-  Complete matching face-value subtotal, never a sum of loaded rows.
-  """
-  totalExpenseMinor: MinorUnits!
-  """
-  Complete matching expense count as a canonical exact string.
-  """
-  expenseCount: MinorUnits!
-}
-"""
-Original expense with currently authorized source-space metadata; no copied Household record.
-"""
-type ExpenseViewEdge {
-  """
-  Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
-  """
-  cursor: String!
-  """
-  Original expense and minimal currently authorized same-group profiles.
-  """
-  node: Expense!
-  """
-  Original source Group ID, current label/kind/currency/trip metadata.
-  """
-  source: GroupSummary!
-}
-extend type Query {
-  """
-  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
-  """
-  householdExpenses(
-    """
-    Bounded forward page size, 1..100.
-    """
-    first: Int! = 20
-    """
-    Signed prior boundary; filter/scope/eligibility changes require a new traversal.
-    """
-    after: String
-    """
-    Server-applied structured filters shared by page, total and month aggregates.
-    """
-    filter: StructuredExpenseFilter
-  ): ExpenseViewResult!
-  """
-  Group/Trip parity for structured spending filters. Unfiltered GroupBalances and legacy participant-only Group.expenses remain unchanged.
-  """
-  groupExpenses(
-    """
-    Explicit original group; current enabled active access is required on every page.
-    """
-    groupId: ID!
-    """
-    Bounded forward page size, 1..100.
-    """
-    first: Int! = 20
-    """
-    Signed prior boundary for this group/filter/viewer; never proves current access.
-    """
-    after: String
-    """
-    Structured member/date/category filters; optional source must equal groupId.
-    """
-    filter: StructuredExpenseFilter
-  ): ExpenseViewResult!
-}
-`, BuiltIn: false},
 	{Name: "../../../../packages/schema/expenses.graphql", Input: `"""
 Exact signed int64 cents, encoded only as canonical decimal strings; each field imposes its own monetary bounds.
 """
@@ -3846,6 +3717,135 @@ type Health {
   Returns "ok" when the GraphQL health resolver responds; does not indicate database or financial readiness.
   """
   status: String!
+}
+`, BuiltIn: false},
+	{Name: "../../../../packages/schema/structured-expenses.graphql", Input: `"""
+Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
+"""
+input StructuredExpenseFilter {
+  """
+  One currently authorized eligible source Group ID; absent means All.
+  """
+  groupId: ID
+  """
+  Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+  """
+  memberId: ID
+  """
+  Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
+  """
+  from: Date
+  """
+  Inclusive maximum effective date at or after from.
+  """
+  to: Date
+  """
+  Authoritative category; absent means all categories.
+  """
+  category: Category
+}
+"""
+Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
+"""
+union ExpenseViewResult = ExpenseView | Problem
+"""
+One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
+"""
+type ExpenseView {
+  """
+  Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Exact count of all matching expenses at the same anchor.
+  """
+  expenseCount: MinorUnits!
+  """
+  Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
+  """
+  months: [ExpenseMonth!]!
+  """
+  Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+  """
+  edges: [ExpenseViewEdge!]!
+  """
+  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+  """
+  pageInfo: PageInfo!
+}
+"""
+Complete filtered subtotal for an expense effective-date month at the traversal anchor.
+"""
+type ExpenseMonth {
+  """
+  Gregorian YYYY-MM; travel dates do not restrict history.
+  """
+  month: String!
+  """
+  Complete matching face-value subtotal, never a sum of loaded rows.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Complete matching expense count as a canonical exact string.
+  """
+  expenseCount: MinorUnits!
+}
+"""
+Original expense with currently authorized source-space metadata; no copied Household record.
+"""
+type ExpenseViewEdge {
+  """
+  Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
+  """
+  cursor: String!
+  """
+  Original expense and minimal currently authorized same-group profiles.
+  """
+  node: Expense!
+  """
+  Original source Group ID, current label/kind/currency/trip metadata.
+  """
+  source: GroupSummary!
+}
+extend type Query {
+  """
+  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  """
+  householdExpenses(
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary; filter/scope/eligibility changes require a new traversal.
+    """
+    after: String
+    """
+    Server-applied structured filters shared by page, total and month aggregates.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
+  """
+  Group/Trip parity for structured spending filters. Unfiltered GroupBalances and legacy participant-only Group.expenses remain unchanged.
+  """
+  groupExpenses(
+    """
+    Explicit original group; current enabled active access is required on every page.
+    """
+    groupId: ID!
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary for this group/filter/viewer; never proves current access.
+    """
+    after: String
+    """
+    Structured member/date/category filters; optional source must equal groupId.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
 }
 `, BuiltIn: false},
 }
@@ -9322,94 +9322,6 @@ func (ec *executionContext) fieldContext_Query_expenseOperation(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_householdExpenses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_householdExpenses(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().HouseholdExpenses(ctx, fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.StructuredExpenseFilter))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseViewResult) graphql.Marshaler {
-			return ec.marshalNExpenseViewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseViewResult(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_householdExpenses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ExpenseViewResult does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_householdExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_groupExpenses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_groupExpenses(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().GroupExpenses(ctx, fc.Args["groupId"].(string), fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.StructuredExpenseFilter))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseViewResult) graphql.Marshaler {
-			return ec.marshalNExpenseViewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseViewResult(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_groupExpenses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ExpenseViewResult does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_groupExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_groupCreationOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9681,6 +9593,94 @@ func (ec *executionContext) fieldContext_Query_health(_ context.Context, field g
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Health(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_householdExpenses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_householdExpenses(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().HouseholdExpenses(ctx, fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.StructuredExpenseFilter))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseViewResult) graphql.Marshaler {
+			return ec.marshalNExpenseViewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseViewResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_householdExpenses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ExpenseViewResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_householdExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_groupExpenses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_groupExpenses(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().GroupExpenses(ctx, fc.Args["groupId"].(string), fc.Args["first"].(int), fc.Args["after"].(*string), fc.Args["filter"].(*model.StructuredExpenseFilter))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseViewResult) graphql.Marshaler {
+			return ec.marshalNExpenseViewResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseViewResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_groupExpenses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ExpenseViewResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_groupExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -14844,7 +14844,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ExpenseViewResult", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult"}
+var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult", "ExpenseViewResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -14983,50 +14983,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_expenseOperation(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "householdExpenses":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_householdExpenses(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "groupExpenses":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_groupExpenses(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -15181,6 +15137,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_health(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "householdExpenses":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_householdExpenses(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "groupExpenses":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_groupExpenses(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
