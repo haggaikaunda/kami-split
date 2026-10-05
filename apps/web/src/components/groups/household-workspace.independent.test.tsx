@@ -135,9 +135,7 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(row.textContent).toContain('17 expenses · repayments excluded');
   expect(row.textContent).toContain('Overall net is zero');
   expect(row.textContent).toContain('2 open balances');
-  expect(
-    host.querySelector('a[href="/household?tab=expenses"]'),
-  ).not.toBeNull();
+  expect(host.querySelector('a[href="/household/expenses"]')).not.toBeNull();
   await content('Balances');
   expect(host.querySelectorAll('.household-balances li')).toHaveLength(3);
   expect(host.querySelectorAll('a[href*="repayments"]')).toHaveLength(0);
@@ -189,6 +187,7 @@ it('uses real ledger membership beyond two people and only owner invitation mana
   });
   expect(host.querySelector('a[href="/invitations"]')).toBeNull();
   expect(householdHref('Activity')).toBe('/household/activity');
+  expect(householdHref('Expenses')).toBe('/household/expenses');
 });
 it('clears private rows during refresh and rejects an older response', async () => {
   const first = deferred(),

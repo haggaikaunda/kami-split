@@ -40,6 +40,7 @@ type Members = Extract<
 >;
 type Recent = householdWorkspaceQuery['response']['householdExpenses'];
 export function householdHref(section: WorkspaceSection) {
+  if (section === 'Expenses') return '/household/expenses';
   return section === 'Activity'
     ? '/household/activity'
     : `/household?tab=${section.toLowerCase()}`;
@@ -311,16 +312,9 @@ export function HouseholdContent({
       ) : current === 'Expenses' ? (
         <section>
           <h2>Expenses</h2>
-          <p>
-            The complete Household Expenses workspace is being delivered
-            separately.
-          </p>
+          <p>Read complete shared expenses across eligible spaces.</p>
           {home && (
-            <Link
-              href={`/groups/${encodeURIComponent(home.groupId)}?tab=expenses`}
-            >
-              Open Household ledger expenses
-            </Link>
+            <Link href={householdHref('Expenses')}>Open shared Expenses</Link>
           )}
         </section>
       ) : current === 'Balances' ? (

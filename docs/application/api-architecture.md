@@ -2,7 +2,7 @@
 
 ## Status
 
-The authenticated `householdDashboard` read implements the [ADR-007 summary](decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the Household browser workspace consumes these reads under #112, with complete Expenses integration implemented by #170.
+The authenticated `householdDashboard` read implements the [ADR-007 summary](decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the Household browser workspace consumes these reads under #112, with complete [Expenses integration](expenses-ledger.md) implemented by #170.
 
 The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
 expense views with original-space attribution, complete face-value totals/counts,

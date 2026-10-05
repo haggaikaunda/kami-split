@@ -233,6 +233,12 @@ export const journeyExpenseQuery = graphql`
         description
         effectiveDate
         totalMinor
+        currency
+        createdAt
+        creator {
+          id
+          displayName
+        }
         category
         note
         payer {
@@ -316,6 +322,63 @@ export const journeyRepaymentRecoveryQuery = graphql`
       ... on OperationProgress {
         key
         state
+      }
+      ... on Problem {
+        code
+        message
+      }
+    }
+  }
+`;
+
+export const journeyGroupCreationMutation = graphql`
+  mutation journeyGroupCreationMutation($input: CreateGroupInput!) {
+    createGroup(input: $input) {
+      __typename
+      ... on GroupCreationCompleted {
+        operationKey
+        groupId
+        creatorMembershipId
+        createdAt
+      }
+      ... on GroupCreationRejected {
+        operationKey
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on GroupCreationConflict {
+        operationKey
+      }
+      ... on Problem {
+        code
+        message
+      }
+    }
+  }
+`;
+export const journeyGroupCreationRecoveryQuery = graphql`
+  query journeyGroupCreationRecoveryQuery($operationKey: OperationKey!) {
+    groupCreationOperation(operationKey: $operationKey) {
+      __typename
+      ... on GroupCreationCompleted {
+        operationKey
+        groupId
+        creatorMembershipId
+        createdAt
+      }
+      ... on GroupCreationRejected {
+        operationKey
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on GroupCreationNotStarted {
+        operationKey
       }
       ... on Problem {
         code

@@ -11,10 +11,11 @@ import groupDocument, {
 } from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
-import { tripState } from '@/lib/relay/discovery';
+import { tripState, routeId } from '@/lib/relay/discovery';
 import { ExpenseDetail } from './expense-detail';
 import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
+import { CreationForm } from './creation-form';
 import './journey.css';
 type Viewer = Extract<
   journeyViewerQuery['response']['viewer'],
@@ -34,23 +35,39 @@ function message(code: string) {
   return 'Financial data is unavailable. No zero balance or settled status can be established. Refresh to try again.';
 }
 export function GroupJourney({
-  initialGroup = '',
-  expense = '',
+  initialGroup: pathGroup = '',
+  expense: pathExpense = '',
   repayment = false,
   trips = false,
   filter = 'all',
+  creation,
 }: {
+  creation?: 'ORDINARY' | 'TRIP';
   initialGroup?: string;
   expense?: string;
   repayment?: boolean;
   trips?: boolean;
   filter?: string;
 }) {
+  const initialGroup = routeId(pathGroup),
+    expense = routeId(pathExpense);
   const access = useFinancialSession();
   const params = useSearchParams(),
     pathname = usePathname();
+  const visitParams = new URLSearchParams(params);
+  for (const key of [
+    'expense',
+    'expenseGroup',
+    'create',
+    'groupId',
+    'category',
+    'memberId',
+    'from',
+    'to',
+  ])
+    visitParams.delete(key);
   const returnQuery = new URLSearchParams();
-  for (const key of ['tab', 'sender', 'recipient', 'amount']) {
+  for (const key of ['tab', 'sender', 'recipient', 'amount', 'kind']) {
     const value = params.get(key);
     if (value) returnQuery.set(key, value);
   }
@@ -64,7 +81,13 @@ export function GroupJourney({
         <Link href="/account">Kami Split · Account</Link>
         {!initialGroup && (
           <h1 data-page-heading tabIndex={-1}>
-            {trips ? 'Your trips' : initialGroup ? 'Your group' : 'Your groups'}
+            {creation
+              ? 'New group'
+              : trips
+                ? 'Your trips'
+                : initialGroup
+                  ? 'Your group'
+                  : 'Your groups'}
           </h1>
         )}
         <nav aria-label="Financial navigation">
@@ -86,13 +109,14 @@ export function GroupJourney({
         </p>
       ) : (
         <ViewerJourney
-          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${params.toString()}`}
+          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
           scope={access.scope}
           initialGroup={initialGroup}
           expense={expense}
           repayment={repayment}
           trips={trips}
           filter={filter}
+          creation={creation}
         />
       )}
     </main>
@@ -105,6 +129,7 @@ function ViewerJourney({
   repayment,
   trips,
   filter,
+  creation,
 }: {
   scope: FinancialScope;
   initialGroup: string;
@@ -112,15 +137,15 @@ function ViewerJourney({
   repayment: boolean;
   trips: boolean;
   filter: string;
+  creation?: 'ORDINARY' | 'TRIP';
 }) {
   const [viewer, setViewer] = useState<Viewer>();
   const [error, setError] = useState('');
   const group = initialGroup;
   const [version, setVersion] = useState(0);
   const [stale, setStale] = useState(false);
-  const pathname = usePathname(),
-    params = useSearchParams();
-  const visit = pathname + '?' + params.toString();
+  const pathname = usePathname();
+  const visit = pathname;
   useEffect(() => {
     const refresh = () => {
       setViewer(undefined);
@@ -197,10 +222,36 @@ function ViewerJourney({
       <p>Signed in as {viewer.displayName}</p>
       {group && <SourceReturn scope={scope} />}
       {viewer.groups.find((item) => item.isHousehold) && (
-        <Link href="/household">Household</Link>
-      )}
-      {!group && (
         <>
+          <Link href="/household">Household</Link>
+          <Link href="/household/expenses">Household expenses</Link>
+        </>
+      )}
+      {creation &&
+        (viewer.canCreateGroups ? (
+          <CreationForm
+            scope={scope}
+            actor={viewer.id}
+            today={viewer.today}
+            kind={creation}
+            onDenied={() => {
+              setViewer(undefined);
+              setError(message('NOT_FOUND'));
+            }}
+          />
+        ) : (
+          <p role="alert">
+            This account cannot create groups. Return to Groups or refresh your
+            access.
+          </p>
+        ))}
+      {!group && !creation && (
+        <>
+          {viewer.canCreateGroups && (
+            <Link href={trips ? '/groups/new?kind=trip' : '/groups/new'}>
+              {trips ? 'Create trip' : 'Create group'}
+            </Link>
+          )}
           {trips && (
             <nav aria-label="Trip date filter">
               {['all', 'upcoming', 'past'].map((value) => (
@@ -222,7 +273,7 @@ function ViewerJourney({
             <p>
               You have no admitted groups.{' '}
               {viewer.canCreateGroups
-                ? 'Group creation will be available separately.'
+                ? 'Create a group to begin.'
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (

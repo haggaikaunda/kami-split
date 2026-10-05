@@ -2,7 +2,7 @@
 
 Issue #82 implements the reviewed [first-expense contract](proposals/first-expense/contract.md)
 and [shared identity and money rules](proposals/first-expense/shared.md). The
-running SDL is in [packages/schema](../../packages/schema/README.md). The web [authenticated journey](relay-expenses.md) uses Relay; the seeded preview and mock DataPort were retired in #184. Invitations and administrative bootstrap are implemented by their dedicated services. Edits, deletion, group-creation forms and uploaded receipt files remain separate work.
+running SDL is in [packages/schema](../../packages/schema/README.md). The web [authenticated journey](relay-expenses.md) uses Relay; the seeded preview and mock DataPort were retired in #184. Invitations and administrative bootstrap are implemented by their dedicated services. Edits, deletion and uploaded receipt files remain separate work; actor-scoped Group/Trip creation forms are implemented under #106.
 
 ## Transaction and recovery boundary
 
