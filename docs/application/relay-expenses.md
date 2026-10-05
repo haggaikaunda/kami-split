@@ -3,8 +3,8 @@
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
 and expenses** from the account navigation. Groups lists active authorized memberships; Trips filters that same list by trip metadata
-and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility;
-only an authorized designated Household receives a direct source shortcut.
+and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility.
+Discovery cards open only the groups returned for the current authorized actor.
 Canonical `/groups/:groupId` and `/groups/:groupId/expenses/:expenseId` routes
 recheck access and expense ownership. Select an admitted group to read a
 structured expense view, create an expense, and see complete server balances.
