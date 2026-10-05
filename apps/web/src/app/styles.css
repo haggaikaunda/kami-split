@@ -576,6 +576,7 @@ td {
   font-size: 0.8125rem;
 }
 .category-icon {
+  flex: 0 0 2.25rem;
   width: 2.25rem;
   height: 2.25rem;
   display: inline-grid;

@@ -452,7 +452,7 @@ export function HouseholdContent({
                             name="expense"
                             className="recent-expense-icon"
                           />
-                          <span>
+                          <span className="expense-row-copy">
                             <strong>{node.description}</strong>
                             <span className="ui-row-detail">
                               {source.name} ·{' '}

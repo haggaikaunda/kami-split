@@ -1,5 +1,5 @@
 .onboarding {
-  width: min(100%, 36rem);
+  width: min(100%, 38rem);
   min-height: 100svh;
   padding: clamp(1.5rem, 5vw, 4rem) max(1rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
@@ -13,7 +13,13 @@
 .onboarding-panel {
   min-width: 0;
   display: grid;
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: clamp(1rem, 4vw, 2rem);
+  background: var(--color-surface);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0.5rem 2rem #18342b08;
 }
 .onboarding header,
 .onboarding footer {
@@ -32,8 +38,8 @@
   min-height: var(--target-size);
   text-decoration: none;
 }
-.onboarding-brand span {
-  font-size: 1.75rem;
+.onboarding-brand > .workspace-brand {
+  font-size: 1.25rem;
 }
 .onboarding footer {
   padding: var(--space-8) var(--space-2) 0;
@@ -41,7 +47,7 @@
   font-size: 0.875rem;
 }
 .onboarding h1 {
-  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-size: clamp(1.5rem, 4vw, 2rem);
   margin: 0;
   letter-spacing: -0.025em;
   text-wrap: balance;
@@ -118,8 +124,12 @@
   text-align: center;
 }
 .onboarding-art {
-  width: min(100%, 15rem);
-  height: auto;
+  width: 100%;
+  min-height: 8rem;
+  height: clamp(8rem, 22vw, 11rem);
+  background: var(--color-balance) url('/art/household.png') right center /
+    cover no-repeat;
+  border-radius: var(--radius-card);
   justify-self: center;
 }
 .onboarding-check {
@@ -153,5 +163,12 @@
   }
   .onboarding-art {
     width: min(100%, 12rem);
+  }
+}
+
+@media (max-width: 390px) {
+  .onboarding {
+    padding-inline: max(0.5rem, env(safe-area-inset-left))
+      max(0.5rem, env(safe-area-inset-right));
   }
 }

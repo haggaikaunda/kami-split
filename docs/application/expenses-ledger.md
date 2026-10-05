@@ -39,8 +39,13 @@ added here. Free-text search remains deferred to #177.
 Verification: `ledger.independent.test.tsx` covers exact large totals, complete
 month subtotals, paging, zero shares, filter/history traversal, refresh races,
 disposed accounts, stale details, denied direct sources and mismatched nodes.
-The delivery PR records actual Chrome layout/navigation tests at 320/390/1280px
+The delivery PR records actual Chrome layout/navigation tests at 320/390/768/1280px
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
 The [approved visual foundation](../design/references/approved-ui/foundation.md) applies the published Board A/B palette, navigation, cards, category icons and structured filter drawer. Reset changes the filter draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
+
+[Remaining screen adoption](../design/references/approved-ui/adoption.md) applies
+the same system to expense detail and creation: category identity, exact total,
+payer and allocation rows, retained note/audit fields, and the existing explicit
+payer/split/participant controls. The boards do not remove required contract fields.

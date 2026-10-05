@@ -5,6 +5,8 @@ import document, {
   type journeyExpenseQuery,
 } from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
+import { CategoryIcon } from '@/components/workspace-identity';
+import { Member, Money } from '@/components/primitives';
 import { money } from '@/lib/relay/money';
 type Expense = Extract<
   NonNullable<journeyExpenseQuery['response']['node']>,
@@ -79,28 +81,58 @@ export function ExpenseDetail({
     );
   if (!expense) return <p role="status">Loading authorized expense…</p>;
   return (
-    <section>
-      <h2>{expense.description}</h2>
-      <p>
-        {money(expense.totalMinor)} {expense.currency} ·{' '}
-        <time dateTime={expense.effectiveDate}>{expense.effectiveDate}</time> ·{' '}
-        {expense.category}
+    <section className="expense-detail-card">
+      <div className="expense-detail-identity">
+        <CategoryIcon category={expense.category} />
+        <div>
+          <h2>{expense.description}</h2>
+          <time dateTime={expense.effectiveDate}>{expense.effectiveDate}</time>
+        </div>
+      </div>
+      <p className="expense-detail-total">
+        <Money value={money(expense.totalMinor)} currency={expense.currency} />
       </p>
-      <p>Paid by {expense.payer.displayName}</p>
-      <p>{expense.note}</p>
-      <p>
-        Created by {expense.creator.displayName} ·{' '}
-        <time dateTime={expense.createdAt}>
-          {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
-        </time>
-      </p>
-      <ul>
-        {expense.allocations.map((share) => (
-          <li key={share.participant.id}>
-            {share.participant.displayName}: {money(share.amountMinor)}
-          </li>
-        ))}
-      </ul>
+      <div className="expense-paid-by">
+        <span>Paid by</span>
+        <Member name={expense.payer.displayName} />
+      </div>
+      <dl className="expense-detail-fields">
+        <div>
+          <dt>Category</dt>
+          <dd>
+            {expense.category[0] + expense.category.slice(1).toLowerCase()}
+          </dd>
+        </div>
+        <div>
+          <dt>Participants</dt>
+          <dd>
+            <ul className="expense-allocation-list">
+              {expense.allocations.map((share) => (
+                <li key={share.participant.id}>
+                  <Member name={share.participant.displayName} />
+                  <Money
+                    value={money(share.amountMinor)}
+                    currency={expense.currency}
+                  />
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+        <div>
+          <dt>Note</dt>
+          <dd>{expense.note || 'No note added.'}</dd>
+        </div>
+        <div>
+          <dt>Created by</dt>
+          <dd>
+            {expense.creator.displayName}
+            <time dateTime={expense.createdAt}>
+              {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
+            </time>
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

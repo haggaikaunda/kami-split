@@ -3,8 +3,8 @@
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
 and expenses** from the account navigation. Groups lists active authorized memberships; Trips filters that same list by trip metadata
-and server UTC date, with abstract covers and no partial-page totals. An accessible
-designated Household has a shortcut; friends receive no inferred household role.
+and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility;
+only an authorized designated Household receives a direct source shortcut.
 Canonical `/groups/:groupId` and `/groups/:groupId/expenses/:expenseId` routes
 recheck access and expense ownership. Select an admitted group to read a
 structured expense view, create an expense, and see complete server balances.
@@ -25,6 +25,12 @@ and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
+
+The [approved Board A/B adoption](../design/references/approved-ui/adoption.md)
+uses a scenic Trip header and neutral Group/Household artwork, compact member
+initials, white financial cards and source-scoped balance rows. Repayment entry
+keeps its recovery navigation while focusing the main area on the existing form.
+The visible **Refresh** action retains its descriptive accessible name.
 
 Overview recent expenses use the original bounded connection; the Expenses tab
 uses the [structured view](expenses-ledger.md), with pages of 20 and signed cursors.

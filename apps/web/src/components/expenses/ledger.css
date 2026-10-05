@@ -106,6 +106,7 @@
   padding: 0.4rem;
 }
 .ledger-dialog {
+  color: var(--color-ink);
   position: fixed;
   inset: 0 0 0 auto;
   margin: 0;

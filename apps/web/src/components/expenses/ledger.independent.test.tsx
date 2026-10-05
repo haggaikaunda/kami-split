@@ -92,7 +92,9 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
     category: 'DINING',
     totalMinor: amount,
     payer: { id: 'other', displayName: 'Bob' },
-    allocations: [{ participant: { id: 'me' }, amountMinor: '0' }],
+    allocations: [
+      { participant: { id: 'me', displayName: 'Alice' }, amountMinor: '0' },
+    ],
   },
 });
 const page = (edges = [edge('one', '2026-09-02')], more = false) => ({

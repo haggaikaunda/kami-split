@@ -1,4 +1,5 @@
 'use client';
+import { Brand } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
@@ -67,7 +68,7 @@ function OnboardingVisit({
       <div className="onboarding-panel" ref={panel}>
         <header>
           <Link href="/account" className="onboarding-brand">
-            <span aria-hidden="true">❧</span> Kami Split
+            <Brand />
           </Link>
         </header>
         {!account && <HouseIllustration />}

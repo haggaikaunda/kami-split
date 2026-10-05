@@ -1,4 +1,5 @@
 'use client';
+import { CategoryIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { journeyGroupQuery } from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
@@ -58,56 +59,66 @@ export function GroupWorkspace({
     <div
       className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
     >
-      <WorkspaceHeader
-        title={group.name}
-        context={
-          <>
-            <SpaceChip>
-              {group.isHousehold ? 'Household' : group.trip ? 'Trip' : 'Group'}
-            </SpaceChip>
-            <span> · {group.currency}</span>
-            {group.trip && (
-              <p>
-                {group.trip.destination} ·{' '}
-                <time dateTime={group.trip.startDate}>
-                  {group.trip.startDate}
-                </time>{' '}
-                –{' '}
-                <time dateTime={group.trip.endDate}>{group.trip.endDate}</time>{' '}
-                · {tripState(group.trip, today)}
-              </p>
+      {(!repayment || completed) && (
+        <>
+          <WorkspaceHeader
+            title={group.name}
+            appearance={
+              group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
+            }
+            context={
+              <>
+                <SpaceChip>
+                  {group.isHousehold
+                    ? 'Household'
+                    : group.trip
+                      ? 'Trip'
+                      : 'Group'}
+                </SpaceChip>
+                <span> · {group.currency}</span>
+                {group.trip && (
+                  <p>
+                    {group.trip.destination} ·{' '}
+                    <time dateTime={group.trip.startDate}>
+                      {group.trip.startDate}
+                    </time>{' '}
+                    –{' '}
+                    <time dateTime={group.trip.endDate}>
+                      {group.trip.endDate}
+                    </time>{' '}
+                    · {tripState(group.trip, today)}
+                  </p>
+                )}
+                <div className="group-members-context">
+                  {activeMembers.slice(0, 3).map((m) => (
+                    <Member key={m.id} name={m.displayName} />
+                  ))}
+                  <Link href={hrefFor('Members')}>
+                    {activeMembers.length} active{' '}
+                    {activeMembers.length === 1 ? 'member' : 'members'}
+                  </Link>
+                </div>
+              </>
+            }
+          >
+            {group.viewerMembership.role === 'OWNER' && (
+              <div className="group-header-actions">
+                <Link href="/invitations">Manage invitations</Link>
+                <details className="group-settings">
+                  <summary>Group settings</summary>
+                  <p>
+                    Name: {group.name} · Currency: {group.currency}
+                  </p>
+                  <p>
+                    Membership and invitations are managed separately. Metadata
+                    editing is not available in this workspace.
+                  </p>
+                </details>
+              </div>
             )}
-            <div className="group-members-context">
-              {activeMembers.slice(0, 3).map((m) => (
-                <Member key={m.id} name={m.displayName} />
-              ))}
-              <Link href={hrefFor('Members')}>
-                {activeMembers.length} active{' '}
-                {activeMembers.length === 1 ? 'member' : 'members'}
-              </Link>
-            </div>
-          </>
-        }
-      >
-        <div className="group-context-art" aria-hidden="true">
-          {group.trip ? '◇' : group.isHousehold ? '⌂' : '○'}
-        </div>
-        {group.viewerMembership.role === 'OWNER' && (
-          <div>
-            <Link href="/invitations">Manage invitations</Link>
-            <details className="group-settings">
-              <summary>Group settings</summary>
-              <p>
-                Name: {group.name} · Currency: {group.currency}
-              </p>
-              <p>
-                Membership and invitations are managed separately. Metadata
-                editing is not available in this workspace.
-              </p>
-            </details>
-          </div>
-        )}
-      </WorkspaceHeader>
+          </WorkspaceHeader>
+        </>
+      )}
       <div
         onClick={(event) => {
           const a = (event.target as HTMLElement).closest('a');
@@ -226,7 +237,8 @@ function ViewerMetric({
   return (
     <SignedBalanceMetric
       position={position}
-      value={money(viewer.netMinor).replace(/^-/, '')}
+      label="Your balance"
+      value={`${net > 0n ? '+' : ''}${money(viewer.netMinor)}`}
       currency={group.currency}
       detail={
         <>
@@ -235,7 +247,11 @@ function ViewerMetric({
           </span>
           {net === 0n && b.__typename === 'GroupBalances' && !b.settled
             ? 'Your balance is zero. Other members still have open obligations.'
-            : 'Your position in this group.'}
+            : net > 0n
+              ? "You're owed in this group."
+              : net < 0n
+                ? 'You owe in this group.'
+                : 'Settled in this group.'}
           {disclosure && (
             <ScopedLink
               scope={scope}
@@ -309,7 +325,8 @@ function Expenses({
                 id={`expense-${edge.node.id}`}
                 href={`/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(edge.node.id)}`}
               >
-                <span>
+                <CategoryIcon category={edge.node.category} />
+                <span className="expense-row-copy">
                   <strong>{edge.node.description}</strong>
                   <span className="ui-row-detail">
                     <time dateTime={edge.node.effectiveDate}>
@@ -348,7 +365,7 @@ export function GroupBalances({
       </section>
     );
   return (
-    <section>
+    <section className="group-balances">
       <h2>Balance details</h2>
       <ViewerMetric scope={scope} group={group} />
       <p>
