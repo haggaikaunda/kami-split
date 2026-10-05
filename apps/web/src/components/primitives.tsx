@@ -9,6 +9,7 @@ import {
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type KeyboardEvent,
   type ReactNode,
   type RefObject,
   type Ref,
@@ -305,6 +306,41 @@ export function EmptyState({
   );
 }
 
+/** Wrap visible enabled controls inside a native modal, including reverse Tab. */
+export function containDialogFocus(
+  event: KeyboardEvent<HTMLDialogElement>,
+  fallback: HTMLElement | null,
+) {
+  if (event.key !== 'Tab') return;
+  const dialog = event.currentTarget;
+  const controls = Array.from(
+    dialog.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, summary, a[href], [tabindex]',
+    ),
+  ).filter(
+    (element) =>
+      element.tabIndex >= 0 &&
+      !element.matches(':disabled') &&
+      element.getClientRects().length > 0,
+  );
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first) {
+    event.preventDefault();
+    fallback?.focus();
+  } else if (
+    event.shiftKey &&
+    (!controls.includes(document.activeElement as HTMLElement) ||
+      document.activeElement === first)
+  ) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 type DialogProps = {
   open: boolean;
   title: string;
@@ -358,36 +394,7 @@ export function Dialog({
       ref={ref}
       aria-labelledby={titleId}
       className={`ui-dialog${panel ? ' ui-dialog--panel' : ''}`}
-      onKeyDown={(event) => {
-        if (event.key !== 'Tab') return;
-        const dialog = event.currentTarget;
-        const controls = Array.from(
-          dialog.querySelectorAll<HTMLElement>(
-            'button, input, select, textarea, summary, a[href], [tabindex]',
-          ),
-        ).filter(
-          (element) =>
-            element.tabIndex >= 0 &&
-            !element.matches(':disabled') &&
-            element.getClientRects().length > 0,
-        );
-        const first = controls[0];
-        const last = controls.at(-1);
-        if (!first) {
-          event.preventDefault();
-          heading.current?.focus();
-        } else if (
-          event.shiftKey &&
-          (!controls.includes(document.activeElement as HTMLElement) ||
-            document.activeElement === first)
-        ) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }}
+      onKeyDown={(event) => containDialogFocus(event, heading.current)}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

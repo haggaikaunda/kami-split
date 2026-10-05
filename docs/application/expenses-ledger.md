@@ -3,7 +3,7 @@
 Issue #170 connects `/household/expenses` and the Group/Trip **Expenses** tab
 (`/groups/{groupId}?tab=expenses`) to the structured expense views implemented
 in #169. Both render the same `ExpenseLedger`; the authenticated Household Overview/Balances/Members tabs remain at `/household`
-and preview financial routes remain separate.
+and the retired preview financial routes return not-found responses.
 
 Household discovery uses `householdDashboard`, requiring `COMPLETE` eligibility.
 Only its spaces and retained same-group memberships appear in filter and create
@@ -13,7 +13,7 @@ and never a cross-group repayment target. Balance metrics are explicitly
 unfiltered. A zero viewer position does not assert that every member is settled.
 
 Structured space (Household only), category, member and inclusive date filters
-live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
+are edited in a shared desktop drawer/mobile sheet, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
 are scoped to the original group, matching payer **or** explicit participant,
 including zero shares. No search control or client filtering is provided. A
 filter change starts a new traversal. Load more appends the ordered server page;
@@ -42,3 +42,5 @@ disposed accounts, stale details, denied direct sources and mismatched nodes.
 The delivery PR records actual Chrome layout/navigation tests at 320/390/1280px
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
+
+The [approved visual foundation](../design/references/approved-ui/foundation.md) applies the published Board A/B palette, navigation, cards, category icons and structured filter drawer. Reset changes the filter draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.

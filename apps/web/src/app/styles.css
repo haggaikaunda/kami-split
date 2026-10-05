@@ -536,7 +536,7 @@ td {
   background: var(--color-subtle);
 }
 .workspace-heading {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
 }
 .ui-workspace-header--household {
@@ -662,5 +662,14 @@ td {
   }
   .ui-workspace-header--household .workspace-heading {
     padding-inline-end: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .ui-workspace-tabs {
+    gap: 0;
+  }
+  .ui-workspace-tabs a {
+    padding-inline: 0.35rem;
   }
 }
