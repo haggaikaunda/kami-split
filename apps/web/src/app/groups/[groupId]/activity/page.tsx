@@ -1,3 +1,4 @@
+import { routeId } from '@/lib/relay/discovery';
 import { redirect } from 'next/navigation';
 export default async function GroupActivityPage({
   params,
@@ -5,5 +6,5 @@ export default async function GroupActivityPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  redirect(`/groups/${encodeURIComponent(groupId)}?tab=activity`);
+  redirect(`/groups/${encodeURIComponent(routeId(groupId))}?tab=activity`);
 }

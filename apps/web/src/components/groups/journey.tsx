@@ -11,7 +11,7 @@ import groupDocument, {
 } from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
-import { tripState } from '@/lib/relay/discovery';
+import { tripState, routeId } from '@/lib/relay/discovery';
 import { ExpenseDetail } from './expense-detail';
 import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
@@ -35,8 +35,8 @@ function message(code: string) {
   return 'Financial data is unavailable. No zero balance or settled status can be established. Refresh to try again.';
 }
 export function GroupJourney({
-  initialGroup = '',
-  expense = '',
+  initialGroup: pathGroup = '',
+  expense: pathExpense = '',
   repayment = false,
   trips = false,
   filter = 'all',
@@ -49,6 +49,8 @@ export function GroupJourney({
   trips?: boolean;
   filter?: string;
 }) {
+  const initialGroup = routeId(pathGroup),
+    expense = routeId(pathExpense);
   const access = useFinancialSession();
   const params = useSearchParams(),
     pathname = usePathname();

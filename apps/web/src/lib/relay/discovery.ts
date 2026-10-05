@@ -41,3 +41,13 @@ export function financialReturn(value: string | null) {
     return '/groups';
   return url.pathname + url.search;
 }
+
+/** Normalize Next route params once; client transitions may retain escaped typed-ID colons. */
+export function routeId(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // Invalid path input still goes through the ordinary safe server not-found boundary.
+    return value;
+  }
+}
