@@ -1,9 +1,9 @@
-import { ActivityWorkspace } from '@/components/activity/feed';
+import { redirect } from 'next/navigation';
 export default async function GroupActivityPage({
   params,
 }: {
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  return <ActivityWorkspace groupId={groupId} />;
+  redirect(`/groups/${encodeURIComponent(groupId)}?tab=activity`);
 }

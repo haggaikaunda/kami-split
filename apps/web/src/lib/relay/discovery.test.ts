@@ -20,3 +20,17 @@ it('preserves canonical deep links through sign-in and rejects external return t
   ])
     expect(financialReturn(value)).toBe('/groups');
 });
+
+it('preserves authorized workspace and specific repayment paths without external query targets', () => {
+  expect(financialReturn('/groups/G?tab=balances')).toBe(
+    '/groups/G?tab=balances',
+  );
+  expect(
+    financialReturn(
+      '/groups/G/repayments/new?sender=A&recipient=B&amount=1001',
+    ),
+  ).toBe('/groups/G/repayments/new?sender=A&recipient=B&amount=1001');
+  expect(
+    financialReturn('/groups/G/repayments/new?next=https://evil.test'),
+  ).toBe('/groups');
+});

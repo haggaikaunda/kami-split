@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
@@ -27,7 +28,7 @@ export function ScopedLink({
       href={href}
       onNavigate={(event) => {
         event.preventDefault();
-        const token = crypto.randomUUID();
+        const token = createSessionId();
         const url = new URL(window.location.href);
         const match = url.pathname.match(/^\/groups\/([^/]+)$/);
         scope.visits.set(token, {
@@ -36,7 +37,7 @@ export function ScopedLink({
           scroll: window.scrollY,
           group: match ? decodeURIComponent(match[1]) : undefined,
         });
-        router.push(`${href}?source=${token}`);
+        router.push(`${href}${href.includes('?') ? '&' : '?'}source=${token}`);
       }}
     >
       {children}

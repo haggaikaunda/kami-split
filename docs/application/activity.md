@@ -23,7 +23,7 @@ eligible. A viewer-only group contributes no events, identity, count or cursor.
 An unavailable designation returns an explicit failure rather than a partial feed.
 
 The authenticated web entry points are `/groups/<Group ID>/activity` (with a legacy query-route redirect) and
-`/household/activity`. Both use shared workspace primitives and the financial
+`/household/activity`. The Group route redirects into the integrated `/groups/:groupId?tab=activity` workspace under #171. Both use shared workspace primitives and the financial
 session scope. Each event labels its source and separates effective date from
 recorded event time. The initial UI filter is event type; the API also supports an
 exact eligible source filter. Next-page navigation replaces the visible page after
@@ -35,8 +35,8 @@ Selecting an event opens an inline current-record detail, rechecking the feed
 source eligibility as well as the current node authorization. Closing restores
 focus to the event trigger; the original group link preserves source context.
 Empty, filtered-empty, loading and unavailable states remain distinct. Activity
-routes bypass all simulated DataPort providers. Full redesign integration of other
-workspace tabs remains owned by #112/#171/#170.
+routes bypass all simulated DataPort providers. Group Overview/Balances/Members and repayment integrate under #171; Household
+workspace and the structured expense ledger remain owned by #112/#170.
 
 The PR is stacked on #111; its SQL discovery contract must be deployed first.
 There is no new mutation, data migration, or activity-event backfill.

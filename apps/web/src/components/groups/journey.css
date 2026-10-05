@@ -130,3 +130,96 @@
   display: inline-block;
   padding: 0.5rem;
 }
+/* Authenticated workspaces share Quietly Warm patterns; context carries decoration. */
+.group-workspace header,
+.group-workspace section {
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+}
+.group-workspace .ui-workspace-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.group-workspace-body .ui-workspace-header {
+  border-bottom: 1px solid var(--color-separator);
+}
+.group-context-art {
+  width: 5rem;
+  height: 5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-subtle);
+  color: var(--color-primary);
+  font-size: 2rem;
+}
+.group-workspace-body--trip .group-context-art {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-balance),
+    var(--color-balance) 1rem,
+    #f4e4cf 1rem,
+    #f4e4cf 2rem
+  );
+}
+.group-members-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.group-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+.group-expense-list {
+  list-style: none;
+  padding: 0 !important;
+}
+.group-expense-list a {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-separator);
+  text-decoration: none;
+}
+.group-expense-list .ui-money {
+  text-align: end;
+  flex: 0 0 40%;
+}
+.group-workspace .ui-summary-row {
+  margin-block: 1.5rem 0.5rem;
+}
+.group-workspace .ui-summary-row + section {
+  margin-top: 0.5rem;
+}
+.group-settings summary {
+  min-height: var(--target-size);
+  padding: 0.75rem;
+  cursor: pointer;
+}
+.group-workspace :focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.group-workspace button {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+.group-workspace button:hover:enabled {
+  background: var(--color-primary-hover);
+}
+.group-workspace input:not([type='checkbox']),
+.group-workspace select,
+.group-workspace textarea {
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}

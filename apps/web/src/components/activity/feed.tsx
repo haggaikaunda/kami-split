@@ -43,7 +43,7 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
               ? `/groups/${encodeURIComponent(groupId)}/activity`
               : '/household/activity'
             : groupId
-              ? `/groups/${encodeURIComponent(groupId)}?section=${section.toLowerCase()}`
+              ? `/groups/${encodeURIComponent(groupId)}?tab=${section.toLowerCase()}`
               : `/groups?section=${section.toLowerCase()}`
         }
       />

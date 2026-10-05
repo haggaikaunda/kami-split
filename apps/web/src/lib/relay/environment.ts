@@ -1,3 +1,4 @@
+import { createSessionId } from '@/lib/session-id';
 import {
   Environment,
   Network,
@@ -20,6 +21,7 @@ export function createScope(client: SupabaseClient, actor: string) {
       const controller = new AbortController();
       requests.add(controller);
       try {
+        if (!operation.text) throw new Error('UNAVAILABLE');
         const { data, error } = await client.auth.getSession();
         if (!live || error || data.session?.user.id !== actor)
           throw new Error('SESSION_CHANGED');
@@ -54,7 +56,7 @@ export function createScope(client: SupabaseClient, actor: string) {
     actor,
     visits,
     restored,
-    id: crypto.randomUUID(),
+    id: createSessionId(),
     environment,
     isLive: () => live,
     dispose() {

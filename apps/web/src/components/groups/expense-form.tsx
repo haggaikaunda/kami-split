@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 import { useEffect, useRef, useState } from 'react';
 import { commitMutation, fetchQuery } from 'relay-runtime';
 import createDocument, {
@@ -202,7 +203,7 @@ export function ExpenseForm({
       return;
     }
     void run(async () => {
-      const input = createInput(draft, members, group, crypto.randomUUID());
+      const input = createInput(draft, members, group, createSessionId());
       // Persist both key and immutable input BEFORE invoking the network layer.
       persist({ version: 1, actor: scope.actor, group, draft, attempt: input });
       setAttempt(input);
