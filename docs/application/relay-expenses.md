@@ -123,7 +123,8 @@ CSPRNG operation key before dispatch. Uncertain attempts survive navigation and
 same-tab reload; Check creation and Retry original creation keep that original
 key/input, including after NOT_STARTED. Conflicts remain frozen. Only definitive
 domain rejection permits correction with a new key. Logout or account switch
-clears creation context alongside financial drafts. Unreadable/lost storage
+clears creation context alongside financial drafts. Password-session logout also
+continues when the invitation context is already absent or expired. Unreadable/lost storage
 explains that an earlier group may exist and offers group inspection before an
 explicitly acknowledged new creation; unavailable storage blocks dispatch.
 
