@@ -19,6 +19,7 @@ import {
   type WorkspaceSection,
 } from '@/components/primitives';
 import { ScopedLink } from './navigation';
+import { ActivityFeed } from '@/components/activity/feed';
 import { ExpenseForm } from './expense-form';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
@@ -199,11 +200,7 @@ export function GroupWorkspace({
       ) : (
         <section>
           <h2>Activity</h2>
-          <p>
-            The complete authenticated Activity feed is being integrated
-            separately. This is not an empty activity history.
-          </p>
-          <RecentRepayments group={group} />
+          <ActivityFeed scope={scope} groupId={group.id} />
         </section>
       )}
     </div>

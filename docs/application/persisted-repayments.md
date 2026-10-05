@@ -93,5 +93,5 @@ Partial/overpayment and unmatched actual transfers retain the implemented server
 contract; no preview opposite-direction acknowledgment policy is imported. Success
 requests fresh complete balances and recent recorded repayments without changing
 expense totals. Records completing after navigation do not redirect that visit.
-The complete Activity feed remains a separate #172 integration; recent repayment
-history is explicitly labeled and does not claim to be the whole activity feed.
+The Activity tab uses the complete authenticated feed from #172; recent repayment
+history is separately labeled and does not claim to be the whole activity feed.

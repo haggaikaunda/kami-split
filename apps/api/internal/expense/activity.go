@@ -1,0 +1,188 @@
+package expense
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/google/uuid"
+
+	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/jackc/pgx/v5"
+)
+
+// ActivityRequest selects a server-authorized group or the designated Household
+// dashboard. Empty GroupID means Household; SourceID is never a discovery input.
+type ActivityRequest struct {
+	GroupID, SourceID, Kind, After string
+	First                          int
+}
+
+// ActivityEvent is immutable financial provenance with fresh authorized labels.
+// RecordID refers to the existing expense or repayment; event and effective times
+// have separate meanings. No unsupported mutation is inferred from current state.
+type ActivityEvent struct {
+	ID, RecordID, Kind, GroupID, GroupName, Currency, EffectiveDate, Timestamp string
+	IsHousehold                                                                bool
+	AmountMinor                                                                int64
+	Creator, Payer, Sender, Recipient                                          *ActivityIdentity
+}
+
+// ActivityIdentity is a historical membership's current minimal authorized label.
+type ActivityIdentity struct{ ID, DisplayName string }
+
+// ActivityPage is a bounded complete event page and signed continuation tokens.
+type ActivityPage struct {
+	Events  []ActivityEvent
+	Cursors []string
+	HasNext bool
+}
+
+// ReadActivity rechecks access before interpreting cursors, locks the authorized
+// sources, anchors each financial revision and reads events independently of
+// expense/repayment pagination. Access-set changes invalidate continuations.
+func (s *Service) ReadActivity(ctx context.Context, in ActivityRequest, codec *ledger.CursorCodec) (ActivityPage, error) {
+	var group, source string
+	var err error
+	if in.GroupID != "" {
+		group, err = rawID(in.GroupID, "Group")
+		if err != nil {
+			return ActivityPage{}, err
+		}
+	}
+	if in.SourceID != "" {
+		source, err = rawID(in.SourceID, "Group")
+		if err != nil {
+			return ActivityPage{}, err
+		}
+	}
+	result := ActivityPage{Events: []ActivityEvent{}, Cursors: []string{}}
+	err = s.transaction(ctx, func(tx pgx.Tx, actor auth.Actor) error {
+		scope := "household"
+		ids := []string{}
+		if group != "" {
+			scope = group
+			if _, e := tx.Exec(ctx, `SELECT app.lock_group_read($1)`, group); e != nil {
+				return e
+			}
+			ids = append(ids, group)
+		} else {
+			var raw []byte
+			if e := tx.QueryRow(ctx, `SELECT app.household_dashboard_lock()`).Scan(&raw); e != nil {
+				return e
+			}
+			var projection struct {
+				State  string   `json:"state"`
+				Groups []string `json:"groups"`
+			}
+			if e := json.Unmarshal(raw, &projection); e != nil {
+				return e
+			}
+			if projection.State != "COMPLETE" {
+				if projection.State == "NOT_FOUND" {
+					return Failure("NOT_FOUND")
+				}
+				return Failure("UNAVAILABLE")
+			}
+			ids = projection.Groups
+		}
+		if in.First < 1 || in.First > 100 || codec == nil {
+			return Failure("INVALID_INPUT")
+		}
+		if in.Kind != "" && in.Kind != "EXPENSE_CREATED" && in.Kind != "REPAYMENT_RECORDED" {
+			return Failure("INVALID_INPUT")
+		}
+		if source != "" {
+			found := false
+			for _, id := range ids {
+				if source == id {
+					found = true
+				}
+			}
+			if !found {
+				return Failure("NOT_FOUND")
+			}
+		}
+		var raw []byte
+		if e := tx.QueryRow(ctx, `SELECT coalesce(jsonb_agg(jsonb_build_object('group',g.id,'revision',(SELECT coalesce(max(revision),0) FROM app.financial_records f WHERE f.group_id=g.id)) ORDER BY g.id),'[]'::jsonb) FROM app.groups g WHERE g.id=ANY($1::uuid[])`, ids).Scan(&raw); e != nil {
+			return e
+		}
+		var anchors []ledger.ActivityAnchor
+		if e := json.Unmarshal(raw, &anchors); e != nil {
+			return e
+		}
+		if len(anchors) != len(ids) {
+			return Failure("UNAVAILABLE")
+		}
+		cursor := ledger.ActivityCursor{Version: 1, Actor: uuid.UUID(actor.ID.Bytes).String(), Scope: scope, Source: source, EventKind: in.Kind, Anchors: anchors}
+		if in.After != "" {
+			cursor, err = codec.DecodeActivity(in.After, cursor.Actor, scope, in.Kind, source, anchors)
+			if err != nil {
+				return Failure("INVALID_CURSOR")
+			}
+		}
+		anchorJSON, e := json.Marshal(cursor.Anchors)
+		if e != nil {
+			return e
+		}
+		if e = tx.QueryRow(ctx, activityProjectionSQL, anchorJSON, in.Kind, nullable(source), nullable(cursor.Timestamp), nullable(cursor.RecordKind), nullable(cursor.RecordID), in.First+1).Scan(&raw); e != nil {
+			return e
+		}
+		if e = json.Unmarshal(raw, &result.Events); e != nil {
+			return e
+		}
+		result.HasNext = len(result.Events) > in.First
+		if result.HasNext {
+			result.Events = result.Events[:in.First]
+		}
+		for i := range result.Events {
+			event := &result.Events[i]
+			cursor.Timestamp = event.Timestamp
+			cursor.RecordKind = event.Kind
+			cursor.RecordID = event.RecordID
+			token, e := codec.EncodeActivity(cursor)
+			if e != nil {
+				return e
+			}
+			result.Cursors = append(result.Cursors, token)
+			kind := "Expense"
+			if event.Kind == "REPAYMENT_RECORDED" {
+				kind = "Repayment"
+			}
+			event.ID = "activity:" + event.Kind + ":" + event.RecordID
+			event.RecordID = ledger.PublicID(kind, event.RecordID)
+			event.GroupID = ledger.PublicID("Group", event.GroupID)
+			for _, identity := range []*ActivityIdentity{event.Creator, event.Payer, event.Sender, event.Recipient} {
+				if identity != nil {
+					identity.ID = ledger.PublicID("Membership", identity.ID)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return ActivityPage{}, err
+	}
+	return result, nil
+}
+
+const activityProjectionSQL = `WITH anchors AS (
+ SELECT "group"::uuid group_id,revision FROM jsonb_to_recordset($1::jsonb) AS a("group" text,revision bigint)
+), events AS (
+ SELECT e.id,e.group_id,e.creator_id,e.payer_id,NULL::uuid sender_id,NULL::uuid recipient_id,e.total_minor amount_minor,e.currency,e.effective_date,e.created_at,'EXPENSE_CREATED'::text kind
+ FROM app.expenses e JOIN anchors a ON a.group_id=e.group_id AND e.revision<=a.revision
+ UNION ALL
+ SELECT r.id,r.group_id,r.creator_id,NULL::uuid,r.sender_id,r.recipient_id,r.amount_minor,r.currency,r.effective_date,r.created_at,'REPAYMENT_RECORDED'::text
+ FROM app.repayments r JOIN anchors a ON a.group_id=r.group_id AND r.revision<=a.revision
+), page AS (
+ SELECT * FROM events WHERE ($2='' OR kind=$2) AND ($3::uuid IS NULL OR group_id=$3)
+ AND ($4::timestamptz IS NULL OR (created_at,kind,id)<($4::timestamptz,$5::text,$6::uuid))
+ ORDER BY created_at DESC,kind DESC,id DESC LIMIT $7
+)
+SELECT coalesce(jsonb_agg(jsonb_build_object('RecordID',p.id,'Kind',p.kind,'GroupID',p.group_id,'GroupName',g.name,
+ 'IsHousehold',app.is_household_group(g.id),'AmountMinor',p.amount_minor,'Currency',p.currency,
+ 'EffectiveDate',to_char(p.effective_date,'YYYY-MM-DD'),'Timestamp',to_char(p.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+ 'Creator',(SELECT jsonb_build_object('ID',m.id,'DisplayName',m.display_name) FROM app.group_members(p.group_id) m WHERE m.id=p.creator_id),
+ 'Payer',(SELECT jsonb_build_object('ID',m.id,'DisplayName',m.display_name) FROM app.group_members(p.group_id) m WHERE m.id=p.payer_id),
+ 'Sender',(SELECT jsonb_build_object('ID',m.id,'DisplayName',m.display_name) FROM app.group_members(p.group_id) m WHERE m.id=p.sender_id),
+ 'Recipient',(SELECT jsonb_build_object('ID',m.id,'DisplayName',m.display_name) FROM app.group_members(p.group_id) m WHERE m.id=p.recipient_id))
+ ORDER BY p.created_at DESC,p.kind DESC,p.id DESC),'[]'::jsonb) FROM page p JOIN app.groups g ON g.id=p.group_id`
