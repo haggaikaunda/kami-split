@@ -18,7 +18,7 @@ Prompt: “Use case: illustration-story. Panoramic 3:1 decorative scenic header 
 
 ## Verification
 
-Baseline source is `c1b403781b632cf6b9c51b13633dd0550b424d1e`, the merged visual foundation. Final application source is `a78ffe4f6d17e900413445610d8c1c42f6c463ad` (evidence-only follow-up commits do not change application behavior). Browser tests intercept Auth/GraphQL with isolated synthetic records and render the real production application. They prove client behavior/layout; server authorization and database invariants remain covered by the required API/database CI. Physical notches and assistive-technology devices are not simulated as actual hardware.
+Baseline source is `c1b403781b632cf6b9c51b13633dd0550b424d1e`, the merged visual foundation. Main panel captures use source `a78ffe4f6d17e900413445610d8c1c42f6c463ad`. The final application source `55f88e13f5f3e95954fe6b3fe5cd628c440c9878` additionally applies scoped discovery/account list styling; their captures below use that source. Other panel surfaces are unchanged. Evidence-only follow-up commits do not change application behavior. Browser tests intercept Auth/GraphQL with isolated synthetic records and render the real production application. They prove client behavior/layout; server authorization and database invariants remain covered by the required API/database CI. Physical notches and assistive-technology devices are not simulated as actual hardware.
 
 ## Browser comparison
 
@@ -50,3 +50,18 @@ Final-source browser runs passed: onboarding120 state/layout checks; Group170 ch
 All required local commands pass on the final source: Relay generation drift, formatting, lint, type checking,205 unit/component tests and production build. Final-head CI and separate independent visual/requirements and whole-diff outcomes are recorded on [PR192](https://github.com/haggaikaunda/kami-split/pull/192).
 
 Populated Activity supplements: [Household mobile](evidence/adoption/final-household-activity-populated-390.png), [Household desktop](evidence/adoption/final-household-activity-populated-1280.png), [Group mobile](evidence/adoption/final-group-activity-populated-390.png), [Group desktop](evidence/adoption/final-group-activity-populated-1280.png). No production financial records were used.
+
+## Inherited discovery and account screens
+
+These pairs use the same untouched `c1b4037` baseline and final source `55f88e1`. The independent tester identified bare lists as a remaining visual gap, then verified the new card/row composition at all four widths and both text sizes. Shared account controls remain authorized by their existing controller.
+
+| Surface        | Desktop baseline / final                                                                                          | Mobile baseline / final                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `/groups`      | [Before](evidence/adoption/baseline-groups-1280.png) / [After](evidence/adoption/final-groups-1280.png)           | [Before](evidence/adoption/baseline-groups-390.png) / [After](evidence/adoption/final-groups-390.png)           |
+| `/trips`       | [Before](evidence/adoption/baseline-trips-1280.png) / [After](evidence/adoption/final-trips-1280.png)             | [Before](evidence/adoption/baseline-trips-390.png) / [After](evidence/adoption/final-trips-390.png)             |
+| `/account`     | [Before](evidence/adoption/baseline-account-1280.png) / [After](evidence/adoption/final-account-1280.png)         | [Before](evidence/adoption/baseline-account-390.png) / [After](evidence/adoption/final-account-390.png)         |
+| `/invitations` | [Before](evidence/adoption/baseline-invitations-1280.png) / [After](evidence/adoption/final-invitations-1280.png) | [Before](evidence/adoption/baseline-invitations-390.png) / [After](evidence/adoption/final-invitations-390.png) |
+
+Ordinary-content B4/B9 supplements at final source: [desktop](evidence/adoption/regular-trip-expenses-1280.png) and [mobile](evidence/adoption/regular-trip-expenses-390.png). These are additional snapshots, not an additional behavioral test count.
+
+Independent requirements testing reports no remaining blocking findings:152 Household checks,120 onboarding checks,136 local Group/recovery checks,16 expense/detail/create configurations and32 inherited-screen configurations. It inspected both actual original boards and rendered screenshots, confirmed prior visual fixes, and checked visible3px focus, reduced motion (no animations/zero-duration transitions), bottom navigation clearance, primary/white contrast6.98:1 and muted/white5.57:1. CSS safe-area reservations are retained; physical device notches are not claimed tested. The final application source also passes the full local Relay/format/lint/typecheck/205-test/build sequence. Separate final-head convention review and CI gates remain on the PR.
