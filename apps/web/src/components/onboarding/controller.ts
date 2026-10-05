@@ -389,7 +389,15 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     epoch.current.reset();
     switching.current = preserveInvitation;
     try {
-      if (!preserveInvitation) await call('/api/onboarding/clear', {});
+      if (!preserveInvitation) {
+        try {
+          await call('/api/onboarding/clear', {});
+        } catch (error) {
+          // Password sign-in may have no invitation context; it is already cleared.
+          if (!(error instanceof Error) || error.message !== 'CONTEXT_EXPIRED')
+            throw error;
+        }
+      }
       const out = await client?.auth.signOut({ scope: 'local' });
       if (out?.error) throw new Error('UNAVAILABLE');
       pending(null);

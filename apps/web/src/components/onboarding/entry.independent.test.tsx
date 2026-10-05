@@ -1075,3 +1075,47 @@ it.each(['TARGETED', 'SHARED'])(
     expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
   },
 );
+
+it('allows password-session logout when no live invitation context remains', async () => {
+  const request = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const response = await request(input, init);
+    return String(input).endsWith('/clear')
+      ? ({ ok: false, status: 409, json: response.json } as Response)
+      : response;
+  });
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/clear')
+      ? { code: 'CONTEXT_EXPIRED' }
+      : path === '/api/graphql'
+        ? { data: { viewer: { __typename: 'Viewer', groups: [] } } }
+        : prior(path, body);
+  await render('account');
+  await click('Sign out of this session');
+  expect(requests.filter((r) => r.path.endsWith('/clear'))).toHaveLength(1);
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBeNull();
+  expect(container.textContent).not.toContain('alice@example.test');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in');
+});
+
+it('retains the account if invitation-context clearing fails unexpectedly', async () => {
+  const request = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const response = await request(input, init);
+    return String(input).endsWith('/clear')
+      ? ({ ok: false, status: 503, json: response.json } as Response)
+      : response;
+  });
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/clear')
+      ? { code: 'UNAVAILABLE' }
+      : path === '/api/graphql'
+        ? { data: { viewer: { __typename: 'Viewer', groups: [] } } }
+        : prior(path, body);
+  await render('account');
+  await click('Sign out of this session');
+  expect(container.textContent).toContain('alice@example.test');
+  expect(sdk.replace).not.toHaveBeenCalled();
+});
