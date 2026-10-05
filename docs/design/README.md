@@ -1,5 +1,7 @@
 # Kami Split approved UX
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
 
 This is the approved design for the **completed seeded UX phase**. Design PR #12 and implementation tracker #13 are merged/completed. These specifications remain the behavioral reference; start with the [current documentation index](../README.md) for implemented features, setup and remaining production work.

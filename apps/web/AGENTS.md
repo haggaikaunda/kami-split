@@ -8,7 +8,7 @@ Follow root [AGENTS.md](../../AGENTS.md) and the shared [delivery workflow](../.
 - Run root formatting, linting, type checking, tests, and build commands from the repository root, in sequence. See [testing strategy](../../docs/testing-strategy.md) for focused commands and limitations.
 - For UI behavior changes, exercise the rendered application and affected interactions in a browser. Check relevant keyboard, focus, responsive, and accessibility behavior; automated jsdom/axe tests do not replace browser evidence.
 - For phone-preview changes, verify the actual LAN HTTP origin. An HTTP 200 alone does not prove client startup.
-- Preserve exact-money behavior, drafts, recovery, and simulated access-state tests. Simulation tests are not evidence of production authorization.
+- Preserve exact-money behavior, account-scoped drafts, recovery, and production access-denial tests. The seeded preview architecture and its simulation-only tests were retired in #184; do not restore them.
 - Do not run type checking and build concurrently, because Next.js generates types. Stop a production preview before rebuilding its output.
 
 ## Framework guidance

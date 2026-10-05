@@ -1,6 +1,6 @@
 # Repository layout and deployment
 
-The monorepo separates the seeded Next.js preview from the Go API and shared GraphQL contract. The API implements verified authentication, persisted expenses and balances, and internal targeted invitation operations. The web connects [onboarding](application/onboarding.md) (#80) and the [Relay expense journey](application/relay-expenses.md) (#83) to configured services; remaining labeled preview routes keep the mock DataPort.
+The monorepo separates the authenticated Next.js application from the Go API and shared GraphQL contract. The API implements verified authentication, persisted expenses and balances, and internal targeted invitation operations. The web connects [onboarding](application/onboarding.md) (#80) and the [Relay expense journey](application/relay-expenses.md) (#83) to configured services; the retired seeded runtime has no production routes or imports.
 
 | Location                               | Ownership                                                                                                                                                                                                                                                              |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

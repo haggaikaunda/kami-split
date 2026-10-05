@@ -1,5 +1,7 @@
 # Screen flows and navigation contract
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Route map
 
 Production routes below are recommended names, not a requirement to copy hash routing. Use the existing Next.js router and semantic links. IDs are stable opaque data identifiers. A contextual panel and a standalone page must resolve the same expense identity.

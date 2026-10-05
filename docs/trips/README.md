@@ -1,5 +1,7 @@
 # Trips list and creation
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production direction
 
 The implementation below is the household-scoped seeded preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b2-groups-are-independent-access-and-financial-boundaries) specifies a trip as an independently authorized group with trip classification and structured metadata; ordinary non-trip groups use the same foundation. Trip invitations grant no household access, and each expense/settlement belongs to exactly one group. #85 adopted the production design in [ADR-006](../application/decisions/006-group-creation.md); embedded preview `Trip` records are not a production schema.

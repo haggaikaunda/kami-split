@@ -1,5 +1,7 @@
 # Exact spending charts
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Issue #27 implements H02/N04 for household and trip spending. All amounts remain integer minor units through the existing `spending` selector; only bar geometry uses a ratio. Household scope means current expense totals, while My allocated share means the signed-in member's included allocations, including zero-share participation. Paid amounts and repayments are not spending scope. Current effective dates and revisions drive all values; deleted expenses and other currencies do not contribute.
 
 Daily shows every date of a selected month, Monthly every month of a year, and Yearly the five years ending in the selected year. Previous/Next move one month, one year or five years. URL state uses `chartMode`, `period=YYYY-MM`, `scope` and `chartData`; trip exact tables use `dayData` and `categoryData`. Unrelated source/tab/filter parameters are preserved.

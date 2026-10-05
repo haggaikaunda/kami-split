@@ -1,5 +1,7 @@
 # ADR-005: Identity and first expense contract
 
+> Seeded-runtime references below are historical evidence. #184 removed the executable preview and simulation-only tests; they must not be retained or restored. Accepted production policy remains authoritative.
+
 - Status: **Accepted design; not implemented.** Final-head verification and merge remain delivery gates.
 - Recorded: 2026-09-29; P2 finalized by the later owner follow-up.
 - Scope: #75 identity foundation and #76 first expense contract; implementations remain separate.

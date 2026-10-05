@@ -18,12 +18,10 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated network-only financial reads at `/groups/:groupId/activity` and `/household/activity`, with fresh feed and node authorization on details. Remaining preview routes (including seeded `/trips/:tripId`) are explicitly labeled simulated and link to `/groups`;
-they do not receive authenticated financial data. This slice does not implement
+[Activity workspaces](activity.md) also use authenticated network-only financial reads at `/groups/:groupId/activity` and `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery and `/trips` lists independent authenticated Trip groups. This slice does not implement
 expense edit/delete or group creation forms.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
-and persisted group-local repayment entry. Expenses retain their existing bounded
-read/form pending #170; Activity consumes the authenticated feed from #172.
+and persisted group-local repayment entry. Expenses use the #170 structured-filter workspace and group-scoped detail; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
 Expenses use the approved forward connection with pages of 20 and signed cursors.
@@ -132,7 +130,7 @@ settlement action exists: each row opens its original group's Balances surface.
 Zero aggregate with open sources stays open. Members separately reads the actual
 Household `Group.members`, including more than two members and historical profiles;
 only owners see existing invitation management. Activity reuses #172. The full
-Expenses tab remains #170; its navigation destination is distinct from Overview.
+Expenses is implemented under #170; its navigation destination is distinct from Overview.
 
 Account changes, foreground revalidation, refresh and route changes remove prior
 private data before network-only reads. Failed/incomplete reads never fabricate

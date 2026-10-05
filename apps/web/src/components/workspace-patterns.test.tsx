@@ -51,7 +51,7 @@ it('exposes consistent workspace route links and specific expense/repayment cont
             hrefFor={(section) => `/groups/trip/${section.toLowerCase()}`}
           />
           <ExpenseRow
-            href="/expenses/123"
+            href="/groups/example/expenses/123"
             description="Groceries"
             metadata="Sep 20 · Alex paid"
             space="Household"
@@ -80,7 +80,9 @@ it('exposes consistent workspace route links and specific expense/repayment cont
     expect(
       container.querySelector('[aria-current="page"]')?.getAttribute('href'),
     ).toBe('/groups/trip/balances');
-    const expense = container.querySelector('a[href="/expenses/123"]');
+    const expense = container.querySelector(
+      'a[href="/groups/example/expenses/123"]',
+    );
     expect(expense?.textContent).toContain('Household');
     expect(expense?.textContent).toContain('10.01 USD');
     expect(container.textContent).toContain('Sam pays Alex');

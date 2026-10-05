@@ -2,7 +2,7 @@
 
 ## Current application
 
-The web application includes an [authenticated expense journey](relay-expenses.md) at `/groups` alongside explicitly labeled seeded preview routes with in-memory data and simulated access controls. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#implementation-guides). Existing feature documentation stays at its original paths to preserve links.
+The web application uses one [authenticated expense journey](relay-expenses.md) with independent Group/Trip workspaces and a real Household workspace. The seeded preview runtime and routes were removed in #184. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#implementation-guides). Existing feature documentation stays at its original paths to preserve links.
 
 ## Backend and planned features
 
@@ -16,11 +16,11 @@ The web application includes an [authenticated expense journey](relay-expenses.m
 
 [Bootstrap, group boundaries and invitation lifecycle](decisions/003-bootstrap-groups-and-invitations.md) records the #77 baseline, preview differences and separately owned follow-up decisions. Transfer and consolidated reporting remain deferred. Independent trip metadata and authenticated discovery are implemented under #104/#105.
 
-[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). The reviewed first-expense contract and its server implementation now provide deterministic simplification; the preview remains separate.
+[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). The reviewed first-expense contract and its server implementation now provide deterministic simplification; the seeded preview is retired.
 
 [Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. The design document itself implements no features; #104 implements the creation/metadata API and #105 implements authenticated discovery. Creation forms remain separate.
 
-[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas remain deferred. Household Overview/Balances/Members integration is implemented by #112; the full Expenses tab remains #170.
+[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas remain deferred. Household Overview/Balances/Members integration is implemented by #112; the full Expenses tab is implemented by #170.
 
 - [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
 
@@ -36,4 +36,4 @@ that the application is already serving production traffic.
 
 ## Authenticated financial browser
 
-The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. Other preview routes remain explicitly simulated.
+The [Relay expense journey](relay-expenses.md) connects admitted groups, bounded expenses, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. The old seeded routes return normal not-found responses.

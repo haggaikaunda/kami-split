@@ -1,5 +1,7 @@
 # Expense deletion
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Issue #22 implements E04 using the existing `delete-expense` data-port command. The confirmation names the captured expense and exact amount, focuses **Keep expense**, retains optional reason text for this session, and never creates a browser history entry. It captures the revision instead of silently deleting a newer record. A conflict requires loading and reviewing the latest revision before a new confirmation. Success keeps the same detail URL and the existing immutable tombstone/revision display.
 
 The route-independent provider retains in-flight requests when the user leaves. Unknown transport outcomes freeze both command and operation ID; **Check deletion status** queries the original operation and only retries an unchanged command after `not-started` and a fresh actor check. Another actor cannot operate a retained attempt. Pending/unknown operations hold a shared app-data lease that blocks simulation reset. Successful reset advances `sessionEpoch`, invalidating old reason drafts. Neither actor changes nor ordinary mutations advance that epoch.
