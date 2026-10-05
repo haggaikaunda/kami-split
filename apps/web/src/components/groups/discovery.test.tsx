@@ -141,9 +141,10 @@ async function respond(data: unknown) {
 it('lists authorized groups without deriving totals and only shortcuts a designated household', async () => {
   await render(<GroupJourney />);
   await respond(viewer());
-  expect(host.querySelector('a[href="/groups/H"]')?.textContent).toBe(
+  expect(host.querySelector('a[href="/household"]')?.textContent).toBe(
     'Household',
   );
+  expect(host.querySelector('a[href="/groups/H"]')).not.toBeNull();
   expect(host.textContent).not.toContain('Total expenses');
   await render(<GroupJourney trips />);
   await respond(viewer([groups[1], groups[2]]));
