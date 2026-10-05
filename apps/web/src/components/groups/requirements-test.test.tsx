@@ -9,6 +9,7 @@ const mock = vi.hoisted(() => ({
   path: '/groups',
   search: '',
   push: vi.fn(),
+  mutation: vi.fn(),
   access: {} as Record<string, unknown>,
   requests: [] as {
     name: string;
@@ -49,6 +50,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mock.search),
 }));
 vi.mock('relay-runtime', () => ({
+  commitMutation: (...args: unknown[]) => mock.mutation(...args),
   fetchQuery: (
     _environment: unknown,
     document: { params: { name: string } },
@@ -140,6 +142,7 @@ beforeEach(() => {
   mock.path = '/groups';
   mock.search = '';
   mock.push.mockReset();
+  mock.mutation.mockReset();
   mock.access = { scope, loading: false };
   host = document.createElement('div');
   document.body.append(host);
@@ -418,4 +421,111 @@ it('does not redirect a consumed source return when a later background group rea
   expect(mock.push).not.toHaveBeenCalled();
   expect(host.textContent).not.toContain('Pre-trip booking');
   expect(host.textContent).toContain('cannot access');
+});
+
+it('refreshes complete positions and repayment history after recording while expense totals remain unchanged', async () => {
+  sessionStorage.clear();
+  mock.path = '/groups/T/repayments/new';
+  mock.search = 'sender=a&recipient=b&amount=1001';
+  const a = {
+    id: 'a',
+    displayName: 'Alice',
+    status: 'ACTIVE',
+    role: 'MEMBER',
+    canParticipate: true,
+  };
+  const b = { ...a, id: 'b', displayName: 'Bob' };
+  const data = groupResult('T');
+  Object.assign(data.group, {
+    viewerMembership: a,
+    members: [a, b],
+    repayments: { edges: [] },
+  });
+  Object.assign(data.group.balances, {
+    positions: [
+      {
+        member: a,
+        netMinor: '-1001',
+        paidMinor: '0',
+        owedMinor: '1001',
+        sentMinor: '0',
+        receivedMinor: '0',
+      },
+    ],
+    obligations: [{ from: a, to: b, amountMinor: '1001' }],
+  });
+  await render(<GroupJourney initialGroup="T" repayment />);
+  await respond(viewer());
+  await resolveGroup(data);
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Record repayment')!
+      .click(),
+  );
+  const input = mock.mutation.mock.calls[0][1].variables.input;
+  await act(async () =>
+    mock.mutation.mock.calls[0][1].onCompleted(
+      {
+        recordRepayment: {
+          __typename: 'RepaymentCommitted',
+          key: input.key,
+          record: {
+            repaymentId: 'R',
+            groupId: 'T',
+            senderMembershipId: 'a',
+            recipientMembershipId: 'b',
+            amountMinor: '1001',
+            currency: 'USD',
+            effectiveDate: input.effectiveDate,
+            note: '',
+          },
+        },
+      },
+      null,
+    ),
+  );
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  expect(mock.requests.at(-1)!.name).toBe('journeyGroupQuery');
+  Object.assign(data.group.balances, {
+    settled: true,
+    obligations: [],
+    positions: [
+      {
+        member: a,
+        netMinor: '0',
+        paidMinor: '0',
+        owedMinor: '1001',
+        sentMinor: '1001',
+        receivedMinor: '0',
+      },
+    ],
+  });
+  Object.assign(data.group, {
+    repayments: {
+      edges: [
+        {
+          node: {
+            id: 'R',
+            sender: a,
+            recipient: b,
+            amountMinor: '1001',
+            effectiveDate: input.effectiveDate,
+            note: '',
+          },
+        },
+      ],
+    },
+  });
+  await resolveGroup(data);
+  expect(host.textContent).toContain('Settled: every individual net is zero');
+  expect(host.textContent).toContain('Alice → Bob');
+  expect(host.textContent).toContain('10.01 USD');
+  mock.path = '/groups/T';
+  mock.search = '';
+  await render(<GroupJourney initialGroup="T" />);
+  await respond(viewer());
+  await resolveGroup(data);
+  expect(host.textContent).toContain('90,071,992,547,409.93');
+  expect(host.textContent).toContain('Pre-trip booking');
+  sessionStorage.clear();
 });

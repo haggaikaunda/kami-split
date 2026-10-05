@@ -1,3 +1,4 @@
+import { createSessionId } from '@/lib/session-id';
 import {
   Environment,
   Network,
@@ -54,7 +55,7 @@ export function createScope(client: SupabaseClient, actor: string) {
     actor,
     visits,
     restored,
-    id: crypto.randomUUID(),
+    id: createSessionId(),
     environment,
     isLive: () => live,
     dispose() {

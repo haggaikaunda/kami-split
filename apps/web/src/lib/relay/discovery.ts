@@ -15,10 +15,23 @@ export function groupHref(id: string) {
 
 /** Only internal financial routes may survive sign-in; never an external redirect. */
 export function financialReturn(value: string | null) {
-  return value &&
-    (value === '/groups' ||
-      value === '/trips' ||
-      /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(value))
-    ? value
-    : '/groups';
+  if (!value || !value.startsWith('/') || value.startsWith('//'))
+    return '/groups';
+  const url = new URL(value, 'https://kami.invalid');
+  const repayment = /^\/groups\/[^/?#]+\/repayments\/new$/.test(url.pathname);
+  if (
+    url.origin !== 'https://kami.invalid' ||
+    url.hash ||
+    !(
+      url.pathname === '/groups' ||
+      url.pathname === '/trips' ||
+      repayment ||
+      /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
+    )
+  )
+    return '/groups';
+  const allowed = repayment ? ['sender', 'recipient', 'amount'] : ['tab'];
+  if ([...url.searchParams.keys()].some((k) => !allowed.includes(k)))
+    return '/groups';
+  return url.pathname + url.search;
 }

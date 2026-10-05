@@ -53,6 +53,7 @@ export const journeyGroupQuery = graphql`
         }
         viewerMembership {
           id
+          role
         }
         members {
           id
@@ -90,6 +91,28 @@ export const journeyGroupQuery = graphql`
             hasPreviousPage
             startCursor
             endCursor
+          }
+        }
+        repayments(first: 5) {
+          edges {
+            node {
+              id
+              groupId
+              amountMinor
+              effectiveDate
+              note
+              sender {
+                id
+                displayName
+              }
+              recipient {
+                id
+                displayName
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
           }
         }
         balances {
@@ -223,6 +246,80 @@ export const journeyExpenseQuery = graphql`
           }
           amountMinor
         }
+      }
+    }
+  }
+`;
+
+export const journeyRepaymentMutation = graphql`
+  mutation journeyRepaymentMutation($input: RecordRepaymentInput!) {
+    recordRepayment(input: $input) {
+      __typename
+      ... on RepaymentCommitted {
+        key
+        record {
+          repaymentId
+          groupId
+          senderMembershipId
+          recipientMembershipId
+          amountMinor
+          currency
+          effectiveDate
+          note
+        }
+      }
+      ... on ValidationProblem {
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on OperationMismatch {
+        key
+      }
+      ... on OperationProgress {
+        key
+        state
+      }
+      ... on Problem {
+        code
+        message
+      }
+    }
+  }
+`;
+export const journeyRepaymentRecoveryQuery = graphql`
+  query journeyRepaymentRecoveryQuery($groupId: ID!, $key: OperationKey!) {
+    repaymentOperation(groupId: $groupId, key: $key) {
+      __typename
+      ... on RepaymentCommitted {
+        key
+        record {
+          repaymentId
+          groupId
+          senderMembershipId
+          recipientMembershipId
+          amountMinor
+          currency
+          effectiveDate
+          note
+        }
+      }
+      ... on ValidationProblem {
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on OperationProgress {
+        key
+        state
+      }
+      ... on Problem {
+        code
+        message
       }
     }
   }

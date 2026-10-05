@@ -32,9 +32,11 @@ export type SavedDraft = {
   draft: Draft;
   attempt?: CreateExpenseInput;
 };
+export const repaymentStorageKey = 'kami-financial-repayments-v1';
 export const privateStorageKey = 'kami-financial-drafts-v1';
 export function clearFinancialStorage() {
   sessionStorage.removeItem(privateStorageKey);
+  sessionStorage.removeItem(repaymentStorageKey);
 }
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -149,10 +151,12 @@ export function newDraft(
     exact: {},
   };
 }
-function validText(value: string) {
+/** Reject invalid Unicode and NUL before financial submission. */
+export function validText(value: string) {
   return !/[\u0000\uD800-\uDFFF]/u.test(value);
 }
-function validDate(value: string) {
+/** Strict Gregorian wire date validation, including leap days. */
+export function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000'))
     return false;
   const date = new Date(`${value}T00:00:00Z`);

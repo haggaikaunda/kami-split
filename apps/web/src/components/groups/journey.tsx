@@ -13,8 +13,7 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
 import { tripState } from '@/lib/relay/discovery';
 import { ExpenseDetail } from './expense-detail';
-import { money } from '@/lib/relay/money';
-import { ExpenseForm } from './expense-form';
+import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
 import './journey.css';
 type Viewer = Extract<
@@ -37,23 +36,37 @@ function message(code: string) {
 export function GroupJourney({
   initialGroup = '',
   expense = '',
+  repayment = false,
   trips = false,
   filter = 'all',
 }: {
   initialGroup?: string;
   expense?: string;
+  repayment?: boolean;
   trips?: boolean;
   filter?: string;
 }) {
   const access = useFinancialSession();
-  const params = useSearchParams();
+  const params = useSearchParams(),
+    pathname = usePathname();
+  const returnQuery = new URLSearchParams();
+  for (const key of ['tab', 'sender', 'recipient', 'amount']) {
+    const value = params.get(key);
+    if (value) returnQuery.set(key, value);
+  }
+  const signInReturn = pathname + (returnQuery.size ? `?${returnQuery}` : '');
   return (
-    <main className="financial-journey" id="page-content">
+    <main
+      className={`financial-journey ${initialGroup ? 'group-workspace' : ''}`}
+      id="page-content"
+    >
       <header>
         <Link href="/account">Kami Split · Account</Link>
-        <h1 data-page-heading tabIndex={-1}>
-          {trips ? 'Your trips' : initialGroup ? 'Your group' : 'Your groups'}
-        </h1>
+        {!initialGroup && (
+          <h1 data-page-heading tabIndex={-1}>
+            {trips ? 'Your trips' : initialGroup ? 'Your group' : 'Your groups'}
+          </h1>
+        )}
         <nav aria-label="Financial navigation">
           <Link href="/groups">Groups</Link>
           <Link href="/trips">Trips</Link>
@@ -66,19 +79,18 @@ export function GroupJourney({
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
         <p>
-          <Link
-            href={`/sign-in?next=${encodeURIComponent(initialGroup ? `/groups/${encodeURIComponent(initialGroup)}${expense ? `/expenses/${encodeURIComponent(expense)}` : ''}` : trips ? '/trips' : '/groups')}`}
-          >
+          <Link href={`/sign-in?next=${encodeURIComponent(signInReturn)}`}>
             Sign in
           </Link>{' '}
           with your invited account to see your groups.
         </p>
       ) : (
         <ViewerJourney
-          key={`${access.scope.id}:${initialGroup}:${expense}:${trips}:${filter}:${params.toString()}`}
+          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${params.toString()}`}
           scope={access.scope}
           initialGroup={initialGroup}
           expense={expense}
+          repayment={repayment}
           trips={trips}
           filter={filter}
         />
@@ -90,12 +102,14 @@ function ViewerJourney({
   scope,
   initialGroup,
   expense,
+  repayment,
   trips,
   filter,
 }: {
   scope: FinancialScope;
   initialGroup: string;
   expense: string;
+  repayment: boolean;
   trips: boolean;
   filter: string;
 }) {
@@ -279,11 +293,12 @@ function ViewerJourney({
       )}
       {group && (
         <GroupDetails
-          key={`${group}:${expense}`}
+          key={`${group}:${expense}:${repayment}`}
           scope={scope}
           id={group}
           today={viewer.today}
           expense={expense}
+          repayment={repayment}
         />
       )}
     </>
@@ -294,11 +309,13 @@ function GroupDetails({
   id,
   today,
   expense,
+  repayment,
 }: {
   scope: FinancialScope;
   id: string;
   today: string;
   expense: string;
+  repayment: boolean;
 }) {
   const router = useRouter(),
     params = useSearchParams();
@@ -372,9 +389,11 @@ function GroupDetails({
   }, [id, scope, after]);
   return (
     <>
-      <h2 ref={heading} tabIndex={-1} data-page-heading>
-        {group?.name ?? 'Group unavailable'}
-      </h2>
+      {!group && (
+        <h1 ref={heading} tabIndex={-1} data-page-heading>
+          {busy ? 'Group access' : 'Group unavailable'}
+        </h1>
+      )}
       {saved && <p role="status">{saved}</p>}
       <button
         disabled={busy}
@@ -398,184 +417,39 @@ function GroupDetails({
       ) : (
         group && (
           <>
-            <p>
-              {group.currency} ·{' '}
-              {group.isHousehold
-                ? 'Household'
-                : group.kind === 'TRIP'
-                  ? 'Trip'
-                  : 'Group'}
-            </p>
-            {group.trip && (
-              <p>
-                {group.trip.destination} ·{' '}
-                <time dateTime={group.trip.startDate}>
-                  {group.trip.startDate}
-                </time>{' '}
-                –{' '}
-                <time dateTime={group.trip.endDate}>{group.trip.endDate}</time>{' '}
-                · {tripState(group.trip, today)}
-              </p>
-            )}
             <RestoreSource scope={scope} allowed={[id]} />
             {expense ? (
-              <ExpenseDetail scope={scope} group={id} id={expense} />
-            ) : (
               <>
-                <BalancePanel group={group} />
-                <section aria-labelledby="expenses-title">
-                  <h2 id="expenses-title">Expenses</h2>
-                  {!group.expenses ? (
-                    <p role="alert">
-                      The expense page failed to load. Restart the list; this
-                      does not mean there are no expenses.
-                    </p>
-                  ) : (
-                    <>
-                      <p>
-                        Bounded pages of 20. Complete balances above include all
-                        group history, even expenses not loaded here.
-                      </p>
-                      {!group.expenses.edges.length ? (
-                        <p>
-                          {group.expenses.pageInfo.hasPreviousPage
-                            ? 'No expenses in this page.'
-                            : 'This group has no expenses.'}
-                        </p>
-                      ) : (
-                        <ul className="financial-expenses">
-                          {group.expenses.edges.map(
-                            (edge) =>
-                              edge && (
-                                <li key={edge.node.id}>
-                                  <h3>
-                                    <ScopedLink
-                                      scope={scope}
-                                      id={`expense-${edge.node.id}`}
-                                      href={`/groups/${encodeURIComponent(id)}/expenses/${encodeURIComponent(edge.node.id)}`}
-                                    >
-                                      {edge.node.description}
-                                    </ScopedLink>
-                                  </h3>
-                                  <p>
-                                    {money(edge.node.totalMinor)} ·{' '}
-                                    {edge.node.effectiveDate} ·{' '}
-                                    {edge.node.category}
-                                  </p>
-                                  <p>Paid by {edge.node.payer.displayName}</p>
-                                  {edge.node.note && <p>{edge.node.note}</p>}
-                                  <ul>
-                                    {edge.node.allocations.map((share) => (
-                                      <li key={share.participant.id}>
-                                        {share.participant.displayName}:{' '}
-                                        {money(share.amountMinor)}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </li>
-                              ),
-                          )}
-                        </ul>
-                      )}
-                      {group.expenses.pageInfo.hasNextPage && (
-                        <button
-                          onClick={() =>
-                            (() => {
-                              const next = new URLSearchParams(params);
-                              next.set(
-                                'after',
-                                group.expenses?.pageInfo.endCursor ?? '',
-                              );
-                              router.push(
-                                `/groups/${encodeURIComponent(id)}?${next}`,
-                              );
-                            })()
-                          }
-                        >
-                          Load more expenses
-                        </button>
-                      )}
-                    </>
-                  )}
-                </section>
-                <ExpenseForm
-                  scope={scope}
-                  group={id}
-                  today={today}
-                  payer={group.viewerMembership.id}
-                  members={group.members}
-                  onDenied={() => {
-                    setGroup(undefined);
-                    setError(message('NOT_FOUND'));
-                  }}
-                  onCommitted={async (expenseId) => {
-                    setSaved(
-                      `Expense saved once. Reference: ${expenseId}. Balances below are a separately authorized current read.`,
-                    );
-                    await read();
-                  }}
-                />
+                <h1 data-page-heading tabIndex={-1}>
+                  {group.name}
+                </h1>
+                <ExpenseDetail scope={scope} group={id} id={expense} />
               </>
+            ) : (
+              <GroupWorkspace
+                scope={scope}
+                group={group}
+                today={today}
+                repayment={repayment}
+                completed={repayment && !!saved}
+                onRefresh={async () => {
+                  await read();
+                }}
+                onDenied={() => {
+                  setGroup(undefined);
+                  setError(message('NOT_FOUND'));
+                }}
+                onCommitted={async () => {
+                  setSaved(
+                    'Repayment recorded once. No money was moved. Current balances and recent repayments are a separately authorized read.',
+                  );
+                  await read();
+                }}
+              />
             )}
           </>
         )
       )}
     </>
-  );
-}
-function BalancePanel({ group }: { group: Group }) {
-  const balances = group.balances;
-  if (balances.__typename !== 'GroupBalances')
-    return (
-      <section>
-        <h2>Complete balances</h2>
-        <p role="alert">
-          Balances are unavailable. This group cannot be shown as settled.
-        </p>
-      </section>
-    );
-  return (
-    <section aria-labelledby="balances-title">
-      <h2 id="balances-title">Complete balances</h2>
-      <p>
-        Total expenses: <strong>{money(balances.totalExpenseMinor)} USD</strong>
-      </p>
-      <p>
-        {balances.settled
-          ? 'Settled: every individual net is zero.'
-          : 'This group has outstanding balances.'}
-      </p>
-      <ul>
-        {balances.positions.map((position) => (
-          <li key={position.member.id}>
-            <strong>{position.member.displayName}</strong>
-            {position.member.status === 'INACTIVE' && ' (historical member)'}
-            <p>
-              Net: {money(position.netMinor)}. Positive means owed to them;
-              negative means they owe.
-            </p>
-            <p>
-              Paid {money(position.paidMinor)} · Share{' '}
-              {money(position.owedMinor)} · Repayments sent{' '}
-              {money(position.sentMinor)} · Received{' '}
-              {money(position.receivedMinor)}
-            </p>
-          </li>
-        ))}
-      </ul>
-      <h3>Simplified obligations</h3>
-      <p>
-        These follow each person’s complete net within this group. Original
-        expense relationships remain history, not extra debts.
-      </p>
-      <ul>
-        {balances.obligations.map((obligation) => (
-          <li key={`${obligation.from.id}:${obligation.to.id}`}>
-            {obligation.from.displayName} owes {obligation.to.displayName}{' '}
-            {money(obligation.amountMinor)}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
