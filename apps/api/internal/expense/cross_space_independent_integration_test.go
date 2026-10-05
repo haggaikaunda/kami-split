@@ -101,13 +101,16 @@ func TestIndependentExpenseViewStructuredTotalsMemberParityAndNoDisclosure(t *te
 	full := independentViewRead(t, f, 1, 100, "", nil, "", "ExpenseView")
 	independentViewSummary(t, full, "1000", "4", months)
 	raw, _ := json.Marshal(full)
-	for _, hidden := range []string{"Viewer-only SECRET", f.public("Group", 203), f.public("Membership", 307), "9000"} {
+	for _, hidden := range []string{"Viewer-only SECRET", f.public("Group", 203), f.public("Membership", 307)} {
 		if bytes.Contains(raw, []byte(hidden)) {
 			t.Fatalf("excluded ledger disclosed: %s", raw)
 		}
 	}
 	for _, edge := range full["edges"].([]any) {
 		e := edge.(map[string]any)
+		if e["node"].(map[string]any)["totalMinor"] == "9000" {
+			t.Fatal("excluded amount appeared in expense row", e)
+		}
 		if e["node"].(map[string]any)["groupId"] != e["source"].(map[string]any)["id"] {
 			t.Fatal("copied source attribution", e)
 		}
