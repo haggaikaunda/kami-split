@@ -20,7 +20,7 @@ A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
 [Activity workspaces](activity.md) also use authenticated network-only financial reads at `/groups/:groupId/activity` and `/household/activity`, with fresh feed and node authorization on details. Remaining preview routes (including seeded `/trips/:tripId`) are explicitly labeled simulated and link to `/groups`;
 they do not receive authenticated financial data. This slice does not implement
-expense edit/delete, group creation forms or dashboard integration.
+expense edit/delete or dashboard integration.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. Expenses retain their existing bounded
 read/form pending #170; Activity consumes the authenticated feed from #172.
@@ -107,6 +107,32 @@ Expense pages are explicit bounded reads rather than accumulating a Relay
 connection across visits. Failed reads never establish an empty group or settled
 balance. New ordinary/trip groups reuse the same expense form and complete balances,
 without preview household trip pickers or repayment shortcuts.
+
+## Group creation (#106)
+
+Enabled designated creators can open `/groups/new` from Groups (ordinary by
+default) or Create trip from Trips (trip by default). USD is read-only; trip
+dates initially use the fresh server UTC date. Names use ASCII trimming and
+Unicode scalar limits; destinations preserve whitespace. There is no member
+picker or household inheritance: the server atomically creates a sole owner
+and an empty group-local ledger.
+
+Versioned tab storage binds the draft and frozen canonical creation input to the
+stable Viewer ID, independently of the selected group. The client persists a
+CSPRNG operation key before dispatch. Uncertain attempts survive navigation and
+same-tab reload; Check creation and Retry original creation keep that original
+key/input, including after NOT_STARTED. Conflicts remain frozen. Only definitive
+domain rejection permits correction with a new key. Logout or account switch
+clears creation context alongside financial drafts. Unreadable/lost storage
+explains that an earlier group may exist and offers group inspection before an
+explicitly acknowledged new creation; unavailable storage blocks dispatch.
+
+A completed result triggers a separate network-only authorized Group read before
+opening its canonical route. Read failure retains recovery and never asserts a
+zero balance or empty ledger. Leaving or replacing the actor suppresses delayed
+completion and navigation. Recovery denial hides the original fields and blocks
+commands until access is refreshed. Invitation management remains a separate
+onboarding operation rather than an implicit step in creation.
 
 ## Group/Trip workspace (#171)
 

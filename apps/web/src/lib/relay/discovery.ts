@@ -18,6 +18,7 @@ export function financialReturn(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//'))
     return '/groups';
   const url = new URL(value, 'https://kami.invalid');
+  const creation = url.pathname === '/groups/new';
   const repayment = /^\/groups\/[^/?#]+\/repayments\/new$/.test(url.pathname);
   if (
     url.origin !== 'https://kami.invalid' ||
@@ -26,11 +27,16 @@ export function financialReturn(value: string | null) {
       url.pathname === '/groups' ||
       url.pathname === '/trips' ||
       repayment ||
+      creation ||
       /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
     )
   )
     return '/groups';
-  const allowed = repayment ? ['sender', 'recipient', 'amount'] : ['tab'];
+  const allowed = creation
+    ? ['kind']
+    : repayment
+      ? ['sender', 'recipient', 'amount']
+      : ['tab'];
   if ([...url.searchParams.keys()].some((k) => !allowed.includes(k)))
     return '/groups';
   return url.pathname + url.search;

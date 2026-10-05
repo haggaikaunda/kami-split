@@ -32,9 +32,11 @@ export type SavedDraft = {
   draft: Draft;
   attempt?: CreateExpenseInput;
 };
+export const groupCreationStorageKey = 'kami-group-creation-v1';
 export const repaymentStorageKey = 'kami-financial-repayments-v1';
 export const privateStorageKey = 'kami-financial-drafts-v1';
 export function clearFinancialStorage() {
+  sessionStorage.removeItem(groupCreationStorageKey);
   sessionStorage.removeItem(privateStorageKey);
   sessionStorage.removeItem(repaymentStorageKey);
 }
