@@ -20,3 +20,18 @@ Prompt: “Use case: illustration-story. Create a wide decorative illustration f
 ## Verification
 
 Final PR evidence records exact commits and browser screenshots. Synthetic browser responses exercise real production components; they do not establish backend authorization. Preserve the original published boards as the visual target. No entire issue acceptance is claimed by this focused foundation slice.
+
+## Browser comparison
+
+Baseline: production source `19897a1` (reference-only commit `85e6e47`), final source: `da00254`. Screenshots use isolated synthetic Auth/GraphQL responses, never private production records. The stress cases retain long names and unusually large exact amounts; ordinary-content images supplement them.
+
+| Route / panels                    | Baseline                                                 | Final stress                                          | Final ordinary content                                  |
+| --------------------------------- | -------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| `/household`, A2 desktop          | [1280px](evidence/foundation/baseline-overview-1280.png) | [1280px](evidence/foundation/final-overview-1280.png) | [1280px](evidence/foundation/regular-overview-1280.png) |
+| `/household`, A6 mobile           | [390px](evidence/foundation/baseline-overview-390.png)   | [390px](evidence/foundation/final-overview-390.png)   | [390px](evidence/foundation/regular-overview-390.png)   |
+| `/household/expenses`, B1 desktop | [1280px](evidence/foundation/baseline-expenses-1280.png) | [1280px](evidence/foundation/final-expenses-1280.png) | [1280px](evidence/foundation/regular-expenses-1280.png) |
+| `/household/expenses`, B6 mobile  | [390px](evidence/foundation/baseline-expenses-390.png)   | [390px](evidence/foundation/final-expenses-390.png)   | [390px](evidence/foundation/regular-expenses-390.png)   |
+
+The [evidence directory](evidence/foundation/) additionally includes 320px and 768px captures. Household browser regression: 152 checks across all four widths and 100/200% root text. Expense browser regression: 16 Household/Group configurations across all four widths and 100/200% text, checking horizontal summaries, no document overflow, complete month totals/pagination, keyboard Back/Forward and focus/scroll restoration, filtered-empty, exact synthetic creation/return, hidden stale detail and access denial. No browser runtime errors. Independent review evidence and any limitations are recorded on the PR.
+
+The boards' unsupported search/receipts/status/saved-filter controls remain absent. Every current metric remains available; this makes phone summaries denser than the generated two-card artwork. Long descriptions and extreme money intentionally increase row/card height; values are never truncated. Navigation uses only the real Household, Groups, Trips and Account destinations. Final whole-issue visual acceptance remains pending the other surfaces.
