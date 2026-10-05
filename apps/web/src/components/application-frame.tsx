@@ -17,6 +17,7 @@ export function ApplicationFrame({
   const path = usePathname();
   if (
     path === '/household/activity' ||
+    path === '/household/expenses' ||
     path === '/groups' ||
     path.startsWith('/groups/') ||
     path === '/trips' ||

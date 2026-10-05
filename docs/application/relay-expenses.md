@@ -26,7 +26,8 @@ and persisted group-local repayment entry. Expenses retain their existing bounde
 read/form pending #170; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-Expenses use the approved forward connection with pages of 20 and signed cursors.
+Overview recent expenses use the original bounded connection; the Expenses tab
+uses the structured view described in the linked guide, with pages of 20 and signed cursors.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net

@@ -49,6 +49,18 @@ export function GroupJourney({
   const access = useFinancialSession();
   const params = useSearchParams(),
     pathname = usePathname();
+  const visitParams = new URLSearchParams(params);
+  for (const key of [
+    'expense',
+    'expenseGroup',
+    'create',
+    'groupId',
+    'category',
+    'memberId',
+    'from',
+    'to',
+  ])
+    visitParams.delete(key);
   const returnQuery = new URLSearchParams();
   for (const key of ['tab', 'sender', 'recipient', 'amount']) {
     const value = params.get(key);
@@ -86,7 +98,7 @@ export function GroupJourney({
         </p>
       ) : (
         <ViewerJourney
-          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${params.toString()}`}
+          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
           scope={access.scope}
           initialGroup={initialGroup}
           expense={expense}
@@ -118,9 +130,8 @@ function ViewerJourney({
   const group = initialGroup;
   const [version, setVersion] = useState(0);
   const [stale, setStale] = useState(false);
-  const pathname = usePathname(),
-    params = useSearchParams();
-  const visit = pathname + '?' + params.toString();
+  const pathname = usePathname();
+  const visit = pathname;
   useEffect(() => {
     const refresh = () => {
       setViewer(undefined);
@@ -197,11 +208,14 @@ function ViewerJourney({
       <p>Signed in as {viewer.displayName}</p>
       {group && <SourceReturn scope={scope} />}
       {viewer.groups.find((item) => item.isHousehold) && (
-        <Link
-          href={`/groups/${encodeURIComponent(viewer.groups.find((item) => item.isHousehold)!.id)}`}
-        >
-          Household
-        </Link>
+        <>
+          <Link
+            href={`/groups/${encodeURIComponent(viewer.groups.find((item) => item.isHousehold)!.id)}`}
+          >
+            Household
+          </Link>
+          <Link href="/household/expenses">Household expenses</Link>
+        </>
       )}
       {!group && (
         <>

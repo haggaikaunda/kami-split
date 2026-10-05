@@ -14,10 +14,12 @@ export function ExpenseDetail({
   scope,
   group,
   id,
+  onUnavailable,
 }: {
   scope: FinancialScope;
   group: string;
   id: string;
+  onUnavailable?: () => void;
 }) {
   const [expense, setExpense] = useState<Expense>();
   const [failed, setFailed] = useState(false);
@@ -39,16 +41,24 @@ export function ExpenseDetail({
           result.node.groupId === group
         )
           setExpense(result.node);
-        else setFailed(true);
+        else {
+          setFailed(true);
+          onUnavailable?.();
+        }
       },
       error() {
-        if (active && scope.isLive()) setFailed(true);
+        if (active && scope.isLive()) {
+          setFailed(true);
+          onUnavailable?.();
+        }
       },
     });
     return () => {
       active = false;
       subscription.unsubscribe();
     };
+    // The owning list invalidates on failure; request identity owns the lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, group, id, version]);
   if (failed)
     return (
@@ -72,12 +82,18 @@ export function ExpenseDetail({
     <section>
       <h2>{expense.description}</h2>
       <p>
-        {money(expense.totalMinor)} USD ·{' '}
+        {money(expense.totalMinor)} {expense.currency} ·{' '}
         <time dateTime={expense.effectiveDate}>{expense.effectiveDate}</time> ·{' '}
         {expense.category}
       </p>
       <p>Paid by {expense.payer.displayName}</p>
       <p>{expense.note}</p>
+      <p>
+        Created by {expense.creator.displayName} ·{' '}
+        <time dateTime={expense.createdAt}>
+          {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
+        </time>
+      </p>
       <ul>
         {expense.allocations.map((share) => (
           <li key={share.participant.id}>
