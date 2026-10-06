@@ -974,9 +974,13 @@ it('blocks a different hash invitation while the original acceptance is unresolv
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
   expect(window.location.hash).toBe('');
-  expect(container.textContent).toContain(
-    'Reopen the original application invitation link',
-  );
+  expect(container.textContent).not.toContain('Private group');
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(container.textContent).toContain(
+      'Reopen the original application invitation link',
+    );
+  });
   expect(readAttempt()).toEqual(original);
   expect(requests.filter((r) => r.path.endsWith('/start'))).toHaveLength(
     startsBefore,
