@@ -1,6 +1,7 @@
 'use client';
 import {
   spaceHref,
+  spaceInvitationsHref,
   spaceExpenseHref,
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
@@ -29,6 +30,7 @@ import { ActivityFeed } from '@/components/activity/feed';
 import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
 import type { activityFeed$key } from '@/lib/relay/__generated__/activityFeed.graphql';
 import { ExpenseLedger } from '@/components/expenses/ledger';
+import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
   journeyWorkspaceQuery['response']['group'],
@@ -117,7 +119,9 @@ export function GroupWorkspace({
           >
             {group.viewerMembership.role === 'OWNER' && (
               <div className="group-header-actions">
-                <Link href="/invitations">Manage invitations</Link>
+                <Link href={spaceInvitationsHref(group)}>
+                  Manage invitations
+                </Link>
                 <details className="group-settings">
                   <summary>Group settings</summary>
                   <p>
@@ -203,6 +207,9 @@ export function GroupWorkspace({
               </p>
             </MemberBalanceRow>
           ))}
+          {group.viewerMembership.role === 'OWNER' && (
+            <ScopedInvitations scope={scope} group={group} />
+          )}
         </section>
       ) : (
         <section>

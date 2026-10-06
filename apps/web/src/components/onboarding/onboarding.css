@@ -217,3 +217,47 @@
 .account-management .onboarding-actions {
   gap: 0.5rem;
 }
+
+.account-content,
+.profile-card,
+.profile-card form,
+.scoped-invitations {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profile-card,
+.scoped-invitations {
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.profile-card h2,
+.scoped-invitations h2,
+.scoped-invitations h3 {
+  margin: 0;
+}
+.profile-actions {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+.scoped-invitations .ui-button,
+.profile-card .ui-button {
+  white-space: normal;
+}
+.scoped-invitations .ui-button--secondary,
+.profile-card .ui-button--secondary {
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.financial-journey .profile-card,
+.financial-journey .scoped-invitations {
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+}
+.account-content h1[tabindex='-1']:focus {
+  outline: none;
+}

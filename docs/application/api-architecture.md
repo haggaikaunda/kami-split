@@ -20,6 +20,11 @@ groups, memberships and transaction-bound reads. [Persisted expenses](persisted-
 
 [Authenticated activity](activity.md) reads immutable expense/repayment events with signed scope-bound pagination. Household traversal reuses the summary eligibility and locking boundary; its Activity UI is separate from the broader #112 dashboard implementation.
 
+The [self-profile contract](profile.md) provides authenticated reads independent of
+group discovery and an atomic expected-name display-name update. It changes only
+application profile metadata through a narrowly granted SQL function; Auth
+metadata and immutable financial/audit/recovery records remain unchanged.
+
 ## Responsibilities
 
 - GraphQL resolvers translate transport inputs and outputs and invoke application operations. They do not become the sole home of authorization or financial rules.

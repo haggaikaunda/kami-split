@@ -286,7 +286,7 @@ const activity = {
         };
       else if (op === 'householdAccessQuery')
         data = {
-          householdDashboard: dashboard({ mode: 'complete', net: '0' }),
+          viewer: { __typename: 'Viewer', groups },
         };
       else if (op === 'journeyViewerQuery')
         data = {
@@ -326,6 +326,14 @@ const activity = {
       else if (op === 'activityGroupQuery') data = { groupActivity: activity };
       else if (op === 'activityHouseholdQuery')
         data = { householdActivity: activity };
+      else if (query.includes('ownerInvitations'))
+        data = {
+          ownerInvitations: {
+            __typename: 'OwnerInvitationPage',
+            items: [],
+            nextCursor: null,
+          },
+        };
       else throw new Error('Unknown ' + op);
       if (denied)
         data = {

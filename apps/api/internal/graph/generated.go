@@ -298,6 +298,7 @@ type ComplexityRoot struct {
 		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		RetryInvitationDelivery  func(childComplexity int, actionID string) int
 		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		UpdateMyProfile          func(childComplexity int, displayName string, expectedDisplayName string) int
 	}
 
 	Obligation struct {
@@ -347,7 +348,18 @@ type ComplexityRoot struct {
 		Message func(childComplexity int) int
 	}
 
+	Profile struct {
+		DisplayName func(childComplexity int) int
+		ID          func(childComplexity int) int
+	}
+
+	ProfileProblem struct {
+		Code    func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	Query struct {
+		CurrentProfile         func(childComplexity int) int
 		ExpenseOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
 		Group                  func(childComplexity int, id string) int
 		GroupActivity          func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
@@ -445,6 +457,7 @@ type MutationResolver interface {
 	AcceptInvitation(ctx context.Context, token string, key ledger.OperationKey) (model.InvitationResult, error)
 	CreateSharedInvitation(ctx context.Context, groupID string, key ledger.OperationKey) (model.InvitationResult, error)
 	RenewSharedInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
+	UpdateMyProfile(ctx context.Context, displayName string, expectedDisplayName string) (model.ProfileResult, error)
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
 type QueryResolver interface {
@@ -461,6 +474,7 @@ type QueryResolver interface {
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
 	OwnerInvitations(ctx context.Context, groupID string, first int, after *string) (model.OwnerInvitationsResult, error)
 	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
+	CurrentProfile(ctx context.Context) (model.ProfileResult, error)
 	RepaymentOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.RepaymentOperationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
@@ -1553,6 +1567,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
+	case "Mutation.updateMyProfile":
+		if e.ComplexityRoot.Mutation.UpdateMyProfile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyProfile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMyProfile(childComplexity, args["displayName"].(string), args["expectedDisplayName"].(string)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -1700,6 +1725,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Problem.Message(childComplexity), true
 
+	case "Profile.displayName":
+		if e.ComplexityRoot.Profile.DisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Profile.DisplayName(childComplexity), true
+	case "Profile.id":
+		if e.ComplexityRoot.Profile.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Profile.ID(childComplexity), true
+
+	case "ProfileProblem.code":
+		if e.ComplexityRoot.ProfileProblem.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProfileProblem.Code(childComplexity), true
+	case "ProfileProblem.message":
+		if e.ComplexityRoot.ProfileProblem.Message == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProfileProblem.Message(childComplexity), true
+
+	case "Query.currentProfile":
+		if e.ComplexityRoot.Query.CurrentProfile == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.CurrentProfile(childComplexity), true
 	case "Query.expenseOperation":
 		if e.ComplexityRoot.Query.ExpenseOperation == nil {
 			break
@@ -3891,6 +3948,62 @@ extend type Mutation {
   ): InvitationResult!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/profile.graphql", Input: `"""
+Self-only application profile, independent of group discovery and Auth metadata.
+"""
+type Profile {
+  """
+  Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+  """
+  id: ID!
+  """
+  Current application display name; historical financial snapshots retain their original names.
+  """
+  displayName: String!
+}
+"""
+Safe profile outcome; no private identity or storage details.
+"""
+type ProfileProblem {
+  """
+  INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+  """
+  code: String!
+  """
+  User-facing explanation of the failure.
+  """
+  message: String!
+}
+"""
+An authorized profile or a safe operation failure.
+"""
+union ProfileResult = Profile | ProfileProblem
+extend type Query {
+  """
+  Read only the enabled, provisioned authenticated caller's profile, without discovering groups.
+  """
+  currentProfile: ProfileResult!
+}
+extend type Mutation {
+  """
+  Update only the caller's application display name. Trim Unicode White_Space
+  at both ends and require 1–120 Unicode codepoints after trimming. The exact
+  previously read expectedDisplayName prevents stale overwrites; an already
+  current requested value succeeds without another write. Auth metadata and
+  financial history are unchanged. Refresh authorized projections after success.
+  """
+  updateMyProfile(
+    """
+    Desired personal name, trimmed using Unicode White_Space and limited to 1–120 codepoints.
+    """
+    displayName: String!
+    """
+    Exact previously confirmed application name; a different current value rejects a stale edit.
+    """
+    expectedDisplayName: String!
+  ): ProfileResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/repayments.graphql", Input: `"""
 An actual transfer recorded within one explicitly authorized group. Creator is server-derived; no money is moved.
 """
@@ -5060,6 +5173,28 @@ func (ec *executionContext) field_Mutation_revokeInvitation_args(ctx context.Con
 		return nil, err
 	}
 	args["key"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "displayName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["displayName"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "expectedDisplayName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["expectedDisplayName"] = arg1
 	return args, nil
 }
 
@@ -9679,6 +9814,50 @@ func (ec *executionContext) fieldContext_Mutation_renewSharedInvitation(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMyProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMyProfile(ctx, fc.Args["displayName"].(string), fc.Args["expectedDisplayName"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+			return ec.marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMyProfile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ProfileResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_recordRepayment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10279,6 +10458,98 @@ func (ec *executionContext) fieldContext_Problem_message(_ context.Context, fiel
 	return graphql.NewScalarFieldContext("Problem", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Profile_id(ctx context.Context, field graphql.CollectedField, obj *model.Profile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Profile_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Profile_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Profile_displayName(ctx context.Context, field graphql.CollectedField, obj *model.Profile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Profile_displayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Profile_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ProfileProblem_code(ctx context.Context, field graphql.CollectedField, obj *model.ProfileProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProfileProblem_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ProfileProblem_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProfileProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ProfileProblem_message(ctx context.Context, field graphql.CollectedField, obj *model.ProfileProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProfileProblem_message(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ProfileProblem_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProfileProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Query_groupActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10807,6 +11078,29 @@ func (ec *executionContext) fieldContext_Query_invitationAction(ctx context.Cont
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Query_currentProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_currentProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().CurrentProfile(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+			return ec.marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_currentProfile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type ProfileResult does not have child fields"))
 }
 
 func (ec *executionContext) _Query_repaymentOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -13894,6 +14188,33 @@ func (ec *executionContext) _OwnerInvitationsResult(ctx context.Context, sel ast
 	}
 }
 
+func (ec *executionContext) _ProfileResult(ctx context.Context, sel ast.SelectionSet, obj model.ProfileResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ProfileProblem:
+		return ec._ProfileProblem(ctx, sel, &obj)
+	case *model.ProfileProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ProfileProblem(ctx, sel, obj)
+	case model.Profile:
+		return ec._Profile(ctx, sel, &obj)
+	case *model.Profile:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Profile(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of ProfileResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
 func (ec *executionContext) _RecordRepaymentResult(ctx context.Context, sel ast.SelectionSet, obj model.RecordRepaymentResult) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -15991,6 +16312,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyProfile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyProfile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "recordRepayment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordRepayment(ctx, field)
@@ -16398,6 +16726,92 @@ func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var profileImplementors = []string{"Profile", "ProfileResult"}
+
+func (ec *executionContext) _Profile(ctx context.Context, sel ast.SelectionSet, obj *model.Profile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, profileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Profile")
+		case "id":
+			out.Values[i] = ec._Profile_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._Profile_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var profileProblemImplementors = []string{"ProfileProblem", "ProfileResult"}
+
+func (ec *executionContext) _ProfileProblem(ctx context.Context, sel ast.SelectionSet, obj *model.ProfileProblem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, profileProblemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProfileProblem")
+		case "code":
+			out.Values[i] = ec._ProfileProblem_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._ProfileProblem_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -16692,6 +17106,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invitationAction(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "currentProfile":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_currentProfile(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -18397,6 +18833,16 @@ func (ec *executionContext) unmarshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋ
 
 func (ec *executionContext) marshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProblemCode(ctx context.Context, sel ast.SelectionSet, v model.ProblemCode) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx context.Context, sel ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProfileResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRecordRepaymentInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentInput(ctx context.Context, v any) (model.RecordRepaymentInput, error) {
