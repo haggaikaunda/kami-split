@@ -49,12 +49,17 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', cancel);
     };
   }, [intent]);
-  const current = pathname.endsWith('/expenses')
-    ? 'Expenses'
-    : pathname.endsWith('/activity')
-      ? 'Activity'
-      : (workspaceSections.find((s) => s.toLowerCase() === params.get('tab')) ??
-        'Overview');
+  const ledger = pathname === '/household/ledger';
+  const current =
+    params.get('repayment') === '1'
+      ? 'Balances'
+      : pathname.endsWith('/expenses')
+        ? 'Expenses'
+        : pathname.endsWith('/activity')
+          ? 'Activity'
+          : (workspaceSections.find(
+              (s) => s.toLowerCase() === params.get('tab'),
+            ) ?? 'Overview');
   return (
     <main
       className="financial-journey group-workspace household-workspace"
@@ -62,16 +67,25 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
     >
       <WorkspaceNavigation />
       <WorkspaceHeader
-        title="Household"
-        context="Shared expenses across home, trips and groups."
+        title={ledger ? 'Household ledger' : 'Household'}
+        context={
+          ledger
+            ? 'Original home ledger. Expenses and repayments stay in this Household.'
+            : 'Shared expenses across home, trips and groups.'
+        }
         appearance="household"
       />
       <WorkspaceTabs
         current={current}
-        hrefFor={householdHref}
+        hrefFor={
+          ledger
+            ? (section) => `/household/ledger?tab=${section.toLowerCase()}`
+            : householdHref
+        }
         label="Household workspace"
         onIntentEnd={(section) => intent?.cancel(section)}
         onIntent={(section) => {
+          if (ledger) return;
           const document =
             section === 'Activity'
               ? activityDocument

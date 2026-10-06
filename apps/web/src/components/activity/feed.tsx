@@ -1,4 +1,5 @@
 'use client';
+import { spaceHref } from '@/lib/relay/space-routes';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -398,7 +399,13 @@ export function ActivityFeed({
                   {detail.currency}
                 </p>
                 <p>Effective {detail.effectiveDate}</p>
-                <Link href={`/groups/${encodeURIComponent(detail.groupId)}`}>
+                <Link
+                  href={spaceHref({
+                    id: detail.groupId,
+                    isHousehold: selected.isHousehold,
+                    kind: selected.groupKind,
+                  })}
+                >
                   Open {selected.groupName}
                 </Link>
               </>

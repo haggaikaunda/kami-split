@@ -29,7 +29,7 @@ func (r *queryResolver) activity(ctx context.Context, group string, first int, a
 	}
 	out := &model.ActivityConnection{Edges: []*model.ActivityEdge{}, PageInfo: &model.PageInfo{HasNextPage: page.HasNext, HasPreviousPage: in.After != ""}}
 	for i, e := range page.Events {
-		event := &model.ActivityEvent{ID: e.ID, RecordID: e.RecordID, Kind: model.ActivityKind(e.Kind), GroupID: e.GroupID, GroupName: e.GroupName, IsHousehold: e.IsHousehold, AmountMinor: ledger.MinorUnits(e.AmountMinor), Currency: model.Currency(e.Currency), EffectiveDate: ledger.Date(e.EffectiveDate), Timestamp: ledger.DateTime(e.Timestamp), Creator: activityIdentity(e.Creator), Payer: activityIdentity(e.Payer), Sender: activityIdentity(e.Sender), Recipient: activityIdentity(e.Recipient)}
+		event := &model.ActivityEvent{ID: e.ID, RecordID: e.RecordID, Kind: model.ActivityKind(e.Kind), GroupID: e.GroupID, GroupName: e.GroupName, GroupKind: model.GroupKind(e.GroupKind), IsHousehold: e.IsHousehold, AmountMinor: ledger.MinorUnits(e.AmountMinor), Currency: model.Currency(e.Currency), EffectiveDate: ledger.Date(e.EffectiveDate), Timestamp: ledger.DateTime(e.Timestamp), Creator: activityIdentity(e.Creator), Payer: activityIdentity(e.Payer), Sender: activityIdentity(e.Sender), Recipient: activityIdentity(e.Recipient)}
 		out.Edges = append(out.Edges, &model.ActivityEdge{Cursor: page.Cursors[i], Node: event})
 	}
 	if len(out.Edges) > 0 {

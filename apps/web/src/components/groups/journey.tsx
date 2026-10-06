@@ -24,6 +24,7 @@ import groupDocument, {
 } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
+import { householdLedgerHref, spaceHref } from '@/lib/relay/space-routes';
 import { tripState, routeId } from '@/lib/relay/discovery';
 import { ExpenseDetail } from './expense-detail';
 import { GroupWorkspace } from './workspace';
@@ -57,7 +58,9 @@ export function GroupJourney({
   trips = false,
   filter = 'all',
   creation,
+  household = false,
 }: {
+  household?: boolean;
   creation?: 'ORDINARY' | 'TRIP';
   initialGroup?: string;
   expense?: string;
@@ -90,6 +93,7 @@ export function GroupJourney({
       document.removeEventListener('visibilitychange', cancel);
     };
   }, [intent]);
+  const groupBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(initialGroup)}`;
   const currentTab =
     workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
     (params.has('after') ? 'Expenses' : 'Overview');
@@ -112,6 +116,39 @@ export function GroupJourney({
     if (value) returnQuery.set(key, value);
   }
   const signInReturn = pathname + (returnQuery.size ? `?${returnQuery}` : '');
+  const body = access.loading ? (
+    <p role="status">Loading secure access…</p>
+  ) : access.error ? (
+    <p role="alert">{access.error}</p>
+  ) : !access.scope ? (
+    <p>
+      <Link href={`/sign-in?next=${encodeURIComponent(signInReturn)}`}>
+        Sign in
+      </Link>{' '}
+      with your invited account to see your groups.
+    </p>
+  ) : initialGroup ? (
+    <>
+      <SourceReturn scope={access.scope} household={household} />
+      <GroupDetails
+        key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${currentTab}:${visitParams}`}
+        scope={access.scope}
+        household={household}
+        id={initialGroup}
+        expense={expense}
+        repayment={repayment}
+      />
+    </>
+  ) : (
+    <ViewerJourney
+      key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
+      scope={access.scope}
+      trips={trips}
+      filter={filter}
+      creation={creation}
+    />
+  );
+  if (household) return body;
   return (
     <main
       className={`financial-journey ${initialGroup ? 'group-workspace' : ''}`}
@@ -122,7 +159,9 @@ export function GroupJourney({
         {!initialGroup && (
           <h1 data-page-heading tabIndex={-1}>
             {creation
-              ? 'New group'
+              ? creation === 'TRIP'
+                ? 'New trip'
+                : 'New group'
               : trips
                 ? 'Your trips'
                 : initialGroup
@@ -134,7 +173,7 @@ export function GroupJourney({
       {initialGroup && (
         <WorkspaceTabs
           current={repayment ? 'Balances' : currentTab}
-          label="Group workspace"
+          label={trips ? 'Trip workspace' : 'Group workspace'}
           onIntent={(section) =>
             intent?.warm(workspaceRequest(initialGroup, section.toLowerCase()))
           }
@@ -145,42 +184,10 @@ export function GroupJourney({
                 : undefined,
             )
           }
-          hrefFor={(section) =>
-            `/groups/${encodeURIComponent(initialGroup)}?tab=${section.toLowerCase()}`
-          }
+          hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
         />
       )}
-      {access.loading ? (
-        <p role="status">Loading secure access…</p>
-      ) : access.error ? (
-        <p role="alert">{access.error}</p>
-      ) : !access.scope ? (
-        <p>
-          <Link href={`/sign-in?next=${encodeURIComponent(signInReturn)}`}>
-            Sign in
-          </Link>{' '}
-          with your invited account to see your groups.
-        </p>
-      ) : initialGroup ? (
-        <>
-          <SourceReturn scope={access.scope} />
-          <GroupDetails
-            key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${currentTab}:${visitParams}`}
-            scope={access.scope}
-            id={initialGroup}
-            expense={expense}
-            repayment={repayment}
-          />
-        </>
-      ) : (
-        <ViewerJourney
-          key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
-          scope={access.scope}
-          trips={trips}
-          filter={filter}
-          creation={creation}
-        />
-      )}
+      {body}
     </main>
   );
 }
@@ -272,6 +279,17 @@ function ViewerJourney({
           : 'Loading your groups…'}
       </p>
     );
+  const groups = viewer.groups.filter(
+    (item) =>
+      !item.isHousehold &&
+      (trips
+        ? item.kind === 'TRIP' &&
+          !!item.trip &&
+          (filter === 'all' ||
+            tripState(item.trip, viewer.today).toLowerCase() === filter)
+        : item.kind === 'ORDINARY'),
+  );
+
   return (
     <>
       <p className="journey-viewer">Signed in as {viewer.displayName}</p>
@@ -296,7 +314,7 @@ function ViewerJourney({
       {!creation && (
         <>
           {viewer.canCreateGroups && (
-            <Link href={trips ? '/groups/new?kind=trip' : '/groups/new'}>
+            <Link href={trips ? '/trips/new' : '/groups/new'}>
               {trips ? 'Create trip' : 'Create group'}
             </Link>
           )}
@@ -317,67 +335,54 @@ function ViewerJourney({
               ))}
             </nav>
           )}
-          {!viewer.groups.length ? (
+          {!groups.length ? (
             <p>
-              You have no admitted groups.{' '}
+              {trips
+                ? viewer.groups.length
+                  ? 'No trips match this filter.'
+                  : 'You have no admitted trips or groups.'
+                : viewer.groups.length > 0
+                  ? 'No ordinary groups yet. Household and Trips are available in the main navigation.'
+                  : 'You have no admitted groups.'}{' '}
               {viewer.canCreateGroups
                 ? 'Create a group to begin.'
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (
             <ul className="discovery-cards">
-              {viewer.groups
-                .filter(
-                  (item) =>
-                    !trips ||
-                    (item.kind === 'TRIP' &&
-                      item.trip &&
-                      (filter === 'all' ||
-                        tripState(item.trip, viewer.today).toLowerCase() ===
-                          filter)),
-                )
-                .map((item) => (
-                  <li key={item.id}>
-                    <div
-                      className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
-                      aria-hidden="true"
-                    />
-                    <ScopedLink
-                      scope={scope}
-                      id={`group-${item.id}`}
-                      href={`/groups/${encodeURIComponent(item.id)}`}
-                    >
-                      {item.name} · {item.kind === 'TRIP' ? 'Trip' : 'Group'}
-                    </ScopedLink>
-                    {item.trip && (
-                      <p>
-                        {item.trip.destination} ·{' '}
-                        <time dateTime={item.trip.startDate}>
-                          {item.trip.startDate}
-                        </time>{' '}
-                        –{' '}
-                        <time dateTime={item.trip.endDate}>
-                          {item.trip.endDate}
-                        </time>{' '}
-                        · {tripState(item.trip, viewer.today)}
-                      </p>
-                    )}
-                  </li>
-                ))}
+              {groups.map((item) => (
+                <li key={item.id}>
+                  <div
+                    className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+                    aria-hidden="true"
+                  />
+                  <ScopedLink
+                    scope={scope}
+                    id={`group-${item.id}`}
+                    href={spaceHref(item)}
+                  >
+                    {item.name} · {item.kind === 'TRIP' ? 'Trip' : 'Group'}
+                  </ScopedLink>
+                  {item.trip && (
+                    <p>
+                      {item.trip.destination} ·{' '}
+                      <time dateTime={item.trip.startDate}>
+                        {item.trip.startDate}
+                      </time>{' '}
+                      –{' '}
+                      <time dateTime={item.trip.endDate}>
+                        {item.trip.endDate}
+                      </time>{' '}
+                      · {tripState(item.trip, viewer.today)}
+                    </p>
+                  )}
+                </li>
+              ))}
             </ul>
           )}
-          {!!viewer.groups.length &&
-            trips &&
-            !viewer.groups.some(
-              (item) =>
-                item.kind === 'TRIP' &&
-                item.trip &&
-                (filter === 'all' ||
-                  tripState(item.trip, viewer.today).toLowerCase() === filter),
-            ) && <p>No trips match this filter.</p>}
           <RestoreSource
             scope={scope}
-            allowed={viewer.groups.map((item) => item.id)}
+            allowed={groups.map((item) => item.id)}
           />
         </>
       )}
@@ -389,14 +394,17 @@ function GroupDetails({
   id,
   expense,
   repayment,
+  household = false,
 }: {
+  household?: boolean;
   scope: FinancialScope;
   id: string;
   expense: string;
   repayment: boolean;
 }) {
   const router = useRouter(),
-    params = useSearchParams();
+    params = useSearchParams(),
+    pathname = usePathname();
   const after = params.get('after');
   const tab = (
     workspaceSections.find(
@@ -442,6 +450,33 @@ function GroupDetails({
         next: (result) => {
           if (!live.current || !scope.isLive() || generation.current !== ticket)
             return;
+          const routeSpace =
+            result.group?.__typename === 'Group' && result.group.id === id
+              ? result.group
+              : undefined;
+          if (!household && routeSpace) {
+            const canonical = spaceHref(routeSpace);
+            const currentBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`;
+            if (canonical !== currentBase) {
+              const tail = expense
+                ? `/expenses/${encodeURIComponent(expense)}`
+                : repayment
+                  ? '/repayments/new'
+                  : '';
+              const query = params.toString();
+              router.replace(
+                routeSpace.isHousehold
+                  ? householdLedgerHref(
+                      new URLSearchParams(params),
+                      expense,
+                      repayment,
+                    )
+                  : `${canonical}${tail}${query ? `?${query}` : ''}`,
+              );
+              resolve();
+              return;
+            }
+          }
           const ledger = result.groupExpenses
             ? readInlineData<expensesView$key>(
                 expenseView,
@@ -457,6 +492,7 @@ function GroupDetails({
           if (
             result.group?.__typename === 'Group' &&
             result.group.id === id &&
+            (!household || result.group.isHousehold) &&
             result.viewer?.__typename === 'Viewer' &&
             (tab !== 'expenses' ||
               !!expense ||
@@ -479,7 +515,7 @@ function GroupDetails({
               result.group.code === 'NOT_FOUND'
             )
               router.replace(
-                `/groups?restore=${encodeURIComponent(params.get('restore')!)}`,
+                `${household ? '/household' : pathname.startsWith('/trips/') ? '/trips' : '/groups'}?restore=${encodeURIComponent(params.get('restore')!)}`,
               );
             // Attribute composed failures to their owning read. Never reveal the
             // otherwise successful group's private fields while access is uncertain.
@@ -560,7 +596,7 @@ function GroupDetails({
   }, [id, scope, after]);
   return (
     <>
-      {!group && (
+      {!household && !group && (
         <h1 ref={heading} tabIndex={-1} data-page-heading>
           {busy ? 'Group access' : failureHeading}
         </h1>
@@ -579,7 +615,9 @@ function GroupDetails({
           if (after) {
             const next = new URLSearchParams(params);
             next.delete('after');
-            router.replace(`/groups/${encodeURIComponent(id)}?${next}`);
+            router.replace(
+              `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
+            );
           } else void read();
         }}
       >
@@ -590,22 +628,42 @@ function GroupDetails({
       ) : error ? (
         <>
           <p role="alert">{error}</p>
-          <Link href="/groups">Back to Groups</Link>
+          <Link
+            href={
+              household
+                ? '/household'
+                : pathname.startsWith('/trips/')
+                  ? '/trips'
+                  : '/groups'
+            }
+          >
+            {household
+              ? 'Back to Household'
+              : pathname.startsWith('/trips/')
+                ? 'Back to Trips'
+                : 'Back to Groups'}
+          </Link>
         </>
       ) : (
         group && (
           <>
             <RestoreSource scope={scope} allowed={[id]} />
+            {household && group.viewerMembership.role === 'OWNER' && (
+              <Link href="/invitations">Manage Household invitations</Link>
+            )}
             {expense ? (
               <>
-                <h1 data-page-heading tabIndex={-1}>
-                  {group.name}
-                </h1>
+                {!household && (
+                  <h1 data-page-heading tabIndex={-1}>
+                    {group.name}
+                  </h1>
+                )}
                 <ExpenseDetail scope={scope} group={id} id={expense} />
               </>
             ) : (
               <GroupWorkspace
                 showTabs={false}
+                showHeader={!household}
                 initialView={
                   destination?.groupExpenses
                     ? {

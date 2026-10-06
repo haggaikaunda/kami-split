@@ -134,6 +134,10 @@ type ActivityEvent struct {
 	GroupID string `json:"groupId"`
 	// Current authorized source label.
 	GroupName string `json:"groupName"`
+	// Current authorized source kind for canonical Group or Trip navigation. This
+	// metadata is read with the event page; it does not change original financial IDs.
+	// Household sources remain ORDINARY and are identified separately by isHousehold.
+	GroupKind GroupKind `json:"groupKind"`
 	// Whether the source is the designated Household ledger.
 	IsHousehold bool `json:"isHousehold"`
 	// Exact expense face value or actual repayment amount.

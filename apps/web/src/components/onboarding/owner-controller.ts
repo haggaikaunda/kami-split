@@ -2,7 +2,7 @@ import { explain } from './messages';
 import { useState } from 'react';
 import { actionFields, type Attempt } from '@/lib/onboarding/client';
 import type { Receipt } from './controller';
-type Group = { id: string; name: string };
+type Group = { id: string; name: string; isHousehold: boolean; kind: string };
 type Invite = {
   kind: string;
   id: string;
@@ -36,7 +36,7 @@ export function useOwnerInvitations({
   const [next, setNext] = useState<string | null>(null);
   const loadGroups = async () => {
     const data = await graph(
-      'query { viewer { __typename ... on Viewer { groups { id name } } ... on ViewerAccess { state } ... on Problem { code } } }',
+      'query { viewer { __typename ... on Viewer { groups { id name kind isHousehold } } ... on ViewerAccess { state } ... on Problem { code } } }',
     );
     if (data.viewer.__typename !== 'Viewer') {
       tell(

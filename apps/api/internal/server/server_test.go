@@ -34,7 +34,7 @@ func TestGraphQLTransport(t *testing.T) {
 		{"get disabled", "GET", "", "", false},
 		{"multipart disabled", "POST", "multipart/form-data", "anything", false},
 		{"body bounded", "POST", "application/json", `{"query":"` + strings.Repeat(" ", 65536) + `{ health { status } }"}`, false},
-		{"complexity bounded", "POST", "application/json", `{"query":"{` + repeatedFields(60) + `}"}`, false},
+		{"complexity bounded", "POST", "application/json", `{"query":"{` + repeatedFields(101) + `}"}`, false},
 		{"tokens bounded", "POST", "application/json", `{"query":"{ health {` + strings.Repeat("status ", 1100) + `} }"}`, false},
 	}
 	for _, tc := range cases {

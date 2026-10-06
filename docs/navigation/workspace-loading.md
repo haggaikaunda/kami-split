@@ -124,3 +124,22 @@ no production credentials or financial data are used. It records requests,
 feedback/content timing, exact shell retention and document loads, and asserts
 keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,
 native modified-click entry and denial after completed intent warming.
+
+## Canonical workspace routes (#201)
+
+Groups lists ordinary groups only. Household and Trips each use their own primary
+navigation. The shared Household overview remains `/household`; its original
+ledger is `/household/ledger` with the same single Household frame/tabs. Expenses
+and repayments there keep the original Household Group ID and operation/recovery
+scope. Shared source navigation never creates an aggregate repayment target.
+
+Trips use `/trips/<Group ID>` with expense-detail and repayment subroutes. Legacy
+`/groups/<ID>` entries are replaced only after fresh server-authorized metadata
+identifies their actual Household/Trip kind. Ordinary groups named Household are
+not inferred as the Household. Source/tab/detail/repayment context is preserved;
+access failure hides private data rather than guessing a redirect.
+
+The exact compiled workspace query counts conditional selections towards gqlgen
+complexity. The API uses a finite 200 budget and retains parser/body/auth limits.
+Regression tests execute the checked-in Relay wire operation, not a simplified
+GraphQL approximation, for Household and Trip roles across all tabs.

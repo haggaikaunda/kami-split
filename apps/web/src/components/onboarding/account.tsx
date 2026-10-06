@@ -1,3 +1,4 @@
+import { spaceHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { Button, Field } from '@/components/primitives';
 import type { OnboardingController } from './controller';
@@ -38,7 +39,15 @@ export function AccountPanel({ state: c }: { state: OnboardingController }) {
             <ul className="account-rows">
               {groups.map((item) => (
                 <li key={item.id}>
-                  <Link href={`/groups?group=${encodeURIComponent(item.id)}`}>
+                  <Link
+                    href={
+                      item.isHousehold
+                        ? '/household'
+                        : item.kind === 'TRIP'
+                          ? spaceHref(item)
+                          : `/groups?group=${encodeURIComponent(item.id)}`
+                    }
+                  >
                     {item.name}
                   </Link>{' '}
                   <Button

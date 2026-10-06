@@ -158,7 +158,9 @@ export function CreationForm({
       removeCreation();
       // No state/focus updates after route transition; leaving this visit suppresses late responses.
       navigating.current = true;
-      router.push(`/groups/${encodeURIComponent(outcome.groupId)}`);
+      router.push(
+        `${kind === 'TRIP' ? '/trips' : '/groups'}/${encodeURIComponent(outcome.groupId)}`,
+      );
     } else if (outcome.__typename === 'GroupCreationRejected') {
       persist({ version: 1, actor, draft });
       setAttempt(undefined);
@@ -252,7 +254,9 @@ export function CreationForm({
       <p ref={status} role="status" tabIndex={-1}>
         {busy ? 'Working…' : notice}
       </p>
-      <Link href="/groups">Inspect your groups</Link>
+      <Link href={kind === 'TRIP' ? '/trips' : '/groups'}>
+        Inspect your {kind === 'TRIP' ? 'trips' : 'groups'}
+      </Link>
       {attempt && (
         <aside className="financial-recovery">
           <h3>Unconfirmed original creation</h3>

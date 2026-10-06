@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4ef2fed2ac290b820e8d636dbf14d843>>
+ * @generated SignedSource<<812f0eb4bc93650a3d4a7536bfcb24c8>>
  * @lightSyntaxTransform
  */
 
@@ -178,6 +178,13 @@ v8 = {
               "alias": null,
               "args": null,
               "kind": "ScalarField",
+              "name": "groupKind",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
               "name": "amountMinor",
               "storageKey": null
             },
@@ -345,12 +352,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "87adc8dab84bcdedb74dabd7e2c1ade8",
+    "cacheID": "ddba7a92b7b1f72d7cd2c6e4837745af",
     "id": null,
     "metadata": {},
     "name": "activityGroupQuery",
     "operationKind": "query",
-    "text": "query activityGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: ActivityFilter\n) {\n  groupActivity(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        kind\n        groupId\n        groupName\n        isHousehold\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query activityGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: ActivityFilter\n) {\n  groupActivity(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        kind\n        groupId\n        groupName\n        isHousehold\n        groupKind\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

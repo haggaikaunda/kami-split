@@ -77,7 +77,7 @@ function fixture(net = '0'): Dashboard {
       name,
       viewerNetMinor,
       isHousehold,
-      kind: 'ORDINARY',
+      kind: groupId === 'trip-b' ? 'TRIP' : 'ORDINARY',
       currency: 'USD',
       sharedExpenseCount: '1',
       viewerMembership: { id: 'viewer', role: 'OWNER' },
@@ -145,8 +145,15 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(host.querySelectorAll('button')).toHaveLength(0);
   expect(host.textContent).not.toContain('Settled');
   expect(
-    host.querySelector('a[href="/groups/home%2Fa?tab=balances"]'),
+    host.querySelector('a[href="/household/ledger?tab=balances"]'),
   ).not.toBeNull();
+  expect(
+    host.querySelector('a[href="/trips/trip-b?tab=balances"]'),
+  ).not.toBeNull();
+  expect(
+    host.querySelector('a[href="/groups/group-c?tab=balances"]'),
+  ).not.toBeNull();
+  expect(host.querySelector('a[href^="/groups/trip-b"]')).toBeNull();
   expect(host.textContent).toContain('+$84.20');
   expect(host.textContent).toContain('-$84.20');
 });
@@ -166,7 +173,7 @@ it.each(['INCOMPLETE', 'UNAVAILABLE'] as const)(
     if (state === 'UNAVAILABLE') {
       expect(host.textContent).toContain('Refresh to check current access');
       expect(host.textContent).not.toContain('not available yet');
-      expect(host.querySelector('a[href="/groups/home%2Fa"]')).not.toBeNull();
+      expect(host.querySelector('a[href="/household/ledger"]')).not.toBeNull();
     }
   },
 );

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e8a6c32dbb4f530bb70cbff9711c2857>>
+ * @generated SignedSource<<b23c6df1530ea5741069776047f9765b>>
  * @lightSyntaxTransform
  */
 
@@ -10,6 +10,7 @@
 import { ReaderInlineDataFragment } from 'relay-runtime';
 export type ActivityKind = "EXPENSE_CREATED" | "REPAYMENT_RECORDED" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type activityFeed$data = {
@@ -25,6 +26,7 @@ export type activityFeed$data = {
       readonly currency: Currency;
       readonly effectiveDate: string;
       readonly groupId: string;
+      readonly groupKind: GroupKind;
       readonly groupName: string;
       readonly id: string;
       readonly isHousehold: boolean;
@@ -71,6 +73,6 @@ const node: ReaderInlineDataFragment = {
   "name": "activityFeed"
 };
 
-(node as any).hash = "cb7d4450082d44825b3a6f09a990082f";
+(node as any).hash = "068679986021abcc90801b492d0da499";
 
 export default node;

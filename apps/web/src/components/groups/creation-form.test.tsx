@@ -204,20 +204,25 @@ it('definitive rejection enables correction with a new attempt key and field err
     a.operationKey,
   );
 });
-it('freshly authorizes completed groups before opening and clears only confirmed accessible results', async () => {
-  const a = frozen();
-  network.read
-    .mockResolvedValueOnce({ groupCreationOperation: completed(a) })
-    .mockResolvedValueOnce(fresh);
-  await render();
-  await act(async () => button('Check creation').click());
-  expect(network.read.mock.calls[1][2]).toEqual({ id: 'G' });
-  expect(network.read.mock.calls[1][3]).toEqual({
-    fetchPolicy: 'network-only',
-  });
-  expect(network.push).toHaveBeenCalledWith('/groups/G');
-  expect(readCreation('Viewer:A')).toBeUndefined();
-});
+it.each(['ORDINARY', 'TRIP'] as const)(
+  'freshly authorizes completed %s before its canonical route and clears only confirmed accessible results',
+  async (kind) => {
+    const a = frozen();
+    network.read
+      .mockResolvedValueOnce({ groupCreationOperation: completed(a) })
+      .mockResolvedValueOnce(fresh);
+    await render(kind);
+    await act(async () => button('Check creation').click());
+    expect(network.read.mock.calls[1][2]).toEqual({ id: 'G' });
+    expect(network.read.mock.calls[1][3]).toEqual({
+      fetchPolicy: 'network-only',
+    });
+    expect(network.push).toHaveBeenCalledWith(
+      `${kind === 'TRIP' ? '/trips' : '/groups'}/G`,
+    );
+    expect(readCreation('Viewer:A')).toBeUndefined();
+  },
+);
 it('read failure never shows false empty/zero or opens the group; recovery stays available', async () => {
   const a = frozen();
   network.read

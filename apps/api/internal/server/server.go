@@ -52,7 +52,9 @@ func NewWithAuthentication(cfg config.Config, schema graphql.ExecutableSchema, l
 	}
 	gql := handler.New(schema)
 	gql.AddTransport(transport.POST{})
-	gql.Use(extension.FixedComplexityLimit(100))
+	// Count the full composed document, including conditional selections. The
+	// finite budget accommodates the shipped workspace without unbounded queries.
+	gql.Use(extension.FixedComplexityLimit(200))
 	gql.SetParserTokenLimit(1000)
 	gql.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		operation := graphql.GetOperationContext(ctx)

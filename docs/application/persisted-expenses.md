@@ -82,7 +82,7 @@ may be absent in health-only development mode; partial or empty configuration is
 invalid. The configuration object is capped at 16 KiB and cursors at 2048 bytes.
 
 The endpoint accepts JSON POST with a 64 KiB request-body limit, 1000 parser tokens
-and complexity 100. One distinct `expenses` selection is supported per Group
+and complexity 200. One distinct `expenses` selection is supported per Group
 projection; requesting multiple aliased connections on the same projection
 returns `INVALID_INPUT` at the nullable connection field. These budgets reject
 requests explicitly; member lists and complete financial positions are never
