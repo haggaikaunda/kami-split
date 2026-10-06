@@ -39,7 +39,10 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   }),
 }));
-vi.mock('next/link', () => ({ default: 'a' }));
+vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
+  default: 'a',
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: sdk.replace }),
 }));

@@ -39,7 +39,7 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	if err != nil {
 		return problem(ctx, err), nil
 	}
-	result := &model.ExpenseView{TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
+	result := &model.ExpenseView{ContextVersion: out.ContextVersion, TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
 	for _, m := range out.Months {
 		result.Months = append(result.Months, &model.ExpenseMonth{Month: m.Month, TotalExpenseMinor: ledger.MinorUnits(m.Total), ExpenseCount: ledger.MinorUnits(m.Count)})
 	}

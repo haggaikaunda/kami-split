@@ -24,6 +24,10 @@ Original ledgers and an explicit complete/incomplete/unavailable outcome.
 """
 type HouseholdDashboard {
   """
+  Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+  """
+  contextVersion: String
+  """
   Current completeness, independent of individual group settlement.
   """
   state: HouseholdDashboardState!

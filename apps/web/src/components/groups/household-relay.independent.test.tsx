@@ -11,7 +11,10 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { HouseholdRead } from './household-workspace';
 import type { FinancialScope } from '@/lib/relay/environment';
-vi.mock('next/link', () => ({ default: 'a' }));
+vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
+  default: 'a',
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push() {} }),
   useSearchParams: () => new URLSearchParams(),

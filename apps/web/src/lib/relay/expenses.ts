@@ -7,6 +7,7 @@ export const expensesView = graphql`
       code
     }
     ... on ExpenseView {
+      contextVersion
       totalExpenseMinor
       expenseCount
       months {
@@ -83,6 +84,50 @@ export const expensesHouseholdContextQuery = graphql`
     householdDashboard {
       __typename
       ... on HouseholdDashboard {
+        state
+        totals {
+          __typename
+          ... on HouseholdDashboardTotals {
+            viewerNetMinor
+            activeSpaceCount
+          }
+        }
+        spaces {
+          groupId
+          name
+          currency
+          isHousehold
+          viewerNetMinor
+          viewerMembership {
+            id
+          }
+          members {
+            id
+            displayName
+            status
+            role
+            canParticipate
+          }
+        }
+      }
+    }
+  }
+`;
+export const expensesHouseholdInitialQuery = graphql`
+  query expensesHouseholdInitialQuery($filter: StructuredExpenseFilter) {
+    householdExpenses(first: 20, filter: $filter) {
+      ...expensesView
+    }
+    viewer {
+      __typename
+      ... on Viewer {
+        today
+      }
+    }
+    householdDashboard {
+      __typename
+      ... on HouseholdDashboard {
+        contextVersion
         state
         totals {
           __typename

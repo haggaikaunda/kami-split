@@ -16,6 +16,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock('./session', () => ({ useFinancialSession: () => mock.access }));
 vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
   default: ({
     children,
     onNavigate,
@@ -168,13 +169,11 @@ it('keeps in-progress trips in All only and distinguishes a filtered empty list 
 });
 it('hides old group fields immediately and ignores a delayed previous group read', async () => {
   await render(<GroupJourney initialGroup="H" />);
-  await respond(viewer());
   const old = mock.requests.at(-1)!;
   expect(old.variables.id).toBe('H');
   await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
   await act(async () =>
-    old.resolve({
+    old.next({
       group: { __typename: 'Group', id: 'H', name: 'Secret old group' },
     }),
   );

@@ -7,3 +7,5 @@ The root enters `/groups`. Group and Trip discovery use real authenticated membe
 Expense details use `/groups/:groupId/expenses/:expenseId`. Repayment entry uses `/groups/:groupId/repayments/new`. Drafts and uncertain attempts use the existing account/group-scoped sessionStorage contracts, never global preview draft routes. See the [authenticated journey](../application/relay-expenses.md#discovery-and-return-navigation-105).
 
 The seeded global shell, preview providers, intercepting `@detail` slot and its old routes were retired in #184. They are not compatibility routes; unsafe legacy resource IDs receive normal not-found behavior. Original #17 navigation evidence is available in [Git history](https://github.com/haggaikaunda/kami-split/blob/225780b/docs/navigation/README.md) only.
+
+See [authorized workspace loading](workspace-loading.md) for the destination request matrix, persistent frames, intent ownership, foreground invalidation and Household compatibility contract introduced by #193.

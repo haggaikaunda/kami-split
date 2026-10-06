@@ -28,7 +28,7 @@ session scope. Each event labels its source and separates effective date from
 recorded event time. The initial UI filter is event type; the API also supports an
 exact eligible source filter. Next-page navigation replaces the visible page after
 fresh authorization. Refresh and filter changes clear cached rows immediately;
-window focus refreshes access, account changes dispose the old scope, and late
+foreground focus/visibility/pageshow events clear content immediately and coalesce a fresh read; embedded feeds delegate this to their Group owner. Account changes dispose the old scope, and late
 responses cannot populate a disposed scope.
 
 Selecting an event opens an inline current-record detail, rechecking the feed

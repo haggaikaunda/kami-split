@@ -1,6 +1,6 @@
 import { graphql } from 'relay-runtime';
 export const householdWorkspaceQuery = graphql`
-  query householdWorkspaceQuery($recent: Boolean!) {
+  query householdWorkspaceQuery($recent: Boolean!, $balances: Boolean!) {
     householdDashboard {
       __typename
       ... on Problem {
@@ -33,7 +33,7 @@ export const householdWorkspaceQuery = graphql`
             id
             role
           }
-          balances {
+          balances @include(if: $balances) {
             __typename
             ... on GroupBalances {
               settled
@@ -99,6 +99,24 @@ export const householdMembersQuery = graphql`
           displayName
           role
           status
+        }
+      }
+    }
+  }
+`;
+
+export const householdAccessQuery = graphql`
+  query householdAccessQuery {
+    householdDashboard {
+      __typename
+      ... on Problem {
+        code
+      }
+      ... on HouseholdDashboard {
+        state
+        spaces {
+          groupId
+          isHousehold
         }
       }
     }

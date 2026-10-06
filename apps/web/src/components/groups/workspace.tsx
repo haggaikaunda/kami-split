@@ -1,8 +1,8 @@
 'use client';
 import { CategoryIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import type { journeyGroupQuery } from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
+import { useSearchParams } from 'next/navigation';
+import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
 import { tripState } from '@/lib/relay/discovery';
@@ -21,10 +21,12 @@ import {
 } from '@/components/primitives';
 import { ScopedLink } from './navigation';
 import { ActivityFeed } from '@/components/activity/feed';
+import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
+import type { activityFeed$key } from '@/lib/relay/__generated__/activityFeed.graphql';
 import { ExpenseLedger } from '@/components/expenses/ledger';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
-  journeyGroupQuery['response']['group'],
+  journeyWorkspaceQuery['response']['group'],
   { readonly __typename: 'Group' }
 >;
 export function GroupWorkspace({
@@ -32,6 +34,9 @@ export function GroupWorkspace({
   group,
   today,
   repayment = false,
+  showTabs = true,
+  initialView,
+  initialFeed,
   completed = false,
   onCommitted,
   onRefresh,
@@ -41,13 +46,15 @@ export function GroupWorkspace({
   group: WorkspaceGroup;
   today: string;
   repayment?: boolean;
+  showTabs?: boolean;
+  initialView?: { filterText: string; reference: expensesView$key };
+  initialFeed?: activityFeed$key;
   completed?: boolean;
   onRefresh: () => Promise<void>;
   onCommitted: () => Promise<void>;
   onDenied: () => void;
 }) {
-  const router = useRouter(),
-    params = useSearchParams();
+  const params = useSearchParams();
   const requested = params.get('tab');
   const current: WorkspaceSection =
     workspaceSections.find((t) => t.toLowerCase() === requested) ??
@@ -119,29 +126,14 @@ export function GroupWorkspace({
           </WorkspaceHeader>
         </>
       )}
-      <div
-        onClick={(event) => {
-          const a = (event.target as HTMLElement).closest('a');
-          if (
-            !a ||
-            !a.closest('.ui-workspace-tabs') ||
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          router.push(a.getAttribute('href')!);
-        }}
-      >
+      {showTabs && (
         <WorkspaceTabs
           current={repayment ? 'Balances' : current}
           hrefFor={hrefFor}
           label={`${group.name} workspace`}
         />
-      </div>
+      )}
+
       {repayment && !completed ? (
         <RepaymentForm
           scope={scope}
@@ -170,6 +162,8 @@ export function GroupWorkspace({
         </>
       ) : current === 'Expenses' ? (
         <ExpenseLedger
+          initialView={initialView}
+          managedRefresh={!showTabs}
           scope={scope}
           groupId={group.id}
           spaces={[
@@ -182,7 +176,7 @@ export function GroupWorkspace({
           ]}
           today={today}
           net={
-            group.balances.__typename === 'GroupBalances'
+            group.balances?.__typename === 'GroupBalances'
               ? group.balances.positions.find(
                   (p) => p.member.id === group.viewerMembership.id,
                 )?.netMinor
@@ -206,7 +200,13 @@ export function GroupWorkspace({
       ) : (
         <section>
           <h2>Activity</h2>
-          <ActivityFeed scope={scope} groupId={group.id} />
+          <ActivityFeed
+            scope={scope}
+            groupId={group.id}
+            initialFeed={initialFeed}
+            managedRefresh={!showTabs}
+            onDenied={onDenied}
+          />
         </section>
       )}
     </div>
@@ -223,7 +223,7 @@ function ViewerMetric({
 }) {
   const b = group.balances;
   const viewer =
-    b.__typename === 'GroupBalances'
+    b?.__typename === 'GroupBalances'
       ? b.positions.find((p) => p.member.id === group.viewerMembership.id)
       : undefined;
   if (!viewer)
@@ -245,7 +245,7 @@ function ViewerMetric({
           <span aria-hidden="true">
             {net > 0n ? '↗ ' : net < 0n ? '↘ ' : '✓ '}
           </span>
-          {net === 0n && b.__typename === 'GroupBalances' && !b.settled
+          {net === 0n && b?.__typename === 'GroupBalances' && !b.settled
             ? 'Your balance is zero. Other members still have open obligations.'
             : net > 0n
               ? "You're owed in this group."
@@ -276,7 +276,7 @@ function OverviewMetrics({
   return (
     <div className="ui-summary-row">
       <SummaryMetric label="Total expenses">
-        {group.balances.__typename === 'GroupBalances' ? (
+        {group.balances?.__typename === 'GroupBalances' ? (
           <Money
             value={money(group.balances.totalExpenseMinor)}
             currency={group.currency}
@@ -355,7 +355,7 @@ export function GroupBalances({
   group: WorkspaceGroup;
 }) {
   const b = group.balances;
-  if (b.__typename !== 'GroupBalances')
+  if (b?.__typename !== 'GroupBalances')
     return (
       <section>
         <h2>Complete balances</h2>
@@ -397,8 +397,8 @@ export function GroupBalances({
         Each row identifies the sender, recipient and amount within {group.name}
         . Original expenses are history, not additional debts.
       </p>
-      {!b.obligations.length && <p>No current simplified obligations.</p>}
-      {b.obligations.map((o) => {
+      {!b.obligations?.length && <p>No current simplified obligations.</p>}
+      {(b.obligations ?? []).map((o) => {
         const eligible = [o.from.id, o.to.id].every((id) =>
           group.members.some((m) => m.id === id && m.canParticipate),
         );

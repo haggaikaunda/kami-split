@@ -1,4 +1,5 @@
 'use client';
+import Link, { useLinkStatus } from 'next/link';
 import { AppIcon } from './workspace-identity';
 
 import {
@@ -593,24 +594,49 @@ export function WorkspaceTabs({
   current,
   hrefFor,
   label = 'Workspace',
+  onIntent,
+  onIntentEnd,
 }: {
   current: WorkspaceSection;
   hrefFor: (section: WorkspaceSection) => string;
   label?: string;
+  onIntent?: (section: WorkspaceSection) => void;
+  onIntentEnd?: (section?: WorkspaceSection) => void;
 }) {
   return (
     <nav className="ui-workspace-tabs" aria-label={label}>
       {workspaceSections.map((section) => (
-        <a
+        <Link
+          scroll={false}
+          onPointerEnter={(event) => {
+            if (event.pointerType !== 'touch' && current !== section)
+              onIntent?.(section);
+          }}
+          onFocus={() => {
+            if (current !== section) onIntent?.(section);
+          }}
+          onPointerLeave={() => onIntentEnd?.(section)}
+          onBlur={() => onIntentEnd?.(section)}
+          onNavigate={() => onIntentEnd?.()}
           key={section}
           href={hrefFor(section)}
           aria-current={current === section ? 'page' : undefined}
         >
           {section}
-        </a>
+          <NavigationPending />
+        </Link>
       ))}
     </nav>
   );
+}
+
+function NavigationPending() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <span className="workspace-navigation-pending" role="status">
+      Opening…
+    </span>
+  ) : null;
 }
 
 export function SummaryMetric({
@@ -688,14 +714,14 @@ export function ExpenseRow({
   currency: string;
 }) {
   return (
-    <a className="ui-expense-row" href={href}>
+    <Link className="ui-expense-row" href={href}>
       <span>
         <strong>{description}</strong>
         <span className="ui-row-detail">{metadata}</span>
         <SpaceChip>{space}</SpaceChip>
       </span>
       <Money value={value} currency={currency} />
-    </a>
+    </Link>
   );
 }
 
@@ -734,9 +760,9 @@ export function BalanceSpaceRow({
 }) {
   return (
     <div className="ui-balance-row">
-      <a href={href}>
+      <Link href={href}>
         <SpaceChip>{space}</SpaceChip>
-      </a>
+      </Link>
       <div>{children}</div>
     </div>
   );

@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExpenseLedger } from './ledger';
+import { HouseholdFrame } from '@/components/groups/household-frame';
 import { HouseholdExpenses } from './household';
 import type { FinancialScope } from '@/lib/relay/environment';
 const state = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
   default: ({
     children,
     onNavigate: _onNavigate,
@@ -99,6 +101,7 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
 });
 const page = (edges = [edge('one', '2026-09-02')], more = false) => ({
   __typename: 'ExpenseView',
+  contextVersion: 'scope-v1',
   totalExpenseMinor: '9007199254740994',
   expenseCount: '2',
   months: [
@@ -112,6 +115,7 @@ const page = (edges = [edge('one', '2026-09-02')], more = false) => ({
   pageInfo: { hasNextPage: more, endCursor: more ? 'cursor' : null },
 });
 let root: Root, host: HTMLDivElement, live: boolean;
+let preparedContext: object | undefined;
 const scope = {
   id: 'alice',
   environment: {},
@@ -125,6 +129,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () {
     this.open = false;
   };
+  preparedContext = undefined;
   state.params = '';
   state.replace.mockClear();
   state.requests = [];
@@ -154,10 +159,12 @@ async function render(groupId = '') {
 async function respond(value: unknown, index = state.requests.length - 1) {
   await act(async () =>
     state.requests[index].next?.({
+      ...preparedContext,
       householdExpenses: value,
       groupExpenses: value,
     }),
   );
+  preparedContext = undefined;
 }
 async function click(text: string) {
   const b = [...host.querySelectorAll('button')].find(
@@ -272,6 +279,10 @@ it('hides cached selected detail and source during foreground reauthorization an
   expect(host.textContent).toContain('Private detail note');
   expect(host.textContent).toContain('Source: Home');
   await act(async () => window.dispatchEvent(new Event('focus')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.textContent).not.toContain('Private detail note');
   expect(host.textContent).not.toContain('Source: Home');
   expect(host.textContent).toContain('Checking current source access');
@@ -330,6 +341,7 @@ const context = (net: string, name = 'Home') => ({
   householdDashboard: {
     __typename: 'HouseholdDashboard',
     state: 'COMPLETE',
+    contextVersion: 'scope-v1',
     totals: {
       __typename: 'HouseholdDashboardTotals',
       viewerNetMinor: net,
@@ -339,13 +351,16 @@ const context = (net: string, name = 'Home') => ({
   },
 });
 async function renderHousehold() {
-  await act(async () => root.render(<HouseholdExpenses />));
+  await act(async () =>
+    root.render(
+      <HouseholdFrame>
+        <HouseholdExpenses />
+      </HouseholdFrame>,
+    ),
+  );
 }
-async function respondContext(value: unknown) {
-  const request = state.requests.findLast(
-    (r) => JSON.stringify(r.variables) === '{}',
-  )!;
-  await act(async () => request.next?.(value));
+async function respondContext(value: object) {
+  preparedContext = value;
 }
 it('manual household refresh replaces net balance and eligible-space snapshot from its context owner', async () => {
   await renderHousehold();
@@ -373,6 +388,10 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
   await respondContext(context('-101'));
   await respond(page());
   await act(async () => window.dispatchEvent(new Event('focus')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.textContent).not.toContain('$1.01');
   const revoked = context('0');
   revoked.householdDashboard.spaces = [];

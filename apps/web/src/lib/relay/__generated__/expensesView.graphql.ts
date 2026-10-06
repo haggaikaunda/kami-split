@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5a6df18a7a9e5e048c3d3cea070717b7>>
+ * @generated SignedSource<<798b6a9a174114adee732a4a87462be4>>
  * @lightSyntaxTransform
  */
 
@@ -14,6 +14,7 @@ export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "
 import { FragmentRefs } from "relay-runtime";
 export type expensesView$data = {
   readonly __typename: "ExpenseView";
+  readonly contextVersion: string;
   readonly edges: ReadonlyArray<{
     readonly cursor: string;
     readonly node: {
@@ -71,6 +72,6 @@ const node: ReaderInlineDataFragment = {
   "name": "expensesView"
 };
 
-(node as any).hash = "265b17bcf0e2657b572ae70180045f27";
+(node as any).hash = "7935ce8994159b3bab715df02b510f58";
 
 export default node;

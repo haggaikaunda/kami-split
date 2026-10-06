@@ -5,7 +5,7 @@ Issue #170 connects `/household/expenses` and the Group/Trip **Expenses** tab
 in #169. Both render the same `ExpenseLedger`; the authenticated Household Overview/Balances/Members tabs remain at `/household`
 and the retired preview financial routes return not-found responses.
 
-Household discovery uses `householdDashboard`, requiring `COMPLETE` eligibility.
+Household initial context and first-page work run in one composed operation. The independent results require `COMPLETE` eligibility and matching nonempty server `contextVersion` values before any private content is revealed. Later pages/filters must match that owning context or fail closed. See [workspace loading](../navigation/workspace-loading.md).
 Only its spaces and retained same-group memberships appear in filter and create
 choices. Group views have fixed source scope. Household spending and space count
 come from complete server projections; the signed viewer position is informational

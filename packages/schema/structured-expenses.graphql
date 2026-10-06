@@ -32,6 +32,10 @@ One complete filtered dataset anchored to per-group append-only financial revisi
 """
 type ExpenseView {
   """
+  Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+  """
+  contextVersion: String!
+  """
   Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
   """
   totalExpenseMinor: MinorUnits!
