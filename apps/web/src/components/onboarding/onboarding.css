@@ -261,3 +261,34 @@
 .account-content h1[tabindex='-1']:focus {
   outline: none;
 }
+
+/* These signed-in surfaces use the shared semantic tokens in either scheme. */
+@media (prefers-color-scheme: dark) {
+  body:has(.account-workspace),
+  body:has(.scoped-invitations) {
+    color-scheme: dark;
+    --color-ink: #e3eee9;
+    --color-muted: #bacbc4;
+    --color-primary: #82d8bd;
+    --color-primary-hover: #a3e8d0;
+    --color-canvas: #101b17;
+    --color-subtle: #20302a;
+    --color-separator: #3d5147;
+    --color-surface: #182720;
+    --color-balance: #213d31;
+    --color-border: #819b8b;
+    --color-danger: #ffb0a0;
+    --color-error-surface: #46261f;
+    --color-focus: #9ac4ff;
+  }
+  .account-workspace .ui-button,
+  .financial-journey:has(.scoped-invitations) .ui-button {
+    background: #00664d;
+    color: #ffffff;
+  }
+  .account-workspace .ui-button--secondary,
+  .financial-journey:has(.scoped-invitations) .ui-button--secondary {
+    background: var(--color-surface);
+    color: var(--color-primary);
+  }
+}

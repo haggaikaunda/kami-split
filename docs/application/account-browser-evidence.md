@@ -22,6 +22,8 @@ Additional rendered evidence: [320px Account](evidence/account-202/account-320-1
 [768px Account](evidence/account-202/account-768-1.png),
 [120-codepoint international name at 320px/200%](evidence/account-202/account-long-name-320-2.png),
 [dark Account at 390px/200%](evidence/account-202/account-dark-390-2.png),
+[dark scoped invitations on mobile](evidence/account-202/household-invitations-dark-390-2.png) and
+[desktop](evidence/account-202/household-invitations-dark-1280-1.png),
 [failed profile read at 320px/200%](evidence/account-202/profile-error-320-2.png),
 [signed-out desktop](evidence/account-202/signed-out-1280-1.png) and
 [signed-out mobile](evidence/account-202/signed-out-390-1.png).
@@ -41,7 +43,9 @@ it. This exercises the real root FinancialSession; the harness never resets that
 provider to simulate a profile refresh. Existing session tests and independent
 requirements tests additionally cover account-switch and late-response safety.
 
-The browser also checks navigation during failed profile reads, dark mode,
+The browser asserts actual dark color-scheme tokens on Account and scoped
+invitations; these surfaces supply dark semantic tokens because the existing
+base application otherwise forces light mode. The browser also checks navigation during failed profile reads, dark mode,
 keyboard focus from display name to read-only email, retryable failed sign-out
 while the session remains active, automatic history replacement to a usable
 sign-in form, and Back/reload/direct protected Account visits after logout. The

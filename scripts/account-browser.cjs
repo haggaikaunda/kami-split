@@ -356,6 +356,15 @@ const spaces = [
           .getByRole('heading', { name: 'Invitations for Household' })
           .waitFor();
         await capture('household-invitations');
+        await page.emulateMedia({ colorScheme: 'dark' });
+        assert.equal(
+          await page.evaluate(
+            () => getComputedStyle(document.body).colorScheme,
+          ),
+          'dark',
+        );
+        await capture('household-invitations-dark');
+        await page.emulateMedia({ colorScheme: 'light' });
         for (const [id, kind] of [
           ['G', 'groups'],
           ['T', 'trips'],
@@ -409,6 +418,12 @@ const spaces = [
         await page.getByRole('button', { name: 'Retry profile' }).click();
         await page.getByLabel('Display name', { exact: true }).waitFor();
         await page.emulateMedia({ colorScheme: 'dark' });
+        assert.equal(
+          await page.evaluate(
+            () => getComputedStyle(document.body).colorScheme,
+          ),
+          'dark',
+        );
         await capture('account-dark');
         await page.getByLabel('Display name', { exact: true }).focus();
         await page.keyboard.press('Tab');
