@@ -283,6 +283,10 @@
     --color-error-surface: #46261f;
     --color-focus: #9ac4ff;
   }
+  .financial-journey:has(.scoped-invitations) .ui-workspace-header a {
+    background: var(--color-surface);
+    border-radius: var(--radius-control);
+  }
   .account-workspace .workspace-brand,
   .financial-journey:has(.scoped-invitations) .workspace-brand {
     color: var(--color-ink);
