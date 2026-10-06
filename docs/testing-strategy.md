@@ -11,7 +11,7 @@ Tests demonstrate current behavior rather than mirror implementation. The web ha
 - **API/database:** verified JWT identity, runtime-role cross-user/group denial, migrations/permissions, lifecycle races, exact-money conservation, atomic audit/results, signed cursors, concurrent recovery and dump/replay against disposable Supabase/PostgreSQL.
 - **Real-browser acceptance:** feature delivery PRs record current route and interaction evidence. The [seeded final report](accessibility/README.md) and criterion matrix describe the retired application, not the current production suite.
 
-There is no checked-in automated browser E2E runner; `pnpm test` runs Vitest. Dated test counts in historical guides are not targets.
+`pnpm test` runs Vitest. The opt-in `scripts/navigation-browser.cjs` production-browser regression harness uses synthetic Auth/GraphQL fixtures; run instructions and limitations are in the [workspace loading guide](navigation/workspace-loading.md). It complements real API/database authorization tests and is not part of the default test command. Dated test counts in historical guides are not targets.
 
 ## Required commands
 
