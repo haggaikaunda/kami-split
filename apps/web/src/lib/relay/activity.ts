@@ -39,6 +39,7 @@ export const activityFeed = graphql`
           groupId
           groupName
           isHousehold
+          groupKind
           amountMinor
           currency
           effectiveDate

@@ -52,6 +52,7 @@ const row = {
   recipient: null,
   groupId: 'g',
   groupName: 'Trip',
+  groupKind: 'TRIP',
   isHousehold: false,
   effectiveDate: '2026-09-01',
   timestamp: '2026-09-02T12:00:00Z',
@@ -288,3 +289,48 @@ it('focus refresh recovers from an unavailable response with freshly authorized 
   expect(host.textContent).toContain('Alice');
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
+
+for (const source of [
+  { id: 'g', kind: 'TRIP', isHousehold: false, href: '/trips/g' },
+  { id: 'g', kind: 'ORDINARY', isHousehold: false, href: '/groups/g' },
+  { id: 'H', kind: 'ORDINARY', isHousehold: true, href: '/household/ledger' },
+])
+  it(`opens repayment source through its authorized ${source.kind}/${source.isHousehold} navigation`, async () => {
+    await render();
+    const event = {
+      ...row,
+      groupId: source.id,
+      groupKind: source.kind,
+      isHousehold: source.isHousehold,
+      kind: 'REPAYMENT_RECORDED',
+      recordId: 'repayment',
+      payer: null,
+      sender: { id: 'sender', displayName: 'Alice' },
+      recipient: { id: 'recipient', displayName: 'Bob' },
+    };
+    const feed = { ...connection([]), edges: [{ node: event }] };
+    await respond(feed);
+    await click('Repayment recorded');
+    await act(async () =>
+      boundary.requests[1].resolve?.({ householdActivity: feed }),
+    );
+    await act(async () =>
+      boundary.requests[2].resolve?.({
+        node: {
+          __typename: 'Repayment',
+          id: 'repayment',
+          groupId: source.id,
+          amountMinor: '101',
+          currency: 'USD',
+          effectiveDate: '2026-09-01',
+        },
+      }),
+    );
+    expect(
+      host.querySelector(`a[href="${source.href}"]`)?.textContent,
+    ).toContain('Open Trip');
+    expect(
+      (boundary.requests[1].variables as { filter: { sourceGroupId: string } })
+        .filter.sourceGroupId,
+    ).toBe(source.id);
+  });

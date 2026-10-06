@@ -1,4 +1,5 @@
 'use client';
+import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { AppIcon } from '@/components/workspace-identity';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -330,11 +331,7 @@ export function HouseholdContent({
       {dashboard.state === 'UNAVAILABLE' ? (
         <p role="status">
           Shared overview is unavailable. Refresh to check current access.{' '}
-          {home && (
-            <Link href={`/groups/${encodeURIComponent(home.groupId)}`}>
-              Open Household ledger
-            </Link>
-          )}
+          {home && <Link href="/household/ledger">Open Household ledger</Link>}
         </p>
       ) : !totals ? (
         <p role="alert">
@@ -441,7 +438,7 @@ export function HouseholdContent({
                   <ScopedLink
                     scope={scope}
                     id={`household-source-${space.groupId}`}
-                    href={`/groups/${encodeURIComponent(space.groupId)}?tab=balances`}
+                    href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
                   >
                     <span>
                       <strong className="household-source-name">
@@ -513,7 +510,7 @@ export function HouseholdContent({
                         <ScopedLink
                           scope={scope}
                           id={`household-expense-${node.id}`}
-                          href={`/groups/${encodeURIComponent(source.id)}/expenses/${encodeURIComponent(node.id)}`}
+                          href={spaceExpenseHref(source, node.id)}
                         >
                           <AppIcon
                             name="expense"

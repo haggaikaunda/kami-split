@@ -1,4 +1,9 @@
 'use client';
+import {
+  spaceHref,
+  spaceExpenseHref,
+  spaceRepaymentHref,
+} from '@/lib/relay/space-routes';
 import { CategoryIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -35,6 +40,7 @@ export function GroupWorkspace({
   today,
   repayment = false,
   showTabs = true,
+  showHeader = true,
   initialView,
   initialFeed,
   completed = false,
@@ -47,6 +53,7 @@ export function GroupWorkspace({
   today: string;
   repayment?: boolean;
   showTabs?: boolean;
+  showHeader?: boolean;
   initialView?: { filterText: string; reference: expensesView$key };
   initialFeed?: activityFeed$key;
   completed?: boolean;
@@ -59,14 +66,14 @@ export function GroupWorkspace({
   const current: WorkspaceSection =
     workspaceSections.find((t) => t.toLowerCase() === requested) ??
     (params.has('after') ? 'Expenses' : 'Overview');
-  const base = `/groups/${encodeURIComponent(group.id)}`;
+  const base = spaceHref(group);
   const hrefFor = (tab: WorkspaceSection) => `${base}?tab=${tab.toLowerCase()}`;
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
   return (
     <div
       className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
     >
-      {(!repayment || completed) && (
+      {showHeader && (!repayment || completed) && (
         <>
           <WorkspaceHeader
             title={group.name}
@@ -256,7 +263,7 @@ function ViewerMetric({
             <ScopedLink
               scope={scope}
               id="view-balance"
-              href={`/groups/${encodeURIComponent(group.id)}?tab=balances`}
+              href={`${spaceHref(group)}?tab=balances`}
             >
               View balance
             </ScopedLink>
@@ -323,7 +330,7 @@ function Expenses({
               <ScopedLink
                 scope={scope}
                 id={`expense-${edge.node.id}`}
-                href={`/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(edge.node.id)}`}
+                href={spaceExpenseHref(group, edge.node.id)}
               >
                 <CategoryIcon category={edge.node.category} />
                 <span className="expense-row-copy">
@@ -428,7 +435,7 @@ export function GroupBalances({
                 <ScopedLink
                   scope={scope}
                   id={`repay-${o.from.id}-${o.to.id}`}
-                  href={`/groups/${encodeURIComponent(group.id)}/repayments/new?${query}`}
+                  href={spaceRepaymentHref(group, query)}
                 >
                   Record {o.from.displayName} → {o.to.displayName} repayment
                 </ScopedLink>

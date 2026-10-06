@@ -54,6 +54,7 @@ type ComplexityRoot struct {
 		Currency      func(childComplexity int) int
 		EffectiveDate func(childComplexity int) int
 		GroupID       func(childComplexity int) int
+		GroupKind     func(childComplexity int) int
 		GroupName     func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IsHousehold   func(childComplexity int) int
@@ -538,6 +539,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ActivityEvent.GroupID(childComplexity), true
+	case "ActivityEvent.groupKind":
+		if e.ComplexityRoot.ActivityEvent.GroupKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.GroupKind(childComplexity), true
 	case "ActivityEvent.groupName":
 		if e.ComplexityRoot.ActivityEvent.GroupName == nil {
 			break
@@ -3144,6 +3151,12 @@ type ActivityEvent {
   """
   groupName: String!
   """
+  Current authorized source kind for canonical Group or Trip navigation. This
+  metadata is read with the event page; it does not change original financial IDs.
+  Household sources remain ORDINARY and are identified separately by isHousehold.
+  """
+  groupKind: GroupKind!
+  """
   Whether the source is the designated Household ledger.
   """
   isHousehold: Boolean!
@@ -4260,6 +4273,8 @@ func (ec *executionContext) childFields_ActivityEvent(ctx context.Context, field
 		return ec.fieldContext_ActivityEvent_groupId(ctx, field)
 	case "groupName":
 		return ec.fieldContext_ActivityEvent_groupName(ctx, field)
+	case "groupKind":
+		return ec.fieldContext_ActivityEvent_groupKind(ctx, field)
 	case "isHousehold":
 		return ec.fieldContext_ActivityEvent_isHousehold(ctx, field)
 	case "amountMinor":
@@ -5642,6 +5657,29 @@ func (ec *executionContext) _ActivityEvent_groupName(ctx context.Context, field 
 }
 func (ec *executionContext) fieldContext_ActivityEvent_groupName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityEvent_groupKind(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_groupKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+			return ec.marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_groupKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type GroupKind does not have child fields"))
 }
 
 func (ec *executionContext) _ActivityEvent_isHousehold(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
@@ -14103,6 +14141,11 @@ func (ec *executionContext) _ActivityEvent(ctx context.Context, sel ast.Selectio
 			}
 		case "groupName":
 			out.Values[i] = ec._ActivityEvent_groupName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupKind":
+			out.Values[i] = ec._ActivityEvent_groupKind(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

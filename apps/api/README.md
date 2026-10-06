@@ -90,7 +90,7 @@ output. Resolver scaffolding preserves handwritten implementations on
 regeneration.
 
 Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser
-tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s
+tokens, complexity 200, 16 KiB header setting, 5s header-read/10s read/15s
 write/60s idle timeouts, and a 10s GraphQL execution context deadline that
 cancels database lock waits. Request IDs are server-generated. Logs omit request
 bodies and error/panic payloads. No playground, WebSocket transport, or broad
@@ -101,3 +101,8 @@ in [production deployment configuration](../../docs/application/production-deplo
 Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending the API.
 
 See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. Protected startup additionally requires `CURSOR_ACTIVE_KEY_ID` and `CURSOR_SIGNING_KEYS`; see [cursor configuration and operating limits](../../docs/application/persisted-expenses.md#configuration-and-limits). Public health remains unauthenticated.
+
+The finite complexity budget includes conditional selections even when omitted
+at execution. The shipped composed workspace operation exceeds the former 100
+limit; exact Relay wire/transport regressions verify all current operations fit
+200 while over-budget operations remain rejected before execution.

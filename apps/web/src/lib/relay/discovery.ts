@@ -18,25 +18,50 @@ export function financialReturn(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//'))
     return '/groups';
   const url = new URL(value, 'https://kami.invalid');
-  const creation = url.pathname === '/groups/new';
-  const repayment = /^\/groups\/[^/?#]+\/repayments\/new$/.test(url.pathname);
+  const household = [
+    '/household',
+    '/household/expenses',
+    '/household/activity',
+    '/household/ledger',
+  ].includes(url.pathname);
+  const creation = ['/groups/new', '/trips/new'].includes(url.pathname);
+  const repayment = /^\/(?:groups|trips)\/[^/?#]+\/repayments\/new$/.test(
+    url.pathname,
+  );
   if (
     url.origin !== 'https://kami.invalid' ||
     url.hash ||
     !(
+      household ||
       url.pathname === '/groups' ||
       url.pathname === '/trips' ||
       repayment ||
       creation ||
-      /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
+      /^\/(?:groups|trips)\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
     )
   )
     return '/groups';
-  const allowed = creation
-    ? ['kind']
-    : repayment
-      ? ['sender', 'recipient', 'amount']
-      : ['tab'];
+  const allowed = household
+    ? [
+        'tab',
+        'expense',
+        'repayment',
+        'sender',
+        'recipient',
+        'amount',
+        'category',
+        'memberId',
+        'from',
+        'to',
+        'after',
+        'groupId',
+        'kind',
+      ]
+    : creation
+      ? ['kind']
+      : repayment
+        ? ['sender', 'recipient', 'amount']
+        : ['tab'];
   if ([...url.searchParams.keys()].some((k) => !allowed.includes(k)))
     return '/groups';
   return url.pathname + url.search;

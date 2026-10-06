@@ -23,11 +23,12 @@ type ActivityRequest struct {
 // ActivityEvent is immutable financial provenance with fresh authorized labels.
 // RecordID refers to the existing expense or repayment; event and effective times
 // have separate meanings. No unsupported mutation is inferred from current state.
+// GroupKind is current authorized source metadata, not an immutable event kind.
 type ActivityEvent struct {
-	ID, RecordID, Kind, GroupID, GroupName, Currency, EffectiveDate, Timestamp string
-	IsHousehold                                                                bool
-	AmountMinor                                                                int64
-	Creator, Payer, Sender, Recipient                                          *ActivityIdentity
+	ID, RecordID, Kind, GroupID, GroupName, GroupKind, Currency, EffectiveDate, Timestamp string
+	IsHousehold                                                                           bool
+	AmountMinor                                                                           int64
+	Creator, Payer, Sender, Recipient                                                     *ActivityIdentity
 }
 
 // ActivityIdentity is a historical membership's current minimal authorized label.
@@ -244,6 +245,7 @@ const activityProjectionSQL = `WITH anchors AS (
  ORDER BY created_at DESC,kind DESC,id DESC LIMIT $7
 )
 SELECT coalesce(jsonb_agg(jsonb_build_object('RecordID',p.id,'Kind',p.kind,'GroupID',p.group_id,'GroupName',g.name,
+ 'GroupKind',CASE WHEN EXISTS(SELECT FROM app.group_trip t WHERE t.group_id=g.id) THEN 'TRIP' ELSE 'ORDINARY' END,
  'IsHousehold',app.is_household_group(g.id),'AmountMinor',p.amount_minor,'Currency',p.currency,
  'EffectiveDate',to_char(p.effective_date,'YYYY-MM-DD'),'Timestamp',to_char(p.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
  'Creator',(SELECT jsonb_build_object('ID',m.id,'DisplayName',m.display_name) FROM app.group_members(p.group_id) m WHERE m.id=p.creator_id),

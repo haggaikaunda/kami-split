@@ -188,6 +188,7 @@ const activity = {
         kind: 'EXPENSE_CREATED',
         groupId: 'T',
         groupName: 'Maui',
+        groupKind: 'TRIP',
         isHousehold: false,
         amountMinor: '300',
         currency: 'USD',
@@ -358,10 +359,55 @@ const activity = {
         item.canceled = true;
       });
     });
+    if (workspace === 'group') {
+      await page.goto(origin + '/groups');
+      await page.getByText('Signed in as Alex').waitFor();
+      const cards = page.locator('.discovery-cards a');
+      assert.equal(
+        await cards.count(),
+        1,
+        'Groups must contain ordinary groups only',
+      );
+      assert.equal(await cards.first().getAttribute('href'), '/groups/F');
+      await page.goto(origin + '/trips');
+      await page.locator('a[href="/trips/T"]').waitFor();
+      assert.equal(await page.locator('a[href="/groups/H"]').count(), 0);
+      await page.goto(origin + '/groups/H?tab=members');
+      await page.waitForURL('**/household/ledger?tab=members');
+      await page.getByText('Owner · Active').waitFor();
+      assert.equal(
+        await page.locator('main').count(),
+        1,
+        'Household has one frame',
+      );
+      assert.equal(await page.locator('.ui-workspace-tabs').count(), 1);
+      assert.equal(
+        await page
+          .locator('.workspace-navigation a[aria-current="page"]')
+          .getAttribute('href'),
+        '/household',
+      );
+      await page.goto(origin + '/groups/T?tab=balances');
+      await page.waitForURL('**/trips/T?tab=balances');
+      await page.getByText('Current simplified obligations').waitFor();
+      assert.equal(
+        await page
+          .locator('.workspace-navigation a[aria-current="page"]')
+          .getAttribute('href'),
+        '/trips',
+      );
+      results.push({
+        dedicatedDiscovery: true,
+        householdLegacyReplacement: true,
+        tripLegacyReplacement: true,
+        singleHouseholdFrame: true,
+      });
+      log = [];
+      documents = 0;
+    }
     let start = Date.now();
     await page.goto(
-      origin +
-        (workspace === 'group' ? '/groups/T?tab=overview' : '/household'),
+      origin + (workspace === 'group' ? '/trips/T?tab=overview' : '/household'),
     );
     await page.locator('.ui-workspace-tabs').waitFor();
     if (scale === 2)

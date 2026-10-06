@@ -26,8 +26,12 @@ Expenses, samples scope with events, and retries changed discovery in a fresh
 transaction at most three times within five seconds. Leave/rejoin invalidates
 old Household continuations even when source IDs and financial revisions return.
 
-The authenticated web entry points are `/groups/<Group ID>/activity` (with a legacy query-route redirect) and
-`/household/activity`. The Group route redirects into the integrated `/groups/:groupId?tab=activity` workspace under #171. Both use shared workspace primitives and the financial
+The authenticated web entry points are the canonical ordinary/Trip/Household-ledger
+workspace `?tab=activity` routes and aggregated `/household/activity`. Legacy group
+activity routes replace to canonical `/trips/:groupId` or `/household/ledger` after
+authorized metadata resolution. Current `groupKind` is sampled with event metadata
+for direct canonical source links; original financial IDs and history remain unchanged.
+Both use shared workspace primitives and the financial
 session scope. Each event labels its source and separates effective date from
 recorded event time. The initial UI filter is event type; the API also supports an
 exact eligible source filter. Next-page navigation replaces the visible page after

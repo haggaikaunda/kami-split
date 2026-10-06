@@ -83,7 +83,7 @@ identity, deadline and diagnostic boundaries also apply to these operations.
 Overview shows complete Total expenses and one signed viewer balance, with no
 settlement controls. Balances shows complete member positions and simplified
 obligations. A specific eligible sender/recipient row opens
-`/groups/:groupId/repayments/new` with its suggested cents. The form preserves the
+`/groups/:groupId/repayments/new` (ordinary), `/trips/:groupId/repayments/new` (Trip), or `/household/ledger?tab=balances&repayment=1` (original Household) with its suggested cents. The form preserves the
 original group/participants and freezes its operation key/input before sending;
 unknown outcomes can recover or retry only that original intent. Navigation and
 reload retain tab storage, while logout/account replacement clears it. Current

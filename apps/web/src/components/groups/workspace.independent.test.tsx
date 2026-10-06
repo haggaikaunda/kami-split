@@ -115,6 +115,15 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
     expect(summaries.querySelectorAll('a')).toHaveLength(1);
     expect(summaries.querySelector('a')!.textContent).toBe('View balance');
     expect(host.querySelector('#recent-expenses-title')).not.toBeNull();
+    expect(
+      [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+        a.getAttribute('href'),
+      ),
+    ).toEqual(
+      ['overview', 'expenses', 'balances', 'activity', 'members'].map(
+        (tab) => `${trip ? '/trips' : '/groups'}/G?tab=${tab}`,
+      ),
+    );
   }
 });
 it('exposes every one-to-many obligation with exact group, sender, recipient and cents, only in balance details', async () => {

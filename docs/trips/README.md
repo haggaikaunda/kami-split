@@ -11,7 +11,7 @@ The implementation below is the household-scoped seeded preview. [ADR-003](../ap
 Issue #105 connects `/trips` to the real authorized Viewer groups list. All,
 Upcoming and Past use server UTC dates; in-progress trips appear only in All.
 Cards show metadata and abstract covers without expense totals/counts. They link
-to canonical `/groups/:groupId` detail and group-scoped expense URLs, reusing
+to canonical `/trips/:groupId` detail and Trip-scoped expense URLs, reusing
 complete balances and expenses regardless of travel dates. See the
 [authenticated journey](../application/relay-expenses.md) for scope, authorization,
 recovery and source-return behavior. Creation forms remain a separate slice.

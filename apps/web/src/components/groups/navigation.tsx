@@ -1,7 +1,7 @@
 'use client';
 import { createSessionId } from '@/lib/session-id';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import type { FinancialScope } from '@/lib/relay/environment';
 export type SourceVisit = {
@@ -30,7 +30,7 @@ export function ScopedLink({
         event.preventDefault();
         const token = createSessionId();
         const url = new URL(window.location.href);
-        const match = url.pathname.match(/^\/groups\/([^/]+)$/);
+        const match = url.pathname.match(/^\/(?:groups|trips)\/([^/]+)$/);
         scope.visits.set(token, {
           href: url.pathname + url.search,
           focus: id,
@@ -49,8 +49,15 @@ export function ScopedLink({
     </Link>
   );
 }
-export function SourceReturn({ scope }: { scope: FinancialScope }) {
+export function SourceReturn({
+  scope,
+  household = false,
+}: {
+  scope: FinancialScope;
+  household?: boolean;
+}) {
   const params = useSearchParams();
+  const trip = usePathname().startsWith('/trips/');
   const token = params.get('source');
   const visit = token ? scope.visits.get(token) : undefined;
   return (
@@ -58,14 +65,24 @@ export function SourceReturn({ scope }: { scope: FinancialScope }) {
       href={
         visit
           ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${token}`
-          : '/groups'
+          : household
+            ? '/household'
+            : trip
+              ? '/trips'
+              : '/groups'
       }
       scroll={false}
       onNavigate={() => {
         if (token) scope.restored.delete(token);
       }}
     >
-      {visit ? 'Back to source' : 'Back to Groups'}
+      {visit
+        ? 'Back to source'
+        : household
+          ? 'Back to Household'
+          : trip
+            ? 'Back to Trips'
+            : 'Back to Groups'}
     </Link>
   );
 }
