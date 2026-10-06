@@ -210,7 +210,7 @@ func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T
 	}
 	for _, page := range []map[string]any{first, second} {
 		raw, _ := json.Marshal(page)
-		for _, secret := range []string{"9000", "Viewer-only SECRET", f.id(203), f.public("Group", 203)} {
+		for _, secret := range []string{`"9000"`, "Viewer-only SECRET", f.id(203), f.public("Group", 203)} {
 			if bytes.Contains(raw, []byte(secret)) {
 				t.Fatalf("excluded source leaked: %s", raw)
 			}

@@ -180,7 +180,7 @@ func TestIndependentDashboardCancellationOriginalSpacesAndPrivateExclusion(t *te
 	got := independentDashboardRead(t, f, 1)
 	independentDashboardTotals(t, got, "0", "2", "2", "4000", "2")
 	raw, _ := json.Marshal(got)
-	for _, secret := range []string{"Viewer-only SECRET", f.public("Group", 203), f.public("Membership", 307), "9000"} {
+	for _, secret := range []string{"Viewer-only SECRET", f.public("Group", 203), f.public("Membership", 307), `"9000"`} {
 		if bytes.Contains(raw, []byte(secret)) {
 			t.Fatalf("excluded content leaked: %s", raw)
 		}

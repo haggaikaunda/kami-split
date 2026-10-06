@@ -3,14 +3,17 @@ package expense
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/google/uuid"
+	"time"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// ActivityRequest selects a server-authorized group or the designated Household
+// ActivityRequest selects a server-authorized group or the membership-authorized Household
 // dashboard. Empty GroupID means Household; SourceID is never a discovery input.
 type ActivityRequest struct {
 	GroupID, SourceID, Kind, After string
@@ -39,8 +42,26 @@ type ActivityPage struct {
 
 // ReadActivity rechecks access before interpreting cursors, locks the authorized
 // sources, anchors each financial revision and reads events independently of
-// expense/repayment pagination. Access-set changes invalidate continuations.
+// expense/repayment pagination. Membership/account generations invalidate
+// continuations. Three fresh attempts within five seconds bound discovery races.
 func (s *Service) ReadActivity(ctx context.Context, in ActivityRequest, codec *ledger.CursorCodec) (ActivityPage, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	for attempt := 0; attempt < 3; attempt++ {
+		result, err := s.readActivity(ctx, in, codec)
+		if err == nil {
+			return result, nil
+		}
+		var driver *pgconn.PgError
+		if errors.Is(err, errDashboardRestart) || (errors.As(err, &driver) && driver.Code == "40001") {
+			continue
+		}
+		return ActivityPage{}, err
+	}
+	return ActivityPage{}, Failure("UNAVAILABLE")
+}
+
+func (s *Service) readActivity(ctx context.Context, in ActivityRequest, codec *ledger.CursorCodec) (ActivityPage, error) {
 	var group, source string
 	var err error
 	if in.GroupID != "" {
@@ -84,6 +105,33 @@ func (s *Service) ReadActivity(ctx context.Context, in ActivityRequest, codec *l
 				return Failure("UNAVAILABLE")
 			}
 			ids = projection.Groups
+			// Pair versions have no authority. Bind Household continuations to the
+			// same membership/account generation as Expenses and recheck the
+			// scope sampled with the events before returning any private rows.
+			var eligibility struct {
+				State, Anchor string
+				Groups        []string
+			}
+			if e := tx.QueryRow(ctx, `SELECT app.household_expense_scope()`).Scan(&raw); e != nil {
+				return e
+			}
+			if e := json.Unmarshal(raw, &eligibility); e != nil {
+				return e
+			}
+			if eligibility.State != "COMPLETE" || eligibility.Anchor == "" {
+				return Failure("UNAVAILABLE")
+			}
+			held := make(map[string]bool, len(ids))
+			for _, id := range ids {
+				held[id] = true
+			}
+			for _, id := range eligibility.Groups {
+				if !held[id] {
+					return errDashboardRestart
+				}
+			}
+			ids = eligibility.Groups
+			scope += ":" + eligibility.Anchor
 		}
 		if in.First < 1 || in.First > 100 || codec == nil {
 			return Failure("INVALID_INPUT")
@@ -124,8 +172,25 @@ func (s *Service) ReadActivity(ctx context.Context, in ActivityRequest, codec *l
 		if e != nil {
 			return e
 		}
-		if e = tx.QueryRow(ctx, activityProjectionSQL, anchorJSON, in.Kind, nullable(source), nullable(cursor.Timestamp), nullable(cursor.RecordKind), nullable(cursor.RecordID), in.First+1).Scan(&raw); e != nil {
+		query := activityProjectionSQL
+		if group == "" {
+			query = `SELECT jsonb_build_object('scope',app.household_expense_scope(),'events',(` + query + `))`
+		}
+		if e = tx.QueryRow(ctx, query, anchorJSON, in.Kind, nullable(source), nullable(cursor.Timestamp), nullable(cursor.RecordKind), nullable(cursor.RecordID), in.First+1).Scan(&raw); e != nil {
 			return e
+		}
+		if group == "" {
+			var sampled struct {
+				Scope  struct{ State, Anchor string }
+				Events json.RawMessage
+			}
+			if e = json.Unmarshal(raw, &sampled); e != nil {
+				return e
+			}
+			if sampled.Scope.State != "COMPLETE" || "household:"+sampled.Scope.Anchor != scope {
+				return errDashboardRestart
+			}
+			raw = sampled.Events
 		}
 		if e = json.Unmarshal(raw, &result.Events); e != nil {
 			return e

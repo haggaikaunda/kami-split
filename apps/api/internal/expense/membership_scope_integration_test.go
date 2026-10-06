@@ -5,21 +5,21 @@ package expense_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"testing"
+	"time"
 
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/invitation"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
-	"testing"
-	"time"
 )
 
 // Exercise the Group and Viewer composition used by the direct ledger route,
 // including the distinct data selections for all five workspace tabs.
-const membershipWorkspaceQuery = `query($id:ID!,$overview:Boolean!,$ledger:Boolean!,$balances:Boolean!,$activity:Boolean!){viewer{__typename ... on Viewer{today canCreateGroups groups{id isHousehold}}} group(id:$id){__typename ... on Group{id isHousehold viewerMembership{id role} members{id status role} expenses(first:5) @include(if:$overview){edges{node{id totalMinor}}} balances @include(if:$balances){__typename ... on GroupBalances{totalExpenseMinor settled positions{member{id} netMinor}}} repayments(first:5) @include(if:$balances){edges{node{id amountMinor}}}} groupExpenses(groupId:$id,first:20) @include(if:$ledger){__typename ... on ExpenseView{totalExpenseMinor expenseCount edges{node{id groupId}}}} groupActivity(groupId:$id,first:20) @include(if:$activity){__typename ... on ActivityConnection{edges{node{groupId amountMinor}}}}}`
+const membershipWorkspaceQuery = `query($id:ID!,$overview:Boolean!,$ledger:Boolean!,$balances:Boolean!,$activity:Boolean!){viewer{__typename ... on Viewer{today canCreateGroups groups{id isHousehold}}} group(id:$id){__typename ... on Group{id isHousehold viewerMembership{id role} members{id status role} expenses(first:5) @include(if:$overview){edges{node{id totalMinor}}} balances @include(if:$balances){__typename ... on GroupBalances{totalExpenseMinor settled positions{member{id} netMinor}}} repayments(first:5) @include(if:$balances){edges{node{id amountMinor}}}}} groupExpenses(groupId:$id,first:20) @include(if:$ledger){__typename ... on ExpenseView{totalExpenseMinor expenseCount edges{node{id groupId}}}} groupActivity(groupId:$id,first:20) @include(if:$activity){__typename ... on ActivityConnection{edges{node{groupId amountMinor}}}}}`
 
 func membershipWorkspaceTabs(t *testing.T, f *expenseFixture, actor int, membership, role string) {
 	t.Helper()
@@ -171,7 +171,7 @@ func TestMembershipScopeAccountLossCannotShrinkCommonMembersAndBroadenSources(t 
 				sql = fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false,live_auth_id=NULL WHERE id='%s'; COMMIT`, f.id(102))
 			}
 			if loss == "auth-delete" {
-				sql = fmt.Sprintf(`DELETE FROM auth.users WHERE id='%s'`, f.id(2))
+				sql = fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'; RESET ROLE; DELETE FROM auth.users WHERE id='%s'; COMMIT`, f.id(102), f.id(2))
 			}
 			independentDashboardExec(t, f, sql)
 			if current := matchingContext(t, f); current == before {
@@ -342,6 +342,13 @@ func TestMembershipScopeAdmissionDuringDiscoveryUsesCurrentCommonSources(t *test
 	if _, err = tx.Exec(f.ctx, `UPDATE app.memberships SET active=true WHERE id=$1`, f.id(303)); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = tx.Exec(f.ctx, "RESET ROLE"); err != nil {
+		t.Fatal(err)
+	}
+	var writerPID int
+	if err = tx.QueryRow(f.ctx, `SELECT pg_backend_pid()`).Scan(&writerPID); err != nil {
+		t.Fatal(err)
+	}
 	type response struct {
 		status int
 		raw    []byte
@@ -358,7 +365,7 @@ func TestMembershipScopeAdmissionDuringDiscoveryUsesCurrentCommonSources(t *test
 			t.Fatal(err)
 		}
 		var count int
-		if err = tx.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%household_dashboard_lock%'`).Scan(&count); err != nil {
+		if err = tx.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND $1=ANY(pg_blocking_pids(pid))`, writerPID).Scan(&count); err != nil {
 			t.Fatal(err)
 		}
 		if count > 0 {

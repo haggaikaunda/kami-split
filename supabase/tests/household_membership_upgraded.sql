@@ -7,6 +7,9 @@ DO $$ BEGIN
  SELECT 'allocations',jsonb_agg(to_jsonb(t) ORDER BY expense_id,participant_id) FROM app.allocations t UNION ALL
  SELECT 'audit',jsonb_agg(to_jsonb(t) ORDER BY expense_id) FROM app.expense_audit t UNION ALL
  SELECT 'operations',jsonb_agg(to_jsonb(t) ORDER BY key) FROM app.expense_operations t UNION ALL
+ SELECT 'repayments',jsonb_agg(to_jsonb(t) ORDER BY id) FROM app.repayments t UNION ALL
+ SELECT 'repayment_audit',jsonb_agg(to_jsonb(t) ORDER BY repayment_id) FROM app.repayment_audit t UNION ALL
+ SELECT 'financial_records',jsonb_agg(to_jsonb(t) ORDER BY group_id,revision) FROM app.financial_records t UNION ALL
  SELECT 'invitations',jsonb_agg(to_jsonb(t) ORDER BY id) FROM app.invitations t UNION ALL
  SELECT 'admission',jsonb_agg(to_jsonb(t) ORDER BY id) FROM app.invitation_actions t UNION ALL
  SELECT 'designation',jsonb_agg(to_jsonb(t)) FROM app.household_designation_guard t UNION ALL
