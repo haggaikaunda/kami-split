@@ -31,7 +31,7 @@ func matchingContext(t *testing.T, f *expenseFixture) string {
 }
 
 func TestContextVersionBindsCurrentMetadataWithEmptyLedger(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	t.Cleanup(func() {
 		independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; DELETE FROM app.group_trip WHERE group_id='%s'; COMMIT`, f.id(202)))
 	})
@@ -46,7 +46,6 @@ func TestContextVersionBindsCurrentMetadataWithEmptyLedger(t *testing.T) {
 		{"membership", fmt.Sprintf(`UPDATE app.memberships SET active=false WHERE id='%s'`, f.id(304))},
 		{"label", fmt.Sprintf(`UPDATE app.groups SET name='Updated space' WHERE id='%s'`, f.id(202))},
 		{"trip", fmt.Sprintf(`INSERT INTO app.group_trip(group_id,destination,start_date,end_date) VALUES('%s','Coast','2026-10-01','2026-10-02')`, f.id(202))},
-		{"designation generation", `UPDATE app.household_designation_guard SET version=version+1 WHERE singleton`},
 	}
 	for _, change := range changes {
 		t.Run(change.name, func(t *testing.T) {
@@ -64,7 +63,7 @@ func TestContextVersionBindsCurrentMetadataWithEmptyLedger(t *testing.T) {
 }
 
 func TestContextVersionIncludesSourcesOutsideFilteredPage(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	emptyVersion := matchingContext(t, f)
 	independentViewExpense(t, f, 201, 301, 302, 100, "2026-10-01", "HOME")
 	independentViewExpense(t, f, 202, 305, 306, 200, "2026-09-01", "HOME")
@@ -85,16 +84,14 @@ func TestContextVersionIncludesSourcesOutsideFilteredPage(t *testing.T) {
 	}
 }
 
-func TestContextVersionUnavailableAndDenied(t *testing.T) {
-	f := independentDashboardFixture(t, 0, 0)
-	got := contextDashboard(t, f, 1)
-	if got["state"] != "UNAVAILABLE" || got["contextVersion"] != nil {
-		t.Fatal("unavailable dashboard exposed context version", got)
+func TestContextVersionMembershipScopeAndDenied(t *testing.T) {
+	f := independentDashboardFixture(t)
+	previous := matchingContext(t, f)
+	independentDashboardExec(t, f, `BEGIN; SET LOCAL ROLE kami_migrator; UPDATE app.household_designation_guard SET version=version+1 WHERE singleton; COMMIT`)
+	if current := matchingContext(t, f); current != previous {
+		t.Fatal("legacy pair generation changed membership scope")
 	}
-	independentDashboardDesignate(t, f, 1, 2)
-	matchingContext(t, f)
-	query := strings.Replace(independentDashboardQuery, "... on HouseholdDashboard{state", "... on HouseholdDashboard{contextVersion state", 1)
-	denied := groupRequest(t, f, 3, query, nil, "householdDashboard", "Problem")
+	denied := groupRequest(t, f, 3, independentDashboardQuery, nil, "householdDashboard", "Problem")
 	if denied["code"] != "NOT_FOUND" || denied["contextVersion"] != nil {
 		t.Fatal("denied dashboard exposed context version", denied)
 	}

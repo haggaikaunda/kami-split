@@ -173,7 +173,7 @@ redirect. Its navigation destination is distinct from Overview.
 
 Account changes, foreground revalidation, refresh and route changes remove prior
 private data before network-only reads. Failed/incomplete reads never fabricate
-zeros. Unavailable designation exposes only the server-authorized ledger fallback
+zeros. Membership-based Household discovery uses the [ADR-010 common-member scope](decisions/010-household-membership-sharing.md). Legacy unavailable service states expose only the server-authorized ledger fallback
 without a partner identity or suspension reason. Source return and browser Back
 restore focus/scroll after fresh authorization; a missing row uses the heading.
 

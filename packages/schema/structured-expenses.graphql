@@ -52,7 +52,7 @@ type ExpenseView {
   """
   edges: [ExpenseViewEdge!]!
   """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
   """
   pageInfo: PageInfo!
 }

@@ -411,6 +411,7 @@ function GroupDetails({
   const [group, setGroup] = useState<Group>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
+  const [failureHeading, setFailureHeading] = useState('Group unavailable');
   const [saved, setSaved] = useState('');
   const generation = useRef(0),
     live = useRef(true);
@@ -441,6 +442,18 @@ function GroupDetails({
         next: (result) => {
           if (!live.current || !scope.isLive() || generation.current !== ticket)
             return;
+          const ledger = result.groupExpenses
+            ? readInlineData<expensesView$key>(
+                expenseView,
+                result.groupExpenses,
+              )
+            : undefined;
+          const activity = result.groupActivity
+            ? readInlineData<activityFeed$key>(
+                activityFeed,
+                result.groupActivity,
+              )
+            : undefined;
           if (
             result.group?.__typename === 'Group' &&
             result.group.id === id &&
@@ -448,19 +461,11 @@ function GroupDetails({
             (tab !== 'expenses' ||
               !!expense ||
               repayment ||
-              (result.groupExpenses &&
-                readInlineData<expensesView$key>(
-                  expenseView,
-                  result.groupExpenses,
-                ).__typename === 'ExpenseView')) &&
+              ledger?.__typename === 'ExpenseView') &&
             (tab !== 'activity' ||
               !!expense ||
               repayment ||
-              (result.groupActivity &&
-                readInlineData<activityFeed$key>(
-                  activityFeed,
-                  result.groupActivity,
-                ).__typename === 'ActivityConnection'))
+              activity?.__typename === 'ActivityConnection')
           ) {
             setLoadedFilters(initialFilters);
             setDestination(result);
@@ -470,25 +475,45 @@ function GroupDetails({
             if (
               params.has('restore') &&
               !scope.restored.has(params.get('restore')!) &&
-              result.group.__typename === 'Problem' &&
+              result.group?.__typename === 'Problem' &&
               result.group.code === 'NOT_FOUND'
             )
               router.replace(
                 `/groups?restore=${encodeURIComponent(params.get('restore')!)}`,
               );
-            setError(
-              message(
-                result.group && 'code' in result.group
-                  ? result.group.code
-                  : 'UNAVAILABLE',
-              ),
-            );
+            // Attribute composed failures to their owning read. Never reveal the
+            // otherwise successful group's private fields while access is uncertain.
+            let code = 'UNAVAILABLE';
+            let heading = 'Group unavailable';
+            if (result.group?.__typename === 'Problem') {
+              code = result.group.code;
+            } else if (
+              result.group?.__typename === 'Group' &&
+              result.group.id === id
+            ) {
+              if (result.viewer?.__typename !== 'Viewer') {
+                heading = 'Account access unavailable';
+                if (result.viewer && 'code' in result.viewer)
+                  code = result.viewer.code;
+                else if (result.viewer && 'state' in result.viewer)
+                  code = result.viewer.state;
+              } else if (tab === 'expenses') {
+                heading = 'Expenses unavailable';
+                if (ledger && 'code' in ledger) code = ledger.code;
+              } else if (tab === 'activity') {
+                heading = 'Activity unavailable';
+                if (activity && 'code' in activity) code = activity.code;
+              }
+            }
+            setFailureHeading(heading);
+            setError(message(code));
           }
           setBusy(false);
           resolve();
         },
         error: (failure: Error) => {
           if (live.current && scope.isLive() && generation.current === ticket) {
+            setFailureHeading('Workspace unavailable');
             setError(message(failure.message));
             setBusy(false);
           }
@@ -537,7 +562,7 @@ function GroupDetails({
     <>
       {!group && (
         <h1 ref={heading} tabIndex={-1} data-page-heading>
-          {busy ? 'Group access' : 'Group unavailable'}
+          {busy ? 'Group access' : failureHeading}
         </h1>
       )}
       {saved && (

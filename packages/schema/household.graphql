@@ -15,7 +15,7 @@ enum HouseholdDashboardState {
   """
   INCOMPLETE
   """
-  Only the authorized Household ledger is available; sharing is not finalized.
+  Legacy service fallback; membership does not require a separate sharing designation.
   """
   UNAVAILABLE
 }
@@ -120,7 +120,7 @@ type HouseholdDashboardTotals {
 }
 extend type Query {
   """
-  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  Server-authorized membership overview from one coherent statement snapshot; no search or financial netting.
   """
   householdDashboard: HouseholdDashboardResult!
 }

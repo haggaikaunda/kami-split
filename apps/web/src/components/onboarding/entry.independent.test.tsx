@@ -135,6 +135,13 @@ it('retains original operation context across storage reloads', () => {
 });
 it('deduplicates clicks and preserves interrupted acceptance through uncertain recovery', async () => {
   await render('join');
+  expect(container.textContent).toContain(
+    'share the group’s ledger and full expense history',
+  );
+  expect(container.textContent).toContain('all active Household members');
+  expect(container.textContent).toContain(
+    'No additional sharing confirmation is needed',
+  );
   let reject!: (error: Error) => void;
   respond = async () =>
     new Promise((_resolve, fail) => {

@@ -2413,7 +2413,7 @@ type Query {
   ): OperationResult!
 
   """
-  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  One complete merged expense view across exactly the current Household membership's common eligible spaces. Unavailable discovery returns a safe Problem, never an empty success.
   """
   householdExpenses(
     """
@@ -3390,7 +3390,7 @@ enum HouseholdDashboardState {
   """
   INCOMPLETE
   """
-  Only the authorized Household ledger is available; sharing is not finalized.
+  Legacy service fallback; membership does not require a separate sharing designation.
   """
   UNAVAILABLE
 }
@@ -3495,7 +3495,7 @@ type HouseholdDashboardTotals {
 }
 extend type Query {
   """
-  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  Server-authorized membership overview from one coherent statement snapshot; no search or financial netting.
   """
   householdDashboard: HouseholdDashboardResult!
 }
@@ -4192,7 +4192,7 @@ type ExpenseView {
   """
   edges: [ExpenseViewEdge!]!
   """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
   """
   pageInfo: PageInfo!
 }

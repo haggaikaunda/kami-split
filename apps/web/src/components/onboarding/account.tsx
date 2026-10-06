@@ -63,6 +63,12 @@ export function AccountPanel({ state: c }: { state: OnboardingController }) {
             <>
               <h2>Group invitations</h2>
               <p>
+                Joining shares the group’s ledger and full expense history.
+                Household membership also enables the overview of eligible
+                groups and trips shared by all active Household members, without
+                an additional sharing confirmation.
+              </p>
+              <p>
                 Shared links admit verified first-time members who explicitly
                 join. Forwarded links work too. Former members need a new
                 targeted invitation. No application email is sent for shared

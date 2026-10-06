@@ -59,6 +59,7 @@ mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/sh
 mv "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql" "$stage/onboarding-continuation.sql"
 mv "$stage/supabase/migrations/20261009000000_household_dashboard.sql" "$stage/household-dashboard.sql"
 mv "$stage/supabase/migrations/20261010000000_expense_view.sql" "$stage/expense-view.sql"
+mv "$stage/supabase/migrations/20261011000000_household_membership.sql" "$stage/household-membership.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -81,6 +82,11 @@ mv "$stage/onboarding-continuation.sql" "$stage/supabase/migrations/202610080000
 mv "$stage/household-dashboard.sql" "$stage/supabase/migrations/20261009000000_household_dashboard.sql"
 mv "$stage/expense-view.sql" "$stage/supabase/migrations/20261010000000_expense_view.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+# Exercise old deployed identities/admission/history before membership policy.
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_membership_upgrade.sql
+mv "$stage/household-membership.sql" "$stage/supabase/migrations/20261011000000_household_membership.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_membership_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
