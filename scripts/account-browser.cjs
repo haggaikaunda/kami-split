@@ -424,6 +424,55 @@ const spaces = [
           ),
           'dark',
         );
+        const darkContrast = await page.evaluate(() => {
+          const luminance = (color) => {
+            const rgb = color
+              .match(/[0-9.]+/g)
+              .slice(0, 3)
+              .map(Number)
+              .map((v) => {
+                v /= 255;
+                return v <= 0.04045
+                  ? v / 12.92
+                  : Math.pow((v + 0.055) / 1.055, 2.4);
+              });
+            return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+          };
+          const ratio = (a, b) => {
+            const x = luminance(a),
+              y = luminance(b);
+            return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+          };
+          const background = getComputedStyle(
+            document.querySelector('.profile-card'),
+          ).backgroundColor;
+          return {
+            body: getComputedStyle(document.body).backgroundColor,
+            brand: ratio(
+              getComputedStyle(document.querySelector('.workspace-brand'))
+                .color,
+              background,
+            ),
+            heading: ratio(
+              getComputedStyle(document.querySelector('#profile-heading'))
+                .color,
+              background,
+            ),
+            label: ratio(
+              getComputedStyle(
+                document.querySelector('label[for="display-name"]'),
+              ).color,
+              background,
+            ),
+          };
+        });
+        assert.equal(darkContrast.body, 'rgb(16, 27, 23)');
+        assert(
+          darkContrast.heading >= 4.5 &&
+            darkContrast.label >= 4.5 &&
+            darkContrast.brand >= 4.5,
+          'Dark inherited profile text must remain readable',
+        );
         await capture('account-dark');
         await page.getByLabel('Display name', { exact: true }).focus();
         await page.keyboard.press('Tab');

@@ -267,6 +267,8 @@
   body:has(.account-workspace),
   body:has(.scoped-invitations) {
     color-scheme: dark;
+    color: var(--color-ink);
+    background-color: var(--color-canvas);
     --color-ink: #e3eee9;
     --color-muted: #bacbc4;
     --color-primary: #82d8bd;
@@ -280,6 +282,10 @@
     --color-danger: #ffb0a0;
     --color-error-surface: #46261f;
     --color-focus: #9ac4ff;
+  }
+  .account-workspace .workspace-brand,
+  .financial-journey:has(.scoped-invitations) .workspace-brand {
+    color: var(--color-ink);
   }
   .account-workspace .ui-button,
   .financial-journey:has(.scoped-invitations) .ui-button {
