@@ -67,6 +67,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 - `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and thin handwritten transport mapping.
+- `internal/profile`: verified self-only profile read and atomic display-name comparison/update, independent of group discovery; see [the profile contract](../../docs/application/profile.md).
 - `internal/group`: verified identity-scoped group creation and durable recovery; see [the group contract](../../packages/schema/README.md#group-creation-and-discovery).
 - `internal/expense`: authorized reads, transactional writes and same-attempt recovery.
 - `internal/ledger`: pure exact-money, canonical-input, split, balance and cursor rules.

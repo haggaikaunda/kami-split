@@ -107,7 +107,15 @@ it('refresh cancels an in-flight Members request and rejects its delayed private
   await act(async () =>
     root.render(<HouseholdRead scope={scope} current="Members" />),
   );
-  await act(async () => requests[0].next({ householdDashboard: dashboard }));
+  await act(async () =>
+    requests[0].next({
+      viewer: {
+        __typename: 'Viewer',
+        id: 'user-a',
+        groups: [{ id: 'H', isHousehold: true }],
+      },
+    }),
+  );
   expect(requests[1].name).toBe('householdMembersQuery');
   await act(async () => host.querySelector('button')!.click());
   expect(requests[0].canceled).toBe(true);
@@ -115,7 +123,7 @@ it('refresh cancels an in-flight Members request and rejects its delayed private
   expect(requests).toHaveLength(3);
   await act(async () =>
     requests[2].next({
-      householdDashboard: { __typename: 'Problem', code: 'FORBIDDEN' },
+      viewer: { __typename: 'Problem', code: 'FORBIDDEN' },
     }),
   );
   await act(async () =>

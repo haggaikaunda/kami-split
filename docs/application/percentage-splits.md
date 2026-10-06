@@ -52,7 +52,7 @@ Only fully valid forms show final allocations and enable Percentage Save.
 
 ## Deployment and rollback
 
-1. Apply additive migration `20261013000000_percentage_splits.sql` first. Old API
+1. Apply additive migration `20261014000000_percentage_splits.sql` first. Old API
    Equal/Exact writes remain valid; no old canonical rows or outcome JSON change.
 2. Deploy the updated API and generated clients/readers with
    `API_PERCENTAGE_WRITES_ENABLED=false` (the default). Verify authorized detail

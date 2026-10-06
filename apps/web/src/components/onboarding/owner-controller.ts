@@ -52,6 +52,10 @@ export function useOwnerInvitations({
       tell('No accessible groups yet. Open your invitation to join.');
   };
   const loadInvites = async (id: string, after: string | null = null) => {
+    if (!after) {
+      setInvites([]);
+      setNext(null);
+    }
     const data = await graph(
       'query($groupID:ID!,$after:ID){ownerInvitations(groupID:$groupID,first:20,after:$after){__typename ... on OwnerInvitationPage { items{id kind recipient expiresAt lifecycle actionID delivery} nextCursor } ... on InvitationProblem {code}}}',
       { groupID: id, after },

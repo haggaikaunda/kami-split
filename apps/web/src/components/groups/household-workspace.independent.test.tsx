@@ -10,6 +10,13 @@ import {
 } from './household-workspace';
 import type { FinancialScope } from '@/lib/relay/environment';
 const queries = vi.hoisted(() => ({ fetch: vi.fn() }));
+vi.mock('@/components/onboarding/scoped-invitations', () => ({
+  ScopedInvitations: ({ group }: { group: { id: string; name: string } }) => (
+    <section data-invitation-group={group.id}>
+      Invitations for {group.name}
+    </section>
+  ),
+}));
 vi.mock('relay-runtime', () => ({
   fetchQuery: (...args: unknown[]) => {
     const request = queries.fetch(...args) as { toPromise(): Promise<unknown> };
@@ -181,6 +188,7 @@ it('uses real ledger membership beyond two people and only owner invitation mana
   const members = {
     __typename: 'Group',
     id: 'home/a',
+    name: 'Real Household',
     viewerMembership: { role: 'OWNER' },
     members: ['Alice', 'Bob', 'Carol'].map((displayName) => ({
       id: displayName,
@@ -196,12 +204,15 @@ it('uses real ledger membership beyond two people and only owner invitation mana
   expect(host.textContent).not.toContain('designated');
   expect(host.textContent).not.toContain('pair');
   expect(host.querySelectorAll('button')).toHaveLength(0);
-  expect(host.querySelector('a[href="/invitations"]')).not.toBeNull();
+  expect(
+    host.querySelector('[data-invitation-group="home/a"]')?.textContent,
+  ).toBe('Invitations for Real Household');
+  expect(host.querySelector('a[href="/invitations"]')).toBeNull();
   await content('Members', fixture(), {
     ...members!,
     viewerMembership: { role: 'MEMBER' },
   });
-  expect(host.querySelector('a[href="/invitations"]')).toBeNull();
+  expect(host.querySelector('[data-invitation-group]')).toBeNull();
   expect(householdHref('Activity')).toBe('/household/activity');
   expect(householdHref('Expenses')).toBe('/household/expenses');
 });
@@ -267,7 +278,14 @@ it('reports rejected access without fabricated zeros or empty history', async ()
 });
 it('rejects a member read for a different group and never renders its members', async () => {
   queries.fetch
-    .mockReturnValueOnce({ toPromise: async () => result() })
+    .mockReturnValueOnce({
+      toPromise: async () => ({
+        viewer: {
+          __typename: 'Viewer',
+          groups: [{ id: 'home/a', isHousehold: true }],
+        },
+      }),
+    })
     .mockReturnValueOnce({
       toPromise: async () => ({
         group: {
@@ -311,4 +329,81 @@ it('foreground refresh removes prior authorized content while a new read is pend
   await act(async () => pending.resolve(result()));
   expect(host.textContent).toContain('Maui');
   visibility.mockRestore();
+});
+
+it('opens owner Household invitations using actual membership before aggregate readiness', async () => {
+  queries.fetch
+    .mockReturnValueOnce({
+      toPromise: async () => ({
+        viewer: {
+          __typename: 'Viewer',
+          groups: [
+            { id: 'unrelated', isHousehold: false },
+            { id: 'actual-household', isHousehold: true },
+          ],
+        },
+      }),
+    })
+    .mockReturnValueOnce({
+      toPromise: async () => ({
+        group: {
+          __typename: 'Group',
+          id: 'actual-household',
+          name: 'Our Household',
+          viewerMembership: { role: 'OWNER' },
+          members: [],
+        },
+      }),
+    });
+  await act(async () =>
+    root.render(<HouseholdRead scope={scope} current="Members" />),
+  );
+  expect(queries.fetch.mock.calls.map((call) => call[1].params.name)).toEqual([
+    'householdAccessQuery',
+    'householdMembersQuery',
+  ]);
+  expect(queries.fetch.mock.calls[1][2]).toEqual({ id: 'actual-household' });
+  expect(
+    host.querySelector('[data-invitation-group="actual-household"]')
+      ?.textContent,
+  ).toBe('Invitations for Our Household');
+  expect(host.querySelector('[data-invitation-group="unrelated"]')).toBeNull();
+});
+it('does not expose owner administration to an ordinary Household member without aggregate readiness', async () => {
+  queries.fetch
+    .mockReturnValueOnce({
+      toPromise: async () => ({
+        viewer: {
+          __typename: 'Viewer',
+          groups: [{ id: 'H', isHousehold: true }],
+        },
+      }),
+    })
+    .mockReturnValueOnce({
+      toPromise: async () => ({
+        group: {
+          __typename: 'Group',
+          id: 'H',
+          name: 'Home',
+          viewerMembership: { role: 'MEMBER' },
+          members: [
+            {
+              id: 'M',
+              displayName: 'Ordinary member',
+              role: 'MEMBER',
+              status: 'ACTIVE',
+            },
+          ],
+        },
+      }),
+    });
+  await act(async () =>
+    root.render(<HouseholdRead scope={scope} current="Members" />),
+  );
+  expect(host.textContent).toContain('Ordinary member');
+  expect(host.querySelector('[data-invitation-group]')).toBeNull();
+  expect(queries.fetch.mock.calls.map((call) => call[1].params.name)).toEqual([
+    'householdAccessQuery',
+    'householdMembersQuery',
+  ]);
 });
