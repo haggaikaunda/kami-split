@@ -123,7 +123,7 @@ func newExpenseFixture(t *testing.T) *expenseFixture {
 	if err = verifier.Warm(ctx); err != nil {
 		t.Fatal(err)
 	}
-	service := expense.New(db)
+	service := expense.NewWithPercentageWrites(db, true)
 	codec, e := ledger.NewCursorCodec("test", map[string][]byte{"test": bytes.Repeat([]byte{1}, 32)})
 	if e != nil {
 		t.Fatal(e)

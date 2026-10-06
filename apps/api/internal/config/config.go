@@ -10,8 +10,9 @@ import (
 
 // Config contains the server's deployment configuration.
 type Config struct {
-	Addr            string
-	ShutdownTimeout time.Duration
+	PercentageWritesEnabled bool
+	Addr                    string
+	ShutdownTimeout         time.Duration
 }
 
 // Load reads configuration through the supplied environment lookup.
@@ -34,6 +35,12 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		if err != nil || c.ShutdownTimeout <= 0 || c.ShutdownTimeout > time.Minute {
 			return Config{}, fmt.Errorf("API_SHUTDOWN_TIMEOUT must be positive and at most 1m")
 		}
+	}
+	if value, ok := lookup("API_PERCENTAGE_WRITES_ENABLED"); ok {
+		if value != "true" && value != "false" {
+			return Config{}, fmt.Errorf("API_PERCENTAGE_WRITES_ENABLED must be true or false")
+		}
+		c.PercentageWritesEnabled = value == "true"
 	}
 	return c, nil
 }

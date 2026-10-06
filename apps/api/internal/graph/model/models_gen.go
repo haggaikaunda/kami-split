@@ -180,6 +180,8 @@ type Allocation struct {
 	Participant *Membership `json:"participant"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
@@ -204,10 +206,12 @@ type CreateExpenseInput struct {
 	PayerID string `json:"payerId"`
 	// Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
 	ParticipantIds []string `json:"participantIds"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
-	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+	// Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
 	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+	// Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+	Percentages []*PercentageInput `json:"percentages,omitempty"`
 }
 
 // Identity-scoped frozen creation intent; actor and USD currency are server supplied.
@@ -252,7 +256,7 @@ type Expense struct {
 	Payer *Membership `json:"payer"`
 	// Server-derived authenticated membership responsible for creation.
 	Creator *Membership `json:"creator"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*Allocation `json:"allocations"`
@@ -339,7 +343,7 @@ type ExpenseOperationRecord struct {
 	Category Category `json:"category"`
 	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
 	Note string `json:"note"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*OperationAllocation `json:"allocations"`
@@ -700,6 +704,8 @@ type OperationAllocation struct {
 	ParticipantID string `json:"participantId"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // The scoped key already identifies a different canonical intent; original data is never overwritten.
@@ -766,6 +772,14 @@ type PageInfo struct {
 	HasNextPage bool `json:"hasNextPage"`
 	// Last edge cursor, or null for an empty page.
 	EndCursor *string `json:"endCursor,omitempty"`
+}
+
+// One explicitly selected participant's intended responsibility, independent of payer.
+type PercentageInput struct {
+	// Stable same-group Membership ID.
+	ParticipantID string `json:"participantId"`
+	// Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+	Hundredths int `json:"hundredths"`
 }
 
 // Safe expected failure with no private existence or infrastructure diagnostics.
@@ -1753,16 +1767,19 @@ const (
 	SplitModeEqual SplitMode = "EQUAL"
 	// Caller supplies one reconciled amount for each explicit participant, including zero.
 	SplitModeExact SplitMode = "EXACT"
+	// Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+	SplitModePercentage SplitMode = "PERCENTAGE"
 )
 
 var AllSplitMode = []SplitMode{
 	SplitModeEqual,
 	SplitModeExact,
+	SplitModePercentage,
 }
 
 func (e SplitMode) IsValid() bool {
 	switch e {
-	case SplitModeEqual, SplitModeExact:
+	case SplitModeEqual, SplitModeExact, SplitModePercentage:
 		return true
 	}
 	return false

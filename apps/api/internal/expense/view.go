@@ -300,6 +300,9 @@ func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseView
 		r.ExpenseID = ledger.PublicID("Expense", r.ExpenseID)
 		r.CreatorMembershipID = ledger.PublicID("Membership", r.CreatorMembershipID)
 		r.PayerMembershipID = ledger.PublicID("Membership", r.PayerMembershipID)
+		for i := range r.Percentages {
+			r.Percentages[i].ParticipantID = ledger.PublicID("Membership", r.Percentages[i].ParticipantID)
+		}
 		for i := range r.Allocations {
 			r.Allocations[i].ParticipantID = ledger.PublicID("Membership", r.Allocations[i].ParticipantID)
 		}

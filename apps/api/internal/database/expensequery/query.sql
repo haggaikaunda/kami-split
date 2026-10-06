@@ -11,7 +11,7 @@ INSERT INTO app.expenses(id,group_id,creator_id,payer_id,total_minor,currency,de
 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING created_at;
 
 -- name: InsertAllocation :exec
-INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor) VALUES($1,$2,$3,$4);
+INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor,percentage_hundredths) VALUES($1,$2,$3,$4,$5);
 
 -- name: InsertAudit :exec
 INSERT INTO app.expense_audit(expense_id,group_id,actor_user_id,creator_id,event,committed_at) VALUES($1,$2,$3,$4,'CREATE_EXPENSE',$5);
