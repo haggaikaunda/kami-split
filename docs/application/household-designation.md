@@ -54,6 +54,10 @@ restricted-role permissions, canonical locking/races, fresh migration replay,
 schema/ACL reconciliation and financial dump/replay. Required Go, web and generation
 checks and independent tester/reviewer gates apply to each delivery PR.
 
-Production Group failure diagnosis, applied migration/shipped-commit evidence and
-the originally invited partner's confirmation remain #197 rollout gates. Neither
-historical fixtures nor a fresh demo establish production-account recovery.
+The [owner confirmed the original partner’s existing account works across all
+tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
+after the membership release `641b578` / migration 011. The original failed Group
+response was not captured; no historical root cause or data repair is claimed.
+Cleanup migration 012 release and applied-migration/shipped-commit evidence remain
+tracked on #197. Historical fixtures and fresh demos alone do not establish the
+existing-account outcome.

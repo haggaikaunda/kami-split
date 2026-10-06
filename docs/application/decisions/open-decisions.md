@@ -124,5 +124,7 @@ Household aggregate. These slices do not expand #73.
 [ADR-010](010-household-membership-sharing.md) supersedes O19's ADR-008 pair
 authority and separate consent prerequisite. Current membership authorizes the
 Household ledger; common-member source aggregation, sole-member behavior and
-account-lifecycle no-broadening rules are explicitly resolved there. Obsolete pair commands are retired by migration 012. Original
-rollout/account confirmation and production Group diagnosis remain tracker gates.
+account-lifecycle no-broadening rules are explicitly resolved there. Obsolete pair commands are retired by migration 012. The
+[owner confirmed the original existing account works across all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
+after the membership release; original failed-response causality remains unknown.
+Cleanup release/migration evidence is tracked on #197.

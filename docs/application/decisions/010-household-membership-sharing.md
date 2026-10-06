@@ -104,6 +104,11 @@ The Group failure is investigated independently. A successful Group plus a faile
 Viewer used to collapse into “Group unavailable”; the updated workspace attributes
 safe errors to the owning read and retains retry. The pre-change disposable database
 suite passes, so this finding is not proof of the original production root cause.
-Production request/session/admission diagnostics and the original partner's read-only
-post-rollout confirmation remain blocking acceptance evidence. No synthetic expenses
-are created in the real Household. Do not close #197 from fixture results alone.
+The [owner confirmed the originally invited partner’s existing account works across
+all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
+after the normal `641b578` web/API release and migration 011. The original failed
+response was not captured, so its historical root cause is not asserted. No
+admission inconsistency or production data repair was established. Cleanup migration
+012 must also ship through the normal verified release; applied-migration and
+shipped-commit evidence belongs on #197. No synthetic expense is created in the
+real Household, and fixture results alone do not establish rollout acceptance.
