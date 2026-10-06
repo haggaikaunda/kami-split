@@ -41,7 +41,7 @@ type DashboardTotals struct {
 
 var errDashboardRestart = errors.New("dashboard discovery changed")
 
-// ReadDashboard holds canonical user→designation→group locks and reads every
+// ReadDashboard holds canonical user→scope guard→group locks and reads every
 // eligible ledger and its current scope in one statement snapshot. Three fresh
 // transactions within five seconds bound discovery races; failure returns no rows.
 func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {

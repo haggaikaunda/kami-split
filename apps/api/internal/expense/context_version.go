@@ -3,7 +3,7 @@ package expense
 // contextVersionSQL binds the complete authorized source set and all current
 // metadata used by concurrent Household context/ledger reads. Both projections
 // evaluate it in their final statement snapshot, independently of filters/pages.
-// The existing eligibility anchor binds the actor and designation generation;
+// The existing eligibility anchor binds the actor and current membership/account generations;
 // financial revisions deliberately remain owned by the signed traversal cursor.
 const contextVersionSQL = `CASE WHEN scope.data->>'state'='COMPLETE' THEN
  encode(sha256(convert_to(jsonb_build_array(scope.data->>'anchor',

@@ -17,10 +17,10 @@ A refresh starts new revisions; continuation excludes later commits. The cursor 
 an integrity mechanism, never an authorization grant. Access is rechecked before
 cursor validation; eligibility changes invalidate the old traversal.
 
-Household activity reuses #111's `household_dashboard_lock` boundary: only the
-finalized eligible pair may receive Household plus spaces where both are currently
-eligible. A viewer-only group contributes no events, identity, count or cursor.
-An unavailable designation returns an explicit failure rather than a partial feed.
+Household activity reuses #111's `household_dashboard_lock` boundary: every active
+Household member receives the ledger plus sources shared by all active members
+under [ADR-010](decisions/010-household-membership-sharing.md). A viewer-only group contributes no events, identity, count or cursor.
+Unavailable discovery returns an explicit failure rather than a partial feed.
 
 The authenticated web entry points are `/groups/<Group ID>/activity` (with a legacy query-route redirect) and
 `/household/activity`. The Group route redirects into the integrated `/groups/:groupId?tab=activity` workspace under #171. Both use shared workspace primitives and the financial

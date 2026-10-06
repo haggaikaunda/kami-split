@@ -193,8 +193,9 @@ function HouseholdMembers({ members }: { members: Members }) {
     <section>
       <h2>Household members</h2>
       <p>
-        These are the Household ledger members. The designated dashboard pair is
-        separate and does not limit membership to two people.
+        Active Household members share this ledger and its full expense history.
+        The overview also includes eligible groups and trips shared by every
+        active Household member.
       </p>
       {members.members.map((m) => (
         <MemberBalanceRow key={m.id} name={m.displayName}>
@@ -328,7 +329,7 @@ export function HouseholdContent({
     <>
       {dashboard.state === 'UNAVAILABLE' ? (
         <p role="status">
-          Shared overview is not available yet.{' '}
+          Shared overview is unavailable. Refresh to check current access.{' '}
           {home && (
             <Link href={`/groups/${encodeURIComponent(home.groupId)}`}>
               Open Household ledger
@@ -345,8 +346,9 @@ export function HouseholdContent({
         <section>
           <h2>Household members</h2>
           <p>
-            These are the Household ledger members. The designated dashboard
-            pair is separate and does not limit membership to two people.
+            Active Household members share this ledger and its full expense
+            history. The overview also includes eligible groups and trips shared
+            by every active Household member.
           </p>
           {members ? (
             <>

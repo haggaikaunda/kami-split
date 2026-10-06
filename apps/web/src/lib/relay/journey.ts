@@ -406,6 +406,12 @@ export const journeyWorkspaceQuery = graphql`
     }
     viewer {
       __typename
+      ... on Problem {
+        code
+      }
+      ... on ViewerAccess {
+        state
+      }
       ... on Viewer {
         today
       }

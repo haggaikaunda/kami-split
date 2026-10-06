@@ -165,7 +165,9 @@ export function InvitationScreens({
       <>
         <h1>You joined {name}!</h1>
         <p>
-          You can now see the group’s expenses and start splitting together.
+          You now share the group’s ledger and full expense history. Household
+          members can also see the overview of eligible groups and trips they
+          all share.
         </p>
         <InvitationCard state={c} />
         <Link
@@ -276,8 +278,10 @@ export function InvitationScreens({
       <>
         <h1>Ready to join {name}?</h1>
         <p>
-          You’ll become an ordinary member and can see the group’s full expense
-          history.
+          You’ll become an ordinary member and share the group’s ledger and full
+          expense history. Household membership also enables the overview of
+          eligible groups and trips shared by all active Household members. No
+          additional sharing confirmation is needed.
         </p>
         <InvitationCard state={c} />
         <Button

@@ -251,7 +251,7 @@ type Query {
   ): OperationResult!
 
   """
-  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  One complete merged expense view across exactly the current Household membership's common eligible spaces. Unavailable discovery returns a safe Problem, never an empty success.
   """
   householdExpenses(
     """

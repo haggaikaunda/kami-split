@@ -163,8 +163,11 @@ it.each(['INCOMPLETE', 'UNAVAILABLE'] as const)(
     await content('Overview', { ...fixture(), state } as Dashboard);
     expect(host.querySelector('.ui-summary-row')).toBeNull();
     expect(host.textContent).not.toContain('$0.00');
-    if (state === 'UNAVAILABLE')
+    if (state === 'UNAVAILABLE') {
+      expect(host.textContent).toContain('Refresh to check current access');
+      expect(host.textContent).not.toContain('not available yet');
       expect(host.querySelector('a[href="/groups/home%2Fa"]')).not.toBeNull();
+    }
   },
 );
 it('uses real ledger membership beyond two people and only owner invitation management', async () => {
@@ -182,6 +185,9 @@ it('uses real ledger membership beyond two people and only owner invitation mana
   await content('Members', fixture(), members);
   for (const name of ['Alice', 'Bob', 'Carol'])
     expect(host.textContent).toContain(name);
+  expect(host.textContent).toContain('every active Household member');
+  expect(host.textContent).not.toContain('designated');
+  expect(host.textContent).not.toContain('pair');
   expect(host.querySelectorAll('button')).toHaveLength(0);
   expect(host.querySelector('a[href="/invitations"]')).not.toBeNull();
   await content('Members', fixture(), {

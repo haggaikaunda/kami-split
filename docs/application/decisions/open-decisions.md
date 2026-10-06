@@ -118,3 +118,11 @@ alone grants no pair-dashboard access. No inferred partner identity is approved.
 Complete lifetime group history follows ADR-004; current eligibility controls the
 summary set. Settlement remains group-scoped under #110 and cannot act on a
 Household aggregate. These slices do not expand #73.
+
+## Household membership sharing (#197)
+
+[ADR-010](010-household-membership-sharing.md) supersedes O19's ADR-008 pair
+authority and separate consent prerequisite. Current membership authorizes the
+Household ledger; common-member source aggregation, sole-member behavior and
+account-lifecycle no-broadening rules are explicitly resolved there. Original
+rollout/account confirmation and obsolete-code cleanup remain tracker gates.

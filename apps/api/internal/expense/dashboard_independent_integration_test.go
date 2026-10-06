@@ -25,7 +25,7 @@ func independentDashboardExec(t *testing.T, f *expenseFixture, sql string) {
 	}
 }
 
-func independentDashboardFixture(t *testing.T, first, second int) *expenseFixture {
+func independentDashboardFixture(t *testing.T) *expenseFixture {
 	t.Helper()
 	f := newGroupTransportFixture(t)
 	// Start from no history; newExpenseFixture ordinarily supplies one expense.
@@ -36,14 +36,14 @@ func independentDashboardFixture(t *testing.T, first, second int) *expenseFixtur
 		independentDashboardExec(t, f, `BEGIN; SET LOCAL ROLE kami_migrator; DELETE FROM app.household_designation_audit; UPDATE app.household_designation_guard SET version=0,state='EMPTY',first_user_id=NULL,second_user_id=NULL,proposer_user_id=NULL,first_consented=false,second_consented=false; COMMIT`)
 	})
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s'),('%s','%s','%s'); INSERT INTO app.groups(id,name,owner_membership_id) VALUES('%s','Viewer-only SECRET','%s'); INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s'),('%s','%s','%s'); COMMIT`, f.id(305), f.id(202), f.id(101), f.id(306), f.id(202), f.id(102), f.id(203), f.id(307), f.id(307), f.id(203), f.id(101), f.id(308), f.id(203), f.id(103)))
-	if first != 0 {
-		independentDashboardDesignate(t, f, first, second)
-	}
+	// Scope fixtures start with two active Household members. C remains in the
+	// ledger history and can be explicitly reactivated by multi-member scenarios.
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id)); UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT`, f.id(303)))
 	return f
 }
 
 func TestIndependentDashboardRepaymentDoesNotIncreaseSpending(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	independentDashboardExpense(t, f, 201, 302, 301, 2000)
 	in := repaymentInput(f)
 	in.Amount = 2000
@@ -56,7 +56,7 @@ func TestIndependentDashboardRepaymentDoesNotIncreaseSpending(t *testing.T) {
 func TestIndependentDashboardExactWireAndOverflowSuppressAllTotals(t *testing.T) {
 	for _, scenario := range []string{"exact", "cross-space-net", "cross-space-spending", "row-local"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := independentDashboardFixture(t, 1, 2)
+			f := independentDashboardFixture(t)
 			participant := 302
 			if scenario == "cross-space-spending" {
 				participant = 301
@@ -173,7 +173,7 @@ func independentDashboardTotals(t *testing.T, result map[string]any, net, active
 }
 
 func TestIndependentDashboardCancellationOriginalSpacesAndPrivateExclusion(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	independentDashboardExpense(t, f, 201, 302, 301, 2000)
 	independentDashboardExpense(t, f, 202, 305, 306, 2000)
 	independentDashboardExpense(t, f, 203, 308, 307, 9000)
@@ -202,7 +202,7 @@ func TestIndependentDashboardCancellationOriginalSpacesAndPrivateExclusion(t *te
 }
 
 func TestIndependentDashboardThreeSpaceSourceBreakdownAndTransitiveDebt(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s');UPDATE app.groups SET name='Fresh authorized label' WHERE id='%s';COMMIT`, f.id(309), f.id(203), f.id(102), f.id(202)))
 	independentDashboardExpense(t, f, 201, 302, 301, 2000)
 	independentDashboardExpense(t, f, 202, 305, 306, 2000)
@@ -224,6 +224,7 @@ func TestIndependentDashboardThreeSpaceSourceBreakdownAndTransitiveDebt(t *testi
 	}
 	// Extend A→B into A→C through B. B's net is zero; the single
 	// current obligation must name original H and its A/C memberships.
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id));UPDATE app.memberships SET active=true WHERE id='%s';COMMIT`, f.id(303)))
 	independentDashboardExpense(t, f, 201, 303, 302, 2000)
 	got = independentDashboardRead(t, f, 1)
 	for _, item := range got["spaces"].([]any) {
@@ -244,7 +245,8 @@ func TestIndependentDashboardThreeSpaceSourceBreakdownAndTransitiveDebt(t *testi
 }
 
 func TestIndependentDashboardEmptyCycleAndZeroViewerDoesNotSettlePeers(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id));UPDATE app.memberships SET active=true WHERE id='%s';INSERT INTO app.memberships(id,group_id,user_id) VALUES('%s','%s','%s');COMMIT`, f.id(303), f.id(310), f.id(202), f.id(103)))
 	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "0", "2", "0", "0", "0")
 	independentDashboardExpense(t, f, 201, 302, 303, 2000)
 	got := independentDashboardRead(t, f, 1)
@@ -269,34 +271,20 @@ func TestIndependentDashboardEmptyCycleAndZeroViewerDoesNotSettlePeers(t *testin
 	}
 }
 
-func TestIndependentDashboardExcludedOwnerFallbackAndSuspension(t *testing.T) {
-	f := independentDashboardFixture(t, 0, 0)
-	got := independentDashboardRead(t, f, 1)
-	if got["state"] != "UNAVAILABLE" || got["totals"] != nil || len(got["spaces"].([]any)) != 1 {
-		t.Fatal(got)
-	}
-	independentDashboardDesignate(t, f, 2, 3)
-	denied := groupRequest(t, f, 1, independentDashboardQuery, nil, "householdDashboard", "Problem")
-	if denied["code"] != "NOT_FOUND" {
+func TestIndependentDashboardMembershipLossAndReadmission(t *testing.T) {
+	f := independentDashboardFixture(t)
+	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "0", "2", "0", "0", "0")
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id));UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(302)))
+	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "0", "1", "0", "0", "0")
+	if denied := groupRequest(t, f, 2, independentDashboardQuery, nil, "householdDashboard", "Problem"); denied["code"] != "NOT_FOUND" {
 		t.Fatal(denied)
 	}
-	independentDashboardTotals(t, independentDashboardRead(t, f, 2), "0", "1", "0", "0", "0")
-	// Ordinary Household ledger access remains independent for the excluded owner.
-	groupRequest(t, f, 1, `query($id:ID!){group(id:$id){__typename ... on Group{id}}}`, map[string]any{"id": f.public("Group", 201)}, "group", "Group")
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY['%s','%s','%s']::uuid[]);UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(101), f.id(102), f.id(103), f.id(303)))
-	got = independentDashboardRead(t, f, 2)
-	if got["state"] != "UNAVAILABLE" || got["totals"] != nil || len(got["spaces"].([]any)) != 1 {
-		t.Fatal(got)
-	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY['%s','%s','%s']::uuid[]);UPDATE app.memberships SET active=true WHERE id='%s';COMMIT`, f.id(101), f.id(102), f.id(103), f.id(303)))
-	got = independentDashboardRead(t, f, 2)
-	if got["state"] != "UNAVAILABLE" || got["totals"] != nil {
-		t.Fatal("readmission silently restored consent", got)
-	}
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id));UPDATE app.memberships SET active=true WHERE id='%s';COMMIT`, f.id(302)))
+	independentDashboardTotals(t, independentDashboardRead(t, f, 2), "0", "2", "0", "0", "0")
 }
 
 func TestIndependentDashboardLockDeadlineReturnsNoRows(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	tx, err := f.admin.Begin(f.ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -316,16 +304,14 @@ func TestIndependentDashboardLockDeadlineReturnsNoRows(t *testing.T) {
 }
 
 func TestIndependentDashboardAccountLossAndUnauthenticatedAccess(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	status, body, err := groupHTTP(f, 0, independentDashboardQuery, nil)
 	if err != nil || status != 401 || !bytes.Contains(body, []byte("UNAUTHENTICATED")) {
 		t.Fatalf("missing authentication accepted: %d %s %v", status, body, err)
 	}
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;UPDATE app.users SET enabled=false WHERE id='%s';COMMIT`, f.id(102)))
 	got := independentDashboardRead(t, f, 1)
-	if got["state"] != "UNAVAILABLE" || got["totals"] != nil || len(got["spaces"].([]any)) != 1 {
-		t.Fatal("partner account loss left shared overview", got)
-	}
+	independentDashboardTotals(t, got, "0", "1", "0", "0", "0")
 	denied := groupRequest(t, f, 2, independentDashboardQuery, nil, "householdDashboard", "Problem")
 	if denied["code"] != "NOT_FOUND" {
 		t.Fatal(denied)
@@ -336,8 +322,9 @@ func TestIndependentDashboardAccountLossAndUnauthenticatedAccess(t *testing.T) {
 	}
 }
 
-func TestIndependentDashboardDesignationEndingWhileReadWaits(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+func TestIndependentDashboardLegacyDesignationEndingDoesNotRevokeMembership(t *testing.T) {
+	f := independentDashboardFixture(t)
+	independentDashboardDesignate(t, f, 1, 2)
 	var version int64
 	independentDashboardExec(t, f, "SET ROLE kami_migrator")
 	if err := f.admin.QueryRow(f.ctx, `SELECT version FROM app.household_designation_guard`).Scan(&version); err != nil {
@@ -411,15 +398,13 @@ func TestIndependentDashboardDesignationEndingWhileReadWaits(t *testing.T) {
 		t.Fatal("read never resumed")
 	}
 	got := result.Data["householdDashboard"]
-	if got["state"] != "UNAVAILABLE" || got["totals"] != nil || len(got["spaces"].([]any)) != 1 {
-		t.Fatal("terminated sharing returned stale overview", got)
-	}
+	independentDashboardTotals(t, got, "0", "2", "0", "0", "0")
 }
 
 func TestIndependentDashboardNewEligibleGroupRestartsAndRemovalRechecks(t *testing.T) {
 	for _, addition := range []bool{true, false} {
 		t.Run(fmt.Sprint(addition), func(t *testing.T) {
-			f := independentDashboardFixture(t, 1, 2)
+			f := independentDashboardFixture(t)
 			independentDashboardExpense(t, f, 203, 308, 307, 9000)
 			tx, err := f.admin.Begin(f.ctx)
 			if err != nil {

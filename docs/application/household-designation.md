@@ -1,4 +1,10 @@
-# Household partner designation
+# Legacy Household partner designation
+
+[ADR-010](decisions/010-household-membership-sharing.md) supersedes the runtime
+pair eligibility gate. After the #197 forward migration, current Household
+membership alone authorizes the workspace. The operations and lifecycle behavior
+below describe retained compatibility code and historical evidence; they are not
+a setup prerequisite. Cleanup and existing-account rollout verification remain open.
 
 Issue #130 implements the internal designation foundation required by
 [ADR-008](decisions/008-household-partner-policy.md). `DB.HouseholdDesignation`

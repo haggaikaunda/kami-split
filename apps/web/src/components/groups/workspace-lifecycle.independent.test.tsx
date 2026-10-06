@@ -165,6 +165,65 @@ it('consumes the composed Activity result without a second dedicated read and co
   expect(requests).toHaveLength(2);
   expect(requests[0].canceled).toBe(true);
 });
+it.each([
+  [{ __typename: 'Problem', code: 'UNAUTHENTICATED' }, 'Sign in again'],
+  [{ __typename: 'Problem', code: 'UNAVAILABLE' }, 'Refresh to try again'],
+  [{ __typename: 'ViewerAccess', state: 'DISABLED' }, 'cannot access'],
+  [{ __typename: 'ViewerAccess', state: 'UNPROVISIONED' }, 'cannot access'],
+])(
+  'attributes a successful group with failed viewer access to the account and retries safely (%j)',
+  async (failedViewer, explanation) => {
+    await act(async () => root.render(<GroupJourney initialGroup="G" />));
+    await act(async () => requests[0].next({ viewer: failedViewer, group }));
+    expect(host.querySelector('h1')?.textContent).toBe(
+      'Account access unavailable',
+    );
+    expect(host.querySelector('[role=alert]')?.textContent).toContain(
+      explanation,
+    );
+    expect(host.textContent).not.toContain('Private group');
+    expect(host.textContent).not.toContain('Private member');
+    expect(host.textContent).not.toContain('Settled');
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('button.journey-refresh')!.click(),
+    );
+    expect(host.querySelector('[role=alert]')).toBeNull();
+    expect(requests).toHaveLength(2);
+    expect(requests[1].variables.id).toBe('G');
+    await act(async () => requests[1].next({ viewer, group }));
+    expect(host.textContent).toContain('Private member');
+    expect(host.textContent).not.toContain('Account access unavailable');
+  },
+);
+it.each([
+  ['expenses', 'groupExpenses', 'Expenses unavailable'],
+  ['activity', 'groupActivity', 'Activity unavailable'],
+])(
+  'attributes %s composition failures without revealing successful group data',
+  async (tab, field, heading) => {
+    search = `tab=${tab}`;
+    await act(async () => root.render(<GroupJourney initialGroup="G" />));
+    await act(async () =>
+      requests[0].next({
+        viewer,
+        group,
+        [field]: {
+          __typename: 'Problem',
+          code: 'NOT_FOUND',
+          message: 'sensitive server detail',
+        },
+      }),
+    );
+    expect(host.querySelector('h1')?.textContent).toBe(heading);
+    expect(host.querySelector('[role=alert]')?.textContent).toContain(
+      'cannot access',
+    );
+    expect(host.textContent).not.toContain('sensitive server detail');
+    expect(host.textContent).not.toContain('Private group');
+    expect(host.textContent).not.toContain('No activity');
+    expect(host.textContent).not.toContain('No expenses');
+  },
+);
 it('rapid Activity to Members to Activity navigation rejects out-of-order private responses', async () => {
   search = 'tab=activity';
   await act(async () => root.render(<GroupJourney initialGroup="G" />));

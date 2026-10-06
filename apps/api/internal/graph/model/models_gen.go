@@ -357,7 +357,7 @@ type ExpenseView struct {
 	Months []*ExpenseMonth `json:"months"`
 	// Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
 	Edges []*ExpenseViewEdge `json:"edges"`
-	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
 	PageInfo *PageInfo `json:"pageInfo"`
 }
 
@@ -1277,7 +1277,7 @@ const (
 	HouseholdDashboardStateComplete HouseholdDashboardState = "COMPLETE"
 	// Eligible rows are authorized, but required financial data exceeds bounds.
 	HouseholdDashboardStateIncomplete HouseholdDashboardState = "INCOMPLETE"
-	// Only the authorized Household ledger is available; sharing is not finalized.
+	// Legacy service fallback; membership does not require a separate sharing designation.
 	HouseholdDashboardStateUnavailable HouseholdDashboardState = "UNAVAILABLE"
 )
 

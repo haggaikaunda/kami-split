@@ -23,3 +23,5 @@ shared-link implementation is tracked separately in #108. Runtime proof remains 
 [ADR-008: Household partner policy](008-household-partner-policy.md) records owner-approved #109 designation, consent, lifecycle and dashboard eligibility policy, including larger Households and no owner self-invitation. The #130 internal designation foundation implements that adopted policy; the decision record itself remains design authority.
 
 [ADR-009: Invitation-scoped Auth continuation](009-invitation-auth-continuation.md) records #164's one-email targeted setup, independently verified shared-link signup, durable one-use proof and explicit interruption/replacement recovery trade-off. It supersedes the earlier two-email/shared-provisioning restrictions while preserving explicit admission and disabled public signup.
+
+- [ADR-010: Household membership sharing](010-household-membership-sharing.md) supersedes separate pair consent and records common-member aggregation, migration and rollout gates for #197.

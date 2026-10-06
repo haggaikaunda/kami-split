@@ -78,3 +78,11 @@ it does not invent managed Auth objects. Only the disposable project's connectio
 are briefly disabled for cloning. Hosted migration credentials must separately
 prove the reviewed temporary schema grant / Auth-FK creation / immediate ownership
 transfer / grant revocation path before deployment.
+
+## Household sharing upgrade
+
+[ADR-010](decisions/010-household-membership-sharing.md) makes current active
+Household membership the workspace relationship. Private membership/account
+eligibility generations bind cursors across leave/rejoin and eligibility loss.
+The forward migration preserves all stable identities and admission history and
+does not restore removed memberships or disabled/unlinked accounts.

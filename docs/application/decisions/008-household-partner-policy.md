@@ -4,6 +4,10 @@
 - Basis: adopted ADR-007 / #86, implemented #75 and adopted #85.
 - Scope: policy and engineering design only; no schema, API or UI implementation.
 
+> The separate designation/consent and pair-only entry policy below is superseded
+> by [ADR-010](010-household-membership-sharing.md) for #197. This record preserves
+> the historical approval and design evidence.
+
 ## Owner-approved decisions
 
 The current enabled, linked Household owner may propose two distinct stable
