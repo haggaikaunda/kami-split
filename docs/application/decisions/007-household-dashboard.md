@@ -4,6 +4,11 @@
 - Recorded: 2026-09-30.
 - Basis: ADR-003–006, implemented #75 foundation, reviewed #76 contract.
 
+> [ADR-010](010-household-membership-sharing.md) supersedes the separate pair
+> authority and missing-partner fallback in this historical dashboard policy,
+> including D6/D7 eligibility behavior. Complete reads, exact money, source-local
+> repayment and financial provenance requirements remain in force.
+
 ## Boundary and deliberately deferred policy
 
 The **Household group** is one private ledger, identified by the existing installation

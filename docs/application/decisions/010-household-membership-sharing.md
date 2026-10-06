@@ -67,11 +67,11 @@ subsequently inactive membership. Disabled and unlinked accounts stay denied.
 
 Legacy EMPTY/absent, PENDING, ACTIVE, SUSPENDED, ENDED and CANCELLED states all have
 no read authority after migration. Rows and restricted history remain unchanged by
-the migration; no historical consent is invented. Existing internal designation
-operations and lifecycle audit hooks remain temporarily for compatible rollout and
-historical tests. They do not alter the membership scope. Removing those obsolete
-operations/hooks is a separate cleanup gate before #197 is complete; retained
-serialization and immutable-Household protections must survive that cleanup.
+the migration; no historical consent is invented. Forward migration `20261012000000_retire_household_designation.sql` removes
+obsolete internal designation operations and pair audit mutation hooks. Historical
+tables and audit events remain restricted and unchanged. The singleton remains
+solely as a technical scope serialization point; immutable-Household and lifecycle
+preparation protections remain in force. No runtime code reads its pair flags.
 
 An accepted receipt without its corresponding stable active membership is not
 permission to insert one. Operators must inspect original invitation ID, accepted
@@ -90,11 +90,15 @@ when the updated API is deployed. A fresh traversal is required; web refresh
 fetches current scope without clearing storage. Partial rollout may retain old copy
 until the web deploy, but must not expose excluded sources or invent zero balances.
 
-No obsolete schema is contracted in this slice. Deployment failure can retry normal
+The cleanup contracts only unused operations/helpers, not historical tables. Deployment failure can retry normal
 migration/release tooling. Reverting API/web alone does **not** restore old pair
 permission: that requires an explicitly reviewed forward migration, not an undo of
 applied history or a database reset. Added generation columns may remain unused by
-an older binary. Record shipped commits and applied migration version before cleanup.
+an older binary. The normal release applies migration 011 before 012. Older binaries have no
+production callers of the removed internal designation operation. Rolling back
+a private caller of that operation would require a reviewed forward restoration;
+retired pair authority must not be silently restored. Record shipped commits and
+applied migrations independently of local upgrade verification.
 
 The Group failure is investigated independently. A successful Group plus a failed
 Viewer used to collapse into “Group unavailable”; the updated workspace attributes
