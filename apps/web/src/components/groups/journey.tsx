@@ -1,15 +1,27 @@
 'use client';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
+import { expenseFilterText } from '@/lib/relay/expense-filter';
+import {
+  WorkspaceTabs,
+  workspaceSections,
+  Skeleton,
+} from '@/components/primitives';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { fetchQuery } from 'relay-runtime';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fetchQuery, readInlineData } from 'relay-runtime';
+import expenseView, {
+  type expensesView$key,
+} from '@/lib/relay/__generated__/expensesView.graphql';
+import activityFeed, {
+  type activityFeed$key,
+} from '@/lib/relay/__generated__/activityFeed.graphql';
 import viewerDocument, {
   type journeyViewerQuery,
 } from '@/lib/relay/__generated__/journeyViewerQuery.graphql';
 import groupDocument, {
-  type journeyGroupQuery,
-} from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
+  type journeyWorkspaceQuery,
+} from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
 import { tripState, routeId } from '@/lib/relay/discovery';
@@ -18,12 +30,15 @@ import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
 import { CreationForm } from './creation-form';
 import './journey.css';
+import { createWorkspaceIntent } from '@/lib/relay/intent';
+import { workspaceRequest } from '@/lib/relay/workspace-request';
+import { useForegroundRefresh } from './foreground';
 type Viewer = Extract<
   journeyViewerQuery['response']['viewer'],
   { readonly __typename: 'Viewer' }
 >;
 type Group = Extract<
-  journeyGroupQuery['response']['group'],
+  journeyWorkspaceQuery['response']['group'],
   { readonly __typename: 'Group' }
 >;
 function message(code: string) {
@@ -53,10 +68,34 @@ export function GroupJourney({
   const initialGroup = routeId(pathGroup),
     expense = routeId(pathExpense);
   const access = useFinancialSession();
+  const intent = useMemo(
+    () => (access.scope ? createWorkspaceIntent(access.scope) : undefined),
+    [access.scope],
+  );
+  useEffect(() => () => intent?.cancel(), [intent]);
   const params = useSearchParams(),
     pathname = usePathname();
+  const intentVisit = pathname + '?' + params.toString();
+  useLayoutEffect(() => {
+    intent?.cancel();
+  }, [intent, intentVisit]);
+  useEffect(() => {
+    const cancel = () => intent?.cancel();
+    window.addEventListener('focus', cancel);
+    window.addEventListener('pageshow', cancel);
+    document.addEventListener('visibilitychange', cancel);
+    return () => {
+      window.removeEventListener('focus', cancel);
+      window.removeEventListener('pageshow', cancel);
+      document.removeEventListener('visibilitychange', cancel);
+    };
+  }, [intent]);
+  const currentTab =
+    workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
+    (params.has('after') ? 'Expenses' : 'Overview');
   const visitParams = new URLSearchParams(params);
   for (const key of [
+    'tab',
     'expense',
     'expenseGroup',
     'create',
@@ -92,6 +131,25 @@ export function GroupJourney({
           </h1>
         )}
       </header>
+      {initialGroup && (
+        <WorkspaceTabs
+          current={repayment ? 'Balances' : currentTab}
+          label="Group workspace"
+          onIntent={(section) =>
+            intent?.warm(workspaceRequest(initialGroup, section.toLowerCase()))
+          }
+          onIntentEnd={(section) =>
+            intent?.cancel(
+              section
+                ? workspaceRequest(initialGroup, section.toLowerCase()).key
+                : undefined,
+            )
+          }
+          hrefFor={(section) =>
+            `/groups/${encodeURIComponent(initialGroup)}?tab=${section.toLowerCase()}`
+          }
+        />
+      )}
       {access.loading ? (
         <p role="status">Loading secure access…</p>
       ) : access.error ? (
@@ -103,13 +161,21 @@ export function GroupJourney({
           </Link>{' '}
           with your invited account to see your groups.
         </p>
+      ) : initialGroup ? (
+        <>
+          <SourceReturn scope={access.scope} />
+          <GroupDetails
+            key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${currentTab}:${visitParams}`}
+            scope={access.scope}
+            id={initialGroup}
+            expense={expense}
+            repayment={repayment}
+          />
+        </>
       ) : (
         <ViewerJourney
           key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
           scope={access.scope}
-          initialGroup={initialGroup}
-          expense={expense}
-          repayment={repayment}
           trips={trips}
           filter={filter}
           creation={creation}
@@ -120,24 +186,17 @@ export function GroupJourney({
 }
 function ViewerJourney({
   scope,
-  initialGroup,
-  expense,
-  repayment,
   trips,
   filter,
   creation,
 }: {
   scope: FinancialScope;
-  initialGroup: string;
-  expense: string;
-  repayment: boolean;
   trips: boolean;
   filter: string;
   creation?: 'ORDINARY' | 'TRIP';
 }) {
   const [viewer, setViewer] = useState<Viewer>();
   const [error, setError] = useState('');
-  const group = initialGroup;
   const [version, setVersion] = useState(0);
   const [stale, setStale] = useState(false);
   const pathname = usePathname();
@@ -215,10 +274,7 @@ function ViewerJourney({
     );
   return (
     <>
-      {!group && (
-        <p className="journey-viewer">Signed in as {viewer.displayName}</p>
-      )}
-      {group && <SourceReturn scope={scope} />}
+      <p className="journey-viewer">Signed in as {viewer.displayName}</p>
       {creation &&
         (viewer.canCreateGroups ? (
           <CreationForm
@@ -237,7 +293,7 @@ function ViewerJourney({
             access.
           </p>
         ))}
-      {!group && !creation && (
+      {!creation && (
         <>
           {viewer.canCreateGroups && (
             <Link href={trips ? '/groups/new?kind=trip' : '/groups/new'}>
@@ -325,35 +381,33 @@ function ViewerJourney({
           />
         </>
       )}
-      {group && (
-        <GroupDetails
-          key={`${group}:${expense}:${repayment}`}
-          scope={scope}
-          id={group}
-          today={viewer.today}
-          expense={expense}
-          repayment={repayment}
-        />
-      )}
     </>
   );
 }
 function GroupDetails({
   scope,
   id,
-  today,
   expense,
   repayment,
 }: {
   scope: FinancialScope;
   id: string;
-  today: string;
   expense: string;
   repayment: boolean;
 }) {
   const router = useRouter(),
     params = useSearchParams();
   const after = params.get('after');
+  const tab = (
+    workspaceSections.find(
+      (section) => section.toLowerCase() === params.get('tab'),
+    ) ?? (after ? 'Expenses' : 'Overview')
+  ).toLowerCase();
+  const [today, setToday] = useState('');
+  const [destination, setDestination] =
+    useState<journeyWorkspaceQuery['response']>();
+  const initialFilters = expenseFilterText(params);
+  const [loadedFilters, setLoadedFilters] = useState(initialFilters);
   const [group, setGroup] = useState<Group>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
@@ -369,62 +423,112 @@ function GroupDetails({
     });
     return () => cancelAnimationFrame(frame);
   }, [saved, busy, scope]);
-  const read = async (cursor?: string | null) => {
+  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
+  const read = async () => {
+    request.current?.unsubscribe();
     const ticket = ++generation.current;
     setBusy(true);
     setError('');
     setGroup(undefined);
-    try {
-      const result = await fetchQuery<journeyGroupQuery>(
+    return new Promise<void>((resolve) => {
+      request.current = fetchQuery<journeyWorkspaceQuery>(
         scope.environment,
         groupDocument,
-        { id, after: cursor },
+        workspaceRequest(id, tab, initialFilters, !!expense, repayment)
+          .variables,
         { fetchPolicy: 'network-only' },
-      ).toPromise();
-      if (!live.current || !scope.isLive() || generation.current !== ticket)
-        return;
-      if (result?.group.__typename === 'Group' && result.group.id === id)
-        setGroup(result.group);
-      else {
-        if (
-          params.has('restore') &&
-          !scope.restored.has(params.get('restore')!) &&
-          result?.group.__typename === 'Problem' &&
-          result.group.code === 'NOT_FOUND'
-        )
-          router.replace(
-            `/groups?restore=${encodeURIComponent(params.get('restore')!)}`,
-          );
-        setError(
-          message(
-            result && 'code' in result.group
-              ? result.group.code
-              : 'UNAVAILABLE',
-          ),
-        );
-      }
-    } catch (failure) {
-      if (live.current && scope.isLive() && generation.current === ticket)
-        setError(message((failure as Error).message));
-    } finally {
-      if (live.current && generation.current === ticket) {
-        setBusy(false);
-      }
-    }
+      ).subscribe({
+        next: (result) => {
+          if (!live.current || !scope.isLive() || generation.current !== ticket)
+            return;
+          if (
+            result.group?.__typename === 'Group' &&
+            result.group.id === id &&
+            result.viewer?.__typename === 'Viewer' &&
+            (tab !== 'expenses' ||
+              !!expense ||
+              repayment ||
+              (result.groupExpenses &&
+                readInlineData<expensesView$key>(
+                  expenseView,
+                  result.groupExpenses,
+                ).__typename === 'ExpenseView')) &&
+            (tab !== 'activity' ||
+              !!expense ||
+              repayment ||
+              (result.groupActivity &&
+                readInlineData<activityFeed$key>(
+                  activityFeed,
+                  result.groupActivity,
+                ).__typename === 'ActivityConnection'))
+          ) {
+            setLoadedFilters(initialFilters);
+            setDestination(result);
+            setGroup(result.group);
+            setToday(result.viewer.today);
+          } else {
+            if (
+              params.has('restore') &&
+              !scope.restored.has(params.get('restore')!) &&
+              result.group.__typename === 'Problem' &&
+              result.group.code === 'NOT_FOUND'
+            )
+              router.replace(
+                `/groups?restore=${encodeURIComponent(params.get('restore')!)}`,
+              );
+            setError(
+              message(
+                result.group && 'code' in result.group
+                  ? result.group.code
+                  : 'UNAVAILABLE',
+              ),
+            );
+          }
+          setBusy(false);
+          resolve();
+        },
+        error: (failure: Error) => {
+          if (live.current && scope.isLive() && generation.current === ticket) {
+            setError(message(failure.message));
+            setBusy(false);
+          }
+          resolve();
+        },
+      });
+    });
   };
+  useForegroundRefresh(
+    () => {
+      generation.current++;
+      request.current?.unsubscribe();
+      setGroup(undefined);
+      setDestination(undefined);
+      setError('');
+      setBusy(true);
+    },
+    () => {
+      void read();
+    },
+  );
   useEffect(() => {
     live.current = true;
     let active = true;
     queueMicrotask(() => {
-      if (active) void read(after);
+      if (active) void read();
     });
+    const foreground = () => {
+      if (document.visibilityState === 'visible') void read();
+    };
+    const timer = setTimeout(foreground, 86400000 - (Date.now() % 86400000));
     const invalidate = () => {
       generation.current++;
     };
     return () => {
       active = false;
+      clearTimeout(timer);
       live.current = false;
       invalidate();
+      request.current?.unsubscribe();
     };
     // id/scope are immutable for this keyed group visit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -457,7 +561,7 @@ function GroupDetails({
         Refresh
       </button>
       {busy ? (
-        <p role="status">Loading current authorized group data…</p>
+        <Skeleton label="Loading current authorized group data" />
       ) : error ? (
         <>
           <p role="alert">{error}</p>
@@ -476,6 +580,16 @@ function GroupDetails({
               </>
             ) : (
               <GroupWorkspace
+                showTabs={false}
+                initialView={
+                  destination?.groupExpenses
+                    ? {
+                        filterText: loadedFilters,
+                        reference: destination.groupExpenses,
+                      }
+                    : undefined
+                }
+                initialFeed={destination?.groupActivity}
                 scope={scope}
                 group={group}
                 today={today}

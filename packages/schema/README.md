@@ -53,6 +53,15 @@ classification conversion have no public endpoint.
 
 `householdDashboard` discovers the complete currently eligible pair-shared set independently of expense pagination. Source space rows preserve exact complete balances, revision, members, current labels and trip metadata. `COMPLETE` includes checked informational totals; `INCOMPLETE` includes freshly authorized rows and an `AMOUNT_OVERFLOW` totals problem; `UNAVAILABLE` exposes only the authorized Household ledger without totals when sharing is not finalized. A finalized non-partner viewer receives `NOT_FOUND`, including an owner outside the pair. Whole-discovery failure returns `UNAVAILABLE` without rows. Counts use exact canonical `MinorUnits` strings. Zero informational net does not settle independent groups; no aggregate repayment target exists.
 
+Complete Household dashboards and expense views expose `contextVersion`, an
+opaque equality token sampled with each result. It binds the actor, designation,
+complete eligible source set, and current group/member metadata (including roles
+and participation eligibility), independently of filters, page size and financial
+revisions. Concurrent context and expense reads may be combined only when their
+nonempty tokens match. Dashboard tokens are null unless the dashboard is
+`COMPLETE`; tokens neither grant access nor replace fresh authorization or signed
+financial traversal cursors.
+
 ## Structured expense views
 
 `householdExpenses` and `groupExpenses(groupId)` return one complete structured-filtered spending dataset and a bounded global page. `StructuredExpenseFilter` accepts source `groupId`, `category`, same-group `memberId` and inclusive `from`/`to`. Member matches payer **or** an explicit allocation, including zero shares. A membership belongs to one original group: selecting it in Household filters only that group's expenses; it is not a global person identifier. `ExpenseFilter.participantId` on legacy `Group.expenses` retains participant-only semantics. No `search` field, substring/FTS/trigram query or search platform is introduced; #177 owns future production search.

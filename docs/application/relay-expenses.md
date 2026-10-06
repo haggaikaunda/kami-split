@@ -32,7 +32,7 @@ initials, white financial cards and source-scoped balance rows. Repayment entry
 keeps its recovery navigation while focusing the main area on the existing form.
 The visible **Refresh** action retains its descriptive accessible name.
 
-Overview recent expenses use the original bounded connection; the Expenses tab
+Overview recent expenses request five rows from the bounded connection; the Expenses tab
 uses the [structured view](expenses-ledger.md), with pages of 20 and signed cursors.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
@@ -164,7 +164,7 @@ count, and eligible-space count in a horizontal row, followed by at most five
 source-attributed expenses from `householdExpenses`. Balances uses the complete
 server source set and never derives totals from the recent page. No Household
 settlement action exists: each row opens its original group's Balances surface.
-Zero aggregate with open sources stays open. Members separately reads the actual
+Zero aggregate with open sources stays open. Members first reads minimal Household identity, then the actual
 Household `Group.members`, including more than two members and historical profiles;
 only owners see existing invitation management. Activity reuses #172. #170 adds
 the shared [Expenses ledger](expenses-ledger.md) at `/household/expenses`; the
@@ -176,3 +176,7 @@ private data before network-only reads. Failed/incomplete reads never fabricate
 zeros. Unavailable designation exposes only the server-authorized ledger fallback
 without a partner identity or suspension reason. Source return and browser Back
 restore focus/scroll after fresh authorization; a missing row uses the heading.
+
+## Navigation and read ownership (#193)
+
+The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent public Household/Group navigation, separately owned private visits, bounded intent warming, cancellation and fresh activation reads. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.

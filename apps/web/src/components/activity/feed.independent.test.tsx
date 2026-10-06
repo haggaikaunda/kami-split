@@ -278,6 +278,10 @@ it('focus refresh recovers from an unavailable response with freshly authorized 
   await act(async () => boundary.requests[0].error?.());
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
   await act(async () => window.dispatchEvent(new Event('focus')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.querySelector('[role="alert"]')).toBeNull();
   expect(host.textContent).toContain('Loading activity');
   await respond(connection());

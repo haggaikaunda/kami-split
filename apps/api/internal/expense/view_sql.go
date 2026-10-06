@@ -19,7 +19,7 @@ filtered AS MATERIALIZED (
  ORDER BY effective_date DESC,created_at DESC,group_id DESC,id DESC LIMIT $11
 ), months AS (SELECT to_char(effective_date,'YYYY-MM') AS month,coalesce(sum(total_minor),0)::text AS total,count(*)::text AS count FROM filtered GROUP BY 1)
 SELECT jsonb_build_object(
- 'State',scope.data->>'state','Eligibility',scope.data->>'anchor','Groups',scope.data->'groups',
+ 'ContextVersion',` + contextVersionSQL + `,'State',scope.data->>'state','Eligibility',scope.data->>'anchor','Groups',scope.data->'groups',
  'ValidGroup',($1::uuid IS NULL OR EXISTS(SELECT FROM selected WHERE id=$1)),
  'ValidMember',($2::uuid IS NULL OR EXISTS(SELECT FROM app.memberships m JOIN selected s ON s.id=m.group_id WHERE m.id=$2 AND ($1::uuid IS NULL OR m.group_id=$1))),
  'Revisions',coalesce((SELECT jsonb_agg(jsonb_build_object('GroupID',id,'Revision',revision) ORDER BY id) FROM revisions),'[]'::jsonb),

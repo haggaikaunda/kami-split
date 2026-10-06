@@ -46,6 +46,8 @@ type ExpenseViewEdge struct {
 // ExpenseView owns newly allocated complete filtered totals/months and one bounded
 // global forward page. It exposes no balances or cross-group financial obligation.
 type ExpenseView struct {
+	// ContextVersion binds current authorized source/member metadata, not financial anchors.
+	ContextVersion       string
 	Total, Count         int64
 	Months               []SpendingMonth
 	Edges                []ExpenseViewEdge
@@ -57,10 +59,10 @@ type viewScope struct {
 	Groups []string
 }
 type viewWire struct {
-	State, Eligibility, Total, Count string
-	Groups                           []string
-	ValidGroup, ValidMember          bool
-	Revisions                        []struct {
+	State, Eligibility, ContextVersion, Total, Count string
+	Groups                                           []string
+	ValidGroup, ValidMember                          bool
+	Revisions                                        []struct {
 		GroupID  string
 		Revision int64
 	}
@@ -252,7 +254,7 @@ func checkedSpending(s string) (int64, error) {
 }
 
 func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseViewCursor, anchors []ledger.SpaceRevision, codec *ledger.CursorCodec) (ExpenseView, error) {
-	result := ExpenseView{Months: []SpendingMonth{}, Edges: []ExpenseViewEdge{}, HasPrevious: cursor != nil}
+	result := ExpenseView{ContextVersion: wire.ContextVersion, Months: []SpendingMonth{}, Edges: []ExpenseViewEdge{}, HasPrevious: cursor != nil}
 	var err error
 	result.Total, err = checkedSpending(wire.Total)
 	if err != nil {

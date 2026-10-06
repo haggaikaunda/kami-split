@@ -5,12 +5,18 @@ import {
   useEffectEvent,
   useRef,
   useState,
+  useTransition,
   type ReactNode,
   type RefObject,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { fetchQuery, readInlineData } from 'relay-runtime';
+import {
+  filterKeys,
+  expenseFilterText,
+  expenseFilter,
+} from '@/lib/relay/expense-filter';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { categories, type Member } from '@/lib/relay/draft';
 import { minor, money } from '@/lib/relay/money';
@@ -42,14 +48,14 @@ export type LedgerSpace = {
   viewerMembership: { readonly id: string };
   members: readonly Member[];
 };
-const filterKeys = ['groupId', 'category', 'memberId', 'from', 'to'] as const;
 export function ExpenseLedger(
   props: Omit<
     Parameters<typeof LedgerContent>[0],
-    'filterTrigger' | 'onFilterApply'
+    'filterTrigger' | 'onFilterApply' | 'onInitialConsumed'
   >,
 ) {
   const params = useSearchParams();
+  const [initialView, setInitialView] = useState(props.initialView);
   const filters = filterKeys.map((key) => params.get(key) ?? '').join('\n');
   const filterTrigger = useRef<HTMLButtonElement>(null);
   const restoreFilterScope = useRef<string | null>(null);
@@ -62,6 +68,8 @@ export function ExpenseLedger(
     <LedgerContent
       key={`${props.scope.id}:${props.groupId ?? 'household'}:${filters}`}
       {...props}
+      initialView={initialView}
+      onInitialConsumed={() => setInitialView(undefined)}
       filterTrigger={filterTrigger}
       onFilterApply={(next) => {
         restoreFilterScope.current = next === filters ? null : props.scope.id;
@@ -80,7 +88,15 @@ function LedgerContent({
   onRefreshContext,
   filterTrigger,
   onFilterApply,
+  initialView,
+  onInitialConsumed,
+  contextVersion,
+  managedRefresh = false,
 }: {
+  onInitialConsumed: () => void;
+  contextVersion?: string;
+  initialView?: { filterText: string; reference: expensesView$key };
+  managedRefresh?: boolean;
   filterTrigger: RefObject<HTMLButtonElement | null>;
   onFilterApply: (filters: string) => void;
   scope: FinancialScope;
@@ -95,11 +111,8 @@ function LedgerContent({
   const params = useSearchParams(),
     router = useRouter(),
     pathname = usePathname();
-  const filterText = new URLSearchParams(
-    filterKeys.flatMap((key) =>
-      params.get(key) ? [[key, params.get(key)!]] : [],
-    ),
-  ).toString();
+  const filterText = expenseFilterText(params);
+  const initial = useRef(initialView);
   const selected = params.get('expense') ?? '',
     source = params.get('expenseGroup') ?? groupId;
   const create = params.get('create') ?? '';
@@ -109,6 +122,7 @@ function LedgerContent({
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true),
     [error, setError] = useState('');
+  const [navigationPending, startNavigation] = useTransition();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const origin = useRef<{ id: string; scroll: number } | null>(null);
@@ -121,8 +135,10 @@ function LedgerContent({
       value ? next.set(key, value) : next.delete(key),
     );
     const href = `${pathname}?${next}`;
-    if (replace) router.replace(href, { scroll: false });
-    else router.push(href, { scroll: false });
+    startNavigation(() => {
+      if (replace) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    });
   };
   const reset = () => {
     generation.current++;
@@ -134,20 +150,24 @@ function LedgerContent({
     setVersion((v) => v + 1);
   };
   const refresh = () => {
+    if (managedRefresh && onRefreshContext) {
+      void onRefreshContext();
+      return;
+    }
     reset();
     void onRefreshContext?.();
   };
   useEffect(() => {
     let live = true;
     const ticket = ++generation.current;
-    const values = new URLSearchParams(filterText);
-    const filter = Object.fromEntries(
-      filterKeys.map((key) => [key, values.get(key) || null]),
-    ) as NonNullable<expensesGroupQuery['variables']['filter']>;
+    const filter = expenseFilter(filterText);
     const accept = (reference: expensesView$key) => {
       if (!live || !scope.isLive() || ticket !== generation.current) return;
       const result = readInlineData<expensesView$key>(viewDocument, reference);
-      if (result.__typename === 'ExpenseView') {
+      if (
+        result.__typename === 'ExpenseView' &&
+        (!contextVersion || result.contextVersion === contextVersion)
+      ) {
         setNotice('');
         setPage(result);
         setRows((previous) =>
@@ -159,7 +179,11 @@ function LedgerContent({
         setError(
           'Expenses unavailable. Access or this traversal may have changed. Refresh to restart; no zero total can be established.',
         );
-        if ('code' in result && result.code === 'NOT_FOUND') onDenied();
+        if (
+          result.__typename === 'ExpenseView' ||
+          ('code' in result && result.code === 'NOT_FOUND')
+        )
+          onDenied();
       }
       setLoading(false);
     };
@@ -171,6 +195,20 @@ function LedgerContent({
         setLoading(false);
       }
     };
+    const prepared = initial.current;
+    initial.current = undefined;
+    if (prepared) onInitialConsumed();
+    if (
+      prepared &&
+      prepared.filterText === filterText &&
+      !after &&
+      version === 0
+    ) {
+      accept(prepared.reference);
+      return () => {
+        live = false;
+      };
+    }
     const request = groupId
       ? fetchQuery<expensesGroupQuery>(
           scope.environment,
@@ -196,6 +234,7 @@ function LedgerContent({
     refresh();
   });
   useEffect(() => {
+    if (managedRefresh) return;
     const refreshOnFocus = () => refreshFromForeground();
     const foreground = () => {
       if (document.visibilityState === 'visible') refreshOnFocus();
@@ -206,7 +245,7 @@ function LedgerContent({
       window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', foreground);
     };
-  }, []);
+  }, [managedRefresh]);
   useEffect(() => {
     if (selected || create) {
       opened.current = true;
@@ -320,6 +359,7 @@ function LedgerContent({
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
     <section className="expense-ledger" aria-label="Expenses">
+      {navigationPending && <p role="status">Opening expense view…</p>}
       <div className="ui-summary-row" ref={summary} tabIndex={-1}>
         <SummaryMetric
           label={groupId ? 'Total expenses' : 'Total shared expenses'}

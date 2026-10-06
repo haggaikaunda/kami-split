@@ -19,6 +19,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock('./session', () => ({ useFinancialSession: () => mock.access }));
 vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
   default: ({
     children,
     onNavigate,
@@ -171,7 +172,6 @@ it('canonicalizes an escaped public Group ID before its fresh authorized route r
   const id = 'ks1:Group:11111111-1111-4111-8111-111111111111';
   mock.path = '/groups/' + encodeURIComponent(id);
   await render(<GroupJourney initialGroup={encodeURIComponent(id)} />);
-  await respond(viewer());
-  const request = mock.requests.find((r) => r.name === 'journeyGroupQuery');
+  const request = mock.requests.find((r) => r.name === 'journeyWorkspaceQuery');
   expect(request?.variables.id).toBe(id);
 });

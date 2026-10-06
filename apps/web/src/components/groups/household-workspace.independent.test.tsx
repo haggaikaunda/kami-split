@@ -36,7 +36,10 @@ vi.mock('relay-runtime', () => ({
     };
   },
 }));
-vi.mock('next/link', () => ({ default: 'a' }));
+vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
+  default: 'a',
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/household',
@@ -284,6 +287,10 @@ it('foreground refresh removes prior authorized content while a new read is pend
     .spyOn(document, 'visibilityState', 'get')
     .mockReturnValue('visible');
   await act(async () => window.dispatchEvent(new Event('focus')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.textContent).not.toContain('Maui');
   expect(host.querySelector('[role="status"]')?.textContent).toContain(
     'Loading current authorized',

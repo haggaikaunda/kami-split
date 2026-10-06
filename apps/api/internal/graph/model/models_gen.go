@@ -347,6 +347,8 @@ type ExpenseOperationRecord struct {
 
 // One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
 type ExpenseView struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+	ContextVersion string `json:"contextVersion"`
 	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
 	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
 	// Exact count of all matching expenses at the same anchor.
@@ -527,6 +529,8 @@ type Health struct {
 
 // Original ledgers and an explicit complete/incomplete/unavailable outcome.
 type HouseholdDashboard struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+	ContextVersion *string `json:"contextVersion,omitempty"`
 	// Current completeness, independent of individual group settlement.
 	State HouseholdDashboardState `json:"state"`
 	// Complete eligible set, or Household-only fallback; excluded groups leave no trace.

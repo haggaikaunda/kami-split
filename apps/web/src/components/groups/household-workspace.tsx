@@ -1,20 +1,22 @@
 'use client';
 import Link from 'next/link';
-import { WorkspaceNavigation, AppIcon } from '@/components/workspace-identity';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { AppIcon } from '@/components/workspace-identity';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { fetchQuery } from 'relay-runtime';
 import document, {
   type householdWorkspaceQuery,
 } from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
+import accessDocument, {
+  type householdAccessQuery,
+} from '@/lib/relay/__generated__/householdAccessQuery.graphql';
+import { Skeleton } from '@/components/primitives';
 import membersDocument, {
   type householdMembersQuery,
 } from '@/lib/relay/__generated__/householdMembersQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
 import {
-  WorkspaceHeader,
-  WorkspaceTabs,
   SummaryMetric,
   Money,
   MemberBalanceRow,
@@ -25,6 +27,7 @@ import { ActivityFeed } from '@/components/activity/feed';
 import { useFinancialSession } from './session';
 import { ScopedLink, RestoreSource } from './navigation';
 import './journey.css';
+import { useForegroundRefresh } from './foreground';
 import './household-workspace.css';
 export type Dashboard = Extract<
   householdWorkspaceQuery['response']['householdDashboard'],
@@ -39,19 +42,14 @@ type Members = Extract<
   { readonly __typename: 'Group' }
 >;
 type Recent = householdWorkspaceQuery['response']['householdExpenses'];
-export function householdHref(section: WorkspaceSection) {
-  if (section === 'Expenses') return '/household/expenses';
-  return section === 'Activity'
-    ? '/household/activity'
-    : `/household?tab=${section.toLowerCase()}`;
-}
+export { householdHref } from './household-frame';
+import { householdHref } from './household-frame';
 export function HouseholdWorkspace({
   activity = false,
 }: {
   activity?: boolean;
 }) {
   const access = useFinancialSession();
-  const router = useRouter();
   const params = useSearchParams(),
     pathname = usePathname();
   const current = activity
@@ -59,38 +57,7 @@ export function HouseholdWorkspace({
     : (workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
       'Overview');
   return (
-    <main
-      className="financial-journey group-workspace household-workspace"
-      id="page-content"
-    >
-      <WorkspaceNavigation />
-      <WorkspaceHeader
-        title="Household"
-        context="Shared expenses across home, trips and groups."
-        appearance="household"
-      />
-      <div
-        onClick={(event) => {
-          const link = (event.target as HTMLElement).closest('a');
-          if (
-            !link ||
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.altKey ||
-            event.shiftKey
-          )
-            return;
-          event.preventDefault();
-          router.push(link.getAttribute('href')!);
-        }}
-      >
-        <WorkspaceTabs
-          current={current}
-          hrefFor={householdHref}
-          label="Household workspace"
-        />
-      </div>
+    <>
       {access.loading ? (
         <p role="status">Loading secure access…</p>
       ) : access.error ? (
@@ -104,6 +71,8 @@ export function HouseholdWorkspace({
           </Link>{' '}
           to see your Household.
         </p>
+      ) : activity ? (
+        <ActivityFeed key={access.scope.id} scope={access.scope} groupId="" />
       ) : (
         <HouseholdRead
           key={`${access.scope.id}:${pathname}:${params.toString()}`}
@@ -111,10 +80,9 @@ export function HouseholdWorkspace({
           current={current}
         />
       )}
-    </main>
+    </>
   );
 }
-/** Every visit and foreground refresh starts from an empty, network-only read. */
 export function HouseholdRead({
   scope,
   current,
@@ -122,64 +90,58 @@ export function HouseholdRead({
   scope: FinancialScope;
   current: WorkspaceSection;
 }) {
-  const [version, setVersion] = useState(0);
-  const [data, setData] = useState<Dashboard>();
+  return current === 'Members' ? (
+    <HouseholdMembersRead scope={scope} />
+  ) : (
+    <HouseholdSummaryRead
+      key={`${scope.id}:${current}`}
+      scope={scope}
+      current={current}
+    />
+  );
+}
+function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
   const [members, setMembers] = useState<Members>();
-  const [recent, setRecent] = useState<Recent>();
   const [error, setError] = useState('');
-  const reset = () => {
-    setData(undefined);
+  const [version, setVersion] = useState(0);
+  const generation = useRef(0);
+  const requests = useRef<{ unsubscribe(): void }[]>([]);
+  const invalidate = () => {
+    generation.current++;
+    requests.current.forEach((r) => r.unsubscribe());
+    requests.current = [];
     setMembers(undefined);
-    setRecent(undefined);
     setError('');
+  };
+  const reset = () => {
+    invalidate();
     setVersion((v) => v + 1);
   };
-  useEffect(() => {
-    const foreground = () => {
-      if (documentVisibility()) reset();
-    };
-    window.addEventListener('focus', foreground);
-    window.addEventListener('pageshow', foreground);
-    window.document.addEventListener('visibilitychange', foreground);
-    return () => {
-      window.removeEventListener('focus', foreground);
-      window.removeEventListener('pageshow', foreground);
-      window.document.removeEventListener('visibilitychange', foreground);
-    };
-  }, []);
+  useForegroundRefresh(invalidate, () => setVersion((v) => v + 1));
   useEffect(() => {
     let active = true;
+    const ticket = ++generation.current;
     let memberRead: { unsubscribe(): void } | undefined;
-    const live = () => active && scope.isLive();
     const failed = () => {
-      if (live())
+      if (active && scope.isLive() && ticket === generation.current)
         setError(
-          'Household data is unavailable. No zero balance or settled status can be established.',
+          'Household membership is unavailable. Refresh to check current access.',
         );
     };
-    const dashboardRead = fetchQuery<householdWorkspaceQuery>(
+    const request = fetchQuery<householdAccessQuery>(
       scope.environment,
-      document,
-      { recent: current === 'Overview' },
+      accessDocument,
+      {},
       { fetchPolicy: 'network-only' },
     ).subscribe({
       next: (result) => {
-        if (!live()) return;
-        if (result.householdDashboard.__typename !== 'HouseholdDashboard') {
-          setError(
-            'Household access is unavailable. Refresh to check current access.',
-          );
-          return;
-        }
-        const dashboard = result.householdDashboard;
-        const home = dashboard.spaces.find((s) => s.isHousehold);
+        if (!active || !scope.isLive() || ticket !== generation.current) return;
+        const home =
+          result.householdDashboard.__typename === 'HouseholdDashboard'
+            ? result.householdDashboard.spaces.find((s) => s.isHousehold)
+            : undefined;
         if (!home) {
-          setError('Household access is unavailable.');
-          return;
-        }
-        if (current !== 'Members') {
-          setData(dashboard);
-          setRecent(result.householdExpenses);
+          failed();
           return;
         }
         memberRead = fetchQuery<householdMembersQuery>(
@@ -189,29 +151,132 @@ export function HouseholdRead({
           { fetchPolicy: 'network-only' },
         ).subscribe({
           next: (response) => {
-            if (!live()) return;
-            if (
-              response.group.__typename !== 'Group' ||
-              response.group.id !== home.groupId
-            ) {
-              setError(
-                'Household membership is unavailable. Refresh to check current access.',
-              );
+            if (!active || !scope.isLive() || ticket !== generation.current)
               return;
-            }
-            setMembers(response.group);
-            setData(dashboard);
+            if (
+              response.group.__typename === 'Group' &&
+              response.group.id === home.groupId
+            )
+              setMembers(response.group);
+            else failed();
           },
           error: failed,
         });
+        requests.current.push(memberRead);
       },
       error: failed,
     });
+    requests.current.push(request);
+    return () => {
+      active = false;
+      request.unsubscribe();
+      memberRead?.unsubscribe();
+    };
+  }, [scope, version]);
+  return (
+    <>
+      <button className="household-refresh" onClick={reset}>
+        Refresh Household
+      </button>
+      {error ? (
+        <p role="alert">{error}</p>
+      ) : members ? (
+        <HouseholdMembers members={members} />
+      ) : (
+        <Skeleton label="Loading Household membership" />
+      )}
+    </>
+  );
+}
+function HouseholdMembers({ members }: { members: Members }) {
+  return (
+    <section>
+      <h2>Household members</h2>
+      <p>
+        These are the Household ledger members. The designated dashboard pair is
+        separate and does not limit membership to two people.
+      </p>
+      {members.members.map((m) => (
+        <MemberBalanceRow key={m.id} name={m.displayName}>
+          <p>
+            {m.role === 'OWNER' ? 'Owner' : 'Member'} ·{' '}
+            {m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}
+          </p>
+        </MemberBalanceRow>
+      ))}
+      {members.viewerMembership.role === 'OWNER' && (
+        <Link href="/invitations">Manage invitations</Link>
+      )}
+    </section>
+  );
+}
+/** Every visit and foreground refresh starts from an empty, network-only read. */
+function HouseholdSummaryRead({
+  scope,
+  current,
+}: {
+  scope: FinancialScope;
+  current: WorkspaceSection;
+}) {
+  const [version, setVersion] = useState(0);
+  const [data, setData] = useState<Dashboard>();
+  const [recent, setRecent] = useState<Recent>();
+  const [error, setError] = useState('');
+  const generation = useRef(0);
+  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
+  const invalidate = () => {
+    generation.current++;
+    request.current?.unsubscribe();
+    setData(undefined);
+    setRecent(undefined);
+    setError('');
+  };
+  const reset = () => {
+    invalidate();
+    setVersion((v) => v + 1);
+  };
+  useForegroundRefresh(invalidate, () => setVersion((v) => v + 1));
+  useEffect(() => {
+    let active = true;
+    const ticket = ++generation.current;
+    const live = () =>
+      active && scope.isLive() && ticket === generation.current;
+    const failed = () => {
+      if (live())
+        setError(
+          'Household data is unavailable. No zero balance or settled status can be established.',
+        );
+    };
+    const dashboardRead = (request.current =
+      fetchQuery<householdWorkspaceQuery>(
+        scope.environment,
+        document,
+        { recent: current === 'Overview', balances: current === 'Balances' },
+        { fetchPolicy: 'network-only' },
+      ).subscribe({
+        next: (result) => {
+          if (!live()) return;
+          if (result.householdDashboard.__typename !== 'HouseholdDashboard') {
+            setError(
+              'Household access is unavailable. Refresh to check current access.',
+            );
+            return;
+          }
+          const dashboard = result.householdDashboard;
+          const home = dashboard.spaces.find((s) => s.isHousehold);
+          if (!home) {
+            setError('Household access is unavailable.');
+            return;
+          }
+          setData(dashboard);
+          setRecent(result.householdExpenses);
+        },
+        error: failed,
+      }));
     return () => {
       active = false;
       // Unsubscribe prevents Relay from reusing a pre-revalidation inflight read.
       dashboardRead.unsubscribe();
-      memberRead?.unsubscribe();
     };
   }, [scope, current, version]);
   return (
@@ -222,14 +287,13 @@ export function HouseholdRead({
       {error ? (
         <p role="alert">{error}</p>
       ) : !data ? (
-        <p role="status">Loading current authorized Household data…</p>
+        <Skeleton label="Loading current authorized Household data" />
       ) : (
         <>
           <HouseholdContent
             scope={scope}
             dashboard={data}
             current={current}
-            members={members}
             recent={recent}
           />
           <RestoreSource
@@ -240,9 +304,6 @@ export function HouseholdRead({
       )}
     </>
   );
-}
-function documentVisibility() {
-  return window.document.visibilityState === 'visible';
 }
 export function HouseholdContent({
   scope,
@@ -340,7 +401,7 @@ export function HouseholdContent({
               const balances = space.balances;
               const viewer = space.viewerMembership.id;
               const parties =
-                balances.__typename === 'GroupBalances'
+                balances?.__typename === 'GroupBalances'
                   ? balances.obligations
                       .filter(
                         (o) =>
@@ -364,7 +425,7 @@ export function HouseholdContent({
                       ? parties.length === 1
                         ? `You owe ${parties[0]}`
                         : 'You owe in this space'
-                      : balances.__typename === 'GroupBalances' &&
+                      : balances?.__typename === 'GroupBalances' &&
                           balances.settled
                         ? space.sharedExpenseCount === '0'
                           ? 'No shared expenses · Settled'

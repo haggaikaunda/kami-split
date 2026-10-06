@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const independentDashboardQuery = `{householdDashboard{__typename ... on Problem{code message} ... on HouseholdDashboard{state totals{__typename ... on Problem{code} ... on HouseholdDashboardTotals{viewerNetMinor activeSpaceCount openBalanceCount totalSharedExpenseMinor totalSharedExpenseCount}} spaces{viewerNetMinor sharedExpenseCount groupId name kind isHousehold trip{destination startDate endDate} members{id displayName status} balances{__typename ... on Problem{code} ... on GroupBalances{revision totalExpenseMinor settled positions{member{id status} netMinor paidMinor owedMinor sentMinor receivedMinor} obligations{from{id} to{id} amountMinor}}}}}}}`
+const independentDashboardQuery = `{householdDashboard{__typename ... on Problem{code message} ... on HouseholdDashboard{contextVersion state totals{__typename ... on Problem{code} ... on HouseholdDashboardTotals{viewerNetMinor activeSpaceCount openBalanceCount totalSharedExpenseMinor totalSharedExpenseCount}} spaces{viewerNetMinor sharedExpenseCount groupId name kind isHousehold trip{destination startDate endDate} members{id displayName status} balances{__typename ... on Problem{code} ... on GroupBalances{revision totalExpenseMinor settled positions{member{id status} netMinor paidMinor owedMinor sentMinor receivedMinor} obligations{from{id} to{id} amountMinor}}}}}}}`
 
 func independentDashboardExec(t *testing.T, f *expenseFixture, sql string) {
 	t.Helper()
@@ -89,6 +89,9 @@ func TestIndependentDashboardExactWireAndOverflowSuppressAllTotals(t *testing.T)
 				t.Fatal(got)
 			}
 			totals := got["totals"].(map[string]any)
+			if got["contextVersion"] != nil {
+				t.Fatal("incomplete dashboard exposed usable context version")
+			}
 			if len(totals) != 2 || totals["__typename"] != "Problem" || totals["code"] != "AMOUNT_OVERFLOW" {
 				t.Fatal("partial totals on overflow", got)
 			}

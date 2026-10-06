@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6f4ed3f5a28a6b5c4093d3497853c5ea>>
+ * @generated SignedSource<<3734373a8e340c20744df6b1aafd47c0>>
  * @lightSyntaxTransform
  */
 
@@ -14,13 +14,14 @@ export type HouseholdDashboardState = "COMPLETE" | "INCOMPLETE" | "UNAVAILABLE" 
 export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 export type householdWorkspaceQuery$variables = {
+  balances: boolean;
   recent: boolean;
 };
 export type householdWorkspaceQuery$data = {
   readonly householdDashboard: {
     readonly __typename: "HouseholdDashboard";
     readonly spaces: ReadonlyArray<{
-      readonly balances: {
+      readonly balances?: {
         readonly __typename: "GroupBalances";
         readonly obligations: ReadonlyArray<{
           readonly amountMinor: string;
@@ -111,21 +112,24 @@ export type householdWorkspaceQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "recent"
-  }
-],
+var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "balances"
+},
 v1 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "recent"
+},
+v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "__typename",
   "storageKey": null
 },
-v2 = {
+v3 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -139,57 +143,57 @@ v2 = {
   "type": "Problem",
   "abstractKey": null
 },
-v3 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewerNetMinor",
   "storageKey": null
 },
-v4 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "groupId",
   "storageKey": null
 },
-v5 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "kind",
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "isHousehold",
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "currency",
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v10 = [
-  (v9/*:: as any*/),
+v11 = [
+  (v10/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -198,7 +202,7 @@ v10 = [
     "storageKey": null
   }
 ],
-v11 = [
+v12 = [
   {
     "alias": null,
     "args": null,
@@ -207,8 +211,8 @@ v11 = [
     "name": "householdDashboard",
     "plural": false,
     "selections": [
-      (v1/*:: as any*/),
       (v2/*:: as any*/),
+      (v3/*:: as any*/),
       {
         "kind": "InlineFragment",
         "selections": [
@@ -227,11 +231,11 @@ v11 = [
             "name": "totals",
             "plural": false,
             "selections": [
-              (v1/*:: as any*/),
+              (v2/*:: as any*/),
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v3/*:: as any*/),
+                  (v4/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -264,7 +268,7 @@ v11 = [
                 "type": "HouseholdDashboardTotals",
                 "abstractKey": null
               },
-              (v2/*:: as any*/)
+              (v3/*:: as any*/)
             ],
             "storageKey": null
           },
@@ -276,12 +280,12 @@ v11 = [
             "name": "spaces",
             "plural": true,
             "selections": [
-              (v4/*:: as any*/),
               (v5/*:: as any*/),
               (v6/*:: as any*/),
               (v7/*:: as any*/),
               (v8/*:: as any*/),
-              (v3/*:: as any*/),
+              (v9/*:: as any*/),
+              (v4/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -297,7 +301,7 @@ v11 = [
                 "name": "viewerMembership",
                 "plural": false,
                 "selections": [
-                  (v9/*:: as any*/),
+                  (v10/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -309,69 +313,76 @@ v11 = [
                 "storageKey": null
               },
               {
-                "alias": null,
-                "args": null,
-                "concreteType": null,
-                "kind": "LinkedField",
-                "name": "balances",
-                "plural": false,
+                "condition": "balances",
+                "kind": "Condition",
+                "passingValue": true,
                 "selections": [
-                  (v1/*:: as any*/),
                   {
-                    "kind": "InlineFragment",
+                    "alias": null,
+                    "args": null,
+                    "concreteType": null,
+                    "kind": "LinkedField",
+                    "name": "balances",
+                    "plural": false,
                     "selections": [
+                      (v2/*:: as any*/),
                       {
-                        "alias": null,
-                        "args": null,
-                        "kind": "ScalarField",
-                        "name": "settled",
-                        "storageKey": null
-                      },
-                      {
-                        "alias": null,
-                        "args": null,
-                        "concreteType": "Obligation",
-                        "kind": "LinkedField",
-                        "name": "obligations",
-                        "plural": true,
+                        "kind": "InlineFragment",
                         "selections": [
                           {
                             "alias": null,
                             "args": null,
-                            "concreteType": "Membership",
-                            "kind": "LinkedField",
-                            "name": "from",
-                            "plural": false,
-                            "selections": (v10/*:: as any*/),
-                            "storageKey": null
-                          },
-                          {
-                            "alias": null,
-                            "args": null,
-                            "concreteType": "Membership",
-                            "kind": "LinkedField",
-                            "name": "to",
-                            "plural": false,
-                            "selections": (v10/*:: as any*/),
-                            "storageKey": null
-                          },
-                          {
-                            "alias": null,
-                            "args": null,
                             "kind": "ScalarField",
-                            "name": "amountMinor",
+                            "name": "settled",
+                            "storageKey": null
+                          },
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "Obligation",
+                            "kind": "LinkedField",
+                            "name": "obligations",
+                            "plural": true,
+                            "selections": [
+                              {
+                                "alias": null,
+                                "args": null,
+                                "concreteType": "Membership",
+                                "kind": "LinkedField",
+                                "name": "from",
+                                "plural": false,
+                                "selections": (v11/*:: as any*/),
+                                "storageKey": null
+                              },
+                              {
+                                "alias": null,
+                                "args": null,
+                                "concreteType": "Membership",
+                                "kind": "LinkedField",
+                                "name": "to",
+                                "plural": false,
+                                "selections": (v11/*:: as any*/),
+                                "storageKey": null
+                              },
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
+                                "name": "amountMinor",
+                                "storageKey": null
+                              }
+                            ],
                             "storageKey": null
                           }
                         ],
-                        "storageKey": null
-                      }
+                        "type": "GroupBalances",
+                        "abstractKey": null
+                      },
+                      (v3/*:: as any*/)
                     ],
-                    "type": "GroupBalances",
-                    "abstractKey": null
-                  },
-                  (v2/*:: as any*/)
-                ],
-                "storageKey": null
+                    "storageKey": null
+                  }
+                ]
               }
             ],
             "storageKey": null
@@ -402,8 +413,8 @@ v11 = [
         "name": "householdExpenses",
         "plural": false,
         "selections": [
-          (v1/*:: as any*/),
           (v2/*:: as any*/),
+          (v3/*:: as any*/),
           {
             "kind": "InlineFragment",
             "selections": [
@@ -423,8 +434,8 @@ v11 = [
                     "name": "node",
                     "plural": false,
                     "selections": [
-                      (v9/*:: as any*/),
-                      (v4/*:: as any*/),
+                      (v10/*:: as any*/),
+                      (v5/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -457,11 +468,11 @@ v11 = [
                     "name": "source",
                     "plural": false,
                     "selections": [
-                      (v9/*:: as any*/),
-                      (v5/*:: as any*/),
+                      (v10/*:: as any*/),
                       (v6/*:: as any*/),
                       (v7/*:: as any*/),
-                      (v8/*:: as any*/)
+                      (v8/*:: as any*/),
+                      (v9/*:: as any*/)
                     ],
                     "storageKey": null
                   }
@@ -480,32 +491,38 @@ v11 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*:: as any*/),
+    "argumentDefinitions": [
+      (v0/*:: as any*/),
+      (v1/*:: as any*/)
+    ],
     "kind": "Fragment",
     "metadata": null,
     "name": "householdWorkspaceQuery",
-    "selections": (v11/*:: as any*/),
+    "selections": (v12/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*:: as any*/),
+    "argumentDefinitions": [
+      (v1/*:: as any*/),
+      (v0/*:: as any*/)
+    ],
     "kind": "Operation",
     "name": "householdWorkspaceQuery",
-    "selections": (v11/*:: as any*/)
+    "selections": (v12/*:: as any*/)
   },
   "params": {
-    "cacheID": "8cf428f8d4c31977241215dc941994ce",
+    "cacheID": "4e2c774b4d55cb5a564f29cf38e6d09a",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 5) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 5) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5631fefa82d53c3204a43bc3690f81d1";
+(node as any).hash = "0673c11120f43b6f92a87b4453a6eeb1";
 
 export default node;

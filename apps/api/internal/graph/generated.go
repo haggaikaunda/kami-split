@@ -131,6 +131,7 @@ type ComplexityRoot struct {
 	}
 
 	ExpenseView struct {
+		ContextVersion    func(childComplexity int) int
 		Edges             func(childComplexity int) int
 		ExpenseCount      func(childComplexity int) int
 		Months            func(childComplexity int) int
@@ -214,9 +215,10 @@ type ComplexityRoot struct {
 	}
 
 	HouseholdDashboard struct {
-		Spaces func(childComplexity int) int
-		State  func(childComplexity int) int
-		Totals func(childComplexity int) int
+		ContextVersion func(childComplexity int) int
+		Spaces         func(childComplexity int) int
+		State          func(childComplexity int) int
+		Totals         func(childComplexity int) int
 	}
 
 	HouseholdDashboardSpace struct {
@@ -845,6 +847,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ExpenseOperationRecord.TotalMinor(childComplexity), true
 
+	case "ExpenseView.contextVersion":
+		if e.ComplexityRoot.ExpenseView.ContextVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.ContextVersion(childComplexity), true
 	case "ExpenseView.edges":
 		if e.ComplexityRoot.ExpenseView.Edges == nil {
 			break
@@ -1149,6 +1157,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Health.Status(childComplexity), true
 
+	case "HouseholdDashboard.contextVersion":
+		if e.ComplexityRoot.HouseholdDashboard.ContextVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboard.ContextVersion(childComplexity), true
 	case "HouseholdDashboard.spaces":
 		if e.ComplexityRoot.HouseholdDashboard.Spaces == nil {
 			break
@@ -3385,6 +3399,10 @@ Original ledgers and an explicit complete/incomplete/unavailable outcome.
 """
 type HouseholdDashboard {
   """
+  Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+  """
+  contextVersion: String
+  """
   Current completeness, independent of individual group settlement.
   """
   state: HouseholdDashboardState!
@@ -4153,6 +4171,10 @@ union ExpenseViewResult = ExpenseView | Problem
 One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
 """
 type ExpenseView {
+  """
+  Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+  """
+  contextVersion: String!
   """
   Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
   """
@@ -6889,6 +6911,29 @@ func (ec *executionContext) fieldContext_ExpenseOperationRecord_revision(_ conte
 	return graphql.NewScalarFieldContext("ExpenseOperationRecord", field, false, false, errors.New("field of type Revision does not have child fields"))
 }
 
+func (ec *executionContext) _ExpenseView_contextVersion(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_contextVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ContextVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_contextVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _ExpenseView_totalExpenseMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8118,6 +8163,29 @@ func (ec *executionContext) _Health_status(ctx context.Context, field graphql.Co
 }
 func (ec *executionContext) fieldContext_Health_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboard_contextVersion(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboard_contextVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ContextVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboard_contextVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboard", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _HouseholdDashboard_state(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
@@ -14585,6 +14653,11 @@ func (ec *executionContext) _ExpenseView(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExpenseView")
+		case "contextVersion":
+			out.Values[i] = ec._ExpenseView_contextVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "totalExpenseMinor":
 			out.Values[i] = ec._ExpenseView_totalExpenseMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15282,6 +15355,11 @@ func (ec *executionContext) _HouseholdDashboard(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("HouseholdDashboard")
+		case "contextVersion":
+			out.Values[i] = ec._HouseholdDashboard_contextVersion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "state":
 			out.Values[i] = ec._HouseholdDashboard_state(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
