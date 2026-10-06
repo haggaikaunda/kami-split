@@ -85,7 +85,8 @@ production admission inconsistency has been established by this implementation.
 Apply the forward migration before deploying the updated API/web. Existing API
 reads call the replaced database functions, so basic membership sharing works across
 the compatible rollout. Deploy API with regenerated SDL and then web with updated
-Join/failure copy. Old cursors fail safely and require a fresh traversal; web refresh
+Join/failure copy. Expense cursors invalidate at migration; old Household Activity cursors invalidate
+when the updated API is deployed. A fresh traversal is required; web refresh
 fetches current scope without clearing storage. Partial rollout may retain old copy
 until the web deploy, but must not expose excluded sources or invent zero balances.
 

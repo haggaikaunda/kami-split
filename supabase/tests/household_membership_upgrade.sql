@@ -29,7 +29,12 @@ INSERT INTO app.repayments(id,group_id,creator_id,sender_id,recipient_id,amount_
 VALUES('a1970000-0000-4000-8000-000000000010','a1100000-0000-4000-8000-000000000002','a1970000-0000-4000-8000-000000000003','a1970000-0000-4000-8000-000000000003','a1100000-0000-4000-8000-000000000003',100,'USD','2026-01-03','Existing repayment',3);
 INSERT INTO app.repayment_audit SELECT id,group_id,'a1970000-0000-4000-8000-000000000001',creator_id,'RECORD_REPAYMENT',created_at FROM app.repayments WHERE id='a1970000-0000-4000-8000-000000000010';
 INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,repayment_id,outcome)
-SELECT 'a1970000-0000-4000-8000-000000000001',group_id,'RECORD_REPAYMENT','a1970000-0000-4000-8000-000000000011','record-repayment-v1',convert_to('["upgrade-repayment"]','UTF8'),decode(repeat('24',32),'hex'),id,jsonb_build_object('Kind','COMMITTED','Repayment',jsonb_build_object('RepaymentID','ks1:Repayment:'||id::text)) FROM app.repayments WHERE id='a1970000-0000-4000-8000-000000000010';
+SELECT 'a1970000-0000-4000-8000-000000000001',group_id,'RECORD_REPAYMENT','a1970000-0000-4000-8000-000000000011','record-repayment-v1',convert_to('["upgrade-repayment"]','UTF8'),decode(repeat('24',32),'hex'),id,jsonb_build_object('Kind','COMMITTED','Repayment',jsonb_build_object(
+'RepaymentID','ks1:Repayment:'||id::text,'GroupID','ks1:Group:'||group_id::text,
+'CreatorMembershipID','ks1:Membership:'||creator_id::text,'SenderMembershipID','ks1:Membership:'||sender_id::text,
+'RecipientMembershipID','ks1:Membership:'||recipient_id::text,'AmountMinor',amount_minor,'Currency',currency,
+'EffectiveDate',to_char(effective_date,'YYYY-MM-DD'),'Note',note,'Revision',revision,
+'CommittedAt',to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))) FROM app.repayments WHERE id='a1970000-0000-4000-8000-000000000010';
 COMMIT;
 BEGIN;
 CREATE TABLE public.household_upgrade_snapshot AS SELECT name,rows FROM (
