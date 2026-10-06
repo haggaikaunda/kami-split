@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Kami Split',
+  title: 'Kami Grow',
   description: 'Shared expenses, simply settled.',
 };
 export default function RootLayout({

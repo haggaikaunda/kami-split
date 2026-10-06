@@ -1,6 +1,8 @@
-# Kami Split
+# Kami Grow
 
-Kami Split shares expenses through real authenticated Group, Trip and Household workspaces. Relay/GraphQL reads and writes use the Go API for authorization, exact balances, persisted expenses, group repayments and recovery. Trips are independent groups; Household summaries retain each original financial boundary.
+Kami Grow shares expenses through real authenticated Group, Trip and Household workspaces. Relay/GraphQL reads and writes use the Go API for authorization, exact balances, persisted expenses, group repayments and recovery. Trips are independent groups; Household summaries retain each original financial boundary.
+
+The frontend product name is **Kami Grow**. Repository, package, API module, storage and infrastructure identifiers remain `kami-split` for compatibility. Historical design records and dated delivery evidence retain the original Kami Split name.
 
 The seeded application was retired in #184. Its design and delivery reports remain historical evidence, not executable runtime guidance. See the [documentation index](docs/README.md) for current behavior and verification.
 

@@ -682,7 +682,7 @@ it('keeps targeted preview anonymous and requires explicit proof before password
     token_hash: 'b'.repeat(64),
     type: 'signup',
   });
-  expect(container.textContent).toContain('Create your Kami Split account');
+  expect(container.textContent).toContain('Create your Kami Grow account');
   expect(container.querySelectorAll('input[type=password]')).toHaveLength(2);
   expect(
     requests.some(
