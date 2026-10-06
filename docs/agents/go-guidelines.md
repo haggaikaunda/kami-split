@@ -26,7 +26,7 @@ We do not automatically adopt underscore-prefixed globals, Uber-specific atomic 
 
 ## Local design policies
 
-These policies are Kami Split decisions, not claims of industry consensus:
+These policies are Kami Grow decisions, not claims of industry consensus:
 
 - Start with concrete implementations. Introduce small interfaces at actual consumer boundaries, without a matching interface for every struct. Avoid generic repositories, service frameworks, and event buses without a present requirement.
 - Organize packages around coherent responsibilities. Use Go's `internal` boundary for application-private code; do not scaffold empty layers or prescribe identical layers for every feature.

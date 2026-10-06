@@ -2,7 +2,7 @@
 
 ## Current application
 
-The web application uses one [authenticated expense journey](relay-expenses.md) with independent Group/Trip workspaces and a real Household workspace. The seeded preview runtime and routes were removed in #184. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#historical-seeded-implementation-guides). Existing feature documentation stays at its original paths to preserve links.
+The **Kami Grow** web application uses one [authenticated expense journey](relay-expenses.md) with independent Group/Trip workspaces and a real Household workspace. The seeded preview runtime and routes were removed in #184. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#historical-seeded-implementation-guides). Existing feature documentation stays at its original paths to preserve links.
 
 ## Backend and planned features
 

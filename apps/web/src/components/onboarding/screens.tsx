@@ -204,7 +204,7 @@ export function InvitationScreens({
     return (
       <>
         <h1>
-          {shared ? 'Create your password' : 'Create your Kami Split account'}
+          {shared ? 'Create your password' : 'Create your Kami Grow account'}
         </h1>
         <p>
           Your email has been verified. Now choose a password for your account.
@@ -237,7 +237,7 @@ export function InvitationScreens({
   if (c.step === 'email')
     return (
       <>
-        <h1>Create your Kami Split account</h1>
+        <h1>Create your Kami Grow account</h1>
         <p>First, verify your email address.</p>
         <InvitationCard state={c} />
         <form

@@ -469,7 +469,7 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     await ensureContext();
     await call('/api/onboarding/recover', { email });
     tell(
-      "If there's a Kami Split account for that address, you'll receive a reset link. Open it in this browser.",
+      "If there's a Kami Grow account for that address, you'll receive a reset link. Open it in this browser.",
     );
   };
   const savePassword = async () => {

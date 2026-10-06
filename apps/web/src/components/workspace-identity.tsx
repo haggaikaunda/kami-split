@@ -46,7 +46,7 @@ export function Brand() {
   return (
     <span className="workspace-brand">
       <AppIcon name="leaf" />
-      <span>Kami Split</span>
+      <span>Kami Grow</span>
     </span>
   );
 }
