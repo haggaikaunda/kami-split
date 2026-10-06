@@ -105,3 +105,22 @@ tests cover empty pages, sources outside the first page, metadata/designation
 changes, actor isolation, financial-write stability and incomplete/denied results.
 Production-browser evidence and its synthetic-service limitations are recorded
 with the delivery PR; jsdom and synthetic responses do not prove server authorization.
+
+To repeat the production frontend profile, build with the pinned Node/pnpm versions,
+start `pnpm --filter @kami-split/web exec next start -p 3193`, then run the committed
+harness with an installed Playwright module and Chromium/Chrome executable:
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
+CHROME_PATH=/absolute/path/to/chrome \
+PORT=3193 FIXTURE_DELAY_MS=250 WIDTH=320 SCALE=2 \
+OUTPUT_DIR=/tmp/kami-navigation-evidence \
+TESTED_COMMIT="$(git rev-parse HEAD)" node scripts/navigation-browser.cjs
+```
+
+Repeat at 320, 390 and 1280 CSS pixels with `SCALE=1` and `SCALE=2`. The harness
+sets reduced motion and routes synthetic Auth/GraphQL fixtures in the browser;
+no production credentials or financial data are used. It records requests,
+feedback/content timing, exact shell retention and document loads, and asserts
+keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,
+native modified-click entry and denial after completed intent warming.

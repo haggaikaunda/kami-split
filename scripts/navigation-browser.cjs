@@ -219,6 +219,11 @@ const activity = {
       documents = 0,
       denied = false;
     const errors = [];
+    const requestRecords = new WeakMap();
+    page.on('requestfailed', (request) => {
+      const item = requestRecords.get(request);
+      if (item) item.canceled = true;
+    });
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('request', (r) => {
       if (r.isNavigationRequest() && r.resourceType() === 'document')
@@ -233,18 +238,17 @@ const activity = {
         json: { url: origin + '/synthetic-auth', key: 'synthetic-public' },
       }),
     );
-    await page
-      .context()
-      .route('**/synthetic-auth/auth/v1/**', (r) =>
-        r.fulfill({
-          json: r.request().url().includes('/user') ? user : session,
-        }),
-      );
+    await page.context().route('**/synthetic-auth/auth/v1/**', (r) =>
+      r.fulfill({
+        json: r.request().url().includes('/user') ? user : session,
+      }),
+    );
     await page.context().route('**/api/graphql', async (r) => {
       const { query, variables } = r.request().postDataJSON();
       const op = query.match(/(?:query|mutation) (\w+)/)?.[1];
       const item = { op, start: Date.now(), variables };
       log.push(item);
+      requestRecords.set(r.request(), item);
       let data;
       if (op === 'journeyWorkspaceQuery')
         data = {
@@ -350,7 +354,9 @@ const activity = {
         };
       await new Promise((resolve) => setTimeout(resolve, delay));
       item.end = Date.now();
-      await r.fulfill({ json: { data } }).catch(() => {});
+      await r.fulfill({ json: { data } }).catch(() => {
+        item.canceled = true;
+      });
     });
     let start = Date.now();
     await page.goto(
@@ -406,6 +412,7 @@ const activity = {
           { once: true, capture: true },
         );
       });
+      const scrollBefore = await page.evaluate(() => scrollY);
       start = Date.now();
       await link.click();
       await page.waitForTimeout(80);
@@ -415,6 +422,7 @@ const activity = {
           window.__shell === document.querySelector('.ui-workspace-tabs'),
         feedbackMs: window.__feedback,
         clickEpoch: window.__clickEpoch,
+        scrollAfter: scrollY,
       }));
       await page.waitForFunction(
         (tab) => {
@@ -451,12 +459,15 @@ const activity = {
         workspace,
         action: 'click ' + tab,
         ...early,
+        scrollBefore,
         documents,
         authorizedContentMs,
         authorizedResponseMs: total,
         requests: log.map((x) => ({
           ...x,
-          phase: x.start < early.clickEpoch ? 'intent' : 'visit',
+          phase: x.canceled
+            ? 'canceled speculative request'
+            : 'completed request',
           start: x.start - start,
           end: x.end - start,
         })),
@@ -468,7 +479,7 @@ const activity = {
       .getByRole('link', { name: 'Expenses', exact: true })
       .click();
     await page.locator('#ledger-expense-e1').waitFor();
-    if (width <= 650) {
+    {
       const before = log.length;
       await page.getByRole('button', { name: 'Filters', exact: true }).click();
       await page.getByRole('dialog', { name: 'Expense filters' }).waitFor();
@@ -478,12 +489,10 @@ const activity = {
         .getByRole('dialog', { name: 'Expense filters' })
         .waitFor({ state: 'detached' });
     }
-    if (width <= 650)
-      await page.getByRole('button', { name: 'Filters', exact: true }).click();
-    const filterControls =
-      width <= 650
-        ? page.getByRole('dialog', { name: 'Expense filters' })
-        : page.locator('.ledger-inline-filters');
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    const filterControls = page.getByRole('dialog', {
+      name: 'Expense filters',
+    });
     await filterControls.getByLabel('Category').selectOption('GROCERIES');
     await filterControls.getByRole('button', { name: 'Apply filters' }).click();
     await page.waitForURL(
@@ -519,7 +528,7 @@ const activity = {
       escapeFocusRestored: true,
       detailBackForward: true,
       filterSourceRestored: true,
-      localFilterDisclosure: width <= 650,
+      localFilterDisclosure: true,
     });
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -538,11 +547,13 @@ const activity = {
       errors,
     });
     const beforePopup = page.url();
-    const popupReady = page.waitForEvent('popup');
+    const popupReady = page.context().waitForEvent('page');
     await page
       .locator('.ui-workspace-tabs')
       .getByRole('link', { name: 'Members', exact: true })
-      .click({ button: 'middle' });
+      .click({
+        modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'],
+      });
     const popup = await popupReady;
     await popup.waitForURL((url) => url.searchParams.get('tab') === 'members');
     await popup.locator('.ui-workspace-tabs').waitFor();

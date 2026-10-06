@@ -51,10 +51,11 @@ export type LedgerSpace = {
 export function ExpenseLedger(
   props: Omit<
     Parameters<typeof LedgerContent>[0],
-    'filterTrigger' | 'onFilterApply'
+    'filterTrigger' | 'onFilterApply' | 'onInitialConsumed'
   >,
 ) {
   const params = useSearchParams();
+  const [initialView, setInitialView] = useState(props.initialView);
   const filters = filterKeys.map((key) => params.get(key) ?? '').join('\n');
   const filterTrigger = useRef<HTMLButtonElement>(null);
   const restoreFilterScope = useRef<string | null>(null);
@@ -67,6 +68,8 @@ export function ExpenseLedger(
     <LedgerContent
       key={`${props.scope.id}:${props.groupId ?? 'household'}:${filters}`}
       {...props}
+      initialView={initialView}
+      onInitialConsumed={() => setInitialView(undefined)}
       filterTrigger={filterTrigger}
       onFilterApply={(next) => {
         restoreFilterScope.current = next === filters ? null : props.scope.id;
@@ -86,9 +89,11 @@ function LedgerContent({
   filterTrigger,
   onFilterApply,
   initialView,
+  onInitialConsumed,
   contextVersion,
   managedRefresh = false,
 }: {
+  onInitialConsumed: () => void;
   contextVersion?: string;
   initialView?: { filterText: string; reference: expensesView$key };
   managedRefresh?: boolean;
@@ -192,6 +197,7 @@ function LedgerContent({
     };
     const prepared = initial.current;
     initial.current = undefined;
+    if (prepared) onInitialConsumed();
     if (
       prepared &&
       prepared.filterText === filterText &&

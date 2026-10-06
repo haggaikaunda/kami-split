@@ -12,6 +12,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { GroupJourney } from './journey';
+import { HouseholdLedger } from '../expenses/household';
 let search = 'tab=members',
   scope: FinancialScope;
 vi.mock('./session', () => ({
@@ -202,4 +203,97 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
     host.querySelector('.ui-workspace-tabs a[aria-current="page"]')
       ?.textContent,
   ).toBe('Activity');
+});
+it('returning to the original expense filter reads fresh authorization instead of resurrecting its consumed initial result', async () => {
+  const view = (amount: string) => ({
+    __typename: 'ExpenseView',
+    contextVersion: null,
+    totalExpenseMinor: amount,
+    expenseCount: '0',
+    months: [],
+    edges: [],
+    pageInfo: { hasNextPage: false, endCursor: null },
+  });
+  search = 'tab=expenses&category=GROCERIES';
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  await act(async () =>
+    requests[0].next({
+      viewer,
+      group: {
+        ...group,
+        balances: { __typename: 'Problem', code: 'UNAVAILABLE' },
+      },
+      groupExpenses: view('12345'),
+    }),
+  );
+  expect(host.textContent).toContain('$123.45');
+  expect(requests).toHaveLength(1);
+  search = 'tab=expenses&category=TRANSPORT';
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  expect(requests).toHaveLength(2);
+  expect(requests[1].name).toBe('expensesGroupQuery');
+  await act(async () => requests[1].next({ groupExpenses: view('700') }));
+  expect(host.textContent).toContain('$7.00');
+  search = 'tab=expenses&category=GROCERIES';
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  expect(requests).toHaveLength(3);
+  expect(host.textContent).not.toContain('$123.45');
+  expect(host.textContent).not.toContain('$7.00');
+  await act(async () =>
+    requests[2].next({
+      groupExpenses: { __typename: 'Problem', code: 'NOT_FOUND' },
+    }),
+  );
+  expect(host.querySelector('[role=alert]')).not.toBeNull();
+  expect(host.textContent).not.toContain('$123.45');
+});
+it('Household returning to the initial filter cannot revive previously authorized amounts after eligibility revocation', async () => {
+  const view = (amount: string) => ({
+    __typename: 'ExpenseView',
+    contextVersion: 'eligible-v1',
+    totalExpenseMinor: amount,
+    expenseCount: '0',
+    months: [],
+    edges: [],
+    pageInfo: { hasNextPage: false, endCursor: null },
+  });
+  search = 'category=GROCERIES';
+  await act(async () => root.render(<HouseholdLedger scope={scope} />));
+  await act(async () =>
+    requests[0].next({
+      viewer,
+      householdDashboard: {
+        __typename: 'HouseholdDashboard',
+        state: 'COMPLETE',
+        contextVersion: 'eligible-v1',
+        totals: {
+          __typename: 'HouseholdDashboardTotals',
+          viewerNetMinor: '0',
+          activeSpaceCount: '1',
+        },
+        spaces: [],
+      },
+      householdExpenses: view('12345'),
+    }),
+  );
+  expect(host.textContent).toContain('$123.45');
+  expect(requests).toHaveLength(1);
+  search = 'category=TRANSPORT';
+  await act(async () => root.render(<HouseholdLedger scope={scope} />));
+  expect(requests).toHaveLength(2);
+  expect(requests[1].name).toBe('expensesHouseholdQuery');
+  await act(async () => requests[1].next({ householdExpenses: view('700') }));
+  expect(host.textContent).toContain('$7.00');
+  search = 'category=GROCERIES';
+  await act(async () => root.render(<HouseholdLedger scope={scope} />));
+  expect(requests).toHaveLength(3);
+  expect(host.textContent).not.toContain('$123.45');
+  expect(host.textContent).not.toContain('$7.00');
+  await act(async () =>
+    requests[2].next({
+      householdExpenses: { __typename: 'Problem', code: 'NOT_FOUND' },
+    }),
+  );
+  expect(host.querySelector('[role=alert]')).not.toBeNull();
+  expect(host.textContent).not.toContain('$123.45');
 });
