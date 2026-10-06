@@ -163,6 +163,11 @@ const results = [];
         viewport: { width, height: 900 },
         reducedMotion: 'reduce',
       });
+      await page.addInitScript((value) => {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.documentElement.style.fontSize = `${value * 16}px`;
+        });
+      }, scale);
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
       let mode = 'pair';
@@ -489,7 +494,9 @@ const results = [];
             .then((s) => s.includes('85% allocated · 15% remaining')),
         );
         assert.equal(await page.locator('.percentage-money').count(), 0);
-        await page.locator('[id="percentage-M2"]').scrollIntoViewIfNeeded();
+        await page
+          .getByRole('button', { name: 'Save expense', exact: true })
+          .scrollIntoViewIfNeeded();
         await page.screenshot({
           path: `${output}/P3-invalid-${width}-${scale}.png`,
         });
