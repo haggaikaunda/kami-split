@@ -1,6 +1,6 @@
 # ADR-010: Household membership authorizes sharing
 
-- Status: implementation decision for owner-requested #197; rollout acceptance remains open.
+- Status: adopted membership-sharing policy for owner-requested #197; release and existing-account evidence are recorded on the issue.
 - Supersedes ADR-008's separate designation/consent and pair-only dashboard entry.
 - Preserves ADR-007's complete reads, exact money and original-group repayments.
 
