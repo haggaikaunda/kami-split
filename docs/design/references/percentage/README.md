@@ -6,8 +6,8 @@
 adjacent amounts, validation and saved intent. Its Edit panel is outside scope;
 current navigation, fields, source ownership and shared components remain intact.
 
-Before captures use unchanged main `fd9389c`. Final captures use the delivery PR's
-application source; only native dirty-warning coverage changed after image capture.
+Before captures use unchanged main `fd9389c`. Final captures were rerun against application source `fa0aa60`, which integrates
+main `70c8fb8` (account/profile changes) and unique Percentage migration014.
 Synthetic records and Auth/GraphQL interception render the real production build;
 these images establish UI state/layout, not database authorization. Separate
 PostgreSQL/GraphQL integration tests and the optional real verified-actor browser
