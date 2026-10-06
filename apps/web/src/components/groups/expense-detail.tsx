@@ -7,6 +7,7 @@ import document, {
 import type { FinancialScope } from '@/lib/relay/environment';
 import { CategoryIcon } from '@/components/workspace-identity';
 import { Member, Money } from '@/components/primitives';
+import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
 type Expense = Extract<
   NonNullable<journeyExpenseQuery['response']['node']>,
@@ -96,6 +97,12 @@ export function ExpenseDetail({
         <span>Paid by</span>
         <Member name={expense.payer.displayName} />
       </div>
+      {expense.split === 'PERCENTAGE' && (
+        <p className="percentage-help">
+          Saved percentages describe responsibility. Fractional cents were
+          distributed by largest remainder, then ascending participant identity.
+        </p>
+      )}
       <dl className="expense-detail-fields">
         <div>
           <dt>Category</dt>
@@ -104,12 +111,22 @@ export function ExpenseDetail({
           </dd>
         </div>
         <div>
-          <dt>Participants</dt>
+          <dt>
+            {expense.split === 'PERCENTAGE'
+              ? 'Split by percentage'
+              : 'Participants'}
+          </dt>
           <dd>
             <ul className="expense-allocation-list">
               {expense.allocations.map((share) => (
                 <li key={share.participant.id}>
                   <Member name={share.participant.displayName} />
+                  {expense.split === 'PERCENTAGE' &&
+                    share.percentageHundredths != null && (
+                      <span className="percentage-saved">
+                        {percentageText(share.percentageHundredths)}%
+                      </span>
+                    )}
                   <Money
                     value={money(share.amountMinor)}
                     currency={expense.currency}

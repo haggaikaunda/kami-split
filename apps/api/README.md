@@ -107,3 +107,8 @@ The finite complexity budget includes conditional selections even when omitted
 at execution. The shipped composed workspace operation exceeds the former 100
 limit; exact Relay wire/transport regressions verify all current operations fit
 200 while over-budget operations remain rejected before execution.
+
+Percentage writes use `API_PERCENTAGE_WRITES_ENABLED=true` only after the additive
+#199 migration and compatible readers are deployed. The default is false; reads
+and original committed recovery remain supported when gated. See the
+[percentage deployment/rollback contract](../../docs/application/percentage-splits.md).

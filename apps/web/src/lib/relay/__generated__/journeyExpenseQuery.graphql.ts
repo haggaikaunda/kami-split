@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<943ba688ad2c76b4859d1169da03652b>>
+ * @generated SignedSource<<b9206bf47649cd76f9ba1979cb729f28>>
  * @lightSyntaxTransform
  */
 
@@ -10,6 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type journeyExpenseQuery$variables = {
   id: string;
 };
@@ -22,6 +23,7 @@ export type journeyExpenseQuery$data = {
         readonly displayName: string;
         readonly id: string;
       };
+      readonly percentageHundredths: number | null | undefined;
     }>;
     readonly category: Category;
     readonly createdAt: string;
@@ -39,6 +41,7 @@ export type journeyExpenseQuery$data = {
       readonly displayName: string;
       readonly id: string;
     };
+    readonly split: SplitMode;
     readonly totalMinor: string;
   } | {
     // This will never be '%other', but we need some
@@ -169,6 +172,13 @@ v14 = {
 v15 = {
   "alias": null,
   "args": null,
+  "kind": "ScalarField",
+  "name": "split",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
   "concreteType": "Allocation",
   "kind": "LinkedField",
   "name": "allocations",
@@ -189,6 +199,13 @@ v15 = {
       "args": null,
       "kind": "ScalarField",
       "name": "amountMinor",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "percentageHundredths",
       "storageKey": null
     }
   ],
@@ -224,7 +241,8 @@ return {
               (v12/*:: as any*/),
               (v13/*:: as any*/),
               (v14/*:: as any*/),
-              (v15/*:: as any*/)
+              (v15/*:: as any*/),
+              (v16/*:: as any*/)
             ],
             "type": "Expense",
             "abstractKey": null
@@ -265,7 +283,8 @@ return {
               (v12/*:: as any*/),
               (v13/*:: as any*/),
               (v14/*:: as any*/),
-              (v15/*:: as any*/)
+              (v15/*:: as any*/),
+              (v16/*:: as any*/)
             ],
             "type": "Expense",
             "abstractKey": null
@@ -276,16 +295,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6a017fc2427ebfb9605e17a70efcdfb1",
+    "cacheID": "9bc5bcc3b214842998266e0cd362d4c2",
     "id": null,
     "metadata": {},
     "name": "journeyExpenseQuery",
     "operationKind": "query",
-    "text": "query journeyExpenseQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      description\n      effectiveDate\n      totalMinor\n      currency\n      createdAt\n      creator {\n        id\n        displayName\n      }\n      category\n      note\n      payer {\n        id\n        displayName\n      }\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query journeyExpenseQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      description\n      effectiveDate\n      totalMinor\n      currency\n      createdAt\n      creator {\n        id\n        displayName\n      }\n      category\n      note\n      payer {\n        id\n        displayName\n      }\n      split\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n        percentageHundredths\n      }\n    }\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b685532b53824c962541c1410cfa2832";
+(node as any).hash = "3d9c8dbff5aa1a04a02c8675fd0c3529";
 
 export default node;

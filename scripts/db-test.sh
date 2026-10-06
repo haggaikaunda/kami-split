@@ -62,6 +62,7 @@ mv "$stage/supabase/migrations/20261010000000_expense_view.sql" "$stage/expense-
 mv "$stage/supabase/migrations/20261011000000_household_membership.sql" "$stage/household-membership.sql"
 mv "$stage/supabase/migrations/20261012000000_retire_household_designation.sql" "$stage/retire-household-designation.sql"
 mv "$stage/supabase/migrations/20261013000000_self_profile.sql" "$stage/self-profile.sql"
+mv "$stage/supabase/migrations/20261014000000_percentage_splits.sql" "$stage/percentage-splits.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -96,6 +97,7 @@ mv "$stage/retire-household-designation.sql" "$stage/supabase/migrations/2026101
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_designation_retirement_upgraded.sql
 mv "$stage/self-profile.sql" "$stage/supabase/migrations/20261013000000_self_profile.sql"
+mv "$stage/percentage-splits.sql" "$stage/supabase/migrations/20261014000000_percentage_splits.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.

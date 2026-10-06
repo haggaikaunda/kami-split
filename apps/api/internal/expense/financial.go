@@ -178,8 +178,11 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 	}
 	original.Description = input.Description
 	allocations, fields := ledger.Validate(original)
+	if input.Split == "PERCENTAGE" && !s.percentageWrites {
+		fields = append(fields, ledger.FieldProblem{Path: []string{"input", "split"}, Code: "UNAVAILABLE", Message: "Percentage creation is not enabled. Preserve existing attempts and use original recovery."})
+	}
 	affected := append(append([]string(nil), input.ParticipantIDs...), input.PayerID)
-	in := financialIntent{group: input.GroupID, key: input.Key, kind: "CREATE_EXPENSE", version: "create-expense-v1", canonical: canonical, hash: hash[:], affected: affected, fields: fields}
+	in := financialIntent{group: input.GroupID, key: input.Key, kind: "CREATE_EXPENSE", version: ledger.CreateVersion(input), canonical: canonical, hash: hash[:], affected: affected, fields: fields}
 	in.apply = func(ctx context.Context, tx pgx.Tx, actor auth.Actor, snapshot Snapshot) (Outcome, error) {
 		total, e := ledger.CheckedAdd(snapshot.Total, input.Total)
 		candidate := append([]ledger.Position(nil), snapshot.Positions...)
@@ -211,7 +214,7 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 		if e != nil {
 			return Outcome{Kind: "VALIDATION", Fields: overflow("totalMinor")}, nil
 		}
-		record := Record{ExpenseID: ledger.PublicID("Expense", uuid.NewString()), GroupID: input.GroupID, CreatorMembershipID: snapshot.ViewerMembershipID, PayerMembershipID: input.PayerID, TotalMinor: input.Total, Currency: input.Currency, Description: input.Description, EffectiveDate: input.EffectiveDate, Category: input.Category, Note: input.Note, Split: input.Split, Allocations: allocations, Revision: snapshot.Revision + 1}
+		record := Record{ExpenseID: ledger.PublicID("Expense", uuid.NewString()), GroupID: input.GroupID, CreatorMembershipID: snapshot.ViewerMembershipID, PayerMembershipID: input.PayerID, TotalMinor: input.Total, Currency: input.Currency, Description: input.Description, EffectiveDate: input.EffectiveDate, Category: input.Category, Note: input.Note, Split: input.Split, Allocations: allocations, Percentages: input.Percentages, Revision: snapshot.Revision + 1}
 		group, _ := rawID(input.GroupID, "Group")
 		if e = insertExpense(ctx, tx, group, record, actor.ID, &record); e != nil {
 			return Outcome{}, e

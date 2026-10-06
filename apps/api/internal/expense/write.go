@@ -24,7 +24,14 @@ func insertExpense(ctx context.Context, tx pgx.Tx, group string, record Record, 
 	result.CommittedAt = committed.Time.UTC().Format("2006-01-02T15:04:05.000000Z")
 	for _, allocation := range record.Allocations {
 		participant, _ := rawID(allocation.ParticipantID, "Membership")
-		if err = queries.InsertAllocation(ctx, expensequery.InsertAllocationParams{ExpenseID: uuidValue(id), GroupID: uuidValue(group), ParticipantID: uuidValue(participant), AmountMinor: allocation.Amount}); err != nil {
+		var percentage pgtype.Int4
+		for _, p := range record.Percentages {
+			if p.ParticipantID == allocation.ParticipantID {
+				percentage = pgtype.Int4{Int32: int32(p.Hundredths), Valid: true}
+				break
+			}
+		}
+		if err = queries.InsertAllocation(ctx, expensequery.InsertAllocationParams{ExpenseID: uuidValue(id), GroupID: uuidValue(group), ParticipantID: uuidValue(participant), AmountMinor: allocation.Amount, PercentageHundredths: percentage}); err != nil {
 			return err
 		}
 	}

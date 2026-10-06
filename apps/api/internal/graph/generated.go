@@ -72,8 +72,9 @@ type ComplexityRoot struct {
 	}
 
 	Allocation struct {
-		AmountMinor func(childComplexity int) int
-		Participant func(childComplexity int) int
+		AmountMinor          func(childComplexity int) int
+		Participant          func(childComplexity int) int
+		PercentageHundredths func(childComplexity int) int
 	}
 
 	Expense struct {
@@ -308,8 +309,9 @@ type ComplexityRoot struct {
 	}
 
 	OperationAllocation struct {
-		AmountMinor   func(childComplexity int) int
-		ParticipantID func(childComplexity int) int
+		AmountMinor          func(childComplexity int) int
+		ParticipantID        func(childComplexity int) int
+		PercentageHundredths func(childComplexity int) int
 	}
 
 	OperationMismatch struct {
@@ -639,6 +641,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Allocation.Participant(childComplexity), true
+	case "Allocation.percentageHundredths":
+		if e.ComplexityRoot.Allocation.PercentageHundredths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Allocation.PercentageHundredths(childComplexity), true
 
 	case "Expense.allocations":
 		if e.ComplexityRoot.Expense.Allocations == nil {
@@ -1610,6 +1618,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OperationAllocation.ParticipantID(childComplexity), true
+	case "OperationAllocation.percentageHundredths":
+		if e.ComplexityRoot.OperationAllocation.PercentageHundredths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OperationAllocation.PercentageHundredths(childComplexity), true
 
 	case "OperationMismatch.key":
 		if e.ComplexityRoot.OperationMismatch.Key == nil {
@@ -2147,6 +2161,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExactAllocationInput,
 		ec.unmarshalInputExpenseFilter,
 		ec.unmarshalInputGroupTripInput,
+		ec.unmarshalInputPercentageInput,
 		ec.unmarshalInputRecordRepaymentInput,
 		ec.unmarshalInputStructuredExpenseFilter,
 	)
@@ -2334,6 +2349,10 @@ enum SplitMode {
   Caller supplies one reconciled amount for each explicit participant, including zero.
   """
   EXACT
+  """
+  Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+  """
+  PERCENTAGE
 }
 """
 Self-only application access state for a cryptographically verified caller.
@@ -2800,7 +2819,7 @@ type Expense implements Node {
   """
   creator: Membership!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -2824,6 +2843,10 @@ type Allocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Complete exact balances or an explicit failure; failure never means zero or settled.
@@ -2953,13 +2976,30 @@ input CreateExpenseInput {
   """
   participantIds: [ID!]!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
-  Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
   """
   exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+"""
+One explicitly selected participant's intended responsibility, independent of payer.
+"""
+input PercentageInput {
+  """
+  Stable same-group Membership ID.
+  """
+  participantId: ID!
+  """
+  Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+  """
+  hundredths: Int!
 }
 """
 One selected participant and its nonnegative exact share, including zero.
@@ -3049,7 +3089,7 @@ type ExpenseOperationRecord {
   """
   note: String!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -3077,6 +3117,10 @@ type OperationAllocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
@@ -4426,6 +4470,8 @@ func (ec *executionContext) childFields_Allocation(ctx context.Context, field gr
 		return ec.fieldContext_Allocation_participant(ctx, field)
 	case "amountMinor":
 		return ec.fieldContext_Allocation_amountMinor(ctx, field)
+	case "percentageHundredths":
+		return ec.fieldContext_Allocation_percentageHundredths(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Allocation", field.Name)
 }
@@ -4672,6 +4718,8 @@ func (ec *executionContext) childFields_OperationAllocation(ctx context.Context,
 		return ec.fieldContext_OperationAllocation_participantId(ctx, field)
 	case "amountMinor":
 		return ec.fieldContext_OperationAllocation_amountMinor(ctx, field)
+	case "percentageHundredths":
+		return ec.fieldContext_OperationAllocation_percentageHundredths(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type OperationAllocation", field.Name)
 }
@@ -6159,6 +6207,29 @@ func (ec *executionContext) _Allocation_amountMinor(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_Allocation_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Allocation", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _Allocation_percentageHundredths(ctx context.Context, field graphql.CollectedField, obj *model.Allocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Allocation_percentageHundredths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PercentageHundredths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Allocation_percentageHundredths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Allocation", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Expense_id(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
@@ -10035,6 +10106,29 @@ func (ec *executionContext) fieldContext_OperationAllocation_amountMinor(_ conte
 	return graphql.NewScalarFieldContext("OperationAllocation", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
 }
 
+func (ec *executionContext) _OperationAllocation_percentageHundredths(ctx context.Context, field graphql.CollectedField, obj *model.OperationAllocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OperationAllocation_percentageHundredths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PercentageHundredths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OperationAllocation_percentageHundredths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OperationAllocation", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _OperationMismatch_key(ctx context.Context, field graphql.CollectedField, obj *model.OperationMismatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13275,7 +13369,7 @@ func (ec *executionContext) unmarshalInputCreateExpenseInput(ctx context.Context
 		asMap["note"] = ""
 	}
 
-	fieldsInOrder := [...]string{"groupId", "key", "totalMinor", "currency", "description", "effectiveDate", "category", "note", "payerId", "participantIds", "split", "exactAllocations"}
+	fieldsInOrder := [...]string{"groupId", "key", "totalMinor", "currency", "description", "effectiveDate", "category", "note", "payerId", "participantIds", "split", "exactAllocations", "percentages"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -13366,6 +13460,13 @@ func (ec *executionContext) unmarshalInputCreateExpenseInput(ctx context.Context
 				return it, err
 			}
 			it.ExactAllocations = data
+		case "percentages":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("percentages"))
+			data, err := ec.unmarshalOPercentageInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Percentages = data
 		}
 	}
 	return it, nil
@@ -13549,6 +13650,43 @@ func (ec *executionContext) unmarshalInputGroupTripInput(ctx context.Context, ob
 				return it, err
 			}
 			it.EndDate = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPercentageInput(ctx context.Context, obj any) (model.PercentageInput, error) {
+	var it model.PercentageInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"participantId", "hundredths"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "participantId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("participantId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParticipantID = data
+		case "hundredths":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hundredths"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Hundredths = data
 		}
 	}
 	return it, nil
@@ -14599,6 +14737,11 @@ func (ec *executionContext) _Allocation(ctx context.Context, sel ast.SelectionSe
 		case "amountMinor":
 			out.Values[i] = ec._Allocation_amountMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentageHundredths":
+			out.Values[i] = ec._Allocation_percentageHundredths(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -16415,6 +16558,11 @@ func (ec *executionContext) _OperationAllocation(ctx context.Context, sel ast.Se
 		case "amountMinor":
 			out.Values[i] = ec._OperationAllocation_amountMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentageHundredths":
+			out.Values[i] = ec._OperationAllocation_percentageHundredths(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -18825,6 +18973,11 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaggaikaundaᚋka
 	return ec._PageInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNPercentageInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInput(ctx context.Context, v any) (*model.PercentageInput, error) {
+	res, err := ec.unmarshalInputPercentageInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProblemCode(ctx context.Context, v any) (model.ProblemCode, error) {
 	var res model.ProblemCode
 	err := res.UnmarshalGQL(v)
@@ -19312,6 +19465,24 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOMinorUnits2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx context.Context, v any) (*ledger.MinorUnits, error) {
 	if v == nil {
 		return nil, nil
@@ -19333,6 +19504,23 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsp
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPercentageInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInputᚄ(ctx context.Context, v any) ([]*model.PercentageInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.PercentageInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPercentageInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalORepaymentConnection2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentConnection(ctx context.Context, sel ast.SelectionSet, v *model.RepaymentConnection) graphql.Marshaler {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2489f7e47bcaee96dbdaa4393d9bdd3e>>
+ * @generated SignedSource<<652db1e0015ea7b15361c78354590f8e>>
  * @lightSyntaxTransform
  */
 
@@ -10,6 +10,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type OperationState = "NOT_OBSERVED" | "PENDING" | "UNKNOWN" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type journeyRecoveryQuery$variables = {
   groupId: string;
   key: string;
@@ -19,9 +20,15 @@ export type journeyRecoveryQuery$data = {
     readonly __typename: "ExpenseCommitted";
     readonly key: string;
     readonly record: {
+      readonly allocations: ReadonlyArray<{
+        readonly amountMinor: string;
+        readonly participantId: string;
+        readonly percentageHundredths: number | null | undefined;
+      }>;
       readonly expenseId: string;
       readonly groupId: string;
       readonly revision: string;
+      readonly split: SplitMode;
       readonly totalMinor: string;
     };
   } | {
@@ -150,6 +157,45 @@ v4 = [
                 "kind": "ScalarField",
                 "name": "revision",
                 "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "split",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "OperationAllocation",
+                "kind": "LinkedField",
+                "name": "allocations",
+                "plural": true,
+                "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "participantId",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "amountMinor",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "percentageHundredths",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
               }
             ],
             "storageKey": null
@@ -231,16 +277,16 @@ return {
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "d6c9208fee085f2d8954abefd4330858",
+    "cacheID": "13a23f33782e4505b59b7ffd312dc0df",
     "id": null,
     "metadata": {},
     "name": "journeyRecoveryQuery",
     "operationKind": "query",
-    "text": "query journeyRecoveryQuery(\n  $groupId: ID!\n  $key: OperationKey!\n) {\n  expenseOperation(groupId: $groupId, key: $key) {\n    __typename\n    ... on ExpenseCommitted {\n      key\n      record {\n        expenseId\n        groupId\n        totalMinor\n        revision\n      }\n    }\n    ... on ValidationProblem {\n      fields {\n        path\n        code\n        message\n      }\n    }\n    ... on OperationProgress {\n      key\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n  }\n}\n"
+    "text": "query journeyRecoveryQuery(\n  $groupId: ID!\n  $key: OperationKey!\n) {\n  expenseOperation(groupId: $groupId, key: $key) {\n    __typename\n    ... on ExpenseCommitted {\n      key\n      record {\n        expenseId\n        groupId\n        totalMinor\n        revision\n        split\n        allocations {\n          participantId\n          amountMinor\n          percentageHundredths\n        }\n      }\n    }\n    ... on ValidationProblem {\n      fields {\n        path\n        code\n        message\n      }\n    }\n    ... on OperationProgress {\n      key\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c35ef9c761667a161b4bac95b6880683";
+(node as any).hash = "940858d74300d798ee39f4ee051d30e4";
 
 export default node;

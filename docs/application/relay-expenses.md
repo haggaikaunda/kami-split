@@ -45,7 +45,8 @@ group and does not add original direct expense debts a second time.
 Wire money stays in canonical decimal strings; validation and previews use
 `bigint`. Formatting never converts aggregate cents to JavaScript numbers.
 Equal remainders follow ascending canonical membership IDs; exact shares include
-explicit zero. Description counts Unicode scalar values after ASCII trimming;
+explicit zero. [Percentage splits](percentage-splits.md) retain normalized intended
+percentages and resolve cents by largest remainder with canonical-ID tie breaks. Description counts Unicode scalar values after ASCII trimming;
 notes preserve whitespace. Dates allow valid future dates. Server validation and
 current membership authorization remain authoritative.
 

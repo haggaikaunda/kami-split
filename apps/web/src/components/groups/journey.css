@@ -549,3 +549,77 @@
   color: var(--color-muted);
   font-size: 0.875rem;
 }
+
+.percentage-help {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.percentage-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+.financial-journey .percentage-link input {
+  width: auto;
+}
+.percentage-share {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding-block: 0.5rem;
+}
+.percentage-share > label {
+  font-size: 0.8125rem;
+}
+.percentage-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.percentage-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+.financial-journey .percentage-input input {
+  width: 5rem;
+  border: 0;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.percentage-input > span {
+  padding: 0.5rem;
+  color: var(--color-muted);
+}
+.percentage-money,
+.percentage-saved {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.percentage-status {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+}
+.percentage-incomplete {
+  border-color: var(--color-separator);
+}
+.percentage-share .financial-error {
+  font-size: 0.8125rem;
+}
+.financial-participant > label:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.financial-journey
+  .financial-participant
+  > label:first-child
+  input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}

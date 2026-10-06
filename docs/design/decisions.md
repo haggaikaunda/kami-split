@@ -12,7 +12,7 @@ Production-policy note: [ADR-004](../application/decisions/004-group-balances-me
 | Named balance direction                | “Kaunda owes Mizenin” avoids ambiguous “You owe.” Zero is explicitly settled.                                                                  |
 | Expenses have stable URLs              | Desktop contextual panel, phone/direct-link full page, replace semantics for Open full page. Context survives Back/Forward.                    |
 | Amount-first forms                     | Most salient financial input first; desktop dialog and mobile full-screen presentation share one form model.                                   |
-| Equal/exact split only                 | Reconciliation visible before save; percentages may be added later, no placeholder tab now.                                                    |
+| Equal/exact/percentage split           | Reconciliation visible before save; #199 adds first-class persisted percentage intent and exact rounding.                                      |
 | Charts are included, budgets excluded  | Explore actual spending across days/months/years without target spending or progress bars.                                                     |
 | Trip is an expense association         | One household record, counted once. Trip totals exclude repayments; settlement remains household-scoped.                                       |
 | Trips are not a travel planner         | Name, dates, destination, spending; no itinerary, planning notes, bookings or recurring schedule features.                                     |
@@ -23,7 +23,7 @@ Production-policy note: [ADR-004](../application/decisions/004-group-balances-me
 
 ## Deferred / excluded
 
-Database persistence/migrations; real authentication/email and access tokens; payment processing or payment methods; bank sync; receipt scanning/attachments; budgets; recurring expenses; currency conversion; debt simplification; social features; itinerary/travel planning; percentage splitting; trip cover upload/edit; additional reporting dashboards; audit event restoration; repayment correction UI (requires a separately approved audited reversal design).
+Database persistence/migrations; real authentication/email and access tokens; payment processing or payment methods; bank sync; receipt scanning/attachments; budgets; recurring expenses; currency conversion; debt simplification; social features; itinerary/travel planning; trip cover upload/edit; additional reporting dashboards; audit event restoration; repayment correction UI (requires a separately approved audited reversal design).
 
 ## Prototype versus approved behavior
 

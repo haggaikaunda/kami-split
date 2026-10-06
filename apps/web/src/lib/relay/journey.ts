@@ -77,12 +77,14 @@ export const journeyGroupQuery = graphql`
                 id
                 displayName
               }
+              split
               allocations {
                 participant {
                   id
                   displayName
                 }
                 amountMinor
+                percentageHundredths
               }
             }
           }
@@ -167,6 +169,12 @@ export const journeyCreateMutation = graphql`
           groupId
           totalMinor
           revision
+          split
+          allocations {
+            participantId
+            amountMinor
+            percentageHundredths
+          }
         }
       }
       ... on ValidationProblem {
@@ -202,6 +210,12 @@ export const journeyRecoveryQuery = graphql`
           groupId
           totalMinor
           revision
+          split
+          allocations {
+            participantId
+            amountMinor
+            percentageHundredths
+          }
         }
       }
       ... on ValidationProblem {
@@ -245,12 +259,14 @@ export const journeyExpenseQuery = graphql`
           id
           displayName
         }
+        split
         allocations {
           participant {
             id
             displayName
           }
           amountMinor
+          percentageHundredths
         }
       }
     }
