@@ -110,7 +110,7 @@ budgets, historical reports and currency conversion remain deferred. #169 owns
 structured-filter expense totals and #177 future full-text search. #112 owns the
 visual implementation. Only implemented reviewed fields may enter the running SDL.
 
-The [#109 policy (ADR-008)](008-household-partner-policy.md) resolves pair authority,
+The historical [#109 policy (ADR-008)](008-household-partner-policy.md) resolved pair authority,
 consent, separation, disabled/unlinked accounts and compatible locking. #130 delivers
 the designation foundation; #82 complete balances and #104 metadata reads provide
 the other #111 prerequisites. Household membership may exceed two and ownership
@@ -124,5 +124,7 @@ Household aggregate. These slices do not expand #73.
 [ADR-010](010-household-membership-sharing.md) supersedes O19's ADR-008 pair
 authority and separate consent prerequisite. Current membership authorizes the
 Household ledger; common-member source aggregation, sole-member behavior and
-account-lifecycle no-broadening rules are explicitly resolved there. Original
-rollout/account confirmation and obsolete-code cleanup remain tracker gates.
+account-lifecycle no-broadening rules are explicitly resolved there. Obsolete pair commands are retired by migration 012. The
+[owner confirmed the original existing account works across all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
+after the membership release; original failed-response causality remains unknown.
+Cleanup release/migration evidence is tracked on #197.

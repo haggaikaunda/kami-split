@@ -60,6 +60,7 @@ mv "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql" "$sta
 mv "$stage/supabase/migrations/20261009000000_household_dashboard.sql" "$stage/household-dashboard.sql"
 mv "$stage/supabase/migrations/20261010000000_expense_view.sql" "$stage/expense-view.sql"
 mv "$stage/supabase/migrations/20261011000000_household_membership.sql" "$stage/household-membership.sql"
+mv "$stage/supabase/migrations/20261012000000_retire_household_designation.sql" "$stage/retire-household-designation.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -87,6 +88,12 @@ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d post
 mv "$stage/household-membership.sql" "$stage/supabase/migrations/20261011000000_household_membership.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_membership_upgraded.sql
+# Retire only obsolete operations after the compatible membership upgrade.
+# Nonempty legacy rows/audits must survive without fabricated consent events.
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_designation_retirement_upgrade.sql
+mv "$stage/retire-household-designation.sql" "$stage/supabase/migrations/20261012000000_retire_household_designation.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_designation_retirement_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"

@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
-	"github.com/jackc/pgx/v5"
 )
 
 const independentDashboardQuery = `{householdDashboard{__typename ... on Problem{code message} ... on HouseholdDashboard{contextVersion state totals{__typename ... on Problem{code} ... on HouseholdDashboardTotals{viewerNetMinor activeSpaceCount openBalanceCount totalSharedExpenseMinor totalSharedExpenseCount}} spaces{viewerNetMinor sharedExpenseCount groupId name kind isHousehold trip{destination startDate endDate} members{id displayName status} balances{__typename ... on Problem{code} ... on GroupBalances{revision totalExpenseMinor settled positions{member{id status} netMinor paidMinor owedMinor sentMinor receivedMinor} obligations{from{id} to{id} amountMinor}}}}}}}`
@@ -108,37 +107,6 @@ func TestIndependentDashboardExactWireAndOverflowSuppressAllTotals(t *testing.T)
 				}
 			}
 		})
-	}
-}
-
-func independentDashboardDesignate(t *testing.T, f *expenseFixture, first, second int) {
-	t.Helper()
-	var version int64
-	for _, step := range []struct {
-		actor  int
-		action string
-	}{{1, "PROPOSE"}, {first, "CONSENT"}, {second, "CONSENT"}} {
-		err := f.db.WithIdentity(f.ctx, f.id(step.actor), func(tx pgx.Tx) error {
-			var raw []byte
-			if err := tx.QueryRow(f.ctx, `SELECT app.household_designation($1,$2,$3,$4)`, step.action, version, f.id(first+100), f.id(second+100)).Scan(&raw); err != nil {
-				return err
-			}
-			var result struct {
-				State   string
-				Version int64
-			}
-			if err := json.Unmarshal(raw, &result); err != nil {
-				return err
-			}
-			version = result.Version
-			if result.State != "PENDING" && result.State != "ACTIVE" {
-				return fmt.Errorf("designation rejected: %s", raw)
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
 }
 
@@ -322,39 +290,15 @@ func TestIndependentDashboardAccountLossAndUnauthenticatedAccess(t *testing.T) {
 	}
 }
 
-func TestIndependentDashboardLegacyDesignationEndingDoesNotRevokeMembership(t *testing.T) {
+func TestIndependentDashboardMembershipReadWaitsForLifecycleGuard(t *testing.T) {
 	f := independentDashboardFixture(t)
-	independentDashboardDesignate(t, f, 1, 2)
-	var version int64
-	independentDashboardExec(t, f, "SET ROLE kami_migrator")
-	if err := f.admin.QueryRow(f.ctx, `SELECT version FROM app.household_designation_guard`).Scan(&version); err != nil {
+	tx, err := f.admin.Begin(f.ctx)
+	if err != nil {
 		t.Fatal(err)
 	}
-	independentDashboardExec(t, f, "RESET ROLE")
-	ready, release, finished := make(chan struct{}), make(chan struct{}), make(chan error, 1)
-	go func() {
-		finished <- f.db.WithIdentity(f.ctx, f.id(1), func(tx pgx.Tx) error {
-			var raw []byte
-			if err := tx.QueryRow(f.ctx, `SELECT app.household_designation('END',$1,NULL,NULL)`, version).Scan(&raw); err != nil {
-				return err
-			}
-			close(ready)
-			<-release
-			return nil
-		})
-	}()
-	released := false
-	defer func() {
-		if !released {
-			close(release)
-		}
-	}()
-	select {
-	case <-ready:
-	case err := <-finished:
-		t.Fatalf("designation writer: %v", err)
-	case <-time.After(3 * time.Second):
-		t.Fatal("designation writer never acquired guard")
+	defer tx.Rollback(context.Background())
+	if _, err = tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator; SELECT singleton FROM app.household_designation_guard FOR UPDATE; RESET ROLE`); err != nil {
+		t.Fatal(err)
 	}
 	type response struct {
 		status int
@@ -368,21 +312,22 @@ func TestIndependentDashboardLegacyDesignationEndingDoesNotRevokeMembership(t *t
 	}()
 	deadline := time.Now().Add(3 * time.Second)
 	for {
+		if _, err = tx.Exec(f.ctx, `SELECT pg_stat_clear_snapshot()`); err != nil {
+			t.Fatal(err)
+		}
 		var n int
-		if err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%household_dashboard_lock%'`).Scan(&n); err != nil {
+		if err = tx.QueryRow(f.ctx, `SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%household_dashboard_lock%'`).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		if n > 0 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("read did not wait for designation guard")
+			t.Fatal("read did not wait for lifecycle guard")
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	close(release)
-	released = true
-	if err := <-finished; err != nil {
+	if err = tx.Commit(f.ctx); err != nil {
 		t.Fatal(err)
 	}
 	var result struct {
@@ -397,8 +342,7 @@ func TestIndependentDashboardLegacyDesignationEndingDoesNotRevokeMembership(t *t
 	case <-time.After(7 * time.Second):
 		t.Fatal("read never resumed")
 	}
-	got := result.Data["householdDashboard"]
-	independentDashboardTotals(t, got, "0", "2", "0", "0", "0")
+	independentDashboardTotals(t, result.Data["householdDashboard"], "0", "2", "0", "0", "0")
 }
 
 func TestIndependentDashboardNewEligibleGroupRestartsAndRemovalRechecks(t *testing.T) {

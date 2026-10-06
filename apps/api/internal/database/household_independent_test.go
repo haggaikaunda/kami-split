@@ -4,20 +4,15 @@ package database_test
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
-
-type householdResult struct {
-	State   string `json:"state"`
-	Version int64  `json:"version"`
-}
 
 func householdFixture(t *testing.T) *identityFixture {
 	t.Helper()
@@ -28,351 +23,135 @@ func householdFixture(t *testing.T) *identityFixture {
 	})
 	return f
 }
-
-func householdCall(f *identityFixture, actor int, action string, version int64, first, second int) (householdResult, error) {
-	var result householdResult
-	var a, b any
-	if first != 0 {
-		a = f.id(first)
-	}
-	if second != 0 {
-		b = f.id(second)
-	}
-	err := f.db.WithIdentity(f.ctx, f.id(actor), func(tx pgx.Tx) error {
-		var data []byte
-		if err := tx.QueryRow(f.ctx, `SELECT app.household_designation($1,$2,$3,$4)`, action, version, a, b).Scan(&data); err != nil {
-			return err
-		}
-		return json.Unmarshal(data, &result)
-	})
-	return result, err
-}
-func householdWant(t *testing.T, f *identityFixture, actor int, action string, version int64, first, second int, state string) householdResult {
-	t.Helper()
-	got, err := householdCall(f, actor, action, version, first, second)
-	if err != nil || got.State != state {
-		t.Fatalf("actor %d %s: %+v %v; want %s", actor, action, got, err, state)
-	}
-	return got
-}
-func householdActive(t *testing.T, f *identityFixture) int64 {
-	t.Helper()
-	r := householdWant(t, f, 1, "PROPOSE", 0, 2, 3, "PENDING")
-	householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "PENDING")
-	householdWant(t, f, 3, "CONSENT", r.Version, 2, 3, "ACTIVE")
-	return r.Version
-}
 func householdLifecycle(t *testing.T, f *identityFixture, sql string) {
 	t.Helper()
 	f.exec(fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock(ARRAY['%s','%s','%s']::uuid[]); %s; COMMIT`, f.id(1), f.id(2), f.id(3), sql))
 }
-func householdAuditCount(t *testing.T, f *identityFixture) int {
+func householdHistory(t *testing.T, f *identityFixture) string {
 	t.Helper()
-	var n int
+	var history string
 	f.exec(`SET ROLE kami_migrator`)
-	if err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM app.household_designation_audit`).Scan(&n); err != nil {
+	err := f.admin.QueryRow(f.ctx, `SELECT jsonb_build_array((SELECT to_jsonb(d) FROM app.household_designation_guard d),(SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY id),'[]'::jsonb) FROM app.household_designation_audit a))::text`).Scan(&history)
+	f.exec(`RESET ROLE`)
+	if err != nil {
 		t.Fatal(err)
 	}
-	f.exec(`RESET ROLE`)
-	return n
+	return history
 }
 
-func TestHouseholdIndependentExactConsentAndReplacement(t *testing.T) {
-	f := householdFixture(t)
-	initial := householdWant(t, f, 1, "READ", 0, 0, 0, "EMPTY")
-	if initial.Version != 0 {
-		t.Fatal(initial)
-	}
-	householdWant(t, f, 2, "PROPOSE", 0, 1, 2, "NOT_FOUND") // creator is not owner
-	householdWant(t, f, 1, "PROPOSE", 0, 2, 2, "NOT_FOUND")
-	householdWant(t, f, 1, "PROPOSE", 0, 2, 99, "NOT_FOUND")
-	r := householdWant(t, f, 1, "PROPOSE", 0, 2, 3, "PENDING")
-	householdWant(t, f, 2, "CONSENT", r.Version, 1, 2, "CONFLICT")
-	householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "PENDING")
-	count := householdAuditCount(t, f)
-	householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "PENDING")
-	if householdAuditCount(t, f) != count {
-		t.Fatal("duplicate consent recorded another effect")
-	}
-	next := householdWant(t, f, 1, "PROPOSE", r.Version, 1, 2, "PENDING")
-	if next.Version <= r.Version {
-		t.Fatal("replacement did not advance version")
-	}
-	householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "CONFLICT")
-	householdWant(t, f, 2, "CONSENT", next.Version, 1, 2, "PENDING")
-	householdWant(t, f, 1, "CONSENT", next.Version, 1, 2, "ACTIVE")
-	var members int
-	f.exec(`SET ROLE kami_migrator`)
-	if err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM app.memberships WHERE group_id=$1`, f.id(11)).Scan(&members); err != nil || members != 3 {
-		t.Fatal("pair changed membership", members, err)
-	}
-	f.exec(`RESET ROLE`)
-}
-
-func TestHouseholdIndependentThreeMembersAndTermination(t *testing.T) {
-	f := householdFixture(t)
-	version := householdActive(t, f)
-	householdWant(t, f, 1, "END", version, 0, 0, "NOT_FOUND")
-	householdWant(t, f, 1, "PROPOSE", version, 1, 2, "CONFLICT")
-	householdWant(t, f, 1, "CANCEL", version, 0, 0, "CONFLICT")
-	if err := f.db.WithIdentity(f.ctx, f.id(1), func(tx pgx.Tx) error {
-		_, err := tx.Exec(f.ctx, `SELECT app.lock_group_read($1)`, f.id(11))
-		return err
-	}); err != nil {
-		t.Fatal("nonpartner owner's ledger access lost", err)
-	}
-	householdWant(t, f, 2, "END", version, 0, 0, "ENDED")
-	count := householdAuditCount(t, f)
-	householdWant(t, f, 2, "END", version, 0, 0, "ENDED")
-	if householdAuditCount(t, f) != count {
-		t.Fatal("duplicate end added audit")
-	}
-}
-
-func TestHouseholdIndependentCancelAuthority(t *testing.T) {
-	for _, actor := range []int{1, 2, 3} {
-		t.Run(fmt.Sprint(actor), func(t *testing.T) {
+func TestHouseholdRetiredDesignationCannotAuthorizeOrMutate(t *testing.T) {
+	for _, state := range []string{"EMPTY", "PENDING", "ACTIVE", "SUSPENDED", "ENDED"} {
+		t.Run(state, func(t *testing.T) {
 			f := householdFixture(t)
-			r := householdWant(t, f, 1, "PROPOSE", 0, 2, 3, "PENDING")
-			householdWant(t, f, actor, "CANCEL", r.Version, 0, 0, "CANCELLED")
-			householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "CONFLICT")
-		})
-	}
-}
-
-func TestHouseholdIndependentOwnershipTransfer(t *testing.T) {
-	for _, active := range []bool{false, true} {
-		t.Run(fmt.Sprint(active), func(t *testing.T) {
-			f := householdFixture(t)
-			r := householdWant(t, f, 1, "PROPOSE", 0, 2, 3, "PENDING")
-			householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "PENDING")
-			if active {
-				householdWant(t, f, 3, "CONSENT", r.Version, 2, 3, "ACTIVE")
+			if state != "EMPTY" {
+				f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.household_designation_guard SET version=7,state='%s',first_user_id='%s',second_user_id='%s',proposer_user_id='%s',first_consented=%t,second_consented=%t; RESET ROLE`, state, f.id(2), f.id(3), f.id(1), state == "ACTIVE", state == "ACTIVE"))
 			}
-			householdLifecycle(t, f, fmt.Sprintf(`UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, f.id(22), f.id(11)))
-			want := "CANCELLED"
-			if active {
-				want = "ACTIVE"
+			before := householdHistory(t, f)
+			f.exec(`RESET ROLE`)
+			probes := []struct{ query, runtimeCode string }{
+				{`SELECT * FROM app.household_designation_guard`, "42501"},
+				{`SELECT * FROM app.household_designation_audit`, "42501"},
+				{`UPDATE app.household_designation_guard SET version=version+1`, "42501"},
+				{`SELECT app.household_lifecycle_lock('{}'::uuid[])`, "42501"},
+				{`SELECT app.household_designation('CONSENT',7,NULL,NULL)`, "42883"},
 			}
-			state := householdWant(t, f, 2, "READ", 0, 0, 0, want)
-			if active && state.Version != r.Version {
-				t.Fatal("finalized pair changed on ownership transfer")
+			for _, role := range []string{"kami_api", "anon", "authenticated", "service_role"} {
+				for _, probe := range probes {
+					var err error
+					if role == "kami_api" {
+						// The migration login deliberately cannot assume the API
+						// role. Exercise its real authenticated connection instead.
+						err = f.db.WithIdentity(f.ctx, f.id(2), func(tx pgx.Tx) error {
+							_, err := tx.Exec(f.ctx, probe.query)
+							return err
+						})
+					} else {
+						err = func() error {
+							tx, err := f.admin.Begin(f.ctx)
+							if err != nil {
+								t.Fatal(err)
+							}
+							defer tx.Rollback(context.Background())
+							if _, err = tx.Exec(f.ctx, `SET LOCAL ROLE `+role); err != nil {
+								t.Fatal(err)
+							}
+							_, err = tx.Exec(f.ctx, probe.query)
+							return err
+						}()
+					}
+					expected := "42501" // Browser/service roles cannot resolve app objects.
+					if role == "kami_api" {
+						expected = probe.runtimeCode
+					}
+					var pgError *pgconn.PgError
+					if !errors.As(err, &pgError) || pgError.Code != expected {
+						t.Fatalf("%s probe %s: wanted SQLSTATE %s, got %v", role, probe.query, expected, err)
+					}
+				}
 			}
-			if !active {
-				householdWant(t, f, 3, "CONSENT", r.Version, 2, 3, "CONFLICT")
+			var retired int
+			f.exec(`SET ROLE kami_migrator`)
+			err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='app' AND p.proname IN ('household_designation','household_invalidate','household_audit')`).Scan(&retired)
+			f.exec(`RESET ROLE`)
+			if err != nil || retired != 0 {
+				t.Fatalf("retired operations remain: %d %v", retired, err)
+			}
+			err = f.db.WithIdentity(f.ctx, f.id(3), func(tx pgx.Tx) error {
+				var visible bool
+				var state string
+				if err := tx.QueryRow(f.ctx, `SELECT app.can_read_group($1),app.household_dashboard_lock()->>'state'`, f.id(11)).Scan(&visible, &state); err != nil {
+					return err
+				}
+				if !visible || state != "COMPLETE" {
+					t.Fatalf("historical relation affected current membership: %t %s", visible, state)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if householdHistory(t, f) != before {
+				t.Fatal("read or denied command mutated historical rows")
 			}
 		})
 	}
 }
 
-func TestHouseholdIndependentDepartureReadmissionFreshConsent(t *testing.T) {
+func TestHouseholdLifecyclePreservesHistoricalRowsAndPreparation(t *testing.T) {
 	f := householdFixture(t)
-	version := householdActive(t, f)
+	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.household_designation_guard SET version=7,state='PENDING',first_user_id='%s',second_user_id='%s',proposer_user_id='%s'; RESET ROLE`, f.id(2), f.id(3), f.id(1)))
+	before := householdHistory(t, f)
 	f.reject(fmt.Sprintf(`UPDATE app.memberships SET active=false WHERE id='%s'`, f.id(23)))
-	householdLifecycle(t, f, fmt.Sprintf(`UPDATE app.memberships SET active=false WHERE id='%s'`, f.id(23)))
-	suspended := householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
-	if suspended.Version <= version {
-		t.Fatal("eligibility loss retained consent version")
-	}
-	householdWant(t, f, 3, "READ", 0, 0, 0, "NOT_FOUND")
-	householdWant(t, f, 2, "CONSENT", suspended.Version, 2, 3, "NOT_FOUND")
-	householdLifecycle(t, f, fmt.Sprintf(`UPDATE app.memberships SET active=true WHERE id='%s'`, f.id(23)))
-	householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
-	householdWant(t, f, 2, "CONSENT", version, 2, 3, "CONFLICT")
-	householdWant(t, f, 2, "CONSENT", suspended.Version, 2, 3, "SUSPENDED")
-	householdWant(t, f, 3, "CONSENT", suspended.Version, 2, 3, "ACTIVE")
-}
-
-func TestHouseholdIndependentAccountLossAndRestrictedStorage(t *testing.T) {
-	for _, mode := range []string{"disable", "unlink", "delete"} {
-		t.Run(mode, func(t *testing.T) {
-			f := householdFixture(t)
-			version := householdActive(t, f)
-			for _, sql := range []string{`SELECT * FROM app.household_designation_guard`, `SELECT * FROM app.household_designation_audit`, `SELECT app.household_lifecycle_lock('{}'::uuid[])`} {
-				if err := f.db.WithIdentity(f.ctx, f.id(2), func(tx pgx.Tx) error { _, err := tx.Exec(f.ctx, sql); return err }); err == nil {
-					t.Fatal("runtime accessed restricted storage/helper", sql)
-				}
-			}
-			f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'; RESET ROLE`, f.id(3)))
-			if mode == "unlink" {
-				f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.users SET live_auth_id=NULL WHERE id='%s'; RESET ROLE`, f.id(3)))
-			}
-			if mode == "delete" {
-				f.exec(fmt.Sprintf(`DELETE FROM auth.users WHERE id='%s'`, f.id(3)))
-			}
-			state := householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
-			if state.Version <= version {
-				t.Fatal("account loss retained consent")
-			}
-			householdWant(t, f, 3, "READ", 0, 0, 0, "NOT_FOUND")
-			householdWant(t, f, 2, "END", state.Version, 0, 0, "ENDED")
-		})
+	f.reject(fmt.Sprintf(`UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, f.id(22), f.id(11)))
+	f.reject(fmt.Sprintf(`UPDATE app.installation SET household_group_id='%s'`, f.id(12)))
+	householdLifecycle(t, f, fmt.Sprintf(`UPDATE app.memberships SET active=false WHERE id='%s'; UPDATE app.memberships SET active=true WHERE id='%s'; UPDATE app.groups SET owner_membership_id='%s' WHERE id='%s'`, f.id(23), f.id(23), f.id(22), f.id(11)))
+	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'; UPDATE app.users SET live_auth_id=NULL WHERE id='%s'; RESET ROLE`, f.id(3), f.id(3)))
+	f.exec(fmt.Sprintf(`DELETE FROM auth.users WHERE id='%s'`, f.id(3)))
+	if householdHistory(t, f) != before {
+		t.Fatal("membership, ownership or account lifecycle rewrote pair history")
 	}
 }
 
-func TestHouseholdIndependentFirstProposalAndConsentRaces(t *testing.T) {
+func TestHouseholdAccountTransitionRejectsUndiscoveredUser(t *testing.T) {
 	f := householdFixture(t)
-	type answer struct {
-		r householdResult
-		e error
-	}
-	done := make(chan answer, 2)
-	for _, pair := range [][2]int{{1, 2}, {2, 3}} {
-		go func(pair [2]int) {
-			out, e := f.db.HouseholdDesignation(f.ctx, f.id(1), database.HouseholdDesignationInput{Action: "PROPOSE", Version: 0, FirstUserID: f.id(pair[0]), SecondUserID: f.id(pair[1])})
-			r := householdResult{State: out.State, Version: out.Version}
-			done <- answer{r, e}
-		}(pair)
-	}
-	a, b := <-done, <-done
-	if a.e != nil || b.e != nil || !((a.r.State == "PENDING" && b.r.State == "CONFLICT") || (b.r.State == "PENDING" && a.r.State == "CONFLICT")) {
-		t.Fatalf("first designation race: %+v %+v", a, b)
-	}
-	next := householdWant(t, f, 1, "PROPOSE", 1, 2, 3, "PENDING")
-	for _, actor := range []int{2, 3} {
-		go func(actor int) { r, e := householdCall(f, actor, "CONSENT", next.Version, 2, 3); done <- answer{r, e} }(actor)
-	}
-	a, b = <-done, <-done
-	if a.e != nil || b.e != nil || !((a.r.State == "PENDING" && b.r.State == "ACTIVE") || (b.r.State == "PENDING" && a.r.State == "ACTIVE")) {
-		t.Fatalf("consent race: %+v %+v", a, b)
-	}
-	householdWant(t, f, 2, "READ", 0, 0, 0, "ACTIVE")
-}
-
-func TestHouseholdIndependentAccountLossWaitRevalidates(t *testing.T) {
-	for _, mode := range []string{"disable", "unlink", "delete"} {
-		t.Run(mode, func(t *testing.T) {
-			f := householdFixture(t)
-			version := householdActive(t, f)
-			tx, err := f.admin.Begin(f.ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer tx.Rollback(context.Background())
-			if _, err = tx.Exec(f.ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'`, f.id(3))); err != nil {
-				t.Fatal(err)
-			}
-			if mode == "unlink" {
-				if _, err := tx.Exec(f.ctx, `UPDATE app.users SET live_auth_id=NULL WHERE id=$1`, f.id(3)); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if mode == "delete" {
-				if _, err := tx.Exec(f.ctx, `RESET ROLE`); err != nil {
-					t.Fatal(err)
-				}
-				if _, err := tx.Exec(f.ctx, `DELETE FROM auth.users WHERE id=$1`, f.id(3)); err != nil {
-					t.Fatal(err)
-				}
-			}
-			type answer struct {
-				r householdResult
-				e error
-			}
-			done := make(chan answer, 1)
-			go func() { r, e := householdCall(f, 2, "CONSENT", version, 2, 3); done <- answer{r, e} }()
-			select {
-			case got := <-done:
-				t.Fatalf("consent did not serialize with disable: %+v", got)
-			case <-time.After(100 * time.Millisecond):
-			}
-			if err := tx.Commit(f.ctx); err != nil {
-				t.Fatal(err)
-			}
-			got := <-done
-			if got.e != nil || got.r.State != "CONFLICT" {
-				t.Fatalf("stale consent after disable: %+v", got)
-			}
-			householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
-
-		})
-	}
-}
-
-func TestHouseholdIndependentCancellationAndTerminationRaces(t *testing.T) {
-	for _, action := range []string{"CANCEL", "END"} {
-		t.Run(action, func(t *testing.T) {
-			f := householdFixture(t)
-			r := householdWant(t, f, 1, "PROPOSE", 0, 2, 3, "PENDING")
-			householdWant(t, f, 2, "CONSENT", r.Version, 2, 3, "PENDING")
-			if action == "END" {
-				householdWant(t, f, 3, "CONSENT", r.Version, 2, 3, "ACTIVE")
-			}
-			type answer struct {
-				r householdResult
-				e error
-			}
-			done := make(chan answer, 2)
-			go func() { r, e := householdCall(f, 2, action, r.Version, 0, 0); done <- answer{r, e} }()
-			go func() { r, e := householdCall(f, 3, "CONSENT", r.Version, 2, 3); done <- answer{r, e} }()
-			a, b := <-done, <-done
-			if a.e != nil || b.e != nil {
-				t.Fatalf("transition race errors %+v %+v", a, b)
-			}
-			state, err := householdCall(f, 2, "READ", 0, 0, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if action == "END" {
-				if state.State != "ENDED" {
-					t.Fatal(state)
-				}
-			} else {
-				if state.State != "CANCELLED" && state.State != "ACTIVE" {
-					t.Fatal(state)
-				}
-				if state.State == "ACTIVE" && a.r.State != "CONFLICT" && b.r.State != "CONFLICT" {
-					t.Fatal("finalization won but cancellation did not conflict", a, b)
-				}
-			}
-		})
-	}
-}
-
-func TestHouseholdIndependentRemovalReadmissionRaceKeepsInvalidation(t *testing.T) {
-	f := householdFixture(t)
-	version := householdActive(t, f)
 	tx, err := f.admin.Begin(f.ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(context.Background())
-	if _, err := tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
-		t.Fatal(err)
+	// The first statement owns the canonical user set for this transaction. An
+	// inserted identity was not locked by that statement and must force restart.
+	if _, err = tx.Exec(f.ctx, fmt.Sprintf(`SET LOCAL ROLE kami_migrator; UPDATE app.users SET enabled=enabled WHERE id='%s'; RESET ROLE; INSERT INTO auth.users(id,email) VALUES('%s','undiscovered@example.invalid'); SET LOCAL ROLE kami_migrator; INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES('%s','%s','%s','Inserted'); UPDATE app.users SET enabled=false WHERE id='%s'`, f.id(1), f.id(99), f.id(99), f.id(99), f.id(99), f.id(99))); err == nil {
+		t.Fatal("new user bypassed canonical account discovery")
 	}
-	if _, err := tx.Exec(f.ctx, `SELECT app.household_lifecycle_lock(ARRAY[$1::uuid])`, f.id(3)); err != nil {
-		t.Fatal(err)
+	var pgError *pgconn.PgError
+	if !errors.As(err, &pgError) || pgError.Code != "40001" {
+		t.Fatalf("wanted restart, got %v", err)
 	}
-	if _, err := tx.Exec(f.ctx, `UPDATE app.memberships SET active=false WHERE id=$1`, f.id(23)); err != nil {
-		t.Fatal(err)
-	}
-	// Even leave/rejoin in one transaction must not restore old consent.
-	if _, err := tx.Exec(f.ctx, `UPDATE app.memberships SET active=true WHERE id=$1`, f.id(23)); err != nil {
-		t.Fatal(err)
-	}
-	type answer struct {
-		r householdResult
-		e error
-	}
-	done := make(chan answer, 1)
-	go func() { r, e := householdCall(f, 2, "CONSENT", version, 2, 3); done <- answer{r, e} }()
-	select {
-	case got := <-done:
-		t.Fatalf("consent bypassed lifecycle lock: %+v", got)
-	case <-time.After(100 * time.Millisecond):
-	}
-	if err := tx.Commit(f.ctx); err != nil {
-		t.Fatal(err)
-	}
-	got := <-done
-	if got.e != nil || got.r.State != "CONFLICT" {
-		t.Fatalf("leave/rejoin retained old consent: %+v", got)
-	}
-	householdWant(t, f, 2, "READ", 0, 0, 0, "SUSPENDED")
 }
 
-func TestHouseholdIndependentCanonicalUserLockOrder(t *testing.T) {
-	for _, operation := range []string{"proposal", "bulk_disable"} {
+func TestHouseholdCanonicalLifecycleAndAccountUserLocks(t *testing.T) {
+	for _, operation := range []string{"lifecycle", "bulk_disable"} {
 		t.Run(operation, func(t *testing.T) {
 			f := householdFixture(t)
 			held, err := f.admin.Begin(f.ctx)
@@ -380,10 +159,10 @@ func TestHouseholdIndependentCanonicalUserLockOrder(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer held.Rollback(context.Background())
-			if _, err := held.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+			if _, err = held.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := held.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE`, f.id(1)); err != nil {
+			if _, err = held.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE`, f.id(1)); err != nil {
 				t.Fatal(err)
 			}
 			writer, err := pgx.Connect(f.ctx, os.Getenv("TEST_DATABASE_ADMIN_URL"))
@@ -393,13 +172,12 @@ func TestHouseholdIndependentCanonicalUserLockOrder(t *testing.T) {
 			defer writer.Close(context.Background())
 			done := make(chan error, 1)
 			go func() {
-				if operation == "proposal" {
-					_, err := householdCall(f, 1, "PROPOSE", 0, 2, 3)
-					done <- err
-					return
+				query := `BEGIN; SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock('{}'::uuid[]); COMMIT`
+				if operation == "bulk_disable" {
+					query = fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id IN ('%s','%s')`, f.id(3), f.id(1))
 				}
-				_, err := writer.Exec(f.ctx, `SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id IN ('75000000-0000-4000-8000-000000000003','75000000-0000-4000-8000-000000000001')`)
-				done <- err
+				_, e := writer.Exec(f.ctx, query)
+				done <- e
 			}()
 			select {
 			case err := <-done:
@@ -416,19 +194,127 @@ func TestHouseholdIndependentCanonicalUserLockOrder(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer check.Rollback(context.Background())
-			if _, err := check.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+			if _, err = check.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := check.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE NOWAIT`, f.id(3)); err != nil {
+			if _, err = check.Exec(f.ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE NOWAIT`, f.id(3)); err != nil {
 				t.Fatal("later user acquired before earlier user", err)
 			}
-			if err := check.Rollback(f.ctx); err != nil {
+			if err = check.Rollback(f.ctx); err != nil {
 				t.Fatal(err)
 			}
-			if err := held.Commit(f.ctx); err != nil {
+			if err = held.Commit(f.ctx); err != nil {
 				t.Fatal(err)
 			}
-			if err := <-done; err != nil {
+			if err = <-done; err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestHouseholdLifecycleIsolationAndAccountOrder(t *testing.T) {
+	f := householdFixture(t)
+	for _, operation := range []string{"lifecycle", "account"} {
+		t.Run(operation, func(t *testing.T) {
+			tx, err := f.admin.BeginTx(f.ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback(context.Background())
+			if _, err = tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+				t.Fatal(err)
+			}
+			query := `SELECT app.household_lifecycle_lock('{}'::uuid[])`
+			if operation == "account" {
+				query = fmt.Sprintf(`UPDATE app.users SET enabled=false WHERE id='%s'`, f.id(3))
+			}
+			_, err = tx.Exec(f.ctx, query)
+			var pgError *pgconn.PgError
+			if !errors.As(err, &pgError) || pgError.Code != "25000" {
+				t.Fatalf("wanted READ COMMITTED enforcement, got %v", err)
+			}
+		})
+	}
+	tx, err := f.admin.Begin(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err = tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator; SELECT app.household_lifecycle_lock('{}'::uuid[])`); err != nil {
+		t.Fatal(err)
+	}
+	_, err = tx.Exec(f.ctx, `UPDATE app.users SET enabled=false WHERE id=$1`, f.id(3))
+	var pgError *pgconn.PgError
+	if !errors.As(err, &pgError) || pgError.Code != "55000" {
+		t.Fatalf("account transition followed group locking: %v", err)
+	}
+}
+
+func TestHouseholdAccountLossWaitRevalidatesCurrentMembership(t *testing.T) {
+	for _, mode := range []string{"disable", "unlink", "delete"} {
+		t.Run(mode, func(t *testing.T) {
+			f := householdFixture(t)
+			tx, err := f.admin.Begin(f.ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback(context.Background())
+			if _, err = tx.Exec(f.ctx, `SET LOCAL ROLE kami_migrator`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err = tx.Exec(f.ctx, `UPDATE app.users SET enabled=false WHERE id=$1`, f.id(3)); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "unlink" {
+				if _, err = tx.Exec(f.ctx, `UPDATE app.users SET live_auth_id=NULL WHERE id=$1`, f.id(3)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "delete" {
+				if _, err = tx.Exec(f.ctx, `RESET ROLE`); err != nil {
+					t.Fatal(err)
+				}
+				if _, err = tx.Exec(f.ctx, `DELETE FROM auth.users WHERE id=$1`, f.id(3)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			done := make(chan error, 1)
+			go func() {
+				done <- f.db.WithIdentity(f.ctx, f.id(2), func(read pgx.Tx) error {
+					var state string
+					var access bool
+					if err := read.QueryRow(f.ctx, `SELECT app.household_dashboard_lock()->>'state',app.can_read_group($1)`, f.id(11)).Scan(&state, &access); err != nil {
+						return err
+					}
+					if state != "COMPLETE" || !access {
+						return fmt.Errorf("remaining member lost ledger access: %s %t", state, access)
+					}
+					return nil
+				})
+			}()
+			select {
+			case got := <-done:
+				t.Fatalf("read bypassed current account locks: %v", got)
+			case <-time.After(100 * time.Millisecond):
+			}
+			if err = tx.Commit(f.ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err = <-done; err != nil {
+				t.Fatal(err)
+			}
+			err = f.db.WithIdentity(f.ctx, f.id(3), func(read pgx.Tx) error {
+				var state string
+				if err := read.QueryRow(f.ctx, `SELECT app.household_dashboard_lock()->>'state'`).Scan(&state); err != nil {
+					return err
+				}
+				if state != "NOT_FOUND" {
+					return fmt.Errorf("disabled or unlinked account retained access: %s", state)
+				}
+				return nil
+			})
+			if err != nil {
 				t.Fatal(err)
 			}
 		})
