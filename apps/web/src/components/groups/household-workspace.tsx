@@ -1,6 +1,7 @@
 'use client';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
+import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { AppIcon } from '@/components/workspace-identity';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -8,13 +9,9 @@ import { fetchQuery } from 'relay-runtime';
 import document, {
   type householdWorkspaceQuery,
 } from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
-import accessDocument, {
-  type householdAccessQuery,
-} from '@/lib/relay/__generated__/householdAccessQuery.graphql';
 import { Skeleton } from '@/components/primitives';
-import membersDocument, {
-  type householdMembersQuery,
-} from '@/lib/relay/__generated__/householdMembersQuery.graphql';
+import type { householdMembersQuery } from '@/lib/relay/__generated__/householdMembersQuery.graphql';
+import { useHouseholdMembers } from './household-members';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
 import {
@@ -102,78 +99,7 @@ export function HouseholdRead({
   );
 }
 function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
-  const [members, setMembers] = useState<Members>();
-  const [error, setError] = useState('');
-  const [version, setVersion] = useState(0);
-  const generation = useRef(0);
-  const requests = useRef<{ unsubscribe(): void }[]>([]);
-  const invalidate = () => {
-    generation.current++;
-    requests.current.forEach((r) => r.unsubscribe());
-    requests.current = [];
-    setMembers(undefined);
-    setError('');
-  };
-  const reset = () => {
-    invalidate();
-    setVersion((v) => v + 1);
-  };
-  useForegroundRefresh(invalidate, () => setVersion((v) => v + 1));
-  useEffect(() => {
-    let active = true;
-    const ticket = ++generation.current;
-    let memberRead: { unsubscribe(): void } | undefined;
-    const failed = () => {
-      if (active && scope.isLive() && ticket === generation.current)
-        setError(
-          'Household membership is unavailable. Refresh to check current access.',
-        );
-    };
-    const request = fetchQuery<householdAccessQuery>(
-      scope.environment,
-      accessDocument,
-      {},
-      { fetchPolicy: 'network-only' },
-    ).subscribe({
-      next: (result) => {
-        if (!active || !scope.isLive() || ticket !== generation.current) return;
-        const home =
-          result.householdDashboard.__typename === 'HouseholdDashboard'
-            ? result.householdDashboard.spaces.find((s) => s.isHousehold)
-            : undefined;
-        if (!home) {
-          failed();
-          return;
-        }
-        memberRead = fetchQuery<householdMembersQuery>(
-          scope.environment,
-          membersDocument,
-          { id: home.groupId },
-          { fetchPolicy: 'network-only' },
-        ).subscribe({
-          next: (response) => {
-            if (!active || !scope.isLive() || ticket !== generation.current)
-              return;
-            if (
-              response.group.__typename === 'Group' &&
-              response.group.id === home.groupId
-            )
-              setMembers(response.group);
-            else failed();
-          },
-          error: failed,
-        });
-        requests.current.push(memberRead);
-      },
-      error: failed,
-    });
-    requests.current.push(request);
-    return () => {
-      active = false;
-      request.unsubscribe();
-      memberRead?.unsubscribe();
-    };
-  }, [scope, version]);
+  const { members, error, reset } = useHouseholdMembers(scope);
   return (
     <>
       <button className="household-refresh" onClick={reset}>
@@ -182,14 +108,20 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       {error ? (
         <p role="alert">{error}</p>
       ) : members ? (
-        <HouseholdMembers members={members} />
+        <HouseholdMembers members={members} scope={scope} />
       ) : (
         <Skeleton label="Loading Household membership" />
       )}
     </>
   );
 }
-function HouseholdMembers({ members }: { members: Members }) {
+function HouseholdMembers({
+  members,
+  scope,
+}: {
+  members: Members;
+  scope: FinancialScope;
+}) {
   return (
     <section>
       <h2>Household members</h2>
@@ -207,7 +139,10 @@ function HouseholdMembers({ members }: { members: Members }) {
         </MemberBalanceRow>
       ))}
       {members.viewerMembership.role === 'OWNER' && (
-        <Link href="/invitations">Manage invitations</Link>
+        <ScopedInvitations
+          scope={scope}
+          group={{ id: members.id, name: members.name }}
+        />
       )}
     </section>
   );
@@ -358,7 +293,10 @@ export function HouseholdContent({
                 </MemberBalanceRow>
               ))}
               {members.viewerMembership.role === 'OWNER' && (
-                <Link href="/invitations">Manage invitations</Link>
+                <ScopedInvitations
+                  scope={scope}
+                  group={{ id: members.id, name: members.name }}
+                />
               )}
             </>
           ) : (

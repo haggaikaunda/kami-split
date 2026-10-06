@@ -1,4 +1,7 @@
 'use client';
+import Link from 'next/link';
+import { useHouseholdMembers } from './household-members';
+import type { FinancialScope } from '@/lib/relay/environment';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
 import { createWorkspaceIntent } from '@/lib/relay/intent';
@@ -74,7 +77,14 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
             : 'Shared expenses across home, trips and groups.'
         }
         appearance="household"
-      />
+      >
+        {access.scope && (
+          <HouseholdInvitationEntry
+            key={access.scope.id}
+            scope={access.scope}
+          />
+        )}
+      </WorkspaceHeader>
       <WorkspaceTabs
         current={current}
         hrefFor={
@@ -109,4 +119,11 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       {children}
     </main>
   );
+}
+
+function HouseholdInvitationEntry({ scope }: { scope: FinancialScope }) {
+  const { members } = useHouseholdMembers(scope);
+  return members?.viewerMembership.role === 'OWNER' ? (
+    <Link href="/household?tab=members#invitations">Manage invitations</Link>
+  ) : null;
 }

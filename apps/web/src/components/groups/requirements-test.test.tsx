@@ -704,7 +704,12 @@ it.each([
     mock.path = '/household/ledger';
     await render(originalLedger());
     await resolveGroup(data);
-    expect(mock.requests).toHaveLength(1);
+    expect(
+      mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+    ).toHaveLength(1);
+    expect(
+      mock.requests.find((r) => r.name === 'householdAccessQuery'),
+    ).toBeDefined();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       'Household ledger access is unavailable',
     );
@@ -718,22 +723,30 @@ it('Household ledger discovery and workspace discard old-account results immedia
   mock.path = '/household/ledger';
   mock.search = 'tab=members';
   await render(originalLedger());
-  const oldDiscovery = mock.requests[0];
+  const oldDiscovery = mock.requests.find(
+    (r) => r.name === 'journeyViewerQuery',
+  )!;
   await resolveGroup(householdViewer());
-  const oldWorkspace = mock.requests[1];
+  const oldWorkspace = mock.requests.at(-1)!;
+  const oldHeader = mock.requests.find(
+    (r) => r.name === 'householdAccessQuery',
+  )!;
   mock.access = {
     scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
     loading: false,
   };
   await render(originalLedger());
   expect(oldDiscovery.canceled).toBe(true);
+  expect(oldHeader.canceled).toBe(true);
   expect(oldWorkspace.canceled).toBe(true);
   expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
   await act(async () => {
     oldDiscovery.next(householdViewer());
     oldWorkspace.next(groupResult('H'));
   });
-  expect(mock.requests).toHaveLength(3);
+  expect(
+    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+  ).toHaveLength(3);
   expect(host.textContent).not.toContain('Pre-trip booking');
   await resolveGroup({ viewer: { __typename: 'Viewer', groups: [] } });
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
@@ -924,7 +937,10 @@ it('logout cancels canonical Household discovery and keeps the authorized destin
     '/household/ledger?tab=balances',
   );
   await act(async () => pending.next(householdViewer()));
-  expect(mock.requests).toHaveLength(1);
+  expect(
+    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+  ).toHaveLength(1);
+  expect(mock.requests.every((r) => r.canceled)).toBe(true);
   expect(host.textContent).not.toContain('Pre-trip booking');
   expect(host.textContent).not.toContain('Authorized home');
 });

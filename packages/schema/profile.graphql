@@ -1,0 +1,55 @@
+"""
+Self-only application profile, independent of group discovery and Auth metadata.
+"""
+type Profile {
+  """
+  Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+  """
+  id: ID!
+  """
+  Current application display name; historical financial snapshots retain their original names.
+  """
+  displayName: String!
+}
+"""
+Safe profile outcome; no private identity or storage details.
+"""
+type ProfileProblem {
+  """
+  INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+  """
+  code: String!
+  """
+  User-facing explanation of the failure.
+  """
+  message: String!
+}
+"""
+An authorized profile or a safe operation failure.
+"""
+union ProfileResult = Profile | ProfileProblem
+extend type Query {
+  """
+  Read only the enabled, provisioned authenticated caller's profile, without discovering groups.
+  """
+  currentProfile: ProfileResult!
+}
+extend type Mutation {
+  """
+  Update only the caller's application display name. Trim Unicode White_Space
+  at both ends and require 1–120 Unicode codepoints after trimming. The exact
+  previously read expectedDisplayName prevents stale overwrites; an already
+  current requested value succeeds without another write. Auth metadata and
+  financial history are unchanged. Refresh authorized projections after success.
+  """
+  updateMyProfile(
+    """
+    Desired personal name, trimmed using Unicode White_Space and limited to 1–120 codepoints.
+    """
+    displayName: String!
+    """
+    Exact previously confirmed application name; a different current value rejects a stale edit.
+    """
+    expectedDisplayName: String!
+  ): ProfileResult!
+}

@@ -89,6 +89,11 @@ type OwnerInvitationsResult interface {
 	IsOwnerInvitationsResult()
 }
 
+// An authorized profile or a safe operation failure.
+type ProfileResult interface {
+	IsProfileResult()
+}
+
 // Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
 type RecordRepaymentResult interface {
 	IsRecordRepaymentResult()
@@ -801,6 +806,26 @@ func (Problem) IsRecordRepaymentResult() {}
 func (Problem) IsRepaymentOperationResult() {}
 
 func (Problem) IsExpenseViewResult() {}
+
+// Self-only application profile, independent of group discovery and Auth metadata.
+type Profile struct {
+	// Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+	ID string `json:"id"`
+	// Current application display name; historical financial snapshots retain their original names.
+	DisplayName string `json:"displayName"`
+}
+
+func (Profile) IsProfileResult() {}
+
+// Safe profile outcome; no private identity or storage details.
+type ProfileProblem struct {
+	// INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+	Code string `json:"code"`
+	// User-facing explanation of the failure.
+	Message string `json:"message"`
+}
+
+func (ProfileProblem) IsProfileResult() {}
 
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {

@@ -31,3 +31,9 @@ export function householdLedgerHref(
   }
   return `/household/ledger${next.size ? `?${next}` : ''}`;
 }
+
+/** Invitation administration belongs to Members, including the canonical
+ * Household home rather than its separate original-ledger view. */
+export function spaceInvitationsHref(space: SpaceRoute) {
+  return `${space.isHousehold ? '/household' : spaceHref(space)}?tab=members#invitations`;
+}

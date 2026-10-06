@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d3dd7facc3f3de36d2b3a243622c413f>>
+ * @generated SignedSource<<d553990f4f540f74a3d22587be8f5085>>
  * @lightSyntaxTransform
  */
 
@@ -24,6 +24,7 @@ export type householdMembersQuery$data = {
       readonly role: MembershipRole;
       readonly status: MembershipStatus;
     }>;
+    readonly name: string;
     readonly viewerMembership: {
       readonly role: MembershipRole;
     };
@@ -88,10 +89,17 @@ v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "role",
+  "name": "name",
   "storageKey": null
 },
 v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "role",
+  "storageKey": null
+},
+v7 = {
   "alias": null,
   "args": null,
   "concreteType": "Membership",
@@ -107,7 +115,7 @@ v6 = {
       "name": "displayName",
       "storageKey": null
     },
-    (v5/*:: as any*/),
+    (v6/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -139,6 +147,7 @@ return {
             "kind": "InlineFragment",
             "selections": [
               (v4/*:: as any*/),
+              (v5/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -147,11 +156,11 @@ return {
                 "name": "viewerMembership",
                 "plural": false,
                 "selections": [
-                  (v5/*:: as any*/)
+                  (v6/*:: as any*/)
                 ],
                 "storageKey": null
               },
-              (v6/*:: as any*/)
+              (v7/*:: as any*/)
             ],
             "type": "Group",
             "abstractKey": null
@@ -183,6 +192,7 @@ return {
             "kind": "InlineFragment",
             "selections": [
               (v4/*:: as any*/),
+              (v5/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -191,12 +201,12 @@ return {
                 "name": "viewerMembership",
                 "plural": false,
                 "selections": [
-                  (v5/*:: as any*/),
+                  (v6/*:: as any*/),
                   (v4/*:: as any*/)
                 ],
                 "storageKey": null
               },
-              (v6/*:: as any*/)
+              (v7/*:: as any*/)
             ],
             "type": "Group",
             "abstractKey": null
@@ -215,16 +225,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e9ce20b9037b360e7ad540513aac65d0",
+    "cacheID": "220a9f8e0f724704f1b5be1746ec14fd",
     "id": null,
     "metadata": {},
     "name": "householdMembersQuery",
     "operationKind": "query",
-    "text": "query householdMembersQuery(\n  $id: ID!\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on Group {\n      id\n      viewerMembership {\n        role\n        id\n      }\n      members {\n        id\n        displayName\n        role\n        status\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query householdMembersQuery(\n  $id: ID!\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on Group {\n      id\n      name\n      viewerMembership {\n        role\n        id\n      }\n      members {\n        id\n        displayName\n        role\n        status\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fdb1ad7f6065c6dc2c9672cc839cf72f";
+(node as any).hash = "5ba1595caee248b07ab65de092761759";
 
 export default node;

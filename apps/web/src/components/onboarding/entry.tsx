@@ -1,14 +1,17 @@
 'use client';
-import { Brand } from '@/components/workspace-identity';
+import { Brand, WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
 import { useOnboarding, type Mode } from './controller';
 import { HouseIllustration, InvitationScreens, SignIn } from './screens';
-import { AccountPanel } from './account';
+import { ProfileEditor } from './profile';
+import { LegacyInvitations } from './legacy-invitations';
+import '../groups/journey.css';
 import { ActionRecovery } from './recovery';
 import './onboarding.css';
 export function OnboardingEntry({ mode }: { mode: Mode }) {
+  if (mode === 'invitations') return <LegacyInvitations />;
   return <OnboardingRoute key={mode} mode={mode} />;
 }
 function OnboardingRoute({ mode }: { mode: Mode }) {
@@ -62,15 +65,25 @@ function OnboardingVisit({
   const account = mode === 'account' || mode === 'invitations';
   return (
     <main
-      className={`onboarding ${account ? 'onboarding--account' : ''}`}
+      className={
+        account
+          ? 'financial-journey group-workspace account-workspace'
+          : 'onboarding'
+      }
       id="page-content"
     >
-      <div className="onboarding-panel" ref={panel}>
-        <header>
-          <Link href="/account" className="onboarding-brand">
-            <Brand />
-          </Link>
-        </header>
+      {account && <WorkspaceNavigation />}
+      <div
+        className={account ? 'account-content' : 'onboarding-panel'}
+        ref={panel}
+      >
+        {!account && (
+          <header>
+            <Link href="/account" className="onboarding-brand">
+              <Brand />
+            </Link>
+          </header>
+        )}
         {!account && <HouseIllustration />}
         {c.loading ? (
           <Status kind="pending">Loading secure account access…</Status>
@@ -98,7 +111,7 @@ function OnboardingVisit({
                 {c.session ? (
                   <>
                     <p>Signed in as {c.session.user.email}</p>
-                    <AccountPanel state={c} />
+                    <ProfileEditor key={c.session.user.id} state={c} />
                     <Button
                       tone="secondary"
                       disabled={c.busy}
@@ -164,11 +177,11 @@ function OnboardingVisit({
                 <Link href="/sign-in">Sign in</Link>
               </>
             )}
-            <ActionRecovery state={c} />
+            {!account && <ActionRecovery state={c} />}
           </>
         )}
       </div>
-      <footer>Shared expenses. A little more together.</footer>
+      {!account && <footer>Shared expenses. A little more together.</footer>}
     </main>
   );
 }

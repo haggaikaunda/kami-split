@@ -91,6 +91,7 @@ export const householdMembersQuery = graphql`
       }
       ... on Group {
         id
+        name
         viewerMembership {
           role
         }
@@ -107,15 +108,14 @@ export const householdMembersQuery = graphql`
 
 export const householdAccessQuery = graphql`
   query householdAccessQuery {
-    householdDashboard {
+    viewer {
       __typename
       ... on Problem {
         code
       }
-      ... on HouseholdDashboard {
-        state
-        spaces {
-          groupId
+      ... on Viewer {
+        groups {
+          id
           isHousehold
         }
       }

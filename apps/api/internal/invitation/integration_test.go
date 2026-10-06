@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -210,17 +211,34 @@ func TestTargetedLifecycle(t *testing.T) {
 	}
 	revoked, err := f.service.Revoke(ctx, f.group, r.InvitationID, uuid.New())
 	requireOutcome(t, revoked, err, "ALREADY_ACCEPTED")
+	// Save through the authenticated profile operation before leaving. Admission
+	// later observes fresh provider email and proposes its email-derived initial
+	// name, but must preserve this explicitly saved application name and identity.
+	profiles := profile.New(f.db)
+	originalProfile := profiles.Read(f.actor(f.member))
+	if originalProfile.Code != "READY" {
+		t.Fatal(originalProfile)
+	}
+	savedProfile := profiles.Update(f.actor(f.member), "Zoë 李 — saved profile", originalProfile.DisplayName)
+	if savedProfile.Code != "READY" {
+		t.Fatal(savedProfile)
+	}
 	f.exec(`UPDATE app.memberships SET active=false WHERE id=$1`, accepted.MembershipID)
 	old, err := f.service.Accept(f.actor(f.member), token, uuid.New())
 	requireOutcome(t, old, err, "HISTORICAL_ACCEPTANCE")
 	if old.HasAccess {
 		t.Fatal("old link restored access")
 	}
-	_, newToken := f.create("member@example.invalid")
+	f.provider.emails[f.member.String()] = "fresh-provider-name@example.invalid"
+	_, newToken := f.create("fresh-provider-name@example.invalid")
 	readmit, err := f.service.Accept(f.actor(f.member), newToken, uuid.New())
 	requireOutcome(t, readmit, err, "ADMITTED")
 	if readmit.MembershipID != accepted.MembershipID {
 		t.Fatal("changed permanent membership")
+	}
+	readmittedProfile := profiles.Read(f.actor(f.member))
+	if readmittedProfile.Code != "READY" || readmittedProfile.ID != savedProfile.ID || readmittedProfile.DisplayName != savedProfile.DisplayName {
+		t.Fatalf("later invitation admission reset saved application profile: before=%+v after=%+v", savedProfile, readmittedProfile)
 	}
 }
 
