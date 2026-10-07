@@ -29,6 +29,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/profile"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 	"github.com/jackc/pgx/v5"
 )
@@ -123,12 +124,16 @@ func newExpenseFixture(t *testing.T) *expenseFixture {
 	if err = verifier.Warm(ctx); err != nil {
 		t.Fatal(err)
 	}
+	cfg, err := config.Load(os.LookupEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
 	service := expense.New(db)
 	codec, e := ledger.NewCursorCodec("test", map[string][]byte{"test": bytes.Repeat([]byte{1}, 32)})
 	if e != nil {
 		t.Fatal(e)
 	}
-	graphqlServer := server.NewWithAuthentication(config.Config{ShutdownTimeout: time.Second}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Expenses: service, Groups: group.New(db), Cursors: codec}}), slog.New(slog.NewTextHandler(io.Discard, nil)), verifier)
+	graphqlServer := server.NewWithAuthentication(cfg, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Profiles: profile.New(db), Expenses: service, Groups: group.New(db), Cursors: codec}}), slog.New(slog.NewTextHandler(io.Discard, nil)), verifier)
 	endpoint := httptest.NewServer(verifier.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/graphql" {
 			graphqlServer.Handler().ServeHTTP(w, r)

@@ -1,20 +1,17 @@
 # Testing strategy
 
-Tests demonstrate behavior rather than mirror implementation. Financial browser previews use an asynchronous in-memory adapter; real onboarding uses configured Auth/API services. The Go API separately implements verified authentication, persisted expense creation/recovery and authorized balance/read operations, plus internal targeted invitation/admission/delivery recovery. These paths have real Supabase/PostgreSQL integration coverage. [Public onboarding](application/onboarding.md) has actual provider/HTTP integration and browser coverage. The [authenticated Relay journey](application/relay-expenses.md) adds real financial browser integration (#83); mock financial UI tests do not demonstrate its completion. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
+Tests demonstrate current behavior rather than mirror implementation. The web has one authenticated Relay/GraphQL runtime; configured onboarding connects real Auth/API services. The seeded adapter, snapshot model and simulation-only component tests were retired in #184. See [API verification](../apps/api/README.md) and [database development](application/database-development.md).
 
 ## Current coverage
 
-- **Domain tests:** exact minor-unit parsing/allocation, multi-member conservation, direct obligations, repayment effects, currencies, effective dates, trip aggregation and truthful chart buckets.
-- **Adapter tests:** access simulations, immutable snapshots/audits, atomic mock commands, versions/conflicts, same-request idempotency, duplicate payload rejection, before/after-commit failures, membership and setup boundaries.
-- **Component integration tests:** React/jsdom with actual providers for navigation/drafts, forms, revisions, deletion, repayment, filtered history, charts, trips, entry and household management. Mocks replace browser/framework facilities where necessary; these are not real browser tests.
-- **Automated accessibility:** 24 axe-backed cases in `apps/web/src/components/accessibility.test.tsx`. Only color contrast is disabled because jsdom cannot evaluate rendered layout. Contrast calculations, real focus behavior, target geometry and reflow have separate evidence.
-- **LAN compatibility:** helper and actual-provider tests remove `crypto.randomUUID` while retaining cryptographic `getRandomValues`; verify UUID format, distinct visits, stable draft IDs and duplicate-safe deletion/household recovery.
-- **API behavior:** HTTP lifecycle/readiness, verified JWT/JWKS request identity, safe errors, exact-money rules, canonical operation inputs, signed cursors and authenticated GraphQL operations.
-- **Real database integration:** migration upgrade/fresh replay and desired-schema/ACL comparison, runtime-role and cross-user/group denial, transaction-local identity cleanup, revocation/ownership locks, atomic expense/allocation/audit/result writes, duplicate and mismatch recovery, complete balances, pagination, rollback and response/COMMIT uncertainty, and financial dump/replay.
-- **Internal invitations:** capability preview/eligibility, actor-bound admission, current provider email evidence, lifecycle races, durable delivery recovery, and maintenance cleanup against actual local Supabase/PostgreSQL. The onboarding suite additionally connects actual provider emails, callback state, owner HTTP operations and admission.
-- **Manual browser acceptance:** actual app interactions recorded in feature PRs and the [final report](accessibility/README.md), with a [criterion matrix](accessibility/criterion-matrix.md) for P01–P10/N01–N07. The LAN origin was additionally verified through rendered overview and add/preserve/resume/save in [PR #51](https://github.com/haggaikaunda/kami-split/pull/51).
+- **Financial contracts:** exact decimal-string/minor-unit parsing, allocation validation, complete group balances, persisted expense/repayment and original-attempt recovery.
+- **Component integration:** real production Group/Trip/Household workspaces, structured Expenses and source-aware details, Activity, onboarding, repayment forms and actor-scoped session cancellation. Framework/network mocks in jsdom do not prove server authorization or real browser layout.
+- **Shared accessibility:** primitive keyboard/dialog/focus tests and workspace semantic tests; production rendered browser evidence covers responsive layout and text resizing. Retired axe cases for the seeded application are historical evidence only.
+- **LAN compatibility:** cryptographic session-ID fallback remains tested and used by current scoped navigation and production financial forms.
+- **API/database:** verified JWT identity, runtime-role cross-user/group denial, migrations/permissions, lifecycle races, exact-money conservation, atomic audit/results, signed cursors, concurrent recovery and dump/replay against disposable Supabase/PostgreSQL.
+- **Real-browser acceptance:** feature delivery PRs record current route and interaction evidence. The [seeded final report](accessibility/README.md) and criterion matrix describe the retired application, not the current production suite.
 
-The web baseline after PR #51 is **325 passing tests in 54 files** (September 26, 2026). Earlier reports retain their at-the-time counts. There is no checked-in automated browser E2E runner; `pnpm test` runs Vitest, not the manual acceptance walkthroughs.
+`pnpm test` runs Vitest. The opt-in `scripts/navigation-browser.cjs` production-browser regression harness uses synthetic Auth/GraphQL fixtures; run instructions and limitations are in the [workspace loading guide](navigation/workspace-loading.md). It complements real API/database authorization tests and is not part of the default test command. Dated test counts in historical guides are not targets.
 
 ## Required commands
 
@@ -29,7 +26,7 @@ pnpm test
 pnpm build
 ```
 
-For a focused regression, use `pnpm test src/lib/ledger.test.ts` (paths are relative to `apps/web`). Avoid running type checking and build concurrently because Next.js generates types. Stop a production preview before rebuilding its `.next` output; restart and reload before continuing browser verification.
+For a focused regression, use `pnpm test src/lib/relay/money.independent.test.ts` (paths are relative to `apps/web`). Avoid running type checking and build concurrently because Next.js generates types. Stop a production preview before rebuilding its `.next` output; restart and reload before continuing browser verification.
 
 For the API and persistence baseline, also run from the repository root:
 
@@ -43,13 +40,11 @@ make db-test
 
 ## Browser evidence and limits
 
-Use equivalent seed/clock and viewport when comparing the frozen reference with the app. Exercise actual mutations and inspect totals/revisions/events; a toast, screenshot or HTTP 200 alone is not sufficient. Verify localhost and the actual LAN HTTP origin for phone-preview changes. Default seed clock is September 20, 2026, independent of the wall clock.
-
-The final pass covers 320/390/768/1280px, actual 200% root text, keyboard dialogs and focus restoration, dirty resizing, exact data tables, filtered origins, Back/Forward, repeated record sources, chart mutation return and unavailable/tombstone routes. Physical iOS/Android keyboard/notch and spoken VoiceOver/TalkBack output were not tested. Browser accessibility-tree review, reduced-height simulation and safe-area CSS inspection are explicitly scoped substitutes. Reduced-motion CSS was inspected; OS preference emulation was not claimed.
+Exercise real authenticated routes and inspect persisted results, source context and fresh access checks; a toast, screenshot or HTTP 200 alone is insufficient. Verify 320/390px, actual 200% root text, keyboard/focus, Back/Forward, source filters, group repayment, account switch, and retired-route not-found behavior. Use the actual LAN HTTP origin for phone-related changes. Physical assistive technology and provider/production limitations must be recorded explicitly.
 
 ## Remaining integration and feature coverage
 
-Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing/deletion, settlements, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Existing UI simulations do not satisfy those future security or durability gates. Percentage splits are not implemented; test them only if separately approved and added.
+Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing/deletion, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Historical UI simulations do not satisfy those future security or durability gates. Percentage splits are implemented under #199; shared Go/TypeScript vectors, domain properties, real database persistence/replay constraints and independent form tests cover the [percentage contract](application/percentage-splits.md). Required final-head browser and CI evidence is recorded on the delivery PR.
 
 Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).
 

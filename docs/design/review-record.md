@@ -1,5 +1,7 @@
 # Design-package verification record
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Historical design-only record, September 20, 2026. Planning issue #11; PR #12 (subsequently merged); implementation tracker #13 (subsequently completed). For current application verification, see the [final UX report](../accessibility/README.md) and [testing strategy](../testing-strategy.md).
 
 ## Independent requirements testing

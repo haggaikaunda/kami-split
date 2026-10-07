@@ -2,8 +2,12 @@
 
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
-and expenses** from the account navigation. Select an admitted group to read a
-bounded expense connection, create an expense, and see complete server balances.
+and expenses** from the account navigation. Groups lists ordinary authorized groups; Household and Trips have dedicated entries. Trips filters authorized Trip groups by metadata
+and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility.
+Discovery cards open only the groups returned for the current authorized actor.
+Canonical ordinary-group `/groups/:groupId`, Trip `/trips/:groupId`, and original Household `/household/ledger` routes
+recheck access and expense ownership. Select an admitted group to read a
+structured expense view, create an expense, and see complete server balances.
 The existing `ONBOARDING_ORIGIN`, `ONBOARDING_API_URL` and public Supabase
 configuration also serve this journey through the same-origin GraphQL proxy.
 
@@ -14,11 +18,22 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-Remaining preview routes are explicitly labeled simulated and link to `/groups`;
-they do not receive authenticated financial data. This slice does not implement
-expense edit/delete, group creation, repayments, trips or dashboard integration.
+[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery and `/trips` lists independent authenticated Trip groups. This slice does not implement
+expense edit/delete.
+#171 adds shared Group/Trip workspace tabs, overview and balance details, members,
+and persisted group-local repayment entry. #170 adds the shared
+[production Expenses workspaces](expenses-ledger.md), including the complete
+Household ledger; Activity consumes the authenticated feed from #172.
+Trip dates affect status only; financial history remains complete and group-local.
 
-Expenses use the approved forward connection with pages of 20 and signed cursors.
+The [approved Board A/B adoption](../design/references/approved-ui/adoption.md)
+uses a scenic Trip header and neutral Group/Household artwork, compact member
+initials, white financial cards and source-scoped balance rows. Repayment entry
+keeps its recovery navigation while focusing the main area on the existing form.
+The visible **Refresh** action retains its descriptive accessible name.
+
+Overview recent expenses request five rows from the bounded connection; the Expenses tab
+uses the [structured view](expenses-ledger.md), with pages of 20 and signed cursors.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net
@@ -30,7 +45,8 @@ group and does not add original direct expense debts a second time.
 Wire money stays in canonical decimal strings; validation and previews use
 `bigint`. Formatting never converts aggregate cents to JavaScript numbers.
 Equal remainders follow ascending canonical membership IDs; exact shares include
-explicit zero. Description counts Unicode scalar values after ASCII trimming;
+explicit zero. [Percentage splits](percentage-splits.md) retain normalized intended
+percentages and resolve cents by largest remainder with canonical-ID tie breaks. Description counts Unicode scalar values after ASCII trimming;
 notes preserve whitespace. Dates allow valid future dates. Server validation and
 current membership authorization remain authoritative.
 
@@ -69,7 +85,7 @@ not automatically recreating a similar expense.
 ## Generation and verification
 
 `pnpm relay:generate` assembles the implemented `packages/schema/*.graphql` SDL
-in ignored `.tools` and compiles checked-in TypeScript operation artifacts.
+into a complete server schema in ignored `.tools`, resolving `extend type` fields before compiling checked-in TypeScript operation artifacts. This prevents Relay from treating persisted server operations as client-only fields. Wire-operation tests validate every compiled request against the authoritative SDL.
 `pnpm relay:check` validates schema/operation generation drift without changing
 artifacts and runs in required web CI. Scalar mappings are explicitly strings.
 Application modules import compiled artifacts directly, so no runtime GraphQL tag
@@ -84,3 +100,94 @@ storage failures, duplicate suppression, frozen retries, denied access and
 unmounted results. The PR records synthetic real-provider invitation, browser,
 PostgreSQL persistence, commit-loss, pagination, keyboard/focus and responsive
 verification with tested commit and explicit limitations.
+
+## Discovery and return navigation (#105)
+
+A normal card/expense activation captures an actor-session source visit with its
+filter URL, scroll and logical focus. Modified clicks use canonical standalone
+URLs. Back to source restores after a fresh authorized read; missing records focus
+the heading. Unknown visits fall back to Groups. Session replacement clears these
+private visits alongside financial drafts. Drafts continue to retain their original
+group. UTC midnight and foregrounding refresh discovery and temporarily hide stale
+fields; delayed responses cannot populate a different group/account visit.
+
+Overview recent expenses and standalone records are bounded reads. The Expenses
+ledger appends authorized structured pages within a visit while retaining complete
+server aggregates; it does not merge data from separate source visits. Failed reads never establish an empty group or settled
+balance. New ordinary/trip groups reuse the same expense form and complete balances,
+without preview household trip pickers or repayment shortcuts.
+
+## Group creation (#106)
+
+Enabled designated creators can open `/groups/new` from Groups (ordinary by
+default) or Create trip from Trips (trip by default). USD is read-only; trip
+dates initially use the fresh server UTC date. Names use ASCII trimming and
+Unicode scalar limits; destinations preserve whitespace. There is no member
+picker or household inheritance: the server atomically creates a sole owner
+and an empty group-local ledger.
+
+Versioned tab storage binds the draft and frozen canonical creation input to the
+stable Viewer ID, independently of the selected group. The client persists a
+CSPRNG operation key before dispatch. Uncertain attempts survive navigation and
+same-tab reload; Check creation and Retry original creation keep that original
+key/input, including after NOT_STARTED. Conflicts remain frozen. Only definitive
+domain rejection permits correction with a new key. Logout or account switch
+clears creation context alongside financial drafts. Password-session logout also
+continues when the invitation context is already absent or expired. Unreadable/lost storage
+explains that an earlier group may exist and offers group inspection before an
+explicitly acknowledged new creation; unavailable storage blocks dispatch.
+
+A completed result triggers a separate network-only authorized Group read before
+opening its canonical route. Read failure retains recovery and never asserts a
+zero balance or empty ledger. Leaving or replacing the actor suppresses delayed
+completion and navigation. Recovery denial hides the original fields and blocks
+commands until access is refreshed. Invitation management remains a separate
+onboarding operation rather than an implicit step in creation.
+
+## Group/Trip workspace (#171)
+
+The canonical group route defaults to Overview. The common Overview, Expenses,
+Balances, Activity and Members navigation uses `tab` in the URL, preserving direct
+entry and history. Ordinary groups use neutral contextual art; trips add travel
+metadata/abstract illustration. Complete server totals and viewer positions drive
+two horizontal overview metrics; a zero viewer position does not imply every
+member is settled. Balance details identify each simplified obligation and offer
+repayment entry only on an explicit eligible sender/recipient row. Summary cards
+only disclose balance details. See [persisted repayments](persisted-repayments.md)
+for actual-transfer validation, frozen recovery scope and browser integration.
+Owner settings disclose current metadata; metadata editing remains unavailable.
+
+## Household workspace
+
+#112 connects `/household` to the complete authorized `householdDashboard` read.
+Overview shows expense face-value total/count, exact signed viewer net/open-space
+count, and eligible-space count in a horizontal row, followed by at most five
+source-attributed expenses from `householdExpenses`. Balances uses the complete
+server source set and never derives totals from the recent page. No Household
+settlement action exists: each row opens its original group's Balances surface.
+Zero aggregate with open sources stays open. Members first reads minimal Household identity, then the actual
+Household `Group.members`, including more than two members and historical profiles;
+only owners see existing invitation management. Activity reuses #172. #170 adds
+the shared [Expenses ledger](expenses-ledger.md) at `/household/expenses`; the
+Expenses tab opens it and legacy `?tab=expenses` links preserve their filters on
+redirect. Its navigation destination is distinct from Overview.
+
+Account changes, foreground revalidation, refresh and route changes remove prior
+private data before network-only reads. Failed/incomplete reads never fabricate
+zeros. Membership-based Household discovery uses the [ADR-010 common-member scope](decisions/010-household-membership-sharing.md). Legacy unavailable service states expose only the server-authorized ledger fallback
+without a partner identity or suspension reason. Source return and browser Back
+restore focus/scroll after fresh authorization; a missing row uses the heading.
+
+## Navigation and read ownership (#193)
+
+The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent public Household/Group navigation, separately owned private visits, bounded intent warming, cancellation and fresh activation reads. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.
+
+## Household and Trip navigation
+
+Household is absent from Groups discovery and its original ledger/details/forms
+use `/household/ledger` within the dedicated Household frame. Trips are absent
+from Groups and use `/trips/<Group ID>` plus original expense/repayment subroutes.
+Legacy group paths canonicalize after authorized metadata resolution. All reads,
+writes and recoveries retain the original group IDs and server authorization.
+See [workspace loading](../navigation/workspace-loading.md) for route and exact
+wire-query verification.

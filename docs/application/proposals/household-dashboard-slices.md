@@ -1,19 +1,20 @@
 # #86 delivery slices and acceptance trace
 
-Status: future work following adoption of [ADR-007](../decisions/007-household-dashboard.md).
-This design delivers no feature, migration or running SDL. Unresolved policy is
+Status: delivery map following adoption of [ADR-007](../decisions/007-household-dashboard.md).
+The original design delivered no runtime feature. #130 designation, #110 repayment
+persistence/API, #111 summary reads and #169 structured-filtered expense views are implemented; #112 implements the Household Overview/Balances/Members workspace; the complete Expenses tab is implemented by #170. Unresolved policy is
 explicitly deferred, not silently approved by a follow-up issue.
 
-| Slice                                                                         | Dependency / readiness                                                         | Deliverable                                                                                                                                                              |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [#109 Pair policy](https://github.com/haggaikaunda/kami-split/issues/109)     | #86 adopted; owner agreement required                                          | Designation/change authority, pre-onboarding and disabled-partner policy, dashboard access, stable identity and compatible locks; separate implementation after review.  |
-| [#110 Group repayment](https://github.com/haggaikaunda/kami-split/issues/110) | #82; reviewed settlement permissions/validation contract before code           | Small design, persistence and API PRs for one group-specific actual repayment and same-attempt recovery. Reuse ledger/operation infrastructure; no dashboard dependency. |
-| [#111 Summary reads](https://github.com/haggaikaunda/kami-split/issues/111)   | #82, #109 policy and designation implementation; #104 metadata for trip labels | Complete authorized eligible-set query, exact aggregates and failure states; no settlement endpoint duplication.                                                         |
-| [#112 UI integration](https://github.com/haggaikaunda/kami-split/issues/112)  | #83, #105, #111; #110 before repayment activation                              | First read-only dashboard, then shared detail/dashboard repayment form, refresh/recovery and accessible source restoration. Separate PRs keep each slice useful.         |
+| Slice                                                                         | Dependency / readiness                                                         | Deliverable                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [#109 Pair policy](https://github.com/haggaikaunda/kami-split/issues/109)     | #86 adopted; owner agreement required                                          | Designation/change authority, pre-onboarding and disabled-partner policy, dashboard access, stable identity and compatible locks; separate implementation after review.                                       |
+| [#110 Group repayment](https://github.com/haggaikaunda/kami-split/issues/110) | #82; reviewed settlement permissions/validation contract before code           | Small design, persistence and API PRs for one group-specific actual repayment and same-attempt recovery. Reuse ledger/operation infrastructure; no dashboard dependency.                                      |
+| [#111 Summary reads](https://github.com/haggaikaunda/kami-split/issues/111)   | #82, #109 policy and designation implementation; #104 metadata for trip labels | Implemented complete authorized eligible-set query, signed viewer net, counts and simple expense face-value totals; no settlement duplication.                                                                |
+| [#112 UI integration](https://github.com/haggaikaunda/kami-split/issues/112)  | #83, #105, #111; #110 before repayment activation                              | Household Overview/Balances/Members with original-space drill-down and accessible source restoration. Repayment entry is only in original Group/Trip balance details; complete Expenses is delivered by #170. |
 
 #75 and #85 remain their delivered foundation/design scopes. #79/#80 own actual
 invitation/onboarding; no inferred partner admission. None of these slices blocks
-#73's single-group expense journey. Spending/average formulas and historical
+#73's single-group expense journey. Couple-spending/average formulas and historical
 reporting remain O19; refunds/corrections and settlement editing/reversal remain
 O11/O12. Add separate scoped issues only when those features are requested.
 
@@ -35,3 +36,14 @@ Design probes are reviewable expected outcomes, not tests asserting prose or
 claims of implemented UI/security. Required repository checks still run; independent
 testing reviews arithmetic, inclusion, recovery and source accuracy, while final-diff
 review checks the complete design against #86 and accepted decisions.
+
+## Structured expense views (#169)
+
+The API supports one forward chronological Household feed over the same authorized
+eligible spaces as #111, plus group-local parity. Complete filtered face-value
+spending totals/counts and monthly aggregates accompany each page, without using
+loaded rows as an aggregate. Source/category/member/inclusive-date filters and
+signed per-space anchors keep summaries and traversal consistent. Member matching
+is payer-or-explicit-participant, including zero shares, separate from the existing
+participant-only group connection. Every continuation revalidates current access.
+#177 retains all production text-search design; #112 owns browser presentation.

@@ -1,6 +1,6 @@
 # Documentation
 
-The seeded web UX was completed with the LAN HTTP compatibility fix as of September 26, 2026, and still uses in-memory data. The separate Go API now implements verified authentication, persisted expenses and balances, and internal targeted invitation operations; [targeted onboarding](application/onboarding.md) is connected under #80, and the [authenticated expense journey](application/relay-expenses.md) connects financial browser reads, creation and recovery through Relay (#83). See the [current API architecture](application/api-architecture.md). Start with the [project README](../README.md) to run the app or preview it on a phone. Read [product scope](product-scope.md) before treating any simulated account or financial flow as a production service.
+The application has one authenticated runtime: real onboarding, Relay/GraphQL-backed independent Group/Trip workspaces and the Household five-tab workspace. The seeded application, data model, providers and routes were retired in #184. Historical feature guides below describe the removed implementation and must not be used to restore it. Start with [current application documentation](application/README.md) and the [project README](../README.md).
 
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
 The [production deployment configuration](application/production-deployment.md)
@@ -14,7 +14,7 @@ deployment evidence is tracked there as each provider stage is completed.
 
 - [Architecture decisions](application/decisions/README.md): accepted production design, including [bootstrap, groups and invitations](application/decisions/003-bootstrap-groups-and-invitations.md) and [group balances, membership and recovery](application/decisions/004-group-balances-membership-and-recovery.md), distinct from the seeded preview.
 
-## Implementation guides
+## Historical seeded implementation guides
 
 | Area                                                | Guide                                                    |
 | --------------------------------------------------- | -------------------------------------------------------- |
@@ -41,6 +41,10 @@ deployment evidence is tracked there as each provider stage is completed.
 
 The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CONTRIBUTING.md), and [agent instructions](../AGENTS.md) define issue, test, review and merge gates. GitHub is the source of truth for work status. The [completed implementation record](design/implementation-plan.md) links each UX issue to its merged PR.
 
+## Approved production visual references
+
+[Board A and Board B](design/references/approved-ui/README.md) are the required visual targets for #189, with original assets, panel mapping, semantic corrections and an implementation/evidence ledger.
+
 ## Approved design archive
 
-The [design index](design/README.md) links the still-applicable UX specification, navigation contracts and data-access design. The prototype and numbered issue specifications preserve the original approved scope. Historical readiness instructions and unchecked specification checkboxes are not an active backlog; completion and subsequent changes are recorded in GitHub and linked implementation guides.
+The [design index](design/README.md) archives the former seeded UX specification, navigation contracts and data-access design. The prototype and numbered issue specifications preserve the original approved scope. Historical readiness instructions and unchecked specification checkboxes are not an active backlog; completion and subsequent changes are recorded in GitHub and linked implementation guides.

@@ -1,8 +1,8 @@
 # GraphQL contract
 
-`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql` and `onboarding.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, and ordinary/trip group creation. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
+`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `household.graphql`, `financial-activity.graphql`, `structured-expenses.graphql`, `onboarding.graphql` and `profile.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose authenticated self-profile editing, [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, ordinary/trip group creation, financial activity, and structured cross-space spending reads. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
 
-Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. The future Relay compiler will consume this same contract; Relay is not installed yet.
+Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. Pinned Relay tooling consumes the same authoritative SDL through `pnpm relay:generate`; `pnpm relay:check` verifies committed web artifact drift. The generator resolves server SDL extensions into a complete schema before compilation, so Relay emits executable server operations rather than client-only extension fields. Wire-operation tests validate compiled requests against the authoritative SDL.
 
 Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript money logic and DataPort remain in `apps/web`; Go application operations own persisted financial rules. Language-neutral test fixtures may be shared when implemented.
 
@@ -44,3 +44,40 @@ exposed. `Viewer.today` is sampled once per response in UTC, including aliases a
 node lookups. Clients derive trip status from inclusive dates and this value;
 trip dates never restrict expense history or writes. Metadata editing and
 classification conversion have no public endpoint.
+
+## Activity
+
+`groupActivity` and `householdActivity` traverse persisted immutable expense-created and repayment-recorded events, ordered by event timestamp, kind and record UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same current membership scope as `householdDashboard`, never client group filtering. Its signed workspace binding includes membership/account generations, and scope is sampled with the events; leave/rejoin invalidates prior Household continuations even when financial anchors and source IDs are unchanged. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
+
+## Household overview
+
+`householdDashboard` discovers the complete currently eligible common-member set independently of expense pagination. Source space rows preserve exact complete balances, revision, members, current labels and trip metadata. `COMPLETE` includes checked informational totals; `INCOMPLETE` includes freshly authorized rows and an `AMOUNT_OVERFLOW` totals problem; `UNAVAILABLE` exposes only the authorized Household ledger without totals for a legacy service fallback. Every enabled, Auth-linked active Household member is authorized under [ADR-010](../../docs/application/decisions/010-household-membership-sharing.md); a missing designation is never a permission failure. Whole-discovery failure returns `UNAVAILABLE` without rows. Counts use exact canonical `MinorUnits` strings. Zero informational net does not settle independent groups; no aggregate repayment target exists.
+
+Complete Household dashboards and expense views expose `contextVersion`, an
+opaque equality token sampled with each result. It binds the actor, membership/account eligibility generations,
+complete eligible source set, and current group/member metadata (including roles
+and participation eligibility), independently of filters, page size and financial
+revisions. Concurrent context and expense reads may be combined only when their
+nonempty tokens match. Dashboard tokens are null unless the dashboard is
+`COMPLETE`; tokens neither grant access nor replace fresh authorization or signed
+financial traversal cursors.
+
+## Structured expense views
+
+`householdExpenses` and `groupExpenses(groupId)` return one complete structured-filtered spending dataset and a bounded global page. `StructuredExpenseFilter` accepts source `groupId`, `category`, same-group `memberId` and inclusive `from`/`to`. Member matches payer **or** an explicit allocation, including zero shares. A membership belongs to one original group: selecting it in Household filters only that group's expenses; it is not a global person identifier. `ExpenseFilter.participantId` on legacy `Group.expenses` retains participant-only semantics. No `search` field, substring/FTS/trigram query or search platform is introduced; #177 owns future production search.
+
+`totalExpenseMinor`, `expenseCount` and every `months` subtotal/count derive from the whole matching dataset, never the loaded page. Expenses count once in their original group; repayments are excluded. `GroupBalances.totalExpenseMinor` remains unfiltered. Order is effective date, creation timestamp, raw source-group UUID and raw expense UUID, all descending. Every edge preserves the original expense and freshly authorized source label/kind/trip metadata.
+
+Version-2 signed cursors freeze the complete sorted per-group financial revision vector. All continuation rows, totals and months use that same anchored dataset; new and backdated expenses appear after restarting without `after`. Repayments do not affect anchored spending. Current membership/account access and eligible groups are rechecked every call before any data or cursor error is serialized. An opaque digest binds the viewer, Household membership/account generations and eligible set (or original group/viewer membership for group reads). Changing scope, structured filters, viewer, eligibility generation or current eligible set rejects traversal. There is no claim that a financial revision proves authorization. Membership readmission uses current authorization and complete lifetime history; an identical restored ordinary-group scope may resume its old anchored history, while Household/source membership leave/rejoin advances eligibility generations and invalidates old Household traversal without requiring another sharing confirmation.
+
+The complete traversal token is bounded to 64 KiB; an over-budget token returns `UNAVAILABLE`, never a truncated anchor/set or partial response. Reads use the dashboard's canonical user→scope guard→group locks or ordinary group read protocol, a five-second deadline and at most three fresh discovery attempts. Invalid structured syntax is `INVALID_INPUT`; inaccessible source/member IDs are masked as `NOT_FOUND`; bad signatures/scope/filter/eligibility/future anchors are `INVALID_CURSOR`; unavailable reads and exact int64 overflow return safe Problems without rows, months or apparently successful zero totals.
+
+## Self profile
+
+[`profile.graphql`](profile.graphql) exposes `currentProfile` independently of
+group discovery and `updateMyProfile` with an exact expected display name. Both
+operate only on the enabled, provisioned authenticated caller. The application
+name is separate from Auth metadata; only current authorized name projections
+refresh, while financial records and recovery snapshots remain unchanged. See
+the [profile contract](../../docs/application/profile.md) for validation,
+concurrency and safe retry outcomes.

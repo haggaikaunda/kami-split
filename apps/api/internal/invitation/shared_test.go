@@ -41,9 +41,17 @@ func TestSharedLifecycle(t *testing.T) {
 		t.Fatal("expired copy changed link", err)
 	}
 	renewKey := uuid.New()
-	before := time.Now()
+	// Renewal uses the database clock. Bound its strict interval using that same
+	// clock; the Docker VM and host need not have identical wall-clock offsets.
+	var before, after time.Time
+	if err := f.admin.QueryRow(context.Background(), `SELECT clock_timestamp()`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
 	renewed, err := f.service.RenewShared(owner, f.group, created.InvitationID, renewKey)
-	if err != nil || renewed.ExpiresAt.Before(before.Add(7*24*time.Hour)) || renewed.ExpiresAt.After(time.Now().Add(7*24*time.Hour)) {
+	if clockErr := f.admin.QueryRow(context.Background(), `SELECT clock_timestamp()`).Scan(&after); clockErr != nil {
+		t.Fatal(clockErr)
+	}
+	if err != nil || renewed.ExpiresAt.Before(before.Add(7*24*time.Hour)) || renewed.ExpiresAt.After(after.Add(7*24*time.Hour)) {
 		t.Fatalf("renew: %+v %v", renewed, err)
 	}
 	replay, err := f.service.RenewShared(owner, f.group, created.InvitationID, renewKey)

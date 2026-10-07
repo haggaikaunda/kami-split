@@ -1,24 +1,49 @@
 'use client';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { fetchQuery } from 'relay-runtime';
+import { expenseFilterText } from '@/lib/relay/expense-filter';
+import {
+  WorkspaceTabs,
+  workspaceSections,
+  Skeleton,
+} from '@/components/primitives';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fetchQuery, readInlineData } from 'relay-runtime';
+import expenseView, {
+  type expensesView$key,
+} from '@/lib/relay/__generated__/expensesView.graphql';
+import activityFeed, {
+  type activityFeed$key,
+} from '@/lib/relay/__generated__/activityFeed.graphql';
 import viewerDocument, {
   type journeyViewerQuery,
 } from '@/lib/relay/__generated__/journeyViewerQuery.graphql';
 import groupDocument, {
-  type journeyGroupQuery,
-} from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
+  type journeyWorkspaceQuery,
+} from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { money } from '@/lib/relay/money';
-import { ExpenseForm } from './expense-form';
+import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
+import {
+  householdLedgerHref,
+  spaceHref,
+  spaceInvitationsHref,
+} from '@/lib/relay/space-routes';
+import { tripState, routeId } from '@/lib/relay/discovery';
+import { ExpenseDetail } from './expense-detail';
+import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
+import { CreationForm } from './creation-form';
 import './journey.css';
+import { createWorkspaceIntent } from '@/lib/relay/intent';
+import { workspaceRequest } from '@/lib/relay/workspace-request';
+import { useForegroundRefresh } from './foreground';
 type Viewer = Extract<
   journeyViewerQuery['response']['viewer'],
   { readonly __typename: 'Viewer' }
 >;
 type Group = Extract<
-  journeyGroupQuery['response']['group'],
+  journeyWorkspaceQuery['response']['group'],
   { readonly __typename: 'Group' }
 >;
 function message(code: string) {
@@ -30,45 +55,180 @@ function message(code: string) {
     return 'This expense page is no longer available. Restart the list.';
   return 'Financial data is unavailable. No zero balance or settled status can be established. Refresh to try again.';
 }
-export function GroupJourney({ initialGroup = '' }: { initialGroup?: string }) {
+export function GroupJourney({
+  initialGroup: pathGroup = '',
+  expense: pathExpense = '',
+  repayment = false,
+  trips = false,
+  filter = 'all',
+  creation,
+  household = false,
+}: {
+  household?: boolean;
+  creation?: 'ORDINARY' | 'TRIP';
+  initialGroup?: string;
+  expense?: string;
+  repayment?: boolean;
+  trips?: boolean;
+  filter?: string;
+}) {
+  const initialGroup = routeId(pathGroup),
+    expense = routeId(pathExpense);
   const access = useFinancialSession();
+  const intent = useMemo(
+    () => (access.scope ? createWorkspaceIntent(access.scope) : undefined),
+    [access.scope],
+  );
+  useEffect(() => () => intent?.cancel(), [intent]);
+  const params = useSearchParams(),
+    pathname = usePathname();
+  const intentVisit = pathname + '?' + params.toString();
+  useLayoutEffect(() => {
+    intent?.cancel();
+  }, [intent, intentVisit]);
+  useEffect(() => {
+    const cancel = () => intent?.cancel();
+    window.addEventListener('focus', cancel);
+    window.addEventListener('pageshow', cancel);
+    document.addEventListener('visibilitychange', cancel);
+    return () => {
+      window.removeEventListener('focus', cancel);
+      window.removeEventListener('pageshow', cancel);
+      document.removeEventListener('visibilitychange', cancel);
+    };
+  }, [intent]);
+  const groupBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(initialGroup)}`;
+  const currentTab =
+    workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
+    (params.has('after') ? 'Expenses' : 'Overview');
+  const visitParams = new URLSearchParams(params);
+  for (const key of [
+    'tab',
+    'expense',
+    'expenseGroup',
+    'create',
+    'groupId',
+    'category',
+    'memberId',
+    'from',
+    'to',
+  ])
+    visitParams.delete(key);
+  const returnQuery = new URLSearchParams();
+  for (const key of ['tab', 'sender', 'recipient', 'amount', 'kind']) {
+    const value = params.get(key);
+    if (value) returnQuery.set(key, value);
+  }
+  const signInReturn = pathname + (returnQuery.size ? `?${returnQuery}` : '');
+  const body = access.loading ? (
+    <p role="status">Loading secure access…</p>
+  ) : access.error ? (
+    <p role="alert">{access.error}</p>
+  ) : !access.scope ? (
+    <p>
+      <Link href={`/sign-in?next=${encodeURIComponent(signInReturn)}`}>
+        Sign in
+      </Link>{' '}
+      with your invited account to see your groups.
+    </p>
+  ) : initialGroup ? (
+    <>
+      <SourceReturn scope={access.scope} household={household} />
+      <GroupDetails
+        key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${currentTab}:${visitParams}`}
+        scope={access.scope}
+        household={household}
+        id={initialGroup}
+        expense={expense}
+        repayment={repayment}
+      />
+    </>
+  ) : (
+    <ViewerJourney
+      key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
+      scope={access.scope}
+      trips={trips}
+      filter={filter}
+      creation={creation}
+    />
+  );
+  if (household) return body;
   return (
-    <main className="financial-journey" id="page-content">
-      <header>
-        <Link href="/account">Kami Split · Account</Link>
-        <h1>Your groups</h1>
-        <p>Persisted expenses and complete balances</p>
+    <main
+      className={`financial-journey ${initialGroup ? 'group-workspace' : ''}`}
+      id="page-content"
+    >
+      <WorkspaceNavigation />
+      <header className="journey-page-heading">
+        {!initialGroup && (
+          <h1 data-page-heading tabIndex={-1}>
+            {creation
+              ? creation === 'TRIP'
+                ? 'New trip'
+                : 'New group'
+              : trips
+                ? 'Your trips'
+                : initialGroup
+                  ? 'Your group'
+                  : 'Your groups'}
+          </h1>
+        )}
       </header>
-      {access.loading ? (
-        <p role="status">Loading secure access…</p>
-      ) : access.error ? (
-        <p role="alert">{access.error}</p>
-      ) : !access.scope ? (
-        <p>
-          <Link href="/sign-in">Sign in</Link> with your invited account to see
-          your groups.
-        </p>
-      ) : (
-        <ViewerJourney
-          key={access.scope.id}
-          scope={access.scope}
-          initialGroup={initialGroup}
+      {initialGroup && (
+        <WorkspaceTabs
+          current={repayment ? 'Balances' : currentTab}
+          label={trips ? 'Trip workspace' : 'Group workspace'}
+          onIntent={(section) =>
+            intent?.warm(workspaceRequest(initialGroup, section.toLowerCase()))
+          }
+          onIntentEnd={(section) =>
+            intent?.cancel(
+              section
+                ? workspaceRequest(initialGroup, section.toLowerCase()).key
+                : undefined,
+            )
+          }
+          hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
         />
       )}
+      {body}
     </main>
   );
 }
 function ViewerJourney({
   scope,
-  initialGroup,
+  trips,
+  filter,
+  creation,
 }: {
   scope: FinancialScope;
-  initialGroup: string;
+  trips: boolean;
+  filter: string;
+  creation?: 'ORDINARY' | 'TRIP';
 }) {
   const [viewer, setViewer] = useState<Viewer>();
   const [error, setError] = useState('');
-  const [group, setGroup] = useState(initialGroup);
   const [version, setVersion] = useState(0);
+  const [stale, setStale] = useState(false);
+  const pathname = usePathname();
+  const visit = pathname;
+  useEffect(() => {
+    const refresh = () => {
+      setViewer(undefined);
+      setError('');
+      setStale(true);
+      setVersion((v) => v + 1);
+    };
+    const foreground = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const timer = setTimeout(refresh, 86400000 - (Date.now() % 86400000));
+    document.addEventListener('visibilitychange', foreground);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', foreground);
+    };
+  }, [version]);
   useEffect(() => {
     let active = true;
     const subscription = fetchQuery<journeyViewerQuery>(
@@ -99,7 +259,7 @@ function ViewerJourney({
       active = false;
       subscription.unsubscribe();
     };
-  }, [scope, version]);
+  }, [scope, version, visit]);
   if (error)
     return (
       <>
@@ -108,7 +268,6 @@ function ViewerJourney({
           onClick={() => {
             setError('');
             setViewer(undefined);
-            setGroup('');
             setVersion((v) => v + 1);
           }}
         >
@@ -116,36 +275,120 @@ function ViewerJourney({
         </button>
       </>
     );
-  if (!viewer) return <p role="status">Loading your groups…</p>;
+  if (!viewer)
+    return (
+      <p role="status">
+        {stale
+          ? 'Access is stale. Refreshing current authorized groups…'
+          : 'Loading your groups…'}
+      </p>
+    );
+  const groups = viewer.groups.filter(
+    (item) =>
+      !item.isHousehold &&
+      (trips
+        ? item.kind === 'TRIP' &&
+          !!item.trip &&
+          (filter === 'all' ||
+            tripState(item.trip, viewer.today).toLowerCase() === filter)
+        : item.kind === 'ORDINARY'),
+  );
+
   return (
     <>
-      <p>Signed in as {viewer.displayName}</p>
-      <nav aria-label="Group selection">
-        {viewer.groups.map((item) => (
-          <button
-            key={item.id}
-            aria-pressed={group === item.id}
-            onClick={() => setGroup(item.id)}
-          >
-            {item.name}
-          </button>
+      <p className="journey-viewer">Signed in as {viewer.displayName}</p>
+      {creation &&
+        (viewer.canCreateGroups ? (
+          <CreationForm
+            scope={scope}
+            actor={viewer.id}
+            today={viewer.today}
+            kind={creation}
+            onDenied={() => {
+              setViewer(undefined);
+              setError(message('NOT_FOUND'));
+            }}
+          />
+        ) : (
+          <p role="alert">
+            This account cannot create groups. Return to Groups or refresh your
+            access.
+          </p>
         ))}
-      </nav>
-      {!viewer.groups.length ? (
-        <p>
-          You have no admitted groups. Open your invitation and explicitly join
-          to continue.
-        </p>
-      ) : (
-        !group && <p>Choose a group to view its expenses and balances.</p>
-      )}
-      {group && (
-        <GroupDetails
-          key={group}
-          scope={scope}
-          id={group}
-          today={viewer.today}
-        />
+      {!creation && (
+        <>
+          {viewer.canCreateGroups && (
+            <Link href={trips ? '/trips/new' : '/groups/new'}>
+              {trips ? 'Create trip' : 'Create group'}
+            </Link>
+          )}
+          {trips && (
+            <nav aria-label="Trip date filter">
+              {['all', 'upcoming', 'past'].map((value) => (
+                <Link
+                  key={value}
+                  aria-current={filter === value ? 'page' : undefined}
+                  href={`/trips?filter=${value}`}
+                >
+                  {value === 'all'
+                    ? 'All'
+                    : value === 'upcoming'
+                      ? 'Upcoming'
+                      : 'Past'}
+                </Link>
+              ))}
+            </nav>
+          )}
+          {!groups.length ? (
+            <p>
+              {trips
+                ? viewer.groups.length
+                  ? 'No trips match this filter.'
+                  : 'You have no admitted trips or groups.'
+                : viewer.groups.length > 0
+                  ? 'No ordinary groups yet. Household and Trips are available in the main navigation.'
+                  : 'You have no admitted groups.'}{' '}
+              {viewer.canCreateGroups
+                ? 'Create a group to begin.'
+                : 'Open your invitation and explicitly join to continue.'}
+            </p>
+          ) : (
+            <ul className="discovery-cards">
+              {groups.map((item) => (
+                <li key={item.id}>
+                  <div
+                    className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+                    aria-hidden="true"
+                  />
+                  <ScopedLink
+                    scope={scope}
+                    id={`group-${item.id}`}
+                    href={spaceHref(item)}
+                  >
+                    {item.name} · {item.kind === 'TRIP' ? 'Trip' : 'Group'}
+                  </ScopedLink>
+                  {item.trip && (
+                    <p>
+                      {item.trip.destination} ·{' '}
+                      <time dateTime={item.trip.startDate}>
+                        {item.trip.startDate}
+                      </time>{' '}
+                      –{' '}
+                      <time dateTime={item.trip.endDate}>
+                        {item.trip.endDate}
+                      </time>{' '}
+                      · {tripState(item.trip, viewer.today)}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <RestoreSource
+            scope={scope}
+            allowed={groups.map((item) => item.id)}
+          />
+        </>
       )}
     </>
   );
@@ -153,215 +396,312 @@ function ViewerJourney({
 function GroupDetails({
   scope,
   id,
-  today,
+  expense,
+  repayment,
+  household = false,
 }: {
+  household?: boolean;
   scope: FinancialScope;
   id: string;
-  today: string;
+  expense: string;
+  repayment: boolean;
 }) {
+  const router = useRouter(),
+    params = useSearchParams(),
+    pathname = usePathname();
+  const after = params.get('after');
+  const tab = (
+    workspaceSections.find(
+      (section) => section.toLowerCase() === params.get('tab'),
+    ) ?? (after ? 'Expenses' : 'Overview')
+  ).toLowerCase();
+  const [today, setToday] = useState('');
+  const [destination, setDestination] =
+    useState<journeyWorkspaceQuery['response']>();
+  const initialFilters = expenseFilterText(params);
+  const [loadedFilters, setLoadedFilters] = useState(initialFilters);
   const [group, setGroup] = useState<Group>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
+  const [failureHeading, setFailureHeading] = useState('Group unavailable');
   const [saved, setSaved] = useState('');
   const generation = useRef(0),
     live = useRef(true);
   const heading = useRef<HTMLHeadingElement>(null);
-  const read = async (after?: string | null) => {
+  const savedStatus = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!saved || busy) return;
+    const frame = requestAnimationFrame(() => {
+      if (live.current && scope.isLive()) savedStatus.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [saved, busy, scope]);
+  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
+  const read = async () => {
+    request.current?.unsubscribe();
     const ticket = ++generation.current;
     setBusy(true);
     setError('');
     setGroup(undefined);
-    try {
-      const result = await fetchQuery<journeyGroupQuery>(
+    return new Promise<void>((resolve) => {
+      request.current = fetchQuery<journeyWorkspaceQuery>(
         scope.environment,
         groupDocument,
-        { id, after },
+        workspaceRequest(id, tab, initialFilters, !!expense, repayment)
+          .variables,
         { fetchPolicy: 'network-only' },
-      ).toPromise();
-      if (!live.current || !scope.isLive() || generation.current !== ticket)
-        return;
-      if (result?.group.__typename === 'Group') setGroup(result.group);
-      else
-        setError(
-          message(
-            result && 'code' in result.group
-              ? result.group.code
-              : 'UNAVAILABLE',
-          ),
-        );
-    } catch (failure) {
-      if (live.current && scope.isLive() && generation.current === ticket)
-        setError(message((failure as Error).message));
-    } finally {
-      if (live.current && generation.current === ticket) {
-        setBusy(false);
-        requestAnimationFrame(() => heading.current?.focus());
-      }
-    }
+      ).subscribe({
+        next: (result) => {
+          if (!live.current || !scope.isLive() || generation.current !== ticket)
+            return;
+          const routeSpace =
+            result.group?.__typename === 'Group' && result.group.id === id
+              ? result.group
+              : undefined;
+          if (!household && routeSpace) {
+            const canonical = spaceHref(routeSpace);
+            const currentBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`;
+            if (canonical !== currentBase) {
+              const tail = expense
+                ? `/expenses/${encodeURIComponent(expense)}`
+                : repayment
+                  ? '/repayments/new'
+                  : '';
+              const query = params.toString();
+              router.replace(
+                routeSpace.isHousehold
+                  ? householdLedgerHref(
+                      new URLSearchParams(params),
+                      expense,
+                      repayment,
+                    )
+                  : `${canonical}${tail}${query ? `?${query}` : ''}`,
+              );
+              resolve();
+              return;
+            }
+          }
+          const ledger = result.groupExpenses
+            ? readInlineData<expensesView$key>(
+                expenseView,
+                result.groupExpenses,
+              )
+            : undefined;
+          const activity = result.groupActivity
+            ? readInlineData<activityFeed$key>(
+                activityFeed,
+                result.groupActivity,
+              )
+            : undefined;
+          if (
+            result.group?.__typename === 'Group' &&
+            result.group.id === id &&
+            (!household || result.group.isHousehold) &&
+            result.viewer?.__typename === 'Viewer' &&
+            (tab !== 'expenses' ||
+              !!expense ||
+              repayment ||
+              ledger?.__typename === 'ExpenseView') &&
+            (tab !== 'activity' ||
+              !!expense ||
+              repayment ||
+              activity?.__typename === 'ActivityConnection')
+          ) {
+            setLoadedFilters(initialFilters);
+            setDestination(result);
+            setGroup(result.group);
+            setToday(result.viewer.today);
+          } else {
+            if (
+              params.has('restore') &&
+              !scope.restored.has(params.get('restore')!) &&
+              result.group?.__typename === 'Problem' &&
+              result.group.code === 'NOT_FOUND'
+            )
+              router.replace(
+                `${household ? '/household' : pathname.startsWith('/trips/') ? '/trips' : '/groups'}?restore=${encodeURIComponent(params.get('restore')!)}`,
+              );
+            // Attribute composed failures to their owning read. Never reveal the
+            // otherwise successful group's private fields while access is uncertain.
+            let code = 'UNAVAILABLE';
+            let heading = 'Group unavailable';
+            if (result.group?.__typename === 'Problem') {
+              code = result.group.code;
+            } else if (
+              result.group?.__typename === 'Group' &&
+              result.group.id === id
+            ) {
+              if (result.viewer?.__typename !== 'Viewer') {
+                heading = 'Account access unavailable';
+                if (result.viewer && 'code' in result.viewer)
+                  code = result.viewer.code;
+                else if (result.viewer && 'state' in result.viewer)
+                  code = result.viewer.state;
+              } else if (tab === 'expenses') {
+                heading = 'Expenses unavailable';
+                if (ledger && 'code' in ledger) code = ledger.code;
+              } else if (tab === 'activity') {
+                heading = 'Activity unavailable';
+                if (activity && 'code' in activity) code = activity.code;
+              }
+            }
+            setFailureHeading(heading);
+            setError(message(code));
+          }
+          setBusy(false);
+          resolve();
+        },
+        error: (failure: Error) => {
+          if (live.current && scope.isLive() && generation.current === ticket) {
+            setFailureHeading('Workspace unavailable');
+            setError(message(failure.message));
+            setBusy(false);
+          }
+          resolve();
+        },
+      });
+    });
   };
+  useForegroundRefresh(
+    () => {
+      generation.current++;
+      request.current?.unsubscribe();
+      setGroup(undefined);
+      setDestination(undefined);
+      setError('');
+      setBusy(true);
+    },
+    () => {
+      void read();
+    },
+  );
   useEffect(() => {
     live.current = true;
     let active = true;
     queueMicrotask(() => {
       if (active) void read();
     });
+    const foreground = () => {
+      if (document.visibilityState === 'visible') void read();
+    };
+    const timer = setTimeout(foreground, 86400000 - (Date.now() % 86400000));
     const invalidate = () => {
       generation.current++;
     };
     return () => {
       active = false;
+      clearTimeout(timer);
       live.current = false;
       invalidate();
+      request.current?.unsubscribe();
     };
     // id/scope are immutable for this keyed group visit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, scope]);
+  }, [id, scope, after]);
   return (
     <>
-      <h2 ref={heading} tabIndex={-1}>
-        {group?.name ?? 'Group expenses'}
-      </h2>
-      {saved && <p role="status">{saved}</p>}
-      <button disabled={busy} onClick={() => void read()}>
-        Refresh group and restart list
+      {!household && !group && (
+        <h1 ref={heading} tabIndex={-1} data-page-heading>
+          {busy ? 'Group access' : failureHeading}
+        </h1>
+      )}
+      {saved && (
+        <p ref={savedStatus} role="status" tabIndex={-1}>
+          {saved}
+        </p>
+      )}
+      <button
+        className="journey-refresh"
+        aria-label="Refresh group and restart list"
+        title="Refresh group and restart list"
+        disabled={busy}
+        onClick={() => {
+          if (after) {
+            const next = new URLSearchParams(params);
+            next.delete('after');
+            router.replace(
+              `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
+            );
+          } else void read();
+        }}
+      >
+        Refresh
       </button>
       {busy ? (
-        <p role="status">Loading current authorized group data…</p>
+        <Skeleton label="Loading current authorized group data" />
       ) : error ? (
-        <p role="alert">{error}</p>
+        <>
+          <p role="alert">{error}</p>
+          <Link
+            href={
+              household
+                ? '/household'
+                : pathname.startsWith('/trips/')
+                  ? '/trips'
+                  : '/groups'
+            }
+          >
+            {household
+              ? 'Back to Household'
+              : pathname.startsWith('/trips/')
+                ? 'Back to Trips'
+                : 'Back to Groups'}
+          </Link>
+        </>
       ) : (
         group && (
           <>
-            <BalancePanel group={group} />
-            <section aria-labelledby="expenses-title">
-              <h2 id="expenses-title">Expenses</h2>
-              {!group.expenses ? (
-                <p role="alert">
-                  The expense page failed to load. Restart the list; this does
-                  not mean there are no expenses.
-                </p>
-              ) : (
-                <>
-                  <p>
-                    Bounded pages of 20. Complete balances above include all
-                    group history, even expenses not loaded here.
-                  </p>
-                  {!group.expenses.edges.length ? (
-                    <p>No expenses in this page.</p>
-                  ) : (
-                    <ul className="financial-expenses">
-                      {group.expenses.edges.map(
-                        (edge) =>
-                          edge && (
-                            <li key={edge.node.id}>
-                              <h3>{edge.node.description}</h3>
-                              <p>
-                                {money(edge.node.totalMinor)} ·{' '}
-                                {edge.node.effectiveDate} · {edge.node.category}
-                              </p>
-                              <p>Paid by {edge.node.payer.displayName}</p>
-                              {edge.node.note && <p>{edge.node.note}</p>}
-                              <ul>
-                                {edge.node.allocations.map((share) => (
-                                  <li key={share.participant.id}>
-                                    {share.participant.displayName}:{' '}
-                                    {money(share.amountMinor)}
-                                  </li>
-                                ))}
-                              </ul>
-                            </li>
-                          ),
-                      )}
-                    </ul>
-                  )}
-                  {group.expenses.pageInfo.hasNextPage && (
-                    <button
-                      onClick={() =>
-                        void read(group.expenses?.pageInfo.endCursor)
+            <RestoreSource scope={scope} allowed={[id]} />
+            {household && group.viewerMembership.role === 'OWNER' && (
+              <Link href={spaceInvitationsHref(group)}>
+                Manage Household invitations
+              </Link>
+            )}
+            {expense ? (
+              <>
+                {!household && (
+                  <h1 data-page-heading tabIndex={-1}>
+                    {group.name}
+                  </h1>
+                )}
+                <ExpenseDetail scope={scope} group={id} id={expense} />
+              </>
+            ) : (
+              <GroupWorkspace
+                showTabs={false}
+                showHeader={!household}
+                initialView={
+                  destination?.groupExpenses
+                    ? {
+                        filterText: loadedFilters,
+                        reference: destination.groupExpenses,
                       }
-                    >
-                      Load more expenses
-                    </button>
-                  )}
-                </>
-              )}
-            </section>
-            <ExpenseForm
-              scope={scope}
-              group={id}
-              today={today}
-              payer={group.viewerMembership.id}
-              members={group.members}
-              onDenied={() => {
-                setGroup(undefined);
-                setError(message('NOT_FOUND'));
-              }}
-              onCommitted={async (expenseId) => {
-                setSaved(
-                  `Expense saved once. Reference: ${expenseId}. Balances below are a separately authorized current read.`,
-                );
-                await read();
-              }}
-            />
+                    : undefined
+                }
+                initialFeed={destination?.groupActivity}
+                scope={scope}
+                group={group}
+                today={today}
+                repayment={repayment}
+                completed={repayment && !!saved}
+                onRefresh={async () => {
+                  await read();
+                }}
+                onDenied={() => {
+                  setGroup(undefined);
+                  setError(message('NOT_FOUND'));
+                }}
+                onCommitted={async () => {
+                  setSaved(
+                    'Repayment recorded once. No money was moved. Current balances and recent repayments are a separately authorized read.',
+                  );
+                  await read();
+                }}
+              />
+            )}
           </>
         )
       )}
     </>
-  );
-}
-function BalancePanel({ group }: { group: Group }) {
-  const balances = group.balances;
-  if (balances.__typename !== 'GroupBalances')
-    return (
-      <section>
-        <h2>Complete balances</h2>
-        <p role="alert">
-          Balances are unavailable. This group cannot be shown as settled.
-        </p>
-      </section>
-    );
-  return (
-    <section aria-labelledby="balances-title">
-      <h2 id="balances-title">Complete balances</h2>
-      <p>
-        Total expenses: <strong>{money(balances.totalExpenseMinor)} USD</strong>
-      </p>
-      <p>
-        {balances.settled
-          ? 'Settled: every individual net is zero.'
-          : 'This group has outstanding balances.'}
-      </p>
-      <ul>
-        {balances.positions.map((position) => (
-          <li key={position.member.id}>
-            <strong>{position.member.displayName}</strong>
-            {position.member.status === 'INACTIVE' && ' (historical member)'}
-            <p>
-              Net: {money(position.netMinor)}. Positive means owed to them;
-              negative means they owe.
-            </p>
-            <p>
-              Paid {money(position.paidMinor)} · Share{' '}
-              {money(position.owedMinor)} · Repayments sent{' '}
-              {money(position.sentMinor)} · Received{' '}
-              {money(position.receivedMinor)}
-            </p>
-          </li>
-        ))}
-      </ul>
-      <h3>Simplified obligations</h3>
-      <p>
-        These follow each person’s complete net within this group. Original
-        expense relationships remain history, not extra debts.
-      </p>
-      <ul>
-        {balances.obligations.map((obligation) => (
-          <li key={`${obligation.from.id}:${obligation.to.id}`}>
-            {obligation.from.displayName} owes {obligation.to.displayName}{' '}
-            {money(obligation.amountMinor)}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

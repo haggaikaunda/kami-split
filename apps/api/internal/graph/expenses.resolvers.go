@@ -50,6 +50,12 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 		return problem(ctx, expense.Failure("UNAVAILABLE")), nil
 	}
 	command := ledger.Input{GroupID: input.GroupID, Key: string(input.Key), Total: int64(input.TotalMinor), Currency: string(input.Currency), Description: input.Description, EffectiveDate: string(input.EffectiveDate), Category: string(input.Category), Note: input.Note, PayerID: input.PayerID, ParticipantIDs: input.ParticipantIds, Split: string(input.Split)}
+	if input.Percentages != nil {
+		command.Percentages = []ledger.Percentage{}
+		for _, p := range input.Percentages {
+			command.Percentages = append(command.Percentages, ledger.Percentage{ParticipantID: p.ParticipantID, Hundredths: int64(p.Hundredths)})
+		}
+	}
 	if input.ExactAllocations != nil {
 		command.ExactAllocations = []ledger.Allocation{}
 		for _, a := range input.ExactAllocations {
@@ -61,6 +67,16 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 		return problem(ctx, err), nil
 	}
 	return mapOutcome(out), nil
+}
+
+// GroupActivity is the resolver for the groupActivity field.
+func (r *queryResolver) GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error) {
+	return r.activity(ctx, groupID, first, after, filter), nil
+}
+
+// HouseholdActivity is the resolver for the householdActivity field.
+func (r *queryResolver) HouseholdActivity(ctx context.Context, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error) {
+	return r.activity(ctx, "", first, after, filter), nil
 }
 
 // Viewer is the resolver for the viewer field.
@@ -174,6 +190,16 @@ func (r *queryResolver) ExpenseOperation(ctx context.Context, groupID string, ke
 		return problem(ctx, err), nil
 	}
 	return mapOutcome(out).(model.OperationResult), nil
+}
+
+// HouseholdExpenses is the resolver for the householdExpenses field.
+func (r *queryResolver) HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, "HOUSEHOLD", first, after, filter)
+}
+
+// GroupExpenses is the resolver for the groupExpenses field.
+func (r *queryResolver) GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error) {
+	return r.expenseView(ctx, groupID, first, after, filter)
 }
 
 // Group returns GroupResolver implementation.

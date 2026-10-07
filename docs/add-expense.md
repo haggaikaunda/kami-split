@@ -1,5 +1,7 @@
 # Add expense
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](application/README.md).
+
 Issue [#19](https://github.com/haggaikaunda/kami-split/issues/19) implements `/drafts/new-expense`. Expense editing, repayment and trip creation also use the shared session command and draft infrastructure. The form uses the shared session `DataPort` and does not move money or persist across reloads.
 
 Defaults use the current actor, all active members, Equal, USD and the injected local date. A trip source (or explicit `trip` query) selects the trip and clamps the suggested date to its range. Dates remain editable, including dates before travel. Amounts parse to exact integer minor units; equal remainder order is by stable member ID. Exact amounts, including explicit zero shares, survive participant exclusion and switching modes. Moving from Exact to Equal asks first and retains the manual values for switching back.

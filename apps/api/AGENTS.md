@@ -4,7 +4,20 @@ Follow the repository-wide [delivery workflow](../../docs/agents/delivery-workfl
 
 These instructions supplement the root [AGENTS.md](../../AGENTS.md). Read the [Go engineering guide](../../docs/agents/go-guidelines.md) and [API architecture](../../docs/application/api-architecture.md) before API changes.
 
-The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Targeted invitation/onboarding, durable delivery recovery, and ordinary/trip group creation APIs are implemented; the [Relay expense journey](../../docs/application/relay-expenses.md) connects real group expense reads, creation and recovery (#83). The web preview uses its mock DataPort. Append-only repayment persistence and its authenticated API/history share the financial transaction/recovery engine. Expense editing/deletion and imports remain deferred to separately approved issues.
+The API implements verified authentication, transaction-local identity, persisted single-group expense creation and recovery, complete balances, and authenticated GraphQL reads. Targeted invitation/onboarding, durable delivery recovery, and ordinary/trip group creation APIs are implemented; the [Relay expense journey](../../docs/application/relay-expenses.md) connects real group expense reads, creation and recovery (#83). The production web uses the sole actor-scoped FinancialSession and Relay environment; the seeded preview and mock DataPort were retired in #184. Append-only repayment persistence and its authenticated API/history share the financial transaction/recovery engine. Expense editing/deletion and imports remain deferred to separately approved issues.
+
+The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) under [ADR-010 membership sharing](../../docs/application/decisions/010-household-membership-sharing.md). It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page consumes these reads under #112, with authorized destination loading and context-version compatibility under #193.
+
+The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
+expense views with original-space attribution, complete face-value totals/counts,
+and complete monthly totals/counts independent of page size. Filters combine source
+group, category, inclusive dates and a same-group Membership ID matching the payer
+or an explicit participant (including zero-share participants). The legacy
+`Group.expenses` participant-only filter remains unchanged. Signed continuation
+cursors bind scope, filters, current authorized eligibility and per-space financial
+anchors; rows and summaries share the anchored dataset, while every request checks
+current access. Repayments never contribute to spending. Free-text search remains
+separate #177 scope; these reads introduce no search field or SQL text search.
 
 ## Design and implementation
 

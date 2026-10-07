@@ -1,5 +1,7 @@
 # Exact-money ledger
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](application/README.md).
+
 ## Production group boundary
 
 [ADR-003](application/decisions/003-bootstrap-groups-and-invitations.md#b2-groups-are-independent-access-and-financial-boundaries) requires each expense and settlement to belong to exactly one independently authorized group. Trip groups have their own balances and obligations; no cross-group netting, transfers or duplicate records occur. The preview uses one household snapshot with optional expense `tripId`; that association is not the production schema. Zero aggregate net across groups does not settle their obligations. The current parsing and safe-number rules below remain preview evidence; unresolved production money/transport details are O08/#76.

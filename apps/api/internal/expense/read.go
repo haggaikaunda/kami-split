@@ -168,6 +168,12 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 	if err != nil {
 		return result, err
 	}
+	return decodeSnapshot(payload, page)
+}
+
+func decodeSnapshot(payload []byte, page PageRequest) (Snapshot, error) {
+	var result Snapshot
+	var err error
 	var data struct {
 		ID, Name, Currency, ViewerMembershipID, Total string
 		Trip                                          *database.GroupTripInput
@@ -224,6 +230,9 @@ func readSnapshot(ctx context.Context, tx pgx.Tx, group string, page PageRequest
 		r.GroupID = result.ID
 		r.CreatorMembershipID = ledger.PublicID("Membership", r.CreatorMembershipID)
 		r.PayerMembershipID = ledger.PublicID("Membership", r.PayerMembershipID)
+		for j := range r.Percentages {
+			r.Percentages[j].ParticipantID = ledger.PublicID("Membership", r.Percentages[j].ParticipantID)
+		}
 		for j := range r.Allocations {
 			r.Allocations[j].ParticipantID = ledger.PublicID("Membership", r.Allocations[j].ParticipantID)
 		}
@@ -270,4 +279,5 @@ SELECT jsonb_build_object('ID',v.id,'Name',v.name,'Currency',v.currency,'ViewerM
  'Members',coalesce((SELECT jsonb_agg(jsonb_build_object('ID',id,'DisplayName',display_name,'Status',status,'Role',role,'CanParticipate',can_participate) ORDER BY id) FROM members),'[]'::jsonb),
  'Positions',coalesce((SELECT jsonb_agg(jsonb_build_object('MemberID',id,'Paid',paid,'Owed',owed,'Sent',sent,'Received',received) ORDER BY id) FROM positions),'[]'::jsonb),
  'Records',coalesce((SELECT jsonb_agg(jsonb_build_object('ExpenseID',e.id,'CreatorMembershipID',e.creator_id,'PayerMembershipID',e.payer_id,'TotalMinor',e.total_minor,'Currency',e.currency,'Description',e.description,'EffectiveDate',to_char(e.effective_date,'YYYY-MM-DD'),'Category',e.category,'Note',e.note,'Split',e.split,'CommittedAt',to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'Revision',e.revision,
+ 'Percentages',(SELECT coalesce(jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Hundredths',a.percentage_hundredths) ORDER BY a.participant_id),'[]'::jsonb) FROM app.allocations a WHERE a.expense_id=e.id AND a.percentage_hundredths IS NOT NULL),
  'Allocations',(SELECT jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Amount',a.amount_minor) ORDER BY a.participant_id) FROM app.allocations a WHERE a.expense_id=e.id)) ORDER BY e.effective_date DESC,e.created_at DESC,e.id DESC) FROM page e),'[]'::jsonb)) FROM visible v`

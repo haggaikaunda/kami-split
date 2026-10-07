@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41ac93d2948dd6ff3a5d51eaea68ccaa>>
+ * @generated SignedSource<<4b060f7308b20f53bd1292b52c4c19c8>>
  * @lightSyntaxTransform
  */
 
@@ -10,9 +10,11 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type MembershipStatus = "ACTIVE" | "INACTIVE" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type journeyGroupQuery$variables = {
   after?: string | null | undefined;
   id: string;
@@ -69,6 +71,7 @@ export type journeyGroupQuery$data = {
               readonly displayName: string;
               readonly id: string;
             };
+            readonly percentageHundredths: number | null | undefined;
           }>;
           readonly category: Category;
           readonly description: string;
@@ -79,6 +82,7 @@ export type journeyGroupQuery$data = {
             readonly displayName: string;
             readonly id: string;
           };
+          readonly split: SplitMode;
           readonly totalMinor: string;
         };
       }>;
@@ -91,6 +95,8 @@ export type journeyGroupQuery$data = {
       readonly revision: string;
     } | null | undefined;
     readonly id: string;
+    readonly isHousehold: boolean;
+    readonly kind: GroupKind;
     readonly members: ReadonlyArray<{
       readonly canParticipate: boolean;
       readonly displayName: string;
@@ -99,8 +105,36 @@ export type journeyGroupQuery$data = {
       readonly status: MembershipStatus;
     }>;
     readonly name: string;
+    readonly repayments: {
+      readonly edges: ReadonlyArray<{
+        readonly node: {
+          readonly amountMinor: string;
+          readonly effectiveDate: string;
+          readonly groupId: string;
+          readonly id: string;
+          readonly note: string;
+          readonly recipient: {
+            readonly displayName: string;
+            readonly id: string;
+          };
+          readonly sender: {
+            readonly displayName: string;
+            readonly id: string;
+          };
+        };
+      }>;
+      readonly pageInfo: {
+        readonly hasNextPage: boolean;
+      };
+    } | null | undefined;
+    readonly trip: {
+      readonly destination: string;
+      readonly endDate: string;
+      readonly startDate: string;
+    } | null | undefined;
     readonly viewerMembership: {
       readonly id: string;
+      readonly role: MembershipRole;
     };
   } | {
     readonly __typename: "Problem";
@@ -174,319 +208,282 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "role",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "currency",
-  "storageKey": null
-},
-v8 = [
-  (v5/*:: as any*/)
-],
-v9 = {
-  "alias": null,
-  "args": null,
-  "concreteType": "Membership",
-  "kind": "LinkedField",
-  "name": "viewerMembership",
-  "plural": false,
-  "selections": (v8/*:: as any*/),
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "displayName",
   "storageKey": null
 },
-v11 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v12 = {
-  "alias": null,
-  "args": null,
-  "concreteType": "Membership",
-  "kind": "LinkedField",
-  "name": "members",
-  "plural": true,
-  "selections": [
-    (v5/*:: as any*/),
-    (v10/*:: as any*/),
-    (v11/*:: as any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "role",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "canParticipate",
-      "storageKey": null
-    }
-  ],
-  "storageKey": null
-},
-v13 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "revision",
   "storageKey": null
 },
-v14 = [
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "effectiveDate",
+  "storageKey": null
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "note",
+  "storageKey": null
+},
+v12 = [
   (v5/*:: as any*/),
-  (v10/*:: as any*/)
+  (v7/*:: as any*/)
 ],
-v15 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "amountMinor",
   "storageKey": null
 },
-v16 = [
-  (v13/*:: as any*/),
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "ExpenseEdge",
-    "kind": "LinkedField",
-    "name": "edges",
-    "plural": true,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "cursor",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "Expense",
-        "kind": "LinkedField",
-        "name": "node",
-        "plural": false,
-        "selections": [
-          (v5/*:: as any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "description",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "effectiveDate",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "totalMinor",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "category",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "note",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "Membership",
-            "kind": "LinkedField",
-            "name": "payer",
-            "plural": false,
-            "selections": (v14/*:: as any*/),
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "Allocation",
-            "kind": "LinkedField",
-            "name": "allocations",
-            "plural": true,
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "participant",
-                "plural": false,
-                "selections": (v14/*:: as any*/),
-                "storageKey": null
-              },
-              (v15/*:: as any*/)
-            ],
-            "storageKey": null
-          },
-          (v3/*:: as any*/)
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "PageInfo",
-    "kind": "LinkedField",
-    "name": "pageInfo",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "hasNextPage",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "hasPreviousPage",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "startCursor",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "endCursor",
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  }
-],
-v17 = {
+v14 = {
   "alias": null,
   "args": null,
-  "concreteType": null,
-  "kind": "LinkedField",
-  "name": "balances",
-  "plural": false,
+  "kind": "ScalarField",
+  "name": "hasNextPage",
+  "storageKey": null
+},
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "groupId",
+  "storageKey": null
+},
+v16 = {
+  "kind": "InlineFragment",
   "selections": [
-    (v3/*:: as any*/),
-    (v4/*:: as any*/),
+    (v5/*:: as any*/),
     {
-      "kind": "InlineFragment",
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "name",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "currency",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "kind",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "isHousehold",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "GroupTrip",
+      "kind": "LinkedField",
+      "name": "trip",
+      "plural": false,
       "selections": [
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "groupId",
-          "storageKey": null
-        },
-        (v13/*:: as any*/),
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "totalExpenseMinor",
+          "name": "destination",
           "storageKey": null
         },
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "settled",
+          "name": "startDate",
           "storageKey": null
         },
         {
           "alias": null,
           "args": null,
-          "concreteType": "MemberPosition",
+          "kind": "ScalarField",
+          "name": "endDate",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Membership",
+      "kind": "LinkedField",
+      "name": "viewerMembership",
+      "plural": false,
+      "selections": [
+        (v5/*:: as any*/),
+        (v6/*:: as any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Membership",
+      "kind": "LinkedField",
+      "name": "members",
+      "plural": true,
+      "selections": [
+        (v5/*:: as any*/),
+        (v7/*:: as any*/),
+        (v8/*:: as any*/),
+        (v6/*:: as any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "canParticipate",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": [
+        {
+          "kind": "Variable",
+          "name": "after",
+          "variableName": "after"
+        },
+        {
+          "kind": "Literal",
+          "name": "first",
+          "value": 20
+        }
+      ],
+      "concreteType": "ExpenseConnection",
+      "kind": "LinkedField",
+      "name": "expenses",
+      "plural": false,
+      "selections": [
+        (v9/*:: as any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "ExpenseEdge",
           "kind": "LinkedField",
-          "name": "positions",
+          "name": "edges",
           "plural": true,
           "selections": [
             {
               "alias": null,
               "args": null,
-              "concreteType": "Membership",
+              "kind": "ScalarField",
+              "name": "cursor",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "Expense",
               "kind": "LinkedField",
-              "name": "member",
+              "name": "node",
               "plural": false,
               "selections": [
                 (v5/*:: as any*/),
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "description",
+                  "storageKey": null
+                },
                 (v10/*:: as any*/),
-                (v11/*:: as any*/)
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "totalMinor",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "category",
+                  "storageKey": null
+                },
+                (v11/*:: as any*/),
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "payer",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "split",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Allocation",
+                  "kind": "LinkedField",
+                  "name": "allocations",
+                  "plural": true,
+                  "selections": [
+                    {
+                      "alias": null,
+                      "args": null,
+                      "concreteType": "Membership",
+                      "kind": "LinkedField",
+                      "name": "participant",
+                      "plural": false,
+                      "selections": (v12/*:: as any*/),
+                      "storageKey": null
+                    },
+                    (v13/*:: as any*/),
+                    {
+                      "alias": null,
+                      "args": null,
+                      "kind": "ScalarField",
+                      "name": "percentageHundredths",
+                      "storageKey": null
+                    }
+                  ],
+                  "storageKey": null
+                }
               ],
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "paidMinor",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "owedMinor",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "sentMinor",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "receivedMinor",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "netMinor",
               "storageKey": null
             }
           ],
@@ -495,54 +492,247 @@ v17 = {
         {
           "alias": null,
           "args": null,
-          "concreteType": "Obligation",
+          "concreteType": "PageInfo",
           "kind": "LinkedField",
-          "name": "obligations",
+          "name": "pageInfo",
+          "plural": false,
+          "selections": [
+            (v14/*:: as any*/),
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "hasPreviousPage",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "startCursor",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "endCursor",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": [
+        {
+          "kind": "Literal",
+          "name": "first",
+          "value": 5
+        }
+      ],
+      "concreteType": "RepaymentConnection",
+      "kind": "LinkedField",
+      "name": "repayments",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "RepaymentEdge",
+          "kind": "LinkedField",
+          "name": "edges",
           "plural": true,
           "selections": [
             {
               "alias": null,
               "args": null,
-              "concreteType": "Membership",
+              "concreteType": "Repayment",
               "kind": "LinkedField",
-              "name": "from",
+              "name": "node",
               "plural": false,
-              "selections": (v14/*:: as any*/),
+              "selections": [
+                (v5/*:: as any*/),
+                (v15/*:: as any*/),
+                (v13/*:: as any*/),
+                (v10/*:: as any*/),
+                (v11/*:: as any*/),
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "sender",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "recipient",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                }
+              ],
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "PageInfo",
+          "kind": "LinkedField",
+          "name": "pageInfo",
+          "plural": false,
+          "selections": [
+            (v14/*:: as any*/)
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": "repayments(first:5)"
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": null,
+      "kind": "LinkedField",
+      "name": "balances",
+      "plural": false,
+      "selections": [
+        (v3/*:: as any*/),
+        (v4/*:: as any*/),
+        {
+          "kind": "InlineFragment",
+          "selections": [
+            (v15/*:: as any*/),
+            (v9/*:: as any*/),
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "totalExpenseMinor",
               "storageKey": null
             },
             {
               "alias": null,
               "args": null,
-              "concreteType": "Membership",
-              "kind": "LinkedField",
-              "name": "to",
-              "plural": false,
-              "selections": (v14/*:: as any*/),
+              "kind": "ScalarField",
+              "name": "settled",
               "storageKey": null
             },
-            (v15/*:: as any*/)
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "MemberPosition",
+              "kind": "LinkedField",
+              "name": "positions",
+              "plural": true,
+              "selections": [
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "member",
+                  "plural": false,
+                  "selections": [
+                    (v5/*:: as any*/),
+                    (v7/*:: as any*/),
+                    (v8/*:: as any*/)
+                  ],
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "paidMinor",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "owedMinor",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "sentMinor",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "receivedMinor",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "kind": "ScalarField",
+                  "name": "netMinor",
+                  "storageKey": null
+                }
+              ],
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "Obligation",
+              "kind": "LinkedField",
+              "name": "obligations",
+              "plural": true,
+              "selections": [
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "from",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
+                  "concreteType": "Membership",
+                  "kind": "LinkedField",
+                  "name": "to",
+                  "plural": false,
+                  "selections": (v12/*:: as any*/),
+                  "storageKey": null
+                },
+                (v13/*:: as any*/)
+              ],
+              "storageKey": null
+            }
           ],
-          "storageKey": null
+          "type": "GroupBalances",
+          "abstractKey": null
         }
       ],
-      "type": "GroupBalances",
-      "abstractKey": null
+      "storageKey": null
     }
   ],
-  "storageKey": null
-},
-v18 = [
-  {
-    "kind": "Variable",
-    "name": "after",
-    "variableName": "after"
-  },
-  {
-    "kind": "Literal",
-    "name": "first",
-    "value": 20
-  }
-];
+  "type": "Group",
+  "abstractKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": [
@@ -563,29 +753,7 @@ return {
         "selections": [
           (v3/*:: as any*/),
           (v4/*:: as any*/),
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v5/*:: as any*/),
-              (v6/*:: as any*/),
-              (v7/*:: as any*/),
-              (v9/*:: as any*/),
-              (v12/*:: as any*/),
-              {
-                "alias": "expenses",
-                "args": null,
-                "concreteType": "ExpenseConnection",
-                "kind": "LinkedField",
-                "name": "__journey_expenses_connection",
-                "plural": false,
-                "selections": (v16/*:: as any*/),
-                "storageKey": null
-              },
-              (v17/*:: as any*/)
-            ],
-            "type": "Group",
-            "abstractKey": null
-          }
+          (v16/*:: as any*/)
         ],
         "storageKey": null
       }
@@ -612,41 +780,12 @@ return {
         "selections": [
           (v3/*:: as any*/),
           (v4/*:: as any*/),
+          (v16/*:: as any*/),
           {
             "kind": "InlineFragment",
             "selections": [
-              (v5/*:: as any*/),
-              (v6/*:: as any*/),
-              (v7/*:: as any*/),
-              (v9/*:: as any*/),
-              (v12/*:: as any*/),
-              {
-                "alias": null,
-                "args": (v18/*:: as any*/),
-                "concreteType": "ExpenseConnection",
-                "kind": "LinkedField",
-                "name": "expenses",
-                "plural": false,
-                "selections": (v16/*:: as any*/),
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": (v18/*:: as any*/),
-                "filters": null,
-                "handle": "connection",
-                "key": "journey_expenses",
-                "kind": "LinkedHandle",
-                "name": "expenses"
-              },
-              (v17/*:: as any*/)
+              (v5/*:: as any*/)
             ],
-            "type": "Group",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": (v8/*:: as any*/),
             "type": "Node",
             "abstractKey": "__isNode"
           }
@@ -656,28 +795,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6ba2d1f30032e325cd47bce0fb097ad6",
+    "cacheID": "54984a15f0a58ce01bcbbffbc4ac6593",
     "id": null,
-    "metadata": {
-      "connection": [
-        {
-          "count": null,
-          "cursor": "after",
-          "direction": "forward",
-          "path": [
-            "group",
-            "expenses"
-          ]
-        }
-      ]
-    },
+    "metadata": {},
     "name": "journeyGroupQuery",
     "operationKind": "query",
-    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      viewerMembership {\n        id\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n            __typename\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      kind\n      isHousehold\n      trip {\n        destination\n        startDate\n        endDate\n      }\n      viewerMembership {\n        id\n        role\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            split\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n              percentageHundredths\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      repayments(first: 5) {\n        edges {\n          node {\n            id\n            groupId\n            amountMinor\n            effectiveDate\n            note\n            sender {\n              id\n              displayName\n            }\n            recipient {\n              id\n              displayName\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "651a27f1d38a5e265048d842da3ea6b9";
+(node as any).hash = "a528826f3e69947399daf8f09cefc500";
 
 export default node;

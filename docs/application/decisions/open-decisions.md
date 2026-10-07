@@ -31,7 +31,7 @@ This register distinguishes accepted outcomes from unresolved questions; it is n
 ## Partially resolved financial contract and recovery decisions
 
 - **O13:** [ADR-004 C3/C4](004-group-balances-membership-and-recovery.md#c3-same-attempt-financial-recovery) settles same-attempt/same-key recovery, current actor/group authorization, same-canonical-input single effect, changed-input protection, durable atomic expense/allocations/audit/result, and immutable-outcome versus fresh-balance meaning. Global IDs, cursors, pagination/filtering, error conventions, expected-version behavior, precise key scope/canonicalization/mismatch/lookup protocol are concretely specified by ADR-005 for [#76](https://github.com/haggaikaunda/kami-split/issues/76) before implementation. P2 now retains operation recovery/idempotency records with associated financial history; no timed expiry/tombstones. Future deletion/archival/pruning remains lifecycle work.
-- **O14:** ADR-004 requires the frontend to possess the key before its first write and preserve uncertain-attempt recovery without silently generating a new key. Owner-approved P3 now selects tab-scoped `sessionStorage` for drafts/unresolved attempts, surviving same-tab reload and cleared on logout/account switch; P2 now retains server operation records with financial history, without adding a timed browser expiry or extending storage beyond that tab/session. Owner-approved P4 selects group selection, expense list/create, complete balances and recovery as the first real UI, with remaining preview features isolated. These choices are recorded in [ADR-005](005-identity-and-expense-contract-proposal.md). The [Relay expense journey](../relay-expenses.md) implements the reviewed recovery/refresh contract and #80 session/logout boundary for [#83](https://github.com/haggaikaunda/kami-split/issues/83); #76 remains the design record. No 90-day expiry/tombstone lifecycle is approved; uploaded receipt attachments remain outside the first journey.
+- **O14:** ADR-004 requires the frontend to possess the key before its first write and preserve uncertain-attempt recovery without silently generating a new key. Owner-approved P3 now selects tab-scoped `sessionStorage` for drafts/unresolved attempts, surviving same-tab reload and cleared on logout/account switch; P2 now retains server operation records with financial history, without adding a timed browser expiry or extending storage beyond that tab/session. Owner-approved P4 selects group selection, expense list/create, complete balances and recovery as the first real UI, with remaining preview features isolated at that time (the executable preview was later retired in #184). These choices are recorded in [ADR-005](005-identity-and-expense-contract-proposal.md). The [Relay expense journey](../relay-expenses.md) implements the reviewed recovery/refresh contract and #80 session/logout boundary for [#83](https://github.com/haggaikaunda/kami-split/issues/83); #76 remains the design record. No 90-day expiry/tombstone lifecycle is approved; uploaded receipt attachments remain outside the first journey.
 
 ## Other open decisions
 
@@ -99,6 +99,32 @@ provider behavior and purge/retry mechanics within those approved boundaries.
 
 ### O19: #86 dashboard design and explicit deferrals
 
-[ADR-007](007-household-dashboard.md) specifies individual net/gross metrics, complete server-authorized eligible-group reads, group-local simplified obligation rows, failure states and one shared original-group repayment form/recovery path. Adoption requires independent requirements/final-diff review and required CI. [#109](https://github.com/haggaikaunda/kami-split/issues/109) retains owner agreement on pair designation/change, dashboard access and disabled-partner behavior before implementation. No inferred partner identity is approved. Spending/average formulas and historical reporting remain explicitly deferred; current complete group history follows ADR-004. [#110](https://github.com/haggaikaunda/kami-split/issues/110) gates settlement permissions/validation and persistence; [#111](https://github.com/haggaikaunda/kami-split/issues/111) and [#112](https://github.com/haggaikaunda/kami-split/issues/112) separate backend summaries and UI. No unfinished fields enter the running SDL or expand #73.
+[ADR-007](007-household-dashboard.md), refined by the owner-approved 2026-10-04
+#111 scope, specifies one signed informational viewer net, complete eligible-space
+and open-viewer-balance counts, and a simple total/count of active expense face
+values. Each expense belongs to its original group; repayments are excluded from
+spending. Complete source-group positions, settled states and obligations explain
+the net; zero cross-space net never settles source groups. Separate gross owe/owed
+cards are no longer required. Couple allocated-share spending, average-trip metrics,
+budgets, historical reports and currency conversion remain deferred. #169 owns
+structured-filter expense totals and #177 future full-text search. #112 owns the
+visual implementation. Only implemented reviewed fields may enter the running SDL.
 
-The [#109 policy (ADR-008)](008-household-partner-policy.md) addresses pair authority, consent, pre-onboarding, separation, disabled/unlinked accounts and compatible locks. Owner agreement includes larger Households with a distinct two-person dashboard pair and no owner self-invitation. Independent design adoption remains required. Spending formulas and historical reporting remain deferred; designation implementation is still a separate prerequisite for #111.
+The historical [#109 policy (ADR-008)](008-household-partner-policy.md) resolved pair authority,
+consent, separation, disabled/unlinked accounts and compatible locking. #130 delivers
+the designation foundation; #82 complete balances and #104 metadata reads provide
+the other #111 prerequisites. Household membership may exceed two and ownership
+alone grants no pair-dashboard access. No inferred partner identity is approved.
+Complete lifetime group history follows ADR-004; current eligibility controls the
+summary set. Settlement remains group-scoped under #110 and cannot act on a
+Household aggregate. These slices do not expand #73.
+
+## Household membership sharing (#197)
+
+[ADR-010](010-household-membership-sharing.md) supersedes O19's ADR-008 pair
+authority and separate consent prerequisite. Current membership authorizes the
+Household ledger; common-member source aggregation, sole-member behavior and
+account-lifecycle no-broadening rules are explicitly resolved there. Obsolete pair commands are retired by migration 012. The
+[owner confirmed the original existing account works across all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
+after the membership release; original failed-response causality remains unknown.
+Cleanup release/migration evidence is tracked on #197.

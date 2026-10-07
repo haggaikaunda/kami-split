@@ -36,14 +36,15 @@ func (q *Queries) FinancialOperation(ctx context.Context, arg FinancialOperation
 }
 
 const insertAllocation = `-- name: InsertAllocation :exec
-INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor) VALUES($1,$2,$3,$4)
+INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor,percentage_hundredths) VALUES($1,$2,$3,$4,$5)
 `
 
 type InsertAllocationParams struct {
-	ExpenseID     pgtype.UUID
-	GroupID       pgtype.UUID
-	ParticipantID pgtype.UUID
-	AmountMinor   int64
+	ExpenseID            pgtype.UUID
+	GroupID              pgtype.UUID
+	ParticipantID        pgtype.UUID
+	AmountMinor          int64
+	PercentageHundredths pgtype.Int4
 }
 
 func (q *Queries) InsertAllocation(ctx context.Context, arg InsertAllocationParams) error {
@@ -52,6 +53,7 @@ func (q *Queries) InsertAllocation(ctx context.Context, arg InsertAllocationPara
 		arg.GroupID,
 		arg.ParticipantID,
 		arg.AmountMinor,
+		arg.PercentageHundredths,
 	)
 	return err
 }

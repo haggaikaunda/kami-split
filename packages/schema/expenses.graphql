@@ -108,6 +108,10 @@ enum SplitMode {
   Caller supplies one reconciled amount for each explicit participant, including zero.
   """
   EXACT
+  """
+  Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+  """
+  PERCENTAGE
 }
 """
 Self-only application access state for a cryptographically verified caller.
@@ -174,6 +178,47 @@ Public health and authenticated business reads. Business access is checked on ev
 """
 type Query {
   """
+  Group-local immutable activity. Rechecks current access on every request.
+  Cursors bind actor, group, filters and financial revision.
+  """
+  groupActivity(
+    """
+    Explicit authorized source group.
+    """
+    groupId: ID!
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same workspace and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+  """
+  Same events across exactly the server-authorized Household dashboard eligible
+  set. No viewer-group discovery or client-side eligibility inference is used.
+  """
+  householdActivity(
+    """
+    Page size between 1 and 100.
+    """
+    first: Int! = 20
+    """
+    Authenticated boundary from the same actor, eligible set and filters.
+    """
+    after: String
+    """
+    Exact supported event/source restrictions.
+    """
+    filter: ActivityFilter
+  ): ActivityResult!
+
+  """
   Resolve only the caller; enabled callers with no groups receive an empty group list.
   """
   viewer: ViewerResult!
@@ -208,6 +253,45 @@ type Query {
     """
     key: OperationKey!
   ): OperationResult!
+
+  """
+  One complete merged expense view across exactly the current Household membership's common eligible spaces. Unavailable discovery returns a safe Problem, never an empty success.
+  """
+  householdExpenses(
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary; filter/scope/eligibility changes require a new traversal.
+    """
+    after: String
+    """
+    Server-applied structured filters shared by page, total and month aggregates.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
+  """
+  Group/Trip parity for structured spending filters. Unfiltered GroupBalances and legacy participant-only Group.expenses remain unchanged.
+  """
+  groupExpenses(
+    """
+    Explicit original group; current enabled active access is required on every page.
+    """
+    groupId: ID!
+    """
+    Bounded forward page size, 1..100.
+    """
+    first: Int! = 20
+    """
+    Signed prior boundary for this group/filter/viewer; never proves current access.
+    """
+    after: String
+    """
+    Structured member/date/category filters; optional source must equal groupId.
+    """
+    filter: StructuredExpenseFilter
+  ): ExpenseViewResult!
 }
 """
 Authenticated financial commands with database-backed atomicity and durable duplicate protection.
@@ -494,7 +578,7 @@ type Expense implements Node {
   """
   creator: Membership!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -518,6 +602,10 @@ type Allocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Complete exact balances or an explicit failure; failure never means zero or settled.
@@ -647,13 +735,30 @@ input CreateExpenseInput {
   """
   participantIds: [ID!]!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
-  Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
   """
   exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+"""
+One explicitly selected participant's intended responsibility, independent of payer.
+"""
+input PercentageInput {
+  """
+  Stable same-group Membership ID.
+  """
+  participantId: ID!
+  """
+  Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+  """
+  hundredths: Int!
 }
 """
 One selected participant and its nonnegative exact share, including zero.
@@ -743,7 +848,7 @@ type ExpenseOperationRecord {
   """
   note: String!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -771,6 +876,10 @@ type OperationAllocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.

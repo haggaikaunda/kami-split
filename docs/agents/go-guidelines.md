@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-The agreed backend is Go + gqlgen with PostgreSQL and an authoritative SDL-first contract. Verified authentication, persisted single-group expenses and recovery, complete balances, and the internal targeted invitation/admission/delivery-recovery foundation are implemented. Public [onboarding](../application/onboarding.md) (#80) and the [Relay expense journey](../application/relay-expenses.md) (#83) connect actual provider and financial browser flows; remaining preview routes keep the mock DataPort. Expense editing/deletion, settlements, and imports remain deferred to approved issues. [API agent instructions](../../apps/api/AGENTS.md) state enforceable rules; this guide explains them. Root instructions and issue-specific requirements still apply.
+The agreed backend is Go + gqlgen with PostgreSQL and an authoritative SDL-first contract. Verified authentication, persisted single-group expenses and recovery, complete balances, and the internal targeted invitation/admission/delivery-recovery foundation are implemented. Public [onboarding](../application/onboarding.md) (#80) and the [Relay expense journey](../application/relay-expenses.md) (#83) connect actual provider and financial browser flows; the seeded preview routes and mock DataPort were retired in #184. Persisted group-local repayment recording and recovery are implemented; the authenticated Group/Trip workspace connects that contract under #171. Expense editing/deletion and imports remain deferred to approved issues. [API agent instructions](../../apps/api/AGENTS.md) state enforceable rules; this guide explains them. Root instructions and issue-specific requirements still apply.
 
 Use [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), [Effective Go](https://go.dev/doc/effective_go), and [Google's Go style principles](https://google.github.io/styleguide/go/guide) as references for readability, explicit behavior, small interfaces, naming, and standard tooling. Effective Go is foundational, not a complete modern tooling guide. These sources do not mandate a particular application directory hierarchy.
 
@@ -26,7 +26,7 @@ We do not automatically adopt underscore-prefixed globals, Uber-specific atomic 
 
 ## Local design policies
 
-These policies are Kami Split decisions, not claims of industry consensus:
+These policies are Kami Grow decisions, not claims of industry consensus:
 
 - Start with concrete implementations. Introduce small interfaces at actual consumer boundaries, without a matching interface for every struct. Avoid generic repositories, service frameworks, and event buses without a present requirement.
 - Organize packages around coherent responsibilities. Use Go's `internal` boundary for application-private code; do not scaffold empty layers or prescribe identical layers for every feature.

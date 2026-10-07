@@ -1,0 +1,71 @@
+.household-workspace .household-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.household-summary .ui-summary-metric {
+  padding: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.household-summary .ui-metric-value {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+}
+.household-balances {
+  list-style: none;
+  padding: 0 !important;
+}
+.household-balances a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  border-bottom: 1px solid var(--color-separator);
+  padding-block: 1rem;
+  text-decoration: none;
+}
+.household-balances a > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.household-balances a > span:last-child {
+  text-align: right;
+  flex: 0 0 40%;
+}
+.household-balance--positive .ui-money {
+  color: var(--color-primary);
+}
+.household-balance--negative .ui-money {
+  color: var(--color-owes);
+}
+@media (max-width: 360px) {
+  .household-workspace .household-summary {
+    gap: 0.25rem;
+  }
+  .household-summary .ui-summary-metric {
+    padding: 0.25rem;
+  }
+}
+
+.household-workspace .household-refresh {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+.household-workspace .household-refresh:hover:enabled {
+  background: var(--color-subtle);
+}
+
+.household-source-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.household-source-name .app-icon {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.35rem;
+  border-radius: 50%;
+  background: var(--color-balance);
+}

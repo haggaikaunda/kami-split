@@ -1,8 +1,13 @@
 # ADR-007: Household dashboard and group repayment entry
 
-- Status: Design for [#86](https://github.com/haggaikaunda/kami-split/issues/86); independent review and PR adoption required. No runtime implementation.
+- Status: Adopted design for [#86](https://github.com/haggaikaunda/kami-split/issues/86), refined by #111. Server summary implemented by #111; Household browser workspace implemented by #112.
 - Recorded: 2026-09-30.
 - Basis: ADR-003–006, implemented #75 foundation, reviewed #76 contract.
+
+> [ADR-010](010-household-membership-sharing.md) supersedes the separate pair
+> authority and missing-partner fallback in this historical dashboard policy,
+> including D6/D7 eligibility behavior. Complete reads, exact money, source-local
+> repayment and financial provenance requirements remain in force.
 
 ## Boundary and deliberately deferred policy
 
@@ -12,35 +17,25 @@ ledger and ordinary/trip groups where both designated partners are active member
 It owns no expenses, balances or settlements. Trips remain independent groups;
 there is no private-household-expense-to-trip association or copied repayment.
 
-A partner designation is not implemented by #75 or defined by #85. Do not infer it
-from group ownership, creator permission, first two members, names, invitations or
-email. Designating/changing the pair (who can do it, confirmation, stable identity
-representation and effects of separation/disabled accounts) requires owner agreement
-in the follow-up policy slice before a consolidated query ships. This is an explicit
-O19 deferral, not an implicit new partner role or permission. Examples below use an
-explicitly configured synthetic A/B pair, not a proposed automatic designation.
+## Adopted policy and presentation refinement
 
-Until a pair is designated and admitted, show the viewer's authorized Household
-ledger with “Shared overview is not available yet”; omit consolidated metrics and
-other-group discovery through this page. Do not expose the intended partner's
-identity or pending invitation to an unauthorized viewer. Use the existing authorized
-Groups list for individual access. After designation, no pair membership in another
-group is automatic. Active membership is necessary; disabled/unlinked viewer access
-is always denied. The unresolved disabled-partner designation policy must be resolved
-before enabling the shared overview; never substitute a different partner.
+ADR-008 defines the explicit consenting pair; the #130 foundation implements its
+storage, consent and lifecycle protocol. Never infer partners from ownership,
+creator permission, member order, names, invitations or email. A Household may
+have more than two members, and its owner need not belong to the designated pair.
+Dashboard entry requires an enabled, linked finalized partner with active Household
+membership and an eligible, freshly confirmed partner. Ordinary Household ledger
+access remains independent. Before designation or during suspension, an authorized
+Household member may see only the ledger fallback and an unavailable shared overview,
+without pending partner identities or account-status reasons.
 
-Dashboard access itself requires an enabled, linked designated partner with active
-Household membership. This proposed narrow entry rule is part of the pair-policy
-owner gate, not a new permission granted by this ADR. Until that rule is approved,
-only ordinary authorized group reads may ship. A friend who shares a trip gets its
-normal group detail, never household metadata, partner IDs or a dashboard shortcut.
-
-The minimal reviewed engineering presentation is individual balances with source-group
-breakdown. No combined couple-net card, “our spending”, average-trip spending, trip
-count denominator or historical date-range dashboard is introduced. Their formulas,
-allocated-versus-paid basis, inclusion dates/time zone and treatment of membership
-changes remain deferred O19 product decisions. Friends' entire expenses are not
-couple spending. These decisions do not gate #73 or ordinary group balances.
+The owner-approved 2026-10-04 refinement in #111 supersedes the original three-card
+presentation. The main summary shows one signed informational viewer net and the
+counts and narrow expense total below. Per-space individual positions, complete
+settled states and obligations remain available for Balance details. Couple spending,
+allocated-share totals, average-trip spending, budgets, historical reports and
+currency conversion remain deferred. #169 owns cross-space expense connections
+and structured-filter totals; #177 owns future full-text search; #112 owns the UI.
 
 ## Perspective, derivation and exact amounts
 
@@ -53,30 +48,46 @@ Use the same deterministic debtor/creditor matching by canonical membership IDs 
 #76, never another dashboard simplifier. Original payer/allocation relationships
 remain history, not a second set of debts to display or repay.
 
-For each group, show “You owe” = max(−viewer net, 0), “You are owed” = max(viewer net, 0),
-and signed “Your net”. Label the partner's position by their authorized display name,
-never call that position “you”. Each position opens the paid/share/sent/received
-explanation and the current simplified obligations. Group obligation rows name the
+The Household summary shows one signed “Your net balance”, with explicit overall
+owe/owed/zero wording and an open-source-balance count. Do not place gross owe/owed
+totals beside it. The Balances tab shows each source space's viewer net and links
+to that original Group/Trip balance surface, where paid/share/sent/received positions
+and current simplified obligations explain the result. Label other members by their
+authorized display names, never call their positions “you”. Group obligation rows name the
 sender, recipient, source group and USD amount, grouped by counterparty **inside
 that group**. Include obligations between other members in the authorized group
 breakdown so a zero viewer balance cannot imply a settled group. No cross-group
 counterparty amount is actionable. Do not add A and B's positions together: their
 mutual obligation would disappear.
 
-Optional overview totals in the initial design are three viewer-only figures over
-the complete eligible set E: You owe = sum(max(−net(g,viewer),0)); You are owed =
-sum(max(net(g,viewer),0)); Your informational net = are owed − owe. Always show the
-two gross figures alongside the net and the text “Balances stay in their original
-groups; a zero overall net does not settle them.” No repay action on a total.
-These are engineering definitions for review, not spending metrics. Omit all three
-if complete data is unavailable; never sum visible rows or expense pages.
+Over the complete currently eligible space set E, return:
+
+- `viewerNetMinor`: checked sum of the viewer's individual group nets. Positive
+  means the viewer is owed overall; negative means the viewer owes overall.
+- `activeSpaceCount`: checked count of all eligible spaces, including Household.
+- `openBalanceCount`: checked count of eligible spaces with nonzero viewer net.
+- `totalSharedExpenseMinor`: checked sum of active expense face values in E.
+- `totalSharedExpenseCount`: checked count of active expenses in E.
+
+Count each expense once in its original group; repayments contribute nothing to
+spending. These totals use the same coherent complete authorized read as the rows,
+independent of expense pagination. The net is informational, never a debt or a
+repayment target. It cannot offset independent group obligations. A zero net does
+not mean settled when source spaces remain open. A zero viewer net likewise does
+not imply the group is settled when other members have nonzero positions. No gross
+owe/owed cards are required alongside the net. Preserve complete per-space ID,
+current label/kind/trip metadata, viewer net, member positions, simplified obligations,
+settled state and financial revision to explain the result and drill into the group.
+All five totals are absent for incomplete/unavailable reads or aggregate overflow;
+never compute a partial sum. Display “Balances stay in their original groups; a
+zero overall net does not settle them.” No repay action appears on a total.
 
 Money follows [#76 A1](../proposals/first-expense/contract.md#a1-exact-scalar-and-field-rules):
 USD only; canonical string MinorUnits, checked exact SQL numeric/Go arithmetic,
 wire int64 bounds, TypeScript branded strings and bigint; no GraphQL Int, Number
 or parseFloat aggregate arithmetic. Per-member net magnitude and nonnegative
-aggregate maxima are 9223372036854775807 cents. Cross-group gross sums are checked
-against the same maximum before serialization; overflow means AMOUNT_OVERFLOW and
+aggregate maxima are 9223372036854775807 cents. Cross-space sums and counts are checked
+against their documented wire bounds before serialization; overflow means AMOUNT_OVERFLOW and
 no totals, not clipping or a wrapped net. Proposed repayment bounds are
 1..999999999 cents, matching the preview record limit; #110 must finalize this
 validation rule in its reviewed settlement contract. #76 defines expense inputs,
@@ -91,20 +102,20 @@ Amounts below are USD; corresponding wire values are integer-cent strings.
 A is the viewer, B the designated partner, C a friend. H is Household, T a trip,
 F an ordinary shared group and X a group joined by A alone.
 
-| Probe                              | Complete group facts                                                                | Required presentation / invariant                                                                                                                                                                                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1: source breakdown               | H: A −2000, B +2000; T: A +2000, B −2000; F: A −500, B 0, C +500                    | H A→B $20; T B→A $20; F A→C $5. Viewer owes $25, is owed $20, net −$5. B's separately labelled positions remain visible. Every row links to its own group.                                                                                                        |
-| D2: cross-group cancellation       | H and T from D1 only                                                                | You owe $20, are owed $20, informational net $0; both groups remain unsettled. Combined A+B net is not shown. Recording H's $20 affects H alone.                                                                                                                  |
-| D3: same-group cycle               | Within F history A→B 2000, B→C 2000, C→A 2000                                       | Every individual net zero: F settled, no simplified obligations or repayment shortcuts. History stays visible in F.                                                                                                                                               |
-| D4: conservation is not settlement | Within F history A→B 2000 and B→C 2000                                              | Nets A −2000, B 0, C +2000; only A→C $20 is current. B owes nothing; sum zero is not settled. One actual A→C repayment clears it; no fictitious B payment.                                                                                                        |
-| D5: one partner only               | X contains A/C, not active B; X has A −9000                                         | No X name, ID, amount, count, nested node or contribution to dashboard totals. A may independently open X through Groups; B cannot. No “one hidden group” label.                                                                                                  |
-| D6: access loss                    | B leaves T, or viewer loses T access                                                | T disappears and totals recompute from newly authorized eligible groups; no removed title in notice. A still in T can reach it through Groups if B left. If viewer loses Household/dashboard access, clear the whole dashboard. Late responses cannot restore it. |
-| D7: no partner                     | Only A admitted in H; no finalized pair                                             | Authorized H ledger, explicit shared-overview-unavailable copy; no pretend combined zero or inferred B. Existing invitation UI only if implemented and authorized.                                                                                                |
-| D8: empty versus settled           | Complete authorized H has no financial history; separately F has D3 history         | H says “No expenses or repayments yet”; F says “Settled”. No eligible extra groups is not an error; Household remains.                                                                                                                                            |
-| D9: loading/error                  | Initial loading, unavailable discovery, or failed complete group aggregate          | Loading placeholder or unavailable/retry, never $0 or settled. Discovery failure discloses no cached group labels.                                                                                                                                                |
-| D10: partial result                | H complete, currently authorized T summary unavailable                              | H may render with its own revision; T says unavailable only if inclusion/access were freshly confirmed. All overview totals absent, labelled incomplete. No complete/settled claim.                                                                               |
-| D11: exact bounds                  | Large valid aggregate above JS safe integer; cross-group gross sum beyond int64 max | Exact string/bigint rendering; overflow suppresses totals with safe error, never partial sum.                                                                                                                                                                     |
-| D12: membership history            | New authorized readmission under ADR-004                                            | Current eligibility decides inclusion; complete lifetime group history, including absence and inactive members, determines current nets. No date truncation to joining/travel dates. Historical “as of” reports remain deferred.                                  |
+| Probe                              | Complete group facts                                                                                     | Required presentation / invariant                                                                                                                                                                                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1: source breakdown               | H: A −2000, B +2000; T: A +2000, B −2000; F: A −500, B 0, C +500                                         | H A→B $20; T B→A $20; F A→C $5. Viewer net −$5; three active spaces and three open viewer balances. B's separately labelled positions remain visible. Every row links to its own group.                                                                           |
+| D2: cross-group cancellation       | H and T from D1 only                                                                                     | Informational net $0, activeSpaceCount 2 and openBalanceCount 2; both groups remain unsettled. Combined A+B net is not shown. Recording H's $20 affects H alone.                                                                                                  |
+| D3: same-group cycle               | Within F history A→B 2000, B→C 2000, C→A 2000                                                            | Every individual net zero: F settled, no simplified obligations or repayment shortcuts. History stays visible in F.                                                                                                                                               |
+| D4: conservation is not settlement | Within F history A→B 2000 and B→C 2000                                                                   | Nets A −2000, B 0, C +2000; only A→C $20 is current. B owes nothing; sum zero is not settled. One actual A→C repayment clears it; no fictitious B payment.                                                                                                        |
+| D5: one partner only               | X contains A/C, not active B; X has A −9000                                                              | No X name, ID, amount, count, nested node or contribution to dashboard totals. A may independently open X through Groups; B cannot. No “one hidden group” label.                                                                                                  |
+| D6: access loss                    | B leaves T, or viewer loses T access                                                                     | T disappears and totals recompute from newly authorized eligible groups; no removed title in notice. A still in T can reach it through Groups if B left. If viewer loses Household/dashboard access, clear the whole dashboard. Late responses cannot restore it. |
+| D7: no partner                     | Only A admitted in H; no finalized pair                                                                  | Authorized H ledger, explicit shared-overview-unavailable copy; no pretend combined zero or inferred B. Existing invitation UI only if implemented and authorized.                                                                                                |
+| D8: empty versus settled           | Complete authorized H has no financial history; separately F has D3 history                              | H says “No expenses or repayments yet”; F says “Settled”. No eligible extra groups is not an error; Household remains.                                                                                                                                            |
+| D9: loading/error                  | Initial loading, unavailable discovery, or failed complete group aggregate                               | Loading placeholder or unavailable/retry, never $0 or settled. Discovery failure discloses no cached group labels.                                                                                                                                                |
+| D10: partial result                | H complete, currently authorized T summary unavailable                                                   | H may render with its own revision; T says unavailable only if inclusion/access were freshly confirmed. All overview totals absent, labelled incomplete. No complete/settled claim.                                                                               |
+| D11: exact bounds                  | Large valid aggregate above JS safe integer; cross-space signed net or expense total beyond int64 bounds | Exact string/bigint rendering; overflow suppresses totals with safe error, never partial sum.                                                                                                                                                                     |
+| D12: membership history            | New authorized readmission under ADR-004                                                                 | Current eligibility decides inclusion; complete lifetime group history, including absence and inactive members, determines current nets. No date truncation to joining/travel dates. Historical “as of” reports remain deferred.                                  |
 
 Changing eligible membership can change the current overview without changing any
 ledger. Explain “Overview reflects groups currently shared by both partners”; do not
@@ -113,13 +124,15 @@ No cached historical dashboard is an authorization bypass.
 
 ## Read contract and consistency
 
-This is an operation sketch, not new SDL or a generic server-driven UI schema.
-The future `householdDashboard` projection needs an eligibility/completeness outcome,
+The #111 `householdDashboard` server contract is defined in
+[the authoritative SDL](../../../packages/schema/household.graphql). It returns an
+eligibility/completeness outcome,
 authorized household reference, eligible group rows (ID/name/kind/currency), complete
 GroupBalances (positions, obligations, settled, financial revision), and checked
-viewer totals or an explicit unavailable/overflow result. Reuse #76's minimal
+viewer net, counts and active-expense totals or an explicit unavailable/overflow result. Reuse #76's minimal
 Membership identification; no peer Viewer IDs, emails or installation row exposure.
-Do not publish any of these fields in the running API before their implementation.
+Only the implemented reviewed summary fields are published; browser presentation
+and separately approved future operations remain independent.
 
 The server discovers E from the approved pair designation and currently active
 memberships; it authorizes the requesting viewer and every returned group/member,
@@ -134,11 +147,11 @@ UNAVAILABLE instead of silently truncating E. UI may collapse/virtualize rows bu
 cannot change the complete aggregate. A later paginated summary contract requires
 separate reviewed complete aggregate semantics; no “total of loaded pages”.
 
-Proposed consistent read: after verified identity binding, acquire affected
+The consistent server read follows ADR-008: after verified identity binding, acquire affected
 user locks in canonical order (viewer and approved pair), then the designation's
 read lock, then candidate eligible groups in canonical UUID order FOR SHARE. This
-extends #75/#76's user-before-group discipline; the pair-policy slice must define
-the designation lock and ensure all designation writers follow compatible ordering.
+extends #75/#76's user-before-group discipline using the #130 designation guard
+and its compatible writer ordering.
 Read and recheck eligibility/authorization and all selected projections in one
 subsequent SQL statement snapshot. A newly eligible group discovered after lock
 acquisition requires bounded restart with the expanded lock set; never acquire a
@@ -152,8 +165,8 @@ Revision tracks financial changes only, not access, labels or pair designation;
 there is no invented global financial revision. Authorized row-local aggregate
 failure may return D10 with no overview totals. If eligibility itself cannot be
 confirmed, fail closed for the whole overview. Initial offline has no data.
-During same-context refresh, retain values only with explicit “Refreshing”/last-read
-labels while access remains confirmed; disable repayment. On failed revalidation
+During refresh, the Household browser removes prior private rows and totals before
+starting a network-only authorization read. On failed revalidation
 hide sensitive rows and show unavailable. Denial/expiry/account switch clears
 fields immediately. Drop out-of-order responses by viewer/session, dashboard scope
 and request generation, including previously valid results after membership changes.
@@ -168,8 +181,9 @@ O11/O12 gated; this read design does not permit them or select their policies.
 
 ## One group-specific repayment operation
 
-Both a dashboard obligation row and group detail open the same future form and
-operation. Route `/groups/:groupId/repayments/new` captures the original group,
+Only the original Group/Trip balance detail offers the group-specific repayment
+entry. Household totals and source-space rows have no settlement shortcut; source
+rows first open that original group's Balances tab. Route `/groups/:groupId/repayments/new` captures the original group,
 sender and recipient Membership IDs from a fresh complete projection. Group is
 read-only in the form. Label, for example, “Record repayment — Trip T”,
 “B repaid A”, `$20.00 USD`, and “Record money already transferred; no money moves”.
@@ -222,10 +236,14 @@ Future authenticated access loss does not grant privileged receipt access.
 ## Navigation, accessibility and consumer migration
 
 Use distinct “Household ledger” and “Household dashboard” links; group rows open
-canonical #85 group routes. Dashboard is not the default #83 entry or a replacement
-for Groups. Desktop uses an accessible labelled dialog for the shared repayment
-form; phone uses its full-page route. Back/Escape preserves drafts, restores source
-filter/scroll and logical row-action focus only after a fresh authorized read.
+canonical #85 group routes. The Household workspace at `/household` uses Overview, Expenses, Balances, Activity
+and Members; it does not replace independently authorized Groups access. Overview
+contains three horizontal metrics and at most five recent expenses. The complete
+Expenses implementation is delivered by #170. Members reads actual `Group.members`, not
+the designated pair, and exposes only existing owner invitation management.
+Source rows open `/groups/:groupId?tab=balances`; repayment entry remains on that
+original group's full-page route. Back restores source scroll and logical row focus
+only after a fresh authorized read.
 If that row disappeared, focus dashboard heading; if dashboard access disappeared,
 fall back to Groups and its heading. Direct repayment links fall back to the original
 accessible group, otherwise Groups. Never a household fallback for another group.
@@ -248,6 +266,6 @@ names/amounts and vertical scroll. This document does not claim a live browser t
 | `components/session-command.tsx`                                            | Preserve frozen identity/recovery/source lifetime; replace current-household envelope capture and global new-repayment draft identity with original-group/attempt scoping.           |
 | `components/navigation/provider.tsx`, `links.tsx`, household/recovery docs  | Preserve source visits/focus/generation handling; canonical group routes, no lost-access cache or household fallback. Preview membership guards remain historical.                   |
 
-Keep existing seeded UI/tests and its historical documentation intact. Follow-on
+The executable seeded UI/tests were subsequently retired in #184; preserve only their historical documentation as evidence. Follow-on
 [delivery slices](../proposals/household-dashboard-slices.md) own implementation,
 acceptance tests and browser evidence; no migration, SDL, resolver or UI changes here.

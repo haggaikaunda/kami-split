@@ -1,5 +1,7 @@
 # ADR-006: Ordinary and trip-group creation
 
+> Seeded-runtime references below are historical evidence. #184 removed the executable preview and simulation-only tests; they must not be retained or restored. Accepted production policy remains authoritative.
+
 - Status: Design for #85; independent review and PR adoption required. No feature implementation.
 - Recorded: 2026-09-30.
 - Basis: ADR-001–005 and implemented #75 / PR #98, commit b86475f.
@@ -222,8 +224,7 @@ or route when a background request finishes.
 
 Do not mechanically implement the old DataPort promise of replacing the adapter
 without changing consumers: its household/trip shape is incompatible with accepted
-production access. Keep the seeded preview isolated, with existing tests and
-historical docs intact; no conversion of demo fixtures into persisted user data.
+production access. The seeded preview was subsequently retired in #184; historical documentation remains evidence only. Do not convert demo fixtures into persisted user data.
 
 Persisted #75 groups backfill as ordinary by absence of trip rows, retaining
 installation pointers, UUIDs, membership, currency and history. Additive migration

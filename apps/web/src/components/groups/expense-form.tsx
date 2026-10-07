@@ -1,4 +1,5 @@
 'use client';
+import { createSessionId } from '@/lib/session-id';
 import { useEffect, useRef, useState } from 'react';
 import { commitMutation, fetchQuery } from 'relay-runtime';
 import createDocument, {
@@ -9,6 +10,9 @@ import recoveryDocument, {
 } from '@/lib/relay/__generated__/journeyRecoveryQuery.graphql';
 import {
   categories,
+  selectSplit,
+  editPercentage,
+  remainingPercentage,
   createInput,
   newDraft,
   readDraft,
@@ -19,6 +23,8 @@ import {
   type Member,
   type SavedDraft,
 } from '@/lib/relay/draft';
+import { percentageText } from '@/lib/relay/percentage';
+import { Member as MemberLabel } from '@/components/primitives';
 import { money } from '@/lib/relay/money';
 import type { FinancialScope } from '@/lib/relay/environment';
 type Outcome =
@@ -75,7 +81,13 @@ export function ExpenseForm({
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
-    if (attempt || draft.description || draft.amount || draft.note)
+    if (
+      attempt ||
+      draft.description ||
+      draft.amount ||
+      draft.note ||
+      draft.percentageInitialized
+    )
       window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [attempt, draft]);
@@ -95,7 +107,7 @@ export function ExpenseForm({
     const value = { ...draft, ...patch };
     setDraft(value);
     try {
-      persist({ version: 1, actor: scope.actor, group, draft: value });
+      persist({ version: 2, actor: scope.actor, group, draft: value });
     } catch (error) {
       setNotice((error as Error).message);
     }
@@ -122,10 +134,10 @@ export function ExpenseForm({
       await onCommitted(outcome.record.expenseId);
       if (current())
         setNotice(
-          `Expense saved once. Reference: ${outcome.record.expenseId}. Current balances were requested separately; check their status below.`,
+          `Expense saved once.${outcome.record.split === 'PERCENTAGE' ? ` Percentage intent: ${outcome.record.allocations.map((a) => `${percentageText(a.percentageHundredths ?? 0)}% — ${money(a.amountMinor)}`).join('; ')}.` : ''} Reference: ${outcome.record.expenseId}. Current balances were requested separately; check their status below.`,
         );
     } else if (outcome.__typename === 'ValidationProblem') {
-      persist({ version: 1, actor: scope.actor, group, draft });
+      persist({ version: 2, actor: scope.actor, group, draft });
       setAttempt(undefined);
       setNotice(
         `Expense rejected: ${outcome.fields.map((field) => field.message).join(' ')} Correct the draft and save as a new operation.`,
@@ -202,20 +214,26 @@ export function ExpenseForm({
       return;
     }
     void run(async () => {
-      const input = createInput(draft, members, group, crypto.randomUUID());
+      const input = createInput(draft, members, group, createSessionId());
       // Persist both key and immutable input BEFORE invoking the network layer.
-      persist({ version: 1, actor: scope.actor, group, draft, attempt: input });
+      persist({ version: 2, actor: scope.actor, group, draft, attempt: input });
       setAttempt(input);
       await send(input);
     });
   };
   const field = (key: string) => ({
-    'aria-invalid': submitted && !!checked.errors[key],
+    'aria-invalid':
+      (submitted || draft.split === 'PERCENTAGE') && !!checked.errors[key],
     'aria-describedby':
-      submitted && checked.errors[key] ? `expense-${key}-error` : undefined,
+      (submitted || draft.split === 'PERCENTAGE') && checked.errors[key]
+        ? `expense-${key}-error`
+        : undefined,
   });
   return (
-    <section aria-labelledby="new-expense-title">
+    <section
+      className="financial-form-card"
+      aria-labelledby="new-expense-title"
+    >
       <h2 id="new-expense-title">Add expense</h2>
       <p>Record a shared expense in this group. No money is moved.</p>
       <p ref={status} role="status" tabIndex={-1} className="financial-notice">
@@ -326,17 +344,39 @@ export function ExpenseForm({
                   </option>
                 ))}
             </select>
-            <label htmlFor="expense-split">Split</label>
+            <label htmlFor="expense-split">Split type</label>
             <select
               id="expense-split"
               value={draft.split}
               onChange={(e) =>
-                change({ split: e.target.value as Draft['split'] })
+                change(selectSplit(draft, e.target.value as Draft['split']))
               }
             >
               <option value="EQUAL">Equal</option>
               <option value="EXACT">Exact</option>
+              <option value="PERCENTAGE">Percentage</option>
             </select>
+            {draft.split === 'PERCENTAGE' && (
+              <>
+                <p id="percentage-rounding" className="percentage-help">
+                  Percentages describe responsibility, not payment. Fractional
+                  cents go to the largest remainder, then ascending participant
+                  identity.
+                </p>
+                {draft.participants.length === 2 && (
+                  <label className="percentage-link">
+                    <input
+                      type="checkbox"
+                      checked={!!draft.linkedPercentages}
+                      onChange={(e) =>
+                        change({ linkedPercentages: e.target.checked })
+                      }
+                    />
+                    Link percentages (two people)
+                  </label>
+                )}
+              </>
+            )}
             <fieldset {...field('participants')} tabIndex={-1}>
               <legend>Participants and preview</legend>
               {members
@@ -349,6 +389,7 @@ export function ExpenseForm({
                         checked={draft.participants.includes(member.id)}
                         onChange={(e) =>
                           change({
+                            linkedPercentages: false,
                             participants: e.target.checked
                               ? [...draft.participants, member.id]
                               : draft.participants.filter(
@@ -357,10 +398,83 @@ export function ExpenseForm({
                           })
                         }
                       />
-                      {member.displayName}
+                      <MemberLabel name={member.displayName} />
                     </label>
-                    {draft.split === 'EXACT' &&
+                    {draft.split === 'PERCENTAGE' &&
                     draft.participants.includes(member.id) ? (
+                      <div className="percentage-share">
+                        <label htmlFor={`percentage-${member.id}`}>
+                          Percentage for {member.displayName}
+                        </label>
+                        <div className="percentage-value">
+                          <span className="percentage-input">
+                            <input
+                              id={`percentage-${member.id}`}
+                              inputMode="decimal"
+                              value={draft.percentages?.[member.id] ?? ''}
+                              onChange={(e) =>
+                                change({
+                                  percentages: editPercentage(
+                                    draft,
+                                    member.id,
+                                    e.target.value,
+                                  ),
+                                })
+                              }
+                              aria-invalid={
+                                !!checked.errors[`percentage-${member.id}`]
+                              }
+                              aria-describedby={
+                                checked.errors[`percentage-${member.id}`]
+                                  ? `expense-percentage-${member.id}-error`
+                                  : 'percentage-rounding'
+                              }
+                            />
+                            <span aria-hidden="true">%</span>
+                          </span>
+                          {Object.keys(checked.errors).length === 0 && (
+                            <strong className="percentage-money">
+                              {money(
+                                checked.allocations.find(
+                                  (a) => a.participantId === member.id,
+                                )!.amountMinor,
+                              )}
+                            </strong>
+                          )}
+                        </div>
+                        {draft.participants.length >= 3 && (
+                          <button
+                            type="button"
+                            disabled={
+                              remainingPercentage(draft, member.id) ===
+                              undefined
+                            }
+                            onClick={() =>
+                              change({
+                                percentages: {
+                                  ...draft.percentages,
+                                  [member.id]: remainingPercentage(
+                                    draft,
+                                    member.id,
+                                  )!,
+                                },
+                              })
+                            }
+                          >
+                            Assign remaining to {member.displayName}
+                          </button>
+                        )}
+                        {checked.errors[`percentage-${member.id}`] && (
+                          <p
+                            className="financial-error"
+                            id={`expense-percentage-${member.id}-error`}
+                          >
+                            {checked.errors[`percentage-${member.id}`]}
+                          </p>
+                        )}
+                      </div>
+                    ) : draft.split === 'EXACT' &&
+                      draft.participants.includes(member.id) ? (
                       <label>
                         Exact USD for {member.displayName}
                         <input
@@ -392,17 +506,42 @@ export function ExpenseForm({
                   </div>
                 ))}
             </fieldset>
-            {submitted &&
-              Object.entries(checked.errors).map(([key, error]) => (
-                <p
-                  className="financial-error"
-                  id={`expense-${key}-error`}
-                  key={key}
-                >
-                  {error}
-                </p>
-              ))}
-            <button type="submit">Save expense</button>
+            {draft.split === 'PERCENTAGE' && (
+              <p
+                role="status"
+                className={`percentage-status ${checked.errors.participants ? 'percentage-incomplete' : ''}`}
+              >
+                {checked.errors.participants ??
+                  (Object.keys(checked.errors).some((key) =>
+                    key.startsWith('percentage-'),
+                  )
+                    ? 'Enter all selected percentages.'
+                    : '✓ 100% allocated')}
+                {Object.keys(checked.errors).length === 0 &&
+                  ` · ${money(checked.total)} will be split as shown`}
+              </p>
+            )}
+            {(submitted || draft.split === 'PERCENTAGE') &&
+              Object.entries(checked.errors)
+                .filter(([key]) => !key.startsWith('percentage-'))
+                .map(([key, error]) => (
+                  <p
+                    className="financial-error"
+                    id={`expense-${key}-error`}
+                    key={key}
+                  >
+                    {error}
+                  </p>
+                ))}
+            <button
+              type="submit"
+              disabled={
+                draft.split === 'PERCENTAGE' &&
+                Object.keys(checked.errors).length > 0
+              }
+            >
+              Save expense
+            </button>
           </fieldset>
         </form>
       )}

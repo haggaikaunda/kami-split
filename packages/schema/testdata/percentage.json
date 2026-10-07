@@ -1,0 +1,18 @@
+[
+  { "total": "12500", "percentages": [6000, 4000], "amounts": [7500, 5000] },
+  { "total": "1001", "percentages": [6000, 4000], "amounts": [601, 400] },
+  { "total": "1", "percentages": [5000, 5000], "amounts": [1, 0] },
+  { "total": "1", "percentages": [0, 10000], "amounts": [0, 1] },
+  {
+    "total": "100",
+    "percentages": [3333, 3333, 3334],
+    "amounts": [33, 33, 34]
+  },
+  {
+    "total": "999999999",
+    "percentages": [6250, 3750],
+    "amounts": [624999999, 375000000]
+  },
+  { "total": "1", "percentages": [10000], "amounts": [1] },
+  { "total": "100", "percentages": [3333, 3333, 3333], "amounts": null }
+]

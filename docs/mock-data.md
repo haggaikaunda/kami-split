@@ -1,5 +1,7 @@
 # Session mock data
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](application/README.md).
+
 ## Production boundary
 
 This guide preserves the session preview. [ADR-003](application/decisions/003-bootstrap-groups-and-invitations.md#seeded-preview-evidence-and-production-differences) explains why household-scoped `Snapshot`/`Trip` and pending `Member` shapes are not the production schema: trips become independent groups, invitations are separate records, and first-account bootstrap is operator-only. No mock behavior changes accompany that decision.

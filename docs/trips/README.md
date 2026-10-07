@@ -1,12 +1,24 @@
 # Trips list and creation
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production direction
 
-The implementation below is the household-scoped seeded preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b2-groups-are-independent-access-and-financial-boundaries) specifies a trip as an independently authorized group with trip classification and structured metadata; ordinary non-trip groups use the same foundation. Trip invitations grant no household access, and each expense/settlement belongs to exactly one group. Full group/trip design is deferred to #85, outside #73; embedded `Trip` records are not a production schema.
+The implementation below is the household-scoped seeded preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b2-groups-are-independent-access-and-financial-boundaries) specifies a trip as an independently authorized group with trip classification and structured metadata; ordinary non-trip groups use the same foundation. Trip invitations grant no household access, and each expense/settlement belongs to exactly one group. #85 adopted the production design in [ADR-006](../application/decisions/006-group-creation.md); embedded preview `Trip` records are not a production schema.
+
+## Current authenticated discovery
+
+Issue #105 connects `/trips` to the real authorized Viewer groups list. All,
+Upcoming and Past use server UTC dates; in-progress trips appear only in All.
+Cards show metadata and abstract covers without expense totals/counts. They link
+to canonical `/trips/:groupId` detail and Trip-scoped expense URLs, reusing
+complete balances and expenses regardless of travel dates. See the
+[authenticated journey](../application/relay-expenses.md) for scope, authorization,
+recovery and source-return behavior. Creation forms remain a separate slice.
 
 ## Seeded preview
 
-Issue #25 implements T01 and the create-to-empty-trip part of N05. Cards derive totals and counts from current shared expense IDs through `spending`; repayments and deleted expenses do not contribute. Dates always include a year. Status is computed from the injected snapshot clock: start/end days are In progress, dates before start Upcoming, dates after end Past. Only All includes in-progress trips.
+The retained seeded components and `/trips/:tripId` detail are isolated demo surfaces. The list/creation evidence below describes the historical preview; `/trips` now uses authenticated discovery. Issue #25 implements T01 and the create-to-empty-trip part of N05. Cards derive totals and counts from current shared expense IDs through `spending`; repayments and deleted expenses do not contribute. Dates always include a year. Status is computed from the injected snapshot clock: start/end days are In progress, dates before start Upcoming, dates after end Past. Only All includes in-progress trips.
 
 The create form validates name, optional destination, valid dates and end >= start, and stores dirty input in the shared session draft. The generic session command provider handles one operation, uncertainty, actor changes and reset leases. A confirmed create opens `/trips/:id`, where the saved name/dates, zero expenses and a working Add expense action are available immediately. A request completing after users leave does not interrupt their current route. New trips use the abstract cover.
 

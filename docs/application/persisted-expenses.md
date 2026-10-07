@@ -2,10 +2,7 @@
 
 Issue #82 implements the reviewed [first-expense contract](proposals/first-expense/contract.md)
 and [shared identity and money rules](proposals/first-expense/shared.md). The
-running SDL is in [packages/schema](../../packages/schema/README.md). The web
-preview keeps its mock DataPort; the separate [authenticated journey](relay-expenses.md) uses Relay for #83. Invitations,
-administrative bootstrap, edits, deletion, trip/group
-creation, and uploaded receipt files remain separate work.
+running SDL is in [packages/schema](../../packages/schema/README.md). The web [authenticated journey](relay-expenses.md) uses Relay; the seeded preview and mock DataPort were retired in #184. Invitations and administrative bootstrap are implemented by their dedicated services. Edits, deletion and uploaded receipt files remain separate work; actor-scoped Group/Trip creation forms are implemented under #106.
 
 ## Transaction and recovery boundary
 
@@ -85,7 +82,7 @@ may be absent in health-only development mode; partial or empty configuration is
 invalid. The configuration object is capped at 16 KiB and cursors at 2048 bytes.
 
 The endpoint accepts JSON POST with a 64 KiB request-body limit, 1000 parser tokens
-and complexity 100. One distinct `expenses` selection is supported per Group
+and complexity 200. One distinct `expenses` selection is supported per Group
 projection; requesting multiple aliased connections on the same projection
 returns `INVALID_INPUT` at the nullable connection field. These budgets reject
 requests explicitly; member lists and complete financial positions are never

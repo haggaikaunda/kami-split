@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f95e291ee4b1b5b0c91e481fed1d83e6>>
+ * @generated SignedSource<<5263f92e770d3e020695a4782a2886fb>>
  * @lightSyntaxTransform
  */
 
@@ -12,7 +12,7 @@ export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" |
 export type Currency = "USD" | "%future added value";
 export type OperationState = "NOT_OBSERVED" | "PENDING" | "UNKNOWN" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
-export type SplitMode = "EQUAL" | "EXACT" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type CreateExpenseInput = {
   category: Category;
   currency: Currency;
@@ -24,11 +24,16 @@ export type CreateExpenseInput = {
   note?: string;
   participantIds: ReadonlyArray<string>;
   payerId: string;
+  percentages?: ReadonlyArray<PercentageInput> | null | undefined;
   split: SplitMode;
   totalMinor: string;
 };
 export type ExactAllocationInput = {
   amountMinor: string;
+  participantId: string;
+};
+export type PercentageInput = {
+  hundredths: number;
   participantId: string;
 };
 export type journeyCreateMutation$variables = {
@@ -39,9 +44,15 @@ export type journeyCreateMutation$data = {
     readonly __typename: "ExpenseCommitted";
     readonly key: string;
     readonly record: {
+      readonly allocations: ReadonlyArray<{
+        readonly amountMinor: string;
+        readonly participantId: string;
+        readonly percentageHundredths: number | null | undefined;
+      }>;
       readonly expenseId: string;
       readonly groupId: string;
       readonly revision: string;
+      readonly split: SplitMode;
       readonly totalMinor: string;
     };
   } | {
@@ -163,6 +174,45 @@ v4 = [
                 "kind": "ScalarField",
                 "name": "revision",
                 "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "split",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "OperationAllocation",
+                "kind": "LinkedField",
+                "name": "allocations",
+                "plural": true,
+                "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "participantId",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "amountMinor",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "percentageHundredths",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
               }
             ],
             "storageKey": null
@@ -252,16 +302,16 @@ return {
     "selections": (v4/*:: as any*/)
   },
   "params": {
-    "cacheID": "9e9da4f4c7f4e8386943e704fb3cb699",
+    "cacheID": "8a82f7bfb395fd227a52f91e4297ddb5",
     "id": null,
     "metadata": {},
     "name": "journeyCreateMutation",
     "operationKind": "mutation",
-    "text": "mutation journeyCreateMutation(\n  $input: CreateExpenseInput!\n) {\n  createExpense(input: $input) {\n    __typename\n    ... on ExpenseCommitted {\n      key\n      record {\n        expenseId\n        groupId\n        totalMinor\n        revision\n      }\n    }\n    ... on ValidationProblem {\n      fields {\n        path\n        code\n        message\n      }\n    }\n    ... on OperationMismatch {\n      key\n    }\n    ... on OperationProgress {\n      key\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n  }\n}\n"
+    "text": "mutation journeyCreateMutation(\n  $input: CreateExpenseInput!\n) {\n  createExpense(input: $input) {\n    __typename\n    ... on ExpenseCommitted {\n      key\n      record {\n        expenseId\n        groupId\n        totalMinor\n        revision\n        split\n        allocations {\n          participantId\n          amountMinor\n          percentageHundredths\n        }\n      }\n    }\n    ... on ValidationProblem {\n      fields {\n        path\n        code\n        message\n      }\n    }\n    ... on OperationMismatch {\n      key\n    }\n    ... on OperationProgress {\n      key\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0799a4433041f32d141dfc3d7b5980cd";
+(node as any).hash = "75a204c1cdc5ba64668fb4d4dce6860c";
 
 export default node;

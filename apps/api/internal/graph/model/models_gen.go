@@ -12,6 +12,11 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
+// Safe failure or a complete authorized activity page.
+type ActivityResult interface {
+	IsActivityResult()
+}
+
 // Complete exact balances or an explicit failure; failure never means zero or settled.
 type BalanceResult interface {
 	IsBalanceResult()
@@ -27,6 +32,11 @@ type CreateGroupResult interface {
 	IsCreateGroupResult()
 }
 
+// Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
+type ExpenseViewResult interface {
+	IsExpenseViewResult()
+}
+
 // Original outcome or not-started observation under current authorization; refresh Group separately.
 type GroupCreationOperationResult interface {
 	IsGroupCreationOperationResult()
@@ -35,6 +45,16 @@ type GroupCreationOperationResult interface {
 // An authorized complete group projection or safe problem.
 type GroupResult interface {
 	IsGroupResult()
+}
+
+// Authorized Household overview or safe access/discovery failure; never a repayment target.
+type HouseholdDashboardResult interface {
+	IsHouseholdDashboardResult()
+}
+
+// Complete exact totals or overflow, with no partial sum.
+type HouseholdDashboardTotalsResult interface {
+	IsHouseholdDashboardTotalsResult()
 }
 
 // Delivery attempt outcome or safe failure.
@@ -69,6 +89,11 @@ type OwnerInvitationsResult interface {
 	IsOwnerInvitationsResult()
 }
 
+// An authorized profile or a safe operation failure.
+type ProfileResult interface {
+	IsProfileResult()
+}
+
 // Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
 type RecordRepaymentResult interface {
 	IsRecordRepaymentResult()
@@ -84,12 +109,84 @@ type ViewerResult interface {
 	IsViewerResult()
 }
 
+// Complete bounded event traversal, independent of financial record page sizes.
+type ActivityConnection struct {
+	// Events from the fixed source revisions in deterministic descending order.
+	Edges []*ActivityEdge `json:"edges"`
+	// Continuation metadata; refresh restarts with current authorization.
+	PageInfo *PageInfo `json:"pageInfo"`
+}
+
+func (ActivityConnection) IsActivityResult() {}
+
+// A scope-bound position and its immutable event.
+type ActivityEdge struct {
+	// Authenticated forward traversal boundary.
+	Cursor string `json:"cursor"`
+	// One freshly authorized event.
+	Node *ActivityEvent `json:"node"`
+}
+
+// One immutable event, ordered by event time, kind and stable record UUID.
+type ActivityEvent struct {
+	// Stable event identity independent of pagination and filters.
+	ID string `json:"id"`
+	// Current authorized Expense or Repayment ID; detail must reauthorize.
+	RecordID string `json:"recordId"`
+	// The supported committed mutation.
+	Kind ActivityKind `json:"kind"`
+	// Original source Group ID; financial boundaries remain independent.
+	GroupID string `json:"groupId"`
+	// Current authorized source label.
+	GroupName string `json:"groupName"`
+	// Current authorized source kind for canonical Group or Trip navigation. This
+	// metadata is read with the event page; it does not change original financial IDs.
+	// Household sources remain ORDINARY and are identified separately by isHousehold.
+	GroupKind GroupKind `json:"groupKind"`
+	// Whether the source is the designated Household ledger.
+	IsHousehold bool `json:"isHousehold"`
+	// Exact expense face value or actual repayment amount.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Original record currency.
+	Currency Currency `json:"currency"`
+	// Financial effective date, distinct from event order.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Immutable recorded commit timestamp in UTC microseconds.
+	Timestamp ledger.DateTime `json:"timestamp"`
+	// Membership that committed this mutation.
+	Creator *ActivityIdentity `json:"creator"`
+	// Expense payer; null for a repayment.
+	Payer *ActivityIdentity `json:"payer,omitempty"`
+	// Repayment sender; null for an expense.
+	Sender *ActivityIdentity `json:"sender,omitempty"`
+	// Repayment recipient; null for an expense.
+	Recipient *ActivityIdentity `json:"recipient,omitempty"`
+}
+
+// Optional exact filters bound into every continuation cursor.
+type ActivityFilter struct {
+	// Restrict the event kind; omitted means both supported kinds.
+	Kind *ActivityKind `json:"kind,omitempty"`
+	// Restrict to one currently eligible source; excluded IDs are masked.
+	SourceGroupID *string `json:"sourceGroupId,omitempty"`
+}
+
+// Minimal current authorized label for an immutable historical membership.
+type ActivityIdentity struct {
+	// Stable same-source Membership ID, never a peer account identifier.
+	ID string `json:"id"`
+	// Current authorized display label, which may represent a historical member.
+	DisplayName string `json:"displayName"`
+}
+
 // One explicit participant share; zero amounts still retain participation and history.
 type Allocation struct {
 	// Explicit retained participant membership, including when its share is zero.
 	Participant *Membership `json:"participant"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
@@ -114,10 +211,12 @@ type CreateExpenseInput struct {
 	PayerID string `json:"payerId"`
 	// Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
 	ParticipantIds []string `json:"participantIds"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
-	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+	// Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
 	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+	// Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+	Percentages []*PercentageInput `json:"percentages,omitempty"`
 }
 
 // Identity-scoped frozen creation intent; actor and USD currency are server supplied.
@@ -162,7 +261,7 @@ type Expense struct {
 	Payer *Membership `json:"payer"`
 	// Server-derived authenticated membership responsible for creation.
 	Creator *Membership `json:"creator"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*Allocation `json:"allocations"`
@@ -217,6 +316,16 @@ type ExpenseFilter struct {
 	ParticipantID *string `json:"participantId,omitempty"`
 }
 
+// Complete filtered subtotal for an expense effective-date month at the traversal anchor.
+type ExpenseMonth struct {
+	// Gregorian YYYY-MM; travel dates do not restrict history.
+	Month string `json:"month"`
+	// Complete matching face-value subtotal, never a sum of loaded rows.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Complete matching expense count as a canonical exact string.
+	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
+}
+
 // Immutable successful operation values retained with financial history; neither current labels nor current balances.
 type ExpenseOperationRecord struct {
 	// Original stable Expense ID, reused on every successful retry of this attempt.
@@ -239,7 +348,7 @@ type ExpenseOperationRecord struct {
 	Category Category `json:"category"`
 	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
 	Note string `json:"note"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*OperationAllocation `json:"allocations"`
@@ -247,6 +356,34 @@ type ExpenseOperationRecord struct {
 	CommittedAt ledger.DateTime `json:"committedAt"`
 	// Original financial revision produced by this operation, never the current balance version.
 	Revision ledger.Revision `json:"revision"`
+}
+
+// One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
+type ExpenseView struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+	ContextVersion string `json:"contextVersion"`
+	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Exact count of all matching expenses at the same anchor.
+	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
+	// Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
+	Months []*ExpenseMonth `json:"months"`
+	// Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+	Edges []*ExpenseViewEdge `json:"edges"`
+	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
+	PageInfo *PageInfo `json:"pageInfo"`
+}
+
+func (ExpenseView) IsExpenseViewResult() {}
+
+// Original expense with currently authorized source-space metadata; no copied Household record.
+type ExpenseViewEdge struct {
+	// Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
+	Cursor string `json:"cursor"`
+	// Original expense and minimal currently authorized same-group profiles.
+	Node *Expense `json:"node"`
+	// Original source Group ID, current label/kind/currency/trip metadata.
+	Source *GroupSummary `json:"source"`
 }
 
 // Safe actionable validation detail without internal database information.
@@ -403,6 +540,62 @@ type Health struct {
 	Status string `json:"status"`
 }
 
+// Original ledgers and an explicit complete/incomplete/unavailable outcome.
+type HouseholdDashboard struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+	ContextVersion *string `json:"contextVersion,omitempty"`
+	// Current completeness, independent of individual group settlement.
+	State HouseholdDashboardState `json:"state"`
+	// Complete eligible set, or Household-only fallback; excluded groups leave no trace.
+	Spaces []*HouseholdDashboardSpace `json:"spaces"`
+	// Complete checked totals, or safe amount failure; absent for unavailable sharing.
+	Totals HouseholdDashboardTotalsResult `json:"totals,omitempty"`
+}
+
+func (HouseholdDashboard) IsHouseholdDashboardResult() {}
+
+// One original authorized ledger, including current metadata and complete balances.
+type HouseholdDashboardSpace struct {
+	// Original authorized Group ID for navigation; no aggregate repayment scope.
+	GroupID string `json:"groupId"`
+	// Current authorized group label.
+	Name string `json:"name"`
+	// Current ordinary/trip classification.
+	Kind GroupKind `json:"kind"`
+	// Current authorized travel metadata, independent of financial history.
+	Trip *GroupTrip `json:"trip,omitempty"`
+	// Whether this source ledger is the installation Household.
+	IsHousehold bool `json:"isHousehold"`
+	// Original ledger currency; currently USD only.
+	Currency Currency `json:"currency"`
+	// Authorized historical profiles, without global user IDs or emails.
+	Members []*Membership `json:"members"`
+	// Viewer's independent membership in this original group.
+	ViewerMembership *Membership `json:"viewerMembership"`
+	// Complete positions, obligations, settlement state and financial revision, or safe overflow.
+	Balances BalanceResult `json:"balances"`
+	// Exact viewer position in this space; absent if its balance is unavailable.
+	ViewerNetMinor *ledger.MinorUnits `json:"viewerNetMinor,omitempty"`
+	// Complete active expense count, excluding actual repayments.
+	SharedExpenseCount ledger.MinorUnits `json:"sharedExpenseCount"`
+}
+
+// Checked totals across the complete eligible set; zero net never means settled.
+type HouseholdDashboardTotals struct {
+	// Signed sum of viewer positions: positive is owed, negative owes; informational only.
+	ViewerNetMinor ledger.MinorUnits `json:"viewerNetMinor"`
+	// Number of eligible spaces with a nonzero viewer position.
+	OpenBalanceCount ledger.MinorUnits `json:"openBalanceCount"`
+	// Number of complete currently eligible spaces, including Household.
+	ActiveSpaceCount ledger.MinorUnits `json:"activeSpaceCount"`
+	// Sum of original active expense face values, counted once; repayments excluded.
+	TotalSharedExpenseMinor ledger.MinorUnits `json:"totalSharedExpenseMinor"`
+	// Complete number of active expenses, independent of expense pagination.
+	TotalSharedExpenseCount ledger.MinorUnits `json:"totalSharedExpenseCount"`
+}
+
+func (HouseholdDashboardTotals) IsHouseholdDashboardTotalsResult() {}
+
 // Original committed result with separately observed current state.
 type InvitationActionResult struct {
 	// Typed InvitationAction ID when an action exists.
@@ -516,6 +709,8 @@ type OperationAllocation struct {
 	ParticipantID string `json:"participantId"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // The scoped key already identifies a different canonical intent; original data is never overwritten.
@@ -584,6 +779,14 @@ type PageInfo struct {
 	EndCursor *string `json:"endCursor,omitempty"`
 }
 
+// One explicitly selected participant's intended responsibility, independent of payer.
+type PercentageInput struct {
+	// Stable same-group Membership ID.
+	ParticipantID string `json:"participantId"`
+	// Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+	Hundredths int `json:"hundredths"`
+}
+
 // Safe expected failure with no private existence or infrastructure diagnostics.
 type Problem struct {
 	// Stable safe machine-readable outcome code.
@@ -602,13 +805,41 @@ func (Problem) IsCreateExpenseResult() {}
 
 func (Problem) IsOperationResult() {}
 
+func (Problem) IsActivityResult() {}
+
 func (Problem) IsCreateGroupResult() {}
 
 func (Problem) IsGroupCreationOperationResult() {}
 
+func (Problem) IsHouseholdDashboardResult() {}
+
+func (Problem) IsHouseholdDashboardTotalsResult() {}
+
 func (Problem) IsRecordRepaymentResult() {}
 
 func (Problem) IsRepaymentOperationResult() {}
+
+func (Problem) IsExpenseViewResult() {}
+
+// Self-only application profile, independent of group discovery and Auth metadata.
+type Profile struct {
+	// Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+	ID string `json:"id"`
+	// Current application display name; historical financial snapshots retain their original names.
+	DisplayName string `json:"displayName"`
+}
+
+func (Profile) IsProfileResult() {}
+
+// Safe profile outcome; no private identity or storage details.
+type ProfileProblem struct {
+	// INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+	Code string `json:"code"`
+	// User-facing explanation of the failure.
+	Message string `json:"message"`
+}
+
+func (ProfileProblem) IsProfileResult() {}
 
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {
@@ -721,6 +952,20 @@ type RepaymentOperationRecord struct {
 	Revision ledger.Revision `json:"revision"`
 }
 
+// Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
+type StructuredExpenseFilter struct {
+	// One currently authorized eligible source Group ID; absent means All.
+	GroupID *string `json:"groupId,omitempty"`
+	// Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+	MemberID *string `json:"memberId,omitempty"`
+	// Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
+	From *ledger.Date `json:"from,omitempty"`
+	// Inclusive maximum effective date at or after from.
+	To *ledger.Date `json:"to,omitempty"`
+	// Authoritative category; absent means all categories.
+	Category *Category `json:"category,omitempty"`
+}
+
 // Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
 type ValidationProblem struct {
 	// Definitive validation details; corrected intent uses a new operation key.
@@ -817,6 +1062,65 @@ func (e *AccessState) UnmarshalJSON(b []byte) error {
 }
 
 func (e AccessState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Implemented immutable financial event kinds. Future mutations require explicit
+// production audit contracts before extending this enum.
+type ActivityKind string
+
+const (
+	// One committed expense creation.
+	ActivityKindExpenseCreated ActivityKind = "EXPENSE_CREATED"
+	// One committed actual group repayment.
+	ActivityKindRepaymentRecorded ActivityKind = "REPAYMENT_RECORDED"
+)
+
+var AllActivityKind = []ActivityKind{
+	ActivityKindExpenseCreated,
+	ActivityKindRepaymentRecorded,
+}
+
+func (e ActivityKind) IsValid() bool {
+	switch e {
+	case ActivityKindExpenseCreated, ActivityKindRepaymentRecorded:
+		return true
+	}
+	return false
+}
+
+func (e ActivityKind) String() string {
+	return string(e)
+}
+
+func (e *ActivityKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ActivityKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ActivityKind", str)
+	}
+	return nil
+}
+
+func (e ActivityKind) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ActivityKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ActivityKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1003,6 +1307,67 @@ func (e *GroupKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e GroupKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Completeness of the freshly authorized overview. No partial totals are returned.
+type HouseholdDashboardState string
+
+const (
+	// Every eligible space and total is complete.
+	HouseholdDashboardStateComplete HouseholdDashboardState = "COMPLETE"
+	// Eligible rows are authorized, but required financial data exceeds bounds.
+	HouseholdDashboardStateIncomplete HouseholdDashboardState = "INCOMPLETE"
+	// Legacy service fallback; membership does not require a separate sharing designation.
+	HouseholdDashboardStateUnavailable HouseholdDashboardState = "UNAVAILABLE"
+)
+
+var AllHouseholdDashboardState = []HouseholdDashboardState{
+	HouseholdDashboardStateComplete,
+	HouseholdDashboardStateIncomplete,
+	HouseholdDashboardStateUnavailable,
+}
+
+func (e HouseholdDashboardState) IsValid() bool {
+	switch e {
+	case HouseholdDashboardStateComplete, HouseholdDashboardStateIncomplete, HouseholdDashboardStateUnavailable:
+		return true
+	}
+	return false
+}
+
+func (e HouseholdDashboardState) String() string {
+	return string(e)
+}
+
+func (e *HouseholdDashboardState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HouseholdDashboardState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HouseholdDashboardState", str)
+	}
+	return nil
+}
+
+func (e HouseholdDashboardState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *HouseholdDashboardState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HouseholdDashboardState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1427,16 +1792,19 @@ const (
 	SplitModeEqual SplitMode = "EQUAL"
 	// Caller supplies one reconciled amount for each explicit participant, including zero.
 	SplitModeExact SplitMode = "EXACT"
+	// Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+	SplitModePercentage SplitMode = "PERCENTAGE"
 )
 
 var AllSplitMode = []SplitMode{
 	SplitModeEqual,
 	SplitModeExact,
+	SplitModePercentage,
 }
 
 func (e SplitMode) IsValid() bool {
 	switch e {
-	case SplitModeEqual, SplitModeExact:
+	case SplitModeEqual, SplitModeExact, SplitModePercentage:
 		return true
 	}
 	return false
