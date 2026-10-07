@@ -155,7 +155,7 @@ const width = Number(process.env.WIDTH || 1280);
 const expense = {
   __typename: 'Expense',
   id: 'e1',
-  groupId: 'T',
+  groupId: 'H',
   description: 'Fixture lunch',
   effectiveDate: '2026-10-01',
   totalMinor: '300',
@@ -171,7 +171,7 @@ const view = {
   totalExpenseMinor: '300',
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
-  edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
+  edges: [{ cursor: 'e1', node: expense, source: groups[0] }],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
 const activity = {
@@ -262,7 +262,9 @@ async function checkContrast(page) {
     });
   });
   let preference = 'LIGHT',
-    empty = false;
+    empty = false,
+    profileFailure = false,
+    profileDelay = 0;
   const errors = [],
     results = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -401,7 +403,15 @@ async function checkContrast(page) {
           totalSharedExpenseCount: '0',
         },
       };
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    if (profileFailure && data.currentProfile)
+      data.currentProfile = {
+        __typename: 'ProfileProblem',
+        code: 'UNAVAILABLE',
+        message: 'Fixture unavailable',
+      };
+    await new Promise((resolve) =>
+      setTimeout(resolve, data.currentProfile ? delay + profileDelay : delay),
+    );
     await r.fulfill({ json: { data } });
   });
 
@@ -495,6 +505,17 @@ async function checkContrast(page) {
       .getByRole('radio', { name: 'Dark', exact: true })
       .evaluate((e) => e === document.activeElement),
   );
+  const geometry = await page
+    .getByRole('radio', { name: 'Dark', exact: true })
+    .evaluate((e) => ({
+      input: e.getBoundingClientRect().width,
+      label: e.parentElement.getBoundingClientRect().height,
+    }));
+  assert(
+    geometry.input <= 24 && geometry.label >= 44,
+    'radio intrinsic sizing and label target',
+  );
+  await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({
     path: path.join(output, `account-dark-${width}.png`),
     fullPage: true,
@@ -591,6 +612,32 @@ async function checkContrast(page) {
     });
     results.push({ route, light: true, overflow: false });
   }
+  preference = 'DARK';
+  await page.goto(origin + '/account');
+  await theme('dark');
+  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  profileDelay = 1500;
+  await page.reload();
+  await page
+    .getByText('Loading or saving appearance…', { exact: true })
+    .waitFor();
+  await page.screenshot({
+    path: path.join(output, `account-loading-dark-${width}.png`),
+    fullPage: true,
+  });
+  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  profileDelay = 0;
+  profileFailure = true;
+  await page.reload();
+  await theme('dark');
+  await page
+    .getByText('Appearance could not be loaded. Try again.', { exact: true })
+    .waitFor();
+  await page.screenshot({
+    path: path.join(output, `account-error-dark-${width}.png`),
+    fullPage: true,
+  });
+  results.push({ loadingAndErrorDarkTheme: true });
   assert.deepEqual(errors, []);
   fs.writeFileSync(
     path.join(output, `appearance-${width}.json`),
