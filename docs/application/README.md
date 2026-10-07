@@ -31,8 +31,9 @@ flow. Hosted execution requires separate authorization.
 The [production deployment configuration](production-deployment.md) records the
 approved #140 Vercel, Cloud Run, Supabase, and GitHub environment contract. It
 records the provisioned provider foundation, completed production configuration,
-gated API and web deployment workflow, and operating procedures without claiming
-that the application is already serving production traffic.
+gated API and web deployment workflow, successful hosted releases, and operating
+procedures. Recorded provisioning and hosted verification are distinguished from
+fresh provider-settings inspection.
 
 ## Authenticated financial browser
 

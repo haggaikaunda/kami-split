@@ -5,7 +5,7 @@ The application has one authenticated runtime: real onboarding, Relay/GraphQL-ba
 See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
 The [production deployment configuration](application/production-deployment.md)
 records the approved #140 hosting and environment contract; provisioning and
-deployment evidence is tracked there as each provider stage is completed.
+successful hosted release evidence is linked there alongside operating procedures.
 
 ## Documentation sections
 

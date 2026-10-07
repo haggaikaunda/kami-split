@@ -10,6 +10,17 @@ ownership, the provisioned production foundation, and operating procedures. It
 does not store a credential. Explicitly authorized API rehearsals use the production
 resources under the boundaries described below.
 
+Production is serving through the normal GitHub Actions release path. On
+2026-10-06, [run 37565115466](https://github.com/haggaikaunda/kami-split/actions/runs/37565115466)
+succeeded for `f55f131bd604d172dd6bf2fa540db3149f1db984`: explicit migrations,
+API candidate checks and promotion, staged web checks and promotion, and hosted
+verification all passed. API `/ready` checks database connectivity and warmed
+Auth trust; GraphQL health alone does not establish that readiness. The #140
+incident record identifies the initial startup failure as a runtime-role password
+mismatch; temporary raw driver logging is no longer required. This dated run is
+hosted execution evidence, not a fresh inspection of every provider setting or
+proof of later commits.
+
 There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
@@ -65,10 +76,10 @@ location.
 
 ## Provisioned production foundation
 
-The following production foundation was provisioned on 2026-10-01. The first
-successful production workflow creates the Cloud Run service; there is no
-billable always-on compute because the service keeps a minimum instance count of
-zero.
+The following production foundation was recorded as provisioned on 2026-10-01.
+Cloud Run now serves production releases; the deployment configuration retains a
+minimum instance count of zero and a maximum of one. These provisioning records
+are distinct from a fresh provider-settings inspection.
 
 - Enabled APIs: Cloud Run Admin, Artifact Registry, Secret Manager, IAM Service
   Account Credentials, Security Token Service, and Cloud Resource Manager.
@@ -136,14 +147,14 @@ validation and protected candidate probes. Those probes pass it only in the
 or curl verbose/trace logging, or forward it to application build/runtime settings
 or the promoted production-domain checks.
 
-| Selected Supabase value             | Production selection                         |
-| ----------------------------------- | -------------------------------------------- |
-| Project name                        | `kami-split`                                 |
-| Project reference                   | `zlxpapkxacnwnmgagbth`                       |
-| API origin                          | `https://zlxpapkxacnwnmgagbth.supabase.co`   |
-| Provider region                     | AWS `us-west-2` — West US (Oregon)           |
-| Colocated Google Cloud region       | `us-west1` — Oregon                          |
-| Current database connection ceiling | Verify after project provisioning completes. |
+| Selected Supabase value             | Production selection                                       |
+| ----------------------------------- | ---------------------------------------------------------- |
+| Project name                        | `kami-split`                                               |
+| Project reference                   | `zlxpapkxacnwnmgagbth`                                     |
+| API origin                          | `https://zlxpapkxacnwnmgagbth.supabase.co`                 |
+| Provider region                     | AWS `us-west-2` — West US (Oregon)                         |
+| Colocated Google Cloud region       | `us-west1` — Oregon                                        |
+| Current database connection ceiling | Verify in Supabase before increasing pool/instance bounds. |
 
 The production web origin is the canonical HTTPS Vercel domain or custom
 domain, without a trailing slash. The production API origin is the HTTPS Cloud

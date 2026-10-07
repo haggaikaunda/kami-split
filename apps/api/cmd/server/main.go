@@ -10,6 +10,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
@@ -43,7 +44,11 @@ func run() int {
 	if dbConfig != nil {
 		db, err = database.Open(ctx, *dbConfig)
 		if err != nil {
-			logger.Error("database startup failed")
+			if operation, unexpected := diagnostic.Operation(err); unexpected {
+				logger.Error("database startup failed", "operation", operation)
+			} else {
+				logger.Error("database startup failed")
+			}
 			return 1
 		}
 		defer db.Close()
