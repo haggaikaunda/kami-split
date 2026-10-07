@@ -53,7 +53,7 @@ Build shared foundation and demonstrate Household Overview/Expenses before propa
 ## Explicit semantic corrections
 
 1. Omit search entirely; #177 owns future search. No fake, disabled or client-only substitute.
-2. Omit receipts/upload/OCR and unsupported expense Edit/Delete. Preserve create/read contracts.
+2. Omit receipts/upload/OCR and unsupported expense Edit/Delete. Preserve create/read contracts. [Issue #212](../activity-editing/README.md) supersedes the Edit prohibition only for its approved collaborative editing flow.
 3. Use authoritative categories and existing space/category/member/date filters. No Shopping/Gear, saved filters or expense-status filters. Fixed Group/Trip scope has no space selector.
 4. Household aggregates independent source ledgers. No aggregate repayment, cross-group netting or settle-all. Zero net with open source balances is not settled. Repayment requires explicit group, sender, recipient and amount and does not transfer money.
 5. Household metrics are Total shared expenses / Your net balance / Active spaces. Group/Trip metrics are Total expenses / Your balance; members belong in the header/tab. Use complete server totals, never loaded-page sums.
