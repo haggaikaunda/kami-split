@@ -35,14 +35,14 @@ This register distinguishes accepted outcomes from unresolved questions; it is n
 
 ## Other open decisions
 
-| ID  | Decision to make                                                                                                                                                 | Resolve before                   |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| O08 | MinorUnits accepted syntax, int64/aggregate bounds, overflow errors, Relay scalar mapping and frontend arithmetic; stable cross-language participant ID ordering | Money schema and calculations    |
-| O11 | Historical expense corrections involving inactive members; effects on previously settled obligations; settlement edit/reversal authorization and audit           | Edit/delete and settlement flows |
-| O12 | Last-owner departure, group archival/deletion, handling disputed or unresolvable obligations, account deletion while membership obligations remain               | Departure/group closure          |
-| O15 | Hosting, regions, CORS/TLS, rate/query budgets, latency targets, metrics/log retention, alerting and operational recovery                                        | Production launch                |
-| O16 | Plaid eligibility/consent, credential storage, webhook verification, sync cursors/reconciliation, pending-to-posted changes, expense assignment                  | Plaid integration                |
-| O17 | Queue payloads, atomic enqueue/outbox choice, visibility/lease durations, retry/backoff, poison-message handling, deduplication and worker monitoring            | Durable jobs                     |
+| ID  | Decision to make                                                                                                                                                                                                                          | Resolve before                                                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| O08 | MinorUnits accepted syntax, int64/aggregate bounds, overflow errors, Relay scalar mapping and frontend arithmetic; stable cross-language participant ID ordering                                                                          | Money schema and calculations                                                     |
+| O11 | Expense editing subset resolved by #212: collaborative original-source edits, whole-expense former-member lock, immutable before/after audit, and unchanged actual repayments. Deletion and repayment edit/reversal policies remain open. | [Expense editing contract](../expense-editing.md); deferred delete/reversal flows |
+| O12 | Last-owner departure, group archival/deletion, handling disputed or unresolvable obligations, account deletion while membership obligations remain                                                                                        | Departure/group closure                                                           |
+| O15 | Hosting, regions, CORS/TLS, rate/query budgets, latency targets, metrics/log retention, alerting and operational recovery                                                                                                                 | Production launch                                                                 |
+| O16 | Plaid eligibility/consent, credential storage, webhook verification, sync cursors/reconciliation, pending-to-posted changes, expense assignment                                                                                           | Plaid integration                                                                 |
+| O17 | Queue payloads, atomic enqueue/outbox choice, visibility/lease durations, retry/backoff, poison-message handling, deduplication and worker monitoring                                                                                     | Durable jobs                                                                      |
 
 ## Group and reporting decisions
 
@@ -128,3 +128,14 @@ account-lifecycle no-broadening rules are explicitly resolved there. Obsolete pa
 [owner confirmed the original existing account works across all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
 after the membership release; original failed-response causality remains unknown.
 Cleanup release/migration evidence is tracked on #197.
+
+## O11 expense-editing decision subset — #212
+
+The owner-approved [expense-editing contract](../expense-editing.md) resolves
+collaborative editing, former-member restrictions, expected expense versions,
+same-attempt recovery and previously settled expenses. A saved inactive payer or
+explicit participant locks the whole expense, including metadata; no protected
+shares or owner bypass apply. Active zero-balance members remain eligible. Actual
+repayments remain immutable when a correction changes balances. Authorized targeted
+readmission may restore eligibility; editing cannot readmit anyone. Deletion,
+repayment reversal/editing, account closure and group closure remain deferred.

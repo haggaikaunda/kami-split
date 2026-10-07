@@ -2,7 +2,7 @@
 
 Issue #82 implements the reviewed [first-expense contract](proposals/first-expense/contract.md)
 and [shared identity and money rules](proposals/first-expense/shared.md). The
-running SDL is in [packages/schema](../../packages/schema/README.md). The web [authenticated journey](relay-expenses.md) uses Relay; the seeded preview and mock DataPort were retired in #184. Invitations and administrative bootstrap are implemented by their dedicated services. Edits, deletion and uploaded receipt files remain separate work; actor-scoped Group/Trip creation forms are implemented under #106.
+running SDL is in [packages/schema](../../packages/schema/README.md). The web [authenticated journey](relay-expenses.md) uses Relay; the seeded preview and mock DataPort were retired in #184. Invitations and administrative bootstrap are implemented by their dedicated services. [Collaborative edits](expense-editing.md) retain immutable revisions behind a guarded current projection. Deletion and uploaded receipt files remain separate work; actor-scoped Group/Trip creation forms are implemented under #106.
 
 ## Transaction and recovery boundary
 
@@ -31,10 +31,10 @@ inactive without allowing a new write using an ineligible participant. Actor
 access itself is always current. Database uniqueness and group locking protect
 concurrent requests across processes; there is no process-local duplicate cache.
 
-Append-only tables, group-scoped RLS, composite foreign keys and deferred
-reconciliation protect stored history. Allocation insertion is restricted to
-its expense creation transaction so a later zero-share row cannot alter
-historical participation. No runtime UPDATE or DELETE grants are added.
+Immutable revision tables, group-scoped RLS, composite foreign keys and deferred
+reconciliation protect stored history. Creation allocations remain transaction-bound;
+a narrow edit function alone replaces current allocations while retaining every
+prior revision. No unrestricted runtime UPDATE or DELETE grants are added.
 
 ## Exact money and reads
 
@@ -58,8 +58,9 @@ one freshly authorized READ COMMITTED statement after actor/group locks. Expense
 are ordered by effective date, creation timestamp and UUID, all descending.
 Filters are inclusive date range, category and explicit participant (including
 zero-share participation). Pages use `first` 1–100, default 20, and signed forward
-cursors. A cursor pins financial inclusion to its initial revision: subsequent
-creates, including backdated ones, appear only after restarting the list. Labels
+cursors. A cursor pins financial inclusion to its initial revision, reading the expense
+and allocations as of that anchor: subsequent creates and edits, including
+backdated ones, appear only after restarting the list. Labels
 and access are not frozen across pages. Complete balances on a later page can
 have a newer revision than that page's anchor.
 

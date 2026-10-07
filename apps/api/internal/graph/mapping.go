@@ -35,7 +35,11 @@ func members(s expense.Snapshot) map[string]*model.Membership {
 	return result
 }
 func mapExpense(r expense.Record, m map[string]*model.Membership) *model.Expense {
-	e := &model.Expense{ID: r.ExpenseID, GroupID: r.GroupID, TotalMinor: ledger.MinorUnits(r.TotalMinor), Currency: model.Currency(r.Currency), Description: r.Description, EffectiveDate: ledger.Date(r.EffectiveDate), Category: model.Category(r.Category), Note: r.Note, Payer: m[r.PayerMembershipID], Creator: m[r.CreatorMembershipID], Split: model.SplitMode(r.Split), CreatedAt: ledger.DateTime(r.CommittedAt), Allocations: []*model.Allocation{}}
+	e := &model.Expense{Version: ledger.Revision(r.Version), CanEdit: r.CanEdit, ID: r.ExpenseID, GroupID: r.GroupID, TotalMinor: ledger.MinorUnits(r.TotalMinor), Currency: model.Currency(r.Currency), Description: r.Description, EffectiveDate: ledger.Date(r.EffectiveDate), Category: model.Category(r.Category), Note: r.Note, Payer: m[r.PayerMembershipID], Creator: m[r.CreatorMembershipID], Split: model.SplitMode(r.Split), CreatedAt: ledger.DateTime(r.CommittedAt), Allocations: []*model.Allocation{}}
+	if r.EditLockReason != "" {
+		reason := model.ExpenseEditLockReason(r.EditLockReason)
+		e.EditLockReason = &reason
+	}
 	for _, a := range r.Allocations {
 		e.Allocations = append(e.Allocations, &model.Allocation{Participant: m[a.ParticipantID], AmountMinor: ledger.MinorUnits(a.Amount), PercentageHundredths: percentageValue(r, a.ParticipantID)})
 	}

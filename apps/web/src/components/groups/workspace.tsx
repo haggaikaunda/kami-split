@@ -47,6 +47,7 @@ export function GroupWorkspace({
   initialFeed,
   completed = false,
   onCommitted,
+  onEditSaved,
   onRefresh,
   onDenied,
 }: {
@@ -61,6 +62,7 @@ export function GroupWorkspace({
   completed?: boolean;
   onRefresh: () => Promise<void>;
   onCommitted: () => Promise<void>;
+  onEditSaved?: () => void;
   onDenied: () => void;
 }) {
   const params = useSearchParams();
@@ -195,6 +197,7 @@ export function GroupWorkspace({
           }
           onDenied={onDenied}
           onRefreshContext={onRefresh}
+          onEditSaved={onEditSaved}
         />
       ) : current === 'Members' ? (
         <section>

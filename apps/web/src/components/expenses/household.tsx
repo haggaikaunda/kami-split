@@ -40,6 +40,13 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     result: expensesHouseholdInitialQuery['response'];
     filters: string;
   }>();
+  const [saved, setSaved] = useState(false);
+  const savedNotice = saved ? (
+    <p role="status">
+      Expense edit saved. Current expenses and balances are a separate
+      authorized refresh; unavailable data does not undo your edit.
+    </p>
+  ) : null;
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
@@ -110,6 +117,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   if (error)
     return (
       <>
+        {savedNotice}
         <p role="alert">{error}</p>
         <button onClick={refresh}>Refresh Household access</button>
       </>
@@ -119,36 +127,45 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     viewer?.__typename !== 'Viewer' ||
     !context
   )
-    return <Skeleton label="Loading complete Household access" />;
+    return (
+      <>
+        {savedNotice}
+        <Skeleton label="Loading complete Household access" />
+      </>
+    );
   return (
-    <ExpenseLedger
-      key={version}
-      scope={scope}
-      spaces={dashboard.spaces}
-      today={viewer.today}
-      contextVersion={dashboard.contextVersion!}
-      initialView={{
-        filterText: context.filters,
-        reference: context.result.householdExpenses,
-      }}
-      managedRefresh
-      net={
-        dashboard.totals?.__typename === 'HouseholdDashboardTotals'
-          ? dashboard.totals.viewerNetMinor
-          : undefined
-      }
-      activeSpaces={
-        dashboard.totals?.__typename === 'HouseholdDashboardTotals'
-          ? dashboard.totals.activeSpaceCount
-          : undefined
-      }
-      onRefreshContext={refresh}
-      onDenied={() => {
-        invalidate();
-        setError(
-          'Household access changed. Refresh to recheck eligible spaces.',
-        );
-      }}
-    />
+    <>
+      {savedNotice}
+      <ExpenseLedger
+        key={version}
+        scope={scope}
+        spaces={dashboard.spaces}
+        today={viewer.today}
+        contextVersion={dashboard.contextVersion!}
+        initialView={{
+          filterText: context.filters,
+          reference: context.result.householdExpenses,
+        }}
+        managedRefresh
+        net={
+          dashboard.totals?.__typename === 'HouseholdDashboardTotals'
+            ? dashboard.totals.viewerNetMinor
+            : undefined
+        }
+        activeSpaces={
+          dashboard.totals?.__typename === 'HouseholdDashboardTotals'
+            ? dashboard.totals.activeSpaceCount
+            : undefined
+        }
+        onRefreshContext={refresh}
+        onEditSaved={() => setSaved(true)}
+        onDenied={() => {
+          invalidate();
+          setError(
+            'Household access changed. Refresh to recheck eligible spaces.',
+          );
+        }}
+      />
+    </>
   );
 }

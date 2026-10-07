@@ -2,7 +2,7 @@
 import { spaceHref } from '@/lib/relay/space-routes';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import { WorkspaceHeader, WorkspaceTabs } from '@/components/primitives';
@@ -22,13 +22,18 @@ import detailDocument, {
   type activityDetailQuery,
 } from '@/lib/relay/__generated__/activityDetailQuery.graphql';
 import './feed.css';
+import { Member } from '@/components/primitives';
+import { HistoricalDetail, eventDay, eventSummary } from './event-detail';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 type Connection = Extract<
   activityFeed$data,
   { readonly __typename: 'ActivityConnection' }
 >;
 type Event = Connection['edges'][number]['node'];
-type Detail = activityDetailQuery['response']['node'];
+type Detail = Extract<
+  activityDetailQuery['response']['activityEvent'],
+  { readonly __typename: 'ActivityEvent' }
+>;
 
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
@@ -125,7 +130,9 @@ export function ActivityFeed({
     let live = true;
     const ticket = generation.current;
     const filter = {
-      kind: kind ? (kind as 'EXPENSE_CREATED' | 'REPAYMENT_RECORDED') : null,
+      kind: kind
+        ? (kind as 'EXPENSE_CREATED' | 'EXPENSE_UPDATED' | 'REPAYMENT_RECORDED')
+        : null,
       sourceGroupId: source || null,
     };
     const accept = (reference: activityFeed$key) => {
@@ -192,52 +199,24 @@ export function ActivityFeed({
     let live = true;
     const ticket = generation.current;
     detailRef.current?.focus();
-    // Reauthorize the feed and record together: Household eligibility can be
-    // lost while ordinary group membership still permits the source record.
-    const filter = { kind: null, sourceGroupId: selected.groupId };
-    const check = groupId
-      ? fetchQuery<activityGroupQuery>(
-          scope.environment,
-          groupDocument,
-          { groupId, filter },
-          { fetchPolicy: 'network-only' },
-        ).toPromise()
-      : fetchQuery<activityHouseholdQuery>(
-          scope.environment,
-          householdDocument,
-          { filter },
-          { fetchPolicy: 'network-only' },
-        ).toPromise();
-    void check
+    void fetchQuery<activityDetailQuery>(
+      scope.environment,
+      detailDocument,
+      { eventId: selected.id, groupId: groupId || null },
+      { fetchPolicy: 'network-only' },
+    )
+      .toPromise()
       .then((result) => {
         if (!live || !scope.isLive() || ticket !== generation.current) return;
-        const reference =
-          result &&
-          ('groupActivity' in result
-            ? result.groupActivity
-            : result.householdActivity);
+        const event = result?.activityEvent;
         if (
-          !reference ||
-          readInlineData<activityFeed$key>(feedDocument, reference)
-            .__typename !== 'ActivityConnection'
+          event?.__typename !== 'ActivityEvent' ||
+          event.id !== selected.id ||
+          event.groupId !== selected.groupId ||
+          event.recordId !== selected.recordId
         )
           throw new Error('access');
-        return fetchQuery<activityDetailQuery>(
-          scope.environment,
-          detailDocument,
-          { id: selected.recordId },
-          { fetchPolicy: 'network-only' },
-        ).toPromise();
-      })
-      .then((result) => {
-        if (!live || !scope.isLive() || ticket !== generation.current) return;
-        if (
-          !result?.node ||
-          !('groupId' in result.node) ||
-          result.node.groupId !== selected.groupId
-        )
-          throw new Error('access');
-        setDetail(result.node);
+        setDetail(event);
         setDetailLoading(false);
       })
       .catch(() => {
@@ -256,7 +235,9 @@ export function ActivityFeed({
   }, [scope, groupId, selected]);
 
   return (
-    <>
+    <div
+      className={`activity-view ${selected ? 'activity-view-selected' : ''}`}
+    >
       <div className="activity-controls">
         <label>
           Event type
@@ -269,6 +250,7 @@ export function ActivityFeed({
           >
             <option value="">All events</option>
             <option value="EXPENSE_CREATED">Expenses created</option>
+            <option value="EXPENSE_UPDATED">Expenses updated</option>
             <option value="REPAYMENT_RECORDED">Repayments recorded</option>
           </select>
         </label>
@@ -290,50 +272,69 @@ export function ActivityFeed({
         page && (
           <>
             <ol className="activity-events">
-              {page.edges.map(({ node }) => (
-                <li key={node.id}>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      triggerRef.current = event.currentTarget;
-                      setDetailError('');
-                      setSelected({ ...node });
-                      setDetail(undefined);
-                      setDetailLoading(true);
-                    }}
-                  >
-                    <span>
-                      <strong>
-                        {node.kind === 'EXPENSE_CREATED'
-                          ? 'Expense created'
-                          : 'Repayment recorded'}
+              {page.edges.map(({ node }, index) => (
+                <Fragment key={node.id}>
+                  {(index === 0 ||
+                    eventDay(page.edges[index - 1].node.timestamp) !==
+                      eventDay(node.timestamp)) && (
+                    <li className="activity-day">
+                      <h2>{eventDay(node.timestamp)}</h2>
+                    </li>
+                  )}
+                  <li>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        triggerRef.current = event.currentTarget;
+                        setDetailError('');
+                        setSelected({ ...node });
+                        setDetail(undefined);
+                        setDetailLoading(true);
+                      }}
+                    >
+                      <span
+                        className={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
+                        aria-hidden="true"
+                      >
+                        {node.kind === 'EXPENSE_UPDATED'
+                          ? '✎'
+                          : node.kind === 'EXPENSE_CREATED'
+                            ? '+'
+                            : '⇄'}
+                      </span>
+                      <span className="activity-row-content">
+                        <span className="activity-row-actor">
+                          <Member name={node.creator.displayName} />
+                          <strong>
+                            {node.kind === 'EXPENSE_UPDATED'
+                              ? 'updated an expense'
+                              : node.kind === 'EXPENSE_CREATED'
+                                ? 'added an expense'
+                                : 'recorded a repayment'}
+                          </strong>
+                        </span>
+                        <span>
+                          {node.description ||
+                            `Paid ${node.recipient?.displayName ?? 'recipient'}`}
+                        </span>
+                        <span>{eventSummary(node)}</span>
+                        <span>
+                          {node.groupName} · Effective {node.effectiveDate}
+                        </span>
+                        <span>
+                          Recorded{' '}
+                          <time dateTime={node.timestamp}>
+                            {new Date(node.timestamp).toLocaleString()}
+                          </time>
+                        </span>
+                      </span>
+                      <strong className="activity-row-amount">
+                        {money(node.amountMinor)} {node.currency}
                       </strong>
-                      <span>
-                        {node.creator.displayName} ·{' '}
-                        {node.payer
-                          ? `${node.payer.displayName} paid`
-                          : `${node.sender?.displayName} sent to ${node.recipient?.displayName}`}
-                      </span>
-                      <span>
-                        {!node.isHousehold || groupId
-                          ? node.groupName
-                          : 'Household'}{' '}
-                        · Effective {node.effectiveDate}
-                      </span>
-                      <span>
-                        Recorded{' '}
-                        <time dateTime={node.timestamp}>
-                          {node.timestamp
-                            .replace('T', ' ')
-                            .replace('Z', ' UTC')}
-                        </time>
-                      </span>
-                    </span>
-                    <strong>
-                      {money(node.amountMinor)} {node.currency}
-                    </strong>
-                  </button>
-                </li>
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  </li>
+                </Fragment>
               ))}
             </ol>
             {page.pageInfo.hasNextPage && (
@@ -362,11 +363,11 @@ export function ActivityFeed({
       {selected && (
         <section
           className="activity-detail"
-          aria-label="Current record detail"
+          aria-label="Historical event detail"
           tabIndex={-1}
           ref={detailRef}
         >
-          <h2>Current record · {selected.groupName}</h2>
+          <h2>Activity · {selected.groupName}</h2>
           <button
             type="button"
             onClick={() => {
@@ -378,41 +379,25 @@ export function ActivityFeed({
             Close detail
           </button>
           {detailLoading ? (
-            <p role="status">Checking current record access…</p>
+            <p role="status">Checking historical event access…</p>
           ) : detailError ? (
             <p role="alert">{detailError}</p>
           ) : (
-            detail &&
-            'groupId' in detail && (
+            detail && (
               <>
-                <h3>
-                  {detail.__typename === 'Expense'
-                    ? detail.description
-                    : 'Repayment'}
-                </h3>
-                <p>
-                  {money(
-                    detail.__typename === 'Expense'
-                      ? detail.totalMinor
-                      : detail.amountMinor,
-                  )}{' '}
-                  {detail.currency}
-                </p>
-                <p>Effective {detail.effectiveDate}</p>
+                <HistoricalDetail event={detail} />
                 <Link
-                  href={spaceHref({
-                    id: detail.groupId,
-                    isHousehold: selected.isHousehold,
-                    kind: selected.groupKind,
-                  })}
+                  href={`${spaceHref({ id: detail.groupId, isHousehold: detail.isHousehold, kind: detail.groupKind })}${detail.kind === 'REPAYMENT_RECORDED' ? '?tab=balances' : `?tab=expenses&expense=${encodeURIComponent(detail.recordId)}&expenseGroup=${encodeURIComponent(detail.groupId)}`}`}
                 >
-                  Open {selected.groupName}
+                  {detail.kind === 'REPAYMENT_RECORDED'
+                    ? 'View source balances'
+                    : 'View current expense'}
                 </Link>
               </>
             )
           )}
         </section>
       )}
-    </>
+    </div>
   );
 }

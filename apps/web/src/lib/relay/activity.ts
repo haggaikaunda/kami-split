@@ -35,6 +35,48 @@ export const activityFeed = graphql`
         node {
           id
           recordId
+          description
+          note
+          before {
+            description
+            totalMinor
+            effectiveDate
+            category
+            note
+            payer {
+              id
+              displayName
+            }
+            split
+            allocations {
+              participant {
+                id
+                displayName
+              }
+              amountMinor
+              percentageHundredths
+            }
+          }
+          after {
+            description
+            totalMinor
+            effectiveDate
+            category
+            note
+            payer {
+              id
+              displayName
+            }
+            split
+            allocations {
+              participant {
+                id
+                displayName
+              }
+              amountMinor
+              percentageHundredths
+            }
+          }
           kind
           groupId
           groupName
@@ -70,33 +112,82 @@ export const activityFeed = graphql`
   }
 `;
 export const activityDetailQuery = graphql`
-  query activityDetailQuery($id: ID!) {
-    node(id: $id) {
+  query activityDetailQuery($eventId: ID!, $groupId: ID) {
+    activityEvent(eventId: $eventId, groupId: $groupId) {
       __typename
-      ... on Expense {
-        id
-        groupId
-        description
-        totalMinor
-        currency
-        effectiveDate
-        createdAt
-        payer {
-          displayName
-        }
+      ... on Problem {
+        code
+        message
       }
-      ... on Repayment {
+      ... on ActivityEvent {
         id
+        recordId
+        kind
         groupId
+        groupName
+        isHousehold
+        groupKind
         amountMinor
         currency
         effectiveDate
-        createdAt
+        timestamp
+        description
+        note
+        creator {
+          id
+          displayName
+        }
+        payer {
+          id
+          displayName
+        }
         sender {
+          id
           displayName
         }
         recipient {
+          id
           displayName
+        }
+        before {
+          description
+          totalMinor
+          effectiveDate
+          category
+          note
+          payer {
+            id
+            displayName
+          }
+          split
+          allocations {
+            participant {
+              id
+              displayName
+            }
+            amountMinor
+            percentageHundredths
+          }
+        }
+        after {
+          description
+          totalMinor
+          effectiveDate
+          category
+          note
+          payer {
+            id
+            displayName
+          }
+          split
+          allocations {
+            participant {
+              id
+              displayName
+            }
+            amountMinor
+            percentageHundredths
+          }
         }
       }
     }

@@ -38,6 +38,12 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	ActivityAllocation struct {
+		AmountMinor          func(childComplexity int) int
+		Participant          func(childComplexity int) int
+		PercentageHundredths func(childComplexity int) int
+	}
+
 	ActivityConnection struct {
 		Edges    func(childComplexity int) int
 		PageInfo func(childComplexity int) int
@@ -49,9 +55,12 @@ type ComplexityRoot struct {
 	}
 
 	ActivityEvent struct {
+		After         func(childComplexity int) int
 		AmountMinor   func(childComplexity int) int
+		Before        func(childComplexity int) int
 		Creator       func(childComplexity int) int
 		Currency      func(childComplexity int) int
+		Description   func(childComplexity int) int
 		EffectiveDate func(childComplexity int) int
 		GroupID       func(childComplexity int) int
 		GroupKind     func(childComplexity int) int
@@ -59,11 +68,23 @@ type ComplexityRoot struct {
 		ID            func(childComplexity int) int
 		IsHousehold   func(childComplexity int) int
 		Kind          func(childComplexity int) int
+		Note          func(childComplexity int) int
 		Payer         func(childComplexity int) int
 		Recipient     func(childComplexity int) int
 		RecordID      func(childComplexity int) int
 		Sender        func(childComplexity int) int
 		Timestamp     func(childComplexity int) int
+	}
+
+	ActivityExpenseSnapshot struct {
+		Allocations   func(childComplexity int) int
+		Category      func(childComplexity int) int
+		Description   func(childComplexity int) int
+		EffectiveDate func(childComplexity int) int
+		Note          func(childComplexity int) int
+		Payer         func(childComplexity int) int
+		Split         func(childComplexity int) int
+		TotalMinor    func(childComplexity int) int
 	}
 
 	ActivityIdentity struct {
@@ -78,19 +99,22 @@ type ComplexityRoot struct {
 	}
 
 	Expense struct {
-		Allocations   func(childComplexity int) int
-		Category      func(childComplexity int) int
-		CreatedAt     func(childComplexity int) int
-		Creator       func(childComplexity int) int
-		Currency      func(childComplexity int) int
-		Description   func(childComplexity int) int
-		EffectiveDate func(childComplexity int) int
-		GroupID       func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Note          func(childComplexity int) int
-		Payer         func(childComplexity int) int
-		Split         func(childComplexity int) int
-		TotalMinor    func(childComplexity int) int
+		Allocations    func(childComplexity int) int
+		CanEdit        func(childComplexity int) int
+		Category       func(childComplexity int) int
+		CreatedAt      func(childComplexity int) int
+		Creator        func(childComplexity int) int
+		Currency       func(childComplexity int) int
+		Description    func(childComplexity int) int
+		EditLockReason func(childComplexity int) int
+		EffectiveDate  func(childComplexity int) int
+		GroupID        func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Note           func(childComplexity int) int
+		Payer          func(childComplexity int) int
+		Split          func(childComplexity int) int
+		TotalMinor     func(childComplexity int) int
+		Version        func(childComplexity int) int
 	}
 
 	ExpenseCommitted struct {
@@ -107,6 +131,23 @@ type ComplexityRoot struct {
 	ExpenseEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	ExpenseEditCommitted struct {
+		Changed func(childComplexity int) int
+		Key     func(childComplexity int) int
+		Record  func(childComplexity int) int
+		Version func(childComplexity int) int
+	}
+
+	ExpenseEditConflict struct {
+		CurrentVersion func(childComplexity int) int
+		Key            func(childComplexity int) int
+	}
+
+	ExpenseEditLocked struct {
+		Key    func(childComplexity int) int
+		Reason func(childComplexity int) int
 	}
 
 	ExpenseMonth struct {
@@ -299,6 +340,7 @@ type ComplexityRoot struct {
 		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		RetryInvitationDelivery  func(childComplexity int, actionID string) int
 		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		UpdateExpense            func(childComplexity int, input model.UpdateExpenseInput) int
 		UpdateMyProfile          func(childComplexity int, displayName string, expectedDisplayName string) int
 	}
 
@@ -361,6 +403,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		ActivityEvent          func(childComplexity int, eventID string, groupID *string) int
 		CurrentProfile         func(childComplexity int) int
 		ExpenseOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
 		Group                  func(childComplexity int, id string) int
@@ -376,6 +419,7 @@ type ComplexityRoot struct {
 		OwnerInvitations       func(childComplexity int, groupID string, first int, after *string) int
 		PreviewInvitation      func(childComplexity int, token string) int
 		RepaymentOperation     func(childComplexity int, groupID string, key ledger.OperationKey) int
+		UpdateExpenseOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
 		Viewer                 func(childComplexity int) int
 	}
 
@@ -451,6 +495,7 @@ type GroupResolver interface {
 }
 type MutationResolver interface {
 	CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error)
+	UpdateExpense(ctx context.Context, input model.UpdateExpenseInput) (model.ExpenseEditResult, error)
 	CreateGroup(ctx context.Context, input model.CreateGroupInput) (model.CreateGroupResult, error)
 	CreateTargetedInvitation(ctx context.Context, groupID string, email string, key ledger.OperationKey) (model.InvitationResult, error)
 	ResendInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
@@ -471,6 +516,8 @@ type QueryResolver interface {
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
 	HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
 	GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
+	UpdateExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.ExpenseEditResult, error)
+	ActivityEvent(ctx context.Context, eventID string, groupID *string) (model.ActivityEventResult, error)
 	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
 	HouseholdDashboard(ctx context.Context) (model.HouseholdDashboardResult, error)
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
@@ -499,6 +546,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
+	case "ActivityAllocation.amountMinor":
+		if e.ComplexityRoot.ActivityAllocation.AmountMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityAllocation.AmountMinor(childComplexity), true
+	case "ActivityAllocation.participant":
+		if e.ComplexityRoot.ActivityAllocation.Participant == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityAllocation.Participant(childComplexity), true
+	case "ActivityAllocation.percentageHundredths":
+		if e.ComplexityRoot.ActivityAllocation.PercentageHundredths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityAllocation.PercentageHundredths(childComplexity), true
+
 	case "ActivityConnection.edges":
 		if e.ComplexityRoot.ActivityConnection.Edges == nil {
 			break
@@ -525,12 +591,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ActivityEdge.Node(childComplexity), true
 
+	case "ActivityEvent.after":
+		if e.ComplexityRoot.ActivityEvent.After == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.After(childComplexity), true
 	case "ActivityEvent.amountMinor":
 		if e.ComplexityRoot.ActivityEvent.AmountMinor == nil {
 			break
 		}
 
 		return e.ComplexityRoot.ActivityEvent.AmountMinor(childComplexity), true
+	case "ActivityEvent.before":
+		if e.ComplexityRoot.ActivityEvent.Before == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.Before(childComplexity), true
 	case "ActivityEvent.creator":
 		if e.ComplexityRoot.ActivityEvent.Creator == nil {
 			break
@@ -543,6 +621,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ActivityEvent.Currency(childComplexity), true
+	case "ActivityEvent.description":
+		if e.ComplexityRoot.ActivityEvent.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.Description(childComplexity), true
 	case "ActivityEvent.effectiveDate":
 		if e.ComplexityRoot.ActivityEvent.EffectiveDate == nil {
 			break
@@ -585,6 +669,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ActivityEvent.Kind(childComplexity), true
+	case "ActivityEvent.note":
+		if e.ComplexityRoot.ActivityEvent.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.Note(childComplexity), true
 	case "ActivityEvent.payer":
 		if e.ComplexityRoot.ActivityEvent.Payer == nil {
 			break
@@ -615,6 +705,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ActivityEvent.Timestamp(childComplexity), true
+
+	case "ActivityExpenseSnapshot.allocations":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Allocations == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Allocations(childComplexity), true
+	case "ActivityExpenseSnapshot.category":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Category == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Category(childComplexity), true
+	case "ActivityExpenseSnapshot.description":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Description(childComplexity), true
+	case "ActivityExpenseSnapshot.effectiveDate":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.EffectiveDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.EffectiveDate(childComplexity), true
+	case "ActivityExpenseSnapshot.note":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Note(childComplexity), true
+	case "ActivityExpenseSnapshot.payer":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Payer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Payer(childComplexity), true
+	case "ActivityExpenseSnapshot.split":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.Split == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.Split(childComplexity), true
+	case "ActivityExpenseSnapshot.totalMinor":
+		if e.ComplexityRoot.ActivityExpenseSnapshot.TotalMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityExpenseSnapshot.TotalMinor(childComplexity), true
 
 	case "ActivityIdentity.displayName":
 		if e.ComplexityRoot.ActivityIdentity.DisplayName == nil {
@@ -654,6 +793,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Expense.Allocations(childComplexity), true
+	case "Expense.canEdit":
+		if e.ComplexityRoot.Expense.CanEdit == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Expense.CanEdit(childComplexity), true
 	case "Expense.category":
 		if e.ComplexityRoot.Expense.Category == nil {
 			break
@@ -684,6 +829,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Expense.Description(childComplexity), true
+	case "Expense.editLockReason":
+		if e.ComplexityRoot.Expense.EditLockReason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Expense.EditLockReason(childComplexity), true
 	case "Expense.effectiveDate":
 		if e.ComplexityRoot.Expense.EffectiveDate == nil {
 			break
@@ -726,6 +877,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Expense.TotalMinor(childComplexity), true
+	case "Expense.version":
+		if e.ComplexityRoot.Expense.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Expense.Version(childComplexity), true
 
 	case "ExpenseCommitted.key":
 		if e.ComplexityRoot.ExpenseCommitted.Key == nil {
@@ -771,6 +928,57 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseEdge.Node(childComplexity), true
+
+	case "ExpenseEditCommitted.changed":
+		if e.ComplexityRoot.ExpenseEditCommitted.Changed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditCommitted.Changed(childComplexity), true
+	case "ExpenseEditCommitted.key":
+		if e.ComplexityRoot.ExpenseEditCommitted.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditCommitted.Key(childComplexity), true
+	case "ExpenseEditCommitted.record":
+		if e.ComplexityRoot.ExpenseEditCommitted.Record == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditCommitted.Record(childComplexity), true
+	case "ExpenseEditCommitted.version":
+		if e.ComplexityRoot.ExpenseEditCommitted.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditCommitted.Version(childComplexity), true
+
+	case "ExpenseEditConflict.currentVersion":
+		if e.ComplexityRoot.ExpenseEditConflict.CurrentVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditConflict.CurrentVersion(childComplexity), true
+	case "ExpenseEditConflict.key":
+		if e.ComplexityRoot.ExpenseEditConflict.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditConflict.Key(childComplexity), true
+
+	case "ExpenseEditLocked.key":
+		if e.ComplexityRoot.ExpenseEditLocked.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditLocked.Key(childComplexity), true
+	case "ExpenseEditLocked.reason":
+		if e.ComplexityRoot.ExpenseEditLocked.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEditLocked.Reason(childComplexity), true
 
 	case "ExpenseMonth.expenseCount":
 		if e.ComplexityRoot.ExpenseMonth.ExpenseCount == nil {
@@ -1575,6 +1783,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
+	case "Mutation.updateExpense":
+		if e.ComplexityRoot.Mutation.UpdateExpense == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateExpense_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateExpense(childComplexity, args["input"].(model.UpdateExpenseInput)), true
 	case "Mutation.updateMyProfile":
 		if e.ComplexityRoot.Mutation.UpdateMyProfile == nil {
 			break
@@ -1765,6 +1984,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ProfileProblem.Message(childComplexity), true
 
+	case "Query.activityEvent":
+		if e.ComplexityRoot.Query.ActivityEvent == nil {
+			break
+		}
+
+		args, err := ec.field_Query_activityEvent_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.ActivityEvent(childComplexity, args["eventId"].(string), args["groupId"].(*string)), true
 	case "Query.currentProfile":
 		if e.ComplexityRoot.Query.CurrentProfile == nil {
 			break
@@ -1916,6 +2146,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RepaymentOperation(childComplexity, args["groupId"].(string), args["key"].(ledger.OperationKey)), true
+	case "Query.updateExpenseOperation":
+		if e.ComplexityRoot.Query.UpdateExpenseOperation == nil {
+			break
+		}
+
+		args, err := ec.field_Query_updateExpenseOperation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.UpdateExpenseOperation(childComplexity, args["groupId"].(string), args["key"].(ledger.OperationKey)), true
 	case "Query.viewer":
 		if e.ComplexityRoot.Query.Viewer == nil {
 			break
@@ -2164,6 +2405,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPercentageInput,
 		ec.unmarshalInputRecordRepaymentInput,
 		ec.unmarshalInputStructuredExpenseFilter,
+		ec.unmarshalInputUpdateExpenseInput,
 	)
 	first := true
 
@@ -2239,6 +2481,192 @@ func newExecutionContext(
 }
 
 var sources = []*ast.Source{
+	{Name: "../../../../packages/schema/expense-editing.graphql", Input: `"""
+Current saved financial involvement preventing all edits; never exposes private account reasons.
+"""
+enum ExpenseEditLockReason {
+  """
+  A saved payer or explicit participant has left the original group.
+  """
+  FORMER_MEMBER
+  """
+  A saved involved member is not currently eligible; private reasons are withheld.
+  """
+  INELIGIBLE_MEMBER
+}
+
+extend type Expense {
+  """
+  Per-expense version starting at one; unrelated group activity does not change it.
+  """
+  version: Revision!
+  """
+  Current edit capability hint; every commit independently rechecks source access and saved involvement.
+  """
+  canEdit: Boolean!
+  """
+  Safe reason that every field is read-only, or null when currently eligible.
+  """
+  editLockReason: ExpenseEditLockReason
+}
+
+"""
+Complete replacement intent for the original expense; creator, identity, source, currency and creation time stay immutable.
+"""
+input UpdateExpenseInput {
+  """
+  Original Expense identity in groupId; no moving or copying across spaces.
+  """
+  expenseId: ID!
+  """
+  Explicit version reviewed by the editor; stale saves never merge automatically.
+  """
+  expectedVersion: Revision!
+
+  """
+  Explicit target group identity; never inferred from another ledger or client session.
+  """
+  groupId: ID!
+  """
+  Original client-created attempt key, scoped to the authenticated actor, group and EDIT_EXPENSE operation.
+  """
+  key: OperationKey!
+  """
+  Exact expense cents in the inclusive range 1 through 999999999.
+  """
+  totalMinor: MinorUnits!
+  """
+  USD only; no conversion or cross-currency netting.
+  """
+  currency: Currency!
+  """
+  Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+  """
+  description: String!
+  """
+  Expense calendar date; valid future dates are permitted.
+  """
+  effectiveDate: Date!
+  """
+  Descriptive category without financial or access implications.
+  """
+  category: Category!
+  """
+  Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+  """
+  note: String! = ""
+  """
+  Active eligible same-group Membership ID; independent of creator and selected participants.
+  """
+  payerId: ID!
+  """
+  Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
+  """
+  participantIds: [ID!]!
+  """
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+  """
+  split: SplitMode!
+  """
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
+  """
+  exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+
+extend type Mutation {
+  """
+  Atomically edit an eligible expense and record immutable history, or recover this same-key attempt first.
+  """
+  updateExpense(
+    """
+    Frozen complete edit input; retain with the same key after an uncertain response.
+    """
+    input: UpdateExpenseInput!
+  ): ExpenseEditResult!
+}
+
+extend type Query {
+  """
+  Recover the original edit result under current actor/source authorization; absence never proves rollback.
+  """
+  updateExpenseOperation(
+    """
+    Original source Group identity; Household aggregate access alone is insufficient.
+    """
+    groupId: ID!
+    """
+    Original EDIT_EXPENSE attempt key; never replace it during recovery.
+    """
+    key: OperationKey!
+  ): ExpenseEditResult!
+}
+
+"""
+Durable edit outcomes, transient uncertainty, or safe access/infrastructure failure.
+"""
+union ExpenseEditResult =
+  | ExpenseEditCommitted
+  | ExpenseEditConflict
+  | ExpenseEditLocked
+  | ValidationProblem
+  | OperationMismatch
+  | OperationProgress
+  | Problem
+
+"""
+Immutable original success; refresh currently authorized records and projections separately.
+"""
+type ExpenseEditCommitted {
+  """
+  Original operation key scoped to actor, source group and EDIT_EXPENSE.
+  """
+  key: OperationKey!
+  """
+  Immutable saved result; creator remains the expense's original creator.
+  """
+  record: ExpenseOperationRecord!
+  """
+  Per-expense version produced or observed by this successful attempt.
+  """
+  version: Revision!
+  """
+  False for a canonical no-op, which produces neither a financial revision nor an Activity event.
+  """
+  changed: Boolean!
+}
+
+"""
+Definitive stale-version rejection; preserve the draft and explicitly review the latest saved state.
+"""
+type ExpenseEditConflict {
+  """
+  Original rejected attempt key; reviewed replacement intent requires a new key.
+  """
+  key: OperationKey!
+  """
+  Version observed during this attempt; obtain fresh authorized detail before reapplying changes.
+  """
+  currentVersion: Revision!
+}
+
+"""
+Definitive whole-expense lock checked against saved involvement before any proposed replacement.
+"""
+type ExpenseEditLocked {
+  """
+  Original rejected attempt key; no financial effect occurred.
+  """
+  key: OperationKey!
+  """
+  Safe restriction without private account diagnostics; owners have no bypass.
+  """
+  reason: ExpenseEditLockReason!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/expenses.graphql", Input: `"""
 Exact signed int64 cents, encoded only as canonical decimal strings; each field imposes its own monetary bounds.
 """
@@ -3194,6 +3622,10 @@ enum ActivityKind {
   """
   EXPENSE_CREATED
   """
+  One committed material expense correction, with immutable before/after values.
+  """
+  EXPENSE_UPDATED
+  """
   One committed actual group repayment.
   """
   REPAYMENT_RECORDED
@@ -3204,7 +3636,7 @@ Optional exact filters bound into every continuation cursor.
 """
 input ActivityFilter {
   """
-  Restrict the event kind; omitted means both supported kinds.
+  Restrict the event kind; omitted means all supported kinds.
   """
   kind: ActivityKind
   """
@@ -3327,6 +3759,102 @@ type ActivityConnection {
 Safe failure or a complete authorized activity page.
 """
 union ActivityResult = ActivityConnection | Problem
+
+extend type ActivityEvent {
+  """
+  Description recorded by this event; later edits do not rewrite it. Empty for repayment events.
+  """
+  description: String!
+  """
+  Original optional expense or repayment note, preserving whitespace.
+  """
+  note: String!
+  """
+  Immutable previous expense state for an update; null for creation and repayment.
+  """
+  before: ActivityExpenseSnapshot
+  """
+  Immutable expense state committed by creation or update; null for repayment.
+  """
+  after: ActivityExpenseSnapshot
+}
+
+"""
+Immutable descriptive and financial values with current authorized minimal member labels.
+"""
+type ActivityExpenseSnapshot {
+  """
+  Recorded description, independent of later edits.
+  """
+  description: String!
+  """
+  Exact expense face value in cents.
+  """
+  totalMinor: MinorUnits!
+  """
+  Recorded expense date, distinct from the event timestamp.
+  """
+  effectiveDate: Date!
+  """
+  Recorded supported category.
+  """
+  category: Category!
+  """
+  Original optional note, preserving whitespace.
+  """
+  note: String!
+  """
+  Recorded payer identity with a currently authorized label.
+  """
+  payer: ActivityIdentity!
+  """
+  Recorded split intent; equal resolved cents do not erase its mode.
+  """
+  split: SplitMode!
+  """
+  Every recorded participant, including explicit zero allocations.
+  """
+  allocations: [ActivityAllocation!]!
+}
+
+"""
+One historical explicit participant share and saved percentage intent.
+"""
+type ActivityAllocation {
+  """
+  Retained participant with current authorized minimal label.
+  """
+  participant: ActivityIdentity!
+  """
+  Exact recorded share in cents; zero remains explicit participation.
+  """
+  amountMinor: MinorUnits!
+  """
+  Intended hundredths of a percent for PERCENTAGE; null otherwise.
+  """
+  percentageHundredths: Int
+}
+
+"""
+One freshly authorized historical event or a safe masked failure.
+"""
+union ActivityEventResult = ActivityEvent | Problem
+
+extend type Query {
+  """
+  Read immutable event facts after rechecking the entire requested source context.
+  """
+  activityEvent(
+    """
+    Stable event ID obtained from an authorized Activity feed.
+    """
+    eventId: ID!
+    """
+    Original group scope; omission requests currently authorized Household aggregate scope.
+    """
+    groupId: ID
+  ): ActivityEventResult!
+}
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/groups.graphql", Input: `"""
 Classification derived from the optional trip extension; access and ledgers remain group-local.
@@ -4408,6 +4936,18 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // Each function is generated once per unique object type, deduplicating the
 // switch statements that were previously inlined in every fieldContext_* function.
 
+func (ec *executionContext) childFields_ActivityAllocation(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "participant":
+		return ec.fieldContext_ActivityAllocation_participant(ctx, field)
+	case "amountMinor":
+		return ec.fieldContext_ActivityAllocation_amountMinor(ctx, field)
+	case "percentageHundredths":
+		return ec.fieldContext_ActivityAllocation_percentageHundredths(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ActivityAllocation", field.Name)
+}
+
 func (ec *executionContext) childFields_ActivityEdge(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "cursor":
@@ -4450,8 +4990,38 @@ func (ec *executionContext) childFields_ActivityEvent(ctx context.Context, field
 		return ec.fieldContext_ActivityEvent_sender(ctx, field)
 	case "recipient":
 		return ec.fieldContext_ActivityEvent_recipient(ctx, field)
+	case "description":
+		return ec.fieldContext_ActivityEvent_description(ctx, field)
+	case "note":
+		return ec.fieldContext_ActivityEvent_note(ctx, field)
+	case "before":
+		return ec.fieldContext_ActivityEvent_before(ctx, field)
+	case "after":
+		return ec.fieldContext_ActivityEvent_after(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ActivityEvent", field.Name)
+}
+
+func (ec *executionContext) childFields_ActivityExpenseSnapshot(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "description":
+		return ec.fieldContext_ActivityExpenseSnapshot_description(ctx, field)
+	case "totalMinor":
+		return ec.fieldContext_ActivityExpenseSnapshot_totalMinor(ctx, field)
+	case "effectiveDate":
+		return ec.fieldContext_ActivityExpenseSnapshot_effectiveDate(ctx, field)
+	case "category":
+		return ec.fieldContext_ActivityExpenseSnapshot_category(ctx, field)
+	case "note":
+		return ec.fieldContext_ActivityExpenseSnapshot_note(ctx, field)
+	case "payer":
+		return ec.fieldContext_ActivityExpenseSnapshot_payer(ctx, field)
+	case "split":
+		return ec.fieldContext_ActivityExpenseSnapshot_split(ctx, field)
+	case "allocations":
+		return ec.fieldContext_ActivityExpenseSnapshot_allocations(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ActivityExpenseSnapshot", field.Name)
 }
 
 func (ec *executionContext) childFields_ActivityIdentity(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -4504,6 +5074,12 @@ func (ec *executionContext) childFields_Expense(ctx context.Context, field graph
 		return ec.fieldContext_Expense_allocations(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Expense_createdAt(ctx, field)
+	case "version":
+		return ec.fieldContext_Expense_version(ctx, field)
+	case "canEdit":
+		return ec.fieldContext_Expense_canEdit(ctx, field)
+	case "editLockReason":
+		return ec.fieldContext_Expense_editLockReason(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Expense", field.Name)
 }
@@ -5224,6 +5800,20 @@ func (ec *executionContext) field_Mutation_revokeInvitation_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateExpense_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateExpenseInput, error) {
+			return ec.unmarshalNUpdateExpenseInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐUpdateExpenseInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateMyProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5257,6 +5847,28 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_activityEvent_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "eventId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["eventId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupId"] = arg1
 	return args, nil
 }
 
@@ -5548,6 +6160,28 @@ func (ec *executionContext) field_Query_repaymentOperation_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_updateExpenseOperation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field___Directive_args_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5607,6 +6241,84 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ***************************** args.gotpl *****************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _ActivityAllocation_participant(ctx context.Context, field graphql.CollectedField, obj *model.ActivityAllocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityAllocation_participant(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Participant, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ActivityIdentity) graphql.Marshaler {
+			return ec.marshalNActivityIdentity2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityIdentity(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityAllocation_participant(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActivityAllocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ActivityIdentity(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ActivityAllocation_amountMinor(ctx context.Context, field graphql.CollectedField, obj *model.ActivityAllocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityAllocation_amountMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AmountMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityAllocation_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityAllocation", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityAllocation_percentageHundredths(ctx context.Context, field graphql.CollectedField, obj *model.ActivityAllocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityAllocation_percentageHundredths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PercentageHundredths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityAllocation_percentageHundredths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityAllocation", field, false, false, errors.New("field of type Int does not have child fields"))
+}
 
 func (ec *executionContext) _ActivityConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.ActivityConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -6108,6 +6820,318 @@ func (ec *executionContext) fieldContext_ActivityEvent_recipient(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ActivityEvent_description(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityEvent_note(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityEvent_before(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_before(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Before, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ActivityExpenseSnapshot) graphql.Marshaler {
+			return ec.marshalOActivityExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityExpenseSnapshot(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_before(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActivityEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ActivityExpenseSnapshot(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ActivityEvent_after(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_after(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.After, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ActivityExpenseSnapshot) graphql.Marshaler {
+			return ec.marshalOActivityExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityExpenseSnapshot(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_after(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActivityEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ActivityExpenseSnapshot(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_description(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_totalMinor(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_totalMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_totalMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_effectiveDate(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_effectiveDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_effectiveDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type Date does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_category(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_category(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Category) graphql.Marshaler {
+			return ec.marshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type Category does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_note(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_payer(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_payer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Payer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ActivityIdentity) graphql.Marshaler {
+			return ec.marshalNActivityIdentity2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityIdentity(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_payer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActivityExpenseSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ActivityIdentity(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_split(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_split(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Split, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.SplitMode) graphql.Marshaler {
+			return ec.marshalNSplitMode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐSplitMode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_split(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityExpenseSnapshot", field, false, false, errors.New("field of type SplitMode does not have child fields"))
+}
+
+func (ec *executionContext) _ActivityExpenseSnapshot_allocations(ctx context.Context, field graphql.CollectedField, obj *model.ActivityExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityExpenseSnapshot_allocations(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Allocations, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ActivityAllocation) graphql.Marshaler {
+			return ec.marshalNActivityAllocation2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityAllocationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityExpenseSnapshot_allocations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ActivityExpenseSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ActivityAllocation(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ActivityIdentity_id(ctx context.Context, field graphql.CollectedField, obj *model.ActivityIdentity) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6558,6 +7582,75 @@ func (ec *executionContext) fieldContext_Expense_createdAt(_ context.Context, fi
 	return graphql.NewScalarFieldContext("Expense", field, false, false, errors.New("field of type DateTime does not have child fields"))
 }
 
+func (ec *executionContext) _Expense_version(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Expense_version(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Expense_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Expense", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _Expense_canEdit(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Expense_canEdit(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CanEdit, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Expense_canEdit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Expense", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Expense_editLockReason(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Expense_editLockReason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EditLockReason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ExpenseEditLockReason) graphql.Marshaler {
+			return ec.marshalOExpenseEditLockReason2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Expense_editLockReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Expense", field, false, false, errors.New("field of type ExpenseEditLockReason does not have child fields"))
+}
+
 func (ec *executionContext) _ExpenseCommitted_key(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCommitted) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6753,6 +7846,199 @@ func (ec *executionContext) fieldContext_ExpenseEdge_node(_ context.Context, fie
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseEditCommitted_key(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditCommitted_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditCommitted_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditCommitted", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditCommitted_record(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditCommitted_record(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Record, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ExpenseOperationRecord) graphql.Marshaler {
+			return ec.marshalNExpenseOperationRecord2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseOperationRecord(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditCommitted_record(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseEditCommitted",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ExpenseOperationRecord(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseEditCommitted_version(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditCommitted_version(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditCommitted_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditCommitted", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditCommitted_changed(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditCommitted) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditCommitted_changed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Changed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditCommitted_changed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditCommitted", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditConflict_key(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditConflict) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditConflict_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditConflict_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditConflict", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditConflict_currentVersion(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditConflict) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditConflict_currentVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditConflict_currentVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditConflict", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditLocked_key(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditLocked) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditLocked_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.OperationKey) graphql.Marshaler {
+			return ec.marshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditLocked_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditLocked", field, false, false, errors.New("field of type OperationKey does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseEditLocked_reason(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEditLocked) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEditLocked_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseEditLockReason) graphql.Marshaler {
+			return ec.marshalNExpenseEditLockReason2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEditLocked_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseEditLocked", field, false, false, errors.New("field of type ExpenseEditLockReason does not have child fields"))
 }
 
 func (ec *executionContext) _ExpenseMonth_month(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseMonth) (ret graphql.Marshaler) {
@@ -9533,6 +10819,50 @@ func (ec *executionContext) fieldContext_Mutation_createExpense(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateExpense(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateExpense(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateExpense(ctx, fc.Args["input"].(model.UpdateExpenseInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseEditResult) graphql.Marshaler {
+			return ec.marshalNExpenseEditResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateExpense(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ExpenseEditResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateExpense_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10969,6 +12299,94 @@ func (ec *executionContext) fieldContext_Query_groupExpenses(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_groupExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_updateExpenseOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_updateExpenseOperation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().UpdateExpenseOperation(ctx, fc.Args["groupId"].(string), fc.Args["key"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ExpenseEditResult) graphql.Marshaler {
+			return ec.marshalNExpenseEditResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_updateExpenseOperation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ExpenseEditResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_updateExpenseOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_activityEvent(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_activityEvent(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().ActivityEvent(ctx, fc.Args["eventId"].(string), fc.Args["groupId"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ActivityEventResult) graphql.Marshaler {
+			return ec.marshalNActivityEventResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityEventResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_activityEvent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ActivityEventResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_activityEvent_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -13833,9 +15251,168 @@ func (ec *executionContext) unmarshalInputStructuredExpenseFilter(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateExpenseInput(ctx context.Context, obj any) (model.UpdateExpenseInput, error) {
+	var it model.UpdateExpenseInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["note"]; !present {
+		asMap["note"] = ""
+	}
+
+	fieldsInOrder := [...]string{"expenseId", "expectedVersion", "groupId", "key", "totalMinor", "currency", "description", "effectiveDate", "category", "note", "payerId", "participantIds", "split", "exactAllocations", "percentages"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "expenseId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expenseId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpenseID = data
+		case "expectedVersion":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expectedVersion"))
+			data, err := ec.unmarshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpectedVersion = data
+		case "groupId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupID = data
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "totalMinor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalMinor"))
+			data, err := ec.unmarshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalMinor = data
+		case "currency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currency"))
+			data, err := ec.unmarshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Currency = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "effectiveDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("effectiveDate"))
+			data, err := ec.unmarshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EffectiveDate = data
+		case "category":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+			data, err := ec.unmarshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Category = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		case "payerId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("payerId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PayerID = data
+		case "participantIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("participantIds"))
+			data, err := ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParticipantIds = data
+		case "split":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("split"))
+			data, err := ec.unmarshalNSplitMode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐSplitMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Split = data
+		case "exactAllocations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exactAllocations"))
+			data, err := ec.unmarshalOExactAllocationInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExactAllocationInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExactAllocations = data
+		case "percentages":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("percentages"))
+			data, err := ec.unmarshalOPercentageInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Percentages = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
+
+func (ec *executionContext) _ActivityEventResult(ctx context.Context, sel ast.SelectionSet, obj model.ActivityEventResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.ActivityEvent:
+		return ec._ActivityEvent(ctx, sel, &obj)
+	case *model.ActivityEvent:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ActivityEvent(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of ActivityEventResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
 
 func (ec *executionContext) _ActivityResult(ctx context.Context, sel ast.SelectionSet, obj model.ActivityResult) graphql.Marshaler {
 	switch obj := (obj).(type) {
@@ -13976,6 +15553,68 @@ func (ec *executionContext) _CreateGroupResult(ctx context.Context, sel ast.Sele
 			return typedObj
 		} else {
 			panic(fmt.Errorf("unexpected type %T; non-generated variants of CreateGroupResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _ExpenseEditResult(ctx context.Context, sel ast.SelectionSet, obj model.ExpenseEditResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ValidationProblem:
+		return ec._ValidationProblem(ctx, sel, &obj)
+	case *model.ValidationProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ValidationProblem(ctx, sel, obj)
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.OperationProgress:
+		return ec._OperationProgress(ctx, sel, &obj)
+	case *model.OperationProgress:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OperationProgress(ctx, sel, obj)
+	case model.OperationMismatch:
+		return ec._OperationMismatch(ctx, sel, &obj)
+	case *model.OperationMismatch:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._OperationMismatch(ctx, sel, obj)
+	case model.ExpenseEditLocked:
+		return ec._ExpenseEditLocked(ctx, sel, &obj)
+	case *model.ExpenseEditLocked:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ExpenseEditLocked(ctx, sel, obj)
+	case model.ExpenseEditConflict:
+		return ec._ExpenseEditConflict(ctx, sel, &obj)
+	case *model.ExpenseEditConflict:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ExpenseEditConflict(ctx, sel, obj)
+	case model.ExpenseEditCommitted:
+		return ec._ExpenseEditCommitted(ctx, sel, &obj)
+	case *model.ExpenseEditCommitted:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ExpenseEditCommitted(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of ExpenseEditResult must implement graphql.Marshaler", obj))
 		}
 	}
 }
@@ -14480,6 +16119,54 @@ func (ec *executionContext) _ViewerResult(ctx context.Context, sel ast.Selection
 
 // region    **************************** object.gotpl ****************************
 
+var activityAllocationImplementors = []string{"ActivityAllocation"}
+
+func (ec *executionContext) _ActivityAllocation(ctx context.Context, sel ast.SelectionSet, obj *model.ActivityAllocation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, activityAllocationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ActivityAllocation")
+		case "participant":
+			out.Values[i] = ec._ActivityAllocation_participant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountMinor":
+			out.Values[i] = ec._ActivityAllocation_amountMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentageHundredths":
+			out.Values[i] = ec._ActivityAllocation_percentageHundredths(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var activityConnectionImplementors = []string{"ActivityConnection", "ActivityResult"}
 
 func (ec *executionContext) _ActivityConnection(ctx context.Context, sel ast.SelectionSet, obj *model.ActivityConnection) graphql.Marshaler {
@@ -14566,7 +16253,7 @@ func (ec *executionContext) _ActivityEdge(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var activityEventImplementors = []string{"ActivityEvent"}
+var activityEventImplementors = []string{"ActivityEvent", "ActivityEventResult"}
 
 func (ec *executionContext) _ActivityEvent(ctx context.Context, sel ast.SelectionSet, obj *model.ActivityEvent) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, activityEventImplementors)
@@ -14651,6 +16338,99 @@ func (ec *executionContext) _ActivityEvent(ctx context.Context, sel ast.Selectio
 		case "recipient":
 			out.Values[i] = ec._ActivityEvent_recipient(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._ActivityEvent_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._ActivityEvent_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "before":
+			out.Values[i] = ec._ActivityEvent_before(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "after":
+			out.Values[i] = ec._ActivityEvent_after(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var activityExpenseSnapshotImplementors = []string{"ActivityExpenseSnapshot"}
+
+func (ec *executionContext) _ActivityExpenseSnapshot(ctx context.Context, sel ast.SelectionSet, obj *model.ActivityExpenseSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, activityExpenseSnapshotImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ActivityExpenseSnapshot")
+		case "description":
+			out.Values[i] = ec._ActivityExpenseSnapshot_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalMinor":
+			out.Values[i] = ec._ActivityExpenseSnapshot_totalMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveDate":
+			out.Values[i] = ec._ActivityExpenseSnapshot_effectiveDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "category":
+			out.Values[i] = ec._ActivityExpenseSnapshot_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._ActivityExpenseSnapshot_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "payer":
+			out.Values[i] = ec._ActivityExpenseSnapshot_payer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "split":
+			out.Values[i] = ec._ActivityExpenseSnapshot_split(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allocations":
+			out.Values[i] = ec._ActivityExpenseSnapshot_allocations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -14842,6 +16622,21 @@ func (ec *executionContext) _Expense(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "version":
+			out.Values[i] = ec._Expense_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "canEdit":
+			out.Values[i] = ec._Expense_canEdit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "editLockReason":
+			out.Values[i] = ec._Expense_editLockReason(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14973,6 +16768,145 @@ func (ec *executionContext) _ExpenseEdge(ctx context.Context, sel ast.SelectionS
 			}
 		case "node":
 			out.Values[i] = ec._ExpenseEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var expenseEditCommittedImplementors = []string{"ExpenseEditCommitted", "ExpenseEditResult"}
+
+func (ec *executionContext) _ExpenseEditCommitted(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseEditCommitted) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, expenseEditCommittedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExpenseEditCommitted")
+		case "key":
+			out.Values[i] = ec._ExpenseEditCommitted_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "record":
+			out.Values[i] = ec._ExpenseEditCommitted_record(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ExpenseEditCommitted_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changed":
+			out.Values[i] = ec._ExpenseEditCommitted_changed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var expenseEditConflictImplementors = []string{"ExpenseEditConflict", "ExpenseEditResult"}
+
+func (ec *executionContext) _ExpenseEditConflict(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseEditConflict) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, expenseEditConflictImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExpenseEditConflict")
+		case "key":
+			out.Values[i] = ec._ExpenseEditConflict_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currentVersion":
+			out.Values[i] = ec._ExpenseEditConflict_currentVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var expenseEditLockedImplementors = []string{"ExpenseEditLocked", "ExpenseEditResult"}
+
+func (ec *executionContext) _ExpenseEditLocked(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseEditLocked) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, expenseEditLockedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExpenseEditLocked")
+		case "key":
+			out.Values[i] = ec._ExpenseEditLocked_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._ExpenseEditLocked_reason(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -16399,6 +18333,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateExpense":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateExpense(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createGroup":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createGroup(ctx, field)
@@ -16586,7 +18527,7 @@ func (ec *executionContext) _OperationAllocation(ctx context.Context, sel ast.Se
 	return out
 }
 
-var operationMismatchImplementors = []string{"OperationMismatch", "CreateExpenseResult", "RecordRepaymentResult"}
+var operationMismatchImplementors = []string{"OperationMismatch", "ExpenseEditResult", "CreateExpenseResult", "RecordRepaymentResult"}
 
 func (ec *executionContext) _OperationMismatch(ctx context.Context, sel ast.SelectionSet, obj *model.OperationMismatch) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, operationMismatchImplementors)
@@ -16624,7 +18565,7 @@ func (ec *executionContext) _OperationMismatch(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var operationProgressImplementors = []string{"OperationProgress", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
+var operationProgressImplementors = []string{"OperationProgress", "ExpenseEditResult", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _OperationProgress(ctx context.Context, sel ast.SelectionSet, obj *model.OperationProgress) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, operationProgressImplementors)
@@ -16831,7 +18772,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "ActivityResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult", "ExpenseViewResult"}
+var problemImplementors = []string{"Problem", "ExpenseEditResult", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "ActivityResult", "ActivityEventResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult", "ExpenseViewResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -17144,6 +19085,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_groupExpenses(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "updateExpenseOperation":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_updateExpenseOperation(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "activityEvent":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_activityEvent(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -17677,7 +19662,7 @@ func (ec *executionContext) _RepaymentOperationRecord(ctx context.Context, sel a
 	return out
 }
 
-var validationProblemImplementors = []string{"ValidationProblem", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
+var validationProblemImplementors = []string{"ValidationProblem", "ExpenseEditResult", "CreateExpenseResult", "OperationResult", "RecordRepaymentResult", "RepaymentOperationResult"}
 
 func (ec *executionContext) _ValidationProblem(ctx context.Context, sel ast.SelectionSet, obj *model.ValidationProblem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, validationProblemImplementors)
@@ -18213,6 +20198,32 @@ func (ec *executionContext) marshalNAccessState2githubᚗcomᚋhaggaikaundaᚋka
 	return v
 }
 
+func (ec *executionContext) marshalNActivityAllocation2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityAllocationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ActivityAllocation) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNActivityAllocation2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityAllocation(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNActivityAllocation2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityAllocation(ctx context.Context, sel ast.SelectionSet, v *model.ActivityAllocation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ActivityAllocation(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNActivityEdge2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ActivityEdge) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -18247,6 +20258,16 @@ func (ec *executionContext) marshalNActivityEvent2ᚖgithubᚗcomᚋhaggaikaunda
 		return graphql.Null
 	}
 	return ec._ActivityEvent(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNActivityEventResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityEventResult(ctx context.Context, sel ast.SelectionSet, v model.ActivityEventResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ActivityEventResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNActivityIdentity2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityIdentity(ctx context.Context, sel ast.SelectionSet, v *model.ActivityIdentity) graphql.Marshaler {
@@ -18440,6 +20461,26 @@ func (ec *executionContext) marshalNExpenseEdge2ᚖgithubᚗcomᚋhaggaikaunda�
 		return graphql.Null
 	}
 	return ec._ExpenseEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNExpenseEditLockReason2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx context.Context, v any) (model.ExpenseEditLockReason, error) {
+	var res model.ExpenseEditLockReason
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNExpenseEditLockReason2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx context.Context, sel ast.SelectionSet, v model.ExpenseEditLockReason) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNExpenseEditResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditResult(ctx context.Context, sel ast.SelectionSet, v model.ExpenseEditResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExpenseEditResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExpenseMonth2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseMonthᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExpenseMonth) graphql.Marshaler {
@@ -19134,6 +21175,11 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
+func (ec *executionContext) unmarshalNUpdateExpenseInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐUpdateExpenseInput(ctx context.Context, v any) (model.UpdateExpenseInput, error) {
+	res, err := ec.unmarshalInputUpdateExpenseInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNViewerResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐViewerResult(ctx context.Context, sel ast.SelectionSet, v model.ViewerResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -19284,6 +21330,13 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOActivityExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityExpenseSnapshot(ctx context.Context, sel ast.SelectionSet, v *model.ActivityExpenseSnapshot) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ActivityExpenseSnapshot(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOActivityFilter2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐActivityFilter(ctx context.Context, v any) (*model.ActivityFilter, error) {
 	if v == nil {
 		return nil, nil
@@ -19415,6 +21468,22 @@ func (ec *executionContext) marshalOExpenseConnection2ᚖgithubᚗcomᚋhaggaika
 		return graphql.Null
 	}
 	return ec._ExpenseConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOExpenseEditLockReason2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx context.Context, v any) (*model.ExpenseEditLockReason, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.ExpenseEditLockReason)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOExpenseEditLockReason2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEditLockReason(ctx context.Context, sel ast.SelectionSet, v *model.ExpenseEditLockReason) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOExpenseFilter2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseFilter(ctx context.Context, v any) (*model.ExpenseFilter, error) {

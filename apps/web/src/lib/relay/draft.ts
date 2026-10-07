@@ -42,11 +42,13 @@ export type SavedDraft = {
 };
 export const groupCreationStorageKey = 'kami-group-creation-v1';
 export const repaymentStorageKey = 'kami-financial-repayments-v1';
+export const editStorageKey = 'kami-financial-edits-v1';
 export const privateStorageKey = 'kami-financial-drafts-v1';
 export function clearFinancialStorage() {
   sessionStorage.removeItem(groupCreationStorageKey);
   sessionStorage.removeItem(privateStorageKey);
   sessionStorage.removeItem(repaymentStorageKey);
+  sessionStorage.removeItem(editStorageKey);
 }
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -56,7 +58,7 @@ function strings(value: unknown): value is string[] {
     Array.isArray(value) && value.every((item) => typeof item === 'string')
   );
 }
-function storedDraft(value: unknown): value is Draft {
+export function storedDraft(value: unknown): value is Draft {
   return (
     object(value) &&
     ['description', 'amount', 'date', 'category', 'note', 'payer'].every(
@@ -82,7 +84,7 @@ function storedDraft(value: unknown): value is Draft {
     Object.values(value.exact).every((item) => typeof item === 'string')
   );
 }
-function storedAttempt(
+export function storedAttempt(
   value: unknown,
   group: string,
 ): value is CreateExpenseInput {

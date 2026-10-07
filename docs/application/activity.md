@@ -1,9 +1,9 @@
 # Authenticated activity
 
 Issue #172 adds `groupActivity` and `householdActivity`. Both read immutable
-expense-created and repayment-recorded events directly from persisted financial
-records. They never merge client expense/repayment pages, include preview History,
-or invent edit/delete/reversal events.
+expense-created, expense-updated and repayment-recorded events directly from
+persisted financial history. They never merge client expense/repayment pages,
+include preview History or invent delete/reversal events.
 
 Every event has stable event and record IDs, original group, current authorized
 source/member labels, exact `MinorUnits` and currency, effective date, and the
@@ -39,11 +39,14 @@ fresh authorization. Refresh and filter changes clear cached rows immediately;
 foreground focus/visibility/pageshow events clear content immediately and coalesce a fresh read; embedded feeds delegate this to their Group owner. Account changes dispose the old scope, and late
 responses cannot populate a disposed scope.
 
-Selecting an event opens an inline current-record detail, rechecking the feed
-source eligibility as well as the current node authorization. Closing restores
+Selecting an event opens immutable historical detail through `activityEvent`,
+rechecking the feed source context. Expense events read the original recorded
+revision; updates include labeled previous/new values. A separate “View current
+expense” action obtains currently authorized expense detail. Closing restores
 focus to the event trigger; the original group link preserves source context.
 Empty, filtered-empty, loading and unavailable states remain distinct. Activity
 routes use the sole authenticated financial session. Group Overview/Balances/Members and repayment (#171), Household navigation (#112) and the shared [structured Expenses ledger](expenses-ledger.md) (#170) are implemented. The seeded DataPort providers were removed in #184.
 
 The PR is stacked on #111; its SQL discovery contract must be deployed first.
-There is no new mutation, data migration, or activity-event backfill.
+The original #172 slice added no mutation or migration. [Expense editing](expense-editing.md)
+adds guarded edits, immutable revision backfill and real update events under #212.

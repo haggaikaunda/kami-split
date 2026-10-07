@@ -190,7 +190,7 @@
 }
 .group-workspace button {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
   border-color: var(--color-primary);
 }
 .group-workspace button:hover:enabled {
@@ -380,7 +380,7 @@
 }
 .financial-form-card button[type='submit'] {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
   width: 100%;
   margin: 1rem 0 0;
 }

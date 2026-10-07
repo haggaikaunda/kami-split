@@ -81,3 +81,17 @@ name is separate from Auth metadata; only current authorized name projections
 refresh, while financial records and recovery snapshots remain unchanged. See
 the [profile contract](../../docs/application/profile.md) for validation,
 concurrency and safe retry outcomes.
+
+## Expense corrections and historical Activity (#212)
+
+`expense-editing.graphql` defines complete versioned replacement intents and
+structured committed/no-op, conflict, whole-expense lock and same-key recovery
+outcomes. The original source, creator, creation timestamp and currency remain
+immutable. Current access always takes precedence over capability hints. See the
+[editing contract](../../docs/application/expense-editing.md) for lock order,
+immutable snapshots, anchored reads and repayment semantics.
+
+`ActivityEvent.before`/`after` contain recorded expense values with currently
+authorized minimal labels. `activityEvent` rechecks the requested group or
+Household aggregate scope. Neither event detail nor original operation results
+substitute for a current expense read.

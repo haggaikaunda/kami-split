@@ -306,6 +306,7 @@ func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseView
 		for i := range r.Allocations {
 			r.Allocations[i].ParticipantID = ledger.PublicID("Membership", r.Allocations[i].ParticipantID)
 		}
+		setEditEligibility(&r, source.Members)
 		token, err := codec.EncodeExpenseView(ledger.ExpenseViewCursor{Scope: in.Scope, Filter: in.Filter, Eligibility: wire.Eligibility, Anchors: anchors, EffectiveDate: r.EffectiveDate, CreatedAt: r.CommittedAt, GroupID: r.GroupID, ExpenseID: r.ExpenseID})
 		if err != nil {
 			return ExpenseView{}, Failure("UNAVAILABLE")

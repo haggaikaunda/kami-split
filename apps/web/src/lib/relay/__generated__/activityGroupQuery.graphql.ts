@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<812f0eb4bc93650a3d4a7536bfcb24c8>>
+ * @generated SignedSource<<5b09cede595043b3ad7f67b8326cf0e2>>
  * @lightSyntaxTransform
  */
 
@@ -9,7 +9,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
-export type ActivityKind = "EXPENSE_CREATED" | "REPAYMENT_RECORDED" | "%future added value";
+export type ActivityKind = "EXPENSE_CREATED" | "EXPENSE_UPDATED" | "REPAYMENT_RECORDED" | "%future added value";
 export type ActivityFilter = {
   kind?: ActivityKind | null | undefined;
   sourceGroupId?: string | null | undefined;
@@ -102,7 +102,28 @@ v6 = {
   "name": "id",
   "storageKey": null
 },
-v7 = [
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "note",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "effectiveDate",
+  "storageKey": null
+},
+v10 = [
   (v6/*:: as any*/),
   {
     "alias": null,
@@ -112,7 +133,80 @@ v7 = [
     "storageKey": null
   }
 ],
-v8 = {
+v11 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ActivityIdentity",
+  "kind": "LinkedField",
+  "name": "payer",
+  "plural": false,
+  "selections": (v10/*:: as any*/),
+  "storageKey": null
+},
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "amountMinor",
+  "storageKey": null
+},
+v13 = [
+  (v7/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "totalMinor",
+    "storageKey": null
+  },
+  (v9/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "category",
+    "storageKey": null
+  },
+  (v8/*:: as any*/),
+  (v11/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "split",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ActivityAllocation",
+    "kind": "LinkedField",
+    "name": "allocations",
+    "plural": true,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "ActivityIdentity",
+        "kind": "LinkedField",
+        "name": "participant",
+        "plural": false,
+        "selections": (v10/*:: as any*/),
+        "storageKey": null
+      },
+      (v12/*:: as any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "percentageHundredths",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  }
+],
+v14 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -144,6 +238,28 @@ v8 = {
               "args": null,
               "kind": "ScalarField",
               "name": "recordId",
+              "storageKey": null
+            },
+            (v7/*:: as any*/),
+            (v8/*:: as any*/),
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "ActivityExpenseSnapshot",
+              "kind": "LinkedField",
+              "name": "before",
+              "plural": false,
+              "selections": (v13/*:: as any*/),
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "ActivityExpenseSnapshot",
+              "kind": "LinkedField",
+              "name": "after",
+              "plural": false,
+              "selections": (v13/*:: as any*/),
               "storageKey": null
             },
             {
@@ -181,13 +297,7 @@ v8 = {
               "name": "groupKind",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "amountMinor",
-              "storageKey": null
-            },
+            (v12/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -195,13 +305,7 @@ v8 = {
               "name": "currency",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "effectiveDate",
-              "storageKey": null
-            },
+            (v9/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -216,19 +320,10 @@ v8 = {
               "kind": "LinkedField",
               "name": "creator",
               "plural": false,
-              "selections": (v7/*:: as any*/),
+              "selections": (v10/*:: as any*/),
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "ActivityIdentity",
-              "kind": "LinkedField",
-              "name": "payer",
-              "plural": false,
-              "selections": (v7/*:: as any*/),
-              "storageKey": null
-            },
+            (v11/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -236,7 +331,7 @@ v8 = {
               "kind": "LinkedField",
               "name": "sender",
               "plural": false,
-              "selections": (v7/*:: as any*/),
+              "selections": (v10/*:: as any*/),
               "storageKey": null
             },
             {
@@ -246,7 +341,7 @@ v8 = {
               "kind": "LinkedField",
               "name": "recipient",
               "plural": false,
-              "selections": (v7/*:: as any*/),
+              "selections": (v10/*:: as any*/),
               "storageKey": null
             }
           ],
@@ -309,7 +404,7 @@ return {
             "selections": [
               (v4/*:: as any*/),
               (v5/*:: as any*/),
-              (v8/*:: as any*/)
+              (v14/*:: as any*/)
             ],
             "args": null,
             "argumentDefinitions": []
@@ -345,19 +440,19 @@ return {
             "abstractKey": "__isActivityResult"
           },
           (v5/*:: as any*/),
-          (v8/*:: as any*/)
+          (v14/*:: as any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "ddba7a92b7b1f72d7cd2c6e4837745af",
+    "cacheID": "5bcdc9902823e1cac46b8d8450f8755d",
     "id": null,
     "metadata": {},
     "name": "activityGroupQuery",
     "operationKind": "query",
-    "text": "query activityGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: ActivityFilter\n) {\n  groupActivity(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        kind\n        groupId\n        groupName\n        isHousehold\n        groupKind\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query activityGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: ActivityFilter\n) {\n  groupActivity(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...activityFeed\n  }\n}\n\nfragment activityFeed on ActivityResult {\n  __isActivityResult: __typename\n  __typename\n  ... on Problem {\n    code\n    message\n  }\n  ... on ActivityConnection {\n    edges {\n      cursor\n      node {\n        id\n        recordId\n        description\n        note\n        before {\n          description\n          totalMinor\n          effectiveDate\n          category\n          note\n          payer {\n            id\n            displayName\n          }\n          split\n          allocations {\n            participant {\n              id\n              displayName\n            }\n            amountMinor\n            percentageHundredths\n          }\n        }\n        after {\n          description\n          totalMinor\n          effectiveDate\n          category\n          note\n          payer {\n            id\n            displayName\n          }\n          split\n          allocations {\n            participant {\n              id\n              displayName\n            }\n            amountMinor\n            percentageHundredths\n          }\n        }\n        kind\n        groupId\n        groupName\n        isHousehold\n        groupKind\n        amountMinor\n        currency\n        effectiveDate\n        timestamp\n        creator {\n          id\n          displayName\n        }\n        payer {\n          id\n          displayName\n        }\n        sender {\n          id\n          displayName\n        }\n        recipient {\n          id\n          displayName\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

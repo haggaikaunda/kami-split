@@ -664,10 +664,25 @@ function GroupDetails({
                     {group.name}
                   </h1>
                 )}
-                <ExpenseDetail scope={scope} group={id} id={expense} />
+                <ExpenseDetail
+                  scope={scope}
+                  group={id}
+                  id={expense}
+                  onCommitted={async () => {
+                    setSaved(
+                      'Expense edited. Current expense and balances are being refreshed.',
+                    );
+                    await read();
+                  }}
+                />
               </>
             ) : (
               <GroupWorkspace
+                onEditSaved={() =>
+                  setSaved(
+                    'Expense edit saved. Current expense and balances are a separate authorized refresh; any unavailable data below does not undo your edit.',
+                  )
+                }
                 showTabs={false}
                 showHeader={!household}
                 initialView={

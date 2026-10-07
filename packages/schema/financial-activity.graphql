@@ -8,6 +8,10 @@ enum ActivityKind {
   """
   EXPENSE_CREATED
   """
+  One committed material expense correction, with immutable before/after values.
+  """
+  EXPENSE_UPDATED
+  """
   One committed actual group repayment.
   """
   REPAYMENT_RECORDED
@@ -18,7 +22,7 @@ Optional exact filters bound into every continuation cursor.
 """
 input ActivityFilter {
   """
-  Restrict the event kind; omitted means both supported kinds.
+  Restrict the event kind; omitted means all supported kinds.
   """
   kind: ActivityKind
   """
@@ -141,3 +145,99 @@ type ActivityConnection {
 Safe failure or a complete authorized activity page.
 """
 union ActivityResult = ActivityConnection | Problem
+
+extend type ActivityEvent {
+  """
+  Description recorded by this event; later edits do not rewrite it. Empty for repayment events.
+  """
+  description: String!
+  """
+  Original optional expense or repayment note, preserving whitespace.
+  """
+  note: String!
+  """
+  Immutable previous expense state for an update; null for creation and repayment.
+  """
+  before: ActivityExpenseSnapshot
+  """
+  Immutable expense state committed by creation or update; null for repayment.
+  """
+  after: ActivityExpenseSnapshot
+}
+
+"""
+Immutable descriptive and financial values with current authorized minimal member labels.
+"""
+type ActivityExpenseSnapshot {
+  """
+  Recorded description, independent of later edits.
+  """
+  description: String!
+  """
+  Exact expense face value in cents.
+  """
+  totalMinor: MinorUnits!
+  """
+  Recorded expense date, distinct from the event timestamp.
+  """
+  effectiveDate: Date!
+  """
+  Recorded supported category.
+  """
+  category: Category!
+  """
+  Original optional note, preserving whitespace.
+  """
+  note: String!
+  """
+  Recorded payer identity with a currently authorized label.
+  """
+  payer: ActivityIdentity!
+  """
+  Recorded split intent; equal resolved cents do not erase its mode.
+  """
+  split: SplitMode!
+  """
+  Every recorded participant, including explicit zero allocations.
+  """
+  allocations: [ActivityAllocation!]!
+}
+
+"""
+One historical explicit participant share and saved percentage intent.
+"""
+type ActivityAllocation {
+  """
+  Retained participant with current authorized minimal label.
+  """
+  participant: ActivityIdentity!
+  """
+  Exact recorded share in cents; zero remains explicit participation.
+  """
+  amountMinor: MinorUnits!
+  """
+  Intended hundredths of a percent for PERCENTAGE; null otherwise.
+  """
+  percentageHundredths: Int
+}
+
+"""
+One freshly authorized historical event or a safe masked failure.
+"""
+union ActivityEventResult = ActivityEvent | Problem
+
+extend type Query {
+  """
+  Read immutable event facts after rechecking the entire requested source context.
+  """
+  activityEvent(
+    """
+    Stable event ID obtained from an authorized Activity feed.
+    """
+    eventId: ID!
+    """
+    Original group scope; omission requests currently authorized Household aggregate scope.
+    """
+    groupId: ID
+  ): ActivityEventResult!
+}

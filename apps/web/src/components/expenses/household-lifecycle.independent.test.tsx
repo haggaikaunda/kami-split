@@ -25,12 +25,24 @@ vi.mock('./ledger', () => ({
   ExpenseLedger: ({
     contextVersion,
     initialView,
+    onEditSaved,
+    onRefreshContext,
   }: {
+    onEditSaved: () => void;
+    onRefreshContext: () => void;
     contextVersion: string;
     initialView: { filterText: string };
   }) => (
     <div data-ledger>
       {contextVersion}:{initialView.filterText}:private ledger
+      <button
+        onClick={() => {
+          onEditSaved();
+          onRefreshContext();
+        }}
+      >
+        Commit fixture edit
+      </button>
     </div>
   ),
 }));
@@ -175,4 +187,20 @@ it('hides private context synchronously and coalesces overlapping foreground rea
     }),
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();
+});
+
+it('retains committed edit status when the separately refreshed Household list fails', async () => {
+  await act(async () => root.render(<HouseholdLedger scope={scope} />));
+  await act(async () => requests[0].next(result()));
+  await act(async () => host.querySelector('button')!.click());
+  expect(host.textContent).toContain('Expense edit saved');
+  await act(async () =>
+    requests[1].next({
+      ...result(),
+      householdExpenses: { __typename: 'Problem', code: 'UNAVAILABLE' },
+    }),
+  );
+  expect(host.textContent).toContain('Expense edit saved');
+  expect(host.querySelector('[role=alert]')).not.toBeNull();
+  expect(host.textContent).not.toContain('private ledger');
 });

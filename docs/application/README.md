@@ -37,4 +37,4 @@ fresh provider-settings inspection.
 
 ## Authenticated financial browser
 
-The [Relay expense journey](relay-expenses.md) connects admitted groups, structured Expenses ledgers, creation, complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware current details. The old seeded routes return normal not-found responses.
+The [Relay expense journey](relay-expenses.md) connects admitted groups, structured Expenses ledgers, creation, [collaborative editing](expense-editing.md), complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware historical details. The old seeded routes return normal not-found responses.

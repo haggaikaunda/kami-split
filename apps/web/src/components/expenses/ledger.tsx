@@ -86,6 +86,7 @@ function LedgerContent({
   activeSpaces,
   onDenied,
   onRefreshContext,
+  onEditSaved,
   filterTrigger,
   onFilterApply,
   initialView,
@@ -107,6 +108,7 @@ function LedgerContent({
   activeSpaces?: string;
   onDenied: () => void;
   onRefreshContext?: () => Promise<void> | void;
+  onEditSaved?: () => void;
 }) {
   const params = useSearchParams(),
     router = useRouter(),
@@ -590,6 +592,14 @@ function LedgerContent({
               groupId={groupId}
               source={source}
               id={selected}
+              onCommitted={async () => {
+                onEditSaved?.();
+                setNotice(
+                  'Expense edited. Refreshing current authorized expenses and balances.',
+                );
+                reset();
+                await onRefreshContext?.();
+              }}
               onDenied={() => {
                 setPage(undefined);
                 setRows([]);
@@ -651,12 +661,14 @@ function AuthorizedDetail({
   source,
   id,
   onDenied,
+  onCommitted,
 }: {
   scope: FinancialScope;
   groupId: string;
   source: string;
   id: string;
   onDenied: () => void;
+  onCommitted: () => Promise<void>;
 }) {
   const [name, setName] = useState<string>();
   const [failed, setFailed] = useState(false);
@@ -706,6 +718,7 @@ function AuthorizedDetail({
         group={source}
         id={id}
         onUnavailable={onDenied}
+        onCommitted={onCommitted}
       />
     </>
   ) : (

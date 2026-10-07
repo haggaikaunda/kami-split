@@ -13,6 +13,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -22,6 +23,8 @@ type financialIntent struct {
 	group, key, kind, version string
 	canonical, hash           []byte
 	affected                  []string
+	expense                   string
+	precheck                  func(context.Context, pgx.Tx) (*Outcome, error)
 	fields                    []ledger.FieldProblem
 	apply                     func(context.Context, pgx.Tx, auth.Actor, Snapshot) (Outcome, error)
 }
@@ -109,62 +112,89 @@ func (s *Service) execute(ctx context.Context, in financialIntent) (Outcome, err
 		}
 		ids = append(ids, uuidValue(raw))
 	}
-	err = s.transaction(ctx, func(tx pgx.Tx, actor auth.Actor) error {
-		// Restart in user-before-group order, including ineligible historical members.
-		if _, e := tx.Exec(ctx, `SELECT app.lock_expense_write($1,$2)`, group, ids); e != nil {
-			return e
-		}
-		old, c, h, e := lookup(ctx, tx, group, in.key, in.kind)
-		if e == nil {
-			out = compare(old, c, h, in.canonical, in.hash, in.key)
-			return nil
-		}
-		if !errors.Is(e, pgx.ErrNoRows) {
-			return e
-		}
-		fields := append([]ledger.FieldProblem(nil), in.fields...)
-		var eligible bool
-		if e = tx.QueryRow(ctx, `SELECT NOT EXISTS(SELECT FROM unnest($2::uuid[]) a(id) WHERE NOT EXISTS(SELECT FROM app.group_members($1) m WHERE m.id=a.id AND m.can_participate))`, group, ids).Scan(&eligible); e != nil {
-			return e
-		}
-		if !eligible {
-			path := []string{"input"}
-			if in.kind == "CREATE_EXPENSE" {
-				path = append(path, "participantIds")
+	for attempt := 0; attempt < 3; attempt++ {
+		err = s.transaction(ctx, func(tx pgx.Tx, actor auth.Actor) error {
+			// Restart in user-before-group order, including ineligible historical members.
+			var lockErr error
+			if in.expense != "" {
+				lockErr = func() error {
+					_, e := tx.Exec(ctx, `SELECT app.lock_expense_edit($1,$2,$3)`, group, in.expense, ids)
+					return e
+				}()
+			} else {
+				_, lockErr = tx.Exec(ctx, `SELECT app.lock_expense_write($1,$2)`, group, ids)
 			}
-			fields = append(fields, ledger.FieldProblem{Path: path, Code: "INVALID_PARTICIPANT", Message: "Select eligible group members."})
-		}
-		out = Outcome{Kind: "VALIDATION", Key: in.key, Fields: fields}
-		if len(fields) == 0 {
-			snapshot, e := readSnapshot(ctx, tx, group, PageRequest{First: 1}, nil)
-			if e != nil {
+			if lockErr != nil {
+				return lockErr
+			}
+			old, c, h, e := lookup(ctx, tx, group, in.key, in.kind)
+			if e == nil {
+				out = compare(old, c, h, in.canonical, in.hash, in.key)
+				return nil
+			}
+			if !errors.Is(e, pgx.ErrNoRows) {
 				return e
 			}
-			if snapshot.BalanceError != "" || snapshot.Revision == math.MaxInt64 {
-				out.Fields = overflow("groupId")
-			} else {
-				out, e = in.apply(ctx, tx, actor, snapshot)
+			var checked *Outcome
+			if in.precheck != nil {
+				checked, e = in.precheck(ctx, tx)
 				if e != nil {
 					return e
 				}
-				out.Key = in.key
 			}
+			fields := append([]ledger.FieldProblem(nil), in.fields...)
+			var eligible bool
+			if e = tx.QueryRow(ctx, `SELECT NOT EXISTS(SELECT FROM unnest($2::uuid[]) a(id) WHERE NOT EXISTS(SELECT FROM app.group_members($1) m WHERE m.id=a.id AND m.can_participate))`, group, ids).Scan(&eligible); e != nil {
+				return e
+			}
+			if !eligible {
+				path := []string{"input"}
+				if in.kind == "CREATE_EXPENSE" {
+					path = append(path, "participantIds")
+				}
+				fields = append(fields, ledger.FieldProblem{Path: path, Code: "INVALID_PARTICIPANT", Message: "Select eligible group members."})
+			}
+			out = Outcome{Kind: "VALIDATION", Key: in.key, Fields: fields}
+			if checked != nil {
+				out = *checked
+				out.Key = in.key
+			} else if len(fields) == 0 {
+				snapshot, e := readSnapshot(ctx, tx, group, PageRequest{First: 1}, nil)
+				if e != nil {
+					return e
+				}
+				if snapshot.BalanceError != "" || snapshot.Revision == math.MaxInt64 {
+					out.Fields = overflow("groupId")
+				} else {
+					out, e = in.apply(ctx, tx, actor, snapshot)
+					if e != nil {
+						return e
+					}
+					out.Key = in.key
+				}
+			}
+			payload, e := json.Marshal(out)
+			if e != nil {
+				return e
+			}
+			var expenseID, repaymentID pgtype.UUID
+			if out.Record != nil {
+				raw, _ := rawID(out.Record.ExpenseID, "Expense")
+				expenseID = uuidValue(raw)
+			}
+			if out.Repayment != nil {
+				raw, _ := rawID(out.Repayment.RepaymentID, "Repayment")
+				repaymentID = uuidValue(raw)
+			}
+			return expensequery.New(tx).StoreFinancialOperation(ctx, expensequery.StoreFinancialOperationParams{ActorUserID: actor.ID, GroupID: uuidValue(group), OperationKind: in.kind, Key: uuidValue(in.key), CanonicalVersion: in.version, Canonical: in.canonical, CanonicalHash: in.hash, ExpenseID: expenseID, RepaymentID: repaymentID, Outcome: payload})
+		})
+		var driver *pgconn.PgError
+		if !errors.As(err, &driver) || driver.Code != "40001" {
+			break
 		}
-		payload, e := json.Marshal(out)
-		if e != nil {
-			return e
-		}
-		var expenseID, repaymentID pgtype.UUID
-		if out.Record != nil {
-			raw, _ := rawID(out.Record.ExpenseID, "Expense")
-			expenseID = uuidValue(raw)
-		}
-		if out.Repayment != nil {
-			raw, _ := rawID(out.Repayment.RepaymentID, "Repayment")
-			repaymentID = uuidValue(raw)
-		}
-		return expensequery.New(tx).StoreFinancialOperation(ctx, expensequery.StoreFinancialOperationParams{ActorUserID: actor.ID, GroupID: uuidValue(group), OperationKind: in.kind, Key: uuidValue(in.key), CanonicalVersion: in.version, Canonical: in.canonical, CanonicalHash: in.hash, ExpenseID: expenseID, RepaymentID: repaymentID, Outcome: payload})
-	})
+		// A serialization rollback has no committed effect. Restart the complete
+		// lock/receipt protocol using exactly the same canonical attempt.
+	}
 	return financialResult(ctx, out, in.key, err)
 }
 
@@ -211,7 +241,7 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 		if e != nil {
 			return Outcome{Kind: "VALIDATION", Fields: overflow("totalMinor")}, nil
 		}
-		record := Record{ExpenseID: ledger.PublicID("Expense", uuid.NewString()), GroupID: input.GroupID, CreatorMembershipID: snapshot.ViewerMembershipID, PayerMembershipID: input.PayerID, TotalMinor: input.Total, Currency: input.Currency, Description: input.Description, EffectiveDate: input.EffectiveDate, Category: input.Category, Note: input.Note, Split: input.Split, Allocations: allocations, Percentages: input.Percentages, Revision: snapshot.Revision + 1}
+		record := Record{ExpenseID: ledger.PublicID("Expense", uuid.NewString()), GroupID: input.GroupID, CreatorMembershipID: snapshot.ViewerMembershipID, PayerMembershipID: input.PayerID, TotalMinor: input.Total, Currency: input.Currency, Description: input.Description, EffectiveDate: input.EffectiveDate, Category: input.Category, Note: input.Note, Split: input.Split, Allocations: allocations, Percentages: input.Percentages, Revision: snapshot.Revision + 1, Version: 1, CanEdit: true}
 		group, _ := rawID(input.GroupID, "Group")
 		if e = insertExpense(ctx, tx, group, record, actor.ID, &record); e != nil {
 			return Outcome{}, e

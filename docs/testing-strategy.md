@@ -44,7 +44,7 @@ Exercise real authenticated routes and inspect persisted results, source context
 
 ## Remaining integration and feature coverage
 
-Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing/deletion, imports, and hosted production operations remain outside the implemented API baseline and require their own approved tests. Historical UI simulations do not satisfy those future security or durability gates. Percentage splits are implemented under #199; shared Go/TypeScript vectors, domain properties, real database persistence/replay constraints and independent form tests cover the [percentage contract](application/percentage-splits.md). Required final-head browser and CI evidence is recorded on the delivery PR.
+Financial browser Relay acceptance under #83 is recorded on its delivery PR; onboarding acceptance is documented in its guide. Expense editing (#212) requires version/recovery, immutable Activity, former-member lock and real restricted-role/race coverage. Expense deletion, imports and hosted production operations remain separate work. Historical UI simulations do not satisfy those future security or durability gates. Percentage splits are implemented under #199; shared Go/TypeScript vectors, domain properties, real database persistence/replay constraints and independent form tests cover the [percentage contract](application/percentage-splits.md). Required final-head browser and CI evidence is recorded on the delivery PR.
 
 Every change still requires independent acceptance-criteria testing and a separate final-diff review, with findings resolved and current-head CI passing as described in the [workflow](agents/delivery-workflow.md).
 

@@ -45,6 +45,10 @@ vi.mock('relay-runtime', () => ({
 }));
 const row = {
   id: 'event',
+  description: 'Lunch',
+  note: '',
+  before: null,
+  after: null,
   kind: 'EXPENSE_CREATED',
   creator: { displayName: 'Alice' },
   payer: { displayName: 'Bob' },
@@ -138,14 +142,14 @@ it('ignores a disposed account scope response and unsubscribes on unmount', asyn
   await act(async () => root.render(null));
   expect(boundary.requests[0].unsubscribe).toHaveBeenCalled();
 });
-it('reauthorizes the source feed before fetching detail and clears revoked history', async () => {
+it('reauthorizes the complete source context in event detail and clears revoked history', async () => {
   await render();
   await respond(connection());
-  await click('Expense created');
+  await click('added an expense');
   expect(document.activeElement).toBe(
-    host.querySelector('[aria-label="Current record detail"]'),
+    host.querySelector('[aria-label="Historical event detail"]'),
   );
-  expect(host.textContent).toContain('Checking current record access');
+  expect(host.textContent).toContain('Checking historical event access');
   expect(boundary.requests).toHaveLength(2);
   await act(async () =>
     boundary.requests[1].resolve?.({
@@ -161,39 +165,40 @@ it('reauthorizes the source feed before fetching detail and clears revoked histo
 it('rejects a detail from a different group and ignores late detail after close', async () => {
   await render();
   await respond(connection());
-  await click('Expense created');
-  await act(async () =>
-    boundary.requests[1].resolve?.({ householdActivity: connection() }),
-  );
-  expect(boundary.requests[2].variables).toEqual({ id: 'expense' });
+  await click('added an expense');
+  expect(boundary.requests[1].variables).toEqual({
+    eventId: 'event',
+    groupId: null,
+  });
   await click('Close detail');
   await act(async () =>
-    boundary.requests[2].resolve?.({
-      node: {
-        __typename: 'Expense',
+    boundary.requests[1].resolve?.({
+      activityEvent: {
+        ...row,
+        __typename: 'ActivityEvent',
         groupId: 'other',
         description: 'Private secret',
       },
     }),
   );
   expect(host.textContent).not.toContain('Private secret');
-  expect(host.querySelector('[aria-label="Current record detail"]')).toBeNull();
+  expect(
+    host.querySelector('[aria-label="Historical event detail"]'),
+  ).toBeNull();
 });
 it('keeps keyboard focus on Close while current detail finishes loading', async () => {
   await render();
   await respond(connection());
-  await click('Expense created');
-  await act(async () =>
-    boundary.requests[1].resolve?.({ householdActivity: connection() }),
-  );
+  await click('added an expense');
   const close = [...host.querySelectorAll('button')].find(
     (b) => b.textContent === 'Close detail',
   )!;
   close.focus();
   await act(async () =>
-    boundary.requests[2].resolve?.({
-      node: {
-        __typename: 'Expense',
+    boundary.requests[1].resolve?.({
+      activityEvent: {
+        ...row,
+        __typename: 'ActivityEvent',
         groupId: 'g',
         description: 'Lunch',
         totalMinor: '101',
@@ -208,24 +213,22 @@ it('restores keyboard focus to the source row when detail closes', async () => {
   await render();
   await respond(connection());
   const trigger = [...host.querySelectorAll('button')].find((b) =>
-    b.textContent?.includes('Expense created'),
+    b.textContent?.includes('added an expense'),
   )!;
   trigger.focus();
-  await click('Expense created');
+  await click('added an expense');
   await click('Close detail');
   expect(document.activeElement).toBe(trigger);
 });
 it('removes history when freshly authorized detail belongs to another source group', async () => {
   await render();
   await respond(connection());
-  await click('Expense created');
+  await click('added an expense');
   await act(async () =>
-    boundary.requests[1].resolve?.({ householdActivity: connection() }),
-  );
-  await act(async () =>
-    boundary.requests[2].resolve?.({
-      node: {
-        __typename: 'Expense',
+    boundary.requests[1].resolve?.({
+      activityEvent: {
+        ...row,
+        __typename: 'ActivityEvent',
         groupId: 'other',
         description: 'Private secret',
       },
@@ -243,14 +246,12 @@ it('removes current detail and source identity before paging reauthorization and
     pageInfo: { hasNextPage: true, endCursor: 'next-cursor' },
   };
   await respond(page);
-  await click('Expense created');
+  await click('added an expense');
   await act(async () =>
-    boundary.requests[1].resolve?.({ householdActivity: page }),
-  );
-  await act(async () =>
-    boundary.requests[2].resolve?.({
-      node: {
-        __typename: 'Expense',
+    boundary.requests[1].resolve?.({
+      activityEvent: {
+        ...row,
+        __typename: 'ActivityEvent',
         groupId: 'g',
         description: 'Sensitive lunch',
         totalMinor: '101',
@@ -310,15 +311,12 @@ for (const source of [
     };
     const feed = { ...connection([]), edges: [{ node: event }] };
     await respond(feed);
-    await click('Repayment recorded');
+    await click('recorded a repayment');
     await act(async () =>
-      boundary.requests[1].resolve?.({ householdActivity: feed }),
-    );
-    await act(async () =>
-      boundary.requests[2].resolve?.({
-        node: {
-          __typename: 'Repayment',
-          id: 'repayment',
+      boundary.requests[1].resolve?.({
+        activityEvent: {
+          ...event,
+          __typename: 'ActivityEvent',
           groupId: source.id,
           amountMinor: '101',
           currency: 'USD',
@@ -327,10 +325,10 @@ for (const source of [
       }),
     );
     expect(
-      host.querySelector(`a[href="${source.href}"]`)?.textContent,
-    ).toContain('Open Trip');
-    expect(
-      (boundary.requests[1].variables as { filter: { sourceGroupId: string } })
-        .filter.sourceGroupId,
-    ).toBe(source.id);
+      host.querySelector(`a[href="${source.href}?tab=balances"]`)?.textContent,
+    ).toContain('View source balances');
+    expect(boundary.requests[1].variables).toEqual({
+      eventId: 'event',
+      groupId: null,
+    });
   });

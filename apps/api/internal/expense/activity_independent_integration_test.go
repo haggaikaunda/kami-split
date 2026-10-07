@@ -121,14 +121,17 @@ func TestActivityIndependentEqualTimestampTiePagination(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(f.ctx)
-	if _, err = tx.Exec(f.ctx, "SET LOCAL ROLE kami_migrator"); err != nil {
+	if _, err = tx.Exec(f.ctx, "SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator"); err != nil {
 		t.Fatal(err)
 	}
-	for _, table := range []string{"expenses", "repayments", "expense_audit", "repayment_audit"} {
+	for _, table := range []string{"expenses", "repayments", "expense_audit", "repayment_audit", "expense_revisions"} {
 		if _, err = tx.Exec(f.ctx, "ALTER TABLE app."+table+" NO FORCE ROW LEVEL SECURITY"); err != nil {
 			t.Fatal(err)
 		}
 		column := "created_at"
+		if table == "expense_revisions" {
+			column = "recorded_at"
+		}
 		if table == "expense_audit" || table == "repayment_audit" {
 			column = "committed_at"
 		}

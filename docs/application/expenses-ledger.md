@@ -49,3 +49,14 @@ The [approved visual foundation](../design/references/approved-ui/foundation.md)
 the same system to expense detail and creation: category identity, exact total,
 payer and allocation rows, retained note/audit fields, and the existing explicit
 payer/split/participant controls. The boards do not remove required contract fields.
+
+## Edited expenses (#212)
+
+Anchored traversals select one immutable expense revision and its matching
+allocations at each source anchor before filtering or computing month totals.
+A date/category/payer/participant correction appears on a fresh traversal;
+continuing an existing traversal retains its original coherent rows and totals.
+Current detail and complete balances use the current projection. Household detail
+edits always target the original source expense and recheck its membership; no
+aggregate writes or duplicated expenses are introduced. See
+[expense editing](expense-editing.md).

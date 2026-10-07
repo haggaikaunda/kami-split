@@ -29,7 +29,7 @@
 .ledger-add {
   margin-inline-start: auto;
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
 }
 .ledger-filters {
   display: flex;
@@ -271,7 +271,7 @@
 }
 .financial-journey .ledger-add {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
   border-color: var(--color-primary);
 }
 @media (max-width: 650px) {
@@ -310,5 +310,5 @@
 }
 .ledger-filter-actions button[type='submit'] {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
 }

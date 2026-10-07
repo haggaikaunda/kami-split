@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<19bb37ae0b88abe0efe766c83f188bfd>>
+ * @generated SignedSource<<7236701b26aa3d056691b66116aead4a>>
  * @lightSyntaxTransform
  */
 
@@ -8,42 +8,97 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type ActivityKind = "EXPENSE_CREATED" | "EXPENSE_UPDATED" | "REPAYMENT_RECORDED" | "%future added value";
+export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
+export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type activityDetailQuery$variables = {
-  id: string;
+  eventId: string;
+  groupId?: string | null | undefined;
 };
 export type activityDetailQuery$data = {
-  readonly node: {
-    readonly __typename: "Expense";
-    readonly createdAt: string;
+  readonly activityEvent: {
+    readonly __typename: "ActivityEvent";
+    readonly after: {
+      readonly allocations: ReadonlyArray<{
+        readonly amountMinor: string;
+        readonly participant: {
+          readonly displayName: string;
+          readonly id: string;
+        };
+        readonly percentageHundredths: number | null | undefined;
+      }>;
+      readonly category: Category;
+      readonly description: string;
+      readonly effectiveDate: string;
+      readonly note: string;
+      readonly payer: {
+        readonly displayName: string;
+        readonly id: string;
+      };
+      readonly split: SplitMode;
+      readonly totalMinor: string;
+    } | null | undefined;
+    readonly amountMinor: string;
+    readonly before: {
+      readonly allocations: ReadonlyArray<{
+        readonly amountMinor: string;
+        readonly participant: {
+          readonly displayName: string;
+          readonly id: string;
+        };
+        readonly percentageHundredths: number | null | undefined;
+      }>;
+      readonly category: Category;
+      readonly description: string;
+      readonly effectiveDate: string;
+      readonly note: string;
+      readonly payer: {
+        readonly displayName: string;
+        readonly id: string;
+      };
+      readonly split: SplitMode;
+      readonly totalMinor: string;
+    } | null | undefined;
+    readonly creator: {
+      readonly displayName: string;
+      readonly id: string;
+    };
     readonly currency: Currency;
     readonly description: string;
     readonly effectiveDate: string;
     readonly groupId: string;
+    readonly groupKind: GroupKind;
+    readonly groupName: string;
     readonly id: string;
+    readonly isHousehold: boolean;
+    readonly kind: ActivityKind;
+    readonly note: string;
     readonly payer: {
       readonly displayName: string;
-    };
-    readonly totalMinor: string;
-  } | {
-    readonly __typename: "Repayment";
-    readonly amountMinor: string;
-    readonly createdAt: string;
-    readonly currency: Currency;
-    readonly effectiveDate: string;
-    readonly groupId: string;
-    readonly id: string;
+      readonly id: string;
+    } | null | undefined;
     readonly recipient: {
       readonly displayName: string;
-    };
+      readonly id: string;
+    } | null | undefined;
+    readonly recordId: string;
     readonly sender: {
       readonly displayName: string;
-    };
+      readonly id: string;
+    } | null | undefined;
+    readonly timestamp: string;
+  } | {
+    readonly __typename: "Problem";
+    readonly code: ProblemCode;
+    readonly message: string;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
     readonly __typename: "%other";
-  } | null | undefined;
+  };
 };
 export type activityDetailQuery = {
   response: activityDetailQuery$data;
@@ -55,92 +110,295 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "id"
-  }
-],
-v1 = [
+    "name": "eventId"
+  },
   {
-    "kind": "Variable",
-    "name": "id",
-    "variableName": "id"
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "groupId"
   }
 ],
-v2 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "__typename",
-  "storageKey": null
-},
-v3 = {
+v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v4 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "groupId",
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "description",
-  "storageKey": null
-},
-v6 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "totalMinor",
-  "storageKey": null
-},
-v7 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "currency",
-  "storageKey": null
-},
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "effectiveDate",
-  "storageKey": null
-},
-v9 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "createdAt",
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "displayName",
-  "storageKey": null
-},
-v11 = [
-  (v10/*:: as any*/)
-],
-v12 = {
+v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "amountMinor",
   "storageKey": null
 },
-v13 = [
-  (v10/*:: as any*/),
-  (v3/*:: as any*/)
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "effectiveDate",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "note",
+  "storageKey": null
+},
+v6 = [
+  (v1/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "displayName",
+    "storageKey": null
+  }
+],
+v7 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ActivityIdentity",
+  "kind": "LinkedField",
+  "name": "payer",
+  "plural": false,
+  "selections": (v6/*:: as any*/),
+  "storageKey": null
+},
+v8 = [
+  (v4/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "totalMinor",
+    "storageKey": null
+  },
+  (v3/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "category",
+    "storageKey": null
+  },
+  (v5/*:: as any*/),
+  (v7/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "split",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ActivityAllocation",
+    "kind": "LinkedField",
+    "name": "allocations",
+    "plural": true,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "ActivityIdentity",
+        "kind": "LinkedField",
+        "name": "participant",
+        "plural": false,
+        "selections": (v6/*:: as any*/),
+        "storageKey": null
+      },
+      (v2/*:: as any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "percentageHundredths",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  }
+],
+v9 = [
+  {
+    "alias": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "eventId",
+        "variableName": "eventId"
+      },
+      {
+        "kind": "Variable",
+        "name": "groupId",
+        "variableName": "groupId"
+      }
+    ],
+    "concreteType": null,
+    "kind": "LinkedField",
+    "name": "activityEvent",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "__typename",
+        "storageKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "code",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "message",
+            "storageKey": null
+          }
+        ],
+        "type": "Problem",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v1/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "recordId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "kind",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "groupId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "groupName",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "isHousehold",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "groupKind",
+            "storageKey": null
+          },
+          (v2/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "currency",
+            "storageKey": null
+          },
+          (v3/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "timestamp",
+            "storageKey": null
+          },
+          (v4/*:: as any*/),
+          (v5/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ActivityIdentity",
+            "kind": "LinkedField",
+            "name": "creator",
+            "plural": false,
+            "selections": (v6/*:: as any*/),
+            "storageKey": null
+          },
+          (v7/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ActivityIdentity",
+            "kind": "LinkedField",
+            "name": "sender",
+            "plural": false,
+            "selections": (v6/*:: as any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ActivityIdentity",
+            "kind": "LinkedField",
+            "name": "recipient",
+            "plural": false,
+            "selections": (v6/*:: as any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ActivityExpenseSnapshot",
+            "kind": "LinkedField",
+            "name": "before",
+            "plural": false,
+            "selections": (v8/*:: as any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "ActivityExpenseSnapshot",
+            "kind": "LinkedField",
+            "name": "after",
+            "plural": false,
+            "selections": (v8/*:: as any*/),
+            "storageKey": null
+          }
+        ],
+        "type": "ActivityEvent",
+        "abstractKey": null
+      }
+    ],
+    "storageKey": null
+  }
 ];
 return {
   "fragment": {
@@ -148,77 +406,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "activityDetailQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v1/*:: as any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "node",
-        "plural": false,
-        "selections": [
-          (v2/*:: as any*/),
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v3/*:: as any*/),
-              (v4/*:: as any*/),
-              (v5/*:: as any*/),
-              (v6/*:: as any*/),
-              (v7/*:: as any*/),
-              (v8/*:: as any*/),
-              (v9/*:: as any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "payer",
-                "plural": false,
-                "selections": (v11/*:: as any*/),
-                "storageKey": null
-              }
-            ],
-            "type": "Expense",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v3/*:: as any*/),
-              (v4/*:: as any*/),
-              (v12/*:: as any*/),
-              (v7/*:: as any*/),
-              (v8/*:: as any*/),
-              (v9/*:: as any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "sender",
-                "plural": false,
-                "selections": (v11/*:: as any*/),
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "recipient",
-                "plural": false,
-                "selections": (v11/*:: as any*/),
-                "storageKey": null
-              }
-            ],
-            "type": "Repayment",
-            "abstractKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ],
+    "selections": (v9/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -227,88 +415,19 @@ return {
     "argumentDefinitions": (v0/*:: as any*/),
     "kind": "Operation",
     "name": "activityDetailQuery",
-    "selections": [
-      {
-        "alias": null,
-        "args": (v1/*:: as any*/),
-        "concreteType": null,
-        "kind": "LinkedField",
-        "name": "node",
-        "plural": false,
-        "selections": [
-          (v2/*:: as any*/),
-          (v3/*:: as any*/),
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v4/*:: as any*/),
-              (v5/*:: as any*/),
-              (v6/*:: as any*/),
-              (v7/*:: as any*/),
-              (v8/*:: as any*/),
-              (v9/*:: as any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "payer",
-                "plural": false,
-                "selections": (v13/*:: as any*/),
-                "storageKey": null
-              }
-            ],
-            "type": "Expense",
-            "abstractKey": null
-          },
-          {
-            "kind": "InlineFragment",
-            "selections": [
-              (v4/*:: as any*/),
-              (v12/*:: as any*/),
-              (v7/*:: as any*/),
-              (v8/*:: as any*/),
-              (v9/*:: as any*/),
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "sender",
-                "plural": false,
-                "selections": (v13/*:: as any*/),
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "concreteType": "Membership",
-                "kind": "LinkedField",
-                "name": "recipient",
-                "plural": false,
-                "selections": (v13/*:: as any*/),
-                "storageKey": null
-              }
-            ],
-            "type": "Repayment",
-            "abstractKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ]
+    "selections": (v9/*:: as any*/)
   },
   "params": {
-    "cacheID": "383a45c053714eebd78a84fa40e82f0e",
+    "cacheID": "a2673ccfe03052d56b6468cbce08792b",
     "id": null,
     "metadata": {},
     "name": "activityDetailQuery",
     "operationKind": "query",
-    "text": "query activityDetailQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      description\n      totalMinor\n      currency\n      effectiveDate\n      createdAt\n      payer {\n        displayName\n        id\n      }\n    }\n    ... on Repayment {\n      id\n      groupId\n      amountMinor\n      currency\n      effectiveDate\n      createdAt\n      sender {\n        displayName\n        id\n      }\n      recipient {\n        displayName\n        id\n      }\n    }\n    id\n  }\n}\n"
+    "text": "query activityDetailQuery(\n  $eventId: ID!\n  $groupId: ID\n) {\n  activityEvent(eventId: $eventId, groupId: $groupId) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on ActivityEvent {\n      id\n      recordId\n      kind\n      groupId\n      groupName\n      isHousehold\n      groupKind\n      amountMinor\n      currency\n      effectiveDate\n      timestamp\n      description\n      note\n      creator {\n        id\n        displayName\n      }\n      payer {\n        id\n        displayName\n      }\n      sender {\n        id\n        displayName\n      }\n      recipient {\n        id\n        displayName\n      }\n      before {\n        description\n        totalMinor\n        effectiveDate\n        category\n        note\n        payer {\n          id\n          displayName\n        }\n        split\n        allocations {\n          participant {\n            id\n            displayName\n          }\n          amountMinor\n          percentageHundredths\n        }\n      }\n      after {\n        description\n        totalMinor\n        effectiveDate\n        category\n        note\n        payer {\n          id\n          displayName\n        }\n        split\n        allocations {\n          participant {\n            id\n            displayName\n          }\n          amountMinor\n          percentageHundredths\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b445c4d0f1f77079ed410c641f3c7319";
+(node as any).hash = "021cc0cf8e58643b89ff10e5d5e8a34d";
 
 export default node;

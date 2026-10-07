@@ -236,6 +236,7 @@ func decodeSnapshot(payload []byte, page PageRequest) (Snapshot, error) {
 		for j := range r.Allocations {
 			r.Allocations[j].ParticipantID = ledger.PublicID("Membership", r.Allocations[j].ParticipantID)
 		}
+		setEditEligibility(r, result.Members)
 	}
 	return result, nil
 }
@@ -254,11 +255,10 @@ const projectionSQL = `WITH visible AS (
 ), members AS (SELECT * FROM app.group_members($1)),
 revision AS (SELECT coalesce(max(revision),0) AS n FROM app.financial_records WHERE group_id=$1),
 filtered AS (
- SELECT e.* FROM app.expenses e WHERE e.group_id=$1
- AND e.revision<=coalesce($7::bigint,(SELECT n FROM revision))
+ SELECT e.* FROM app.expenses_at_revision($1,coalesce($7::bigint,(SELECT n FROM revision))) e WHERE e.group_id=$1
  AND ($3::date IS NULL OR e.effective_date>=$3) AND ($4::date IS NULL OR e.effective_date<=$4)
  AND ($5::text IS NULL OR e.category=$5)
- AND ($6::uuid IS NULL OR EXISTS(SELECT FROM app.allocations a WHERE a.expense_id=e.id AND a.participant_id=$6))
+ AND ($6::uuid IS NULL OR EXISTS(SELECT FROM app.allocations_at_revision(e.id,e.version) a WHERE a.expense_id=e.id AND a.participant_id=$6))
  AND ($11::uuid IS NULL OR e.id=$11)
 ), page AS (
  SELECT * FROM filtered e WHERE $8::date IS NULL OR (e.effective_date,e.created_at,e.id)<($8::date,$9::timestamptz,$10::uuid)
@@ -278,6 +278,6 @@ SELECT jsonb_build_object('ID',v.id,'Name',v.name,'Currency',v.currency,'ViewerM
  'HasPrevious',($8::date IS NOT NULL AND EXISTS(SELECT FROM filtered e WHERE (e.effective_date,e.created_at,e.id)>=($8::date,$9::timestamptz,$10::uuid))),
  'Members',coalesce((SELECT jsonb_agg(jsonb_build_object('ID',id,'DisplayName',display_name,'Status',status,'Role',role,'CanParticipate',can_participate) ORDER BY id) FROM members),'[]'::jsonb),
  'Positions',coalesce((SELECT jsonb_agg(jsonb_build_object('MemberID',id,'Paid',paid,'Owed',owed,'Sent',sent,'Received',received) ORDER BY id) FROM positions),'[]'::jsonb),
- 'Records',coalesce((SELECT jsonb_agg(jsonb_build_object('ExpenseID',e.id,'CreatorMembershipID',e.creator_id,'PayerMembershipID',e.payer_id,'TotalMinor',e.total_minor,'Currency',e.currency,'Description',e.description,'EffectiveDate',to_char(e.effective_date,'YYYY-MM-DD'),'Category',e.category,'Note',e.note,'Split',e.split,'CommittedAt',to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'Revision',e.revision,
- 'Percentages',(SELECT coalesce(jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Hundredths',a.percentage_hundredths) ORDER BY a.participant_id),'[]'::jsonb) FROM app.allocations a WHERE a.expense_id=e.id AND a.percentage_hundredths IS NOT NULL),
- 'Allocations',(SELECT jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Amount',a.amount_minor) ORDER BY a.participant_id) FROM app.allocations a WHERE a.expense_id=e.id)) ORDER BY e.effective_date DESC,e.created_at DESC,e.id DESC) FROM page e),'[]'::jsonb)) FROM visible v`
+ 'Records',coalesce((SELECT jsonb_agg(jsonb_build_object('ExpenseID',e.id,'CreatorMembershipID',e.creator_id,'PayerMembershipID',e.payer_id,'TotalMinor',e.total_minor,'Currency',e.currency,'Description',e.description,'EffectiveDate',to_char(e.effective_date,'YYYY-MM-DD'),'Category',e.category,'Note',e.note,'Split',e.split,'CommittedAt',to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'Revision',e.revision,'Version',e.version,
+ 'Percentages',(SELECT coalesce(jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Hundredths',a.percentage_hundredths) ORDER BY a.participant_id),'[]'::jsonb) FROM app.allocations_at_revision(e.id,e.version) a WHERE a.expense_id=e.id AND a.percentage_hundredths IS NOT NULL),
+ 'Allocations',(SELECT jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Amount',a.amount_minor) ORDER BY a.participant_id) FROM app.allocations_at_revision(e.id,e.version) a WHERE a.expense_id=e.id)) ORDER BY e.effective_date DESC,e.created_at DESC,e.id DESC) FROM page e),'[]'::jsonb)) FROM visible v`
