@@ -57,6 +57,6 @@ pnpm test
 pnpm build
 ```
 
-For API and persistence changes, also run `make api-check`, `make db-generation-check` and `make db-test`; the latter exercises real Supabase/PostgreSQL migration, authorization and race-enabled integration checks. Required CI runs the web and API verification paths for every PR.
+For API and persistence changes, also run `make api-check`, `make db-generation-check` and `make db-test`; the latter exercises real Supabase/PostgreSQL migration, authorization and race-enabled integration checks. Required CI runs repository validation and the affected web/API verification paths for every PR and main push; see the [change-aware contract](docs/agents/change-aware-ci.md).
 
 See [testing strategy](docs/testing-strategy.md) for coverage and limitations, and [contributing](CONTRIBUTING.md) for the required issue, independent testing/review, and CI workflow.

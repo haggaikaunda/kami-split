@@ -13,23 +13,57 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  repository:
+    name: Repository validation and change classification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web_changed: ${{ steps.changes.outputs.web_changed }}
+      api_changed: ${{ steps.changes.outputs.api_changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify actual event commits
+        id: changes
+        run: node scripts/ci/changes.mjs
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm format:check
+      - run: node --test scripts/ci/*.test.mjs
   web:
     name: Web
+    needs: repository
+    if: ${{ !cancelled() && (needs.repository.result != 'success' || needs.repository.outputs.web_changed != 'false') }}
     uses: ./.github/workflows/web.yml
   api:
     name: API
+    needs: repository
+    if: ${{ !cancelled() && (needs.repository.result != 'success' || needs.repository.outputs.api_changed != 'false') }}
     uses: ./.github/workflows/api.yml
   verify:
     name: Verify
-    needs: [web, api]
+    needs: [repository, web, api]
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 2
     steps:
-      - name: Require successful web and API checks
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Require successful applicable checks
         env:
+          REPOSITORY_RESULT: ${{ needs.repository.result }}
+          WEB_REQUIRED: ${{ needs.repository.outputs.web_changed }}
+          API_REQUIRED: ${{ needs.repository.outputs.api_changed }}
           WEB_RESULT: ${{ needs.web.result }}
           API_RESULT: ${{ needs.api.result }}
-        run: |
-          echo "Web: $WEB_RESULT; API: $API_RESULT"
-          test "$WEB_RESULT" = success && test "$API_RESULT" = success
+        run: node scripts/ci/verify.mjs
