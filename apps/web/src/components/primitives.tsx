@@ -643,13 +643,20 @@ export function SummaryMetric({
   label,
   children,
   detail,
+  icon,
 }: {
   label: string;
   children: ReactNode;
   detail?: ReactNode;
+  icon?: ReactNode;
 }) {
   return (
     <div className="ui-summary-metric">
+      {icon && (
+        <span className="ui-metric-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <span className="ui-metric-label">{label}</span>
       <strong className="ui-metric-value">{children}</strong>
       {detail && <span className="ui-metric-detail">{detail}</span>}

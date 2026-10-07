@@ -416,6 +416,7 @@ export function HouseholdContent({
             <div className="ui-summary-row household-summary">
               <SummaryMetric
                 label="Total shared expenses"
+                icon={<AppIcon name="expense" />}
                 detail={`${totals.totalSharedExpenseCount} expenses`}
               >
                 <Money
@@ -426,6 +427,7 @@ export function HouseholdContent({
               <HouseholdNet totals={totals} />
               <SummaryMetric
                 label="Active spaces"
+                icon={<AppIcon name="groups" />}
                 detail="Home · Trips · Groups"
               >
                 {totals.activeSpaceCount}

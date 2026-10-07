@@ -796,3 +796,29 @@ td {
     linear-gradient(90deg, var(--color-surface), transparent),
     url('/art/household.png');
 }
+
+.ui-metric-icon {
+  display: none;
+}
+:root[data-theme='dark'] .ui-metric-icon {
+  display: inline-grid;
+  place-items: center;
+  justify-self: start;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-separator);
+  border-radius: 0.75rem;
+  color: var(--color-accent);
+  background: var(--color-accent-surface);
+}
+:root[data-theme='dark'] .ui-summary-metric:has(.ui-metric-icon) {
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  column-gap: 0.85rem;
+}
+:root[data-theme='dark'] .ui-metric-icon {
+  grid-column: 1;
+  grid-row: 1 / 4;
+}
+:root[data-theme='dark'] .ui-metric-icon ~ * {
+  grid-column: 2;
+}
