@@ -10,6 +10,17 @@ ownership, the provisioned production foundation, and operating procedures. It
 does not store a credential. Explicitly authorized API rehearsals use the production
 resources under the boundaries described below.
 
+Production is serving through the normal GitHub Actions release path. On
+2026-10-06, [run 37565115466](https://github.com/haggaikaunda/kami-split/actions/runs/37565115466)
+succeeded for `f55f131bd604d172dd6bf2fa540db3149f1db984`: explicit migrations,
+API candidate checks and promotion, staged web checks and promotion, and hosted
+verification all passed. API `/ready` checks database connectivity and warmed
+Auth trust; GraphQL health alone does not establish that readiness. The #140
+incident record identifies the initial startup failure as a runtime-role password
+mismatch; temporary raw driver logging is no longer required. This dated run is
+hosted execution evidence, not a fresh inspection of every provider setting or
+proof of later commits.
+
 There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
@@ -65,10 +76,10 @@ location.
 
 ## Provisioned production foundation
 
-The following production foundation was provisioned on 2026-10-01. The first
-successful production workflow creates the Cloud Run service; there is no
-billable always-on compute because the service keeps a minimum instance count of
-zero.
+The following production foundation was recorded as provisioned on 2026-10-01.
+Cloud Run now serves production releases; the deployment configuration retains a
+minimum instance count of zero and a maximum of one. These provisioning records
+are distinct from a fresh provider-settings inspection.
 
 - Enabled APIs: Cloud Run Admin, Artifact Registry, Secret Manager, IAM Service
   Account Credentials, Security Token Service, and Cloud Resource Manager.
@@ -136,14 +147,14 @@ validation and protected candidate probes. Those probes pass it only in the
 or curl verbose/trace logging, or forward it to application build/runtime settings
 or the promoted production-domain checks.
 
-| Selected Supabase value             | Production selection                         |
-| ----------------------------------- | -------------------------------------------- |
-| Project name                        | `kami-split`                                 |
-| Project reference                   | `zlxpapkxacnwnmgagbth`                       |
-| API origin                          | `https://zlxpapkxacnwnmgagbth.supabase.co`   |
-| Provider region                     | AWS `us-west-2` — West US (Oregon)           |
-| Colocated Google Cloud region       | `us-west1` — Oregon                          |
-| Current database connection ceiling | Verify after project provisioning completes. |
+| Selected Supabase value             | Production selection                                       |
+| ----------------------------------- | ---------------------------------------------------------- |
+| Project name                        | `kami-split`                                               |
+| Project reference                   | `zlxpapkxacnwnmgagbth`                                     |
+| API origin                          | `https://zlxpapkxacnwnmgagbth.supabase.co`                 |
+| Provider region                     | AWS `us-west-2` — West US (Oregon)                         |
+| Colocated Google Cloud region       | `us-west1` — Oregon                                        |
+| Current database connection ceiling | Verify in Supabase before increasing pool/instance bounds. |
 
 The production web origin is the canonical HTTPS Vercel domain or custom
 domain, without a trailing slash. The production API origin is the HTTPS Cloud
@@ -433,9 +444,10 @@ inspect the provider state before rerunning; the script does not attempt rollbac
 
 `node --test scripts/vercel-promote.test.mjs` runs credential-free transport and
 clock simulations plus workflow boundary assertions in web CI. These checks do
-not prove live provider integration. Keep #151 open until a post-merge run proves
-candidate deployment, protected staged verification, confirmed REST promotion of
-the intended candidate, and anonymous production verification in that order.
+not prove live provider integration. [#151 completion evidence](https://github.com/haggaikaunda/kami-split/issues/151#issuecomment-5963098460)
+records the successful post-merge candidate deployment, protected staged
+verification, confirmed REST promotion and anonymous production verification on
+2026-10-02. Later releases must still pass those steps in that order.
 
 ## Pre-merge API deployment rehearsal
 
@@ -501,12 +513,14 @@ revoke credentials, or undo in-flight work. Inactive revisions remain available
 for provenance under normal Cloud Run lifecycle management. Images are retained
 independently; there is no ad hoc Artifact Registry deletion.
 
-Bootstrap requires the reviewed workflow to land on `main` before GitHub accepts
-its first manual dispatch. Keep #156 open through live validation: use an open,
-passing PR to rehearse, record its SHA/image digest/revision and unchanged traffic,
-then verify close cleanup. Repository delivery gates still apply to the foundation
-merge. Do not relax WIF or environment controls to run the new workflow from its
-feature branch.
+Bootstrap required the reviewed workflow to land on `main` before GitHub accepted
+its first manual dispatch. [#156 live rehearsal evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963681466)
+and [PR-close cleanup evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963711172)
+record completed validation on 2026-10-02: exact SHA/image digests/revisions,
+unchanged serving allocation, stable tag movement and subsequent tag removal.
+For future rehearsals, select an open passing PR and retain equivalent provenance
+and traffic evidence. Do not relax WIF or environment controls to run the workflow
+from a feature branch.
 
 ### Operator commands
 
