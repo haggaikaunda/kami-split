@@ -40,15 +40,20 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestPercentageWritesExplicitRollout(t *testing.T) {
-	for _, value := range []string{"true", "false", "", "1"} {
-		c, err := Load(func(key string) (string, bool) { return value, key == "API_PERCENTAGE_WRITES_ENABLED" })
-		if value == "true" || value == "false" {
-			if err != nil || c.PercentageWritesEnabled != (value == "true") {
-				t.Fatal(value, c, err)
+// Retired deployment settings must neither change configuration nor prevent startup.
+func TestRetiredPercentageSettingIgnored(t *testing.T) {
+	want, err := Load(func(string) (string, bool) { return "", false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"false", "true", "", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			got, err := Load(func(key string) (string, bool) {
+				return value, key == "API_PERCENTAGE_WRITES_ENABLED"
+			})
+			if err != nil || got != want {
+				t.Fatalf("retired setting changed configuration: %+v, %v", got, err)
 			}
-		} else if err == nil {
-			t.Fatal("accepted ambiguous rollout flag", value)
-		}
+		})
 	}
 }

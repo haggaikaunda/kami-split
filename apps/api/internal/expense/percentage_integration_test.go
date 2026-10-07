@@ -11,7 +11,6 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
 	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"sync"
 	"testing"
@@ -150,7 +149,8 @@ func TestPercentageDurableRejectionAndDatabaseConstraints(t *testing.T) {
 	}
 }
 
-func TestPercentageRollbackDoesNotInvalidateCommittedRecovery(t *testing.T) {
+func TestPercentageOrdinaryStartupWithRetiredSetting(t *testing.T) {
+	t.Setenv("API_PERCENTAGE_WRITES_ENABLED", "false")
 	f := newExpenseFixture(t)
 	in := f.input
 	in.Split = "PERCENTAGE"
@@ -183,42 +183,17 @@ func TestPercentageRollbackDoesNotInvalidateCommittedRecovery(t *testing.T) {
 	if snapshot.Records[0].Allocations[0].Amount != 0 || snapshot.Records[0].Percentages[0].Hundredths != 0 {
 		t.Fatal("zero lost")
 	}
-	// Fresh writes can be disabled without removing previously committed outcomes.
-	// The HTTP fixture enables writes; use the same verified actor boundary below.
-	disabled := expense.New(f.db)
-
-	endpoint := httptest.NewServer(f.verifier.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var input ledger.Input
-		_ = json.NewDecoder(r.Body).Decode(&input)
-		out, err := disabled.Create(r.Context(), input)
-		if err != nil {
-			w.WriteHeader(500)
-			return
-		}
-		_ = json.NewEncoder(w).Encode(out)
-	})))
-	defer endpoint.Close()
-	create := func(input ledger.Input) expense.Outcome {
-		body, _ := json.Marshal(input)
-		request, _ := http.NewRequestWithContext(f.ctx, "POST", endpoint.URL, bytes.NewReader(body))
-		request.Header.Set("Authorization", "Bearer "+f.token(1))
-		response, err := http.DefaultClient.Do(request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer response.Body.Close()
-		var out expense.Outcome
-		if response.StatusCode != 200 || json.NewDecoder(response.Body).Decode(&out) != nil {
-			t.Fatal("failed disabled service")
-		}
-		return out
+	if out := f.create(1, in); !reflect.DeepEqual(out, committed) {
+		t.Fatal("replay lost original", out)
 	}
-	if out := create(in); !reflect.DeepEqual(out, committed) {
-		t.Fatal("rollback lost original", out)
+	status, body := f.request(1, "/recover", in)
+	var recovered expense.Outcome
+	if status != http.StatusOK || json.Unmarshal(body, &recovered) != nil || !reflect.DeepEqual(recovered, committed) {
+		t.Fatal("recovery lost original", string(body))
 	}
 	in.Key = uuid.NewString()
-	if out := create(in); out.Kind != "VALIDATION" {
-		t.Fatal("rollback allowed new write", out)
+	if out := f.create(1, in); out.Kind != "COMMITTED" {
+		t.Fatal("retired setting prevented fresh write", out)
 	}
 }
 
