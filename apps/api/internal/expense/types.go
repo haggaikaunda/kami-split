@@ -56,8 +56,7 @@ func (f Failure) Error() string { return string(f) }
 
 // Service uses only verified identity and transaction-local authorized statements.
 type Service struct {
-	db               *database.DB
-	percentageWrites bool
+	db *database.DB
 }
 
 // New constructs expense operations with a fixed database dependency. A nil
@@ -123,11 +122,4 @@ func lookup(ctx context.Context, tx pgx.Tx, group, key, kind string) (Outcome, [
 	}
 	err = json.Unmarshal(row.Outcome, &result)
 	return result, row.Canonical, row.CanonicalHash, err
-}
-
-// NewWithPercentageWrites enables fresh Percentage writes only after compatible
-// database, API and browser readers are deployed. Reads and original recovery
-// remain available when disabled; New defaults to disabled.
-func NewWithPercentageWrites(db *database.DB, enabled bool) *Service {
-	return &Service{db: db, percentageWrites: enabled}
 }

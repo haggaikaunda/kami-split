@@ -52,20 +52,41 @@ Only fully valid forms show final allocations and enable Percentage Save.
 
 ## Deployment and rollback
 
-1. Apply additive migration `20261014000000_percentage_splits.sql` first. Old API
-   Equal/Exact writes remain valid; no old canonical rows or outcome JSON change.
-2. Deploy the updated API and generated clients/readers with
-   `API_PERCENTAGE_WRITES_ENABLED=false` (the default). Verify authorized detail
-   and recovery readers. Old readers display stored cent allocations and do not
-   recalculate them; retire old client builds before enabling the new mode.
-3. Deploy the web release and invalidate old cached application builds, then set
-   `API_PERCENTAGE_WRITES_ENABLED=true` only after compatible readers are present.
-   The form can receive a definitive unavailable rejection while writes are gated.
-4. Roll back fresh writes by setting the flag false; retain this additive schema
-   and compatible API/detail/recovery readers. Do not roll back readers to versions
-   that lack the Percentage contract once percentage history exists. Do not drop
-   metadata or rewrite history to Equal/Exact. Gate-off retries of committed
-   originals still return their original outcome; rejected keys remain rejected.
+Percentage is a normal supported split mode alongside Equal and Exact, with no
+opt-in configuration. The owner decision in #208 supersedes #199's default-off
+rollout gate. The retired `API_PERCENTAGE_WRITES_ENABLED` setting has no runtime
+effect, including a stale `false` value. The form still initially selects Equal.
+The owner confirmed production has no records; this cleanup requires no new
+migration, reset, or compatibility machinery for historical gate rejections.
+Existing financial history and safe operation recovery remain unchanged.
 
-No hosted deployment or new expense edit/delete capability is implied by this PR.
-Rendered evidence and residual verification limits are recorded on the delivery PR.
+1. Verify the target environment's migration status (for example, `supabase
+migration list --linked` against the intended project). Apply missing migrations
+   through the approved migration deployment workflow, including
+   `20261014000000_percentage_splits.sql`, before serving the updated application.
+   Do not assume source merge means the migration has run, or rewrite an applied
+   migration. Fresh setup uses the same checked-in migrations.
+2. Ensure the API SDL/generated readers and deployed web application agree on
+   Percentage inputs, stored intent, cent allocations and recovery. Deploy the
+   updated API and web releases together; invalidate obsolete cached web builds.
+   Supported deployments provide Percentage without an activation step.
+3. Remove the obsolete hosted environment setting from deployment configuration.
+   Its presence cannot disable writes, but cleanup prevents misleading operations.
+4. Smoke-test a real authenticated Percentage create/read/recovery journey from
+   Household (with an explicit authorized source ledger), Group and Trip entry.
+   Verify $10.01 at 60%/40% saves $6.01/$4.00, detail retains percentages, balances
+   reconcile, and an uncertain response recovers the original operation. Check
+   Equal/Exact and cross-group denial as well. Record the deployed release,
+   migration status and results.
+
+Rollback uses a coordinated compatible API/web redeployment, retaining the
+percentage schema and readers once Percentage records exist. There is no
+percentage kill switch. Do not deploy a reader that cannot understand stored
+Percentage intent, drop metadata, or rewrite history to Equal/Exact. Prefer a
+forward fix when an older release cannot preserve creation/detail/recovery
+contracts. No destructive reset or unrelated auth/application cleanup is needed.
+
+Hosted migration status and deployment smoke tests remain operator actions until
+actual target-environment evidence is recorded. Repository checks and source merge
+alone do not establish hosted readiness. No hosted deployment or expense
+edit/delete capability is implied by this change.

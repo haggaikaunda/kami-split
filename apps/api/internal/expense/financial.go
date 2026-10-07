@@ -178,9 +178,6 @@ func (s *Service) Create(ctx context.Context, input ledger.Input) (Outcome, erro
 	}
 	original.Description = input.Description
 	allocations, fields := ledger.Validate(original)
-	if input.Split == "PERCENTAGE" && !s.percentageWrites {
-		fields = append(fields, ledger.FieldProblem{Path: []string{"input", "split"}, Code: "UNAVAILABLE", Message: "Percentage creation is not enabled. Preserve existing attempts and use original recovery."})
-	}
 	affected := append(append([]string(nil), input.ParticipantIDs...), input.PayerID)
 	in := financialIntent{group: input.GroupID, key: input.Key, kind: "CREATE_EXPENSE", version: ledger.CreateVersion(input), canonical: canonical, hash: hash[:], affected: affected, fields: fields}
 	in.apply = func(ctx context.Context, tx pgx.Tx, actor auth.Actor, snapshot Snapshot) (Outcome, error) {
