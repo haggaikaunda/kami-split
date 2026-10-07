@@ -164,13 +164,40 @@ const path = require('node:path');
     await page
       .getByRole('heading', { name: description, exact: true })
       .waitFor();
+    // Persist an actual-transfer record through the authorized API so the feed
+    // comparison includes all three supported event types, without synthetic rows.
+    const repaymentResponse = await page.request.post(
+      process.env.EDIT_BROWSER_ENDPOINT + '/graphql',
+      {
+        headers: { Authorization: 'Bearer ' + process.env.EDIT_BROWSER_TOKEN },
+        data: {
+          query:
+            'mutation($input:RecordRepaymentInput!){recordRepayment(input:$input){__typename}}',
+          variables: {
+            input: {
+              groupId: group,
+              key: require('node:crypto').randomUUID(),
+              senderId: created.record.allocations[1].participantId,
+              recipientId: created.record.allocations[0].participantId,
+              amountMinor: '100',
+              currency: 'USD',
+              effectiveDate: '2026-10-06',
+              note: 'Recorded transfer for shared dinner.',
+            },
+          },
+        },
+      },
+    );
+    assert.equal(
+      (await repaymentResponse.json()).data?.recordRepayment.__typename,
+      'RepaymentCommitted',
+    );
     await page.goto(origin + activity);
-    await page
-      .getByRole('combobox', { name: 'Event type' })
-      .selectOption('EXPENSE_UPDATED');
+    await page.getByRole('combobox', { name: 'Event type' }).selectOption('');
     const event = page
       .locator('.activity-events button')
-      .filter({ hasText: description });
+      .filter({ hasText: description })
+      .filter({ hasText: 'updated an expense' });
     await event.first().waitFor();
     assert(
       (await event.first().innerText()).includes(
@@ -192,7 +219,9 @@ const path = require('node:path');
     await page.keyboard.press('Enter');
     await page.locator('.activity-fact-card').waitFor();
     assert(
-      (await page.locator('.activity-detail').innerText()).includes('Previous'),
+      (await page.locator('.activity-detail').innerText())
+        .toLowerCase()
+        .includes('previous'),
     );
     assert(
       (await page.locator('.activity-detail').innerText()).includes('$120.00'),
@@ -238,6 +267,48 @@ const path = require('node:path');
       .getByRole('button', { name: 'Close detail', exact: true })
       .click();
     assert(await event.first().evaluate((e) => e === document.activeElement));
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.setViewportSize({ width: 390, height: 1000 });
+    await page.evaluate(
+      () => (document.documentElement.style.fontSize = '100%'),
+    );
+    await page
+      .locator('.activity-events button')
+      .filter({ hasText: description })
+      .filter({ hasText: 'added an expense' })
+      .click();
+    await page.locator('.activity-fact-card').waitFor();
+    assert(
+      (await page.locator('.activity-fact-card').innerText()).includes(
+        '$120.00',
+      ),
+      'Creation detail remains the original snapshot',
+    );
+    await page.screenshot({
+      path: path.join(evidence, `${context.toLowerCase()}-created-detail.png`),
+      fullPage: true,
+    });
+    await page
+      .getByRole('button', { name: 'Close detail', exact: true })
+      .click();
+    await page
+      .locator('.activity-events button')
+      .filter({ hasText: 'recorded a repayment' })
+      .first()
+      .click();
+    await page.locator('.activity-fact-card').waitFor();
+    assert(
+      (await page.locator('.activity-detail').innerText()).includes(
+        'actual transfer',
+      ),
+    );
+    await page.screenshot({
+      path: path.join(
+        evidence,
+        `${context.toLowerCase()}-repayment-detail.png`,
+      ),
+      fullPage: true,
+    });
     assert.deepEqual(errors, []);
     await page.close();
     console.log(

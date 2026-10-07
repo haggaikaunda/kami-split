@@ -276,14 +276,14 @@
 }
 .ui-workspace-header--trip .workspace-identity-icon {
   background: #ffffffde;
-  color: var(--color-primary);
+  color: #00664d;
 }
 .ui-workspace-header--group {
   background: var(--color-surface) url('/art/household.png') right center / auto
     100% no-repeat;
 }
 .ui-workspace-header--group .workspace-heading {
-  background: #ffffffed;
+  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
   border-radius: var(--radius-control);
   padding: 0.5rem;
 }
@@ -500,7 +500,7 @@
   flex: 0 0 2.25rem;
 }
 .group-header-actions {
-  background: #ffffffed;
+  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
   padding: 0.25rem;
   border-radius: var(--radius-control);
 }
