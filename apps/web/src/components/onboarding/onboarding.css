@@ -261,3 +261,27 @@
 .account-content h1[tabindex='-1']:focus {
   outline: none;
 }
+
+.appearance-options {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.financial-journey .appearance-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target-size);
+  cursor: pointer;
+}
+.financial-journey .appearance-options input {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--color-primary);
+}

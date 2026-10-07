@@ -104,7 +104,10 @@ export function AppearanceEditor({
             void run(true);
           }}
         >
-          <fieldset disabled={working || uncertain}>
+          <fieldset
+            className="appearance-options"
+            disabled={working || uncertain}
+          >
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
               <label className="onboarding-check" key={value}>
