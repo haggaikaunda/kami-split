@@ -10,7 +10,7 @@ Follow the canonical [delivery workflow](docs/agents/delivery-workflow.md) for e
 
 1. Start from an approved, acceptance-criteria-driven GitHub issue.
 2. Inspect relevant code and documentation before editing.
-3. State a short implementation plan.
+3. State a short implementation plan. Fetch/prune and synchronize the designated primary checkout with `origin/main` before starting, or record the blocker and use a fresh isolated worktree. Record the observed SHA.
 4. Work on a feature branch or isolated worktree; never push directly to `main`.
 5. Implement the smallest complete change and meaningful tests.
 6. Run formatting, linting, type checking, tests, and build verification.
@@ -18,6 +18,8 @@ Follow the canonical [delivery workflow](docs/agents/delivery-workflow.md) for e
 8. Obtain an independent requirements-focused testing pass and a final-diff review.
 9. Resolve substantive findings and rerun required checks.
 10. An agent may merge only when required CI passes, independent testing and review are recorded, all blocking conversations are resolved, and the PR is no longer a draft.
+
+11. The delivery/merge coordinator completes the canonical post-merge closeout: confirm the actual merge, synchronize clean primary `main`, remove proven completed branches and owned disposable worktrees, verify exact remote branch absence, and record evidence or explicit blockers. Each agent owns its disposable worktrees; hand off cleanup when the original checkout belongs to another session.
 
 Never bypass branch protections, force-push shared branches, weaken tests to obtain a passing build, or merge with failing or missing required checks.
 
@@ -42,6 +44,7 @@ Never bypass branch protections, force-push shared branches, weaken tests to obt
 - Formatting, linting, type checking, tests, and build pass.
 - Authorization, validation, error handling, duplicates, and concurrency were considered where relevant.
 - Documentation and migrations are updated when behavior or schema changes.
+- Post-merge closeout is recorded with observed local/remote main SHAs, branch/worktree and remote deletion outcomes, and explicit blockers. These are completion obligations, not pre-merge gates.
 - The PR is small enough to review and contains no unrelated changes.
 
 ## Review priorities
