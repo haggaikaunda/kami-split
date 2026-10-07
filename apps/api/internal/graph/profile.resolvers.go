@@ -12,6 +12,14 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/profile"
 )
 
+// UpdateMyAppearance is the resolver for the updateMyAppearance field.
+func (r *mutationResolver) UpdateMyAppearance(ctx context.Context, appearance model.Appearance, expectedAppearance model.Appearance) (model.ProfileResult, error) {
+	if r.Profiles == nil {
+		return mapProfile(profile.Result{Code: "UNAVAILABLE"}), nil
+	}
+	return mapProfile(r.Profiles.UpdateAppearance(ctx, string(appearance), string(expectedAppearance))), nil
+}
+
 // UpdateMyProfile is the resolver for the updateMyProfile field.
 func (r *mutationResolver) UpdateMyProfile(ctx context.Context, displayName string, expectedDisplayName string) (model.ProfileResult, error) {
 	if r.Profiles == nil {

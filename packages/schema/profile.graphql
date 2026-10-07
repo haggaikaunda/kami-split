@@ -1,4 +1,21 @@
 """
+Account appearance preference. LIGHT is the default; SYSTEM follows the device.
+"""
+enum Appearance {
+  """
+  Always use the light palette.
+  """
+  LIGHT
+  """
+  Follow the operating system color scheme.
+  """
+  SYSTEM
+  """
+  Always use the dark palette.
+  """
+  DARK
+}
+"""
 Self-only application profile, independent of group discovery and Auth metadata.
 """
 type Profile {
@@ -10,6 +27,10 @@ type Profile {
   Current application display name; historical financial snapshots retain their original names.
   """
   displayName: String!
+  """
+  Persisted account preference, independent of display-name edits.
+  """
+  appearance: Appearance!
 }
 """
 Safe profile outcome; no private identity or storage details.
@@ -35,6 +56,21 @@ extend type Query {
   currentProfile: ProfileResult!
 }
 extend type Mutation {
+  """
+  Update only the authenticated caller's appearance. The exact previously read
+  preference prevents stale overwrites; an already current requested value succeeds.
+  Name edits, Auth metadata and financial records are unchanged.
+  """
+  updateMyAppearance(
+    """
+    Desired account appearance preference.
+    """
+    appearance: Appearance!
+    """
+    Previously confirmed preference, used to detect conflicting edits.
+    """
+    expectedAppearance: Appearance!
+  ): ProfileResult!
   """
   Update only the caller's application display name. Trim Unicode White_Space
   at both ends and require 1–120 Unicode codepoints after trimming. The exact

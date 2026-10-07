@@ -1,7 +1,7 @@
 # Application profile
 
 The authenticated `currentProfile` read returns the enabled, provisioned caller's
-stable `ks1:Profile` public ID (distinct from Viewer and unavailable through Node lookup) and application display name independently of group
+stable `ks1:Profile` public ID (distinct from Viewer and unavailable through Node lookup), application display name, and persisted appearance independently of group
 loading. `updateMyProfile(displayName, expectedDisplayName)` accepts no target ID,
 email, ownership, or financial input. It updates only `app.users.display_name`
 through a narrowly granted SQL function under the verified transaction identity.
@@ -21,6 +21,17 @@ retry. Refresh authorized current projections after success. Stable identities,
 memberships, financial balances, audit events and recovery snapshots do not change.
 Invitation admission preserves existing application names instead of resetting
 them from Auth metadata.
+
+## Appearance preference
+
+`Profile.appearance` is `LIGHT`, `SYSTEM`, or `DARK`; existing and new accounts
+default to `LIGHT`. `updateMyAppearance(appearance, expectedAppearance)` changes
+only the enabled caller's preference through a narrowly granted SQL function.
+The actor row lock serializes concurrent edits. A stale expected preference returns
+`CONFLICT`, while a same-value retry succeeds. Display-name and appearance guards
+are independent, so saving one cannot overwrite or conflict with an edit to the
+other. The preference is private: shared member/name projections do not expose it.
+Refresh after an uncertain transport result before explicitly retrying.
 
 ## Browser editing and navigation
 

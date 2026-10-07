@@ -925,6 +925,8 @@ type Profile struct {
 	ID string `json:"id"`
 	// Current application display name; historical financial snapshots retain their original names.
 	DisplayName string `json:"displayName"`
+	// Persisted account preference, independent of display-name edits.
+	Appearance Appearance `json:"appearance"`
 }
 
 func (Profile) IsProfileResult() {}
@@ -1258,6 +1260,67 @@ func (e *ActivityKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e ActivityKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Account appearance preference. LIGHT is the default; SYSTEM follows the device.
+type Appearance string
+
+const (
+	// Always use the light palette.
+	AppearanceLight Appearance = "LIGHT"
+	// Follow the operating system color scheme.
+	AppearanceSystem Appearance = "SYSTEM"
+	// Always use the dark palette.
+	AppearanceDark Appearance = "DARK"
+)
+
+var AllAppearance = []Appearance{
+	AppearanceLight,
+	AppearanceSystem,
+	AppearanceDark,
+}
+
+func (e Appearance) IsValid() bool {
+	switch e {
+	case AppearanceLight, AppearanceSystem, AppearanceDark:
+		return true
+	}
+	return false
+}
+
+func (e Appearance) String() string {
+	return string(e)
+}
+
+func (e *Appearance) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Appearance(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Appearance", str)
+	}
+	return nil
+}
+
+func (e Appearance) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Appearance) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Appearance) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
