@@ -1,0 +1,101 @@
+{
+  "commit": "ddee97c",
+  "browser": "155.0.8059.39",
+  "results": [
+    {
+      "choice": "Dark",
+      "liveOSChange": true
+    },
+    {
+      "choice": "Light",
+      "liveOSChange": true
+    },
+    {
+      "choice": "System",
+      "liveOSChange": true
+    },
+    {
+      "serverPreferenceWithoutLocalCache": true,
+      "reloadPersistence": true,
+      "cachedFirstPaint": true
+    },
+    {
+      "route": "/household",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/groups",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips/T?tab=balances",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=expenses",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "keyboardDialog": true,
+      "escapeFocusReturned": true
+    },
+    {
+      "route": "/household/ledger?tab=activity",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=members",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/invitations",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips/T?tab=balances",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=expenses",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "loadingAndErrorDarkTheme": true
+    }
+  ],
+  "canonical": {
+    "canvas": "#0B111A",
+    "surface": "#121A27",
+    "surface-raised": "#172131",
+    "surface-accent": "#142A2C",
+    "separator": "#334153",
+    "ink": "#F7F9FC",
+    "muted": "#AEBACF",
+    "primary": "#58EFB7",
+    "primary-surface": "#173C37",
+    "indigo": "#9AA8FF",
+    "indigo-surface": "#202B47",
+    "warm-surface": "#FFF1DF",
+    "warm-ink": "#B66A2B"
+  },
+  "errors": []
+}

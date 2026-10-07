@@ -341,6 +341,7 @@ type ComplexityRoot struct {
 		RetryInvitationDelivery  func(childComplexity int, actionID string) int
 		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		UpdateExpense            func(childComplexity int, input model.UpdateExpenseInput) int
+		UpdateMyAppearance       func(childComplexity int, appearance model.Appearance, expectedAppearance model.Appearance) int
 		UpdateMyProfile          func(childComplexity int, displayName string, expectedDisplayName string) int
 	}
 
@@ -393,6 +394,7 @@ type ComplexityRoot struct {
 	}
 
 	Profile struct {
+		Appearance  func(childComplexity int) int
 		DisplayName func(childComplexity int) int
 		ID          func(childComplexity int) int
 	}
@@ -504,6 +506,7 @@ type MutationResolver interface {
 	AcceptInvitation(ctx context.Context, token string, key ledger.OperationKey) (model.InvitationResult, error)
 	CreateSharedInvitation(ctx context.Context, groupID string, key ledger.OperationKey) (model.InvitationResult, error)
 	RenewSharedInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
+	UpdateMyAppearance(ctx context.Context, appearance model.Appearance, expectedAppearance model.Appearance) (model.ProfileResult, error)
 	UpdateMyProfile(ctx context.Context, displayName string, expectedDisplayName string) (model.ProfileResult, error)
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
@@ -1794,6 +1797,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateExpense(childComplexity, args["input"].(model.UpdateExpenseInput)), true
+	case "Mutation.updateMyAppearance":
+		if e.ComplexityRoot.Mutation.UpdateMyAppearance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyAppearance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMyAppearance(childComplexity, args["appearance"].(model.Appearance), args["expectedAppearance"].(model.Appearance)), true
 	case "Mutation.updateMyProfile":
 		if e.ComplexityRoot.Mutation.UpdateMyProfile == nil {
 			break
@@ -1958,6 +1972,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Problem.Message(childComplexity), true
 
+	case "Profile.appearance":
+		if e.ComplexityRoot.Profile.Appearance == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Profile.Appearance(childComplexity), true
 	case "Profile.displayName":
 		if e.ComplexityRoot.Profile.DisplayName == nil {
 			break
@@ -4521,6 +4541,23 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/profile.graphql", Input: `"""
+Account appearance preference. LIGHT is the default; SYSTEM follows the device.
+"""
+enum Appearance {
+  """
+  Always use the light palette.
+  """
+  LIGHT
+  """
+  Follow the operating system color scheme.
+  """
+  SYSTEM
+  """
+  Always use the dark palette.
+  """
+  DARK
+}
+"""
 Self-only application profile, independent of group discovery and Auth metadata.
 """
 type Profile {
@@ -4532,6 +4569,10 @@ type Profile {
   Current application display name; historical financial snapshots retain their original names.
   """
   displayName: String!
+  """
+  Persisted account preference, independent of display-name edits.
+  """
+  appearance: Appearance!
 }
 """
 Safe profile outcome; no private identity or storage details.
@@ -4557,6 +4598,21 @@ extend type Query {
   currentProfile: ProfileResult!
 }
 extend type Mutation {
+  """
+  Update only the authenticated caller's appearance. The exact previously read
+  preference prevents stale overwrites; an already current requested value succeeds.
+  Name edits, Auth metadata and financial records are unchanged.
+  """
+  updateMyAppearance(
+    """
+    Desired account appearance preference.
+    """
+    appearance: Appearance!
+    """
+    Previously confirmed preference, used to detect conflicting edits.
+    """
+    expectedAppearance: Appearance!
+  ): ProfileResult!
   """
   Update only the caller's application display name. Trim Unicode White_Space
   at both ends and require 1–120 Unicode codepoints after trimming. The exact
@@ -5811,6 +5867,28 @@ func (ec *executionContext) field_Mutation_updateExpense_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyAppearance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "appearance",
+		func(ctx context.Context, v any) (model.Appearance, error) {
+			return ec.unmarshalNAppearance2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAppearance(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["appearance"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "expectedAppearance",
+		func(ctx context.Context, v any) (model.Appearance, error) {
+			return ec.unmarshalNAppearance2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAppearance(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["expectedAppearance"] = arg1
 	return args, nil
 }
 
@@ -11215,6 +11293,50 @@ func (ec *executionContext) fieldContext_Mutation_renewSharedInvitation(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyAppearance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMyAppearance(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMyAppearance(ctx, fc.Args["appearance"].(model.Appearance), fc.Args["expectedAppearance"].(model.Appearance))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+			return ec.marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMyAppearance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ProfileResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyAppearance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateMyProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11926,6 +12048,29 @@ func (ec *executionContext) _Profile_displayName(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_Profile_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Profile_appearance(ctx context.Context, field graphql.CollectedField, obj *model.Profile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Profile_appearance(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Appearance, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Appearance) graphql.Marshaler {
+			return ec.marshalNAppearance2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAppearance(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Profile_appearance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type Appearance does not have child fields"))
 }
 
 func (ec *executionContext) _ProfileProblem_code(ctx context.Context, field graphql.CollectedField, obj *model.ProfileProblem) (ret graphql.Marshaler) {
@@ -18396,6 +18541,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyAppearance":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyAppearance(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateMyProfile":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateMyProfile(ctx, field)
@@ -18834,6 +18986,11 @@ func (ec *executionContext) _Profile(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "displayName":
 			out.Values[i] = ec._Profile_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "appearance":
+			out.Values[i] = ec._Profile_appearance(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -20324,6 +20481,16 @@ func (ec *executionContext) marshalNAllocation2ᚖgithubᚗcomᚋhaggaikaundaᚋ
 		return graphql.Null
 	}
 	return ec._Allocation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAppearance2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAppearance(ctx context.Context, v any) (model.Appearance, error) {
+	var res model.Appearance
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAppearance2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAppearance(ctx context.Context, sel ast.SelectionSet, v model.Appearance) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNBalanceResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBalanceResult(ctx context.Context, sel ast.SelectionSet, v model.BalanceResult) graphql.Marshaler {

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
 import { useOnboarding, type Mode } from './controller';
 import { HouseIllustration, InvitationScreens, SignIn } from './screens';
+import { AppearanceEditor } from './appearance';
 import { ProfileEditor } from './profile';
 import { LegacyInvitations } from './legacy-invitations';
 import '../groups/journey.css';
@@ -112,6 +113,10 @@ function OnboardingVisit({
                   <>
                     <p>Signed in as {c.session.user.email}</p>
                     <ProfileEditor key={c.session.user.id} state={c} />
+                    <AppearanceEditor
+                      key={`appearance:${c.session.user.id}`}
+                      state={c}
+                    />
                     <Button
                       tone="secondary"
                       disabled={c.busy}

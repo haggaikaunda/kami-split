@@ -1,4 +1,4 @@
-// Package profile owns authenticated self-profile reads and display-name updates.
+// Package profile owns authenticated self-profile reads and independent display-name/appearance updates.
 package profile
 
 import (
@@ -21,21 +21,15 @@ type Service struct{ db *database.DB }
 // New creates self-profile operations; a nil database returns UNAVAILABLE.
 func New(db *database.DB) *Service { return &Service{db: db} }
 
-// Result exposes only the public profile ID and current application display name.
+// Result exposes only the public profile ID, application display name and appearance.
 // Code is READY on success; failure results contain no profile data.
-type Result struct{ ID, DisplayName, Code string }
+type Result struct{ ID, DisplayName, Appearance, Code string }
 
 // Read loads the current caller independently of membership and group discovery.
 func (s *Service) Read(ctx context.Context) Result {
 	var result Result
 	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
-		var raw string
-		if err := tx.QueryRow(ctx, `SELECT id::text,display_name FROM app.viewer_identity() WHERE status='READY'`).Scan(&raw, &result.DisplayName); err != nil {
-			return err
-		}
-		result.ID = ledger.PublicID("Profile", raw)
-		result.Code = "READY"
-		return nil
+		return readProfile(ctx, tx, &result)
 	})
 	return finish(ctx, result, err)
 }
@@ -58,10 +52,37 @@ func (s *Service) Update(ctx context.Context, name, expected string) Result {
 		if result.Code == "READY" && raw != nil && saved != nil {
 			result.ID = ledger.PublicID("Profile", *raw)
 			result.DisplayName = *saved
+			return readProfile(ctx, tx, &result)
 		}
 		return nil
 	})
 	return finish(ctx, result, err)
+}
+
+// UpdateAppearance atomically saves only the enabled caller's appearance, guarding
+// against stale edits independently of display-name updates. Same-value retries succeed.
+func (s *Service) UpdateAppearance(ctx context.Context, appearance, expected string) Result {
+	var result Result
+	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
+		if err := tx.QueryRow(ctx, `SELECT app.update_my_appearance($1,$2)`, appearance, expected).Scan(&result.Code); err != nil {
+			return err
+		}
+		if result.Code == "READY" {
+			return readProfile(ctx, tx, &result)
+		}
+		return nil
+	})
+	return finish(ctx, result, err)
+}
+
+func readProfile(ctx context.Context, tx pgx.Tx, result *Result) error {
+	var raw string
+	if err := tx.QueryRow(ctx, `SELECT id::text,display_name,appearance FROM app.my_profile()`).Scan(&raw, &result.DisplayName, &result.Appearance); err != nil {
+		return err
+	}
+	result.ID = ledger.PublicID("Profile", raw)
+	result.Code = "READY"
+	return nil
 }
 
 func canonicalName(name string) (string, bool) {
