@@ -444,9 +444,10 @@ inspect the provider state before rerunning; the script does not attempt rollbac
 
 `node --test scripts/vercel-promote.test.mjs` runs credential-free transport and
 clock simulations plus workflow boundary assertions in web CI. These checks do
-not prove live provider integration. Keep #151 open until a post-merge run proves
-candidate deployment, protected staged verification, confirmed REST promotion of
-the intended candidate, and anonymous production verification in that order.
+not prove live provider integration. [#151 completion evidence](https://github.com/haggaikaunda/kami-split/issues/151#issuecomment-5963098460)
+records the successful post-merge candidate deployment, protected staged
+verification, confirmed REST promotion and anonymous production verification on
+2026-10-02. Later releases must still pass those steps in that order.
 
 ## Pre-merge API deployment rehearsal
 
@@ -512,12 +513,14 @@ revoke credentials, or undo in-flight work. Inactive revisions remain available
 for provenance under normal Cloud Run lifecycle management. Images are retained
 independently; there is no ad hoc Artifact Registry deletion.
 
-Bootstrap requires the reviewed workflow to land on `main` before GitHub accepts
-its first manual dispatch. Keep #156 open through live validation: use an open,
-passing PR to rehearse, record its SHA/image digest/revision and unchanged traffic,
-then verify close cleanup. Repository delivery gates still apply to the foundation
-merge. Do not relax WIF or environment controls to run the new workflow from its
-feature branch.
+Bootstrap required the reviewed workflow to land on `main` before GitHub accepted
+its first manual dispatch. [#156 live rehearsal evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963681466)
+and [PR-close cleanup evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963711172)
+record completed validation on 2026-10-02: exact SHA/image digests/revisions,
+unchanged serving allocation, stable tag movement and subsequent tag removal.
+For future rehearsals, select an open passing PR and retain equivalent provenance
+and traffic evidence. Do not relax WIF or environment controls to run the workflow
+from a feature branch.
 
 ### Operator commands
 
