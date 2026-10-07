@@ -559,11 +559,13 @@ async function checkContrast(page) {
     });
     results.push({ route, dark: true, overflow: false });
     if (route.endsWith('tab=expenses')) {
-      const row = page.locator('#ledger-expense-e1');
-      await row.focus();
+      const trigger = page.getByRole('button', {
+        name: 'Filters',
+        exact: true,
+      });
+      await trigger.focus();
       await page.keyboard.press('Enter');
-      await page.getByRole('dialog', { name: 'Expense detail' }).waitFor();
-      await page.getByText('Private fixture note').waitFor();
+      await page.getByRole('dialog', { name: 'Expense filters' }).waitFor();
       await page.screenshot({
         path: path.join(output, `expense-dialog-dark-${width}.png`),
         fullPage: true,
@@ -571,12 +573,13 @@ async function checkContrast(page) {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
       assert(
-        await row.evaluate((e) => e === document.activeElement),
+        await trigger.evaluate((e) => e === document.activeElement),
         'dialog focus return',
       );
       results.push({ keyboardDialog: true, escapeFocusReturned: true });
     }
   }
+
   empty = true;
   await page.goto(origin + '/household');
   await theme('dark');
