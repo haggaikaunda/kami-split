@@ -1,5 +1,7 @@
 # ADR-004: Group balances, membership lifecycle, and financial recovery
 
+> Seeded-runtime references below are historical evidence. #184 removed the executable preview and simulation-only tests; they must not be retained or restored. Accepted production policy remains authoritative.
+
 - Status: Accepted production policy; this documentation does not implement behavior. Remaining engineering and product decisions stay gated.
 - Recorded: 2026-09-29.
 - Authority: Owner-approved decisions and documentation-only authorization in [#93](https://github.com/haggaikaunda/kami-split/issues/93).
@@ -80,6 +82,6 @@ Financial idempotency does not settle email-delivery failure semantics, invitati
 
 ## Delivered preview evidence
 
-[Overview selectors](../../../apps/web/src/lib/overview.ts) derive original direct obligations, and the [mock adapter](../../../apps/web/src/lib/data/mock.ts) blocks departure for a zero-net intermediary with remaining direct edges. Its correction guard also rejects reopened inactive-member direct obligations. Those are existing seeded-preview/production-policy differences. [DataPort](../../../apps/web/src/lib/data/port.ts) and recovery consumers use session-only operation receipts; reload/restart durability is not implemented.
+[Overview selectors](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/overview.ts) derive original direct obligations, and the [mock adapter](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/data/mock.ts) blocks departure for a zero-net intermediary with remaining direct edges. Its correction guard also rejects reopened inactive-member direct obligations. Those are existing seeded-preview/production-policy differences. [DataPort](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/data/port.ts) and recovery consumers use session-only operation receipts; reload/restart durability is not implemented.
 
 The [overview](../../overview/README.md), [household](../../household/README.md), [repayment](../../repayment/README.md) and [recovery](../../recovery/README.md) guides retain their historical screenshots, test counts and acceptance evidence. This documentation changes no code or tests to make the preview appear to implement the new policy.

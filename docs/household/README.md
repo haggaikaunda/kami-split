@@ -1,5 +1,7 @@
 # Household setup and membership preview
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production policy
 
 This page preserves issue #29’s seeded UX evidence. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md) instead specifies administrative first-account bootstrap into an empty USD Household, separate verified-email invitations, and exactly one active owner. The preview’s pending `Member` records, first-household screen and role toggles are not the production schema or transfer workflow. Operational bootstrap is #81; ownership transfer is low-priority deferred #84. Membership/profile visibility and returning-member behavior are separately tracked through #75/#79.

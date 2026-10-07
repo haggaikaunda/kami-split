@@ -1,5 +1,7 @@
 # Cross-journey recovery
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Issue [#30](https://github.com/haggaikaunda/kami-split/issues/30) integrates the existing async mock port and session-owned requests. Simulation controls exercise actual adapter states; they do not manufacture a success toast. All data remains session-only, without production authentication or persistence.
 
 ## Accepted production policy

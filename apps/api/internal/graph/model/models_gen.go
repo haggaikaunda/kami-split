@@ -89,6 +89,11 @@ type OwnerInvitationsResult interface {
 	IsOwnerInvitationsResult()
 }
 
+// An authorized profile or a safe operation failure.
+type ProfileResult interface {
+	IsProfileResult()
+}
+
 // Durable original success/rejection, changed-intent conflict, transient uncertainty or safe access problem.
 type RecordRepaymentResult interface {
 	IsRecordRepaymentResult()
@@ -134,6 +139,10 @@ type ActivityEvent struct {
 	GroupID string `json:"groupId"`
 	// Current authorized source label.
 	GroupName string `json:"groupName"`
+	// Current authorized source kind for canonical Group or Trip navigation. This
+	// metadata is read with the event page; it does not change original financial IDs.
+	// Household sources remain ORDINARY and are identified separately by isHousehold.
+	GroupKind GroupKind `json:"groupKind"`
 	// Whether the source is the designated Household ledger.
 	IsHousehold bool `json:"isHousehold"`
 	// Exact expense face value or actual repayment amount.
@@ -176,6 +185,8 @@ type Allocation struct {
 	Participant *Membership `json:"participant"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
@@ -200,10 +211,12 @@ type CreateExpenseInput struct {
 	PayerID string `json:"payerId"`
 	// Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
 	ParticipantIds []string `json:"participantIds"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
-	// Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+	// Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
 	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+	// Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+	Percentages []*PercentageInput `json:"percentages,omitempty"`
 }
 
 // Identity-scoped frozen creation intent; actor and USD currency are server supplied.
@@ -248,7 +261,7 @@ type Expense struct {
 	Payer *Membership `json:"payer"`
 	// Server-derived authenticated membership responsible for creation.
 	Creator *Membership `json:"creator"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*Allocation `json:"allocations"`
@@ -335,7 +348,7 @@ type ExpenseOperationRecord struct {
 	Category Category `json:"category"`
 	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
 	Note string `json:"note"`
-	// EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
 	Split SplitMode `json:"split"`
 	// Explicit shares in ascending canonical membership-ID order, including zero shares.
 	Allocations []*OperationAllocation `json:"allocations"`
@@ -347,6 +360,8 @@ type ExpenseOperationRecord struct {
 
 // One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
 type ExpenseView struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+	ContextVersion string `json:"contextVersion"`
 	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
 	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
 	// Exact count of all matching expenses at the same anchor.
@@ -355,7 +370,7 @@ type ExpenseView struct {
 	Months []*ExpenseMonth `json:"months"`
 	// Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
 	Edges []*ExpenseViewEdge `json:"edges"`
-	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
 	PageInfo *PageInfo `json:"pageInfo"`
 }
 
@@ -527,6 +542,8 @@ type Health struct {
 
 // Original ledgers and an explicit complete/incomplete/unavailable outcome.
 type HouseholdDashboard struct {
+	// Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+	ContextVersion *string `json:"contextVersion,omitempty"`
 	// Current completeness, independent of individual group settlement.
 	State HouseholdDashboardState `json:"state"`
 	// Complete eligible set, or Household-only fallback; excluded groups leave no trace.
@@ -692,6 +709,8 @@ type OperationAllocation struct {
 	ParticipantID string `json:"participantId"`
 	// Exact nonnegative cents; zero is an explicit participant share.
 	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
 // The scoped key already identifies a different canonical intent; original data is never overwritten.
@@ -760,6 +779,14 @@ type PageInfo struct {
 	EndCursor *string `json:"endCursor,omitempty"`
 }
 
+// One explicitly selected participant's intended responsibility, independent of payer.
+type PercentageInput struct {
+	// Stable same-group Membership ID.
+	ParticipantID string `json:"participantId"`
+	// Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+	Hundredths int `json:"hundredths"`
+}
+
 // Safe expected failure with no private existence or infrastructure diagnostics.
 type Problem struct {
 	// Stable safe machine-readable outcome code.
@@ -793,6 +820,26 @@ func (Problem) IsRecordRepaymentResult() {}
 func (Problem) IsRepaymentOperationResult() {}
 
 func (Problem) IsExpenseViewResult() {}
+
+// Self-only application profile, independent of group discovery and Auth metadata.
+type Profile struct {
+	// Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+	ID string `json:"id"`
+	// Current application display name; historical financial snapshots retain their original names.
+	DisplayName string `json:"displayName"`
+}
+
+func (Profile) IsProfileResult() {}
+
+// Safe profile outcome; no private identity or storage details.
+type ProfileProblem struct {
+	// INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+	Code string `json:"code"`
+	// User-facing explanation of the failure.
+	Message string `json:"message"`
+}
+
+func (ProfileProblem) IsProfileResult() {}
 
 // Public health and authenticated business reads. Business access is checked on every request.
 type Query struct {
@@ -1273,7 +1320,7 @@ const (
 	HouseholdDashboardStateComplete HouseholdDashboardState = "COMPLETE"
 	// Eligible rows are authorized, but required financial data exceeds bounds.
 	HouseholdDashboardStateIncomplete HouseholdDashboardState = "INCOMPLETE"
-	// Only the authorized Household ledger is available; sharing is not finalized.
+	// Legacy service fallback; membership does not require a separate sharing designation.
 	HouseholdDashboardStateUnavailable HouseholdDashboardState = "UNAVAILABLE"
 )
 
@@ -1745,16 +1792,19 @@ const (
 	SplitModeEqual SplitMode = "EQUAL"
 	// Caller supplies one reconciled amount for each explicit participant, including zero.
 	SplitModeExact SplitMode = "EXACT"
+	// Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+	SplitModePercentage SplitMode = "PERCENTAGE"
 )
 
 var AllSplitMode = []SplitMode{
 	SplitModeEqual,
 	SplitModeExact,
+	SplitModePercentage,
 }
 
 func (e SplitMode) IsValid() bool {
 	switch e {
-	case SplitModeEqual, SplitModeExact:
+	case SplitModeEqual, SplitModeExact, SplitModePercentage:
 		return true
 	}
 	return false

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GroupJourney } from './journey';
+import { HouseholdLedger } from './household-ledger';
+import { HouseholdFrame } from './household-frame';
 import { RestoreSource, SourceReturn } from './navigation';
 const mock = vi.hoisted(() => ({
   path: '/groups',
@@ -14,6 +16,7 @@ const mock = vi.hoisted(() => ({
   requests: [] as {
     name: string;
     variables: Record<string, unknown>;
+    canceled: boolean;
     next: (data: unknown) => void;
     error: (error: Error) => void;
     resolve: (data: unknown) => void;
@@ -21,6 +24,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock('./session', () => ({ useFinancialSession: () => mock.access }));
 vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
   default: ({
     children,
     onNavigate,
@@ -59,6 +63,7 @@ vi.mock('relay-runtime', () => ({
     const request = {
       name: document.params.name,
       variables,
+      canceled: false,
       next: (_data: unknown) => {
         void _data;
       },
@@ -76,7 +81,11 @@ vi.mock('relay-runtime', () => ({
         error: typeof request.error;
       }) => {
         Object.assign(request, callbacks);
-        return { unsubscribe() {} };
+        return {
+          unsubscribe() {
+            request.canceled = true;
+          },
+        };
       },
       toPromise: () =>
         new Promise((resolve) => {
@@ -122,24 +131,12 @@ const groups = [
     trip: null,
   },
 ];
-function viewer(items = groups) {
-  return {
-    viewer: {
-      __typename: 'Viewer',
-      id: 'A',
-      displayName: 'Alice',
-      today: '2026-10-04',
-      canCreateGroups: false,
-      groups: items,
-    },
-  };
-}
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
   scope.visits.clear();
   scope.restored.clear();
-  mock.path = '/groups';
+  mock.path = '/trips/T';
   mock.search = '';
   mock.push.mockReset();
   mock.mutation.mockReset();
@@ -156,9 +153,6 @@ afterEach(() => {
 async function render(ui: React.ReactNode) {
   await act(async () => root.render(ui));
 }
-async function respond(data: unknown) {
-  await act(async () => mock.requests.at(-1)!.next(data));
-}
 
 function groupResult(
   id: string,
@@ -169,6 +163,7 @@ function groupResult(
   } = {},
 ) {
   return {
+    viewer: { __typename: 'Viewer', today: '2026-10-04' },
     group: {
       __typename: 'Group',
       id,
@@ -214,23 +209,21 @@ function groupResult(
   };
 }
 async function resolveGroup(data: unknown) {
-  await act(async () => mock.requests.at(-1)!.resolve(data));
+  await act(async () => mock.requests.at(-1)!.next(data));
 }
 it('retains exact group-local money and pre-trip history independent of date status', async () => {
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
   expect(host.textContent).toContain('2025-01-01');
   expect(host.textContent).toContain('90,071,992,547,409.93');
   expect(host.textContent).not.toContain('Private household');
   expect(
-    host.querySelector('a[href^="/groups/T/expenses/pre-trip"]'),
+    host.querySelector('a[href^="/trips/T/expenses/pre-trip"]'),
   ).not.toBeNull();
 });
 it('distinguishes an actual empty group from failed expense and balance reads', async () => {
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T', { empty: true }));
   expect(host.textContent).toContain('This group has no expenses.');
   const refresh = host.querySelector('button')!;
@@ -244,8 +237,7 @@ it('distinguishes an actual empty group from failed expense and balance reads', 
   expect(host.textContent).not.toContain('Settled:');
 });
 it('hides records on access refresh and restores full history after readmission', async () => {
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   await act(async () => host.querySelector('button')!.click());
   expect(host.textContent).not.toContain('Pre-trip booking');
@@ -257,34 +249,35 @@ it('hides records on access refresh and restores full history after readmission'
   expect(host.textContent).toContain('Pre-trip booking');
 });
 it('invalidates visible records on foregrounding before accepting another authorized response', async () => {
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.textContent).not.toContain('Pre-trip booking');
-  expect(host.textContent).toContain('stale');
+  expect(host.textContent).toContain('Loading current authorized group data');
+  expect(host.querySelector('nav[aria-label="Trip workspace"]')).not.toBeNull();
 });
 
 it('rereads the same source URL before revealing private fields on return', async () => {
-  mock.path = '/groups/T';
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  mock.path = '/trips/T';
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   mock.search = 'restore=return-token';
-  await render(<GroupJourney initialGroup="T" />);
+  await render(<GroupJourney trips initialGroup="T" />);
   expect(host.textContent).not.toContain('Pre-trip booking');
-  expect(mock.requests.at(-1)!.name).toBe('journeyViewerQuery');
-  await respond(viewer());
+  expect(mock.requests.at(-1)!.name).toBe('journeyWorkspaceQuery');
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
 });
-it('returns a denied source group to safe Groups selection', async () => {
-  mock.path = '/groups/T';
+it('returns a denied Trip source to safe Trips selection', async () => {
+  mock.path = '/trips/T';
   mock.search = 'restore=return-token';
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup({ group: { __typename: 'Problem', code: 'NOT_FOUND' } });
-  expect(mock.push).toHaveBeenCalledWith('/groups?restore=return-token');
+  expect(mock.push).toHaveBeenCalledWith('/trips?restore=return-token');
   expect(host.textContent).not.toContain('Pre-trip booking');
 });
 it('returns to the original filtered source and group expense cursor', async () => {
@@ -299,20 +292,24 @@ it('returns to the original filtered source and group expense cursor', async () 
     '/trips?filter=past&restore=visit',
   );
   scope.visits.set('visit', {
-    href: '/groups/T?after=page-2',
+    href: '/trips/T?after=page-2',
     focus: 'expense-pre-trip',
     scroll: 120,
     group: 'T',
   });
   await render(<SourceReturn scope={scope as never} />);
   expect(host.querySelector('a')!.getAttribute('href')).toBe(
-    '/groups/T?after=page-2&restore=visit',
+    '/trips/T?after=page-2&restore=visit',
   );
-  mock.path = '/groups/T';
+  mock.path = '/trips/T';
   mock.search = 'after=page-2&restore=visit';
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
-  expect(mock.requests.at(-1)!.variables).toEqual({ id: 'T', after: 'page-2' });
+  await render(<GroupJourney trips initialGroup="T" />);
+  // Legacy source URLs remain intact; the structured ledger starts its own signed traversal.
+  expect(mock.requests.at(-1)!.variables).toMatchObject({
+    id: 'T',
+    ledger: true,
+    overview: false,
+  });
 });
 it('restores logical focus and scroll only for an authorized source; missing source focuses heading', async () => {
   const frames: FrameRequestCallback[] = [];
@@ -323,7 +320,7 @@ it('restores logical focus and scroll only for an authorized source; missing sou
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
   const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   scope.visits.set('visit', {
-    href: '/groups/T',
+    href: '/trips/T',
     focus: 'expense-target',
     scroll: 123,
     group: 'T',
@@ -334,7 +331,7 @@ it('restores logical focus and scroll only for an authorized source; missing sou
       <h1 data-page-heading tabIndex={-1}>
         Groups
       </h1>
-      <Link id="expense-target" href="/groups/T">
+      <Link id="expense-target" href="/trips/T">
         Target
       </Link>
       <RestoreSource scope={scope as never} allowed={['T']} />
@@ -367,7 +364,7 @@ it('does not repeat focus or scroll on background remount, but permits another e
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
   const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   scope.visits.set('return', {
-    href: '/groups/T',
+    href: '/trips/T',
     focus: 'expense-target',
     scroll: 123,
     group: 'T',
@@ -379,7 +376,7 @@ it('does not repeat focus or scroll on background remount, but permits another e
         Groups
       </h1>
       <button id="reader-control">Reader control</button>
-      <Link id="expense-target" href="/groups/T">
+      <Link id="expense-target" href="/trips/T">
         Target
       </Link>
       <RestoreSource key={key} scope={scope as never} allowed={['T']} />
@@ -407,16 +404,18 @@ it('does not repeat focus or scroll on background remount, but permits another e
 });
 
 it('does not redirect a consumed source return when a later background group read is denied', async () => {
-  mock.path = '/groups/T';
+  mock.path = '/trips/T';
   mock.search = 'restore=consumed-return';
   scope.restored.add('consumed-return');
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
   await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   expect(host.textContent).not.toContain('Pre-trip booking');
-  await respond(viewer([groups[2]]));
   await resolveGroup({ group: { __typename: 'Problem', code: 'NOT_FOUND' } });
   expect(mock.push).not.toHaveBeenCalled();
   expect(host.textContent).not.toContain('Pre-trip booking');
@@ -425,7 +424,7 @@ it('does not redirect a consumed source return when a later background group rea
 
 it('refreshes complete positions and repayment history after recording while expense totals remain unchanged', async () => {
   sessionStorage.clear();
-  mock.path = '/groups/T/repayments/new';
+  mock.path = '/trips/T/repayments/new';
   mock.search = 'sender=a&recipient=b&amount=1001';
   const a = {
     id: 'a',
@@ -454,8 +453,7 @@ it('refreshes complete positions and repayment history after recording while exp
     ],
     obligations: [{ from: a, to: b, amountMinor: '1001' }],
   });
-  await render(<GroupJourney initialGroup="T" repayment />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" repayment />);
   await resolveGroup(data);
   await act(async () =>
     [...host.querySelectorAll('button')]
@@ -485,7 +483,7 @@ it('refreshes complete positions and repayment history after recording while exp
     ),
   );
   expect(host.textContent).not.toContain('Pre-trip booking');
-  expect(mock.requests.at(-1)!.name).toBe('journeyGroupQuery');
+  expect(mock.requests.at(-1)!.name).toBe('journeyWorkspaceQuery');
   Object.assign(data.group.balances, {
     settled: true,
     obligations: [],
@@ -520,12 +518,442 @@ it('refreshes complete positions and repayment history after recording while exp
   expect(host.textContent).toContain('Settled: every individual net is zero');
   expect(host.textContent).toContain('Alice → Bob');
   expect(host.textContent).toContain('10.01 USD');
-  mock.path = '/groups/T';
+  mock.path = '/trips/T';
   mock.search = '';
-  await render(<GroupJourney initialGroup="T" />);
-  await respond(viewer());
+  await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(data);
   expect(host.textContent).toContain('90,071,992,547,409.93');
   expect(host.textContent).toContain('Pre-trip booking');
   sessionStorage.clear();
+});
+
+it.each([
+  ['H', '/groups/H', '', '', false, '/household/ledger'],
+  [
+    'H',
+    '/groups/H',
+    'tab=members&source=visit',
+    '',
+    false,
+    '/household/ledger?tab=members&source=visit',
+  ],
+  [
+    'H',
+    '/groups/H/expenses/E',
+    'category=HOME&source=visit',
+    'E',
+    false,
+    '/household/ledger?category=HOME&source=visit&tab=expenses&expense=E',
+  ],
+  [
+    'H',
+    '/groups/H/repayments/new',
+    'sender=a&recipient=b&amount=1001&source=visit',
+    '',
+    true,
+    '/household/ledger?sender=a&recipient=b&amount=1001&source=visit&tab=balances&repayment=1',
+  ],
+  [
+    'T',
+    '/groups/T',
+    'tab=activity&source=visit',
+    '',
+    false,
+    '/trips/T?tab=activity&source=visit',
+  ],
+  [
+    'T',
+    '/groups/T/expenses/E',
+    'source=visit',
+    'E',
+    false,
+    '/trips/T/expenses/E?source=visit',
+  ],
+  [
+    'T',
+    '/groups/T/repayments/new',
+    'sender=a&recipient=b&amount=1001',
+    '',
+    true,
+    '/trips/T/repayments/new?sender=a&recipient=b&amount=1001',
+  ],
+] as const)(
+  'replaces authorized legacy %s route %s while retaining original visit context',
+  async (id, path, search, expense, repayment, canonical) => {
+    mock.path = path;
+    mock.search = search;
+    await render(
+      <GroupJourney
+        initialGroup={id}
+        expense={expense}
+        repayment={repayment}
+      />,
+    );
+    expect(mock.push).not.toHaveBeenCalled();
+    expect(mock.requests.at(-1)?.variables).toMatchObject({ id });
+    await resolveGroup(groupResult(id));
+    expect(mock.push).toHaveBeenCalledExactlyOnceWith(canonical);
+    expect(host.textContent).not.toContain('Pre-trip booking');
+    expect(host.textContent).not.toContain('Private household');
+  },
+);
+
+it('keeps an authorized ordinary group named Household in its own Group workspace', async () => {
+  mock.path = '/groups/F';
+  const data = groupResult('F');
+  data.group.name = 'Household';
+  await render(<GroupJourney initialGroup="F" />);
+  await resolveGroup(data);
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('Pre-trip booking');
+  expect(
+    host.querySelector('.workspace-navigation a[aria-current="page"]')
+      ?.textContent,
+  ).toBe('Groups');
+  expect(
+    host.querySelector('a[href^="/groups/F/expenses/pre-trip"]'),
+  ).not.toBeNull();
+});
+
+it.each(['NOT_FOUND', 'UNAUTHENTICATED', 'UNAVAILABLE'])(
+  'never infers a Household or Trip redirect from inaccessible metadata (%s)',
+  async (code) => {
+    mock.path = '/groups/H';
+    await render(<GroupJourney initialGroup="H" />);
+    await resolveGroup({
+      viewer: { __typename: 'Problem', code },
+      group: { __typename: 'Problem', code },
+    });
+    expect(mock.push).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    expect(host.textContent).not.toContain('Private household');
+    expect(host.textContent).not.toContain('Pre-trip booking');
+    expect(host.textContent).not.toContain('Settled');
+  },
+);
+
+const householdViewer = (id = 'H') => ({
+  viewer: {
+    __typename: 'Viewer',
+    id: 'A',
+    today: '2026-10-04',
+    canCreateGroups: false,
+    groups: [
+      {
+        id,
+        name: 'Authorized home',
+        kind: 'ORDINARY',
+        isHousehold: true,
+        trip: null,
+      },
+    ],
+  },
+});
+const originalLedger = () => (
+  <HouseholdFrame>
+    <HouseholdLedger />
+  </HouseholdFrame>
+);
+
+it('resolves the original Household ledger from authorized discovery and keeps one dedicated frame', async () => {
+  mock.path = '/household/ledger';
+  mock.search = 'tab=members&groupId=other-client-id';
+  await render(originalLedger());
+  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  expect(mock.requests.at(-1)?.variables).toEqual({});
+  expect(host.querySelectorAll('main')).toHaveLength(1);
+  expect(
+    host.querySelectorAll('nav[aria-label="Household workspace"]'),
+  ).toHaveLength(1);
+  expect(host.querySelector('nav[aria-label="Trip workspace"]')).toBeNull();
+  expect(host.querySelector('nav[aria-label="Group workspace"]')).toBeNull();
+  await resolveGroup(householdViewer());
+  expect(mock.requests.at(-1)?.variables).toMatchObject({ id: 'H' });
+  await resolveGroup(groupResult('H'));
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.querySelector('h1')?.textContent).toBe('Household ledger');
+  expect(
+    host.querySelector('.workspace-navigation a[aria-current="page"]')
+      ?.textContent,
+  ).toBe('Household');
+  expect(
+    [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+      a.getAttribute('href'),
+    ),
+  ).toEqual(
+    ['overview', 'expenses', 'balances', 'activity', 'members'].map(
+      (tab) => '/household/ledger?tab=' + tab,
+    ),
+  );
+  expect(host.querySelectorAll('main')).toHaveLength(1);
+  expect(host.querySelectorAll('.ui-workspace-tabs')).toHaveLength(1);
+});
+
+it.each([
+  { viewer: { __typename: 'Problem', code: 'NOT_FOUND' } },
+  { viewer: { __typename: 'Viewer', groups: [groups[2]] } },
+  {
+    viewer: {
+      __typename: 'Viewer',
+      groups: [groups[0], { ...groups[0], id: 'another-home' }],
+    },
+  },
+])(
+  'does not manufacture an original ledger from denied, absent or ambiguous Household discovery (%j)',
+  async (data) => {
+    mock.path = '/household/ledger';
+    await render(originalLedger());
+    await resolveGroup(data);
+    expect(
+      mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+    ).toHaveLength(1);
+    expect(
+      mock.requests.find((r) => r.name === 'householdAccessQuery'),
+    ).toBeDefined();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      'Household ledger access is unavailable',
+    );
+    expect(mock.push).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('Pre-trip booking');
+    expect(host.textContent).not.toContain('$0.00');
+  },
+);
+
+it('Household ledger discovery and workspace discard old-account results immediately', async () => {
+  mock.path = '/household/ledger';
+  mock.search = 'tab=members';
+  await render(originalLedger());
+  const oldDiscovery = mock.requests.find(
+    (r) => r.name === 'journeyViewerQuery',
+  )!;
+  await resolveGroup(householdViewer());
+  const oldWorkspace = mock.requests.at(-1)!;
+  const oldHeader = mock.requests.find(
+    (r) => r.name === 'householdAccessQuery',
+  )!;
+  mock.access = {
+    scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
+    loading: false,
+  };
+  await render(originalLedger());
+  expect(oldDiscovery.canceled).toBe(true);
+  expect(oldHeader.canceled).toBe(true);
+  expect(oldWorkspace.canceled).toBe(true);
+  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  await act(async () => {
+    oldDiscovery.next(householdViewer());
+    oldWorkspace.next(groupResult('H'));
+  });
+  expect(
+    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+  ).toHaveLength(3);
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  await resolveGroup({ viewer: { __typename: 'Viewer', groups: [] } });
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(mock.push).not.toHaveBeenCalled();
+});
+
+it('foregrounding the original Household ledger clears private data before rediscovery and rejects late work', async () => {
+  mock.path = '/household/ledger';
+  await render(originalLedger());
+  await resolveGroup(householdViewer());
+  await resolveGroup(groupResult('H'));
+  expect(host.textContent).toContain('Pre-trip booking');
+  const oldDiscovery = mock.requests[0],
+    oldWorkspace = mock.requests[1];
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  expect(oldDiscovery.canceled).toBe(true);
+  expect(oldWorkspace.canceled).toBe(true);
+  await act(async () => {
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => resolve()),
+    );
+  });
+  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  await act(async () => {
+    oldDiscovery.next(householdViewer());
+    oldWorkspace.next(groupResult('H'));
+  });
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  await resolveGroup({ viewer: { __typename: 'Problem', code: 'NOT_FOUND' } });
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(host.textContent).not.toContain('Settled');
+  expect(mock.push).not.toHaveBeenCalled();
+});
+
+it('does not resolve a wrong original group as the Household after authorized discovery', async () => {
+  mock.path = '/household/ledger';
+  await render(originalLedger());
+  await resolveGroup(householdViewer());
+  await resolveGroup(groupResult('F'));
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  expect(mock.push).not.toHaveBeenCalled();
+});
+
+it('canonical Household expense details retain original IDs and the dedicated frame', async () => {
+  mock.path = '/household/ledger';
+  mock.search = 'tab=expenses&expense=E&source=original-source';
+  await render(originalLedger());
+  await resolveGroup(householdViewer());
+  expect(mock.requests.at(-1)?.variables).toMatchObject({ id: 'H' });
+  await resolveGroup(groupResult('H'));
+  expect(mock.requests.at(-1)?.name).toBe('journeyExpenseQuery');
+  expect(mock.requests.at(-1)?.variables).toEqual({ id: 'E' });
+  await resolveGroup({
+    node: {
+      __typename: 'Expense',
+      id: 'E',
+      groupId: 'H',
+      description: 'Original Household dinner',
+      totalMinor: '1001',
+      currency: 'USD',
+      category: 'DINING',
+      effectiveDate: '2026-10-04',
+      createdAt: '2026-10-04T12:00:00Z',
+      note: '',
+      payer: { displayName: 'Alice' },
+      creator: { displayName: 'Alice' },
+      allocations: [],
+    },
+  });
+  expect(host.textContent).toContain('Original Household dinner');
+  expect(host.textContent).toContain('$10.01');
+  expect(host.querySelectorAll('main')).toHaveLength(1);
+  expect(host.querySelectorAll('h1')).toHaveLength(1);
+  expect(
+    host.querySelector('.workspace-navigation a[aria-current="page"]')
+      ?.textContent,
+  ).toBe('Household');
+  expect(mock.push).not.toHaveBeenCalled();
+});
+
+it('canonical Household repayments keep the original group operation scope and suggestions', async () => {
+  sessionStorage.clear();
+  mock.path = '/household/ledger';
+  mock.search = 'tab=balances&repayment=1&sender=a&recipient=b&amount=1001';
+  await render(originalLedger());
+  await resolveGroup(householdViewer());
+  const a = {
+    id: 'a',
+    displayName: 'Alice',
+    status: 'ACTIVE',
+    role: 'MEMBER',
+    canParticipate: true,
+  };
+  const b = { ...a, id: 'b', displayName: 'Bob' };
+  const data = groupResult('H');
+  Object.assign(data.group, {
+    viewerMembership: a,
+    members: [a, b],
+    repayments: { edges: [] },
+  });
+  Object.assign(data.group.balances, {
+    positions: [
+      {
+        member: a,
+        netMinor: '-1001',
+        paidMinor: '0',
+        owedMinor: '1001',
+        sentMinor: '0',
+        receivedMinor: '0',
+      },
+    ],
+    obligations: [{ from: a, to: b, amountMinor: '1001' }],
+  });
+  await resolveGroup(data);
+  expect(host.querySelector('h1')?.textContent).toBe('Household ledger');
+  expect(host.querySelectorAll('main')).toHaveLength(1);
+  expect(
+    (host.querySelector('#repayment-sender') as HTMLSelectElement).value,
+  ).toBe('a');
+  expect(
+    (host.querySelector('#repayment-recipient') as HTMLSelectElement).value,
+  ).toBe('b');
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Record repayment')!
+      .click(),
+  );
+  const input = mock.mutation.mock.calls[0][1].variables.input;
+  expect(input).toMatchObject({
+    groupId: 'H',
+    senderId: 'a',
+    recipientId: 'b',
+    amountMinor: '1001',
+  });
+  expect(mock.push).not.toHaveBeenCalled();
+  await act(async () =>
+    mock.mutation.mock.calls[0][1].onError(new Error('timeout')),
+  );
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Recover original repayment')!
+      .click(),
+  );
+  expect(mock.requests.at(-1)?.name).toBe('journeyRepaymentRecoveryQuery');
+  expect(mock.requests.at(-1)?.variables).toMatchObject({
+    groupId: 'H',
+    key: input.key,
+  });
+  sessionStorage.clear();
+});
+
+it('does not redirect a legacy route from wrong-ID metadata or a late account response', async () => {
+  mock.path = '/groups/H';
+  await render(<GroupJourney initialGroup="H" />);
+  const previous = mock.requests.at(-1)!;
+  await resolveGroup(groupResult('F'));
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  mock.access = {
+    scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
+    loading: false,
+  };
+  await render(<GroupJourney initialGroup="H" />);
+  expect(previous.canceled).toBe(true);
+  await act(async () => previous.next(groupResult('H')));
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Private household');
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  await resolveGroup({
+    viewer: { __typename: 'Problem', code: 'NOT_FOUND' },
+    group: { __typename: 'Problem', code: 'NOT_FOUND' },
+  });
+  expect(mock.push).not.toHaveBeenCalled();
+});
+
+it('logout cancels canonical Household discovery and keeps the authorized destination behind sign-in', async () => {
+  mock.path = '/household/ledger';
+  mock.search = 'tab=balances&source=old-visit&restore=old-restore';
+  await render(originalLedger());
+  const pending = mock.requests.at(-1)!;
+  mock.access = { loading: false };
+  await render(originalLedger());
+  expect(pending.canceled).toBe(true);
+  const signIn = host.querySelector<HTMLAnchorElement>('a[href^="/sign-in?"]')!;
+  expect(new URL(signIn.href).searchParams.get('next')).toBe(
+    '/household/ledger?tab=balances',
+  );
+  await act(async () => pending.next(householdViewer()));
+  expect(
+    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
+  ).toHaveLength(1);
+  expect(mock.requests.every((r) => r.canceled)).toBe(true);
+  expect(host.textContent).not.toContain('Pre-trip booking');
+  expect(host.textContent).not.toContain('Authorized home');
+});
+
+it('does not canonicalize a denied original Group from a separately successful viewer discovery', async () => {
+  mock.path = '/groups/H';
+  await render(<GroupJourney initialGroup="H" />);
+  await resolveGroup({
+    ...householdViewer(),
+    group: { __typename: 'Problem', code: 'NOT_FOUND' },
+  });
+  expect(mock.push).not.toHaveBeenCalled();
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  expect(host.textContent).not.toContain('Authorized home');
+  expect(host.textContent).not.toContain('Pre-trip booking');
 });

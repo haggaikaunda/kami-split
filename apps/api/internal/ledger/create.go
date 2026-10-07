@@ -25,6 +25,7 @@ type Input struct {
 	Total                                                                              int64
 	ParticipantIDs                                                                     []string
 	ExactAllocations                                                                   []Allocation
+	Percentages                                                                        []Percentage
 }
 
 // FieldProblem is a safe domain validation outcome that may be durably recorded.
@@ -80,9 +81,24 @@ func Normalize(in Input) (Input, []byte, [32]byte, error) {
 		}
 		return a.ParticipantID < b.ParticipantID
 	})
+	if in.Percentages != nil {
+		in.Percentages = append([]Percentage{}, in.Percentages...)
+	}
+	for _, p := range in.Percentages {
+		if _, e := ParseID(p.ParticipantID, "Membership"); e != nil {
+			return fail()
+		}
+	}
+	sort.Slice(in.Percentages, func(i, j int) bool {
+		a, b := in.Percentages[i], in.Percentages[j]
+		if a.ParticipantID == b.ParticipantID {
+			return a.Hundredths < b.Hundredths
+		}
+		return a.ParticipantID < b.ParticipantID
+	})
 	var b strings.Builder
 	b.WriteByte('[')
-	for i, s := range []string{"create-expense-v1", in.GroupID, in.Currency, strconv.FormatInt(in.Total, 10), in.Description, in.EffectiveDate, in.Category, in.Note, in.PayerID, in.Split} {
+	for i, s := range []string{CreateVersion(in), in.GroupID, in.Currency, strconv.FormatInt(in.Total, 10), in.Description, in.EffectiveDate, in.Category, in.Note, in.PayerID, in.Split} {
 		if i > 0 {
 			b.WriteByte(',')
 		}
@@ -111,6 +127,25 @@ func Normalize(in Input) (Input, []byte, [32]byte, error) {
 			b.WriteByte(']')
 		}
 		b.WriteByte(']')
+	}
+	if CreateVersion(in) == "create-expense-percentage-v2" {
+		b.WriteByte(',')
+		if in.Percentages == nil {
+			b.WriteString("null")
+		} else {
+			b.WriteByte('[')
+			for i, p := range in.Percentages {
+				if i > 0 {
+					b.WriteByte(',')
+				}
+				b.WriteByte('[')
+				writeJSONString(&b, p.ParticipantID)
+				b.WriteByte(',')
+				writeJSONString(&b, strconv.FormatInt(p.Hundredths, 10))
+				b.WriteByte(']')
+			}
+			b.WriteByte(']')
+		}
 	}
 	b.WriteByte(']')
 	data := []byte(b.String())
@@ -191,6 +226,9 @@ func Validate(in Input) ([]Allocation, []FieldProblem) {
 		}
 		selected[id] = true
 	}
+	if in.Split != "PERCENTAGE" && in.Percentages != nil {
+		add("percentages", "INVALID_INPUT", "Omit percentages for Equal or Exact.")
+	}
 	allocations := make([]Allocation, 0, len(participants))
 	switch in.Split {
 	case "EQUAL":
@@ -229,8 +267,15 @@ func Validate(in Input) ([]Allocation, []FieldProblem) {
 		}
 		allocations = append(allocations, in.ExactAllocations...)
 		sort.Slice(allocations, func(i, j int) bool { return allocations[i].ParticipantID < allocations[j].ParticipantID })
+	case "PERCENTAGE":
+		if in.ExactAllocations != nil {
+			add("exactAllocations", "INVALID_INPUT", "Omit exact allocations for Percentage.")
+		}
+		var percentageProblems []FieldProblem
+		allocations, percentageProblems = percentageAllocations(in.Total, participants, in.Percentages)
+		problems = append(problems, percentageProblems...)
 	default:
-		add("split", "INVALID_INPUT", "Use EQUAL or EXACT.")
+		add("split", "INVALID_INPUT", "Use EQUAL, EXACT or PERCENTAGE.")
 	}
 	if len(problems) > 0 {
 		return nil, problems

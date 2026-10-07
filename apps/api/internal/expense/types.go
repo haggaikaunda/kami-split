@@ -28,6 +28,7 @@ type Record struct {
 	TotalMinor                                                               int64
 	Currency, Description, EffectiveDate, Category, Note, Split, CommittedAt string
 	Allocations                                                              []ledger.Allocation
+	Percentages                                                              []ledger.Percentage `json:",omitempty"`
 	Revision                                                                 int64
 }
 
@@ -54,7 +55,9 @@ type Failure string
 func (f Failure) Error() string { return string(f) }
 
 // Service uses only verified identity and transaction-local authorized statements.
-type Service struct{ db *database.DB }
+type Service struct {
+	db *database.DB
+}
 
 // New constructs expense operations with a fixed database dependency. A nil
 // database supports health-only startup; authenticated operations remain unavailable.

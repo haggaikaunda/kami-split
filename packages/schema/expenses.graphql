@@ -108,6 +108,10 @@ enum SplitMode {
   Caller supplies one reconciled amount for each explicit participant, including zero.
   """
   EXACT
+  """
+  Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+  """
+  PERCENTAGE
 }
 """
 Self-only application access state for a cryptographically verified caller.
@@ -251,7 +255,7 @@ type Query {
   ): OperationResult!
 
   """
-  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  One complete merged expense view across exactly the current Household membership's common eligible spaces. Unavailable discovery returns a safe Problem, never an empty success.
   """
   householdExpenses(
     """
@@ -574,7 +578,7 @@ type Expense implements Node {
   """
   creator: Membership!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -598,6 +602,10 @@ type Allocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Complete exact balances or an explicit failure; failure never means zero or settled.
@@ -727,13 +735,30 @@ input CreateExpenseInput {
   """
   participantIds: [ID!]!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
-  Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
   """
   exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+"""
+One explicitly selected participant's intended responsibility, independent of payer.
+"""
+input PercentageInput {
+  """
+  Stable same-group Membership ID.
+  """
+  participantId: ID!
+  """
+  Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+  """
+  hundredths: Int!
 }
 """
 One selected participant and its nonnegative exact share, including zero.
@@ -823,7 +848,7 @@ type ExpenseOperationRecord {
   """
   note: String!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -851,6 +876,10 @@ type OperationAllocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.

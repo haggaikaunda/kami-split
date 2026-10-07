@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AppIcon } from '@/components/workspace-identity';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Field } from '@/components/primitives';
@@ -12,7 +13,7 @@ export function InvitationCard({ state: c }: { state: OnboardingController }) {
       aria-labelledby="invitation-group-name"
     >
       <span className="onboarding-invitation-mark" aria-hidden="true">
-        ⌂
+        <AppIcon name="home" />
       </span>
       <div>
         <h2 id="invitation-group-name">{c.preview.groupName}</h2>
@@ -26,32 +27,7 @@ export function InvitationCard({ state: c }: { state: OnboardingController }) {
   );
 }
 export function HouseIllustration() {
-  return (
-    <svg className="onboarding-art" viewBox="0 0 180 110" aria-hidden="true">
-      <ellipse cx="90" cy="65" rx="79" ry="43" fill="var(--color-balance)" />
-      <path
-        d="M49 53 90 20 132 53v45H49Z"
-        fill="var(--color-surface)"
-        stroke="var(--color-primary)"
-        strokeWidth="3"
-      />
-      <path
-        d="m40 57 49-40 51 40-7 5-44-33-42 33Z"
-        fill="var(--color-primary)"
-      />
-      <path
-        d="M82 68h19v30H82zM59 64h13v15H59zM111 64h12v15h-12z"
-        fill="var(--color-primary)"
-      />
-      <path
-        d="M25 98V69m130 29V68"
-        stroke="var(--color-primary)"
-        strokeWidth="3"
-      />
-      <ellipse cx="25" cy="63" rx="11" ry="20" fill="#8ca67b" />
-      <ellipse cx="155" cy="62" rx="12" ry="22" fill="#8ca67b" />
-    </svg>
-  );
+  return <div className="onboarding-art" aria-hidden="true" />;
 }
 export function PasswordSetup({ state: c }: { state: OnboardingController }) {
   const [confirmation, setConfirmation] = useState('');
@@ -189,7 +165,9 @@ export function InvitationScreens({
       <>
         <h1>You joined {name}!</h1>
         <p>
-          You can now see the group’s expenses and start splitting together.
+          You now share the group’s ledger and full expense history. Household
+          members can also see the overview of eligible groups and trips they
+          all share.
         </p>
         <InvitationCard state={c} />
         <Link
@@ -228,7 +206,7 @@ export function InvitationScreens({
     return (
       <>
         <h1>
-          {shared ? 'Create your password' : 'Create your Kami Split account'}
+          {shared ? 'Create your password' : 'Create your Kami Grow account'}
         </h1>
         <p>
           Your email has been verified. Now choose a password for your account.
@@ -261,7 +239,7 @@ export function InvitationScreens({
   if (c.step === 'email')
     return (
       <>
-        <h1>Create your Kami Split account</h1>
+        <h1>Create your Kami Grow account</h1>
         <p>First, verify your email address.</p>
         <InvitationCard state={c} />
         <form
@@ -300,8 +278,10 @@ export function InvitationScreens({
       <>
         <h1>Ready to join {name}?</h1>
         <p>
-          You’ll become an ordinary member and can see the group’s full expense
-          history.
+          You’ll become an ordinary member and share the group’s ledger and full
+          expense history. Household membership also enables the overview of
+          eligible groups and trips shared by all active Household members. No
+          additional sharing confirmation is needed.
         </p>
         <InvitationCard state={c} />
         <Button

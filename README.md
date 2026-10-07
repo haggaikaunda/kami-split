@@ -1,14 +1,14 @@
-# Kami Split
+# Kami Grow
 
-Kami Split is an expense-sharing application with a completed, interactive **seeded UX preview**. It supports exact equal/custom splits, balances, repayments, revision history, safe expense editing/deletion, trips, spending charts, and simulated household/account flows.
+Kami Grow shares expenses through real authenticated Group, Trip and Household workspaces. Relay/GraphQL reads and writes use the Go API for authorization, exact balances, persisted expenses, group repayments and recovery. Trips are independent groups; Household summaries retain each original financial boundary.
 
-The preview uses deterministic in-memory data, not a production backend. Changes belong to the current browser session and reset on reload; different browsers do not share them. Sign-in, invitations, access checks, and member management are simulations. No email is sent, no money is moved, and no production privacy or durable-storage guarantee is provided.
+The frontend product name is **Kami Grow**. Repository, package, API module, storage and infrastructure identifiers remain `kami-split` for compatibility. Historical design records and dated delivery evidence retain the original Kami Split name.
 
-The approved UX tracker [#13](https://github.com/haggaikaunda/kami-split/issues/13) and all eighteen child issues are complete. The subsequent [LAN HTTP fix](https://github.com/haggaikaunda/kami-split/pull/51) supports phone previews. See the [documentation index](docs/README.md) for current behavior, architecture, verification evidence, and the original design.
+The seeded application was retired in #184. Its design and delivery reports remain historical evidence, not executable runtime guidance. See the [documentation index](docs/README.md) for current behavior and verification.
 
 ## Repository layout
 
-The Next.js application lives in `apps/web`; financial previews use its mock DataPort while account/onboarding routes use configured services. `apps/api` implements verified authentication, persisted expense creation/recovery, authorized reads and complete balances in Go + gqlgen; `packages/schema` owns the SDL-first contract. Internal targeted invitation, admission and delivery-recovery operations are implemented. [Targeted onboarding](docs/application/onboarding.md) connects Supabase, email and browser entry; [authenticated group expenses](docs/application/relay-expenses.md) now use Relay at `/groups`; expense editing/deletion, settlements and imports are deferred. See the [API README](apps/api/README.md) for Docker Compose and native Go commands, [database development](docs/application/database-development.md) for local Supabase and restricted-role verification, and [repository layout and deployment](docs/repository-layout.md) for configuration ownership. Documentation and automation remain at the root.
+The Next.js application lives in `apps/web`; its single authenticated runtime uses Relay and configured onboarding services. `apps/api` implements verified authentication, persisted expense creation/recovery, authorized reads and complete balances in Go + gqlgen; `packages/schema` owns the SDL-first contract. Internal targeted invitation, admission and delivery-recovery operations are implemented. [Targeted onboarding](docs/application/onboarding.md) connects Supabase, email and browser entry; [authenticated group expenses](docs/application/relay-expenses.md) now use Relay at `/groups`; expense editing/deletion and imports are deferred; group repayments are implemented. See the [API README](apps/api/README.md) for Docker Compose and native Go commands, [database development](docs/application/database-development.md) for local Supabase and restricted-role verification, and [repository layout and deployment](docs/repository-layout.md) for configuration ownership. Documentation and automation remain at the root.
 
 ## Run locally
 
@@ -37,13 +37,13 @@ pnpm start --hostname 0.0.0.0 --port 4200
 
 Connect the phone to the same Wi-Fi and open `http://<your-computer-LAN-IP>:4200`. On macOS, `ipconfig getifaddr en0` usually shows the Wi-Fi address; use the active interface if Wi-Fi is elsewhere. Keep the computer awake. Stop any existing server using port 4200 before starting another.
 
-If the page fails, verify both the server connection and the rendered application. An HTTP 200 alone does not prove client startup. LAN HTTP uses the cryptographic session-ID fallback added in PR #51. The browser demo still resets on reload and does not synchronize between the phone and computer.
+If the page fails, verify both the server connection and the rendered application. An HTTP 200 alone does not prove client startup. LAN HTTP uses the cryptographic session-ID fallback added in PR #51. Financial data is persisted by the configured API; private drafts and unresolved attempts remain scoped to the signed-in account and browser tab.
 
-## Explore the demo
+## Explore the application
 
-The default household has Kaunda and Mizenin, USD, and a fixed clock of **September 20, 2026**. The initial balance is Kaunda owes Mizenin **$42.18**, with **$5,126.56** in total expenses. Overview's Simulation controls expose deterministic data/access/failure scenarios. All examples are synthetic; use the [walkthroughs](docs/design/prototype-verification.md) and [mock-data guide](docs/mock-data.md) to reproduce them.
+`/` enters `/groups`, which loads authorized Group discovery or offers real sign-in. `/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Group and Trip workspaces use `/groups/:groupId`; expense details and repayment entry remain group-scoped. Retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
 
-Overview, History, Trips, and Household are the main destinations. Account preview opens simulated entry flows. The [frozen prototype](docs/design/README.md) is a separate visual reference, not the application served by `pnpm dev`.
+The [frozen prototype](docs/design/README.md) and [primitive gallery](docs/primitives-preview/README.md) remain separate development references.
 
 ## Verify changes
 
@@ -59,4 +59,4 @@ pnpm build
 
 For API and persistence changes, also run `make api-check`, `make db-generation-check` and `make db-test`; the latter exercises real Supabase/PostgreSQL migration, authorization and race-enabled integration checks. Required CI runs the web and API verification paths for every PR.
 
-The post-LAN-fix web baseline is **325 tests in 54 files**, including 24 axe-backed accessibility tests. This count is a dated checkpoint, not a permanent target. See [testing strategy](docs/testing-strategy.md) for coverage and limitations, and [contributing](CONTRIBUTING.md) for the required issue, independent testing/review, and CI workflow.
+See [testing strategy](docs/testing-strategy.md) for coverage and limitations, and [contributing](CONTRIBUTING.md) for the required issue, independent testing/review, and CI workflow.

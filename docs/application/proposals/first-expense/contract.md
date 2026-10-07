@@ -1,5 +1,7 @@
 # Proposed #76 expense contract
 
+> References to keeping or isolating the seeded runtime record the original milestone scope. #184 subsequently retired that runtime and simulation-only tests; these references do not require executable preview retention.
+
 Status: finalized design, not runtime implementation; [SDL](schema.graphql) and [operations](operations.graphql) are
 not imported by running schema generation. #82 promotes only approved implemented
 fields. [Shared S1–S4](shared.md) defines identities, disclosure, locks and complete

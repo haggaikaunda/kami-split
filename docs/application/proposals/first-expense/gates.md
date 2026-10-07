@@ -1,5 +1,7 @@
 # Gate matrix and consolidated owner decision sheet
 
+> References to keeping or isolating the seeded runtime record the original milestone scope. #184 subsequently retired that runtime and simulation-only tests; these references do not require executable preview retention.
+
 The coordinated design is finalized subject to final-head verification and normal
 merge gates. P1/P3/P4 were approved earlier; the [owner follow-up](https://github.com/haggaikaunda/kami-split/pull/95#issuecomment-5901138197)
 resolves P2 with retention for the lifetime of financial history. Design acceptance

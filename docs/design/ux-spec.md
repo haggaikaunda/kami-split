@@ -1,5 +1,7 @@
 # UX specification
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
 
 ## Scope and screen inventory
@@ -47,7 +49,7 @@ Order: prominent amount and currency; description; payer and effective date; cat
 
 Fields: nonblank description (up to 120 characters), positive exact monetary amount, ISO currency, valid date, one payer, explicit participant set, split mode, resolved allocations, category, nullable trip ID and optional note. Categories: Dining, Groceries, Accommodation, Transport, Activities, Home, Other. Trip “Everyday expense” clears association. Seed picker offers USD only.
 
-Equal and exact-amount modes are mutually exclusive; no dead percentage tab. Divide integer minor units with deterministic remainder assignment in stable member order; explain the extra cent and show allocations. A $10.01 split becomes $5.01/$5.00. Exact shares may be zero but cannot be negative; excluded membership differs from an included member with zero share. At least one participant required; payer need not participate. Selecting/deselecting members must not silently erase a manual draft; warn before discarding exact allocations on mode changes.
+Equal, Exact and Percentage modes are mutually exclusive. Percentage is implemented under [#199](../application/percentage-splits.md), with explicit linking, remaining assignment and historical intent; each mode retains its draft inputs. Divide integer minor units with deterministic remainder assignment in stable member order; explain the extra cent and show allocations. A $10.01 split becomes $5.01/$5.00. Exact shares may be zero but cannot be negative; excluded membership differs from an included member with zero share. At least one participant required; payer need not participate. Selecting/deselecting members must not silently erase a manual draft; warn before discarding exact allocations on mode changes.
 
 Reject zero/negative values, malformed decimals, too many decimal places, amounts above the documented safe bound, invalid dates, missing payer/participants and unsupported currencies. Do not silently round. Inline field errors appear on blur/submit, associate through aria-describedby and set aria-invalid. A submit error summary focuses the first invalid control. Reconciliation announces exact remaining/excess amounts and blocks save until sum equals total. Editing revalidates the full form including unchanged fields.
 

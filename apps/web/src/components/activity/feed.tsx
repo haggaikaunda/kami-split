@@ -1,4 +1,6 @@
 'use client';
+import { spaceHref } from '@/lib/relay/space-routes';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
@@ -20,6 +22,7 @@ import detailDocument, {
   type activityDetailQuery,
 } from '@/lib/relay/__generated__/activityDetailQuery.graphql';
 import './feed.css';
+import { useForegroundRefresh } from '@/components/groups/foreground';
 type Connection = Extract<
   activityFeed$data,
   { readonly __typename: 'ActivityConnection' }
@@ -30,7 +33,8 @@ type Detail = activityDetailQuery['response']['node'];
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
-    <main className="activity-workspace" id="page-content">
+    <main className="financial-journey activity-workspace" id="page-content">
+      <WorkspaceNavigation />
       <WorkspaceHeader
         title="Activity"
         context={groupId ? 'Group workspace' : 'Household workspace'}
@@ -44,7 +48,9 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
               : '/household/activity'
             : groupId
               ? `/groups/${encodeURIComponent(groupId)}?tab=${section.toLowerCase()}`
-              : `/groups?section=${section.toLowerCase()}`
+              : section === 'Expenses'
+                ? '/household/expenses'
+                : `/groups?section=${section.toLowerCase()}`
         }
       />
       {access.loading ? (
@@ -70,10 +76,19 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
 export function ActivityFeed({
   scope,
   groupId,
+  initialFeed,
+  managedRefresh = false,
+  onDenied,
 }: {
   scope: FinancialScope;
   groupId: string;
+  initialFeed?: activityFeed$key;
+  managedRefresh?: boolean;
+  onDenied?: () => void;
 }) {
+  const initial = useRef(initialFeed);
+  const generation = useRef(0);
+  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const detailRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [kind, setKind] = useState('');
@@ -87,28 +102,40 @@ export function ActivityFeed({
   const [detail, setDetail] = useState<Detail>();
   const [detailError, setDetailError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
-  const reset = () => {
+  const invalidate = () => {
+    generation.current++;
+    request.current?.unsubscribe();
     setPage(undefined);
     setSelected(undefined);
     setDetail(undefined);
     setError('');
     setAfter(null);
     setLoading(true);
+  };
+  const reset = () => {
+    invalidate();
     setVersion((v) => v + 1);
   };
+  useForegroundRefresh(
+    invalidate,
+    () => setVersion((v) => v + 1),
+    !managedRefresh,
+  );
   useEffect(() => {
     let live = true;
+    const ticket = generation.current;
     const filter = {
       kind: kind ? (kind as 'EXPENSE_CREATED' | 'REPAYMENT_RECORDED') : null,
       sourceGroupId: source || null,
     };
     const accept = (reference: activityFeed$key) => {
-      if (!live || !scope.isLive()) return;
+      if (!live || !scope.isLive() || ticket !== generation.current) return;
       const result = readInlineData<activityFeed$key>(feedDocument, reference);
       if (result.__typename === 'ActivityConnection') {
         setPage(result);
         setError('');
       } else {
+        onDenied?.();
         setSelected(undefined);
         setDetail(undefined);
         setError(
@@ -118,13 +145,21 @@ export function ActivityFeed({
       setLoading(false);
     };
     const fail = () => {
-      if (live && scope.isLive()) {
+      if (live && scope.isLive() && ticket === generation.current) {
         setSelected(undefined);
         setDetail(undefined);
         setError('Activity is unavailable. Refresh to try again.');
         setLoading(false);
       }
     };
+    const prepared = initial.current;
+    initial.current = undefined;
+    if (prepared && !after && !kind && version === 0) {
+      accept(prepared);
+      return () => {
+        live = false;
+      };
+    }
     const subscription = groupId
       ? fetchQuery<activityGroupQuery>(
           scope.environment,
@@ -144,14 +179,18 @@ export function ActivityFeed({
           next: (result) => accept(result.householdActivity),
           error: fail,
         });
+    request.current = subscription;
     return () => {
       live = false;
       subscription.unsubscribe();
     };
+    // The parent owns access denial; query variables and generation own the read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, groupId, kind, source, after, version]);
   useEffect(() => {
     if (!selected) return;
     let live = true;
+    const ticket = generation.current;
     detailRef.current?.focus();
     // Reauthorize the feed and record together: Household eligibility can be
     // lost while ordinary group membership still permits the source record.
@@ -171,7 +210,7 @@ export function ActivityFeed({
         ).toPromise();
     void check
       .then((result) => {
-        if (!live || !scope.isLive()) return;
+        if (!live || !scope.isLive() || ticket !== generation.current) return;
         const reference =
           result &&
           ('groupActivity' in result
@@ -191,7 +230,7 @@ export function ActivityFeed({
         ).toPromise();
       })
       .then((result) => {
-        if (!live || !scope.isLive()) return;
+        if (!live || !scope.isLive() || ticket !== generation.current) return;
         if (
           !result?.node ||
           !('groupId' in result.node) ||
@@ -202,7 +241,7 @@ export function ActivityFeed({
         setDetailLoading(false);
       })
       .catch(() => {
-        if (live && scope.isLive()) {
+        if (live && scope.isLive() && ticket === generation.current) {
           setPage(undefined);
           setSelected(undefined);
           setDetail(undefined);
@@ -215,19 +254,7 @@ export function ActivityFeed({
       live = false;
     };
   }, [scope, groupId, selected]);
-  useEffect(() => {
-    const refresh = () => {
-      setError('');
-      setPage(undefined);
-      setSelected(undefined);
-      setDetail(undefined);
-      setAfter(null);
-      setLoading(true);
-      setVersion((v) => v + 1);
-    };
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
-  }, []);
+
   return (
     <>
       <div className="activity-controls">
@@ -372,7 +399,13 @@ export function ActivityFeed({
                   {detail.currency}
                 </p>
                 <p>Effective {detail.effectiveDate}</p>
-                <Link href={`/groups/${encodeURIComponent(detail.groupId)}`}>
+                <Link
+                  href={spaceHref({
+                    id: detail.groupId,
+                    isHousehold: selected.isHousehold,
+                    kind: selected.groupKind,
+                  })}
+                >
                   Open {selected.groupName}
                 </Link>
               </>

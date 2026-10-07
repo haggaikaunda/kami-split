@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d3fca5d1b23cd2d2e3d0057bb55517db>>
+ * @generated SignedSource<<4b060f7308b20f53bd1292b52c4c19c8>>
  * @lightSyntaxTransform
  */
 
@@ -14,6 +14,7 @@ export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type MembershipStatus = "ACTIVE" | "INACTIVE" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 export type journeyGroupQuery$variables = {
   after?: string | null | undefined;
   id: string;
@@ -70,6 +71,7 @@ export type journeyGroupQuery$data = {
               readonly displayName: string;
               readonly id: string;
             };
+            readonly percentageHundredths: number | null | undefined;
           }>;
           readonly category: Category;
           readonly description: string;
@@ -80,6 +82,7 @@ export type journeyGroupQuery$data = {
             readonly displayName: string;
             readonly id: string;
           };
+          readonly split: SplitMode;
           readonly totalMinor: string;
         };
       }>;
@@ -447,6 +450,13 @@ v16 = {
                 {
                   "alias": null,
                   "args": null,
+                  "kind": "ScalarField",
+                  "name": "split",
+                  "storageKey": null
+                },
+                {
+                  "alias": null,
+                  "args": null,
                   "concreteType": "Allocation",
                   "kind": "LinkedField",
                   "name": "allocations",
@@ -462,7 +472,14 @@ v16 = {
                       "selections": (v12/*:: as any*/),
                       "storageKey": null
                     },
-                    (v13/*:: as any*/)
+                    (v13/*:: as any*/),
+                    {
+                      "alias": null,
+                      "args": null,
+                      "kind": "ScalarField",
+                      "name": "percentageHundredths",
+                      "storageKey": null
+                    }
                   ],
                   "storageKey": null
                 }
@@ -778,16 +795,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "d14bcc61b9eae9a7cdfebd69d0e18e11",
+    "cacheID": "54984a15f0a58ce01bcbbffbc4ac6593",
     "id": null,
     "metadata": {},
     "name": "journeyGroupQuery",
     "operationKind": "query",
-    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      kind\n      isHousehold\n      trip {\n        destination\n        startDate\n        endDate\n      }\n      viewerMembership {\n        id\n        role\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      repayments(first: 5) {\n        edges {\n          node {\n            id\n            groupId\n            amountMinor\n            effectiveDate\n            note\n            sender {\n              id\n              displayName\n            }\n            recipient {\n              id\n              displayName\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
+    "text": "query journeyGroupQuery(\n  $id: ID!\n  $after: String\n) {\n  group(id: $id) {\n    __typename\n    ... on Problem {\n      code\n      message\n    }\n    ... on Group {\n      id\n      name\n      currency\n      kind\n      isHousehold\n      trip {\n        destination\n        startDate\n        endDate\n      }\n      viewerMembership {\n        id\n        role\n      }\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          node {\n            id\n            description\n            effectiveDate\n            totalMinor\n            category\n            note\n            payer {\n              id\n              displayName\n            }\n            split\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n              percentageHundredths\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n          hasPreviousPage\n          startCursor\n          endCursor\n        }\n      }\n      repayments(first: 5) {\n        edges {\n          node {\n            id\n            groupId\n            amountMinor\n            effectiveDate\n            note\n            sender {\n              id\n              displayName\n            }\n            recipient {\n              id\n              displayName\n            }\n          }\n        }\n        pageInfo {\n          hasNextPage\n        }\n      }\n      balances {\n        __typename\n        ... on Problem {\n          code\n          message\n        }\n        ... on GroupBalances {\n          groupId\n          revision\n          totalExpenseMinor\n          settled\n          positions {\n            member {\n              id\n              displayName\n              status\n            }\n            paidMinor\n            owedMinor\n            sentMinor\n            receivedMinor\n            netMinor\n          }\n          obligations {\n            from {\n              id\n              displayName\n            }\n            to {\n              id\n              displayName\n            }\n            amountMinor\n          }\n        }\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "430b031c41b185b18847bb8e7259caae";
+(node as any).hash = "a528826f3e69947399daf8f09cefc500";
 
 export default node;

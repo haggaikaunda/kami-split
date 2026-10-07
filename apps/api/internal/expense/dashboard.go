@@ -17,9 +17,11 @@ import (
 // Dashboard is a freshly authorized complete scope. Unavailable sharing exposes
 // only the authorized Household ledger; incomplete rows never carry totals.
 type Dashboard struct {
-	State  string
-	Spaces []DashboardSpace
-	Totals *DashboardTotals
+	// ContextVersion is present only for a complete authorized metadata projection.
+	ContextVersion *string
+	State          string
+	Spaces         []DashboardSpace
+	Totals         *DashboardTotals
 }
 
 // DashboardSpace keeps each original ledger independently actionable. Net is
@@ -39,7 +41,7 @@ type DashboardTotals struct {
 
 var errDashboardRestart = errors.New("dashboard discovery changed")
 
-// ReadDashboard holds canonical user→designation→group locks and reads every
+// ReadDashboard holds canonical user→scope guard→group locks and reads every
 // eligible ledger and its current scope in one statement snapshot. Three fresh
 // transactions within five seconds bound discovery races; failure returns no rows.
 func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
@@ -68,9 +70,10 @@ func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
 				return err
 			}
 			var data struct {
-				State  string
-				Groups []string
-				Rows   []struct {
+				State          string
+				ContextVersion *string
+				Groups         []string
+				Rows           []struct {
 					Snapshot json.RawMessage
 					Count    string
 				}
@@ -90,7 +93,7 @@ func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
 					return errDashboardRestart
 				}
 			}
-			result = Dashboard{State: data.State, Spaces: []DashboardSpace{}}
+			result = Dashboard{State: data.State, ContextVersion: data.ContextVersion, Spaces: []DashboardSpace{}}
 			for _, row := range data.Rows {
 				snapshot, err := decodeSnapshot(row.Snapshot, PageRequest{First: 1})
 				if err != nil {
@@ -115,6 +118,7 @@ func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
 				result.Totals = dashboardTotals(result.Spaces)
 				if result.Totals == nil {
 					result.State = "INCOMPLETE"
+					result.ContextVersion = nil
 				}
 			}
 			return nil
@@ -157,5 +161,5 @@ func dashboardProjectionSQL() string {
 	// empty here, while all complete aggregates retain their original semantics.
 	replacements := []string{"$11", "NULL::uuid", "$10", "NULL::uuid", "$9", "NULL::timestamptz", "$8", "NULL::date", "$7", "NULL::bigint", "$6", "NULL::uuid", "$5", "NULL::text", "$4", "NULL::date", "$3", "NULL::date", "$2", "0", "$1", "selected.id"}
 	projection = strings.NewReplacer(replacements...).Replace(projection)
-	return `WITH scope AS MATERIALIZED (SELECT app.household_dashboard_scope() AS value), selected AS (SELECT discovered.group_id::uuid AS id FROM scope,jsonb_array_elements_text(scope.value->'groups') AS discovered(group_id)) SELECT jsonb_build_object('State',scope.value->>'state','Groups',scope.value->'groups','Rows',coalesce((SELECT jsonb_agg(jsonb_build_object('Snapshot',projection.value,'Count',(SELECT count(*)::text FROM app.expenses e WHERE e.group_id=selected.id)) ORDER BY selected.id) FROM selected CROSS JOIN LATERAL (` + projection + `) projection(value)),'[]'::jsonb)) FROM scope`
+	return `WITH scope AS MATERIALIZED (SELECT app.household_expense_scope() AS data), selected AS (SELECT discovered.group_id::uuid AS id FROM scope,jsonb_array_elements_text(scope.data->'groups') AS discovered(group_id)) SELECT jsonb_build_object('State',scope.data->>'state','ContextVersion',` + contextVersionSQL + `,'Groups',scope.data->'groups','Rows',coalesce((SELECT jsonb_agg(jsonb_build_object('Snapshot',projection.value,'Count',(SELECT count(*)::text FROM app.expenses e WHERE e.group_id=selected.id)) ORDER BY selected.id) FROM selected CROSS JOIN LATERAL (` + projection + `) projection(value)),'[]'::jsonb)) FROM scope`
 }

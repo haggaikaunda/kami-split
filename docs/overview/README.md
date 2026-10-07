@@ -1,5 +1,7 @@
 # Overview and shared data boundary
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production direction
 
 The evidence below covers one seeded household snapshot. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment) distinguishes the household group from the separately implemented #111 server dashboard including it plus ordinary/trip groups where both partners are active. One-partner-only groups remain accessible through that person’s Groups experience, outside the shared overview. Source-group balances and repayment shortcuts never create an overall debt or cross-group offset; a cross-group total of zero does not mean each group is settled, and adding different members’ nets cannot establish their individual settlement. The refined [ADR-007](../application/decisions/007-household-dashboard.md) server summary returns one signed informational viewer net, open/active-space counts and active expense face-value totals. “Our spending”/average-trip formulas and reporting history remain deferred; combined allocated shares are only a proposal. The seeded UI evidence below does not verify the production #112 dashboard.

@@ -19,7 +19,7 @@ filtered AS MATERIALIZED (
  ORDER BY effective_date DESC,created_at DESC,group_id DESC,id DESC LIMIT $11
 ), months AS (SELECT to_char(effective_date,'YYYY-MM') AS month,coalesce(sum(total_minor),0)::text AS total,count(*)::text AS count FROM filtered GROUP BY 1)
 SELECT jsonb_build_object(
- 'State',scope.data->>'state','Eligibility',scope.data->>'anchor','Groups',scope.data->'groups',
+ 'ContextVersion',` + contextVersionSQL + `,'State',scope.data->>'state','Eligibility',scope.data->>'anchor','Groups',scope.data->'groups',
  'ValidGroup',($1::uuid IS NULL OR EXISTS(SELECT FROM selected WHERE id=$1)),
  'ValidMember',($2::uuid IS NULL OR EXISTS(SELECT FROM app.memberships m JOIN selected s ON s.id=m.group_id WHERE m.id=$2 AND ($1::uuid IS NULL OR m.group_id=$1))),
  'Revisions',coalesce((SELECT jsonb_agg(jsonb_build_object('GroupID',id,'Revision',revision) ORDER BY id) FROM revisions),'[]'::jsonb),
@@ -29,6 +29,7 @@ SELECT jsonb_build_object(
   'Trip',(SELECT jsonb_build_object('destination',t.destination,'startDate',to_char(t.start_date,'YYYY-MM-DD'),'endDate',to_char(t.end_date,'YYYY-MM-DD')) FROM app.group_trip t WHERE t.group_id=g.id),
   'Members',(SELECT jsonb_agg(jsonb_build_object('ID',m.id,'DisplayName',m.display_name,'Status',m.status,'Role',m.role,'CanParticipate',m.can_participate) ORDER BY m.id) FROM app.group_members(g.id) m)) ORDER BY g.id) FROM app.groups g JOIN selected s ON s.id=g.id),'[]'::jsonb),
  'Records',coalesce((SELECT jsonb_agg(jsonb_build_object('ExpenseID',e.id,'GroupID',e.group_id,'CreatorMembershipID',e.creator_id,'PayerMembershipID',e.payer_id,'TotalMinor',e.total_minor,'Currency',e.currency,'Description',e.description,'EffectiveDate',to_char(e.effective_date,'YYYY-MM-DD'),'Category',e.category,'Note',e.note,'Split',e.split,'CommittedAt',to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'Revision',e.revision,
+  'Percentages',(SELECT coalesce(jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Hundredths',a.percentage_hundredths) ORDER BY a.participant_id),'[]'::jsonb) FROM app.allocations a WHERE a.expense_id=e.id AND a.percentage_hundredths IS NOT NULL),
   'Allocations',(SELECT jsonb_agg(jsonb_build_object('ParticipantID',a.participant_id,'Amount',a.amount_minor) ORDER BY a.participant_id) FROM app.allocations a WHERE a.expense_id=e.id)) ORDER BY e.effective_date DESC,e.created_at DESC,e.group_id DESC,e.id DESC) FROM page e),'[]'::jsonb)) FROM scope`
 
 func viewProjectionSQL(group bool) string {

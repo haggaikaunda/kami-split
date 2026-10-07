@@ -22,7 +22,7 @@ func (r *queryResolver) HouseholdDashboard(ctx context.Context) (model.Household
 	if err != nil {
 		return problem(ctx, err), nil
 	}
-	result := &model.HouseholdDashboard{State: model.HouseholdDashboardState(out.State), Spaces: []*model.HouseholdDashboardSpace{}}
+	result := &model.HouseholdDashboard{ContextVersion: out.ContextVersion, State: model.HouseholdDashboardState(out.State), Spaces: []*model.HouseholdDashboardSpace{}}
 	for _, space := range out.Spaces {
 		group := mapGroup(ctx, space.Snapshot)
 		row := &model.HouseholdDashboardSpace{GroupID: group.ID, Name: group.Name, Kind: group.Kind, Trip: group.Trip, IsHousehold: group.IsHousehold, Currency: group.Currency, Members: group.Members, ViewerMembership: group.ViewerMembership, Balances: group.Balances, SharedExpenseCount: ledger.MinorUnits(space.ExpenseCount)}

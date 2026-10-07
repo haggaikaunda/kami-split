@@ -50,6 +50,12 @@ func (r *mutationResolver) CreateExpense(ctx context.Context, input model.Create
 		return problem(ctx, expense.Failure("UNAVAILABLE")), nil
 	}
 	command := ledger.Input{GroupID: input.GroupID, Key: string(input.Key), Total: int64(input.TotalMinor), Currency: string(input.Currency), Description: input.Description, EffectiveDate: string(input.EffectiveDate), Category: string(input.Category), Note: input.Note, PayerID: input.PayerID, ParticipantIDs: input.ParticipantIds, Split: string(input.Split)}
+	if input.Percentages != nil {
+		command.Percentages = []ledger.Percentage{}
+		for _, p := range input.Percentages {
+			command.Percentages = append(command.Percentages, ledger.Percentage{ParticipantID: p.ParticipantID, Hundredths: int64(p.Hundredths)})
+		}
+	}
 	if input.ExactAllocations != nil {
 		command.ExactAllocations = []ledger.Allocation{}
 		for _, a := range input.ExactAllocations {

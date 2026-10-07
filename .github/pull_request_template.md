@@ -2,7 +2,9 @@
 
 <!-- What problem does this solve, and what behavior changes? Follow docs/agents/delivery-workflow.md and relevant area instructions. -->
 
-Closes #
+<!-- Use a non-closing reference when acceptance criteria or post-merge closeout remain outstanding. -->
+
+Refs #
 
 ## Acceptance criteria
 
@@ -40,3 +42,17 @@ Closes #
 ## Assumptions, trade-offs, and risks
 
 <!-- Include migrations, security/privacy impact, rollout concerns, or "None". -->
+
+## Post-merge closeout (completion evidence, not pre-merge gates)
+
+<!-- Coordinator owns this section after an actual authorized merge. Keep unchecked until performed. If another session merges, name the original-checkout owner and hand off execution. Record blocked steps with next action; never infer absence from a network/permission error. -->
+
+- Coordinator / original-checkout owner and designated primary path:
+- Task-start observed origin/main SHA and primary synchronization outcome:
+- [ ] Fresh GitHub confirmation: repository, merged into main, source repository/branch, final merged head SHA, merge commit SHA
+- [ ] Primary checkout clean on main; local and freshly fetched origin/main SHAs equal; merge inclusion verified
+- [ ] Completed local branch and owned disposable worktree removed (before/after dispositions and SHAs)
+- [ ] delete_branch_on_merge checked; exact source ref absent on remote server; final prune complete
+- Outstanding blockers, retained candidates with reasons, owner / next action:
+
+<!-- Use docs/agents/branch-cleanup.md for the inspection and guarded cleanup procedure. Synchronization describes observed remote state, not future commits. Close the issue only after full acceptance criteria and closeout are recorded. -->

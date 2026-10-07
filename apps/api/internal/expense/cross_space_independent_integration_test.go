@@ -73,7 +73,7 @@ func independentViewExpense(t *testing.T, f *expenseFixture, group, payer, parti
 }
 func independentViewDataset(t *testing.T) *expenseFixture {
 	t.Helper()
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	t.Cleanup(func() {
 		independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;DELETE FROM app.group_trip WHERE group_id='%s';COMMIT`, f.id(202)))
 	})
@@ -218,7 +218,7 @@ func TestIndependentExpenseViewCursorAnchorsFiltersAndCurrentMetadata(t *testing
 }
 
 func TestIndependentExpenseViewGlobalTiesAndCanonicalAnchors(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	// Exercise a third eligible ledger with an independent UUID prefix.
 	raw := uuid.NewString()
 	ids := map[int]string{204: raw, 324: uuid.NewString(), 325: uuid.NewString()}
@@ -427,19 +427,17 @@ func TestIndependentExpenseViewMalformedAuthorizationAndNoSearchContract(t *test
 	if got := independentViewRead(t, f, 1, 1, "", map[string]any{"groupId": f.public("Group", 202)}, f.public("Group", 201), "Problem"); got["code"] != "NOT_FOUND" {
 		t.Fatal("group source scope overridden", got)
 	}
-	// A viewer's ordinary ledger access survives exclusion from the pair feed.
+	// A viewer's independent ledger access survives common-source exclusion.
 	independentViewSummary(t, independentViewRead(t, f, 1, 1, "", nil, f.public("Group", 203), "ExpenseView"), "9000", "1", map[string][2]string{"2026-10": {"9000", "1"}})
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;UPDATE app.users SET enabled=false WHERE id='%s';COMMIT`, f.id(102)))
-	if got := independentViewRead(t, f, 1, 1, "", nil, "", "Problem"); got["code"] != "UNAVAILABLE" {
-		t.Fatal("suspended pair manufactured empty success", got)
-	}
+	independentViewSummary(t, independentViewRead(t, f, 1, 1, "", nil, "", "ExpenseView"), "600", "3", map[string][2]string{"2026-10": {"100", "1"}, "2026-09": {"500", "2"}})
 	if got := independentViewRead(t, f, 2, 1, "", nil, "", "Problem"); got["code"] != "NOT_FOUND" {
 		t.Fatal("disabled actor accepted", got)
 	}
 }
 
 func TestIndependentExpenseViewExactBoundariesAndWholeFailure(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	independentViewExpense(t, f, 201, 301, 302, 1, "2026-09-30", "DINING")
 	independentViewExpense(t, f, 202, 305, 306, 1, "2026-09-30", "DINING")
 	// A real bounded-record aggregate would need millions/billions of records.

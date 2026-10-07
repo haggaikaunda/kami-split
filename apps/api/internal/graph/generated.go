@@ -54,6 +54,7 @@ type ComplexityRoot struct {
 		Currency      func(childComplexity int) int
 		EffectiveDate func(childComplexity int) int
 		GroupID       func(childComplexity int) int
+		GroupKind     func(childComplexity int) int
 		GroupName     func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IsHousehold   func(childComplexity int) int
@@ -71,8 +72,9 @@ type ComplexityRoot struct {
 	}
 
 	Allocation struct {
-		AmountMinor func(childComplexity int) int
-		Participant func(childComplexity int) int
+		AmountMinor          func(childComplexity int) int
+		Participant          func(childComplexity int) int
+		PercentageHundredths func(childComplexity int) int
 	}
 
 	Expense struct {
@@ -131,6 +133,7 @@ type ComplexityRoot struct {
 	}
 
 	ExpenseView struct {
+		ContextVersion    func(childComplexity int) int
 		Edges             func(childComplexity int) int
 		ExpenseCount      func(childComplexity int) int
 		Months            func(childComplexity int) int
@@ -214,9 +217,10 @@ type ComplexityRoot struct {
 	}
 
 	HouseholdDashboard struct {
-		Spaces func(childComplexity int) int
-		State  func(childComplexity int) int
-		Totals func(childComplexity int) int
+		ContextVersion func(childComplexity int) int
+		Spaces         func(childComplexity int) int
+		State          func(childComplexity int) int
+		Totals         func(childComplexity int) int
 	}
 
 	HouseholdDashboardSpace struct {
@@ -295,6 +299,7 @@ type ComplexityRoot struct {
 		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		RetryInvitationDelivery  func(childComplexity int, actionID string) int
 		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		UpdateMyProfile          func(childComplexity int, displayName string, expectedDisplayName string) int
 	}
 
 	Obligation struct {
@@ -304,8 +309,9 @@ type ComplexityRoot struct {
 	}
 
 	OperationAllocation struct {
-		AmountMinor   func(childComplexity int) int
-		ParticipantID func(childComplexity int) int
+		AmountMinor          func(childComplexity int) int
+		ParticipantID        func(childComplexity int) int
+		PercentageHundredths func(childComplexity int) int
 	}
 
 	OperationMismatch struct {
@@ -344,7 +350,18 @@ type ComplexityRoot struct {
 		Message func(childComplexity int) int
 	}
 
+	Profile struct {
+		DisplayName func(childComplexity int) int
+		ID          func(childComplexity int) int
+	}
+
+	ProfileProblem struct {
+		Code    func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	Query struct {
+		CurrentProfile         func(childComplexity int) int
 		ExpenseOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
 		Group                  func(childComplexity int, id string) int
 		GroupActivity          func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
@@ -442,6 +459,7 @@ type MutationResolver interface {
 	AcceptInvitation(ctx context.Context, token string, key ledger.OperationKey) (model.InvitationResult, error)
 	CreateSharedInvitation(ctx context.Context, groupID string, key ledger.OperationKey) (model.InvitationResult, error)
 	RenewSharedInvitation(ctx context.Context, groupID string, id string, key ledger.OperationKey) (model.InvitationResult, error)
+	UpdateMyProfile(ctx context.Context, displayName string, expectedDisplayName string) (model.ProfileResult, error)
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
 }
 type QueryResolver interface {
@@ -458,6 +476,7 @@ type QueryResolver interface {
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
 	OwnerInvitations(ctx context.Context, groupID string, first int, after *string) (model.OwnerInvitationsResult, error)
 	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
+	CurrentProfile(ctx context.Context) (model.ProfileResult, error)
 	RepaymentOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.RepaymentOperationResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
@@ -536,6 +555,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ActivityEvent.GroupID(childComplexity), true
+	case "ActivityEvent.groupKind":
+		if e.ComplexityRoot.ActivityEvent.GroupKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ActivityEvent.GroupKind(childComplexity), true
 	case "ActivityEvent.groupName":
 		if e.ComplexityRoot.ActivityEvent.GroupName == nil {
 			break
@@ -616,6 +641,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Allocation.Participant(childComplexity), true
+	case "Allocation.percentageHundredths":
+		if e.ComplexityRoot.Allocation.PercentageHundredths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Allocation.PercentageHundredths(childComplexity), true
 
 	case "Expense.allocations":
 		if e.ComplexityRoot.Expense.Allocations == nil {
@@ -845,6 +876,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ExpenseOperationRecord.TotalMinor(childComplexity), true
 
+	case "ExpenseView.contextVersion":
+		if e.ComplexityRoot.ExpenseView.ContextVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.ContextVersion(childComplexity), true
 	case "ExpenseView.edges":
 		if e.ComplexityRoot.ExpenseView.Edges == nil {
 			break
@@ -1149,6 +1186,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Health.Status(childComplexity), true
 
+	case "HouseholdDashboard.contextVersion":
+		if e.ComplexityRoot.HouseholdDashboard.ContextVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboard.ContextVersion(childComplexity), true
 	case "HouseholdDashboard.spaces":
 		if e.ComplexityRoot.HouseholdDashboard.Spaces == nil {
 			break
@@ -1532,6 +1575,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeInvitation(childComplexity, args["groupID"].(string), args["id"].(string), args["key"].(ledger.OperationKey)), true
+	case "Mutation.updateMyProfile":
+		if e.ComplexityRoot.Mutation.UpdateMyProfile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyProfile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMyProfile(childComplexity, args["displayName"].(string), args["expectedDisplayName"].(string)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -1564,6 +1618,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OperationAllocation.ParticipantID(childComplexity), true
+	case "OperationAllocation.percentageHundredths":
+		if e.ComplexityRoot.OperationAllocation.PercentageHundredths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OperationAllocation.PercentageHundredths(childComplexity), true
 
 	case "OperationMismatch.key":
 		if e.ComplexityRoot.OperationMismatch.Key == nil {
@@ -1679,6 +1739,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Problem.Message(childComplexity), true
 
+	case "Profile.displayName":
+		if e.ComplexityRoot.Profile.DisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Profile.DisplayName(childComplexity), true
+	case "Profile.id":
+		if e.ComplexityRoot.Profile.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Profile.ID(childComplexity), true
+
+	case "ProfileProblem.code":
+		if e.ComplexityRoot.ProfileProblem.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProfileProblem.Code(childComplexity), true
+	case "ProfileProblem.message":
+		if e.ComplexityRoot.ProfileProblem.Message == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProfileProblem.Message(childComplexity), true
+
+	case "Query.currentProfile":
+		if e.ComplexityRoot.Query.CurrentProfile == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.CurrentProfile(childComplexity), true
 	case "Query.expenseOperation":
 		if e.ComplexityRoot.Query.ExpenseOperation == nil {
 			break
@@ -2069,6 +2161,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExactAllocationInput,
 		ec.unmarshalInputExpenseFilter,
 		ec.unmarshalInputGroupTripInput,
+		ec.unmarshalInputPercentageInput,
 		ec.unmarshalInputRecordRepaymentInput,
 		ec.unmarshalInputStructuredExpenseFilter,
 	)
@@ -2256,6 +2349,10 @@ enum SplitMode {
   Caller supplies one reconciled amount for each explicit participant, including zero.
   """
   EXACT
+  """
+  Intended hundredths of a percent; server resolves cents by largest remainder, then ascending canonical ID.
+  """
+  PERCENTAGE
 }
 """
 Self-only application access state for a cryptographically verified caller.
@@ -2399,7 +2496,7 @@ type Query {
   ): OperationResult!
 
   """
-  One complete merged expense view across exactly the finalized Household pair's eligible spaces. Unavailable sharing/discovery returns a safe Problem, never an empty success.
+  One complete merged expense view across exactly the current Household membership's common eligible spaces. Unavailable discovery returns a safe Problem, never an empty success.
   """
   householdExpenses(
     """
@@ -2722,7 +2819,7 @@ type Expense implements Node {
   """
   creator: Membership!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -2746,6 +2843,10 @@ type Allocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Complete exact balances or an explicit failure; failure never means zero or settled.
@@ -2875,13 +2976,30 @@ input CreateExpenseInput {
   """
   participantIds: [ID!]!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
-  Omit or null for EQUAL; EXACT requires exactly one share per participant and reconciliation to the total.
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
   """
   exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+"""
+One explicitly selected participant's intended responsibility, independent of payer.
+"""
+input PercentageInput {
+  """
+  Stable same-group Membership ID.
+  """
+  participantId: ID!
+  """
+  Integer hundredths of a percent; 6250 means 62.50%, 10000 means 100%.
+  """
+  hundredths: Int!
 }
 """
 One selected participant and its nonnegative exact share, including zero.
@@ -2971,7 +3089,7 @@ type ExpenseOperationRecord {
   """
   note: String!
   """
-  EQUAL or EXACT intent; equal and exact remain distinct even when their resulting shares match.
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
   """
   split: SplitMode!
   """
@@ -2999,6 +3117,10 @@ type OperationAllocation {
   Exact nonnegative cents; zero is an explicit participant share.
   """
   amountMinor: MinorUnits!
+  """
+  Saved intended hundredths of a percent, including zero; null for historical EQUAL/EXACT. Cents remain authoritative.
+  """
+  percentageHundredths: Int
 }
 """
 Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
@@ -3129,6 +3251,12 @@ type ActivityEvent {
   Current authorized source label.
   """
   groupName: String!
+  """
+  Current authorized source kind for canonical Group or Trip navigation. This
+  metadata is read with the event page; it does not change original financial IDs.
+  Household sources remain ORDINARY and are identified separately by isHousehold.
+  """
+  groupKind: GroupKind!
   """
   Whether the source is the designated Household ledger.
   """
@@ -3376,7 +3504,7 @@ enum HouseholdDashboardState {
   """
   INCOMPLETE
   """
-  Only the authorized Household ledger is available; sharing is not finalized.
+  Legacy service fallback; membership does not require a separate sharing designation.
   """
   UNAVAILABLE
 }
@@ -3384,6 +3512,10 @@ enum HouseholdDashboardState {
 Original ledgers and an explicit complete/incomplete/unavailable outcome.
 """
 type HouseholdDashboard {
+  """
+  Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+  """
+  contextVersion: String
   """
   Current completeness, independent of individual group settlement.
   """
@@ -3477,7 +3609,7 @@ type HouseholdDashboardTotals {
 }
 extend type Query {
   """
-  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  Server-authorized membership overview from one coherent statement snapshot; no search or financial netting.
   """
   householdDashboard: HouseholdDashboardResult!
 }
@@ -3860,6 +3992,62 @@ extend type Mutation {
   ): InvitationResult!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/profile.graphql", Input: `"""
+Self-only application profile, independent of group discovery and Auth metadata.
+"""
+type Profile {
+  """
+  Stable typed ks1:Profile application ID; distinct from Viewer, never an Auth subject or an authorization capability. Profile is not a Node lookup surface.
+  """
+  id: ID!
+  """
+  Current application display name; historical financial snapshots retain their original names.
+  """
+  displayName: String!
+}
+"""
+Safe profile outcome; no private identity or storage details.
+"""
+type ProfileProblem {
+  """
+  INVALID_INPUT, CONFLICT, FORBIDDEN, UNAUTHENTICATED, or UNAVAILABLE.
+  """
+  code: String!
+  """
+  User-facing explanation of the failure.
+  """
+  message: String!
+}
+"""
+An authorized profile or a safe operation failure.
+"""
+union ProfileResult = Profile | ProfileProblem
+extend type Query {
+  """
+  Read only the enabled, provisioned authenticated caller's profile, without discovering groups.
+  """
+  currentProfile: ProfileResult!
+}
+extend type Mutation {
+  """
+  Update only the caller's application display name. Trim Unicode White_Space
+  at both ends and require 1–120 Unicode codepoints after trimming. The exact
+  previously read expectedDisplayName prevents stale overwrites; an already
+  current requested value succeeds without another write. Auth metadata and
+  financial history are unchanged. Refresh authorized projections after success.
+  """
+  updateMyProfile(
+    """
+    Desired personal name, trimmed using Unicode White_Space and limited to 1–120 codepoints.
+    """
+    displayName: String!
+    """
+    Exact previously confirmed application name; a different current value rejects a stale edit.
+    """
+    expectedDisplayName: String!
+  ): ProfileResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/repayments.graphql", Input: `"""
 An actual transfer recorded within one explicitly authorized group. Creator is server-derived; no money is moved.
 """
@@ -4154,6 +4342,10 @@ One complete filtered dataset anchored to per-group append-only financial revisi
 """
 type ExpenseView {
   """
+  Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
+  """
+  contextVersion: String!
+  """
   Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
   """
   totalExpenseMinor: MinorUnits!
@@ -4170,7 +4362,7 @@ type ExpenseView {
   """
   edges: [ExpenseViewEdge!]!
   """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible set/designation and revision anchors.
+  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
   """
   pageInfo: PageInfo!
 }
@@ -4238,6 +4430,8 @@ func (ec *executionContext) childFields_ActivityEvent(ctx context.Context, field
 		return ec.fieldContext_ActivityEvent_groupId(ctx, field)
 	case "groupName":
 		return ec.fieldContext_ActivityEvent_groupName(ctx, field)
+	case "groupKind":
+		return ec.fieldContext_ActivityEvent_groupKind(ctx, field)
 	case "isHousehold":
 		return ec.fieldContext_ActivityEvent_isHousehold(ctx, field)
 	case "amountMinor":
@@ -4276,6 +4470,8 @@ func (ec *executionContext) childFields_Allocation(ctx context.Context, field gr
 		return ec.fieldContext_Allocation_participant(ctx, field)
 	case "amountMinor":
 		return ec.fieldContext_Allocation_amountMinor(ctx, field)
+	case "percentageHundredths":
+		return ec.fieldContext_Allocation_percentageHundredths(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Allocation", field.Name)
 }
@@ -4522,6 +4718,8 @@ func (ec *executionContext) childFields_OperationAllocation(ctx context.Context,
 		return ec.fieldContext_OperationAllocation_participantId(ctx, field)
 	case "amountMinor":
 		return ec.fieldContext_OperationAllocation_amountMinor(ctx, field)
+	case "percentageHundredths":
+		return ec.fieldContext_OperationAllocation_percentageHundredths(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type OperationAllocation", field.Name)
 }
@@ -5023,6 +5221,28 @@ func (ec *executionContext) field_Mutation_revokeInvitation_args(ctx context.Con
 		return nil, err
 	}
 	args["key"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "displayName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["displayName"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "expectedDisplayName",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["expectedDisplayName"] = arg1
 	return args, nil
 }
 
@@ -5622,6 +5842,29 @@ func (ec *executionContext) fieldContext_ActivityEvent_groupName(_ context.Conte
 	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _ActivityEvent_groupKind(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ActivityEvent_groupKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupKind) graphql.Marshaler {
+			return ec.marshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ActivityEvent_groupKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ActivityEvent", field, false, false, errors.New("field of type GroupKind does not have child fields"))
+}
+
 func (ec *executionContext) _ActivityEvent_isHousehold(ctx context.Context, field graphql.CollectedField, obj *model.ActivityEvent) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -5964,6 +6207,29 @@ func (ec *executionContext) _Allocation_amountMinor(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_Allocation_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Allocation", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _Allocation_percentageHundredths(ctx context.Context, field graphql.CollectedField, obj *model.Allocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Allocation_percentageHundredths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PercentageHundredths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Allocation_percentageHundredths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Allocation", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _Expense_id(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
@@ -6887,6 +7153,29 @@ func (ec *executionContext) _ExpenseOperationRecord_revision(ctx context.Context
 }
 func (ec *executionContext) fieldContext_ExpenseOperationRecord_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ExpenseOperationRecord", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseView_contextVersion(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_contextVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ContextVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_contextVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _ExpenseView_totalExpenseMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
@@ -8118,6 +8407,29 @@ func (ec *executionContext) _Health_status(ctx context.Context, field graphql.Co
 }
 func (ec *executionContext) fieldContext_Health_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboard_contextVersion(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboard_contextVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ContextVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboard_contextVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboard", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _HouseholdDashboard_state(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboard) (ret graphql.Marshaler) {
@@ -9573,6 +9885,50 @@ func (ec *executionContext) fieldContext_Mutation_renewSharedInvitation(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMyProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMyProfile(ctx, fc.Args["displayName"].(string), fc.Args["expectedDisplayName"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+			return ec.marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMyProfile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ProfileResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_recordRepayment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9748,6 +10104,29 @@ func (ec *executionContext) _OperationAllocation_amountMinor(ctx context.Context
 }
 func (ec *executionContext) fieldContext_OperationAllocation_amountMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OperationAllocation", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _OperationAllocation_percentageHundredths(ctx context.Context, field graphql.CollectedField, obj *model.OperationAllocation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OperationAllocation_percentageHundredths(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PercentageHundredths, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OperationAllocation_percentageHundredths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OperationAllocation", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _OperationMismatch_key(ctx context.Context, field graphql.CollectedField, obj *model.OperationMismatch) (ret graphql.Marshaler) {
@@ -10171,6 +10550,98 @@ func (ec *executionContext) _Problem_message(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Problem_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Problem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Profile_id(ctx context.Context, field graphql.CollectedField, obj *model.Profile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Profile_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Profile_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Profile_displayName(ctx context.Context, field graphql.CollectedField, obj *model.Profile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Profile_displayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Profile_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Profile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ProfileProblem_code(ctx context.Context, field graphql.CollectedField, obj *model.ProfileProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProfileProblem_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ProfileProblem_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProfileProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ProfileProblem_message(ctx context.Context, field graphql.CollectedField, obj *model.ProfileProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ProfileProblem_message(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ProfileProblem_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ProfileProblem", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Query_groupActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -10701,6 +11172,29 @@ func (ec *executionContext) fieldContext_Query_invitationAction(ctx context.Cont
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Query_currentProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_currentProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().CurrentProfile(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+			return ec.marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_currentProfile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type ProfileResult does not have child fields"))
 }
 
 func (ec *executionContext) _Query_repaymentOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -12875,7 +13369,7 @@ func (ec *executionContext) unmarshalInputCreateExpenseInput(ctx context.Context
 		asMap["note"] = ""
 	}
 
-	fieldsInOrder := [...]string{"groupId", "key", "totalMinor", "currency", "description", "effectiveDate", "category", "note", "payerId", "participantIds", "split", "exactAllocations"}
+	fieldsInOrder := [...]string{"groupId", "key", "totalMinor", "currency", "description", "effectiveDate", "category", "note", "payerId", "participantIds", "split", "exactAllocations", "percentages"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -12966,6 +13460,13 @@ func (ec *executionContext) unmarshalInputCreateExpenseInput(ctx context.Context
 				return it, err
 			}
 			it.ExactAllocations = data
+		case "percentages":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("percentages"))
+			data, err := ec.unmarshalOPercentageInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Percentages = data
 		}
 	}
 	return it, nil
@@ -13149,6 +13650,43 @@ func (ec *executionContext) unmarshalInputGroupTripInput(ctx context.Context, ob
 				return it, err
 			}
 			it.EndDate = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPercentageInput(ctx context.Context, obj any) (model.PercentageInput, error) {
+	var it model.PercentageInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"participantId", "hundredths"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "participantId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("participantId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParticipantID = data
+		case "hundredths":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hundredths"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Hundredths = data
 		}
 	}
 	return it, nil
@@ -13788,6 +14326,33 @@ func (ec *executionContext) _OwnerInvitationsResult(ctx context.Context, sel ast
 	}
 }
 
+func (ec *executionContext) _ProfileResult(ctx context.Context, sel ast.SelectionSet, obj model.ProfileResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ProfileProblem:
+		return ec._ProfileProblem(ctx, sel, &obj)
+	case *model.ProfileProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ProfileProblem(ctx, sel, obj)
+	case model.Profile:
+		return ec._Profile(ctx, sel, &obj)
+	case *model.Profile:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Profile(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of ProfileResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
 func (ec *executionContext) _RecordRepaymentResult(ctx context.Context, sel ast.SelectionSet, obj model.RecordRepaymentResult) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -14038,6 +14603,11 @@ func (ec *executionContext) _ActivityEvent(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "groupKind":
+			out.Values[i] = ec._ActivityEvent_groupKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "isHousehold":
 			out.Values[i] = ec._ActivityEvent_isHousehold(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -14167,6 +14737,11 @@ func (ec *executionContext) _Allocation(ctx context.Context, sel ast.SelectionSe
 		case "amountMinor":
 			out.Values[i] = ec._Allocation_amountMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentageHundredths":
+			out.Values[i] = ec._Allocation_percentageHundredths(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -14585,6 +15160,11 @@ func (ec *executionContext) _ExpenseView(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExpenseView")
+		case "contextVersion":
+			out.Values[i] = ec._ExpenseView_contextVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "totalExpenseMinor":
 			out.Values[i] = ec._ExpenseView_totalExpenseMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15282,6 +15862,11 @@ func (ec *executionContext) _HouseholdDashboard(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("HouseholdDashboard")
+		case "contextVersion":
+			out.Values[i] = ec._HouseholdDashboard_contextVersion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "state":
 			out.Values[i] = ec._HouseholdDashboard_state(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -15870,6 +16455,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyProfile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyProfile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "recordRepayment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordRepayment(ctx, field)
@@ -15966,6 +16558,11 @@ func (ec *executionContext) _OperationAllocation(ctx context.Context, sel ast.Se
 		case "amountMinor":
 			out.Values[i] = ec._OperationAllocation_amountMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentageHundredths":
+			out.Values[i] = ec._OperationAllocation_percentageHundredths(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -16253,6 +16850,92 @@ func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "message":
 			out.Values[i] = ec._Problem_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var profileImplementors = []string{"Profile", "ProfileResult"}
+
+func (ec *executionContext) _Profile(ctx context.Context, sel ast.SelectionSet, obj *model.Profile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, profileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Profile")
+		case "id":
+			out.Values[i] = ec._Profile_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._Profile_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var profileProblemImplementors = []string{"ProfileProblem", "ProfileResult"}
+
+func (ec *executionContext) _ProfileProblem(ctx context.Context, sel ast.SelectionSet, obj *model.ProfileProblem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, profileProblemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProfileProblem")
+		case "code":
+			out.Values[i] = ec._ProfileProblem_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._ProfileProblem_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -16571,6 +17254,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invitationAction(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "currentProfile":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_currentProfile(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -18268,6 +18973,11 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaggaikaundaᚋka
 	return ec._PageInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNPercentageInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInput(ctx context.Context, v any) (*model.PercentageInput, error) {
+	res, err := ec.unmarshalInputPercentageInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProblemCode(ctx context.Context, v any) (model.ProblemCode, error) {
 	var res model.ProblemCode
 	err := res.UnmarshalGQL(v)
@@ -18276,6 +18986,16 @@ func (ec *executionContext) unmarshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋ
 
 func (ec *executionContext) marshalNProblemCode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProblemCode(ctx context.Context, sel ast.SelectionSet, v model.ProblemCode) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNProfileResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐProfileResult(ctx context.Context, sel ast.SelectionSet, v model.ProfileResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProfileResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRecordRepaymentInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRecordRepaymentInput(ctx context.Context, v any) (model.RecordRepaymentInput, error) {
@@ -18745,6 +19465,24 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOMinorUnits2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx context.Context, v any) (*ledger.MinorUnits, error) {
 	if v == nil {
 		return nil, nil
@@ -18766,6 +19504,23 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsp
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPercentageInput2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInputᚄ(ctx context.Context, v any) ([]*model.PercentageInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.PercentageInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPercentageInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐPercentageInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalORepaymentConnection2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐRepaymentConnection(ctx context.Context, sel ast.SelectionSet, v *model.RepaymentConnection) graphql.Marshaler {

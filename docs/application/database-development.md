@@ -193,10 +193,10 @@ and permanent identity-scoped `group_creation_attempts`. Existing groups remain
 ordinary by absence of metadata. Creation inserts its receipt, new group, sole
 active owner membership and optional trip atomically; deferred foreign keys make
 partial results uncommittable. No financial entries or ledger revisions are
-created. Trip dates are Gregorian date-only values, independent of timezone;
-classification/status projections and UI defaults are deferred to the read/UI
-slices. Runtime receives only the narrow create/lookup functions and authorized
-trip reads, with no direct creation-table writes or receipt reads.
+created. Trip dates are Gregorian date-only values, independent of timezone.
+Authorized classification/status projections are implemented under #104/#105;
+#106 creation forms use server UTC dates for initial editable defaults. Runtime
+receives only the narrow create/lookup functions and authorized trip reads, with no direct creation-table writes or receipt reads.
 
 Lock order is user FOR SHARE, installation FOR SHARE, then the unique identity /
 CREATE_GROUP / operation-key receipt. Operator disabling follows the existing

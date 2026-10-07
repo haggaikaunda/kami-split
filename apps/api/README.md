@@ -2,7 +2,7 @@
 
 Go **1.27.1**, gqlgen **v0.17.95**, and `net/http` server with verified identity and persisted single-group expenses. PostgreSQL stores allocations, audit and recoverable operation results atomically. Complete balances and signed pagination follow the [persisted expense contract](../../docs/application/persisted-expenses.md). Internal targeted invitation, admission and durable delivery recovery are also implemented; [onboarding transport](../../docs/application/onboarding.md) connects provider adapters, invitation SDL and browser entry. The web preview keeps its in-memory DataPort; the separate [Relay expense journey](../../docs/application/relay-expenses.md) connects authenticated group expenses at `/groups` (#83).
 
-The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page remains a separate #112 delivery.
+The authenticated `householdDashboard` read implements the [ADR-007 summary](../../docs/application/decisions/007-household-dashboard.md) under [ADR-010 membership sharing](../../docs/application/decisions/010-household-membership-sharing.md). It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser workspace consumes these reads under #112.
 
 The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
 expense views with original-space attribution, complete face-value totals/counts,
@@ -67,6 +67,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 - `internal/database`: validated pgxpool lifecycle/readiness, transaction-local identity, restricted foundation queries and generated sqlc group reads. See the [identity foundation](../../docs/application/identity-foundation.md).
 - `internal/server`: HTTP routes, request protections, safe errors, and lifecycle.
 - `internal/graph`: generated execution/models and thin handwritten transport mapping.
+- `internal/profile`: verified self-only profile read and atomic display-name comparison/update, independent of group discovery; see [the profile contract](../../docs/application/profile.md).
 - `internal/group`: verified identity-scoped group creation and durable recovery; see [the group contract](../../packages/schema/README.md#group-creation-and-discovery).
 - `internal/expense`: authorized reads, transactional writes and same-attempt recovery.
 - `internal/ledger`: pure exact-money, canonical-input, split, balance and cursor rules.
@@ -90,7 +91,7 @@ output. Resolver scaffolding preserves handwritten implementations on
 regeneration.
 
 Only JSON POST is enabled on `/graphql`. Limits: 64 KiB body, 1,000 parser
-tokens, complexity 100, 16 KiB header setting, 5s header-read/10s read/15s
+tokens, complexity 200, 16 KiB header setting, 5s header-read/10s read/15s
 write/60s idle timeouts, and a 10s GraphQL execution context deadline that
 cancels database lock waits. Request IDs are server-generated. Logs omit request
 bodies and error/panic payloads. No playground, WebSocket transport, or broad
@@ -101,3 +102,12 @@ in [production deployment configuration](../../docs/application/production-deplo
 Read [API instructions](AGENTS.md), [Go guidance](../../docs/agents/go-guidelines.md), and [architecture](../../docs/application/api-architecture.md) before extending the API.
 
 See [verified API identity](../../docs/application/authentication-boundary.md) for optional authentication configuration, protected readiness, cache invalidation and transaction access. Protected startup additionally requires `CURSOR_ACTIVE_KEY_ID` and `CURSOR_SIGNING_KEYS`; see [cursor configuration and operating limits](../../docs/application/persisted-expenses.md#configuration-and-limits). Public health remains unauthenticated.
+
+The finite complexity budget includes conditional selections even when omitted
+at execution. The shipped composed workspace operation exceeds the former 100
+limit; exact Relay wire/transport regressions verify all current operations fit
+200 while over-budget operations remain rejected before execution.
+
+Percentage is supported alongside Equal and Exact without opt-in configuration.
+Deployments require the percentage migration and compatible API/web readers; see
+the [percentage deployment/rollback contract](../../docs/application/percentage-splits.md).

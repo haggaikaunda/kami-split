@@ -18,20 +18,61 @@ export function financialReturn(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//'))
     return '/groups';
   const url = new URL(value, 'https://kami.invalid');
-  const repayment = /^\/groups\/[^/?#]+\/repayments\/new$/.test(url.pathname);
+  const household = [
+    '/household',
+    '/household/expenses',
+    '/household/activity',
+    '/household/ledger',
+  ].includes(url.pathname);
+  const creation = ['/groups/new', '/trips/new'].includes(url.pathname);
+  const repayment = /^\/(?:groups|trips)\/[^/?#]+\/repayments\/new$/.test(
+    url.pathname,
+  );
   if (
     url.origin !== 'https://kami.invalid' ||
     url.hash ||
     !(
+      household ||
       url.pathname === '/groups' ||
       url.pathname === '/trips' ||
       repayment ||
-      /^\/groups\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
+      creation ||
+      /^\/(?:groups|trips)\/[^/?#]+(?:\/expenses\/[^/?#]+)?$/.test(url.pathname)
     )
   )
     return '/groups';
-  const allowed = repayment ? ['sender', 'recipient', 'amount'] : ['tab'];
+  const allowed = household
+    ? [
+        'tab',
+        'expense',
+        'repayment',
+        'sender',
+        'recipient',
+        'amount',
+        'category',
+        'memberId',
+        'from',
+        'to',
+        'after',
+        'groupId',
+        'kind',
+      ]
+    : creation
+      ? ['kind']
+      : repayment
+        ? ['sender', 'recipient', 'amount']
+        : ['tab'];
   if ([...url.searchParams.keys()].some((k) => !allowed.includes(k)))
     return '/groups';
   return url.pathname + url.search;
+}
+
+/** Normalize Next route params once; client transitions may retain escaped typed-ID colons. */
+export function routeId(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // Invalid path input still goes through the ordinary safe server not-found boundary.
+    return value;
+  }
 }
