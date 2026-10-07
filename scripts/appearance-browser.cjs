@@ -261,7 +261,8 @@ async function checkContrast(page) {
       window.__firstTheme = document.documentElement.dataset.theme;
     });
   });
-  let preference = 'LIGHT';
+  let preference = 'LIGHT',
+    empty = false;
   const errors = [],
     results = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -381,6 +382,25 @@ async function checkContrast(page) {
         },
       };
     else throw new Error('Unknown ' + op);
+    if (empty && data.householdExpenses)
+      data.householdExpenses = {
+        ...view,
+        edges: [],
+        totalExpenseMinor: '0',
+        expenseCount: '0',
+        months: [],
+      };
+    if (empty && data.householdDashboard)
+      data.householdDashboard = {
+        ...data.householdDashboard,
+        totals: {
+          ...data.householdDashboard.totals,
+          viewerNetMinor: '0',
+          openBalanceCount: '0',
+          totalSharedExpenseMinor: '0',
+          totalSharedExpenseCount: '0',
+        },
+      };
     await new Promise((resolve) => setTimeout(resolve, delay));
     await r.fulfill({ json: { data } });
   });
@@ -536,6 +556,15 @@ async function checkContrast(page) {
       results.push({ keyboardDialog: true, escapeFocusReturned: true });
     }
   }
+  empty = true;
+  await page.goto(origin + '/household');
+  await theme('dark');
+  await page.getByText('No shared expenses yet.', { exact: true }).waitFor();
+  await page.screenshot({
+    path: path.join(output, `household-empty-dark-${width}.png`),
+    fullPage: true,
+  });
+  empty = false;
   preference = 'LIGHT';
   await page.goto(origin + '/account');
   await theme('light');
