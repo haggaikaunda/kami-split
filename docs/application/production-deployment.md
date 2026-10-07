@@ -23,6 +23,10 @@ proof of later commits.
 
 There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
+The [change-aware CI/release contract](../agents/change-aware-ci.md) selects
+applicable release branches and publishes the exact-commit API release status.
+Unchanged services are skipped; outstanding failed releases remain in scope.
+The GitHub-owned web path remains active pending issue #161.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
 and the standalone deployment workflow uses a non-canceling `production` concurrency
 group shared with rehearsals and cleanup. All three use `queue: max` so pending
@@ -176,28 +180,28 @@ repository plan supports it.
 
 Repository or environment variables are non-secret identifiers:
 
-| Variable                                   | Contract                                                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `GCP_PROJECT_ID`                           | Selected Google Cloud project ID.                                                                        |
-| `GCP_REGION`                               | `us-west1`.                                                                                              |
-| `GCP_ARTIFACT_REPOSITORY`                  | `kami-split`.                                                                                            |
-| `GCP_CLOUD_RUN_SERVICE`                    | `kami-split-api`.                                                                                        |
-| `GCP_RUNTIME_SERVICE_ACCOUNT`              | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`.                                       |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER`           | `projects/598147484786/locations/global/workloadIdentityPools/github-actions/providers/kami-split`.      |
-| `GCP_DEPLOY_SERVICE_ACCOUNT`               | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`.                             |
-| `SUPABASE_PROJECT_REF`                     | `zlxpapkxacnwnmgagbth`.                                                                                  |
-| `SUPABASE_PUBLISHABLE_KEY`                 | Publishable/anonymous key for the selected project.                                                      |
-| `PRODUCTION_WEB_ORIGIN`                    | Canonical HTTPS web origin without a trailing slash.                                                     |
-| `PRODUCTION_API_ORIGIN`                    | Optional first run; when set, must equal the discovered HTTPS Cloud Run origin without a trailing slash. |
-| `INVITATION_FROM`                          | Verified sender address `invites@finances.mckardah.com`.                                                 |
-| `DATABASE_URL_SECRET_VERSION`              | Positive numeric version of `kami-split-database-url` selected for the release.                          |
-| `SUPABASE_CA_SECRET_VERSION`               | Positive numeric version of `kami-split-supabase-ca` selected for the release.                           |
-| `CURSOR_SIGNING_KEYS_SECRET_VERSION`       | Positive numeric version of `kami-split-cursor-signing-keys` selected for the release.                   |
-| `INVITATION_KEYS_SECRET_VERSION`           | Positive numeric version of `kami-split-invitation-keys` selected for the release.                       |
-| `ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION` | Positive numeric version of `kami-split-onboarding-auth-admin-key` selected for the release.             |
-| `RESEND_API_KEY_SECRET_VERSION`            | Positive numeric version of `kami-split-resend-api-key` selected for the release.                        |
-| `VERCEL_ORG_ID`                            | Vercel account or team identifier that owns the project.                                                 |
-| `VERCEL_PROJECT_ID`                        | Vercel project identifier for `kami-split-web`.                                                          |
+| Variable                                   | Contract                                                                                            |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `GCP_PROJECT_ID`                           | Selected Google Cloud project ID.                                                                   |
+| `GCP_REGION`                               | `us-west1`.                                                                                         |
+| `GCP_ARTIFACT_REPOSITORY`                  | `kami-split`.                                                                                       |
+| `GCP_CLOUD_RUN_SERVICE`                    | `kami-split-api`.                                                                                   |
+| `GCP_RUNTIME_SERVICE_ACCOUNT`              | `kami-split-api@kami-finances-production.iam.gserviceaccount.com`.                                  |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER`           | `projects/598147484786/locations/global/workloadIdentityPools/github-actions/providers/kami-split`. |
+| `GCP_DEPLOY_SERVICE_ACCOUNT`               | `github-kami-split-deploy@kami-finances-production.iam.gserviceaccount.com`.                        |
+| `SUPABASE_PROJECT_REF`                     | `zlxpapkxacnwnmgagbth`.                                                                             |
+| `SUPABASE_PUBLISHABLE_KEY`                 | Publishable/anonymous key for the selected project.                                                 |
+| `PRODUCTION_WEB_ORIGIN`                    | Canonical HTTPS web origin without a trailing slash.                                                |
+| `PRODUCTION_API_ORIGIN`                    | Required for web-only releases; must equal the HTTPS Cloud Run origin without a trailing slash.     |
+| `INVITATION_FROM`                          | Verified sender address `invites@finances.mckardah.com`.                                            |
+| `DATABASE_URL_SECRET_VERSION`              | Positive numeric version of `kami-split-database-url` selected for the release.                     |
+| `SUPABASE_CA_SECRET_VERSION`               | Positive numeric version of `kami-split-supabase-ca` selected for the release.                      |
+| `CURSOR_SIGNING_KEYS_SECRET_VERSION`       | Positive numeric version of `kami-split-cursor-signing-keys` selected for the release.              |
+| `INVITATION_KEYS_SECRET_VERSION`           | Positive numeric version of `kami-split-invitation-keys` selected for the release.                  |
+| `ONBOARDING_AUTH_ADMIN_KEY_SECRET_VERSION` | Positive numeric version of `kami-split-onboarding-auth-admin-key` selected for the release.        |
+| `RESEND_API_KEY_SECRET_VERSION`            | Positive numeric version of `kami-split-resend-api-key` selected for the release.                   |
+| `VERCEL_ORG_ID`                            | Vercel account or team identifier that owns the project.                                            |
+| `VERCEL_PROJECT_ID`                        | Vercel project identifier for `kami-split-web`.                                                     |
 
 Environment secrets are credentials needed by the deployment runner, not API
 runtime configuration. Each secret is scoped to only the validation and provider

@@ -33,12 +33,15 @@ A PR may merge while its linked issue remains open. Merging a partial, design, o
 
 `.github/workflows/ci.yml` owns pull-request and main-push triggers, read-only
 permissions, cancellation of superseded runs, and the single required **Verify**
-check. It calls `web.yml` and `api.yml` in parallel on every event, including
-documentation-only PRs. Both reusable workflows use only `workflow_call`; they
-have no path filters, inherited secrets, or child concurrency groups.
+check. It runs repository validation and the centralized change classifier, then calls
+`web.yml` and/or `api.yml` only for affected consumers. See the
+[affected-path contract](change-aware-ci.md) for comparison identities, conservative
+fallbacks, and selective release semantics. Both reusable workflows use only
+`workflow_call`; their caller owns selection and concurrency.
 
-`web.yml` owns pnpm/Node setup, the root-lockfile cache, repository-wide formatting
-(exactly once), lint, type checking, web tests, and the Next.js build, in order.
+`web.yml` owns pnpm/Node setup, the root-lockfile cache, lint, type checking, web tests, and the Next.js build, in order.
+Repository-wide formatting runs exactly once in the repository validation job,
+alongside classifier/gate tests, even for documentation-only changes.
 `api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted
 runner with a 15-minute limit:
 
@@ -61,10 +64,12 @@ state is assumed to be shared across runners. The Dockerfile's `verify` target
 remains available for manual use, but CI does not duplicate host Go verification
 through it. Web checks retain their own runner and 15-minute limit.
 
-The one-minute **Verify** job waits for both calls with `always()`, then explicitly
-requires both results to equal `success`. The reusable API result aggregates all
-three required jobs; none is optional or uses `continue-on-error`. Failure, cancellation, or skipping of
-either dependency cannot produce a passing gate. Child checks have distinct names;
+The **Verify** job waits for repository validation and both calls with `always()`.
+It requires successful repository validation and each affected result to equal
+`success`; only an explicitly inapplicable branch may equal `skipped`. Missing
+classification, failures, cancellation, and unexpected skips fail the gate. The reusable API result aggregates all
+three required jobs; none is optional or uses `continue-on-error`. Failure, cancellation, or unexpected skipping of
+an applicable dependency cannot produce a passing gate. Child checks have distinct names;
 branch protections should continue to require **Verify**. Do not change protections
 to accommodate this layout.
 
