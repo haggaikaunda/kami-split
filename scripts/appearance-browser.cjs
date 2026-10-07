@@ -415,6 +415,39 @@ async function checkContrast(page) {
     await r.fulfill({ json: { data } });
   });
 
+  if (process.env.TEXT_ONLY === '1') {
+    preference = 'DARK';
+    await page.goto(origin + '/household');
+    await page
+      .getByRole('heading', { name: 'Recent expenses', exact: true })
+      .waitFor();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
+    assert(
+      !(await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      )),
+      '200% text document overflow',
+    );
+    await page.screenshot({
+      path: path.join(output, `household-text200-dark-${width}.png`),
+      fullPage: true,
+    });
+    fs.writeFileSync(
+      path.join(output, `text200-${width}.json`),
+      JSON.stringify({
+        commit: process.env.TESTED_COMMIT,
+        width,
+        textScale: 2,
+        overflow: false,
+        errors,
+      }),
+    );
+    assert.deepEqual(errors, []);
+    await browser.close();
+    return;
+  }
   const theme = async (expected) => {
     await page.waitForFunction(
       (value) => document.documentElement.dataset.theme === value,
