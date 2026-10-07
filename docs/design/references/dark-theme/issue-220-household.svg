@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+  <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0b111a"/><stop offset="1" stop-color="#101926"/></linearGradient>
+  <linearGradient id="hero" x1="0" x2="1"><stop stop-color="#121b28"/><stop offset=".52" stop-color="#17243a"/><stop offset="1" stop-color="#0d2a29"/></linearGradient>
+  <linearGradient id="card" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#121a27"/><stop offset="1" stop-color="#172131"/></linearGradient>
+  <linearGradient id="cardGreen" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#122321"/><stop offset="1" stop-color="#142a2c"/></linearGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#bg)"/>
+<!-- hero -->
+<rect x="60" y="52" width="1480" height="182" rx="24" fill="url(#hero)" stroke="#314154"/>
+<circle cx="132" cy="142" r="45" fill="#fff1df"/>
+<path d="M109 145 L132 124 L155 145 M116 140 V164 H148 V140 M126 164 V148 H138 V164" fill="none" stroke="#b66a2b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="220" y="141" font-family="Inter,Arial,sans-serif" font-size="54" font-weight="700" fill="#f7f9fc">Household</text>
+<text x="220" y="183" font-family="Inter,Arial,sans-serif" font-size="22" fill="#aebacf">Shared expenses across home, trips and groups.</text>
+<!-- landscape -->
+<circle cx="1324" cy="91" r="8" fill="#f6d899" opacity=".9"/>
+<path d="M840 234 Q970 135 1100 204 Q1215 115 1360 185 Q1460 130 1540 165 V234 Z" fill="#1f3150" opacity=".9"/>
+<path d="M925 234 Q1080 160 1185 210 Q1300 165 1435 213 Q1500 190 1540 204 V234 Z" fill="#123d3a" opacity=".92"/>
+<rect x="1260" y="164" width="78" height="48" rx="4" fill="#6b573e"/>
+<polygon points="1252,166 1300,136 1346,166" fill="#8b5f3f"/>
+<rect x="1273" y="180" width="12" height="18" fill="#ffd383"/><rect x="1312" y="180" width="12" height="18" fill="#ffd383"/>
+<path d="M1192 229 V150 M1212 229 V135 M1232 229 V158 M1390 229 V142 M1410 229 V125" stroke="#1d5148" stroke-width="14" stroke-linecap="round"/>
+<rect x="1242" y="110" width="260" height="64" rx="20" fill="#0d171f" stroke="#56e4b0" stroke-width="2"/>
+<text x="1290" y="151" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="700" fill="#62efba">Manage invitations →</text>
+<!-- tabs -->
+<text x="68" y="292" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700" fill="#58eab4">Overview</text>
+<text x="208" y="292" font-family="Inter,Arial,sans-serif" font-size="20" fill="#b3bed0">Expenses</text>
+<text x="344" y="292" font-family="Inter,Arial,sans-serif" font-size="20" fill="#b3bed0">Balances</text>
+<text x="478" y="292" font-family="Inter,Arial,sans-serif" font-size="20" fill="#b3bed0">Activity</text>
+<text x="604" y="292" font-family="Inter,Arial,sans-serif" font-size="20" fill="#b3bed0">Members</text>
+<rect x="60" y="311" width="114" height="4" fill="#59efb9"/>
+<rect x="60" y="315" width="1480" height="1" fill="#334254"/>
+<!-- cards -->
+<g>
+<rect x="60" y="352" width="478" height="196" rx="20" fill="url(#card)" stroke="#334153"/>
+<rect x="80" y="374" width="70" height="70" rx="18" fill="#202b47" stroke="#39496c"/>
+<path d="M101 400 h28 a10 10 0 0 1 10 10 v17 h-38 z M108 393 h25" fill="none" stroke="#9aa8ff" stroke-width="4" stroke-linecap="round"/>
+<text x="180" y="392" font-family="Inter,Arial,sans-serif" font-size="19" fill="#aebacf">Total shared expenses</text>
+<text x="180" y="445" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="700" fill="#f7f9fc">$0.00 USD</text>
+<text x="180" y="486" font-family="Inter,Arial,sans-serif" font-size="18" fill="#aebacf">0 expenses</text>
+</g>
+<g>
+<rect x="560" y="352" width="478" height="196" rx="20" fill="url(#cardGreen)" stroke="#28594f"/>
+<rect x="580" y="374" width="70" height="70" rx="18" fill="#173c37"/>
+<ellipse cx="615" cy="397" rx="15" ry="6" fill="none" stroke="#58efb7" stroke-width="4"/><path d="M600 397 v18 c0 4 7 7 15 7s15-3 15-7v-18 M600 406c0 4 7 7 15 7s15-3 15-7" fill="none" stroke="#58efb7" stroke-width="4"/>
+<text x="680" y="392" font-family="Inter,Arial,sans-serif" font-size="19" fill="#aebacf">Your net balance</text>
+<text x="680" y="445" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="700" fill="#f7f9fc">$0.00 USD</text>
+<text x="680" y="486" font-family="Inter,Arial,sans-serif" font-size="18" fill="#aebacf">○  No open source balances</text>
+</g>
+<g>
+<rect x="1060" y="352" width="480" height="196" rx="20" fill="url(#card)" stroke="#334153"/>
+<rect x="1080" y="374" width="70" height="70" rx="18" fill="#202b47" stroke="#39496c"/>
+<circle cx="1115" cy="399" r="9" fill="none" stroke="#9aa8ff" stroke-width="4"/><path d="M1097 427 q18-18 36 0 M1093 423 q-10-6-14 5 M1137 423 q10-6 14 5" fill="none" stroke="#9aa8ff" stroke-width="4" stroke-linecap="round"/>
+<text x="1180" y="392" font-family="Inter,Arial,sans-serif" font-size="19" fill="#aebacf">Active spaces</text>
+<text x="1180" y="445" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="700" fill="#f7f9fc">1</text>
+<text x="1180" y="486" font-family="Inter,Arial,sans-serif" font-size="18" fill="#aebacf">Home · Trips · Groups</text>
+</g>
+<!-- recent -->
+<text x="60" y="625" font-family="Inter,Arial,sans-serif" font-size="35" font-weight="700" fill="#f7f9fc">Recent expenses</text>
+<text x="1326" y="625" font-family="Inter,Arial,sans-serif" font-size="20" fill="#58efb7">View all expenses →</text>
+<rect x="60" y="657" width="1480" height="178" rx="20" fill="#101925" stroke="#3b4b60" stroke-dasharray="7 7"/>
+<rect x="760" y="686" width="80" height="68" rx="18" fill="#202a39"/>
+<path d="M785 704 h30 v34 h-30 z M792 714 h16 M792 722 h16 M792 730 h11" fill="none" stroke="#8996aa" stroke-width="4" stroke-linecap="round"/>
+<path d="M848 716 l12-7 M849 728 l13 2 M752 716 l-12-7 M751 728 l-13 2" stroke="#58efb7" stroke-width="4" stroke-linecap="round"/>
+<text x="800" y="782" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#f7f9fc">No shared expenses yet.</text>
+<text x="800" y="815" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="18" fill="#aebacf">When you add expenses, they’ll show up here.</text>
+</svg>
