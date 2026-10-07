@@ -13,7 +13,7 @@ Observed 2026-10-06 in the owner's existing checkout:
   Owner confirmed the files were unused and authorized cleanup. Preserved them
   in `/private/tmp/kami-206-preserved-primary/`, then switched to main and
   fast-forwarded. No stash, reset, rebase or file deletion.
-- Primary is now clean on main; local main and freshly fetched origin/main both
+- At the cleanup observation, primary was clean on main; local main and freshly fetched origin/main both
   equal `fc7b1cef0064fc330b9dd72647d57ada856ee337`. Merge inclusion verified.
 - Implementation worktree `/private/tmp/kami-206` was created from the freshly
   fetched origin/main while primary synchronization was blocked. Its own PR
@@ -145,7 +145,12 @@ force after local configuration preservation.
 
 ## Retained state and execution handoff
 
-- Primary checkout is clean main at the observed SHA above.
+- Primary was verified clean on main at the cleanup observation above.
+  A subsequent inspection detected another session had started
+  `codex/issue-208-ungate-percentage` in the primary checkout, initially at the
+  same observed SHA. This new active task is preserved and adds a fifth branch
+  after the cleanup inventory. Do not switch its checkout; post-merge primary
+  synchronization requires the #208 owner to release it or perform the handoff.
 - `codex/issue-114-final-verification` remains in
   `/Users/haggaikaunda/.codex/worktrees/api-conformance/kami-split`: no unique
   exact merged-head proof. It includes work that cannot safely be assumed merged.
