@@ -30,7 +30,7 @@ func independentDashboardFixture(t *testing.T) *expenseFixture {
 	// Start from no history; newExpenseFixture ordinarily supplies one expense.
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator;
  ALTER TABLE app.expense_operations NO FORCE ROW LEVEL SECURITY; ALTER TABLE app.financial_records NO FORCE ROW LEVEL SECURITY; ALTER TABLE app.allocations NO FORCE ROW LEVEL SECURITY; ALTER TABLE app.expense_audit NO FORCE ROW LEVEL SECURITY; ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;
- DELETE FROM app.expense_operations WHERE group_id='%s'; DELETE FROM app.financial_records WHERE group_id='%s'; DELETE FROM app.allocations WHERE group_id='%s'; DELETE FROM app.expense_audit WHERE group_id='%s'; DELETE FROM app.expenses WHERE group_id='%s'; ALTER TABLE app.expense_operations FORCE ROW LEVEL SECURITY; ALTER TABLE app.financial_records FORCE ROW LEVEL SECURITY; ALTER TABLE app.allocations FORCE ROW LEVEL SECURITY; ALTER TABLE app.expense_audit FORCE ROW LEVEL SECURITY; ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY; COMMIT`, f.id(201), f.id(201), f.id(201), f.id(201), f.id(201)))
+ DELETE FROM app.expense_revision_allocations WHERE group_id='%s'; DELETE FROM app.expense_revisions WHERE group_id='%s'; DELETE FROM app.expense_operations WHERE group_id='%s'; DELETE FROM app.financial_records WHERE group_id='%s'; DELETE FROM app.allocations WHERE group_id='%s'; DELETE FROM app.expense_audit WHERE group_id='%s'; DELETE FROM app.expenses WHERE group_id='%s'; ALTER TABLE app.expense_operations FORCE ROW LEVEL SECURITY; ALTER TABLE app.financial_records FORCE ROW LEVEL SECURITY; ALTER TABLE app.allocations FORCE ROW LEVEL SECURITY; ALTER TABLE app.expense_audit FORCE ROW LEVEL SECURITY; ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY; COMMIT`, f.id(201), f.id(201), f.id(201), f.id(201), f.id(201), f.id(201), f.id(201)))
 	t.Cleanup(func() {
 		independentDashboardExec(t, f, `BEGIN; SET LOCAL ROLE kami_migrator; DELETE FROM app.household_designation_audit; UPDATE app.household_designation_guard SET version=0,state='EMPTY',first_user_id=NULL,second_user_id=NULL,proposer_user_id=NULL,first_consented=false,second_consented=false; COMMIT`)
 	})
@@ -162,7 +162,7 @@ func TestIndependentDashboardCancellationOriginalSpacesAndPrivateExclusion(t *te
 	}
 	// The other partner gets the opposite informational net with the same scope.
 	independentDashboardTotals(t, independentDashboardRead(t, f, 2), "0", "2", "2", "4000", "2")
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "-2000", "1", "1", "2000", "1")
 	// Readmission restores the ordinary group's lifetime history, not a new ledger.
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=true WHERE id='%s';COMMIT`, f.id(202), f.id(306)))

@@ -100,7 +100,7 @@ func validActivityCursor(c ActivityCursor) bool {
 	if c.Version != 1 || c.Actor == "" || c.Scope == "" || len(c.Anchors) == 0 {
 		return false
 	}
-	if c.EventKind != "" && c.EventKind != "EXPENSE_CREATED" && c.EventKind != "REPAYMENT_RECORDED" {
+	if c.EventKind != "" && c.EventKind != "EXPENSE_CREATED" && c.EventKind != "EXPENSE_UPDATED" && c.EventKind != "REPAYMENT_RECORDED" {
 		return false
 	}
 	for i, a := range c.Anchors {
@@ -115,7 +115,7 @@ func validActivityCursor(c ActivityCursor) bool {
 	if timestamp.UnmarshalGQL(c.Timestamp) != nil {
 		return false
 	}
-	if c.RecordKind != "EXPENSE_CREATED" && c.RecordKind != "REPAYMENT_RECORDED" {
+	if c.RecordKind != "EXPENSE_CREATED" && c.RecordKind != "EXPENSE_UPDATED" && c.RecordKind != "REPAYMENT_RECORDED" {
 		return false
 	}
 	_, err := ParseID(PublicID("Group", c.RecordID), "Group")

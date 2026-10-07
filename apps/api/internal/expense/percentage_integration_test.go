@@ -66,7 +66,7 @@ func TestPercentagePersistReadRecoverAndReplay(t *testing.T) {
 	// Same key, same normalized intent despite ordering returns original after eligibility changes.
 	in.Percentages[0], in.Percentages[1] = in.Percentages[1], in.Percentages[0]
 	in.ParticipantIDs[0], in.ParticipantIDs[1] = in.ParticipantIDs[1], in.ParticipantIDs[0]
-	f.exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE`, f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	if out := f.create(1, in); !reflect.DeepEqual(out, original) {
 		t.Fatal("historical replay invalidated", out)
 	}

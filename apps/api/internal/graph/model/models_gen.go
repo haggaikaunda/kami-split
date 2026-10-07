@@ -12,6 +12,11 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
+// One freshly authorized historical event or a safe masked failure.
+type ActivityEventResult interface {
+	IsActivityEventResult()
+}
+
 // Safe failure or a complete authorized activity page.
 type ActivityResult interface {
 	IsActivityResult()
@@ -30,6 +35,11 @@ type CreateExpenseResult interface {
 // Durable success/rejection, conflicting intent, or safe access/unavailable problem; transport loss remains unknown.
 type CreateGroupResult interface {
 	IsCreateGroupResult()
+}
+
+// Durable edit outcomes, transient uncertainty, or safe access/infrastructure failure.
+type ExpenseEditResult interface {
+	IsExpenseEditResult()
 }
 
 // Complete filtered spending and a bounded source-attributed page, or safe failure with no partial values.
@@ -109,6 +119,16 @@ type ViewerResult interface {
 	IsViewerResult()
 }
 
+// One historical explicit participant share and saved percentage intent.
+type ActivityAllocation struct {
+	// Retained participant with current authorized minimal label.
+	Participant *ActivityIdentity `json:"participant"`
+	// Exact recorded share in cents; zero remains explicit participation.
+	AmountMinor ledger.MinorUnits `json:"amountMinor"`
+	// Intended hundredths of a percent for PERCENTAGE; null otherwise.
+	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
+}
+
 // Complete bounded event traversal, independent of financial record page sizes.
 type ActivityConnection struct {
 	// Events from the fixed source revisions in deterministic descending order.
@@ -161,11 +181,41 @@ type ActivityEvent struct {
 	Sender *ActivityIdentity `json:"sender,omitempty"`
 	// Repayment recipient; null for an expense.
 	Recipient *ActivityIdentity `json:"recipient,omitempty"`
+	// Description recorded by this event; later edits do not rewrite it. Empty for repayment events.
+	Description string `json:"description"`
+	// Original optional expense or repayment note, preserving whitespace.
+	Note string `json:"note"`
+	// Immutable previous expense state for an update; null for creation and repayment.
+	Before *ActivityExpenseSnapshot `json:"before,omitempty"`
+	// Immutable expense state committed by creation or update; null for repayment.
+	After *ActivityExpenseSnapshot `json:"after,omitempty"`
+}
+
+func (ActivityEvent) IsActivityEventResult() {}
+
+// Immutable descriptive and financial values with current authorized minimal member labels.
+type ActivityExpenseSnapshot struct {
+	// Recorded description, independent of later edits.
+	Description string `json:"description"`
+	// Exact expense face value in cents.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// Recorded expense date, distinct from the event timestamp.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Recorded supported category.
+	Category Category `json:"category"`
+	// Original optional note, preserving whitespace.
+	Note string `json:"note"`
+	// Recorded payer identity with a currently authorized label.
+	Payer *ActivityIdentity `json:"payer"`
+	// Recorded split intent; equal resolved cents do not erase its mode.
+	Split SplitMode `json:"split"`
+	// Every recorded participant, including explicit zero allocations.
+	Allocations []*ActivityAllocation `json:"allocations"`
 }
 
 // Optional exact filters bound into every continuation cursor.
 type ActivityFilter struct {
-	// Restrict the event kind; omitted means both supported kinds.
+	// Restrict the event kind; omitted means all supported kinds.
 	Kind *ActivityKind `json:"kind,omitempty"`
 	// Restrict to one currently eligible source; excluded IDs are masked.
 	SourceGroupID *string `json:"sourceGroupId,omitempty"`
@@ -267,6 +317,12 @@ type Expense struct {
 	Allocations []*Allocation `json:"allocations"`
 	// Immutable server creation timestamp used with date and UUID for page ordering.
 	CreatedAt ledger.DateTime `json:"createdAt"`
+	// Per-expense version starting at one; unrelated group activity does not change it.
+	Version ledger.Revision `json:"version"`
+	// Current edit capability hint; every commit independently rechecks source access and saved involvement.
+	CanEdit bool `json:"canEdit"`
+	// Safe reason that every field is read-only, or null when currently eligible.
+	EditLockReason *ExpenseEditLockReason `json:"editLockReason,omitempty"`
 }
 
 func (Expense) IsNode() {}
@@ -303,6 +359,40 @@ type ExpenseEdge struct {
 	// Currently authorized expense with current minimal membership labels.
 	Node *Expense `json:"node"`
 }
+
+// Immutable original success; refresh currently authorized records and projections separately.
+type ExpenseEditCommitted struct {
+	// Original operation key scoped to actor, source group and EDIT_EXPENSE.
+	Key ledger.OperationKey `json:"key"`
+	// Immutable saved result; creator remains the expense's original creator.
+	Record *ExpenseOperationRecord `json:"record"`
+	// Per-expense version produced or observed by this successful attempt.
+	Version ledger.Revision `json:"version"`
+	// False for a canonical no-op, which produces neither a financial revision nor an Activity event.
+	Changed bool `json:"changed"`
+}
+
+func (ExpenseEditCommitted) IsExpenseEditResult() {}
+
+// Definitive stale-version rejection; preserve the draft and explicitly review the latest saved state.
+type ExpenseEditConflict struct {
+	// Original rejected attempt key; reviewed replacement intent requires a new key.
+	Key ledger.OperationKey `json:"key"`
+	// Version observed during this attempt; obtain fresh authorized detail before reapplying changes.
+	CurrentVersion ledger.Revision `json:"currentVersion"`
+}
+
+func (ExpenseEditConflict) IsExpenseEditResult() {}
+
+// Definitive whole-expense lock checked against saved involvement before any proposed replacement.
+type ExpenseEditLocked struct {
+	// Original rejected attempt key; no financial effect occurred.
+	Key ledger.OperationKey `json:"key"`
+	// Safe restriction without private account diagnostics; owners have no bypass.
+	Reason ExpenseEditLockReason `json:"reason"`
+}
+
+func (ExpenseEditLocked) IsExpenseEditResult() {}
 
 // AND-combined inclusive page filters. Complete balances never use these filters.
 type ExpenseFilter struct {
@@ -719,6 +809,8 @@ type OperationMismatch struct {
 	Key ledger.OperationKey `json:"key"`
 }
 
+func (OperationMismatch) IsExpenseEditResult() {}
+
 func (OperationMismatch) IsCreateExpenseResult() {}
 
 func (OperationMismatch) IsRecordRepaymentResult() {}
@@ -730,6 +822,8 @@ type OperationProgress struct {
 	// NOT_OBSERVED or UNKNOWN is not proof of no commit; continue with the original key and payload.
 	State OperationState `json:"state"`
 }
+
+func (OperationProgress) IsExpenseEditResult() {}
 
 func (OperationProgress) IsCreateExpenseResult() {}
 
@@ -795,6 +889,8 @@ type Problem struct {
 	Message string `json:"message"`
 }
 
+func (Problem) IsExpenseEditResult() {}
+
 func (Problem) IsViewerResult() {}
 
 func (Problem) IsGroupResult() {}
@@ -806,6 +902,8 @@ func (Problem) IsCreateExpenseResult() {}
 func (Problem) IsOperationResult() {}
 
 func (Problem) IsActivityResult() {}
+
+func (Problem) IsActivityEventResult() {}
 
 func (Problem) IsCreateGroupResult() {}
 
@@ -966,11 +1064,47 @@ type StructuredExpenseFilter struct {
 	Category *Category `json:"category,omitempty"`
 }
 
+// Complete replacement intent for the original expense; creator, identity, source, currency and creation time stay immutable.
+type UpdateExpenseInput struct {
+	// Original Expense identity in groupId; no moving or copying across spaces.
+	ExpenseID string `json:"expenseId"`
+	// Explicit version reviewed by the editor; stale saves never merge automatically.
+	ExpectedVersion ledger.Revision `json:"expectedVersion"`
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// Original client-created attempt key, scoped to the authenticated actor, group and EDIT_EXPENSE operation.
+	Key ledger.OperationKey `json:"key"`
+	// Exact expense cents in the inclusive range 1 through 999999999.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+	Description string `json:"description"`
+	// Expense calendar date; valid future dates are permitted.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Descriptive category without financial or access implications.
+	Category Category `json:"category"`
+	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+	Note string `json:"note"`
+	// Active eligible same-group Membership ID; independent of creator and selected participants.
+	PayerID string `json:"payerId"`
+	// Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
+	ParticipantIds []string `json:"participantIds"`
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+	Split SplitMode `json:"split"`
+	// Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
+	ExactAllocations []*ExactAllocationInput `json:"exactAllocations,omitempty"`
+	// Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+	Percentages []*PercentageInput `json:"percentages,omitempty"`
+}
+
 // Definitive domain rejection with no financial effect; recoverable once the attempt is durably recorded.
 type ValidationProblem struct {
 	// Definitive validation details; corrected intent uses a new operation key.
 	Fields []*FieldProblem `json:"fields"`
 }
+
+func (ValidationProblem) IsExpenseEditResult() {}
 
 func (ValidationProblem) IsCreateExpenseResult() {}
 
@@ -1074,18 +1208,21 @@ type ActivityKind string
 const (
 	// One committed expense creation.
 	ActivityKindExpenseCreated ActivityKind = "EXPENSE_CREATED"
+	// One committed material expense correction, with immutable before/after values.
+	ActivityKindExpenseUpdated ActivityKind = "EXPENSE_UPDATED"
 	// One committed actual group repayment.
 	ActivityKindRepaymentRecorded ActivityKind = "REPAYMENT_RECORDED"
 )
 
 var AllActivityKind = []ActivityKind{
 	ActivityKindExpenseCreated,
+	ActivityKindExpenseUpdated,
 	ActivityKindRepaymentRecorded,
 }
 
 func (e ActivityKind) IsValid() bool {
 	switch e {
-	case ActivityKindExpenseCreated, ActivityKindRepaymentRecorded:
+	case ActivityKindExpenseCreated, ActivityKindExpenseUpdated, ActivityKindRepaymentRecorded:
 		return true
 	}
 	return false
@@ -1249,6 +1386,64 @@ func (e *Currency) UnmarshalJSON(b []byte) error {
 }
 
 func (e Currency) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Current saved financial involvement preventing all edits; never exposes private account reasons.
+type ExpenseEditLockReason string
+
+const (
+	// A saved payer or explicit participant has left the original group.
+	ExpenseEditLockReasonFormerMember ExpenseEditLockReason = "FORMER_MEMBER"
+	// A saved involved member is not currently eligible; private reasons are withheld.
+	ExpenseEditLockReasonIneligibleMember ExpenseEditLockReason = "INELIGIBLE_MEMBER"
+)
+
+var AllExpenseEditLockReason = []ExpenseEditLockReason{
+	ExpenseEditLockReasonFormerMember,
+	ExpenseEditLockReasonIneligibleMember,
+}
+
+func (e ExpenseEditLockReason) IsValid() bool {
+	switch e {
+	case ExpenseEditLockReasonFormerMember, ExpenseEditLockReasonIneligibleMember:
+		return true
+	}
+	return false
+}
+
+func (e ExpenseEditLockReason) String() string {
+	return string(e)
+}
+
+func (e *ExpenseEditLockReason) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ExpenseEditLockReason(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ExpenseEditLockReason", str)
+	}
+	return nil
+}
+
+func (e ExpenseEditLockReason) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ExpenseEditLockReason) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ExpenseEditLockReason) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

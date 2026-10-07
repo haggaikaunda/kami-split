@@ -244,6 +244,9 @@ export const journeyExpenseQuery = graphql`
       ... on Expense {
         id
         groupId
+        version
+        canEdit
+        editLockReason
         description
         effectiveDate
         totalMinor

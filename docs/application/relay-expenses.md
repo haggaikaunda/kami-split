@@ -191,3 +191,15 @@ Legacy group paths canonicalize after authorized metadata resolution. All reads,
 writes and recoveries retain the original group IDs and server authorization.
 See [workspace loading](../navigation/workspace-loading.md) for route and exact
 wire-query verification.
+
+## Collaborative corrections (#212)
+
+Eligible expense details open the shared expense fields in an edit flow. The
+server's expense version and saved-involvement eligibility are authoritative;
+original source context is preserved from Group, Trip and Household ledgers.
+Edit drafts and frozen attempts are isolated from creation drafts by
+actor/group/expense/operation, survive same-tab reload, and are cleared with
+financial session ownership changes. Conflict review never silently overwrites
+the draft. Current detail, ledgers and balances refresh after a committed edit;
+failed refresh is separate from failed mutation. See the
+[editing contract](expense-editing.md) and [historical Activity](activity.md).

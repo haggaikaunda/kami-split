@@ -1,0 +1,185 @@
+"""
+Current saved financial involvement preventing all edits; never exposes private account reasons.
+"""
+enum ExpenseEditLockReason {
+  """
+  A saved payer or explicit participant has left the original group.
+  """
+  FORMER_MEMBER
+  """
+  A saved involved member is not currently eligible; private reasons are withheld.
+  """
+  INELIGIBLE_MEMBER
+}
+
+extend type Expense {
+  """
+  Per-expense version starting at one; unrelated group activity does not change it.
+  """
+  version: Revision!
+  """
+  Current edit capability hint; every commit independently rechecks source access and saved involvement.
+  """
+  canEdit: Boolean!
+  """
+  Safe reason that every field is read-only, or null when currently eligible.
+  """
+  editLockReason: ExpenseEditLockReason
+}
+
+"""
+Complete replacement intent for the original expense; creator, identity, source, currency and creation time stay immutable.
+"""
+input UpdateExpenseInput {
+  """
+  Original Expense identity in groupId; no moving or copying across spaces.
+  """
+  expenseId: ID!
+  """
+  Explicit version reviewed by the editor; stale saves never merge automatically.
+  """
+  expectedVersion: Revision!
+
+  """
+  Explicit target group identity; never inferred from another ledger or client session.
+  """
+  groupId: ID!
+  """
+  Original client-created attempt key, scoped to the authenticated actor, group and EDIT_EXPENSE operation.
+  """
+  key: OperationKey!
+  """
+  Exact expense cents in the inclusive range 1 through 999999999.
+  """
+  totalMinor: MinorUnits!
+  """
+  USD only; no conversion or cross-currency netting.
+  """
+  currency: Currency!
+  """
+  Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+  """
+  description: String!
+  """
+  Expense calendar date; valid future dates are permitted.
+  """
+  effectiveDate: Date!
+  """
+  Descriptive category without financial or access implications.
+  """
+  category: Category!
+  """
+  Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+  """
+  note: String! = ""
+  """
+  Active eligible same-group Membership ID; independent of creator and selected participants.
+  """
+  payerId: ID!
+  """
+  Nonempty distinct eligible same-group Membership IDs, including selected zero-share participants.
+  """
+  participantIds: [ID!]!
+  """
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+  """
+  split: SplitMode!
+  """
+  Omit or null for EQUAL/PERCENTAGE; EXACT requires exactly one share per participant and reconciliation to the total.
+  """
+  exactAllocations: [ExactAllocationInput!]
+  """
+  Omit or null for EQUAL/EXACT. PERCENTAGE requires exactly one value per selected participant, each 0..10000, summing to 10000. Empty is not omitted.
+  """
+  percentages: [PercentageInput!]
+}
+
+extend type Mutation {
+  """
+  Atomically edit an eligible expense and record immutable history, or recover this same-key attempt first.
+  """
+  updateExpense(
+    """
+    Frozen complete edit input; retain with the same key after an uncertain response.
+    """
+    input: UpdateExpenseInput!
+  ): ExpenseEditResult!
+}
+
+extend type Query {
+  """
+  Recover the original edit result under current actor/source authorization; absence never proves rollback.
+  """
+  updateExpenseOperation(
+    """
+    Original source Group identity; Household aggregate access alone is insufficient.
+    """
+    groupId: ID!
+    """
+    Original EDIT_EXPENSE attempt key; never replace it during recovery.
+    """
+    key: OperationKey!
+  ): ExpenseEditResult!
+}
+
+"""
+Durable edit outcomes, transient uncertainty, or safe access/infrastructure failure.
+"""
+union ExpenseEditResult =
+  | ExpenseEditCommitted
+  | ExpenseEditConflict
+  | ExpenseEditLocked
+  | ValidationProblem
+  | OperationMismatch
+  | OperationProgress
+  | Problem
+
+"""
+Immutable original success; refresh currently authorized records and projections separately.
+"""
+type ExpenseEditCommitted {
+  """
+  Original operation key scoped to actor, source group and EDIT_EXPENSE.
+  """
+  key: OperationKey!
+  """
+  Immutable saved result; creator remains the expense's original creator.
+  """
+  record: ExpenseOperationRecord!
+  """
+  Per-expense version produced or observed by this successful attempt.
+  """
+  version: Revision!
+  """
+  False for a canonical no-op, which produces neither a financial revision nor an Activity event.
+  """
+  changed: Boolean!
+}
+
+"""
+Definitive stale-version rejection; preserve the draft and explicitly review the latest saved state.
+"""
+type ExpenseEditConflict {
+  """
+  Original rejected attempt key; reviewed replacement intent requires a new key.
+  """
+  key: OperationKey!
+  """
+  Version observed during this attempt; obtain fresh authorized detail before reapplying changes.
+  """
+  currentVersion: Revision!
+}
+
+"""
+Definitive whole-expense lock checked against saved involvement before any proposed replacement.
+"""
+type ExpenseEditLocked {
+  """
+  Original rejected attempt key; no financial effect occurred.
+  """
+  key: OperationKey!
+  """
+  Safe restriction without private account diagnostics; owners have no bypass.
+  """
+  reason: ExpenseEditLockReason!
+}

@@ -316,12 +316,11 @@ func TestPersistedExpenseRecoverySurvivesPoolRestartAndInactiveHistoricalPayer(t
 	f.addSecondExpense(t)
 	db := f.db
 	id := f.id
-	exec := f.exec
 	request := f.request
 	create := f.create
 	input := f.input
 	original := f.original
-	exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE`, id(303)))
+	injectHistoricalDeparture(t, f, id(303))
 	database.IntegrationPool(db).Reset()
 	replay := create(1, input)
 	if replay.Kind != "COMMITTED" || replay.Record.ExpenseID != original.Record.ExpenseID {
@@ -373,7 +372,7 @@ func TestPersistedExpenseRuntimeConstraintsRejectPartialEffectsAndLaterZeroAlloc
 func TestPersistedExpenseGraphqlProjectionNodesAndSignedPagination(t *testing.T) {
 	f := newExpenseFixture(t)
 	f.addSecondExpense(t)
-	f.exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE`, f.id(303)))
+	injectHistoricalDeparture(t, f, f.id(303))
 	ctx := f.ctx
 	public := f.public
 	endpoint := f.endpoint

@@ -34,7 +34,7 @@
 .activity-events li {
   border-block-end: 1px solid var(--color-separator);
 }
-.activity-events button {
+.activity-events > li > button {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -71,7 +71,7 @@
   background: var(--color-surface);
   border-radius: var(--radius-card);
 }
-.activity-events button:hover {
+.activity-events > li > button:hover:enabled {
   background: var(--color-subtle);
 }
 .activity-detail {
@@ -85,4 +85,165 @@
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 0.5rem;
+}
+
+.activity-day {
+  background: var(--color-subtle);
+  padding: 0.75rem 1rem;
+}
+.activity-day h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.activity-events .activity-kind {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  background: var(--color-subtle);
+  color: var(--color-ink);
+}
+.activity-events .activity-row-content {
+  flex: 1 1 12rem;
+}
+.activity-row-actor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.activity-row-content > span:not(:first-child) {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+.activity-row-amount {
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.activity-detail-attribution {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.activity-detail-attribution time {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.activity-fact-card {
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  padding: 1rem;
+}
+.activity-fact-card > header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.activity-fact-card h3,
+.activity-fact-card header p {
+  margin: 0.25rem 0;
+}
+.activity-facts {
+  margin-bottom: 0;
+}
+.activity-facts > div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-top: 1px solid var(--color-separator);
+}
+.activity-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.activity-facts small {
+  color: var(--color-muted);
+}
+.activity-previous,
+.activity-new {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.activity-previous {
+  color: var(--color-muted);
+}
+.activity-new {
+  font-weight: 600;
+}
+.activity-value-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.activity-event-help {
+  background: var(--color-subtle);
+  padding: 1rem;
+  border-radius: var(--radius-control);
+  font-size: 0.875rem;
+}
+.expense-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 64rem) {
+  .activity-detail {
+    max-width: 48rem;
+  }
+}
+@media (max-width: 25rem) {
+  .activity-facts > div {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  .activity-events .activity-row-content {
+    flex-basis: calc(100% - 3.75rem);
+  }
+  .activity-row-amount {
+    margin-left: 2.75rem;
+  }
+}
+.activity-events .activity-kind-expense_updated {
+  background: color-mix(in srgb, #3b82f6 20%, var(--color-surface));
+  color: var(--color-ink);
+}
+.activity-events .activity-kind-expense_created {
+  background: color-mix(in srgb, #10b981 20%, var(--color-surface));
+  color: var(--color-ink);
+}
+.activity-events .activity-kind-repayment_recorded {
+  background: color-mix(in srgb, #a78bfa 25%, var(--color-surface));
+  color: var(--color-ink);
+}
+@media (min-width: 64rem) {
+  .activity-view-selected {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .activity-view-selected .activity-controls {
+    grid-column: 1 / -1;
+  }
+  .activity-view-selected .activity-detail {
+    grid-column: 2;
+    grid-row: 2;
+    margin-block: 1rem;
+  }
+}
+@media (max-width: 63.99rem) {
+  .activity-view-selected > .activity-controls,
+  .activity-view-selected > .activity-events,
+  .activity-view-selected > button {
+    display: none;
+  }
 }

@@ -47,7 +47,7 @@ classification conversion have no public endpoint.
 
 ## Activity
 
-`groupActivity` and `householdActivity` traverse persisted immutable expense-created and repayment-recorded events, ordered by event timestamp, kind and record UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same current membership scope as `householdDashboard`, never client group filtering. Its signed workspace binding includes membership/account generations, and scope is sampled with the events; leave/rejoin invalidates prior Household continuations even when financial anchors and source IDs are unchanged. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
+`groupActivity` and `householdActivity` traverse persisted immutable expense-created, expense-updated and repayment-recorded events, ordered by event timestamp, kind and stable event UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same current membership scope as `householdDashboard`, never client group filtering. Its signed workspace binding includes membership/account generations, and scope is sampled with the events; leave/rejoin invalidates prior Household continuations even when financial anchors and source IDs are unchanged. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
 
 ## Household overview
 
@@ -81,3 +81,17 @@ name is separate from Auth metadata; only current authorized name projections
 refresh, while financial records and recovery snapshots remain unchanged. See
 the [profile contract](../../docs/application/profile.md) for validation,
 concurrency and safe retry outcomes.
+
+## Expense corrections and historical Activity (#212)
+
+`expense-editing.graphql` defines complete versioned replacement intents and
+structured committed/no-op, conflict, whole-expense lock and same-key recovery
+outcomes. The original source, creator, creation timestamp and currency remain
+immutable. Current access always takes precedence over capability hints. See the
+[editing contract](../../docs/application/expense-editing.md) for lock order,
+immutable snapshots, anchored reads and repayment semantics.
+
+`ActivityEvent.before`/`after` contain recorded expense values with currently
+authorized minimal labels. `activityEvent` rechecks the requested group or
+Household aggregate scope. Neither event detail nor original operation results
+substitute for a current expense read.

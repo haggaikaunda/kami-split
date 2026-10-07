@@ -95,7 +95,7 @@ func TestActivityIndependentCursorBindingsAndCurrentAuthorization(t *testing.T) 
 			t.Errorf("actor %d vars %v: %v", scenario.actor, scenario.variables, got)
 		}
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	vars["after"] = cursor
 	if got := independentActivity(t, f, 2, vars); got["__typename"] != "Problem" || got["code"] != "NOT_FOUND" {
 		t.Fatal(got)
@@ -121,14 +121,17 @@ func TestActivityIndependentEqualTimestampTiePagination(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(f.ctx)
-	if _, err = tx.Exec(f.ctx, "SET LOCAL ROLE kami_migrator"); err != nil {
+	if _, err = tx.Exec(f.ctx, "SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator"); err != nil {
 		t.Fatal(err)
 	}
-	for _, table := range []string{"expenses", "repayments", "expense_audit", "repayment_audit"} {
+	for _, table := range []string{"expenses", "repayments", "expense_audit", "repayment_audit", "expense_revisions"} {
 		if _, err = tx.Exec(f.ctx, "ALTER TABLE app."+table+" NO FORCE ROW LEVEL SECURITY"); err != nil {
 			t.Fatal(err)
 		}
 		column := "created_at"
+		if table == "expense_revisions" {
+			column = "recorded_at"
+		}
 		if table == "expense_audit" || table == "repayment_audit" {
 			column = "committed_at"
 		}
@@ -234,7 +237,7 @@ func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T
 	if changed["code"] != "INVALID_CURSOR" {
 		t.Fatal(changed)
 	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	if got := independentHouseholdActivity(t, f, 1, vars); got["code"] != "INVALID_CURSOR" {
 		t.Fatal(got)
 	}

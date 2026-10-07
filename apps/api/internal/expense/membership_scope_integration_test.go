@@ -105,7 +105,7 @@ func TestMembershipScopeSoleOwnerKeepsRealHouseholdData(t *testing.T) {
 	f := independentDashboardFixture(t)
 	independentDashboardExpense(t, f, 201, 302, 301, 2000)
 	independentDashboardExpense(t, f, 202, 305, 306, 3000)
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id)); UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT`, f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "-2000", "1", "1", "2000", "1")
 	independentViewSummary(t, independentViewRead(t, f, 1, 100, "", nil, "", "ExpenseView"), "2000", "1", map[string][2]string{"2026-09": {"2000", "1"}})
 	membershipWorkspaceTabs(t, f, 1, f.public("Membership", 301), "OWNER")
@@ -289,7 +289,7 @@ func TestMembershipScopeTargetedInvitationAcceptUnlocksWorkspaceOnce(t *testing.
 		t.Fatal(activity)
 	}
 	// Historical acceptance does not readmit a subsequently removed member.
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id)); UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT`, accepted.MembershipID))
+	injectHistoricalDeparture(t, f, accepted.MembershipID.String())
 	historical, err := service.Accept(recipientCtx, string(token), uuid.New())
 	if err != nil || historical.Outcome != "HISTORICAL_ACCEPTANCE" || historical.HasAccess || historical.MembershipID != accepted.MembershipID {
 		t.Fatalf("historical acceptance restored access: %v %v", historical.Outcome, err)
@@ -310,9 +310,8 @@ func TestMembershipScopeReadmissionCannotReusePreviousCursor(t *testing.T) {
 			activity := independentHouseholdActivity(t, f, 1, map[string]any{"first": 1})
 			activityCursor := activity["pageInfo"].(map[string]any)["endCursor"]
 			before := matchingContext(t, f)
-			for _, active := range []bool{false, true} {
-				independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id)); UPDATE app.memberships SET active=%t WHERE id='%s'; COMMIT`, active, f.id(member)))
-			}
+			injectHistoricalDeparture(t, f, f.id(member))
+			independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY(SELECT m.user_id FROM app.memberships m JOIN app.installation i ON i.household_group_id=m.group_id ORDER BY m.user_id)); UPDATE app.memberships SET active=true WHERE id='%s'; COMMIT`, f.id(member)))
 			if current := matchingContext(t, f); current == before {
 				t.Fatal("leave/rejoin retained old metadata context")
 			}

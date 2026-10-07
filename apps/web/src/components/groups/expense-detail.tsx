@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchQuery } from 'relay-runtime';
 import document, {
   type journeyExpenseQuery,
@@ -9,6 +9,12 @@ import { CategoryIcon } from '@/components/workspace-identity';
 import { Member, Money } from '@/components/primitives';
 import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
+import { readEditDraft } from '@/lib/relay/edit-draft';
+import { ExpenseEdit } from './expense-edit';
+import membersDocument, {
+  type expenseEditMembersQuery,
+} from '@/lib/relay/__generated__/expenseEditMembersQuery.graphql';
+import type { Member as ExpenseMember } from '@/lib/relay/draft';
 type Expense = Extract<
   NonNullable<journeyExpenseQuery['response']['node']>,
   { readonly __typename: 'Expense' }
@@ -18,12 +24,32 @@ export function ExpenseDetail({
   group,
   id,
   onUnavailable,
+  onCommitted,
 }: {
   scope: FinancialScope;
   group: string;
   id: string;
   onUnavailable?: () => void;
+  onCommitted?: () => Promise<void>;
 }) {
+  const [retainedAttempt] = useState(() => {
+    try {
+      return !!readEditDraft(scope.actor, group, id)?.attempt;
+    } catch {
+      return true;
+    }
+  });
+  const [editing, setEditing] = useState(false);
+  const [members, setMembers] = useState<readonly ExpenseMember[]>();
+  const [editError, setEditError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const savedNotice = saved ? (
+    <p role="status">
+      Expense edit saved. Current expense data is being checked separately; an
+      unavailable refresh does not undo the edit.
+    </p>
+  ) : null;
+  const editTrigger = useRef<HTMLButtonElement>(null);
   const [expense, setExpense] = useState<Expense>();
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -63,9 +89,42 @@ export function ExpenseDetail({
     // The owning list invalidates on failure; request identity owns the lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, group, id, version]);
+  useEffect(() => {
+    if (!editing) return;
+    let live = true;
+    const request = fetchQuery<expenseEditMembersQuery>(
+      scope.environment,
+      membersDocument,
+      { groupId: group },
+      { fetchPolicy: 'network-only' },
+    ).subscribe({
+      next(result) {
+        if (!live || !scope.isLive()) return;
+        if (result.group.__typename === 'Group' && result.group.id === group)
+          setMembers(result.group.members);
+        else {
+          setEditError('Current source access is unavailable.');
+          onUnavailable?.();
+        }
+      },
+      error() {
+        if (live && scope.isLive())
+          setEditError(
+            'Current members are unavailable. Close editing and retry.',
+          );
+      },
+    });
+    return () => {
+      live = false;
+      request.unsubscribe();
+    };
+    // Source and session own this authorized read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, scope, group]);
   if (failed)
     return (
       <>
+        {savedNotice}
         <p role="alert">
           Expense unavailable. No expense details can be shown.
         </p>
@@ -80,9 +139,65 @@ export function ExpenseDetail({
         </button>
       </>
     );
-  if (!expense) return <p role="status">Loading authorized expense…</p>;
+  if (!expense)
+    return (
+      <>
+        {savedNotice}
+        <p role="status">Loading authorized expense…</p>
+      </>
+    );
+  if (editing)
+    return members ? (
+      <ExpenseEdit
+        scope={scope}
+        expense={expense}
+        members={members}
+        onDenied={() => {
+          setEditing(false);
+          setFailed(true);
+          onUnavailable?.();
+        }}
+        onCancel={() => {
+          setEditing(false);
+          requestAnimationFrame(() => editTrigger.current?.focus());
+        }}
+        onCommitted={async () => {
+          setSaved(true);
+          setEditing(false);
+          setExpense(undefined);
+          setVersion((v) => v + 1);
+          await onCommitted?.();
+        }}
+      />
+    ) : (
+      <section>
+        <p role={editError ? 'alert' : 'status'}>
+          {editError || 'Loading current editing permissions…'}
+        </p>
+        <button onClick={() => setEditing(false)}>Back to expense</button>
+      </section>
+    );
   return (
     <section className="expense-detail-card">
+      {savedNotice}
+      {expense.canEdit || retainedAttempt ? (
+        <button
+          ref={editTrigger}
+          onClick={() => {
+            setMembers(undefined);
+            setEditError('');
+            setEditing(true);
+          }}
+        >
+          {retainedAttempt ? 'Recover expense edit' : 'Edit expense'}
+        </button>
+      ) : (
+        <p className="expense-edit-lock">
+          {expense.editLockReason === 'FORMER_MEMBER'
+            ? 'This expense cannot be edited because it involves a member who has left the group.'
+            : 'This expense is currently read-only because editing eligibility is unavailable.'}
+        </p>
+      )}
       <div className="expense-detail-identity">
         <CategoryIcon category={expense.category} />
         <div>

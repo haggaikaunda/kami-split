@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b23c6df1530ea5741069776047f9765b>>
+ * @generated SignedSource<<c4e1aabf90070eedc4fb9bbbe63b62bc>>
  * @lightSyntaxTransform
  */
 
@@ -8,22 +8,65 @@
 // @ts-nocheck
 
 import { ReaderInlineDataFragment } from 'relay-runtime';
-export type ActivityKind = "EXPENSE_CREATED" | "REPAYMENT_RECORDED" | "%future added value";
+export type ActivityKind = "EXPENSE_CREATED" | "EXPENSE_UPDATED" | "REPAYMENT_RECORDED" | "%future added value";
+export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type activityFeed$data = {
   readonly __typename: "ActivityConnection";
   readonly edges: ReadonlyArray<{
     readonly cursor: string;
     readonly node: {
+      readonly after: {
+        readonly allocations: ReadonlyArray<{
+          readonly amountMinor: string;
+          readonly participant: {
+            readonly displayName: string;
+            readonly id: string;
+          };
+          readonly percentageHundredths: number | null | undefined;
+        }>;
+        readonly category: Category;
+        readonly description: string;
+        readonly effectiveDate: string;
+        readonly note: string;
+        readonly payer: {
+          readonly displayName: string;
+          readonly id: string;
+        };
+        readonly split: SplitMode;
+        readonly totalMinor: string;
+      } | null | undefined;
       readonly amountMinor: string;
+      readonly before: {
+        readonly allocations: ReadonlyArray<{
+          readonly amountMinor: string;
+          readonly participant: {
+            readonly displayName: string;
+            readonly id: string;
+          };
+          readonly percentageHundredths: number | null | undefined;
+        }>;
+        readonly category: Category;
+        readonly description: string;
+        readonly effectiveDate: string;
+        readonly note: string;
+        readonly payer: {
+          readonly displayName: string;
+          readonly id: string;
+        };
+        readonly split: SplitMode;
+        readonly totalMinor: string;
+      } | null | undefined;
       readonly creator: {
         readonly displayName: string;
         readonly id: string;
       };
       readonly currency: Currency;
+      readonly description: string;
       readonly effectiveDate: string;
       readonly groupId: string;
       readonly groupKind: GroupKind;
@@ -31,6 +74,7 @@ export type activityFeed$data = {
       readonly id: string;
       readonly isHousehold: boolean;
       readonly kind: ActivityKind;
+      readonly note: string;
       readonly payer: {
         readonly displayName: string;
         readonly id: string;
@@ -73,6 +117,6 @@ const node: ReaderInlineDataFragment = {
   "name": "activityFeed"
 };
 
-(node as any).hash = "068679986021abcc90801b492d0da499";
+(node as any).hash = "29357ddf4d198996c9b437d3dad4ddc4";
 
 export default node;

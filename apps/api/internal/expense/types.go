@@ -22,7 +22,7 @@ type Member struct {
 	CanParticipate                bool
 }
 
-// Record is an immutable financial record and its original commit provenance.
+// Record is an expense version with immutable original creation provenance.
 type Record struct {
 	ExpenseID, GroupID, CreatorMembershipID, PayerMembershipID               string
 	TotalMinor                                                               int64
@@ -30,6 +30,9 @@ type Record struct {
 	Allocations                                                              []ledger.Allocation
 	Percentages                                                              []ledger.Percentage `json:",omitempty"`
 	Revision                                                                 int64
+	Version                                                                  int64
+	CanEdit                                                                  bool
+	EditLockReason                                                           string
 }
 
 // RepaymentRecord is immutable actual-transfer history with original provenance.
@@ -42,10 +45,13 @@ type RepaymentRecord struct {
 
 // Outcome is the durable result shared by the two financial operation kinds.
 type Outcome struct {
-	Kind, Key string
-	Record    *Record
-	Repayment *RepaymentRecord `json:",omitempty"`
-	Fields    []ledger.FieldProblem
+	Kind, Key      string
+	Record         *Record
+	Repayment      *RepaymentRecord `json:",omitempty"`
+	Fields         []ledger.FieldProblem
+	CurrentVersion int64
+	Changed        bool
+	LockReason     string
 }
 
 // Failure is a safe application failure code, never a database diagnostic.

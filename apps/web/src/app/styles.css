@@ -103,7 +103,7 @@ button:disabled {
 }
 .ui-button--primary {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary, white);
 }
 .ui-button--primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
@@ -498,7 +498,7 @@ td {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #073d42;
+  color: var(--color-ink);
   font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 800;
@@ -553,7 +553,14 @@ td {
   z-index: -1;
 }
 .ui-workspace-header--household .workspace-heading {
-  padding-inline-end: 25%;
+  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
+}
+.ui-workspace-header--household > a {
+  background: var(--color-surface);
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
 }
 .workspace-identity-icon {
   display: grid;
@@ -672,5 +679,30 @@ td {
   }
   .ui-workspace-tabs a {
     padding-inline: 0.35rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-ink: #e6eee9;
+    --color-muted: #b0c1cc;
+    --color-primary: #80d9b2;
+    --color-on-primary: #14221f;
+    --color-primary-hover: #ade8ca;
+    --color-canvas: #14221f;
+    --color-subtle: #253731;
+    --color-separator: #3a4d46;
+    --color-owes: #ffbb91;
+    --color-owes-surface: #493325;
+    --color-surface: #1c2d27;
+    --color-balance: #294137;
+    --color-border: #82988d;
+    --color-danger: #ffaaa3;
+    --color-error-surface: #462d2b;
+    --color-focus: #99c6ff;
+  }
+  .ui-button--danger {
+    color: #14221f;
   }
 }
