@@ -21,7 +21,7 @@
     "relay:check": "node scripts/relay/generate.mjs --validate"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.19.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "9.39.5",

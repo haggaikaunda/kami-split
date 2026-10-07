@@ -24,7 +24,7 @@
     "relay-runtime": "21.0.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.19.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/react-relay": "18.2.1",
