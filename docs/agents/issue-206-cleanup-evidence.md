@@ -80,7 +80,7 @@ means no unique exact merged-head proof, protected main, or this current task.
 | `codex/vercel-alias-confirmation`      | `b11c357545cc73e8277e82ae03f0c32850701718`  | [#155](https://github.com/haggaikaunda/kami-split/pull/155) | Blocked: linked worktree: ownership/disposability not established                  |
 | `codex/vercel-automation-bypass`       | `3ac73f7467e8feb0e510c2e7e97a3a9fe277f4e2`  | [#153](https://github.com/haggaikaunda/kami-split/pull/153) | Blocked: linked worktree: ownership/disposability not established                  |
 | `hkaunda/smoke-production-db`          | `97e98accd11eab205a5adfb0a143c72f5bd20eb6`  | —                                                           | Retained: no unique exact merged PR head                                           |
-| `main`                                 | `69fcbe6b583f1264ee25920a5833345cf091712b`  | —                                                           | Retained: protected primary main; synchronization pending                          |
+| `main`                                 | `69fcbe6b583f1264ee25920a5833345cf091712b`  | —                                                           | Retained: primary main; after tip equals observed origin/main                      |
 
 ## Confirmed merge commits for removed branches
 
