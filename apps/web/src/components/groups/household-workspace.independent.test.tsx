@@ -142,9 +142,12 @@ it('renders exact server aggregates and zero net with open source balances witho
   const row = host.querySelector('.ui-summary-row')!;
   expect(row.children).toHaveLength(3);
   expect(row.textContent).toContain('$90,071,992,547,409.93');
-  expect(row.textContent).toContain('17 expenses · repayments excluded');
+  expect(row.textContent).toContain('17 expenses');
+  expect(row.textContent).not.toContain('repayments excluded');
   expect(row.textContent).toContain('Overall net is zero');
-  expect(row.textContent).toContain('2 open balances');
+  expect(row.textContent).toContain('source balances remain open');
+  expect(row.querySelector('a')).toBeNull();
+  expect(row.textContent).not.toContain('2 open balances');
   expect(host.querySelector('a[href="/household/expenses"]')).not.toBeNull();
   await content('Balances');
   expect(host.querySelectorAll('.household-balances li')).toHaveLength(3);
@@ -406,4 +409,17 @@ it('does not expose owner administration to an ordinary Household member without
     'householdAccessQuery',
     'householdMembersQuery',
   ]);
+});
+
+it('shows one concise settled status without a duplicate open balance count', async () => {
+  const dashboard = fixture();
+  const totals = dashboard.totals!;
+  await content('Overview', {
+    ...dashboard,
+    totals: { ...totals, openBalanceCount: '0' },
+  } as Dashboard);
+  const net = host.querySelector('.ui-signed-balance')!;
+  expect(net.textContent).toContain('No open source balances');
+  expect(net.textContent).not.toContain('0 open balances');
+  expect(net.querySelector('a')).toBeNull();
 });

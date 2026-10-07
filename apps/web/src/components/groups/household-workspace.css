@@ -69,3 +69,48 @@
   border-radius: 50%;
   background: var(--color-balance);
 }
+
+.household-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+}
+.household-empty > .app-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-muted);
+}
+.household-empty p {
+  margin: 0;
+}
+.household-empty p:last-child {
+  color: var(--color-muted);
+}
+:root[data-theme='dark'] .household-summary .ui-summary-metric {
+  min-height: 9rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+}
+:root[data-theme='dark'] .household-summary .ui-metric-value {
+  color: var(--color-ink);
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+}
+:root[data-theme='dark'] .household-summary .ui-metric-label {
+  font-size: 0.875rem;
+}
+@media (max-width: 650px) {
+  :root[data-theme='dark'] .household-workspace .household-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  :root[data-theme='dark'] .household-summary .ui-summary-metric {
+    min-height: 0;
+    padding: 1rem;
+  }
+}

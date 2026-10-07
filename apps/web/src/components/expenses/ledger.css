@@ -101,7 +101,7 @@
 }
 .ledger-category {
   border-radius: 0.6rem;
-  background: #e5eadf;
+  background: var(--color-subtle);
   text-align: center;
   padding: 0.4rem;
 }
@@ -124,7 +124,7 @@
   overflow-wrap: anywhere;
 }
 .ledger-dialog::backdrop {
-  background: #18251f55;
+  background: var(--color-backdrop);
 }
 .ledger-dialog header {
   display: flex;

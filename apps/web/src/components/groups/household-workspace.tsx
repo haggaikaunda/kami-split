@@ -416,14 +416,14 @@ export function HouseholdContent({
             <div className="ui-summary-row household-summary">
               <SummaryMetric
                 label="Total shared expenses"
-                detail={`${totals.totalSharedExpenseCount} expenses · repayments excluded`}
+                detail={`${totals.totalSharedExpenseCount} expenses`}
               >
                 <Money
                   value={money(totals.totalSharedExpenseMinor)}
                   currency="USD"
                 />
               </SummaryMetric>
-              <HouseholdNet totals={totals} disclosure />
+              <HouseholdNet totals={totals} />
               <SummaryMetric
                 label="Active spaces"
                 detail="Home · Trips · Groups"
@@ -440,7 +440,13 @@ export function HouseholdContent({
               </div>
               {recent?.__typename === 'ExpenseView' ? (
                 !recent.edges.length ? (
-                  <p>No shared expenses yet.</p>
+                  <div className="household-empty">
+                    <AppIcon name="expense" />
+                    <p>
+                      <strong>No shared expenses yet.</strong>
+                    </p>
+                    <p>When you add expenses, they’ll show up here.</p>
+                  </div>
                 ) : (
                   <ul className="group-expense-list">
                     {recent.edges.map(({ node, source }) => (
@@ -491,13 +497,7 @@ export function HouseholdContent({
     </>
   );
 }
-function HouseholdNet({
-  totals,
-  disclosure = false,
-}: {
-  totals: Totals;
-  disclosure?: boolean;
-}) {
+function HouseholdNet({ totals }: { totals: Totals }) {
   const net = minor(totals.viewerNetMinor);
   return (
     <div
@@ -516,16 +516,9 @@ function HouseholdNet({
                 : net < 0n
                   ? 'Overall, you owe'
                   : totals.openBalanceCount !== '0'
-                    ? 'Overall net is zero'
+                    ? 'Overall net is zero; source balances remain open'
                     : 'No open source balances'}
             </span>
-            {disclosure ? (
-              <Link href={householdHref('Balances')}>
-                {totals.openBalanceCount} open balances →
-              </Link>
-            ) : (
-              <span>{totals.openBalanceCount} open balances</span>
-            )}
           </>
         }
       >
