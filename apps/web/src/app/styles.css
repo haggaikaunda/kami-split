@@ -498,7 +498,7 @@ td {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #073d42;
+  color: var(--color-ink);
   font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 800;
@@ -553,7 +553,14 @@ td {
   z-index: -1;
 }
 .ui-workspace-header--household .workspace-heading {
-  padding-inline-end: 25%;
+  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
+}
+.ui-workspace-header--household > a {
+  background: var(--color-surface);
+  border-radius: var(--radius-control);
+  padding: 0.5rem;
 }
 .workspace-identity-icon {
   display: grid;

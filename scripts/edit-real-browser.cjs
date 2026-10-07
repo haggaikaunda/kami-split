@@ -255,6 +255,38 @@ const path = require('node:path');
             theme,
             'Actual application theme must follow the requested color scheme',
           );
+          const contrast = await page
+            .locator('.activity-row-content > span:nth-child(2)')
+            .first()
+            .evaluate((element) => {
+              const rgb = (value) => value.match(/[\d.]+/g).map(Number);
+              const luminance = (value) =>
+                rgb(value)
+                  .slice(0, 3)
+                  .map((v) => {
+                    const s = v / 255;
+                    return s <= 0.04045
+                      ? s / 12.92
+                      : ((s + 0.055) / 1.055) ** 2.4;
+                  })
+                  .reduce(
+                    (sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i],
+                    0,
+                  );
+              let parent = element;
+              while (
+                parent.parentElement &&
+                rgb(getComputedStyle(parent).backgroundColor)[3] === 0
+              )
+                parent = parent.parentElement;
+              const a = luminance(getComputedStyle(element).color);
+              const b = luminance(getComputedStyle(parent).backgroundColor);
+              return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+            });
+          assert(
+            contrast >= 4.5,
+            `${context} feed text contrast ${contrast} ${theme}`,
+          );
           await page.screenshot({
             path: path.join(
               evidence,

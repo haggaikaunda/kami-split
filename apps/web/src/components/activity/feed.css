@@ -34,7 +34,7 @@
 .activity-events li {
   border-block-end: 1px solid var(--color-separator);
 }
-.activity-events button {
+.activity-events > li > button {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -71,7 +71,7 @@
   background: var(--color-surface);
   border-radius: var(--radius-card);
 }
-.activity-events button:hover {
+.activity-events > li > button:hover:enabled {
   background: var(--color-subtle);
 }
 .activity-detail {
