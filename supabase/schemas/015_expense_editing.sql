@@ -9,7 +9,9 @@ CREATE TABLE app.expense_revisions (LIKE app.expenses INCLUDING DEFAULTS INCLUDI
  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(id,version), UNIQUE(id,version,group_id), UNIQUE(event_id), UNIQUE(group_id,revision),
  FOREIGN KEY(id,group_id) REFERENCES app.expenses(id,group_id) ON DELETE CASCADE,
- FOREIGN KEY(actor_membership_id,group_id) REFERENCES app.memberships(id,group_id)
+ FOREIGN KEY(actor_membership_id,group_id) REFERENCES app.memberships(id,group_id),
+ FOREIGN KEY(creator_id,group_id) REFERENCES app.memberships(id,group_id),
+ FOREIGN KEY(payer_id,group_id) REFERENCES app.memberships(id,group_id)
 );
 CREATE TABLE app.expense_revision_allocations (
  expense_id uuid NOT NULL, version bigint NOT NULL, group_id uuid NOT NULL,
