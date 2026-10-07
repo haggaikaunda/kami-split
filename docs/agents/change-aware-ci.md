@@ -120,9 +120,28 @@ Before evidence: docs-only PR #207, CI
 allocated Web, all three API jobs, and Verify. Its job timestamps imply roughly
 14 rounded Linux runner-minutes (an estimate, not a billing export).
 
-Record after-run URLs and job conclusions for web-only, API-only, docs-only, and
-shared changes on the delivery PR. Confirm excluded jobs have no runner allocation,
-not a successful early-exit step. Expected docs-only topology is repository
-validation plus Verify (typically two rounded minutes; measure rather than assume).
+Hosted verification for implementation head
+`4ced6fd0d75fa51e2eb82c03ef6ce56cffebecae` passed for all four classes:
+
+| Change class | Before run                                                                         | After run                                                                          | Rounded runner-minutes before → after | Excluded allocation           |
+| ------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------- |
+| Docs         | [37561143785](https://github.com/haggaikaunda/kami-split/actions/runs/37561143785) | [37572797586](https://github.com/haggaikaunda/kami-split/actions/runs/37572797586) | 14 → 2                                | Web and API: `runner_id=null` |
+| Web          | [37403353890](https://github.com/haggaikaunda/kami-split/actions/runs/37403353890) | [37572806186](https://github.com/haggaikaunda/kami-split/actions/runs/37572806186) | 12 → 4                                | API: `runner_id=null`         |
+| API          | [37566103864](https://github.com/haggaikaunda/kami-split/actions/runs/37566103864) | [37572813155](https://github.com/haggaikaunda/kami-split/actions/runs/37572813155) | 13 → 12                               | Web: `runner_id=null`         |
+| Shared / CI  | [37495397329](https://github.com/haggaikaunda/kami-split/actions/runs/37495397329) | [37572750983](https://github.com/haggaikaunda/kami-split/actions/runs/37572750983) | 12 → 13                               | All affected checks ran       |
+
+Estimates sum allocated-job durations rounded up to minutes from GitHub Jobs API
+timestamps; they are not billing exports or controlled timing benchmarks. The
+before samples are PRs #207, #196, #211, and #205. After samples are disposable
+fixture PRs #216–218 against the implementation branch plus cross-cutting PR #215.
+All expected checks, including Verify, succeeded. Fixture PRs were closed without
+merging, and their remote branches were deleted with exact-tip guards.
+
+The docs fixture allocated only repository validation (38 seconds) and Verify
+(6 seconds), about 86% fewer rounded minutes than its before sample. Unaffected
+branches were skipped before runner allocation. The shared case shows the small
+classifier-runner overhead; its full web/API verification remains intentional.
+
 Live selective production and Vercel-native #161 integration must be recorded
-separately; do not mark the issue complete from local tests alone.
+separately; these PR runs do not prove production provider behavior. Do not mark
+#214 complete until that remaining evidence and closeout are recorded.
