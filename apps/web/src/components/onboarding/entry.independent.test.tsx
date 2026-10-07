@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { OnboardingEntry } from './entry';
+import { ScopedInvitations } from './scoped-invitations';
+import type { FinancialScope } from '@/lib/relay/environment';
 import {
   RequestEpoch,
   readAttempt,
@@ -20,6 +22,8 @@ const sdk = vi.hoisted(() => ({
   updateUser: vi.fn(),
   verifyOtp: vi.fn(),
   replace: vi.fn(),
+  signOut: vi.fn(),
+  invalidate: vi.fn(),
 }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
@@ -32,16 +36,30 @@ vi.mock('@supabase/supabase-js', () => ({
       setSession: async () => ({ error: null }),
       updateUser: sdk.updateUser,
       verifyOtp: sdk.verifyOtp,
-      signOut: async () => {
-        sdk.changed('SIGNED_OUT', null);
-        return { error: null };
-      },
+      signOut: sdk.signOut,
     },
   }),
 }));
-vi.mock('next/link', () => ({ default: 'a' }));
+vi.mock('next/link', () => ({
+  useLinkStatus: () => ({ pending: false }),
+  default: 'a',
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: sdk.replace }),
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
+vi.mock('@/components/groups/session', () => ({
+  useFinancialSession: () => ({
+    scope: {
+      actor: 'alice',
+      isLive: () => true,
+      environment: {
+        commitUpdate: (update: (store: unknown) => void) =>
+          update({ invalidateStore: sdk.invalidate }),
+      },
+    },
+  }),
 }));
 let container: HTMLDivElement;
 let root: Root;
@@ -58,6 +76,12 @@ beforeEach(() => {
   sdk.updateUser.mockReset();
   sdk.verifyOtp.mockReset();
   sdk.replace.mockReset();
+  sdk.invalidate.mockReset();
+  sdk.signOut.mockReset();
+  sdk.signOut.mockImplementation(async () => {
+    sdk.changed('SIGNED_OUT', null);
+    return { error: null };
+  });
   sessionStorage.clear();
   sessionStorage.setItem('kami-onboarding-link-digest', 'a'.repeat(64));
   sdk.session = {
@@ -93,6 +117,16 @@ afterEach(() => {
 });
 const render = async (mode: Parameters<typeof OnboardingEntry>[0]['mode']) => {
   await act(async () => root.render(<OnboardingEntry mode={mode} />));
+};
+const scoped = async (id = 'group-a', name = 'House') => {
+  const scope = {
+    id: 'scope-alice',
+    actor: 'alice',
+    isLive: () => true,
+  } as unknown as FinancialScope;
+  await act(async () =>
+    root.render(<ScopedInvitations scope={scope} group={{ id, name }} />),
+  );
 };
 const button = (name: string) =>
   [...container.querySelectorAll('button')].find(
@@ -132,6 +166,13 @@ it('retains original operation context across storage reloads', () => {
 });
 it('deduplicates clicks and preserves interrupted acceptance through uncertain recovery', async () => {
   await render('join');
+  expect(container.textContent).toContain(
+    'share the group’s ledger and full expense history',
+  );
+  expect(container.textContent).toContain('all active Household members');
+  expect(container.textContent).toContain(
+    'No additional sharing confirmation is needed',
+  );
   let reject!: (error: Error) => void;
   respond = async () =>
     new Promise((_resolve, fail) => {
@@ -268,9 +309,7 @@ it('recovers an uncertain resend with its original key after remount without sen
     if (query.includes('resendInvitation')) throw new Error('UNAVAILABLE');
     throw new Error('Unexpected request');
   };
-  await render('invitations');
-  await click('Load my groups');
-  await click('Manage invitations for House');
+  await scoped();
   await click('Resend and renew for seven days');
   const original = readAttempt();
   expect(original).toMatchObject({
@@ -280,7 +319,7 @@ it('recovers an uncertain resend with its original key after remount without sen
   });
   expect(button('Resend and renew for seven days').disabled).toBe(true);
   await act(async () => root.render(<p>Elsewhere</p>));
-  await render('invitations');
+  await scoped();
   respond = async (_path, body) => {
     expect(body.variables).toEqual({ kind: 'RESEND', key: original!.key });
     return {
@@ -438,7 +477,10 @@ it('resubmits an unobserved resend after navigation using the retained group, in
     invitationID: 'original-invitation',
   };
   saveAttempt(original);
-  await render('invitations');
+  respond = async () => ({
+    data: { ownerInvitations: { items: [], nextCursor: null } },
+  });
+  await scoped('original-group', 'Original');
   respond = async () => {
     throw new TypeError('Failed to fetch');
   };
@@ -487,9 +529,7 @@ it('releases a definitely invalid create operation so the email can be corrected
       : String(body.query).includes('createTargetedInvitation')
         ? { data: { createTargetedInvitation: { code: 'INVALID_EMAIL' } } }
         : { data: { ownerInvitations: { items: [], nextCursor: null } } };
-  await render('invitations');
-  await click('Load my groups');
-  await click('Manage invitations for House');
+  await scoped();
   await act(async () =>
     container
       .querySelector('form')!
@@ -616,9 +656,7 @@ it('copies shared links without renewing or sending and deliberately renews with
       },
     };
   };
-  await render('invitations');
-  await click('Load my groups');
-  await click('Manage invitations for Group');
+  await scoped('group', 'Group');
   const before = requests.length;
   await click('Copy shared link');
   expect(writeText).toHaveBeenCalledWith('https://example.test/join#sensitive');
@@ -679,7 +717,7 @@ it('keeps targeted preview anonymous and requires explicit proof before password
     token_hash: 'b'.repeat(64),
     type: 'signup',
   });
-  expect(container.textContent).toContain('Create your Kami Split account');
+  expect(container.textContent).toContain('Create your Kami Grow account');
   expect(container.querySelectorAll('input[type=password]')).toHaveLength(2);
   expect(
     requests.some(
@@ -753,20 +791,35 @@ it('offers shared first-time verification with generic check-email and no admiss
   await click('Use a different email');
   expect(container.querySelector('input[type=email]')).not.toBeNull();
 });
-it('loads ordinary account groups automatically and links directly to their real experience', async () => {
-  respond = async () => ({
-    data: {
-      viewer: {
-        __typename: 'Viewer',
-        groups: [{ id: 'group-a', name: 'Household' }],
-      },
-    },
-  });
+it('keeps Account personal with shared active navigation and no group discovery request', async () => {
+  window.history.replaceState(null, '', '/account');
+  respond = async (path) =>
+    path === '/api/onboarding-config'
+      ? { url: 'https://example.test', key: 'public' }
+      : {
+          data: {
+            currentProfile: {
+              __typename: 'Profile',
+              id: 'user-a',
+              displayName: 'Alice 李',
+            },
+          },
+        };
   await render('account');
-  expect(button('Load my groups')).toBeUndefined();
+  expect(container.querySelector('#display-name')).not.toBeNull();
   expect(
-    container.querySelector('a[href="/groups?group=group-a"]')?.textContent,
-  ).toBe('Household');
+    (container.querySelector('#account-email') as HTMLInputElement).readOnly,
+  ).toBe(true);
+  expect(
+    container.querySelector('a[href="/account"]')?.getAttribute('aria-current'),
+  ).toBe('page');
+  for (const href of ['/household', '/groups', '/trips', '/account'])
+    expect(container.querySelector(`nav a[href="${href}"]`)).not.toBeNull();
+  expect(button('Refresh groups')).toBeUndefined();
+  expect(container.textContent).not.toContain('Manage invitations');
+  expect(requests.some((r) => String(r.body.query).includes('viewer'))).toBe(
+    false,
+  );
 });
 
 it('switches a wrong targeted account without losing the invitation or accepting it', async () => {
@@ -788,6 +841,7 @@ it('switches a wrong targeted account without losing the invitation or accepting
     'This invitation is for another account',
   );
   await click('Switch account');
+  expect(sdk.replace).not.toHaveBeenCalledWith('/sign-in');
   expect(container.textContent).toContain('Owner invited you to Household');
   expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBe(
     'a'.repeat(64),
@@ -964,9 +1018,13 @@ it('blocks a different hash invitation while the original acceptance is unresolv
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
   expect(window.location.hash).toBe('');
-  expect(container.textContent).toContain(
-    'Reopen the original application invitation link',
-  );
+  expect(container.textContent).not.toContain('Private group');
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(container.textContent).toContain(
+      'Reopen the original application invitation link',
+    );
+  });
   expect(readAttempt()).toEqual(original);
   expect(requests.filter((r) => r.path.endsWith('/start'))).toHaveLength(
     startsBefore,
@@ -1014,7 +1072,15 @@ it('explicit ordinary signout clears the shared server context and local state',
   const prior = respond;
   respond = async (path, body) =>
     path === '/api/graphql'
-      ? { data: { viewer: { __typename: 'Viewer', groups: [] } } }
+      ? {
+          data: {
+            currentProfile: {
+              __typename: 'Profile',
+              id: 'user-a',
+              displayName: 'Alice',
+            },
+          },
+        }
       : prior(path, body);
   await render('account');
   await click('Sign out of this session');
@@ -1075,3 +1141,530 @@ it.each(['TARGETED', 'SHARED'])(
     expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
   },
 );
+
+it('allows password-session logout when no live invitation context remains', async () => {
+  const request = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const response = await request(input, init);
+    return String(input).endsWith('/clear')
+      ? ({ ok: false, status: 409, json: response.json } as Response)
+      : response;
+  });
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/clear')
+      ? { code: 'CONTEXT_EXPIRED' }
+      : path === '/api/graphql'
+        ? {
+            data: {
+              currentProfile: {
+                __typename: 'Profile',
+                id: 'user-a',
+                displayName: 'Alice',
+              },
+            },
+          }
+        : prior(path, body);
+  await render('account');
+  await click('Sign out of this session');
+  expect(requests.filter((r) => r.path.endsWith('/clear'))).toHaveLength(1);
+  expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBeNull();
+  expect(container.textContent).not.toContain('alice@example.test');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in');
+});
+
+it('retains the account if invitation-context clearing fails unexpectedly', async () => {
+  const request = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const response = await request(input, init);
+    return String(input).endsWith('/clear')
+      ? ({ ok: false, status: 503, json: response.json } as Response)
+      : response;
+  });
+  const prior = respond;
+  respond = async (path, body) =>
+    path.endsWith('/clear')
+      ? { code: 'UNAVAILABLE' }
+      : path === '/api/graphql'
+        ? {
+            data: {
+              currentProfile: {
+                __typename: 'Profile',
+                id: 'user-a',
+                displayName: 'Alice',
+              },
+            },
+          }
+        : prior(path, body);
+  await render('account');
+  await click('Sign out of this session');
+  expect(container.textContent).toContain('alice@example.test');
+  expect(sdk.replace).not.toHaveBeenCalled();
+});
+
+const profileResult = (displayName: string) => ({
+  data: {
+    currentProfile: { __typename: 'Profile', id: 'user-a', displayName },
+  },
+});
+const fillName = async (value: string) => {
+  await act(async () => {
+    const input = container.querySelector('#display-name')!;
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+};
+const submitProfile = async () => {
+  await act(async () =>
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+};
+const profileResponder = (displayName = 'Alice') => {
+  respond = async (path) =>
+    path === '/api/onboarding-config'
+      ? { url: 'https://example.test', key: 'public' }
+      : profileResult(displayName);
+};
+it('retains primary navigation when profile loading fails and supports retry', async () => {
+  window.history.replaceState(null, '', '/account');
+  const initial = respond;
+  respond = async (path, body) => {
+    if (path === '/api/graphql') throw new Error('UNAVAILABLE');
+    return initial(path, body);
+  };
+  await render('account');
+  expect(container.textContent).toContain('Your profile could not be loaded');
+  expect(container.querySelectorAll('nav a')).toHaveLength(4);
+  expect(button('Sign out of this session')).not.toBeUndefined();
+  profileResponder('李 María');
+  await click('Retry profile');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('李 María');
+});
+it('discards dirty edits, trims international names, and waits for one confirmed save', async () => {
+  profileResponder();
+  await render('account');
+  expect(button('Save changes').disabled).toBe(true);
+  await fillName('Unsaved');
+  await click('Discard edits');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Alice');
+  await fillName('\u3000李 😀 María\u00a0');
+  let finish!: (value: unknown) => void;
+  respond = async (_path, body) => {
+    expect(body.variables).toEqual({
+      displayName: '李 😀 María',
+      expectedDisplayName: 'Alice',
+    });
+    return new Promise((done) => {
+      finish = done;
+    });
+  };
+  await submitProfile();
+  await submitProfile();
+  expect(
+    requests.filter((r) =>
+      String(r.body.query).includes('mutation profileMutation'),
+    ),
+  ).toHaveLength(1);
+  expect(container.textContent).not.toContain('Changes saved.');
+  expect(container.querySelectorAll('nav a')).toHaveLength(4);
+  await act(async () =>
+    finish({
+      data: {
+        updateMyProfile: {
+          __typename: 'Profile',
+          id: 'user-a',
+          displayName: '李 😀 María',
+        },
+      },
+    }),
+  );
+  expect(container.textContent).toContain('Changes saved.');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('李 😀 María');
+  expect(button('Save changes').disabled).toBe(true);
+  expect(sdk.invalidate).toHaveBeenCalled();
+});
+it.each(['\u3000\t\u00a0', '😀'.repeat(121)])(
+  'rejects invalid input while preserving the draft',
+  async (value) => {
+    profileResponder();
+    await render('account');
+    await fillName(value);
+    await submitProfile();
+    expect(container.textContent).toContain(
+      'Enter a display name of 1–120 characters.',
+    );
+    expect(
+      (container.querySelector('#display-name') as HTMLInputElement).value,
+    ).toBe(value);
+    expect(
+      requests.some((r) =>
+        String(r.body.query).includes('mutation profileMutation'),
+      ),
+    ).toBe(false);
+    expect(
+      container
+        .querySelector('#display-name')
+        ?.getAttribute('aria-describedby'),
+    ).toContain('display-name-error');
+  },
+);
+it('preserves an uncertain save draft and requires authoritative reconciliation before explicit retry', async () => {
+  profileResponder();
+  await render('account');
+  await fillName('My edit');
+  respond = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+  await submitProfile();
+  expect(button('Save changes').disabled).toBe(true);
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('My edit');
+  profileResponder('Saved elsewhere');
+  await click('Check current profile');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('My edit');
+  expect(container.textContent).toContain(
+    'Current saved name: Saved elsewhere',
+  );
+  respond = async (_path, body) => {
+    expect(body.variables).toEqual({
+      displayName: 'My edit',
+      expectedDisplayName: 'Saved elsewhere',
+    });
+    return {
+      data: {
+        updateMyProfile: {
+          __typename: 'Profile',
+          id: 'user-a',
+          displayName: 'My edit',
+        },
+      },
+    };
+  };
+  await submitProfile();
+  expect(container.textContent).toContain('Changes saved.');
+});
+it('ignores a late profile save after account switch', async () => {
+  profileResponder();
+  await render('account');
+  await fillName('Old actor secret');
+  let finish!: (value: unknown) => void;
+  respond = async (_path, body) =>
+    String(body.query).includes('mutation profileMutation')
+      ? new Promise((done) => {
+          finish = done;
+        })
+      : profileResult('Bob');
+  await submitProfile();
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'bob', email: 'bob@example.test' },
+      access_token: 'bob-token',
+    }),
+  );
+  await act(async () =>
+    finish({
+      data: {
+        updateMyProfile: {
+          __typename: 'Profile',
+          id: 'user-a',
+          displayName: 'Old actor secret',
+        },
+      },
+    }),
+  );
+  expect(container.textContent).not.toContain('Old actor secret');
+  expect(container.textContent).not.toContain('Changes saved.');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Bob');
+});
+it('keeps unresolved invitation recovery in its original workspace when navigating to another', async () => {
+  const original = {
+    kind: 'RESEND' as const,
+    key,
+    groupID: 'group-a',
+    invitationID: 'invite-a',
+  };
+  saveAttempt(original);
+  respond = async () => ({
+    data: { ownerInvitations: { items: [], nextCursor: null } },
+  });
+  await scoped('group-b', 'Maui');
+  expect(container.textContent).toContain('Invitations for Maui');
+  expect(container.textContent).toContain('belongs to another workspace');
+  expect(container.querySelector('a')?.getAttribute('href')).toBe(
+    '/invitations?group=group-a',
+  );
+  expect(button('Try the original request again')).toBeUndefined();
+  expect(button('Create invitation').disabled).toBe(true);
+  expect(readAttempt()).toEqual(original);
+  expect(
+    requests.every((r) => !String(r.body.query).includes('resendInvitation')),
+  ).toBe(true);
+});
+it('replaces invitation scope and ignores a late private listing response', async () => {
+  let finish!: (value: unknown) => void;
+  const initial = respond;
+  respond = async (path, body) =>
+    path === '/api/graphql'
+      ? new Promise((done) => {
+          finish = done;
+        })
+      : initial(path, body);
+  await scoped('group-a', 'House');
+  respond = async () => ({
+    data: { ownerInvitations: { items: [], nextCursor: null } },
+  });
+  await scoped('group-b', 'Maui');
+  await act(async () =>
+    finish({
+      data: {
+        ownerInvitations: {
+          items: [
+            {
+              id: 'invite-a',
+              recipient: 'private@example.test',
+              lifecycle: 'PENDING',
+            },
+          ],
+          nextCursor: null,
+        },
+      },
+    }),
+  );
+  expect(container.textContent).toContain('Invitations for Maui');
+  expect(container.textContent).not.toContain('private@example.test');
+  expect(
+    requests
+      .filter((r) => String(r.body.query).includes('ownerInvitations'))
+      .map((r) => r.body.variables),
+  ).toEqual([
+    { groupID: 'group-a', after: null },
+    { groupID: 'group-b', after: null },
+  ]);
+});
+it('shows retryable signout failure without redirect and suppresses duplicate attempts', async () => {
+  profileResponder();
+  await render('account');
+  let finish!: (value: unknown) => void;
+  sdk.signOut.mockImplementation(
+    () =>
+      new Promise((done) => {
+        finish = done;
+      }),
+  );
+  await act(async () => {
+    button('Sign out of this session').click();
+    button('Sign out of this session').click();
+  });
+  expect(sdk.signOut).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ error: { message: 'Unavailable' } }));
+  expect(sdk.replace).not.toHaveBeenCalled();
+  expect(container.textContent).toContain('Alice');
+  expect(button('Sign out of this session').disabled).toBe(false);
+  sdk.signOut.mockImplementation(async () => {
+    sdk.changed('SIGNED_OUT', null);
+    return { error: null };
+  });
+  await click('Sign out of this session');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in');
+  expect(sdk.signOut).toHaveBeenLastCalledWith({ scope: 'local' });
+});
+it('leaves untargeted legacy invitations as navigation guidance instead of choosing a workspace', async () => {
+  await render('invitations');
+  expect(button('Load my groups')).toBeUndefined();
+  expect(button('Create invitation')).toBeUndefined();
+  expect(
+    requests.some((r) => String(r.body.query).includes('ownerInvitations')),
+  ).toBe(false);
+  for (const href of ['/household', '/groups', '/trips'])
+    expect(container.querySelector(`a[href="${href}"]`)).not.toBeNull();
+});
+
+it('accepts the 120 code-point boundary and renders markup-shaped names as text', async () => {
+  profileResponder('<img src=x onerror=alert(1)>');
+  await render('account');
+  expect(container.querySelector('img')).toBeNull();
+  const name = '😀'.repeat(120);
+  await fillName(name);
+  respond = async (_path, body) => {
+    expect(body.variables).toEqual({
+      displayName: name,
+      expectedDisplayName: '<img src=x onerror=alert(1)>',
+    });
+    return {
+      data: {
+        updateMyProfile: {
+          __typename: 'Profile',
+          id: 'user-a',
+          displayName: name,
+        },
+      },
+    };
+  };
+  await submitProfile();
+  expect(container.textContent).toContain('Changes saved.');
+});
+it('preserves a rejected server-validation draft without reporting success', async () => {
+  profileResponder();
+  await render('account');
+  await fillName('Draft');
+  respond = async () => ({
+    data: {
+      updateMyProfile: { __typename: 'ProfileProblem', code: 'INVALID_INPUT' },
+    },
+  });
+  await submitProfile();
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Draft');
+  expect(container.textContent).not.toContain('Changes saved.');
+  expect(button('Save changes').disabled).toBe(false);
+});
+it('requires reconciliation after a concurrent-edit conflict and never automatically resubmits', async () => {
+  profileResponder();
+  await render('account');
+  await fillName('Draft');
+  respond = async () => ({
+    data: {
+      updateMyProfile: { __typename: 'ProfileProblem', code: 'CONFLICT' },
+    },
+  });
+  await submitProfile();
+  expect(container.textContent).toContain('Your name changed elsewhere');
+  expect(button('Save changes').disabled).toBe(true);
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Draft');
+  profileResponder('Other edit');
+  await click('Check current profile');
+  expect(
+    requests.filter((r) =>
+      String(r.body.query).includes('mutation profileMutation'),
+    ),
+  ).toHaveLength(1);
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Draft');
+});
+it.each([
+  [
+    { id: 'home', kind: 'ORDINARY', isHousehold: true },
+    '/household?tab=members#invitations',
+  ],
+  [
+    { id: 'group-a', kind: 'ORDINARY', isHousehold: false },
+    '/groups/group-a?tab=members#invitations',
+  ],
+  [
+    { id: 'trip-a', kind: 'TRIP', isHousehold: false },
+    '/trips/trip-a?tab=members#invitations',
+  ],
+])(
+  'resolves an explicit authorized legacy target into its contextual destination',
+  async (group, expected) => {
+    window.history.replaceState(null, '', `/invitations?group=${group.id}`);
+    const initial = respond;
+    respond = async (path, body) =>
+      path === '/api/graphql'
+        ? {
+            data: {
+              group: {
+                __typename: 'Group',
+                ...group,
+                name: 'Space',
+                viewerMembership: { role: 'OWNER' },
+              },
+            },
+          }
+        : initial(path, body);
+    await render('invitations');
+    expect(sdk.replace).toHaveBeenCalledWith(expected);
+    expect(
+      requests.some((r) => String(r.body.query).includes('ownerInvitations')),
+    ).toBe(false);
+  },
+);
+it.each([
+  { __typename: 'Problem', code: 'NOT_FOUND' },
+  {
+    __typename: 'Group',
+    id: 'secret',
+    name: 'Private space',
+    viewerMembership: { role: 'MEMBER' },
+  },
+])(
+  'does not disclose or open an inaccessible legacy invitation target',
+  async (group) => {
+    window.history.replaceState(null, '', '/invitations?group=secret');
+    const initial = respond;
+    respond = async (path, body) =>
+      path === '/api/graphql' ? { data: { group } } : initial(path, body);
+    await render('invitations');
+    expect(sdk.replace).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain('Private space');
+    expect(container.textContent).toContain('workspace is unavailable');
+  },
+);
+
+it('preserves contextual Members query and invitation anchor through mount and reload', async () => {
+  const url = '/trips/group-a?tab=members#invitations';
+  window.history.replaceState(null, '', url);
+  const initial = respond;
+  respond = async (path, body) =>
+    path === '/api/graphql'
+      ? { data: { ownerInvitations: { items: [], nextCursor: null } } }
+      : initial(path, body);
+  await scoped('group-a', 'Maui');
+  expect(
+    window.location.pathname + window.location.search + window.location.hash,
+  ).toBe(url);
+  expect(requests.some((r) => r.path.endsWith('/start'))).toBe(false);
+  await act(async () => root.render(<p>Reloading</p>));
+  await scoped('group-a', 'Maui');
+  expect(
+    window.location.pathname + window.location.search + window.location.hash,
+  ).toBe(url);
+  expect(requests.some((r) => r.path.endsWith('/start'))).toBe(false);
+});
+it('does not sign out a newer account after a prior signout context-clear response arrives', async () => {
+  profileResponder();
+  await render('account');
+  let finish!: (value: unknown) => void;
+  respond = async (path) =>
+    path.endsWith('/clear')
+      ? new Promise((done) => {
+          finish = done;
+        })
+      : profileResult('Bob');
+  await click('Sign out of this session');
+  await act(async () =>
+    sdk.changed('SIGNED_IN', {
+      user: { id: 'bob', email: 'bob@example.test' },
+      access_token: 'bob-token',
+    }),
+  );
+  await act(async () => finish({ code: 'CLEARED' }));
+  expect(sdk.signOut).not.toHaveBeenCalled();
+  expect(sdk.replace).not.toHaveBeenCalledWith('/sign-in');
+  expect(
+    (container.querySelector('#account-email') as HTMLInputElement).value,
+  ).toBe('bob@example.test');
+  expect(
+    (container.querySelector('#display-name') as HTMLInputElement).value,
+  ).toBe('Bob');
+});

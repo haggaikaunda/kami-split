@@ -37,7 +37,7 @@ func members(s expense.Snapshot) map[string]*model.Membership {
 func mapExpense(r expense.Record, m map[string]*model.Membership) *model.Expense {
 	e := &model.Expense{ID: r.ExpenseID, GroupID: r.GroupID, TotalMinor: ledger.MinorUnits(r.TotalMinor), Currency: model.Currency(r.Currency), Description: r.Description, EffectiveDate: ledger.Date(r.EffectiveDate), Category: model.Category(r.Category), Note: r.Note, Payer: m[r.PayerMembershipID], Creator: m[r.CreatorMembershipID], Split: model.SplitMode(r.Split), CreatedAt: ledger.DateTime(r.CommittedAt), Allocations: []*model.Allocation{}}
 	for _, a := range r.Allocations {
-		e.Allocations = append(e.Allocations, &model.Allocation{Participant: m[a.ParticipantID], AmountMinor: ledger.MinorUnits(a.Amount)})
+		e.Allocations = append(e.Allocations, &model.Allocation{Participant: m[a.ParticipantID], AmountMinor: ledger.MinorUnits(a.Amount), PercentageHundredths: percentageValue(r, a.ParticipantID)})
 	}
 	return e
 }
@@ -68,7 +68,7 @@ func mapOutcome(out expense.Outcome) model.CreateExpenseResult {
 		r := out.Record
 		record := &model.ExpenseOperationRecord{ExpenseID: r.ExpenseID, GroupID: r.GroupID, CreatorMembershipID: r.CreatorMembershipID, PayerMembershipID: r.PayerMembershipID, TotalMinor: ledger.MinorUnits(r.TotalMinor), Currency: model.Currency(r.Currency), Description: r.Description, EffectiveDate: ledger.Date(r.EffectiveDate), Category: model.Category(r.Category), Note: r.Note, Split: model.SplitMode(r.Split), CommittedAt: ledger.DateTime(r.CommittedAt), Revision: ledger.Revision(r.Revision), Allocations: []*model.OperationAllocation{}}
 		for _, a := range r.Allocations {
-			record.Allocations = append(record.Allocations, &model.OperationAllocation{ParticipantID: a.ParticipantID, AmountMinor: ledger.MinorUnits(a.Amount)})
+			record.Allocations = append(record.Allocations, &model.OperationAllocation{ParticipantID: a.ParticipantID, AmountMinor: ledger.MinorUnits(a.Amount), PercentageHundredths: percentageValue(*r, a.ParticipantID)})
 		}
 		return &model.ExpenseCommitted{Key: ledger.OperationKey(out.Key), Record: record}
 	case "VALIDATION":
@@ -183,4 +183,14 @@ func mapTrip(trip *database.GroupTripInput) (model.GroupKind, *model.GroupTrip) 
 		return model.GroupKindOrdinary, nil
 	}
 	return model.GroupKindTrip, &model.GroupTrip{Destination: trip.Destination, StartDate: ledger.Date(trip.StartDate), EndDate: ledger.Date(trip.EndDate)}
+}
+
+func percentageValue(r expense.Record, id string) *int {
+	for _, p := range r.Percentages {
+		if p.ParticipantID == id {
+			value := int(p.Hundredths)
+			return &value
+		}
+	}
+	return nil
 }

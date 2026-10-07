@@ -2,7 +2,7 @@
 
 ## Status
 
-The authenticated `householdDashboard` read implements the [ADR-007 summary](decisions/007-household-dashboard.md) for the finalized ADR-008 pair. It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the production Household browser page remains a separate #112 delivery.
+The authenticated `householdDashboard` read implements the [ADR-007 summary](decisions/007-household-dashboard.md) under [ADR-010 membership sharing](decisions/010-household-membership-sharing.md). It returns complete original-space balances and exact signed viewer net, open/active space counts, and active expense face-value totals from one coherent authorized read. Sharing fallback, financial overflow and discovery failure never return partial totals; the Household browser workspace consumes these reads under #112, with complete [Expenses integration](expenses-ledger.md) implemented by #170.
 
 The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
 expense views with original-space attribution, complete face-value totals/counts,
@@ -16,9 +16,14 @@ current access. Repayments never contribute to spending. Free-text search remain
 separate #177 scope; these reads introduce no search field or SQL text search.
 
 The Go + gqlgen API in `apps/api` implements public health, authenticated expense operations, ordinary/trip group creation and recovery, and authorized group metadata reads, with authoritative SDL in `packages/schema`. See the [API README](../../apps/api/README.md) for running and verification. Supabase-managed PostgreSQL and Supabase Auth are selected; pgx + sqlc and Supabase CLI SQL migrations are the agreed persistence tooling. Local Supabase, pgxpool and disposable sqlc verification are implemented; see [database development](database-development.md). The [identity foundation](identity-foundation.md) implements private identities,
-groups, memberships and transaction-bound reads. [Persisted expenses](persisted-expenses.md) implement atomic financial creation, audit/recovery, authorized projections and complete balances. Internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission; [onboarding adapters](onboarding.md) connect Auth, email, browser entry and the invitation SDL. Expense editing/deletion and imports remain deferred; append-only actual group repayments and history are implemented. The [authenticated expense journey](relay-expenses.md) uses Relay at `/groups`, connected to real account/onboarding pages. Remaining labeled preview screens keep the mock DataPort. These decisions do not authorize scaffolding outside an approved implementation issue.
+groups, memberships and transaction-bound reads. [Persisted expenses](persisted-expenses.md) implement atomic financial creation, audit/recovery, authorized projections and complete balances. Internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission; [onboarding adapters](onboarding.md) connect Auth, email, browser entry and the invitation SDL. Expense editing/deletion and imports remain deferred; append-only actual group repayments and history are implemented. The [authenticated expense journey](relay-expenses.md) uses Relay at `/groups`, connected to real account/onboarding pages. The seeded web runtime and mock DataPort were retired in #184. These decisions do not authorize scaffolding outside an approved implementation issue.
 
 [Authenticated activity](activity.md) reads immutable expense/repayment events with signed scope-bound pagination. Household traversal reuses the summary eligibility and locking boundary; its Activity UI is separate from the broader #112 dashboard implementation.
+
+The [self-profile contract](profile.md) provides authenticated reads independent of
+group discovery and an atomic expected-name display-name update. It changes only
+application profile metadata through a narrowly granted SQL function; Auth
+metadata and immutable financial/audit/recovery records remain unchanged.
 
 ## Responsibilities
 

@@ -1,7 +1,7 @@
 'use client';
 import { createSessionId } from '@/lib/session-id';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import type { FinancialScope } from '@/lib/relay/environment';
 export type SourceVisit = {
@@ -30,13 +30,18 @@ export function ScopedLink({
         event.preventDefault();
         const token = createSessionId();
         const url = new URL(window.location.href);
-        const match = url.pathname.match(/^\/groups\/([^/]+)$/);
+        const match = url.pathname.match(/^\/(?:groups|trips)\/([^/]+)$/);
         scope.visits.set(token, {
           href: url.pathname + url.search,
           focus: id,
           scroll: window.scrollY,
           group: match ? decodeURIComponent(match[1]) : undefined,
         });
+        // Preserve Next's state while marking the source history entry for browser Back.
+        window.history.replaceState(
+          { ...window.history.state, financialRestore: token },
+          '',
+        );
         router.push(`${href}${href.includes('?') ? '&' : '?'}source=${token}`);
       }}
     >
@@ -44,8 +49,15 @@ export function ScopedLink({
     </Link>
   );
 }
-export function SourceReturn({ scope }: { scope: FinancialScope }) {
+export function SourceReturn({
+  scope,
+  household = false,
+}: {
+  scope: FinancialScope;
+  household?: boolean;
+}) {
   const params = useSearchParams();
+  const trip = usePathname().startsWith('/trips/');
   const token = params.get('source');
   const visit = token ? scope.visits.get(token) : undefined;
   return (
@@ -53,14 +65,24 @@ export function SourceReturn({ scope }: { scope: FinancialScope }) {
       href={
         visit
           ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${token}`
-          : '/groups'
+          : household
+            ? '/household'
+            : trip
+              ? '/trips'
+              : '/groups'
       }
       scroll={false}
       onNavigate={() => {
         if (token) scope.restored.delete(token);
       }}
     >
-      {visit ? 'Back to source' : 'Back to Groups'}
+      {visit
+        ? 'Back to source'
+        : household
+          ? 'Back to Household'
+          : trip
+            ? 'Back to Trips'
+            : 'Back to Groups'}
     </Link>
   );
 }
@@ -73,7 +95,19 @@ export function RestoreSource({
   allowed: readonly string[];
 }) {
   const params = useSearchParams();
-  const token = params.get('restore');
+  const historyToken =
+    typeof window !== 'undefined'
+      ? (window.history.state?.financialRestore as string | undefined)
+      : undefined;
+  const historyVisit = historyToken
+    ? scope.visits.get(historyToken)
+    : undefined;
+  // A Back entry can carry an older explicit restore query. Its own visit wins.
+  const token =
+    historyVisit &&
+    historyVisit.href === window.location.pathname + window.location.search
+      ? historyToken
+      : params.get('restore');
   const ids = allowed.join('\n');
   useEffect(() => {
     if (!token || !scope.isLive() || scope.restored.has(token)) return;

@@ -1,7 +1,14 @@
 'use client';
+import {
+  spaceHref,
+  spaceInvitationsHref,
+  spaceExpenseHref,
+  spaceRepaymentHref,
+} from '@/lib/relay/space-routes';
+import { CategoryIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import type { journeyGroupQuery } from '@/lib/relay/__generated__/journeyGroupQuery.graphql';
+import { useSearchParams } from 'next/navigation';
+import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
 import { tripState } from '@/lib/relay/discovery';
@@ -20,10 +27,13 @@ import {
 } from '@/components/primitives';
 import { ScopedLink } from './navigation';
 import { ActivityFeed } from '@/components/activity/feed';
-import { ExpenseForm } from './expense-form';
+import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
+import type { activityFeed$key } from '@/lib/relay/__generated__/activityFeed.graphql';
+import { ExpenseLedger } from '@/components/expenses/ledger';
+import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
-  journeyGroupQuery['response']['group'],
+  journeyWorkspaceQuery['response']['group'],
   { readonly __typename: 'Group' }
 >;
 export function GroupWorkspace({
@@ -31,106 +41,110 @@ export function GroupWorkspace({
   group,
   today,
   repayment = false,
+  showTabs = true,
+  showHeader = true,
+  initialView,
+  initialFeed,
   completed = false,
-  onRefresh,
   onCommitted,
+  onRefresh,
   onDenied,
 }: {
   scope: FinancialScope;
   group: WorkspaceGroup;
   today: string;
   repayment?: boolean;
+  showTabs?: boolean;
+  showHeader?: boolean;
+  initialView?: { filterText: string; reference: expensesView$key };
+  initialFeed?: activityFeed$key;
   completed?: boolean;
   onRefresh: () => Promise<void>;
   onCommitted: () => Promise<void>;
   onDenied: () => void;
 }) {
-  const router = useRouter(),
-    params = useSearchParams();
+  const params = useSearchParams();
   const requested = params.get('tab');
   const current: WorkspaceSection =
     workspaceSections.find((t) => t.toLowerCase() === requested) ??
     (params.has('after') ? 'Expenses' : 'Overview');
-  const base = `/groups/${encodeURIComponent(group.id)}`;
+  const base = spaceHref(group);
   const hrefFor = (tab: WorkspaceSection) => `${base}?tab=${tab.toLowerCase()}`;
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
   return (
     <div
       className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
     >
-      <WorkspaceHeader
-        title={group.name}
-        context={
-          <>
-            <SpaceChip>
-              {group.isHousehold ? 'Household' : group.trip ? 'Trip' : 'Group'}
-            </SpaceChip>
-            <span> · {group.currency}</span>
-            {group.trip && (
-              <p>
-                {group.trip.destination} ·{' '}
-                <time dateTime={group.trip.startDate}>
-                  {group.trip.startDate}
-                </time>{' '}
-                –{' '}
-                <time dateTime={group.trip.endDate}>{group.trip.endDate}</time>{' '}
-                · {tripState(group.trip, today)}
-              </p>
+      {showHeader && (!repayment || completed) && (
+        <>
+          <WorkspaceHeader
+            title={group.name}
+            appearance={
+              group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
+            }
+            context={
+              <>
+                <SpaceChip>
+                  {group.isHousehold
+                    ? 'Household'
+                    : group.trip
+                      ? 'Trip'
+                      : 'Group'}
+                </SpaceChip>
+                <span> · {group.currency}</span>
+                {group.trip && (
+                  <p>
+                    {group.trip.destination} ·{' '}
+                    <time dateTime={group.trip.startDate}>
+                      {group.trip.startDate}
+                    </time>{' '}
+                    –{' '}
+                    <time dateTime={group.trip.endDate}>
+                      {group.trip.endDate}
+                    </time>{' '}
+                    · {tripState(group.trip, today)}
+                  </p>
+                )}
+                <div className="group-members-context">
+                  {activeMembers.slice(0, 3).map((m) => (
+                    <Member key={m.id} name={m.displayName} />
+                  ))}
+                  <Link href={hrefFor('Members')}>
+                    {activeMembers.length} active{' '}
+                    {activeMembers.length === 1 ? 'member' : 'members'}
+                  </Link>
+                </div>
+              </>
+            }
+          >
+            {group.viewerMembership.role === 'OWNER' && (
+              <div className="group-header-actions">
+                <Link href={spaceInvitationsHref(group)}>
+                  Manage invitations
+                </Link>
+                <details className="group-settings">
+                  <summary>Group settings</summary>
+                  <p>
+                    Name: {group.name} · Currency: {group.currency}
+                  </p>
+                  <p>
+                    Membership and invitations are managed separately. Metadata
+                    editing is not available in this workspace.
+                  </p>
+                </details>
+              </div>
             )}
-            <div className="group-members-context">
-              {activeMembers.slice(0, 3).map((m) => (
-                <Member key={m.id} name={m.displayName} />
-              ))}
-              <Link href={hrefFor('Members')}>
-                {activeMembers.length} active{' '}
-                {activeMembers.length === 1 ? 'member' : 'members'}
-              </Link>
-            </div>
-          </>
-        }
-      >
-        <div className="group-context-art" aria-hidden="true">
-          {group.trip ? '◇' : group.isHousehold ? '⌂' : '○'}
-        </div>
-        {group.viewerMembership.role === 'OWNER' && (
-          <div>
-            <Link href="/invitations">Manage invitations</Link>
-            <details className="group-settings">
-              <summary>Group settings</summary>
-              <p>
-                Name: {group.name} · Currency: {group.currency}
-              </p>
-              <p>
-                Membership and invitations are managed separately. Metadata
-                editing is not available in this workspace.
-              </p>
-            </details>
-          </div>
-        )}
-      </WorkspaceHeader>
-      <div
-        onClick={(event) => {
-          const a = (event.target as HTMLElement).closest('a');
-          if (
-            !a ||
-            !a.closest('.ui-workspace-tabs') ||
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          router.push(a.getAttribute('href')!);
-        }}
-      >
+          </WorkspaceHeader>
+        </>
+      )}
+      {showTabs && (
         <WorkspaceTabs
           current={repayment ? 'Balances' : current}
           hrefFor={hrefFor}
           label={`${group.name} workspace`}
         />
-      </div>
+      )}
+
       {repayment && !completed ? (
         <RepaymentForm
           scope={scope}
@@ -158,33 +172,30 @@ export function GroupWorkspace({
           </section>
         </>
       ) : current === 'Expenses' ? (
-        <>
-          <section aria-labelledby="expenses-title">
-            <h2 id="expenses-title">Expenses</h2>
-            <Expenses scope={scope} group={group} />
-            {group.expenses?.pageInfo.hasNextPage && (
-              <button
-                onClick={() => {
-                  const query = new URLSearchParams(params);
-                  query.set('tab', 'expenses');
-                  query.set('after', group.expenses!.pageInfo.endCursor ?? '');
-                  router.push(`${base}?${query}`);
-                }}
-              >
-                Load more expenses
-              </button>
-            )}
-          </section>
-          <ExpenseForm
-            scope={scope}
-            group={group.id}
-            today={today}
-            payer={group.viewerMembership.id}
-            members={group.members}
-            onCommitted={onRefresh}
-            onDenied={onDenied}
-          />
-        </>
+        <ExpenseLedger
+          initialView={initialView}
+          managedRefresh={!showTabs}
+          scope={scope}
+          groupId={group.id}
+          spaces={[
+            {
+              groupId: group.id,
+              name: group.name,
+              viewerMembership: group.viewerMembership,
+              members: group.members,
+            },
+          ]}
+          today={today}
+          net={
+            group.balances?.__typename === 'GroupBalances'
+              ? group.balances.positions.find(
+                  (p) => p.member.id === group.viewerMembership.id,
+                )?.netMinor
+              : undefined
+          }
+          onDenied={onDenied}
+          onRefreshContext={onRefresh}
+        />
       ) : current === 'Members' ? (
         <section>
           <h2>Members</h2>
@@ -196,11 +207,20 @@ export function GroupWorkspace({
               </p>
             </MemberBalanceRow>
           ))}
+          {group.viewerMembership.role === 'OWNER' && (
+            <ScopedInvitations scope={scope} group={group} />
+          )}
         </section>
       ) : (
         <section>
           <h2>Activity</h2>
-          <ActivityFeed scope={scope} groupId={group.id} />
+          <ActivityFeed
+            scope={scope}
+            groupId={group.id}
+            initialFeed={initialFeed}
+            managedRefresh={!showTabs}
+            onDenied={onDenied}
+          />
         </section>
       )}
     </div>
@@ -217,7 +237,7 @@ function ViewerMetric({
 }) {
   const b = group.balances;
   const viewer =
-    b.__typename === 'GroupBalances'
+    b?.__typename === 'GroupBalances'
       ? b.positions.find((p) => p.member.id === group.viewerMembership.id)
       : undefined;
   if (!viewer)
@@ -231,21 +251,26 @@ function ViewerMetric({
   return (
     <SignedBalanceMetric
       position={position}
-      value={money(viewer.netMinor).replace(/^-/, '')}
+      label="Your balance"
+      value={`${net > 0n ? '+' : ''}${money(viewer.netMinor)}`}
       currency={group.currency}
       detail={
         <>
           <span aria-hidden="true">
             {net > 0n ? '↗ ' : net < 0n ? '↘ ' : '✓ '}
           </span>
-          {net === 0n && b.__typename === 'GroupBalances' && !b.settled
+          {net === 0n && b?.__typename === 'GroupBalances' && !b.settled
             ? 'Your balance is zero. Other members still have open obligations.'
-            : 'Your position in this group.'}
+            : net > 0n
+              ? "You're owed in this group."
+              : net < 0n
+                ? 'You owe in this group.'
+                : 'Settled in this group.'}
           {disclosure && (
             <ScopedLink
               scope={scope}
               id="view-balance"
-              href={`/groups/${encodeURIComponent(group.id)}?tab=balances`}
+              href={`${spaceHref(group)}?tab=balances`}
             >
               View balance
             </ScopedLink>
@@ -265,7 +290,7 @@ function OverviewMetrics({
   return (
     <div className="ui-summary-row">
       <SummaryMetric label="Total expenses">
-        {group.balances.__typename === 'GroupBalances' ? (
+        {group.balances?.__typename === 'GroupBalances' ? (
           <Money
             value={money(group.balances.totalExpenseMinor)}
             currency={group.currency}
@@ -312,9 +337,10 @@ function Expenses({
               <ScopedLink
                 scope={scope}
                 id={`expense-${edge.node.id}`}
-                href={`/groups/${encodeURIComponent(group.id)}/expenses/${encodeURIComponent(edge.node.id)}`}
+                href={spaceExpenseHref(group, edge.node.id)}
               >
-                <span>
+                <CategoryIcon category={edge.node.category} />
+                <span className="expense-row-copy">
                   <strong>{edge.node.description}</strong>
                   <span className="ui-row-detail">
                     <time dateTime={edge.node.effectiveDate}>
@@ -343,7 +369,7 @@ export function GroupBalances({
   group: WorkspaceGroup;
 }) {
   const b = group.balances;
-  if (b.__typename !== 'GroupBalances')
+  if (b?.__typename !== 'GroupBalances')
     return (
       <section>
         <h2>Complete balances</h2>
@@ -353,7 +379,7 @@ export function GroupBalances({
       </section>
     );
   return (
-    <section>
+    <section className="group-balances">
       <h2>Balance details</h2>
       <ViewerMetric scope={scope} group={group} />
       <p>
@@ -385,8 +411,8 @@ export function GroupBalances({
         Each row identifies the sender, recipient and amount within {group.name}
         . Original expenses are history, not additional debts.
       </p>
-      {!b.obligations.length && <p>No current simplified obligations.</p>}
-      {b.obligations.map((o) => {
+      {!b.obligations?.length && <p>No current simplified obligations.</p>}
+      {(b.obligations ?? []).map((o) => {
         const eligible = [o.from.id, o.to.id].every((id) =>
           group.members.some((m) => m.id === id && m.canParticipate),
         );
@@ -416,7 +442,7 @@ export function GroupBalances({
                 <ScopedLink
                   scope={scope}
                   id={`repay-${o.from.id}-${o.to.id}`}
-                  href={`/groups/${encodeURIComponent(group.id)}/repayments/new?${query}`}
+                  href={spaceRepaymentHref(group, query)}
                 >
                   Record {o.from.displayName} → {o.to.displayName} repayment
                 </ScopedLink>

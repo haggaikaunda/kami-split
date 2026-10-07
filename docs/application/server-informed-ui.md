@@ -2,9 +2,9 @@
 
 ## Status
 
-This document records a presentation/API design principle for Kami Split. It guides contract design; it does not introduce a generic server-driven UI framework or authorize implementation outside an approved issue.
+This document records a presentation/API design principle for Kami Grow. It guides contract design; it does not introduce a generic server-driven UI framework or authorize implementation outside an approved issue.
 
-Kami Split starts with **server-informed UI**: the server owns authoritative domain meaning, authorization, complete financial aggregates, and business capabilities; clients own interaction, layout, navigation, accessibility, and responsive presentation. Selected read-heavy surfaces may later experiment with **server composition** using a small typed vocabulary of client-implemented sections.
+Kami Grow starts with **server-informed UI**: the server owns authoritative domain meaning, authorization, complete financial aggregates, and business capabilities; clients own interaction, layout, navigation, accessibility, and responsive presentation. Selected read-heavy surfaces may later experiment with **server composition** using a small typed vocabulary of client-implemented sections.
 
 See [API architecture](api-architecture.md) for the backend responsibilities that this principle builds on.
 
@@ -12,7 +12,7 @@ See [API architecture](api-architecture.md) for the backend responsibilities tha
 
 Financial clients must not reconstruct authoritative meaning from whichever records happen to be loaded. Pagination, authorization, concurrent writes, and multiple UI entry points make client inference unsafe for balances, obligations, and other complete summaries.
 
-At the same time, Kami Split already has rich client behavior around forms, drafts, recovery, navigation, and accessibility. Encoding those interactions in a generic UI protocol would add a second application framework before there is evidence that it is needed.
+At the same time, Kami Grow already has rich client behavior around forms, drafts, recovery, navigation, and accessibility. Encoding those interactions in a generic UI protocol would add a second application framework before there is evidence that it is needed.
 
 The intended boundary is therefore:
 

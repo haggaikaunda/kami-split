@@ -1,5 +1,7 @@
 # Trip detail
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 ## Accepted production direction
 
 The household expense filters and household repayment link below describe the preserved preview. [ADR-003](../application/decisions/003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment) requires future repayment entry to target the original trip group, whether opened here or from a dashboard, with no Household copy or cross-group offset. No private-household-expense-to-trip-report association was adopted. Full group/trip and consolidated dashboard design remain #85/#86, outside #73.

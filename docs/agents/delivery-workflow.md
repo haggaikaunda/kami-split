@@ -4,13 +4,14 @@ This is the canonical process for all repository changes: web, API, schema, infr
 
 ## Pull request lifecycle
 
-1. **Ready issue:** scope, acceptance criteria, exclusions, and test notes are clear.
+1. **Ready issue:** scope, acceptance criteria, exclusions, and test notes are clear. Perform the task-start synchronization below and record the observed SHA or blocker.
 2. **Builder:** implements the smallest complete solution in a worktree, opens a draft PR, and records the convention self-check below before requesting final review.
 3. **CI:** deterministic formatting, linting, type checking, unit tests, and build checks pass.
 4. **Tester:** independently compares the behavior and tests with the issue. The tester may add test-only commits; production changes return to the builder.
 5. **Reviewer:** reviews the whole final diff with fresh context and records prioritized findings and convention evidence below.
 6. **Resolution:** findings are fixed or explicitly resolved; CI reruns after all changes.
 7. **Merge:** an agent may squash-merge only when every gate below is satisfied.
+8. **Closeout:** the delivery/merge coordinator executes the post-merge closeout below and records outcomes or blockers. Each agent owns its own disposable worktrees. If another session merges, explicitly hand off cleanup to the agent with access to the original checkout.
 
 ## Shared source-of-truth updates
 
@@ -95,7 +96,93 @@ After fixes, the final reviewer must examine the whole updated final diff, not j
 
 Preserve the existing review priorities: financial, authorization, privacy, data-integrity, concurrency, and breaking-change defects outrank maintainability/style findings. Require actionable reasoning under repository policy, not speculative interfaces, generic repository layers, gratuitous helpers/packages, comment noise, or wholesale external style-guide adoption. Add automation only for useful objective checks (such as exported documentation or generation drift); architecture and readability remain review judgments, never architecture-by-regex or function-size linting.
 
-Mark the PR ready only after findings are resolved. Satisfy required GitHub approvals and branch protections as well as independent testing/review. Never bypass protections or merge with failing or missing required checks. After an authorized merge, verify GitHub reports the merge and report the result.
+Mark the PR ready only after findings are resolved. Satisfy required GitHub approvals and branch protections as well as independent testing/review. Never bypass protections or merge with failing or missing required checks. After an authorized merge, complete the closeout below before reporting delivery complete. Keep pre-merge gates separate from post-merge completion evidence.
+
+## Task-start synchronization and post-merge closeout
+
+The coordinator owns closeout through evidence or an explicit execution handoff;
+merging in another session does not remove that responsibility. Coordinate access
+to the designated primary checkout with its owner. Each agent removes only its own
+completed, clean, disposable worktrees. Unknown ownership is a blocker, even when
+a PR was merged.
+
+At task start, inspect the primary checkout and linked worktrees, confirm `origin`
+identifies this repository, and fetch/prune fresh state. On a clean primary
+checkout without in-progress Git operations, switch to `main` and run
+`git pull --ff-only origin main`. Explicitly verify `main` equals `origin/main`
+and record that observed SHA. An ahead local `main` is a blocker even if pull
+succeeds. If primary synchronization is blocked, record why and start an isolated
+worktree from the freshly fetched `origin/main`; never claim the primary was
+synchronized. Do not force a second checkout of `main` or update its ref behind
+another active worktree.
+
+After an authorized merge, execute these steps in order:
+
+1. Refresh GitHub state. Confirm the PR was **merged into `main`**, rather than
+   merely closed. Record repository, source repository/branch, final merged PR
+   head SHA and merge commit SHA. A requested merge or successful command alone
+   is insufficient evidence.
+2. Inspect the affected repository, current branch, working-tree status (including
+   untracked files), branch tips/upstreams, linked worktrees, locks and in-progress
+   Git operations. Confirm `origin` identifies the recorded repository. Run
+   `git fetch --prune origin`; failures stop dependent operations.
+3. Return the designated primary checkout to clean `main` and run
+   `git pull --ff-only origin main`, or fetch plus fast-forward-only merge. Verify
+   **equality** of local `main` and freshly fetched `origin/main`, and that the
+   confirmed merge commit is an ancestor of `origin/main`. Record both SHAs. Do
+   not commit, rebase, reset or create a merge commit on `main` for cleanup.
+4. Remove the completed local feature branch only after proving its exact tip
+   matches the final merged PR head, the merge is in `origin/main`, and no open or
+   dependent PR or other ongoing work uses it. Inspect and remove only an owned,
+   clean, disposable worktree before deleting its branch; preserve valuable
+   ignored configuration outside it first. Finish in the designated primary
+   checkout, never in a deleted directory. Prefer ordinary `git branch -d` under
+   coordinated exclusive access. For squash merges, use narrowly scoped deletion
+   guarded by the expected tip as described in the procedure below; never use
+   blanket force-delete pipelines.
+5. Recheck `delete_branch_on_merge` remains enabled. Verify the exact source ref
+   on the remote server, independently of pruning. If a same-repository source
+   branch survives, recheck current tip, protections, merged PR and ongoing or
+   dependent work before deleting only that ref with a tip guard; verify absence
+   again and prune as needed. Preserve advanced/reused branches. Fork branches
+   require separate ownership and permission handling. Restore an unexpectedly
+   disabled setting only with repository administration authority; otherwise
+   report the discrepancy without weakening protections or adding write workflows.
+
+Squash merges do not make the old head an ancestor of `main`. Neither
+`git branch --merged main`, branch age/name, nor missing upstream proves delivery.
+Use GitHub merge evidence and exact branch-tip verification. Preserve `main`,
+protected/long-lived branches, open/dependent PR branches, extra/unpushed commits,
+reused names and ambiguous candidates. Immediately recheck tips and ownership
+before mutation, guard automated deletion against concurrent advancement, and
+serialize shared-checkout operations. Never switch, reset, detach, remove or
+force-unlock another agent's active worktree.
+
+Dirty worktrees, ahead/diverged `main`, in-progress Git operations, locked
+worktrees, unknown ownership and network/authentication/permission failures stop
+the affected destructive operation and require an actionable report. Do not
+implicitly stash, run `reset --hard` or `git clean`, or discard tracked, untracked
+or valuable ignored files. Unaffected safe operations may proceed with recorded
+partial outcomes. Already-absent refs/worktrees are harmless on a repeat run;
+absence must still be proven, not inferred from an error.
+
+Use the [repeatable cleanup procedure](branch-cleanup.md) for inspection, guarded
+mutation, and the one-time existing-checkout audit. An isolated clone or CI run
+cannot establish cleanup of the owner's actual checkout.
+
+### Final handoff evidence
+
+Record the PR/repository, merge confirmation, final merged head and merge commit,
+observed local/remote `main` SHAs and equality/merge inclusion, primary path/status,
+local branch and owned worktree dispositions, automatic deletion setting, exact
+remote-ref verification and blockers with an owner/next action. Before/after
+inventories must give each cleanup candidate a reason and SHA without exposing
+secrets or unrelated local data. Keep post-merge checkboxes unchecked until the
+operation occurs; they are not pre-merge gates. Use a non-closing issue reference
+while real-checkout cleanup or the delivery's own closeout remains outstanding.
+
+Synchronization is to remote state observed at task start and completion, with
+SHAs recorded; an idle clone does not continuously follow future remote commits.
 
 ## Historical pilot track
 

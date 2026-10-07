@@ -32,7 +32,7 @@
   list-style: none;
 }
 .activity-events li {
-  border-block-end: 1px solid var(--line);
+  border-block-end: 1px solid var(--color-separator);
 }
 .activity-events button {
   display: flex;
@@ -58,11 +58,31 @@
   font-variant-numeric: tabular-nums;
 }
 .activity-detail {
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-separator);
   padding: 1rem;
   margin-block: 1rem;
 }
 .activity-workspace :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: var(--focus-ring);
   outline-offset: 3px;
+}
+
+.activity-events {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+}
+.activity-events button:hover {
+  background: var(--color-subtle);
+}
+.activity-detail {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+}
+.activity-controls input,
+.activity-controls select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: 0.5rem;
 }

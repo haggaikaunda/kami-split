@@ -215,10 +215,13 @@ export function RepaymentForm({
   }
   const disabled = busy || !!attempt || storageFailed || denied;
   return (
-    <section aria-labelledby="repayment-heading">
-      <h2 id="repayment-heading" tabIndex={-1}>
+    <section
+      className="financial-form-card"
+      aria-labelledby="repayment-heading"
+    >
+      <h1 id="repayment-heading" tabIndex={-1}>
         Record repayment · {name}
-      </h2>
+      </h1>
       <p>
         Record money already transferred in this group. Recording does not move
         money. Partial repayments and overpayments are allowed.

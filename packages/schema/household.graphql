@@ -15,7 +15,7 @@ enum HouseholdDashboardState {
   """
   INCOMPLETE
   """
-  Only the authorized Household ledger is available; sharing is not finalized.
+  Legacy service fallback; membership does not require a separate sharing designation.
   """
   UNAVAILABLE
 }
@@ -23,6 +23,10 @@ enum HouseholdDashboardState {
 Original ledgers and an explicit complete/incomplete/unavailable outcome.
 """
 type HouseholdDashboard {
+  """
+  Opaque equality token for the complete authorized source set and current group/member metadata, sampled with this result. Null unless COMPLETE. Compare with ExpenseView.contextVersion before combining concurrent reads; never grants access or identifies a financial revision.
+  """
+  contextVersion: String
   """
   Current completeness, independent of individual group settlement.
   """
@@ -116,7 +120,7 @@ type HouseholdDashboardTotals {
 }
 extend type Query {
   """
-  Server-authorized partner overview from one coherent statement snapshot; no search or financial netting.
+  Server-authorized membership overview from one coherent statement snapshot; no search or financial netting.
   """
   householdDashboard: HouseholdDashboardResult!
 }

@@ -77,12 +77,14 @@ export const journeyGroupQuery = graphql`
                 id
                 displayName
               }
+              split
               allocations {
                 participant {
                   id
                   displayName
                 }
                 amountMinor
+                percentageHundredths
               }
             }
           }
@@ -167,6 +169,12 @@ export const journeyCreateMutation = graphql`
           groupId
           totalMinor
           revision
+          split
+          allocations {
+            participantId
+            amountMinor
+            percentageHundredths
+          }
         }
       }
       ... on ValidationProblem {
@@ -202,6 +210,12 @@ export const journeyRecoveryQuery = graphql`
           groupId
           totalMinor
           revision
+          split
+          allocations {
+            participantId
+            amountMinor
+            percentageHundredths
+          }
         }
       }
       ... on ValidationProblem {
@@ -233,18 +247,26 @@ export const journeyExpenseQuery = graphql`
         description
         effectiveDate
         totalMinor
+        currency
+        createdAt
+        creator {
+          id
+          displayName
+        }
         category
         note
         payer {
           id
           displayName
         }
+        split
         allocations {
           participant {
             id
             displayName
           }
           amountMinor
+          percentageHundredths
         }
       }
     }
@@ -320,6 +342,205 @@ export const journeyRepaymentRecoveryQuery = graphql`
       ... on Problem {
         code
         message
+      }
+    }
+  }
+`;
+
+export const journeyGroupCreationMutation = graphql`
+  mutation journeyGroupCreationMutation($input: CreateGroupInput!) {
+    createGroup(input: $input) {
+      __typename
+      ... on GroupCreationCompleted {
+        operationKey
+        groupId
+        creatorMembershipId
+        createdAt
+      }
+      ... on GroupCreationRejected {
+        operationKey
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on GroupCreationConflict {
+        operationKey
+      }
+      ... on Problem {
+        code
+        message
+      }
+    }
+  }
+`;
+export const journeyGroupCreationRecoveryQuery = graphql`
+  query journeyGroupCreationRecoveryQuery($operationKey: OperationKey!) {
+    groupCreationOperation(operationKey: $operationKey) {
+      __typename
+      ... on GroupCreationCompleted {
+        operationKey
+        groupId
+        creatorMembershipId
+        createdAt
+      }
+      ... on GroupCreationRejected {
+        operationKey
+        fields {
+          path
+          code
+          message
+        }
+      }
+      ... on GroupCreationNotStarted {
+        operationKey
+      }
+      ... on Problem {
+        code
+        message
+      }
+    }
+  }
+`;
+export const journeyWorkspaceQuery = graphql`
+  query journeyWorkspaceQuery(
+    $id: ID!
+    $overview: Boolean!
+    $balances: Boolean!
+    $summary: Boolean!
+    $ledger: Boolean!
+    $activity: Boolean!
+    $filter: StructuredExpenseFilter
+  ) {
+    groupExpenses(groupId: $id, first: 20, filter: $filter)
+      @include(if: $ledger) {
+      ...expensesView
+    }
+    groupActivity(groupId: $id, first: 20) @include(if: $activity) {
+      ...activityFeed
+    }
+    viewer {
+      __typename
+      ... on Problem {
+        code
+      }
+      ... on ViewerAccess {
+        state
+      }
+      ... on Viewer {
+        today
+      }
+    }
+    group(id: $id) {
+      __typename
+      ... on Problem {
+        code
+        message
+      }
+      ... on Group {
+        id
+        name
+        currency
+        kind
+        isHousehold
+        trip {
+          destination
+          startDate
+          endDate
+        }
+        viewerMembership {
+          id
+          role
+        }
+        members {
+          id
+          displayName
+          status
+          role
+          canParticipate
+        }
+        expenses(first: 5) @include(if: $overview) {
+          revision
+          edges {
+            cursor
+            node {
+              id
+              description
+              effectiveDate
+              totalMinor
+              category
+              payer {
+                id
+                displayName
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+        repayments(first: 5) @include(if: $balances) {
+          edges {
+            node {
+              id
+              groupId
+              amountMinor
+              effectiveDate
+              note
+              sender {
+                id
+                displayName
+              }
+              recipient {
+                id
+                displayName
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+          }
+        }
+        balances @include(if: $summary) {
+          __typename
+          ... on Problem {
+            code
+            message
+          }
+          ... on GroupBalances {
+            groupId
+            revision
+            totalExpenseMinor
+            settled
+            positions {
+              member {
+                id
+                displayName
+                status
+              }
+              paidMinor
+              owedMinor
+              sentMinor
+              receivedMinor
+              netMinor
+            }
+            obligations @include(if: $balances) {
+              from {
+                id
+                displayName
+              }
+              to {
+                id
+                displayName
+              }
+              amountMinor
+            }
+          }
+        }
       }
     }
   }

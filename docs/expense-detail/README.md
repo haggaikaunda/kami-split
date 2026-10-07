@@ -1,5 +1,7 @@
 # Expense detail
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Issue #20 renders the same current expense and immutable revision history in the shell's contextual desktop panel or full-page destination. It consumes the session `AppDataProvider` snapshot through the replaceable async data port. It never imports fixture arrays into screen code.
 
 `/expenses/:id` is a direct full page. `?revision=N` identifies a selected audit snapshot while the current revision or deletion state remains explicit. `ExpenseLink` accepts an optional numeric `revision`; ordinary activation captures a fresh visit, while modified activation retains a canonical shareable URL. “Open full page” preserves the selected revision and visit using replace semantics.

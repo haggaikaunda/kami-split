@@ -123,7 +123,10 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     let active = true;
     const requests = epoch.current;
     const tickets = authTicket;
-    initialFragment.current ??= window.location.hash.slice(1);
+    initialFragment.current ??=
+      mode === 'join' || mode === 'confirm'
+        ? window.location.hash.slice(1)
+        : '';
     const fragment = initialFragment.current;
     if (fragment)
       window.history.replaceState(null, '', window.location.pathname);
@@ -179,22 +182,6 @@ export function useOnboarding(mode: Mode, fragment?: string) {
           setSession(current);
         });
         dispose = () => subscription.data.subscription.unsubscribe();
-        if (mode === 'account' && data.session) {
-          const result = await requests.run((signal) =>
-            jsonRequest(
-              '/api/graphql',
-              {
-                query:
-                  'query { viewer { __typename ... on Viewer { groups { id name } } ... on ViewerAccess { state } ... on Problem { code } } }',
-              },
-              data.session,
-              signal,
-            ),
-          );
-          if (result.data?.viewer?.__typename === 'Viewer')
-            setGroups(result.data.viewer.groups);
-          else tell('You are signed in. Open an invitation to join a group.');
-        }
         if (
           mode === 'join' ||
           (mode === 'password' &&
@@ -385,13 +372,31 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     showReceipt(data.invitationAction);
   };
   const signOut = async (preserveInvitation = false) => {
+    const subject = sessionRef.current?.user.id;
     authTicket.current++;
     epoch.current.reset();
     switching.current = preserveInvitation;
     try {
-      if (!preserveInvitation) await call('/api/onboarding/clear', {});
+      if (!preserveInvitation) {
+        try {
+          await call('/api/onboarding/clear', {});
+        } catch (error) {
+          // Password sign-in may have no invitation context; it is already cleared.
+          if (
+            sessionRef.current &&
+            (!(error instanceof Error) || error.message !== 'CONTEXT_EXPIRED')
+          )
+            throw error;
+        }
+      }
+      if (sessionRef.current && sessionRef.current.user.id !== subject)
+        throw new Error('SESSION_CHANGED');
       const out = await client?.auth.signOut({ scope: 'local' });
-      if (out?.error) throw new Error('UNAVAILABLE');
+      if (out?.error) {
+        const current = await client?.auth.getSession();
+        if (current?.error || current?.data.session)
+          throw new Error('UNAVAILABLE');
+      }
       pending(null);
       setSession(null);
       sessionRef.current = null;
@@ -461,7 +466,7 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     await ensureContext();
     await call('/api/onboarding/recover', { email });
     tell(
-      "If there's a Kami Split account for that address, you'll receive a reset link. Open it in this browser.",
+      "If there's a Kami Grow account for that address, you'll receive a reset link. Open it in this browser.",
     );
   };
   const savePassword = async () => {

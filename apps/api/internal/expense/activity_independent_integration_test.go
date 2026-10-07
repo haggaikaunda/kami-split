@@ -187,7 +187,7 @@ func independentHouseholdActivity(t *testing.T, f *expenseFixture, actor int, va
 }
 
 func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T) {
-	f := independentDashboardFixture(t, 1, 2)
+	f := independentDashboardFixture(t)
 	empty := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10})
 	if empty["__typename"] != "ActivityConnection" || len(empty["edges"].([]any)) != 0 {
 		t.Fatal(empty)
@@ -210,7 +210,7 @@ func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T
 	}
 	for _, page := range []map[string]any{first, second} {
 		raw, _ := json.Marshal(page)
-		for _, secret := range []string{"9000", "Viewer-only SECRET", f.id(203), f.public("Group", 203)} {
+		for _, secret := range []string{`"9000"`, "Viewer-only SECRET", f.id(203), f.public("Group", 203)} {
 			if bytes.Contains(raw, []byte(secret)) {
 				t.Fatalf("excluded source leaked: %s", raw)
 			}
@@ -244,16 +244,21 @@ func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T
 	}
 }
 
-func TestActivityIndependentHouseholdDesignationLossAndOwnerExclusion(t *testing.T) {
-	f := independentDashboardFixture(t, 2, 3)
+func TestActivityIndependentHouseholdAccountLossRechecksScope(t *testing.T) {
+	f := independentDashboardFixture(t)
 	independentDashboardExpense(t, f, 201, 302, 301, 2000)
-	if got := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10}); got["code"] != "NOT_FOUND" {
+	independentDashboardExpense(t, f, 202, 305, 306, 3000)
+	first := independentHouseholdActivity(t, f, 1, map[string]any{"first": 1})
+	cursor := first["pageInfo"].(map[string]any)["endCursor"]
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;UPDATE app.users SET enabled=false WHERE id='%s';COMMIT`, f.id(102)))
+	if got := independentHouseholdActivity(t, f, 1, map[string]any{"first": 1, "after": cursor}); got["__typename"] != "Problem" || got["code"] != "INVALID_CURSOR" {
 		t.Fatal(got)
 	}
-	first := independentHouseholdActivity(t, f, 2, map[string]any{"first": 1})
-	cursor := first["pageInfo"].(map[string]any)["endCursor"]
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT app.household_lifecycle_lock(ARRAY['%s','%s','%s']::uuid[]);UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(101), f.id(102), f.id(103), f.id(303)))
-	if got := independentHouseholdActivity(t, f, 2, map[string]any{"first": 1, "after": cursor}); got["__typename"] != "Problem" || got["code"] != "UNAVAILABLE" {
+	fresh := independentHouseholdActivity(t, f, 1, map[string]any{"first": 10})
+	if fresh["__typename"] != "ActivityConnection" || len(fresh["edges"].([]any)) != 1 {
+		t.Fatal(fresh)
+	}
+	if got := independentHouseholdActivity(t, f, 2, map[string]any{"first": 10}); got["code"] != "NOT_FOUND" {
 		t.Fatal(got)
 	}
 }

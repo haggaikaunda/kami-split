@@ -1,8 +1,13 @@
 # ADR-007: Household dashboard and group repayment entry
 
-- Status: Adopted design for [#86](https://github.com/haggaikaunda/kami-split/issues/86), refined by #111. Server summary implemented by #111; browser presentation remains #112.
+- Status: Adopted design for [#86](https://github.com/haggaikaunda/kami-split/issues/86), refined by #111. Server summary implemented by #111; Household browser workspace implemented by #112.
 - Recorded: 2026-09-30.
 - Basis: ADR-003–006, implemented #75 foundation, reviewed #76 contract.
+
+> [ADR-010](010-household-membership-sharing.md) supersedes the separate pair
+> authority and missing-partner fallback in this historical dashboard policy,
+> including D6/D7 eligibility behavior. Complete reads, exact money, source-local
+> repayment and financial provenance requirements remain in force.
 
 ## Boundary and deliberately deferred policy
 
@@ -43,10 +48,12 @@ Use the same deterministic debtor/creditor matching by canonical membership IDs 
 #76, never another dashboard simplifier. Original payer/allocation relationships
 remain history, not a second set of debts to display or repay.
 
-For each group, show “You owe” = max(−viewer net, 0), “You are owed” = max(viewer net, 0),
-and signed “Your net”. Label the partner's position by their authorized display name,
-never call that position “you”. Each position opens the paid/share/sent/received
-explanation and the current simplified obligations. Group obligation rows name the
+The Household summary shows one signed “Your net balance”, with explicit overall
+owe/owed/zero wording and an open-source-balance count. Do not place gross owe/owed
+totals beside it. The Balances tab shows each source space's viewer net and links
+to that original Group/Trip balance surface, where paid/share/sent/received positions
+and current simplified obligations explain the result. Label other members by their
+authorized display names, never call their positions “you”. Group obligation rows name the
 sender, recipient, source group and USD amount, grouped by counterparty **inside
 that group**. Include obligations between other members in the authorized group
 breakdown so a zero viewer balance cannot imply a settled group. No cross-group
@@ -158,8 +165,8 @@ Revision tracks financial changes only, not access, labels or pair designation;
 there is no invented global financial revision. Authorized row-local aggregate
 failure may return D10 with no overview totals. If eligibility itself cannot be
 confirmed, fail closed for the whole overview. Initial offline has no data.
-During same-context refresh, retain values only with explicit “Refreshing”/last-read
-labels while access remains confirmed; disable repayment. On failed revalidation
+During refresh, the Household browser removes prior private rows and totals before
+starting a network-only authorization read. On failed revalidation
 hide sensitive rows and show unavailable. Denial/expiry/account switch clears
 fields immediately. Drop out-of-order responses by viewer/session, dashboard scope
 and request generation, including previously valid results after membership changes.
@@ -174,8 +181,9 @@ O11/O12 gated; this read design does not permit them or select their policies.
 
 ## One group-specific repayment operation
 
-Both a dashboard obligation row and group detail open the same future form and
-operation. Route `/groups/:groupId/repayments/new` captures the original group,
+Only the original Group/Trip balance detail offers the group-specific repayment
+entry. Household totals and source-space rows have no settlement shortcut; source
+rows first open that original group's Balances tab. Route `/groups/:groupId/repayments/new` captures the original group,
 sender and recipient Membership IDs from a fresh complete projection. Group is
 read-only in the form. Label, for example, “Record repayment — Trip T”,
 “B repaid A”, `$20.00 USD`, and “Record money already transferred; no money moves”.
@@ -228,10 +236,14 @@ Future authenticated access loss does not grant privileged receipt access.
 ## Navigation, accessibility and consumer migration
 
 Use distinct “Household ledger” and “Household dashboard” links; group rows open
-canonical #85 group routes. Dashboard is not the default #83 entry or a replacement
-for Groups. Desktop uses an accessible labelled dialog for the shared repayment
-form; phone uses its full-page route. Back/Escape preserves drafts, restores source
-filter/scroll and logical row-action focus only after a fresh authorized read.
+canonical #85 group routes. The Household workspace at `/household` uses Overview, Expenses, Balances, Activity
+and Members; it does not replace independently authorized Groups access. Overview
+contains three horizontal metrics and at most five recent expenses. The complete
+Expenses implementation is delivered by #170. Members reads actual `Group.members`, not
+the designated pair, and exposes only existing owner invitation management.
+Source rows open `/groups/:groupId?tab=balances`; repayment entry remains on that
+original group's full-page route. Back restores source scroll and logical row focus
+only after a fresh authorized read.
 If that row disappeared, focus dashboard heading; if dashboard access disappeared,
 fall back to Groups and its heading. Direct repayment links fall back to the original
 accessible group, otherwise Groups. Never a household fallback for another group.
@@ -254,6 +266,6 @@ names/amounts and vertical scroll. This document does not claim a live browser t
 | `components/session-command.tsx`                                            | Preserve frozen identity/recovery/source lifetime; replace current-household envelope capture and global new-repayment draft identity with original-group/attempt scoping.           |
 | `components/navigation/provider.tsx`, `links.tsx`, household/recovery docs  | Preserve source visits/focus/generation handling; canonical group routes, no lost-access cache or household fallback. Preview membership guards remain historical.                   |
 
-Keep existing seeded UI/tests and its historical documentation intact. Follow-on
+The executable seeded UI/tests were subsequently retired in #184; preserve only their historical documentation as evidence. Follow-on
 [delivery slices](../proposals/household-dashboard-slices.md) own implementation,
 acceptance tests and browser evidence; no migration, SDL, resolver or UI changes here.

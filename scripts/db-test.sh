@@ -59,6 +59,10 @@ mv "$stage/supabase/migrations/20261007000000_shared_invitations.sql" "$stage/sh
 mv "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql" "$stage/onboarding-continuation.sql"
 mv "$stage/supabase/migrations/20261009000000_household_dashboard.sql" "$stage/household-dashboard.sql"
 mv "$stage/supabase/migrations/20261010000000_expense_view.sql" "$stage/expense-view.sql"
+mv "$stage/supabase/migrations/20261011000000_household_membership.sql" "$stage/household-membership.sql"
+mv "$stage/supabase/migrations/20261012000000_retire_household_designation.sql" "$stage/retire-household-designation.sql"
+mv "$stage/supabase/migrations/20261013000000_self_profile.sql" "$stage/self-profile.sql"
+mv "$stage/supabase/migrations/20261014000000_percentage_splits.sql" "$stage/percentage-splits.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -80,6 +84,20 @@ mv "$stage/shared-invitations.sql" "$stage/supabase/migrations/20261007000000_sh
 mv "$stage/onboarding-continuation.sql" "$stage/supabase/migrations/20261008000000_onboarding_continuation.sql"
 mv "$stage/household-dashboard.sql" "$stage/supabase/migrations/20261009000000_household_dashboard.sql"
 mv "$stage/expense-view.sql" "$stage/supabase/migrations/20261010000000_expense_view.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+# Exercise old deployed identities/admission/history before membership policy.
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_membership_upgrade.sql
+mv "$stage/household-membership.sql" "$stage/supabase/migrations/20261011000000_household_membership.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_membership_upgraded.sql
+# Retire only obsolete operations after the compatible membership upgrade.
+# Nonempty legacy rows/audits must survive without fabricated consent events.
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_designation_retirement_upgrade.sql
+mv "$stage/retire-household-designation.sql" "$stage/supabase/migrations/20261012000000_retire_household_designation.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/household_designation_retirement_upgraded.sql
+mv "$stage/self-profile.sql" "$stage/supabase/migrations/20261013000000_self_profile.sql"
+mv "$stage/percentage-splits.sql" "$stage/supabase/migrations/20261014000000_percentage_splits.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
@@ -149,7 +167,7 @@ sys.exit(subprocess.run([
     "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
     "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
     "./internal/expense/...", "./internal/graph/...", "./internal/onboarding/...",
-    "./internal/bootstrap/...",
+    "./internal/bootstrap/...", "./internal/profile/...",
 ], env=env).returncode)
 PROVIDER_TEST
 cd "$root"

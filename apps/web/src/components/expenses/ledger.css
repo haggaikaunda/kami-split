@@ -1,0 +1,314 @@
+.expense-ledger {
+  min-width: 0;
+}
+.expense-ledger .ui-summary-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.expense-ledger .ui-summary-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.expense-ledger .ui-summary-row .ui-money {
+  font-size: clamp(1rem, 2.4vw, 1.7rem);
+}
+.expense-ledger .ui-summary-row span {
+  max-width: 100%;
+}
+.ledger-toolbar,
+.ledger-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.ledger-add {
+  margin-inline-start: auto;
+  background: var(--color-primary);
+  color: white;
+}
+.ledger-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.ledger-filters label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1 1 9rem;
+}
+.ledger-filters input,
+.ledger-filters select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.ledger-filter-button {
+  display: inline-flex;
+}
+.ledger-active-filters p {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.ledger-month header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-separator);
+}
+.ledger-month header span {
+  overflow-wrap: anywhere;
+}
+.ledger-month h2 {
+  font-size: 1.15rem;
+}
+.ledger-month ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ledger-month li a {
+  display: grid;
+  grid-template-columns: 2ch 2.25rem minmax(0, 1fr) minmax(0, 0.65fr) 1ch;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 1rem 0;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-separator);
+}
+.ledger-description,
+.ledger-money {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+  overflow-wrap: anywhere;
+}
+.ledger-description > span,
+.ledger-money > span:last-child {
+  font-size: 0.85rem;
+}
+.ledger-money {
+  text-align: end;
+}
+.ledger-category {
+  border-radius: 0.6rem;
+  background: #e5eadf;
+  text-align: center;
+  padding: 0.4rem;
+}
+.ledger-dialog {
+  color: var(--color-ink);
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(34rem, 90vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  box-sizing: border-box;
+  border: 0;
+  padding: max(1.25rem, env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right))
+    max(1.25rem, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.ledger-dialog::backdrop {
+  background: #18251f55;
+}
+.ledger-dialog header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ledger-dialog select {
+  max-width: 100%;
+}
+.ledger-dialog .financial-form {
+  min-width: 0;
+}
+.household-expenses {
+  max-width: 76rem;
+  margin: auto;
+  padding: 1.5rem;
+}
+@media (max-width: 650px) {
+  .ledger-filter-button {
+    display: inline-block;
+  }
+  .expense-ledger .ui-summary-row {
+    gap: 0.5rem;
+  }
+  .expense-ledger .ui-summary-row > * {
+    padding: 0.4rem;
+  }
+  .expense-ledger .ui-summary-row .ui-money {
+    font-size: 1rem;
+  }
+  .ledger-month li a {
+    grid-template-columns: 2ch 1.5rem minmax(0, 1fr) minmax(0, 0.85fr) 1ch;
+    gap: 0.35rem;
+  }
+  .ledger-month .ui-money {
+    font-size: 1rem;
+  }
+  .ledger-category {
+    padding: 0.25rem;
+  }
+  .ledger-dialog {
+    inset: 0;
+    width: 100%;
+    padding-inline: max(1rem, env(safe-area-inset-left));
+  }
+  .ledger-dialog .ledger-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .household-expenses {
+    padding: 0.75rem;
+  }
+}
+@media (max-width: 350px) {
+  .expense-ledger .ui-summary-row {
+    gap: 0.2rem;
+  }
+  .expense-ledger .ui-summary-row > * {
+    padding: 0.2rem;
+  }
+  .ledger-month li a {
+    grid-template-columns: 2ch minmax(0, 1fr) minmax(0, 0.9fr) 1ch;
+  }
+  .ledger-month .category-icon {
+    display: none;
+  }
+}
+.financial-journey .expense-ledger,
+.financial-journey .ledger-month,
+.financial-journey .ledger-month header {
+  border-radius: 0;
+  border-inline: 0;
+  padding-inline: 0;
+}
+.financial-journey .expense-ledger,
+.financial-journey .ledger-month {
+  border: 0;
+}
+.financial-journey .ledger-month ul {
+  padding: 0;
+}
+.financial-journey .ledger-month li {
+  margin: 0;
+}
+.financial-journey .ledger-month li a {
+  display: grid;
+}
+.financial-journey .ledger-dialog header {
+  border: 0;
+  padding: 0;
+}
+.expense-ledger .ui-metric-value > span:last-child:not(.ui-money) {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+.household-expenses > .ui-workspace-header {
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+}
+.household-expenses .ui-workspace-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.financial-journey .ledger-month {
+  margin-block: 1rem;
+  padding-block: 0;
+}
+.financial-journey .ledger-month header {
+  margin-block: 0.5rem;
+  padding-block: 0.5rem;
+}
+@media (max-width: 650px) {
+  .ledger-dialog {
+    padding-inline-start: max(1rem, env(safe-area-inset-left));
+    padding-inline-end: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+.ledger-month {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+}
+.financial-journey .ledger-month header {
+  background: var(--color-subtle);
+  padding: 0.75rem;
+}
+.financial-journey .ledger-month li a {
+  padding: 0.9rem 0.75rem;
+}
+.ledger-month li a:hover {
+  background: var(--color-subtle);
+}
+.ledger-month li time,
+.ledger-description > span,
+.ledger-money > span:last-child {
+  color: var(--color-muted);
+}
+.ledger-month .ui-money {
+  font-weight: 700;
+}
+.financial-journey .ledger-add {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+@media (max-width: 650px) {
+  .ledger-month .category-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .ledger-month .category-icon .app-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+  .financial-journey .ledger-month li a {
+    padding: 0.75rem 0.35rem;
+  }
+}
+
+.ledger-toolbar {
+  gap: 0.35rem;
+}
+.financial-journey .ledger-refresh {
+  margin-inline-start: auto;
+  padding: 0.5rem;
+  min-width: var(--target-size);
+}
+.financial-journey .ledger-add {
+  margin-inline-start: 0;
+}
+.ledger-dialog .ledger-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.ledger-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ledger-filter-actions button[type='submit'] {
+  background: var(--color-primary);
+  color: white;
+}

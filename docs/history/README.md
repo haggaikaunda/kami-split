@@ -1,5 +1,7 @@
 # Financial history
 
+> Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
+
 Issue #24 replaces the navigation fixture with the approved chronological activity feed. Every creation, edit, deletion and repayment is an event. Event timestamps (including UTC time and year) are labeled separately from expense/repayment effective dates. Exact amounts come from the immutable event snapshot; this is an audit feed, not a sum of current spending.
 
 Search matches the displayed description, case-insensitively. The Expenses type means creation events only; edits and deletions have their own types. Member filtering matches the event's payer or explicit participant membership (including a zero share), or either repayment party. It does not treat an unrelated editor as a financial participant. Unknown filter values stay selected and produce no matches until cleared.
