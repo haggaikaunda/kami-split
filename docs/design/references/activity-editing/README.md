@@ -30,3 +30,8 @@ request a fresh authorized record.
 Delivery acceptance requires final-head screenshots at 320, 390, 768 and 1280px,
 light/dark themes, 200% text, long content, keyboard/focus and an actual persisted
 edit followed by its Activity detail. The image itself is not acceptance evidence.
+
+## Verified implementation
+
+The [captured production components](evidence/README.md) show the real API-backed
+edit and all three historical event types beside the approved reference above.
