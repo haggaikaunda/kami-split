@@ -1,3 +1,4 @@
+import { appearanceBootstrap } from '@/lib/appearance';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { Suspense } from 'react';
@@ -30,7 +31,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${bodyFont.variable} ${displayFont.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: appearanceBootstrap }} />
+      </head>
       <body>
         <Suspense fallback={<p role="status">Loading navigation…</p>}>
           <FinancialSession>{children}</FinancialSession>

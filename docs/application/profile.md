@@ -33,6 +33,21 @@ are independent, so saving one cannot overwrite or conflict with an edit to the
 other. The preference is private: shared member/name projections do not expose it.
 Refresh after an uncertain transport result before explicitly retrying.
 
+The shared browser root resolves the preference into `data-theme="light|dark"`.
+Only System follows live OS/browser color-scheme changes. Account settings offers
+Light, System, and Dark with an explicit save; uncertain writes require checking
+the saved value before retrying. Other devices read the account preference at
+startup and when their window regains focus.
+
+A small local presentation cache is bound to the Auth session's account ID and
+applied synchronously in the document head to avoid a wrong-theme paint on reload.
+It is not an identity or authorization source. The authenticated API read replaces
+it at startup; new devices without a cache initially use Light until that read
+completes. Failed background reads retain the last known theme, while sign-out
+and account switching reset presentation to the new account's cache or Light.
+The approved dark palette is defined once in shared semantic tokens; automatic
+OS-wide and Account-only dark palettes have been removed.
+
 ## Browser editing and navigation
 
 `/account` is a personal destination inside the existing shared navigation; it

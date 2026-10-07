@@ -1,4 +1,5 @@
 'use client';
+import { AppearanceProvider } from '@/components/appearance';
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadClient } from '@/lib/onboarding/client';
@@ -80,5 +81,11 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
       scope?.dispose();
     };
   }, []);
-  return <Context.Provider value={access}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={access}>
+      <AppearanceProvider scope={access.scope} loading={access.loading}>
+        {children}
+      </AppearanceProvider>
+    </Context.Provider>
+  );
 }

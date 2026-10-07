@@ -11,6 +11,9 @@ const sdk = vi.hoisted(() => ({
   },
   actor: 'alice',
 }));
+vi.mock('@/components/appearance', () => ({
+  AppearanceProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock('@/lib/onboarding/client', () => ({
   loadClient: async () => ({
     auth: {
