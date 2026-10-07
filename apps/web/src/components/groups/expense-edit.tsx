@@ -62,7 +62,7 @@ export function ExpenseEdit({
   const [attempt, setAttempt] = useState(initial.value?.attempt);
   const [blocked, setBlocked] = useState(!!initial.error);
   const [busy, setBusy] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(true);
   const [cancel, setCancel] = useState(false);
   const [conflict, setConflict] = useState(
     initial.value != null &&
@@ -158,11 +158,20 @@ export function ExpenseEdit({
         outcome.record.groupId !== expense.groupId
       )
         throw new Error('MISMATCH');
-      removeEditDraft(scope.actor, expense.groupId, expense.id);
       setAttempt(undefined);
       setBlocked(true);
+      let cleared = true;
+      try {
+        removeEditDraft(scope.actor, expense.groupId, expense.id);
+      } catch {
+        cleared = false;
+      }
+      // Server confirmation remains authoritative even when local cleanup fails.
+      // A retained same-key attempt can only recover this original success.
       setNotice(
-        'Edit saved. Refreshing current authorized expenses and balances…',
+        cleared
+          ? 'Edit saved. Refreshing current authorized expenses and balances…'
+          : 'Edit saved. Its local recovery record could not be cleared. Refreshing current data; restore tab storage before another edit.',
       );
       try {
         await onCommitted();

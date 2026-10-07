@@ -96,6 +96,8 @@ export function ActivityFeed({
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const detailRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const feedScroll = useRef(0);
+  const restoreFeedFocus = useRef(false);
   const [kind, setKind] = useState('');
   const source = '';
   const [version, setVersion] = useState(0);
@@ -195,6 +197,15 @@ export function ActivityFeed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, groupId, kind, source, after, version]);
   useEffect(() => {
+    if (selected || !restoreFeedFocus.current) return;
+    restoreFeedFocus.current = false;
+    const trigger = triggerRef.current;
+    if (!scope.isLive() || !trigger?.isConnected) return;
+    trigger.focus({ preventScroll: true });
+    if (window.scrollY !== feedScroll.current)
+      window.scrollTo({ top: feedScroll.current });
+  }, [selected, scope]);
+  useEffect(() => {
     if (!selected) return;
     let live = true;
     const ticket = generation.current;
@@ -286,6 +297,7 @@ export function ActivityFeed({
                       type="button"
                       onClick={(event) => {
                         triggerRef.current = event.currentTarget;
+                        feedScroll.current = window.scrollY;
                         setDetailError('');
                         setSelected({ ...node });
                         setDetail(undefined);
@@ -373,7 +385,7 @@ export function ActivityFeed({
             onClick={() => {
               setSelected(undefined);
               setDetail(undefined);
-              triggerRef.current?.focus();
+              restoreFeedFocus.current = true;
             }}
           >
             Close detail

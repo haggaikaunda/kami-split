@@ -5,7 +5,6 @@ package expense_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"net/http"
 	"reflect"
@@ -232,12 +231,12 @@ func TestRepaymentGraphQLCurrentAuthorizationAndValidation(t *testing.T) {
 	if unauth["errors"] == nil {
 		t.Fatal(unauth)
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	retained := repaymentData(t, repaymentGraphQL(t, f, 1, nodeQuery, map[string]any{"id": id}), "node")
 	if retained["recipient"].(map[string]any)["canParticipate"] != false {
 		t.Fatal(retained)
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(303)))
+	injectHistoricalDeparture(t, f, f.id(303))
 	denied := repaymentData(t, repaymentGraphQL(t, f, 3, repaymentRecovery, map[string]any{"group": in["groupId"], "key": in["key"]}), "repaymentOperation")
 	if denied["__typename"] != "Problem" {
 		t.Fatal(denied)

@@ -87,7 +87,7 @@ const path = require('node:path');
         edited = result.data?.updateExpense;
       await r.fulfill({ response, json: result });
     });
-    const description = `Real expense edit ${context}`;
+    const description = `Real expense edit ${context} — shared dinner and supplies for our weekend with friends`;
     await page.goto(origin + entry);
     await page.locator('#ledger-add').click();
     if (context === 'Aggregate')
@@ -128,7 +128,18 @@ const path = require('node:path');
         .isDisabled(),
     );
     await page.locator('#expense-amount').fill('100.00');
-    await page.locator('#expense-note').fill('Corrected final bill');
+    await page
+      .locator('#expense-note')
+      .fill(
+        'Corrected final bill. Includes the shared dinner and the additional supplies collected on the way home; actual repayments remain recorded separately.',
+      );
+    await page.screenshot({
+      path: path.join(
+        evidence,
+        `${context.toLowerCase()}-edit-390-light-100.png`,
+      ),
+      fullPage: true,
+    });
     await page.locator('#expense-category').selectOption('DINING');
     await page
       .getByRole('button', { name: 'Save changes', exact: true })
@@ -166,6 +177,17 @@ const path = require('node:path');
         'Amount changed from $120.00 to $100.00.',
       ),
     );
+    // Capture the chronological feed independently from its mobile detail state.
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.screenshot({
+        path: path.join(
+          evidence,
+          `${context.toLowerCase()}-feed-${width}-light-100.png`,
+        ),
+        fullPage: true,
+      });
+    }
     await event.first().focus();
     await page.keyboard.press('Enter');
     await page.locator('.activity-fact-card').waitFor();
@@ -196,6 +218,13 @@ const path = require('node:path');
                 document.documentElement.scrollWidth <= window.innerWidth + 1,
             ),
             `${context} overflow ${width}/${theme}/${scale}`,
+          );
+          assert.equal(
+            await page.evaluate(
+              () => getComputedStyle(document.documentElement).colorScheme,
+            ),
+            theme,
+            'Actual application theme must follow the requested color scheme',
           );
           await page.screenshot({
             path: path.join(

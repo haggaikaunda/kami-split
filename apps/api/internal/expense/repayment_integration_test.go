@@ -262,7 +262,7 @@ func TestRepaymentAuthorizationAndHistoricalReplay(t *testing.T) {
 	if saved.Kind != "COMMITTED" {
 		t.Fatal(saved)
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator; UPDATE app.memberships SET active=false WHERE id='%s'; RESET ROLE", f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	if retry := repaymentRecord(t, call, 3, in); !reflect.DeepEqual(retry, saved) {
 		t.Fatal("historical replay failed", retry)
 	}
@@ -422,6 +422,17 @@ func TestRepaymentEligibilityChangeWinsWriteRace(t *testing.T) {
 			f := newExpenseFixture(t)
 			call := repaymentEndpoint(t, f, f.db)
 			in := repaymentInput(f)
+			if kind == "membership" {
+				// A real departure begins at exactly zero. The subsequent attempted
+				// repayment must observe the completed transition and reject it.
+				settle := repaymentInput(f)
+				settle.SenderID = f.public("Membership", 302)
+				settle.RecipientID = f.public("Membership", 303)
+				settle.Amount = 333
+				if out := repaymentRecord(t, call, 3, settle); out.Kind != "COMMITTED" {
+					t.Fatal(out)
+				}
+			}
 			held, e := f.admin.Begin(f.ctx)
 			if e != nil {
 				t.Fatal(e)
@@ -470,7 +481,11 @@ func TestRepaymentEligibilityChangeWinsWriteRace(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("write did not resume")
 			}
-			if got := repaymentCounts(t, f); got != [4]int{0, 0, 1, 1} {
+			want := [4]int{0, 0, 1, 1}
+			if kind == "membership" {
+				want = [4]int{1, 1, 2, 2}
+			}
+			if got := repaymentCounts(t, f); got != want {
 				t.Fatal(got)
 			}
 		})
@@ -721,7 +736,6 @@ func TestRepaymentWriteWinsEligibilityRace(t *testing.T) {
 					changed <- e
 					return
 				}
-				defer tx.Rollback(context.Background())
 				_, e = tx.Exec(f.ctx, "SET LOCAL ROLE kami_migrator")
 				if e == nil {
 					target := f.id(302)
@@ -741,6 +755,7 @@ func TestRepaymentWriteWinsEligibilityRace(t *testing.T) {
 				if e == nil {
 					e = tx.Commit(f.ctx)
 				}
+				_ = tx.Rollback(context.Background())
 				changed <- e
 			}()
 			select {
@@ -755,7 +770,13 @@ func TestRepaymentWriteWinsEligibilityRace(t *testing.T) {
 			if out.Kind != "COMMITTED" {
 				t.Fatal(out)
 			}
-			if e = <-changed; e != nil {
+			e = <-changed
+			if kind == "membership" {
+				var pgerr *pgconn.PgError
+				if !errors.As(e, &pgerr) || pgerr.Code != "23514" {
+					t.Fatalf("departure did not reject resulting nonzero balance: %v", e)
+				}
+			} else if e != nil {
 				t.Fatal(e)
 			}
 			var recovered expense.Outcome

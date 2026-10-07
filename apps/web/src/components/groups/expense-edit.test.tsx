@@ -196,3 +196,58 @@ it('late committed callback cannot clear a different disposed session draft or n
   expect(committed).not.toHaveBeenCalled();
   expect(readEditDraft('actor', 'g', 'e')?.attempt).toBeDefined();
 });
+
+it('shows actionable inline errors for an invalid retained draft while Save is disabled', async () => {
+  saveEditDraft({
+    version: 1,
+    actor: 'actor',
+    group: 'g',
+    expense: 'e',
+    baseVersion: '1',
+    draft: { ...expenseDraft(expense), amount: 'invalid' },
+  });
+  await render();
+  expect(button('Save changes').disabled).toBe(true);
+  expect(host.textContent).toContain(
+    'Enter dollars with up to two decimal places.',
+  );
+  expect(
+    host.querySelector('#expense-amount')?.getAttribute('aria-invalid'),
+  ).toBe('true');
+  expect(network.mutate).not.toHaveBeenCalled();
+});
+it('keeps confirmed success and refreshes when clearing local recovery storage fails', async () => {
+  stored();
+  await render();
+  await act(async () => button('Save changes').click());
+  const options = network.mutate.mock.calls[0][1];
+  const storage = vi
+    .spyOn(Storage.prototype, 'setItem')
+    .mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+  try {
+    await act(async () =>
+      options.onCompleted({
+        updateExpense: {
+          __typename: 'ExpenseEditCommitted',
+          key: options.variables.input.key,
+          version: '2',
+          changed: true,
+          record: { expenseId: 'e', groupId: 'g', totalMinor: '800' },
+        },
+      }),
+    );
+    expect(committed).toHaveBeenCalledTimes(1);
+    expect(host.textContent).toContain(
+      'Edit saved. Its local recovery record could not be cleared.',
+    );
+    expect(host.textContent).not.toContain('result is uncertain');
+    expect(button('Save changes').closest('fieldset')?.disabled).toBe(true);
+  } finally {
+    storage.mockRestore();
+  }
+  expect(readEditDraft('actor', 'g', 'e')?.attempt?.key).toBe(
+    options.variables.input.key,
+  );
+});

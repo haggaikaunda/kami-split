@@ -95,7 +95,7 @@ func TestActivityIndependentCursorBindingsAndCurrentAuthorization(t *testing.T) 
 			t.Errorf("actor %d vars %v: %v", scenario.actor, scenario.variables, got)
 		}
 	}
-	f.exec(fmt.Sprintf("SET ROLE kami_migrator;UPDATE app.memberships SET active=false WHERE id='%s';RESET ROLE", f.id(302)))
+	injectHistoricalDeparture(t, f, f.id(302))
 	vars["after"] = cursor
 	if got := independentActivity(t, f, 2, vars); got["__typename"] != "Problem" || got["code"] != "NOT_FOUND" {
 		t.Fatal(got)
@@ -237,7 +237,7 @@ func TestActivityIndependentHouseholdScopeTraversalAndSourcePrivacy(t *testing.T
 	if changed["code"] != "INVALID_CURSOR" {
 		t.Fatal(changed)
 	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	if got := independentHouseholdActivity(t, f, 1, vars); got["code"] != "INVALID_CURSOR" {
 		t.Fatal(got)
 	}

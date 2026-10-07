@@ -94,7 +94,8 @@ RETURNS TABLE(version bigint,event_id uuid,event_time timestamptz)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE e app.expenses; next_event uuid:=gen_random_uuid(); at_time timestamptz:=clock_timestamp(); actor uuid; actor_member uuid;
 BEGIN
- SELECT * INTO STRICT e FROM app.expenses WHERE id=target;
+ SELECT * INTO e FROM app.expenses WHERE id=target;
+ IF NOT FOUND THEN RAISE EXCEPTION 'access denied' USING ERRCODE='42501'; END IF;
  PERFORM app.lock_expense_edit(e.group_id,target,ARRAY[new_payer]);
  SELECT * INTO STRICT e FROM app.expenses WHERE id=target;
  IF expected_version IS NULL OR e.version<>expected_version THEN RAISE EXCEPTION 'expense version conflict' USING ERRCODE='40001'; END IF;

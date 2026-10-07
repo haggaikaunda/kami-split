@@ -87,3 +87,26 @@ func registerExpenseCleanup(t *testing.T, admin *pgx.Conn, id func(int) string, 
 	})
 	return func() { retainForBackup = true }
 }
+
+// injectHistoricalDeparture supplies a legacy departed-member fixture for read,
+// authorization and immutable-receipt tests. Those tests intentionally preserve
+// historical nonzero positions; current lifecycle writes reject such departures.
+// Scoped administrator bypass retains the real departure and eligibility epochs
+// without weakening the separate zero-net and concurrent-write lifecycle tests.
+func injectHistoricalDeparture(t *testing.T, f *expenseFixture, membership string) {
+	t.Helper()
+	tx, err := f.admin.Begin(f.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err = tx.Exec(f.ctx, `SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = tx.Exec(f.ctx, `UPDATE app.memberships SET active=false,departed_order=nextval('app.invitation_order'),eligibility_revision=eligibility_revision+1 WHERE id=$1`, membership); err != nil {
+		t.Fatal(err)
+	}
+	if err = tx.Commit(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+}

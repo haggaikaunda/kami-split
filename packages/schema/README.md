@@ -47,7 +47,7 @@ classification conversion have no public endpoint.
 
 ## Activity
 
-`groupActivity` and `householdActivity` traverse persisted immutable expense-created and repayment-recorded events, ordered by event timestamp, kind and record UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same current membership scope as `householdDashboard`, never client group filtering. Its signed workspace binding includes membership/account generations, and scope is sampled with the events; leave/rejoin invalidates prior Household continuations even when financial anchors and source IDs are unchanged. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
+`groupActivity` and `householdActivity` traverse persisted immutable expense-created, expense-updated and repayment-recorded events, ordered by event timestamp, kind and stable event UUID. Exact amounts and financial effective dates remain distinct from event time. Authenticated cursors bind current actor/workspace, exact filters, eligible sources and source revisions; every page reauthorizes. Household activity uses the same current membership scope as `householdDashboard`, never client group filtering. Its signed workspace binding includes membership/account generations, and scope is sampled with the events; leave/rejoin invalidates prior Household continuations even when financial anchors and source IDs are unchanged. See [Activity](../../docs/application/activity.md) for browser, detail and failure semantics.
 
 ## Household overview
 

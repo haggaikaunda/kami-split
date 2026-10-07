@@ -209,7 +209,7 @@ func TestIndependentExpenseViewCursorAnchorsFiltersAndCurrentMetadata(t *testing
 	if got := independentViewRead(t, f, 1, 1, cursor[:len(cursor)-1]+"!", nil, "", "Problem"); got["code"] != "INVALID_CURSOR" {
 		t.Fatal("tampered signature accepted", got)
 	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	if got := independentViewRead(t, f, 1, 1, cursor, nil, "", "Problem"); got["code"] != "INVALID_CURSOR" {
 		t.Fatal("eligibility change reused stale anchors", got)
 	}
@@ -256,7 +256,7 @@ func TestIndependentExpenseViewGlobalTiesAndCanonicalAnchors(t *testing.T) {
 			expected = append(expected, struct{ id, group string }{expenseID, extraID(group)})
 		}
 	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;UPDATE app.expenses SET created_at='2026-09-30T12:00:00.123456Z' WHERE group_id IN('%s','%s','%s');ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY;COMMIT`, f.id(201), f.id(202), raw))
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;UPDATE app.expenses SET created_at='2026-09-30T12:00:00.123456Z' WHERE group_id IN('%s','%s','%s');UPDATE app.expense_revisions SET created_at='2026-09-30T12:00:00.123456Z' WHERE group_id IN('%s','%s','%s');ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY;COMMIT`, f.id(201), f.id(202), raw, f.id(201), f.id(202), raw))
 	sort.Slice(expected, func(i, j int) bool {
 		if expected[i].group != expected[j].group {
 			return expected[i].group > expected[j].group
@@ -442,15 +442,38 @@ func TestIndependentExpenseViewExactBoundariesAndWholeFailure(t *testing.T) {
 	independentViewExpense(t, f, 202, 305, 306, 1, "2026-09-30", "DINING")
 	// A real bounded-record aggregate would need millions/billions of records.
 	// This test-only admin fixture restores and validates both original bounds.
-	t.Cleanup(func() {
-		independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations NO FORCE ROW LEVEL SECURITY;UPDATE app.expenses SET total_minor=1 WHERE group_id='%s';UPDATE app.allocations SET amount_minor=1 WHERE group_id='%s';ALTER TABLE app.expenses VALIDATE CONSTRAINT expenses_total_minor_check;ALTER TABLE app.allocations VALIDATE CONSTRAINT allocations_amount_minor_check;ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations FORCE ROW LEVEL SECURITY;COMMIT`, f.id(201), f.id(201)))
-	})
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations NO FORCE ROW LEVEL SECURITY;ALTER TABLE app.expenses DROP CONSTRAINT expenses_total_minor_check;ALTER TABLE app.allocations DROP CONSTRAINT allocations_amount_minor_check;UPDATE app.expenses SET total_minor=9007199254740993 WHERE group_id='%s';UPDATE app.allocations SET amount_minor=9007199254740993 WHERE group_id='%s';ALTER TABLE app.expenses ADD CONSTRAINT expenses_total_minor_check CHECK(total_minor BETWEEN 1 AND 999999999) NOT VALID;ALTER TABLE app.allocations ADD CONSTRAINT allocations_amount_minor_check CHECK(amount_minor BETWEEN 0 AND 999999999) NOT VALID;ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations FORCE ROW LEVEL SECURITY;COMMIT`, f.id(201), f.id(201)))
+	t.Cleanup(func() { setExpenseViewBoundary(t, f, "1", true) })
+	setExpenseViewBoundary(t, f, "9007199254740993", false)
 	independentViewSummary(t, independentViewRead(t, f, 1, 1, "", nil, "", "ExpenseView"), "9007199254740994", "2", map[string][2]string{"2026-09": {"9007199254740994", "2"}})
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;ALTER TABLE app.expenses NO FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations NO FORCE ROW LEVEL SECURITY;ALTER TABLE app.expenses DROP CONSTRAINT expenses_total_minor_check;ALTER TABLE app.allocations DROP CONSTRAINT allocations_amount_minor_check;UPDATE app.expenses SET total_minor=9223372036854775807 WHERE group_id='%s';UPDATE app.allocations SET amount_minor=9223372036854775807 WHERE group_id='%s';ALTER TABLE app.expenses ADD CONSTRAINT expenses_total_minor_check CHECK(total_minor BETWEEN 1 AND 999999999) NOT VALID;ALTER TABLE app.allocations ADD CONSTRAINT allocations_amount_minor_check CHECK(amount_minor BETWEEN 0 AND 999999999) NOT VALID;ALTER TABLE app.expenses FORCE ROW LEVEL SECURITY;ALTER TABLE app.allocations FORCE ROW LEVEL SECURITY;COMMIT`, f.id(201), f.id(201)))
+	setExpenseViewBoundary(t, f, "9223372036854775807", false)
 	got := independentViewRead(t, f, 1, 1, "", nil, "", "Problem")
 	if got["code"] != "AMOUNT_OVERFLOW" || len(got) != 3 {
 		t.Fatal("overflow clipped or returned partial view", got)
 	}
 	independentViewSummary(t, independentViewRead(t, f, 1, 1, "", map[string]any{"groupId": f.public("Group", 202)}, "", "ExpenseView"), "1", "1", map[string][2]string{"2026-09": {"1", "1"}})
+}
+
+// setExpenseViewBoundary changes only disposable fixture state. Both current and
+// anchored datasets must represent the same deliberately oversized source value;
+// normal writes never bypass these constraints or immutable history triggers.
+func setExpenseViewBoundary(t *testing.T, f *expenseFixture, amount string, validate bool) {
+	t.Helper()
+	suffix := ""
+	if validate {
+		suffix = "EXECUTE format('ALTER TABLE app.%I VALIDATE CONSTRAINT %I', item.tab, check_name);"
+	}
+	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator;
+ DO $fixture$ DECLARE item record; check_name text; definition text;
+ BEGIN
+ FOR item IN SELECT * FROM (VALUES ('expenses','total_minor'),('allocations','amount_minor'),('expense_revisions','total_minor'),('expense_revision_allocations','amount_minor')) fields(tab,col) LOOP
+ SELECT c.conname,regexp_replace(pg_get_constraintdef(c.oid),' NOT VALID$','') INTO STRICT check_name,definition
+ FROM pg_constraint c WHERE c.conrelid=('app.'||item.tab)::regclass AND c.contype='c' AND pg_get_constraintdef(c.oid) LIKE '%%'||item.col||'%%';
+ EXECUTE format('ALTER TABLE app.%%I NO FORCE ROW LEVEL SECURITY',item.tab);
+ EXECUTE format('ALTER TABLE app.%%I DROP CONSTRAINT %%I',item.tab,check_name);
+ EXECUTE format('UPDATE app.%%I SET %%I=%%L::bigint WHERE group_id=%%L::uuid',item.tab,item.col,'%s','%s');
+ EXECUTE format('ALTER TABLE app.%%I ADD CONSTRAINT %%I %%s NOT VALID',item.tab,check_name,definition);
+ %s
+ EXECUTE format('ALTER TABLE app.%%I FORCE ROW LEVEL SECURITY',item.tab);
+ END LOOP;
+ END $fixture$; COMMIT`, amount, f.id(201), suffix))
 }

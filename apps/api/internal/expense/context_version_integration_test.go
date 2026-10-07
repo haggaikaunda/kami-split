@@ -78,7 +78,7 @@ func TestContextVersionIncludesSourcesOutsideFilteredPage(t *testing.T) {
 	if len(filtered["edges"].([]any)) != 1 {
 		t.Fatal("expected one filtered row")
 	}
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN; SET LOCAL ROLE kami_migrator; SELECT id FROM app.groups WHERE id='%s' FOR UPDATE; UPDATE app.memberships SET active=false WHERE id='%s'; COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	if current := matchingContext(t, f); current == previous {
 		t.Fatal("removed source outside page retained context version")
 	}

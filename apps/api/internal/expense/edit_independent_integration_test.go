@@ -4,6 +4,7 @@ package expense_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // A zero-share saved member may depart now, but an edit can reopen their net.
@@ -42,7 +44,7 @@ func independentEligibilityChange(ctx context.Context, tx pgx.Tx, f *expenseFixt
 		return err
 	}
 	if kind == "unlink" {
-		_, err := tx.Exec(ctx, `UPDATE app.users SET live_auth_id=NULL WHERE id=$1`, f.id(102))
+		_, err := tx.Exec(ctx, `UPDATE app.users SET enabled=false,live_auth_id=NULL WHERE id=$1`, f.id(102))
 		return err
 	}
 	if _, err := tx.Exec(ctx, `SELECT id FROM app.users WHERE id=$1 FOR UPDATE`, f.id(102)); err != nil {
@@ -145,11 +147,11 @@ func TestIndependentEditWinsEligibilityTransition(t *testing.T) {
 					changed <- e
 					return
 				}
-				defer tx.Rollback(context.Background())
 				e = independentEligibilityChange(f.ctx, tx, f, kind)
 				if e == nil {
 					e = tx.Commit(f.ctx)
 				}
+				_ = tx.Rollback(context.Background())
 				changed <- e
 			}()
 			independentWaitForLock(t, f, `SELECT EXISTS(SELECT FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock')`, changer.PgConn().PID())
@@ -160,8 +162,11 @@ func TestIndependentEditWinsEligibilityTransition(t *testing.T) {
 				t.Fatalf("edit winner: %+v", out)
 			}
 			err = <-changed
-			if kind == "membership" && err == nil {
-				t.Fatal("departure ignored newly reopened balance")
+			if kind == "membership" {
+				var pgerr *pgconn.PgError
+				if !errors.As(err, &pgerr) || pgerr.Code != "23514" {
+					t.Fatalf("departure must reject new nonzero balance without lock error: %v", err)
+				}
 			}
 			if kind != "membership" && err != nil {
 				t.Fatal(err)

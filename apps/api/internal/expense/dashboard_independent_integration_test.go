@@ -162,7 +162,7 @@ func TestIndependentDashboardCancellationOriginalSpacesAndPrivateExclusion(t *te
 	}
 	// The other partner gets the opposite informational net with the same scope.
 	independentDashboardTotals(t, independentDashboardRead(t, f, 2), "0", "2", "2", "4000", "2")
-	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=false WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
+	injectHistoricalDeparture(t, f, f.id(306))
 	independentDashboardTotals(t, independentDashboardRead(t, f, 1), "-2000", "1", "1", "2000", "1")
 	// Readmission restores the ordinary group's lifetime history, not a new ledger.
 	independentDashboardExec(t, f, fmt.Sprintf(`BEGIN;SET LOCAL ROLE kami_migrator;SELECT id FROM app.groups WHERE id='%s' FOR UPDATE;UPDATE app.memberships SET active=true WHERE id='%s';COMMIT`, f.id(202), f.id(306)))
