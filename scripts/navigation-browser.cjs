@@ -741,12 +741,16 @@ const activity = {
       const bounds = await panel.boundingBox();
       await page.screenshot({
         path: path.join(output, `detail-${workspace}.png`),
-        fullPage: true,
+        fullPage: false,
       });
       if (width <= 650) {
         assert(
           bounds.x <= 1 && bounds.width >= width - 2,
           'mobile detail fills viewport',
+        );
+        assert(
+          Math.abs(bounds.y) <= 1 && Math.abs(bounds.height - 900) <= 2,
+          'mobile detail covers full viewport height from top',
         );
         await page
           .getByRole('button', { name: 'Back to expenses', exact: true })
