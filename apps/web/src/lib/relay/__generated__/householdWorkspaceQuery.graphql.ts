@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3734373a8e340c20744df6b1aafd47c0>>
+ * @generated SignedSource<<a3c62732e43e0ec17c577ceac0c28822>>
  * @lightSyntaxTransform
  */
 
@@ -8,6 +8,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type HouseholdDashboardState = "COMPLETE" | "INCOMPLETE" | "UNAVAILABLE" | "%future added value";
@@ -63,6 +64,8 @@ export type householdWorkspaceQuery$data = {
       readonly totalSharedExpenseCount: string;
       readonly totalSharedExpenseMinor: string;
       readonly viewerNetMinor: string;
+      readonly viewerPaidMinor: string;
+      readonly viewerShareMinor: string;
     } | {
       readonly __typename: "Problem";
       readonly code: ProblemCode;
@@ -83,6 +86,7 @@ export type householdWorkspaceQuery$data = {
     readonly __typename: "ExpenseView";
     readonly edges: ReadonlyArray<{
       readonly node: {
+        readonly category: Category;
         readonly description: string;
         readonly effectiveDate: string;
         readonly groupId: string;
@@ -235,6 +239,20 @@ v12 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "viewerShareMinor",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "viewerPaidMinor",
+                    "storageKey": null
+                  },
                   (v4/*:: as any*/),
                   {
                     "alias": null,
@@ -456,6 +474,13 @@ v12 = [
                         "kind": "ScalarField",
                         "name": "totalMinor",
                         "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "category",
+                        "storageKey": null
                       }
                     ],
                     "storageKey": null
@@ -513,16 +538,16 @@ return {
     "selections": (v12/*:: as any*/)
   },
   "params": {
-    "cacheID": "4e2c774b4d55cb5a564f29cf38e6d09a",
+    "cacheID": "caac144a4c89d657577f30d553a45899",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 5) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerShareMinor\n          viewerPaidMinor\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 5) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0673c11120f43b6f92a87b4453a6eeb1";
+(node as any).hash = "4b73bd55563079993764660c57a4f957";
 
 export default node;

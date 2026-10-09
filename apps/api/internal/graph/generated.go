@@ -117,6 +117,13 @@ type ComplexityRoot struct {
 		Version        func(childComplexity int) int
 	}
 
+	ExpenseCategoryTotal struct {
+		Category          func(childComplexity int) int
+		ExpenseCount      func(childComplexity int) int
+		TotalExpenseMinor func(childComplexity int) int
+		ViewerShareMinor  func(childComplexity int) int
+	}
+
 	ExpenseCommitted struct {
 		Key    func(childComplexity int) int
 		Record func(childComplexity int) int
@@ -174,12 +181,15 @@ type ComplexityRoot struct {
 	}
 
 	ExpenseView struct {
+		Categories        func(childComplexity int) int
 		ContextVersion    func(childComplexity int) int
 		Edges             func(childComplexity int) int
 		ExpenseCount      func(childComplexity int) int
 		Months            func(childComplexity int) int
 		PageInfo          func(childComplexity int) int
 		TotalExpenseMinor func(childComplexity int) int
+		ViewerPaidMinor   func(childComplexity int) int
+		ViewerShareMinor  func(childComplexity int) int
 	}
 
 	ExpenseViewEdge struct {
@@ -284,6 +294,8 @@ type ComplexityRoot struct {
 		TotalSharedExpenseCount func(childComplexity int) int
 		TotalSharedExpenseMinor func(childComplexity int) int
 		ViewerNetMinor          func(childComplexity int) int
+		ViewerPaidMinor         func(childComplexity int) int
+		ViewerShareMinor        func(childComplexity int) int
 	}
 
 	InvitationActionResult struct {
@@ -887,6 +899,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Expense.Version(childComplexity), true
 
+	case "ExpenseCategoryTotal.category":
+		if e.ComplexityRoot.ExpenseCategoryTotal.Category == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseCategoryTotal.Category(childComplexity), true
+	case "ExpenseCategoryTotal.expenseCount":
+		if e.ComplexityRoot.ExpenseCategoryTotal.ExpenseCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseCategoryTotal.ExpenseCount(childComplexity), true
+	case "ExpenseCategoryTotal.totalExpenseMinor":
+		if e.ComplexityRoot.ExpenseCategoryTotal.TotalExpenseMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseCategoryTotal.TotalExpenseMinor(childComplexity), true
+	case "ExpenseCategoryTotal.viewerShareMinor":
+		if e.ComplexityRoot.ExpenseCategoryTotal.ViewerShareMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseCategoryTotal.ViewerShareMinor(childComplexity), true
+
 	case "ExpenseCommitted.key":
 		if e.ComplexityRoot.ExpenseCommitted.Key == nil {
 			break
@@ -1087,6 +1124,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ExpenseOperationRecord.TotalMinor(childComplexity), true
 
+	case "ExpenseView.categories":
+		if e.ComplexityRoot.ExpenseView.Categories == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.Categories(childComplexity), true
 	case "ExpenseView.contextVersion":
 		if e.ComplexityRoot.ExpenseView.ContextVersion == nil {
 			break
@@ -1123,6 +1166,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseView.TotalExpenseMinor(childComplexity), true
+	case "ExpenseView.viewerPaidMinor":
+		if e.ComplexityRoot.ExpenseView.ViewerPaidMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.ViewerPaidMinor(childComplexity), true
+	case "ExpenseView.viewerShareMinor":
+		if e.ComplexityRoot.ExpenseView.ViewerShareMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.ViewerShareMinor(childComplexity), true
 
 	case "ExpenseViewEdge.cursor":
 		if e.ComplexityRoot.ExpenseViewEdge.Cursor == nil {
@@ -1519,6 +1574,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.HouseholdDashboardTotals.ViewerNetMinor(childComplexity), true
+	case "HouseholdDashboardTotals.viewerPaidMinor":
+		if e.ComplexityRoot.HouseholdDashboardTotals.ViewerPaidMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.ViewerPaidMinor(childComplexity), true
+	case "HouseholdDashboardTotals.viewerShareMinor":
+		if e.ComplexityRoot.HouseholdDashboardTotals.ViewerShareMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HouseholdDashboardTotals.ViewerShareMinor(childComplexity), true
 
 	case "InvitationActionResult.actionID":
 		if e.ComplexityRoot.InvitationActionResult.ActionID == nil {
@@ -4139,6 +4206,14 @@ type HouseholdDashboardTotals {
   """
   viewerNetMinor: MinorUnits!
   """
+  Complete viewer allocated expense amount across original eligible spaces, excluding repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Complete viewer expense-payer amount across original eligible spaces, excluding repayments.
+  """
+  viewerPaidMinor: MinorUnits!
+  """
   Number of eligible spaces with a nonzero viewer position.
   """
   openBalanceCount: MinorUnits!
@@ -4934,6 +5009,18 @@ type ExpenseView {
   """
   totalExpenseMinor: MinorUnits!
   """
+  Complete viewer allocated expense amount at the same filtered anchor, excluding repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Complete expenses paid by the viewer at the same filtered anchor, excluding repayments.
+  """
+  viewerPaidMinor: MinorUnits!
+  """
+  Complete matching category aggregates, ordered by category; unmatched categories omitted, zero viewer shares retained.
+  """
+  categories: [ExpenseCategoryTotal!]!
+  """
   Exact count of all matching expenses at the same anchor.
   """
   expenseCount: MinorUnits!
@@ -4983,6 +5070,28 @@ type ExpenseViewEdge {
   Original source Group ID, current label/kind/currency/trip metadata.
   """
   source: GroupSummary!
+}
+
+"""
+One category in the complete authorized filtered dataset at the traversal anchor.
+"""
+type ExpenseCategoryTotal {
+  """
+  Authoritative category shared by every expense in this aggregate.
+  """
+  category: Category!
+  """
+  Complete matching face-value amount, excluding repayments.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Complete stored viewer allocations, zero when absent; excludes repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Matching expense count in either basis, including expenses with zero viewer share.
+  """
+  expenseCount: MinorUnits!
 }
 `, BuiltIn: false},
 }
@@ -5138,6 +5247,20 @@ func (ec *executionContext) childFields_Expense(ctx context.Context, field graph
 		return ec.fieldContext_Expense_editLockReason(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Expense", field.Name)
+}
+
+func (ec *executionContext) childFields_ExpenseCategoryTotal(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "category":
+		return ec.fieldContext_ExpenseCategoryTotal_category(ctx, field)
+	case "totalExpenseMinor":
+		return ec.fieldContext_ExpenseCategoryTotal_totalExpenseMinor(ctx, field)
+	case "viewerShareMinor":
+		return ec.fieldContext_ExpenseCategoryTotal_viewerShareMinor(ctx, field)
+	case "expenseCount":
+		return ec.fieldContext_ExpenseCategoryTotal_expenseCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ExpenseCategoryTotal", field.Name)
 }
 
 func (ec *executionContext) childFields_ExpenseConnection(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -7729,6 +7852,98 @@ func (ec *executionContext) fieldContext_Expense_editLockReason(_ context.Contex
 	return graphql.NewScalarFieldContext("Expense", field, false, false, errors.New("field of type ExpenseEditLockReason does not have child fields"))
 }
 
+func (ec *executionContext) _ExpenseCategoryTotal_category(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCategoryTotal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseCategoryTotal_category(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Category) graphql.Marshaler {
+			return ec.marshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseCategoryTotal_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseCategoryTotal", field, false, false, errors.New("field of type Category does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseCategoryTotal_totalExpenseMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCategoryTotal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseCategoryTotal_totalExpenseMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalExpenseMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseCategoryTotal_totalExpenseMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseCategoryTotal", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseCategoryTotal_viewerShareMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCategoryTotal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseCategoryTotal_viewerShareMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerShareMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseCategoryTotal_viewerShareMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseCategoryTotal", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseCategoryTotal_expenseCount(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCategoryTotal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseCategoryTotal_expenseCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpenseCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseCategoryTotal_expenseCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseCategoryTotal", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
 func (ec *executionContext) _ExpenseCommitted_key(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseCommitted) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8563,6 +8778,84 @@ func (ec *executionContext) _ExpenseView_totalExpenseMinor(ctx context.Context, 
 }
 func (ec *executionContext) fieldContext_ExpenseView_totalExpenseMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseView_viewerShareMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_viewerShareMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerShareMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_viewerShareMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseView_viewerPaidMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_viewerPaidMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerPaidMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_viewerPaidMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseView_categories(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_categories(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Categories, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.ExpenseCategoryTotal) graphql.Marshaler {
+			return ec.marshalNExpenseCategoryTotal2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseCategoryTotalᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_categories(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ExpenseCategoryTotal(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _ExpenseView_expenseCount(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
@@ -10174,6 +10467,52 @@ func (ec *executionContext) _HouseholdDashboardTotals_viewerNetMinor(ctx context
 	)
 }
 func (ec *executionContext) fieldContext_HouseholdDashboardTotals_viewerNetMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_viewerShareMinor(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_viewerShareMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerShareMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_viewerShareMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _HouseholdDashboardTotals_viewerPaidMinor(ctx context.Context, field graphql.CollectedField, obj *model.HouseholdDashboardTotals) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HouseholdDashboardTotals_viewerPaidMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerPaidMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HouseholdDashboardTotals_viewerPaidMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("HouseholdDashboardTotals", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
 }
 
@@ -16803,6 +17142,59 @@ func (ec *executionContext) _Expense(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var expenseCategoryTotalImplementors = []string{"ExpenseCategoryTotal"}
+
+func (ec *executionContext) _ExpenseCategoryTotal(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseCategoryTotal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, expenseCategoryTotalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExpenseCategoryTotal")
+		case "category":
+			out.Values[i] = ec._ExpenseCategoryTotal_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalExpenseMinor":
+			out.Values[i] = ec._ExpenseCategoryTotal_totalExpenseMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerShareMinor":
+			out.Values[i] = ec._ExpenseCategoryTotal_viewerShareMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expenseCount":
+			out.Values[i] = ec._ExpenseCategoryTotal_expenseCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var expenseCommittedImplementors = []string{"ExpenseCommitted", "CreateExpenseResult", "OperationResult"}
 
 func (ec *executionContext) _ExpenseCommitted(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseCommitted) graphql.Marshaler {
@@ -17246,6 +17638,21 @@ func (ec *executionContext) _ExpenseView(ctx context.Context, sel ast.SelectionS
 			}
 		case "totalExpenseMinor":
 			out.Values[i] = ec._ExpenseView_totalExpenseMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerShareMinor":
+			out.Values[i] = ec._ExpenseView_viewerShareMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerPaidMinor":
+			out.Values[i] = ec._ExpenseView_viewerPaidMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "categories":
+			out.Values[i] = ec._ExpenseView_categories(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -18084,6 +18491,16 @@ func (ec *executionContext) _HouseholdDashboardTotals(ctx context.Context, sel a
 			out.Values[i] = graphql.MarshalString("HouseholdDashboardTotals")
 		case "viewerNetMinor":
 			out.Values[i] = ec._HouseholdDashboardTotals_viewerNetMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerShareMinor":
+			out.Values[i] = ec._HouseholdDashboardTotals_viewerShareMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerPaidMinor":
+			out.Values[i] = ec._HouseholdDashboardTotals_viewerPaidMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -20602,6 +21019,32 @@ func (ec *executionContext) marshalNExpense2ᚖgithubᚗcomᚋhaggaikaundaᚋkam
 		return graphql.Null
 	}
 	return ec._Expense(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExpenseCategoryTotal2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseCategoryTotalᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExpenseCategoryTotal) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNExpenseCategoryTotal2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseCategoryTotal(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExpenseCategoryTotal2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseCategoryTotal(ctx context.Context, sel ast.SelectionSet, v *model.ExpenseCategoryTotal) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExpenseCategoryTotal(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExpenseEdge2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExpenseEdge) graphql.Marshaler {

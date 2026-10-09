@@ -22,6 +22,24 @@ const path = require('node:path');
     token_type: 'bearer',
     user,
   };
+  // Theme regression checks intentionally follow OS changes through the real
+  // persisted System preference; the product default remains Light.
+  const preference = await fetch(
+    process.env.EDIT_BROWSER_ENDPOINT + '/graphql',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + process.env.EDIT_BROWSER_TOKEN,
+      },
+      body: JSON.stringify({
+        query:
+          'mutation BrowserAppearance { updateMyAppearance(appearance: SYSTEM, expectedAppearance: LIGHT) { __typename ... on Profile { appearance } } }',
+      }),
+    },
+  );
+  const preferenceResult = await preference.json();
+  assert.equal(preferenceResult.data?.updateMyAppearance?.appearance, 'SYSTEM');
   const browser = await chromium.launch({
     headless: true,
     executablePath:
@@ -237,6 +255,10 @@ const path = require('node:path');
             colorScheme: theme,
             reducedMotion: 'reduce',
           });
+          await page.waitForFunction(
+            (value) => document.documentElement.dataset.theme === value,
+            theme,
+          );
           await page.evaluate(
             (size) => (document.documentElement.style.fontSize = size + '%'),
             scale,

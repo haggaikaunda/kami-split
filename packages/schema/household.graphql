@@ -102,6 +102,14 @@ type HouseholdDashboardTotals {
   """
   viewerNetMinor: MinorUnits!
   """
+  Complete viewer allocated expense amount across original eligible spaces, excluding repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Complete viewer expense-payer amount across original eligible spaces, excluding repayments.
+  """
+  viewerPaidMinor: MinorUnits!
+  """
   Number of eligible spaces with a nonzero viewer position.
   """
   openBalanceCount: MinorUnits!

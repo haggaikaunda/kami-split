@@ -110,7 +110,15 @@ export function AppearanceEditor({
           >
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
-              <label className="onboarding-check" key={value}>
+              <label
+                className={`onboarding-check appearance-choice appearance-choice--${value.toLowerCase()}`}
+                key={value}
+              >
+                <span className="appearance-preview" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
                 <input
                   type="radio"
                   name="appearance"

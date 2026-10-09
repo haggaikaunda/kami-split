@@ -103,6 +103,16 @@ const page = (edges = [edge('one', '2026-09-02')], more = false) => ({
   __typename: 'ExpenseView',
   contextVersion: 'scope-v1',
   totalExpenseMinor: '9007199254740994',
+  viewerShareMinor: '0',
+  viewerPaidMinor: '0',
+  categories: [
+    {
+      category: 'DINING',
+      totalExpenseMinor: '9007199254740994',
+      viewerShareMinor: '0',
+      expenseCount: '2',
+    },
+  ],
   expenseCount: '2',
   months: [
     {
@@ -123,6 +133,11 @@ const scope = {
 } as FinancialScope;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  window.matchMedia = vi.fn().mockReturnValue({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
   HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
   };
@@ -464,4 +479,46 @@ it('edits structured filters in a dialog and applies an explicit reset to the UR
     scroll: false,
   });
   expect(host.querySelector('dialog')).toBeNull();
+});
+
+it('preserves combined filters while switching views and drilling into complete category aggregates', async () => {
+  state.params =
+    'view=breakdown&groupId=home&memberId=me&from=2026-09-01&to=2026-09-30';
+  await render();
+  await respond(page(undefined, true));
+  expect(host.querySelector('.breakdown-center')?.textContent).toContain(
+    '90,071,992,547,409.94',
+  );
+  expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
+    '2 matching expenses',
+  );
+  expect(host.querySelector('.ledger-month')).toBeNull();
+  const category = host.querySelector(
+    '.breakdown-legend button',
+  ) as HTMLButtonElement;
+  await act(async () => category.click());
+  await click('View expenses');
+  const next = new URL(
+    state.push.mock.calls.at(-1)![0],
+    'https://example.test',
+  );
+  expect(next.searchParams.get('view')).toBeNull();
+  expect(next.searchParams.get('category')).toBe('DINING');
+  expect(next.searchParams.get('memberId')).toBe('me');
+  expect(next.searchParams.get('from')).toBe('2026-09-01');
+  expect(next.searchParams.get('to')).toBe('2026-09-30');
+});
+it('removes only the selected active filter chip', async () => {
+  state.params = 'category=DINING&memberId=me&from=2026-09-01&view=breakdown';
+  await render();
+  await respond(page());
+  await click('Remove Category: DINING');
+  const next = new URL(
+    state.push.mock.calls.at(-1)![0],
+    'https://example.test',
+  );
+  expect(next.searchParams.get('category')).toBeNull();
+  expect(next.searchParams.get('memberId')).toBe('me');
+  expect(next.searchParams.get('from')).toBe('2026-09-01');
+  expect(next.searchParams.get('view')).toBe('breakdown');
 });

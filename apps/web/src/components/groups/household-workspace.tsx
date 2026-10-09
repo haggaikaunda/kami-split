@@ -2,7 +2,8 @@
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
-import { AppIcon } from '@/components/workspace-identity';
+import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
+import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { fetchQuery } from 'relay-runtime';
@@ -50,6 +51,10 @@ export function HouseholdWorkspace({
   const access = useFinancialSession();
   const params = useSearchParams(),
     pathname = usePathname();
+  const visitParams = new URLSearchParams(params);
+  visitParams.delete('expense');
+  visitParams.delete('expenseGroup');
+  visitParams.delete('detailSource');
   const current = activity
     ? 'Activity'
     : (workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
@@ -73,7 +78,7 @@ export function HouseholdWorkspace({
         <ActivityFeed key={access.scope.id} scope={access.scope} groupId="" />
       ) : (
         <HouseholdRead
-          key={`${access.scope.id}:${pathname}:${params.toString()}`}
+          key={`${access.scope.id}:${pathname}:${visitParams.toString()}`}
           scope={access.scope}
           current={current}
         />
@@ -159,6 +164,7 @@ function HouseholdSummaryRead({
   const [data, setData] = useState<Dashboard>();
   const [recent, setRecent] = useState<Recent>();
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
   const generation = useRef(0);
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const invalidate = () => {
@@ -218,6 +224,12 @@ function HouseholdSummaryRead({
   }, [scope, current, version]);
   return (
     <>
+      {saved && (
+        <p role="status">
+          Expense edit saved. Current Household data is a separate authorized
+          refresh; unavailable data does not undo your edit.
+        </p>
+      )}
       <button className="household-refresh" onClick={reset}>
         Refresh Household
       </button>
@@ -232,6 +244,16 @@ function HouseholdSummaryRead({
             dashboard={data}
             current={current}
             recent={recent}
+            onRefresh={async () => {
+              setSaved(true);
+              reset();
+            }}
+            onUnavailable={() => {
+              invalidate();
+              setError(
+                'Expense source access is unavailable. Refresh to check current access.',
+              );
+            }}
           />
           <RestoreSource
             scope={scope}
@@ -248,12 +270,16 @@ export function HouseholdContent({
   current,
   members,
   recent,
+  onRefresh,
+  onUnavailable,
 }: {
   scope: FinancialScope;
   dashboard: Dashboard;
   current: WorkspaceSection;
   members?: Members;
   recent?: Recent;
+  onRefresh?: () => Promise<void>;
+  onUnavailable?: () => void;
 }) {
   const home = dashboard.spaces.find((s) => s.isHousehold);
   const totals =
@@ -416,6 +442,7 @@ export function HouseholdContent({
             <div className="ui-summary-row household-summary">
               <SummaryMetric
                 label="Total shared expenses"
+                tone="total"
                 icon={<AppIcon name="expense" />}
                 detail={`${totals.totalSharedExpenseCount} expenses`}
               >
@@ -426,74 +453,124 @@ export function HouseholdContent({
               </SummaryMetric>
               <HouseholdNet totals={totals} />
               <SummaryMetric
-                label="Active spaces"
-                icon={<AppIcon name="groups" />}
-                detail="Home · Trips · Groups"
+                label="Your share"
+                tone="share"
+                icon={<AppIcon name="expense" />}
+                detail={`You paid ${money(totals.viewerPaidMinor)} USD · Excludes repayments`}
               >
-                {totals.activeSpaceCount}
+                <Money value={money(totals.viewerShareMinor)} currency="USD" />
               </SummaryMetric>
             </div>
           )}
           {totals && (
-            <section>
-              <div className="group-section-heading">
-                <h2>Recent expenses</h2>
-                <Link href={householdHref('Expenses')}>View all expenses</Link>
-              </div>
-              {recent?.__typename === 'ExpenseView' ? (
-                !recent.edges.length ? (
-                  <div className="household-empty">
-                    <AppIcon name="expense" />
-                    <p>
-                      <strong>No shared expenses yet.</strong>
-                    </p>
-                    <p>When you add expenses, they’ll show up here.</p>
-                  </div>
-                ) : (
-                  <ul className="group-expense-list">
-                    {recent.edges.map(({ node, source }) => (
-                      <li key={node.id}>
-                        <ScopedLink
-                          scope={scope}
-                          id={`household-expense-${node.id}`}
-                          href={spaceExpenseHref(source, node.id)}
-                        >
-                          <AppIcon
-                            name="expense"
-                            className="recent-expense-icon"
-                          />
-                          <span className="expense-row-copy">
-                            <strong>{node.description}</strong>
-                            <span className="ui-row-detail">
-                              {source.name} ·{' '}
-                              {source.isHousehold
-                                ? 'Home'
-                                : source.kind === 'TRIP'
-                                  ? 'Trip'
-                                  : 'Group'}{' '}
-                              ·{' '}
-                              <time dateTime={node.effectiveDate}>
-                                {node.effectiveDate}
-                              </time>
+            <div className="workspace-overview-columns">
+              <section>
+                <div className="group-section-heading">
+                  <h2>Recent expenses</h2>
+                  <Link href={householdHref('Expenses')}>
+                    View all expenses
+                  </Link>
+                </div>
+                {recent?.__typename === 'ExpenseView' ? (
+                  !recent.edges.length ? (
+                    <div className="household-empty">
+                      <AppIcon name="expense" />
+                      <p>
+                        <strong>No shared expenses yet.</strong>
+                      </p>
+                      <p>When you add expenses, they’ll show up here.</p>
+                    </div>
+                  ) : (
+                    <ul className="group-expense-list">
+                      {recent.edges.map(({ node, source }) => (
+                        <li key={node.id}>
+                          <OverviewExpenseLink
+                            scope={scope}
+                            group={node.groupId}
+                            id={node.id}
+                            href={spaceExpenseHref(source, node.id)}
+                          >
+                            <CategoryIcon category={node.category} />
+                            <span className="expense-row-copy">
+                              <strong>{node.description}</strong>
+                              <span className="ui-row-detail">
+                                {source.name} ·{' '}
+                                {source.isHousehold
+                                  ? 'Home'
+                                  : source.kind === 'TRIP'
+                                    ? 'Trip'
+                                    : 'Group'}{' '}
+                                ·{' '}
+                                <time dateTime={node.effectiveDate}>
+                                  {node.effectiveDate}
+                                </time>
+                              </span>
                             </span>
+                            <Money
+                              value={money(node.totalMinor)}
+                              currency={source.currency}
+                            />
+                          </OverviewExpenseLink>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                ) : (
+                  <p role="alert">
+                    Recent expenses are unavailable. This does not mean there
+                    are no expenses.
+                  </p>
+                )}
+              </section>
+              <aside
+                className="workspace-overview-balances"
+                aria-label="Overview balances by space"
+              >
+                <h2>By space</h2>
+                <ul className="household-balances">
+                  {dashboard.spaces.map((space) => (
+                    <li key={space.groupId}>
+                      <ScopedLink
+                        scope={scope}
+                        id={`overview-balance-${space.groupId}`}
+                        href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                      >
+                        <span>
+                          <strong>{space.name}</strong>
+                          <span className="ui-row-detail">
+                            {space.viewerNetMinor == null
+                              ? 'Unavailable'
+                              : minor(space.viewerNetMinor) > 0n
+                                ? "You're owed"
+                                : minor(space.viewerNetMinor) < 0n
+                                  ? 'You owe'
+                                  : 'Your net is zero'}
                           </span>
+                        </span>
+                        {space.viewerNetMinor != null && (
                           <Money
-                            value={money(node.totalMinor)}
-                            currency={source.currency}
+                            value={money(space.viewerNetMinor)}
+                            currency={space.currency}
                           />
-                        </ScopedLink>
-                      </li>
-                    ))}
-                  </ul>
-                )
-              ) : (
-                <p role="alert">
-                  Recent expenses are unavailable. This does not mean there are
-                  no expenses.
+                        )}
+                      </ScopedLink>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Balances stay separate in each space. A zero viewer net does
+                  not settle other members.
                 </p>
-              )}
-            </section>
+                <Link href={householdHref('Balances')}>View all balances</Link>
+              </aside>
+            </div>
           )}
+          <OverviewExpense
+            scope={scope}
+            allowed={dashboard.spaces.map((s) => s.groupId)}
+            onCommitted={onRefresh ?? (async () => {})}
+            onUnavailable={onUnavailable ?? (() => {})}
+          />
         </>
       )}
     </>
@@ -507,6 +584,8 @@ function HouseholdNet({ totals }: { totals: Totals }) {
     >
       <SummaryMetric
         label="Your net balance"
+        tone="net"
+        icon={<AppIcon name="activity" />}
         detail={
           <>
             <span className="ui-row-detail">

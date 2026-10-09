@@ -10,7 +10,10 @@ The authenticated `householdDashboard` read implements the [ADR-007 summary](../
 
 The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
 expense views with original-space attribution, complete face-value totals/counts,
-and complete monthly totals/counts independent of page size. Filters combine source
+and complete monthly totals/counts independent of page size. Issue #223 adds
+complete category totals/counts and exact viewer allocation/payer amounts from
+the same filtered anchored dataset; dashboard totals also expose complete viewer
+share/paid. These expense-spending amounts exclude repayments. Filters combine source
 group, category, inclusive dates and a same-group Membership ID matching the payer
 or an explicit participant (including zero-share participants). The legacy
 `Group.expenses` participant-only filter remains unchanged. Signed continuation

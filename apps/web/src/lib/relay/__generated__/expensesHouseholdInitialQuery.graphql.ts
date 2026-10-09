@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b93cb5842ad44480e5cf51b9fb52598c>>
+ * @generated SignedSource<<4828f1e56e6fd1cb54f0ccf942558f98>>
  * @lightSyntaxTransform
  */
 
@@ -136,10 +136,46 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "expenseCount",
+  "name": "viewerShareMinor",
   "storageKey": null
 },
 v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "viewerPaidMinor",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "category",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "expenseCount",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ExpenseCategoryTotal",
+  "kind": "LinkedField",
+  "name": "categories",
+  "plural": true,
+  "selections": [
+    (v8/*:: as any*/),
+    (v5/*:: as any*/),
+    (v6/*:: as any*/),
+    (v9/*:: as any*/)
+  ],
+  "storageKey": null
+},
+v11 = {
   "alias": null,
   "args": null,
   "concreteType": "ExpenseMonth",
@@ -155,56 +191,56 @@ v7 = {
       "storageKey": null
     },
     (v5/*:: as any*/),
-    (v6/*:: as any*/)
+    (v9/*:: as any*/)
   ],
-  "storageKey": null
-},
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "cursor",
-  "storageKey": null
-},
-v9 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "currency",
-  "storageKey": null
-},
-v11 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
   "storageKey": null
 },
 v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "groupId",
+  "name": "cursor",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v14 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currency",
+  "storageKey": null
+},
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "groupId",
+  "storageKey": null
+},
+v17 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "displayName",
   "storageKey": null
 },
-v14 = [
-  (v11/*:: as any*/)
+v18 = [
+  (v15/*:: as any*/)
 ],
-v15 = {
+v19 = {
   "alias": null,
   "args": null,
   "concreteType": "Expense",
@@ -212,8 +248,8 @@ v15 = {
   "name": "node",
   "plural": false,
   "selections": [
-    (v11/*:: as any*/),
-    (v12/*:: as any*/),
+    (v15/*:: as any*/),
+    (v16/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -228,13 +264,7 @@ v15 = {
       "name": "effectiveDate",
       "storageKey": null
     },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "category",
-      "storageKey": null
-    },
+    (v8/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -250,8 +280,8 @@ v15 = {
       "name": "payer",
       "plural": false,
       "selections": [
-        (v11/*:: as any*/),
-        (v13/*:: as any*/)
+        (v15/*:: as any*/),
+        (v17/*:: as any*/)
       ],
       "storageKey": null
     },
@@ -270,7 +300,7 @@ v15 = {
           "kind": "LinkedField",
           "name": "participant",
           "plural": false,
-          "selections": (v14/*:: as any*/),
+          "selections": (v18/*:: as any*/),
           "storageKey": null
         },
         {
@@ -286,7 +316,7 @@ v15 = {
   ],
   "storageKey": null
 },
-v16 = {
+v20 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -311,7 +341,7 @@ v16 = {
   ],
   "storageKey": null
 },
-v17 = {
+v21 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -325,14 +355,14 @@ v17 = {
   "type": "Viewer",
   "abstractKey": null
 },
-v18 = {
+v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewerNetMinor",
   "storageKey": null
 },
-v19 = {
+v23 = {
   "alias": null,
   "args": null,
   "concreteType": null,
@@ -364,7 +394,7 @@ v19 = {
             {
               "kind": "InlineFragment",
               "selections": [
-                (v18/*:: as any*/),
+                (v22/*:: as any*/),
                 {
                   "alias": null,
                   "args": null,
@@ -387,9 +417,9 @@ v19 = {
           "name": "spaces",
           "plural": true,
           "selections": [
-            (v12/*:: as any*/),
-            (v9/*:: as any*/),
-            (v10/*:: as any*/),
+            (v16/*:: as any*/),
+            (v13/*:: as any*/),
+            (v14/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -397,7 +427,7 @@ v19 = {
               "name": "isHousehold",
               "storageKey": null
             },
-            (v18/*:: as any*/),
+            (v22/*:: as any*/),
             {
               "alias": null,
               "args": null,
@@ -405,7 +435,7 @@ v19 = {
               "kind": "LinkedField",
               "name": "viewerMembership",
               "plural": false,
-              "selections": (v14/*:: as any*/),
+              "selections": (v18/*:: as any*/),
               "storageKey": null
             },
             {
@@ -416,8 +446,8 @@ v19 = {
               "name": "members",
               "plural": true,
               "selections": [
-                (v11/*:: as any*/),
-                (v13/*:: as any*/),
+                (v15/*:: as any*/),
+                (v17/*:: as any*/),
                 {
                   "alias": null,
                   "args": null,
@@ -480,6 +510,9 @@ return {
                   (v5/*:: as any*/),
                   (v6/*:: as any*/),
                   (v7/*:: as any*/),
+                  (v10/*:: as any*/),
+                  (v9/*:: as any*/),
+                  (v11/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -488,7 +521,7 @@ return {
                     "name": "edges",
                     "plural": true,
                     "selections": [
-                      (v8/*:: as any*/),
+                      (v12/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -497,16 +530,16 @@ return {
                         "name": "source",
                         "plural": false,
                         "selections": [
-                          (v9/*:: as any*/),
-                          (v10/*:: as any*/)
+                          (v13/*:: as any*/),
+                          (v14/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v15/*:: as any*/)
+                      (v19/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v16/*:: as any*/)
+                  (v20/*:: as any*/)
                 ],
                 "type": "ExpenseView",
                 "abstractKey": null
@@ -527,11 +560,11 @@ return {
         "plural": false,
         "selections": [
           (v2/*:: as any*/),
-          (v17/*:: as any*/)
+          (v21/*:: as any*/)
         ],
         "storageKey": null
       },
-      (v19/*:: as any*/)
+      (v23/*:: as any*/)
     ],
     "type": "Query",
     "abstractKey": null
@@ -563,6 +596,9 @@ return {
               (v5/*:: as any*/),
               (v6/*:: as any*/),
               (v7/*:: as any*/),
+              (v10/*:: as any*/),
+              (v9/*:: as any*/),
+              (v11/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -571,7 +607,7 @@ return {
                 "name": "edges",
                 "plural": true,
                 "selections": [
-                  (v8/*:: as any*/),
+                  (v12/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -580,17 +616,17 @@ return {
                     "name": "source",
                     "plural": false,
                     "selections": [
-                      (v9/*:: as any*/),
-                      (v10/*:: as any*/),
-                      (v11/*:: as any*/)
+                      (v13/*:: as any*/),
+                      (v14/*:: as any*/),
+                      (v15/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v15/*:: as any*/)
+                  (v19/*:: as any*/)
                 ],
                 "storageKey": null
               },
-              (v16/*:: as any*/)
+              (v20/*:: as any*/)
             ],
             "type": "ExpenseView",
             "abstractKey": null
@@ -607,26 +643,26 @@ return {
         "plural": false,
         "selections": [
           (v2/*:: as any*/),
-          (v17/*:: as any*/),
+          (v21/*:: as any*/),
           {
             "kind": "InlineFragment",
-            "selections": (v14/*:: as any*/),
+            "selections": (v18/*:: as any*/),
             "type": "Node",
             "abstractKey": "__isNode"
           }
         ],
         "storageKey": null
       },
-      (v19/*:: as any*/)
+      (v23/*:: as any*/)
     ]
   },
   "params": {
-    "cacheID": "14ce516fe3a5ed80c600f5bf2a122004",
+    "cacheID": "483199b3a80f8c2ca9464dcfb04bf164",
     "id": null,
     "metadata": {},
     "name": "expensesHouseholdInitialQuery",
     "operationKind": "query",
-    "text": "query expensesHouseholdInitialQuery(\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      today\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  householdDashboard {\n    __typename\n    ... on HouseholdDashboard {\n      contextVersion\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          activeSpaceCount\n        }\n      }\n      spaces {\n        groupId\n        name\n        currency\n        isHousehold\n        viewerNetMinor\n        viewerMembership {\n          id\n        }\n        members {\n          id\n          displayName\n          status\n          role\n          canParticipate\n        }\n      }\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesHouseholdInitialQuery(\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      today\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  householdDashboard {\n    __typename\n    ... on HouseholdDashboard {\n      contextVersion\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          activeSpaceCount\n        }\n      }\n      spaces {\n        groupId\n        name\n        currency\n        isHousehold\n        viewerNetMinor\n        viewerMembership {\n          id\n        }\n        members {\n          id\n          displayName\n          status\n          role\n          canParticipate\n        }\n      }\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

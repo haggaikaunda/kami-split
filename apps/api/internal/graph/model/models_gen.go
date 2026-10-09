@@ -330,6 +330,18 @@ func (Expense) IsNode() {}
 // Stable typed public ID; possession does not authorize access.
 func (this Expense) GetID() string { return this.ID }
 
+// One category in the complete authorized filtered dataset at the traversal anchor.
+type ExpenseCategoryTotal struct {
+	// Authoritative category shared by every expense in this aggregate.
+	Category Category `json:"category"`
+	// Complete matching face-value amount, excluding repayments.
+	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Complete stored viewer allocations, zero when absent; excludes repayments.
+	ViewerShareMinor ledger.MinorUnits `json:"viewerShareMinor"`
+	// Matching expense count in either basis, including expenses with zero viewer share.
+	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
+}
+
 // Durable original financial success; refresh current authorized group data separately.
 type ExpenseCommitted struct {
 	// Original client-created attempt key, scoped to the authenticated actor, group and CREATE_EXPENSE operation.
@@ -454,6 +466,12 @@ type ExpenseView struct {
 	ContextVersion string `json:"contextVersion"`
 	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
 	TotalExpenseMinor ledger.MinorUnits `json:"totalExpenseMinor"`
+	// Complete viewer allocated expense amount at the same filtered anchor, excluding repayments.
+	ViewerShareMinor ledger.MinorUnits `json:"viewerShareMinor"`
+	// Complete expenses paid by the viewer at the same filtered anchor, excluding repayments.
+	ViewerPaidMinor ledger.MinorUnits `json:"viewerPaidMinor"`
+	// Complete matching category aggregates, ordered by category; unmatched categories omitted, zero viewer shares retained.
+	Categories []*ExpenseCategoryTotal `json:"categories"`
 	// Exact count of all matching expenses at the same anchor.
 	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
 	// Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
@@ -674,6 +692,10 @@ type HouseholdDashboardSpace struct {
 type HouseholdDashboardTotals struct {
 	// Signed sum of viewer positions: positive is owed, negative owes; informational only.
 	ViewerNetMinor ledger.MinorUnits `json:"viewerNetMinor"`
+	// Complete viewer allocated expense amount across original eligible spaces, excluding repayments.
+	ViewerShareMinor ledger.MinorUnits `json:"viewerShareMinor"`
+	// Complete viewer expense-payer amount across original eligible spaces, excluding repayments.
+	ViewerPaidMinor ledger.MinorUnits `json:"viewerPaidMinor"`
 	// Number of eligible spaces with a nonzero viewer position.
 	OpenBalanceCount ledger.MinorUnits `json:"openBalanceCount"`
 	// Number of complete currently eligible spaces, including Household.

@@ -9,6 +9,14 @@ export const expensesView = graphql`
     ... on ExpenseView {
       contextVersion
       totalExpenseMinor
+      viewerShareMinor
+      viewerPaidMinor
+      categories {
+        category
+        totalExpenseMinor
+        viewerShareMinor
+        expenseCount
+      }
       expenseCount
       months {
         month

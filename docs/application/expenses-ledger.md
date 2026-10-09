@@ -60,3 +60,15 @@ Current detail and complete balances use the current projection. Household detai
 edits always target the original source expense and recheck its membership; no
 aggregate writes or duplicated expenses are introduced. See
 [expense editing](expense-editing.md).
+
+## Category breakdown and viewer spending (#223)
+
+Expenses has URL-backed List and Breakdown views using the same active structured
+filters and traversal. Category aggregates, counts, viewer allocations and viewer
+payer totals describe every authorized matching expense at the traversal anchor,
+independently of loaded pages. Repayments are excluded. The category legend gives
+exact amounts and matching-expense counts even where viewer allocation is zero;
+percentages are rounded to one decimal place and may not sum to exactly 100%.
+Chart geometry converts only bounded integer ratios to numbers. Selecting a
+category and View expenses retains the other filters. A fresh traversal after an
+edit refreshes category/share aggregates along with list/month totals.

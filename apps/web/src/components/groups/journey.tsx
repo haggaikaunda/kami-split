@@ -30,6 +30,7 @@ import {
   spaceInvitationsHref,
 } from '@/lib/relay/space-routes';
 import { tripState, routeId } from '@/lib/relay/discovery';
+import { ExpensePresentation } from '@/components/expenses/presentation';
 import { ExpenseDetail } from './expense-detail';
 import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
@@ -106,6 +107,9 @@ export function GroupJourney({
     'tab',
     'expense',
     'expenseGroup',
+    'detailSource',
+    'view',
+    'basis',
     'create',
     'groupId',
     'category',
@@ -664,17 +668,32 @@ function GroupDetails({
                     {group.name}
                   </h1>
                 )}
-                <ExpenseDetail
-                  scope={scope}
-                  group={id}
-                  id={expense}
-                  onCommitted={async () => {
-                    setSaved(
-                      'Expense edited. Current expense and balances are being refreshed.',
+                <ExpensePresentation
+                  title="Expense detail"
+                  onClose={() => {
+                    const token = params.get('source');
+                    const visit = token ? scope.visits.get(token) : undefined;
+                    if (token) scope.restored.delete(token);
+                    router.replace(
+                      visit
+                        ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${token}`
+                        : `${spaceHref(group)}?tab=expenses`,
+                      { scroll: false },
                     );
-                    await read();
                   }}
-                />
+                >
+                  <ExpenseDetail
+                    scope={scope}
+                    group={id}
+                    id={expense}
+                    onCommitted={async () => {
+                      setSaved(
+                        'Expense edited. Current expense and balances are being refreshed.',
+                      );
+                      await read();
+                    }}
+                  />
+                </ExpensePresentation>
               </>
             ) : (
               <GroupWorkspace

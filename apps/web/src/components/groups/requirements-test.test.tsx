@@ -132,6 +132,20 @@ const groups = [
   },
 ];
 beforeEach(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: () => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  });
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
   scope.visits.clear();
@@ -821,7 +835,12 @@ it('canonical Household expense details retain original IDs and the dedicated fr
   expect(host.textContent).toContain('Original Household dinner');
   expect(host.textContent).toContain('$10.01');
   expect(host.querySelectorAll('main')).toHaveLength(1);
-  expect(host.querySelectorAll('h1')).toHaveLength(1);
+  expect(
+    host.querySelector('main > h1, .ui-workspace-header h1')?.textContent,
+  ).toBe('Household ledger');
+  expect(host.querySelector('dialog[open] h1')?.textContent).toBe(
+    'Expense detail',
+  );
   expect(
     host.querySelector('.workspace-navigation a[aria-current="page"]')
       ?.textContent,

@@ -464,9 +464,7 @@ export const journeyWorkspaceQuery = graphql`
           canParticipate
         }
         expenses(first: 5) @include(if: $overview) {
-          revision
           edges {
-            cursor
             node {
               id
               description
@@ -482,8 +480,6 @@ export const journeyWorkspaceQuery = graphql`
           pageInfo {
             hasNextPage
             hasPreviousPage
-            startCursor
-            endCursor
           }
         }
         repayments(first: 5) @include(if: $balances) {
@@ -516,7 +512,6 @@ export const journeyWorkspaceQuery = graphql`
           }
           ... on GroupBalances {
             groupId
-            revision
             totalExpenseMinor
             settled
             positions {

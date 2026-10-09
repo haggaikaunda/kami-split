@@ -644,20 +644,26 @@ export function SummaryMetric({
   children,
   detail,
   icon,
+  tone,
 }: {
   label: string;
   children: ReactNode;
   detail?: ReactNode;
   icon?: ReactNode;
+  tone?: 'total' | 'net' | 'share';
 }) {
   return (
-    <div className="ui-summary-metric">
-      {icon && (
-        <span className="ui-metric-icon" aria-hidden="true">
-          {icon}
-        </span>
-      )}
-      <span className="ui-metric-label">{label}</span>
+    <div
+      className={`ui-summary-metric${tone ? ` ui-summary-metric--${tone}` : ''}`}
+    >
+      <div className="ui-metric-heading">
+        {icon && (
+          <span className="ui-metric-icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <span className="ui-metric-label">{label}</span>
+      </div>
       <strong className="ui-metric-value">{children}</strong>
       {detail && <span className="ui-metric-detail">{detail}</span>}
     </div>
@@ -682,6 +688,8 @@ export function SignedBalanceMetric({
   return (
     <div className={`ui-signed-balance ui-signed-balance--${position}`}>
       <SummaryMetric
+        tone="net"
+        icon={<AppIcon name="activity" />}
         label={
           label ??
           (position === 'positive'

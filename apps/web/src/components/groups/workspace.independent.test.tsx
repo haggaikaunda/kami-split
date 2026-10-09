@@ -109,7 +109,7 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
       ),
     ).toEqual(['Overview', 'Expenses', 'Balances', 'Activity', 'Members']);
     const summaries = host.querySelector('.ui-summary-row')!;
-    expect(summaries.children).toHaveLength(2);
+    expect(summaries.children).toHaveLength(3);
     expect(summaries.textContent).toContain('90,071,992,547,409.93');
     expect(summaries.textContent).toContain('You owe');
     expect(summaries.querySelectorAll('a')).toHaveLength(1);
@@ -153,4 +153,37 @@ it('states positive means owed and distinguishes zero viewer from unsettled grou
   await render(fixture('0'));
   expect(host.textContent).toContain('This group has outstanding balances');
   expect(host.querySelectorAll('a[href*="repayments/new"]')).toHaveLength(2);
+});
+
+it('shows complete viewer expense allocations and payer amount without deriving either from repayment-adjusted net', async () => {
+  const group = fixture('0');
+  const balances = group.balances;
+  if (balances?.__typename !== 'GroupBalances') throw new Error('fixture');
+  const updated = {
+    ...group,
+    balances: {
+      ...balances,
+      positions: balances.positions.map((position, i) =>
+        i
+          ? position
+          : {
+              ...position,
+              paidMinor: '9007199254740993',
+              owedMinor: '375',
+              sentMinor: '800',
+              receivedMinor: '1200',
+            },
+      ),
+    },
+  };
+  await render(updated);
+  const summary = host.querySelector('.ui-summary-row')!;
+  expect(
+    [...summary.querySelectorAll('.ui-metric-label')].map((n) => n.textContent),
+  ).toEqual(['Total expenses', 'Your net balance', 'Your share']);
+  expect(summary.textContent).toContain('3.75');
+  expect(summary.textContent).toContain('You paid $90,071,992,547,409.93 USD');
+  expect(summary.textContent).toContain(
+    'Other members still have open obligations',
+  );
 });

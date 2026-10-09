@@ -1,5 +1,27 @@
 :root {
   color-scheme: light;
+  --color-category-dining: #94541d;
+  --color-category-dining-surface: #fff0df;
+  --color-category-groceries: #00664d;
+  --color-category-groceries-surface: #dff0e9;
+  --color-category-accommodation: #215791;
+  --color-category-accommodation-surface: #eaf3ff;
+  --color-category-transport: #66469b;
+  --color-category-transport-surface: #eee7fa;
+  --color-category-activities: #8e365e;
+  --color-category-activities-surface: #fbe8f0;
+  --color-category-home: #6c5b21;
+  --color-category-home-surface: #f7f0d7;
+  --color-category-other: #566a80;
+  --color-category-other-surface: #e4edf4;
+  --color-surface-raised: #ffffff;
+  --color-primary-surface: #dff0e9;
+  --color-summary-total: #e4edf4;
+  --color-summary-net: #dff0e9;
+  --color-summary-share: #eeebf6;
+  --color-on-summary: #213648;
+  --color-summary-muted: #4b5e70;
+  --color-banner-mist: #e8efe8;
   --color-on-primary: #ffffff;
   --color-on-danger: #ffffff;
   --color-skeleton: #dde5dd;
@@ -16,8 +38,8 @@
   --color-muted: #566a80;
   --color-primary: #00664d;
   --color-primary-hover: #004d3b;
-  --color-canvas: #f8f7f3;
-  --color-subtle: #f3f5f1;
+  --color-canvas: #f5f7fa;
+  --color-subtle: #edf1f5;
   --color-separator: #e4e9ec;
   --color-owes: #93421e;
   --color-owes-surface: #fff1e8;
@@ -36,8 +58,9 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
+  --radius-control: 0.875rem;
+  --radius-pill: 999px;
+  --radius-card: 1.5rem;
   --shadow-panel: 0 1rem 3rem #18342b26;
   --focus-ring: 3px solid var(--color-focus);
   --target-size: 44px;
@@ -107,7 +130,7 @@ button:disabled {
   max-width: 100%;
   padding: var(--space-3) var(--space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   font-weight: 700;
   line-height: 1.3;
   white-space: normal;
@@ -423,7 +446,7 @@ td {
 }
 .ui-signed-balance {
   min-width: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
 }
 .ui-signed-balance--positive {
   color: var(--color-primary);
@@ -501,7 +524,7 @@ td {
   flex-wrap: wrap;
 }
 
-/* Board A2/A6 and B1/B6: shared identity and persistent workspace navigation. */
+/* Shared identity and persistent workspace navigation. */
 .app-icon {
   flex: 0 0 auto;
   vertical-align: middle;
@@ -541,7 +564,7 @@ td {
 .workspace-navigation .workspace-navigation-links a[aria-current='page'] {
   background: var(--color-balance);
   color: var(--color-primary);
-  box-shadow: inset 3px 0 var(--color-primary);
+  box-shadow: none;
   font-weight: 700;
 }
 .workspace-navigation .workspace-navigation-links a:hover {
@@ -555,19 +578,6 @@ td {
   position: relative;
   isolation: isolate;
   gap: 0.85rem;
-}
-.ui-workspace-header--household::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 0 45%;
-  background: url('/art/household.png') right center / cover no-repeat;
-  opacity: 0.75;
-  z-index: -1;
-}
-.ui-workspace-header--household .workspace-heading {
-  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
-  border-radius: var(--radius-control);
-  padding: 0.5rem;
 }
 .ui-workspace-header--household > a {
   background: var(--color-surface);
@@ -605,13 +615,32 @@ td {
   color: var(--color-primary);
 }
 .category-icon--dining {
-  background: var(--color-warm-surface);
-  color: var(--color-warm);
+  color: var(--color-category-dining);
+  background: var(--color-category-dining-surface);
 }
-.category-icon--accommodation,
+.category-icon--groceries {
+  color: var(--color-category-groceries);
+  background: var(--color-category-groceries-surface);
+}
+.category-icon--accommodation {
+  color: var(--color-category-accommodation);
+  background: var(--color-category-accommodation-surface);
+}
+.category-icon--transport {
+  color: var(--color-category-transport);
+  background: var(--color-category-transport-surface);
+}
 .category-icon--activities {
-  background: var(--color-info-surface);
-  color: var(--color-info);
+  color: var(--color-category-activities);
+  background: var(--color-category-activities-surface);
+}
+.category-icon--home {
+  color: var(--color-category-home);
+  background: var(--color-category-home-surface);
+}
+.category-icon--other {
+  color: var(--color-category-other);
+  background: var(--color-category-other-surface);
 }
 .category-icon .app-icon {
   width: 1.3rem;
@@ -677,9 +706,6 @@ td {
   .workspace-navigation .workspace-navigation-links a[aria-current='page'] {
     box-shadow: none;
   }
-  .ui-workspace-header--household::before {
-    display: none;
-  }
   .ui-workspace-header--household .workspace-heading {
     padding-inline-end: 0;
   }
@@ -697,6 +723,26 @@ td {
 /* Appearance is an explicit account preference; OS color scheme never overrides it. */
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --color-category-dining: #ffc198;
+  --color-category-dining-surface: #492e22;
+  --color-category-groceries: #58efb7;
+  --color-category-groceries-surface: #143c35;
+  --color-category-accommodation: #a5c7ff;
+  --color-category-accommodation-surface: #202e47;
+  --color-category-transport: #c9b6ff;
+  --color-category-transport-surface: #342849;
+  --color-category-activities: #ffb0d3;
+  --color-category-activities-surface: #442739;
+  --color-category-home: #e6d28a;
+  --color-category-home-surface: #38341f;
+  --color-category-other: #becbdd;
+  --color-category-other-surface: #263447;
+  --color-summary-total: #1c2a40;
+  --color-summary-net: #143c35;
+  --color-summary-share: #322c49;
+  --color-on-summary: #ffffff;
+  --color-summary-muted: #c1cbdc;
+  --color-banner-mist: #142b2c;
   --color-surface-raised: #172131;
   --color-surface-accent: #142a2c;
   --color-primary-surface: #173c37;
@@ -737,44 +783,6 @@ td {
 :root[data-theme='dark'] .ui-workspace-tabs a[aria-current='page'] {
   color: var(--color-primary);
 }
-:root[data-theme='dark'] .ui-workspace-header--household::before {
-  background-image:
-    linear-gradient(90deg, var(--color-surface), transparent),
-    linear-gradient(#141c4477, #0d1c2788), url('/art/household.png');
-  opacity: 0.8;
-  border-radius: inherit;
-}
-:root[data-theme='dark'] .ui-workspace-header--household .workspace-heading {
-  background: transparent;
-}
-:root[data-theme='dark'] .ui-workspace-header--household > a {
-  border: 1px solid var(--color-primary);
-  padding: 0.65rem 0.85rem;
-  text-decoration: none;
-  font-weight: 700;
-}
-:root[data-theme='dark']
-  .ui-workspace-header--household
-  .workspace-identity-icon {
-  border-radius: 1rem;
-  background: var(--color-warm-surface);
-  color: var(--color-warm-ink);
-  box-shadow: 0 0 1.5rem #efbe8033;
-}
-:root[data-theme='dark'] .ui-summary-metric {
-  background: linear-gradient(
-    120deg,
-    var(--color-surface),
-    var(--color-subtle)
-  );
-}
-:root[data-theme='dark'] .ui-signed-balance .ui-summary-metric {
-  background: var(--color-balance);
-}
-:root[data-theme='dark'] .ui-signed-balance--negative .ui-summary-metric {
-  background: var(--color-owes-surface);
-}
-
 :root[data-theme='dark']
   .workspace-navigation
   .workspace-navigation-links
@@ -791,34 +799,74 @@ td {
     linear-gradient(90deg, var(--color-art-shade), transparent),
     url('/art/trip.png');
 }
-:root[data-theme='dark'] .ui-workspace-header--group {
-  background-image:
-    linear-gradient(90deg, var(--color-surface), transparent),
-    url('/art/household.png');
-}
 
-.ui-metric-icon {
-  display: none;
+/* Explicit financial roles do not depend on summary-card order. */
+.ui-summary-metric--total {
+  background: var(--color-summary-total);
 }
-:root[data-theme='dark'] .ui-metric-icon {
+.ui-summary-metric--net,
+.ui-signed-balance .ui-summary-metric {
+  background: var(--color-summary-net);
+}
+.ui-summary-metric--share {
+  background: var(--color-summary-share);
+}
+.ui-summary-metric[class*='ui-summary-metric--'] {
+  color: var(--color-on-summary);
+  border-color: transparent;
+}
+.ui-summary-metric[class*='ui-summary-metric--'] .ui-metric-label,
+.ui-summary-metric[class*='ui-summary-metric--'] .ui-metric-detail {
+  color: var(--color-summary-muted);
+}
+.ui-metric-icon {
   display: inline-grid;
   place-items: center;
   justify-self: start;
-  width: 2.75rem;
-  height: 2.75rem;
-  border: 1px solid var(--color-separator);
-  border-radius: 0.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-control);
+  color: var(--color-info);
+  background: var(--color-info-surface);
+}
+.ui-summary-metric--share .ui-metric-icon {
   color: var(--color-accent);
   background: var(--color-accent-surface);
 }
-:root[data-theme='dark'] .ui-summary-metric:has(.ui-metric-icon) {
-  grid-template-columns: 2.75rem minmax(0, 1fr);
-  column-gap: 0.85rem;
+.workspace-navigation-links a[href='/household'] .app-icon {
+  color: var(--color-category-dining);
 }
-:root[data-theme='dark'] .ui-metric-icon {
-  grid-column: 1;
-  grid-row: 1 / 4;
+.workspace-navigation-links a[href='/trips'] .app-icon {
+  color: var(--color-info);
 }
-:root[data-theme='dark'] .ui-metric-icon ~ * {
-  grid-column: 2;
+.workspace-navigation-links a[href='/account'] .app-icon {
+  color: var(--color-accent);
+}
+.ui-button:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+@media (max-width: 999px) {
+  .workspace-navigation .workspace-navigation-links a {
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: var(--radius-pill);
+    text-align: center;
+  }
+}
+
+.workspace-navigation-links a > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ui-metric-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.ui-metric-heading .ui-metric-icon {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
 }

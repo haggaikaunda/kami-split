@@ -266,6 +266,9 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
 it('returning to the original expense filter reads fresh authorization instead of resurrecting its consumed initial result', async () => {
   const view = (amount: string) => ({
     __typename: 'ExpenseView',
+    viewerShareMinor: '0',
+    viewerPaidMinor: '0',
+    categories: [],
     contextVersion: null,
     totalExpenseMinor: amount,
     expenseCount: '0',
@@ -309,6 +312,9 @@ it('returning to the original expense filter reads fresh authorization instead o
 it('Household returning to the initial filter cannot revive previously authorized amounts after eligibility revocation', async () => {
   const view = (amount: string) => ({
     __typename: 'ExpenseView',
+    viewerShareMinor: '0',
+    viewerPaidMinor: '0',
+    categories: [],
     contextVersion: 'eligible-v1',
     totalExpenseMinor: amount,
     expenseCount: '0',
@@ -327,6 +333,8 @@ it('Household returning to the initial filter cannot revive previously authorize
         contextVersion: 'eligible-v1',
         totals: {
           __typename: 'HouseholdDashboardTotals',
+          viewerShareMinor: '12345',
+          viewerPaidMinor: '20000',
           viewerNetMinor: '0',
           activeSpaceCount: '1',
         },

@@ -87,6 +87,8 @@ function dashboard(state) {
           : {
               __typename: 'HouseholdDashboardTotals',
               viewerNetMinor: state.net,
+              viewerShareMinor: '4503599627370496',
+              viewerPaidMinor: '4503599627370496',
               openBalanceCount: '2',
               activeSpaceCount: '3',
               totalSharedExpenseMinor: '9007199254740993',
@@ -149,7 +151,7 @@ const path = require('node:path');
 const output = process.env.OUTPUT_DIR || '/tmp/kami-navigation-browser';
 fs.mkdirSync(output, { recursive: true });
 const port = process.env.PORT || '3193';
-const origin = `http://localhost:${port}`;
+const origin = process.env.BROWSER_ORIGIN || `http://localhost:${port}`;
 const delay = Number(process.env.FIXTURE_DELAY_MS || 250);
 const width = Number(process.env.WIDTH || 1280),
   scale = Number(process.env.SCALE || 1);
@@ -170,6 +172,16 @@ const view = {
   __typename: 'ExpenseView',
   __isExpenseViewResult: 'ExpenseView',
   totalExpenseMinor: '300',
+  viewerShareMinor: '300',
+  viewerPaidMinor: '300',
+  categories: [
+    {
+      category: 'GROCERIES',
+      totalExpenseMinor: '300',
+      viewerShareMinor: '300',
+      expenseCount: '1',
+    },
+  ],
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
   edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
@@ -251,7 +263,16 @@ const activity = {
       log.push(item);
       requestRecords.set(r.request(), item);
       let data;
-      if (op === 'journeyWorkspaceQuery')
+      if (op === 'appearanceQuery' || op === 'profileQuery')
+        data = {
+          currentProfile: {
+            __typename: 'Profile',
+            id: 'v',
+            displayName: 'Alex',
+            appearance: process.env.THEME === 'dark' ? 'DARK' : 'LIGHT',
+          },
+        };
+      else if (op === 'journeyWorkspaceQuery')
         data = {
           viewer: { __typename: 'Viewer', today: '2026-10-05' },
           group: group(variables.id),
@@ -421,6 +442,30 @@ const activity = {
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
     await page.waitForTimeout(1000);
+    if (process.env.MATERIAL_TESTS === '1') {
+      await page.waitForFunction(
+        (theme) => document.documentElement.dataset.theme === theme,
+        process.env.THEME || 'light',
+      );
+      const labels = await page
+        .locator('.ui-summary-row .ui-metric-label')
+        .allTextContents();
+      assert.equal(
+        labels.length,
+        3,
+        'overview has three complete summary cards',
+      );
+      assert.equal(labels[2], 'Your share');
+      assert.equal(
+        await page.locator('.workspace-overview-balances').isVisible(),
+        width > 900,
+        'overview balances responsive visibility',
+      );
+      await page.screenshot({
+        path: path.join(output, `overview-${workspace}.png`),
+        fullPage: true,
+      });
+    }
     results.push({
       workspace,
       action: 'cold overview',
@@ -484,7 +529,7 @@ const activity = {
             return !!document.querySelector('#ledger-expense-e1');
           if (tab === 'Activity')
             return [...document.querySelectorAll('button')].some((e) =>
-              e.textContent.includes('Expense created'),
+              e.textContent.includes('added an expense'),
             );
           if (tab === 'Members')
             return document.body.textContent.includes('Owner · Active');
@@ -557,14 +602,106 @@ const activity = {
       log.some((request) => request.variables.filter?.category === 'GROCERIES'),
       'filter not sent to server',
     );
+    if (process.env.MATERIAL_TESTS === '1') {
+      await page
+        .getByRole('button', { name: 'Breakdown', exact: true })
+        .click();
+      await page.waitForURL(
+        (url) => url.searchParams.get('view') === 'breakdown',
+      );
+      const chart = page.getByRole('region', { name: 'Spending by category' });
+      await chart.waitFor();
+      await page.screenshot({
+        path: path.join(output, `chart-${workspace}.png`),
+        fullPage: true,
+      });
+      assert.equal(
+        new URL(page.url()).searchParams.get('category'),
+        'GROCERIES',
+      );
+      assert(
+        (await chart.innerText()).includes('$3.00'),
+        'complete total in chart',
+      );
+      await page.getByLabel('Chart amount').selectOption('share');
+      await page.waitForURL((url) => url.searchParams.get('basis') === 'share');
+      const sector = page.locator('.breakdown-legend button');
+      await sector.focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await sector.getAttribute('aria-pressed'), 'true');
+      await page
+        .getByRole('button', { name: 'View expenses', exact: true })
+        .click();
+      await page.locator('#ledger-expense-e1').waitFor();
+      assert.equal(
+        new URL(page.url()).searchParams.get('category'),
+        'GROCERIES',
+      );
+      results.push({
+        workspace,
+        breakdownURL: true,
+        shareBasis: true,
+        keyboardSectorSelection: true,
+        categoryDrilldown: true,
+      });
+    }
     const filteredURL = page.url();
     const row = page.locator('#ledger-expense-e1');
     await row.focus();
     await page.keyboard.press('Enter');
-    await page.getByRole('dialog', { name: 'Expense detail' }).waitFor();
+    await page
+      .getByRole(width <= 650 ? 'region' : 'dialog', { name: 'Expense detail' })
+      .waitFor();
     await page.getByText('Private fixture note').waitFor();
+    if (process.env.MATERIAL_TESTS === '1') {
+      const panel = page.locator('.expense-presentation');
+      const bounds = await panel.boundingBox();
+      await page.screenshot({
+        path: path.join(output, `detail-${workspace}.png`),
+        fullPage: true,
+      });
+      if (width <= 650) {
+        assert(
+          bounds.x <= 1 && bounds.width >= width - 2,
+          'mobile detail fills viewport',
+        );
+        await page
+          .getByRole('button', { name: 'Back to expenses', exact: true })
+          .waitFor();
+      } else {
+        assert(
+          bounds.x > 0 && Math.abs(bounds.x + bounds.width - width) <= 2,
+          'desktop drawer anchored right',
+        );
+        await page.mouse.click(8, 8);
+        await panel.waitFor({ state: 'detached' });
+        assert.equal(
+          page.url(),
+          filteredURL,
+          'outside click must dismiss without navigating underlying header',
+        );
+        await row.click();
+        await page.getByText('Private fixture note').waitFor();
+      }
+      await page.getByText('Private fixture note').click();
+      assert(await panel.isVisible(), 'inside click must preserve detail');
+      await page.keyboard.press('Tab');
+      assert(
+        await panel.evaluate((element) =>
+          element.contains(document.activeElement),
+        ),
+        'focus contained',
+      );
+      results.push({
+        workspace,
+        presentationGeometry: true,
+        outsideDismiss: width > 650,
+        insidePreserved: true,
+        focusContained: true,
+      });
+    }
     await page.keyboard.press('Escape');
-    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    await page.locator('.expense-presentation').waitFor({ state: 'detached' });
     await page.waitForTimeout(50);
     assert(
       await row.evaluate((e) => e === document.activeElement),
@@ -573,7 +710,7 @@ const activity = {
     await page.goForward();
     await page.getByText('Private fixture note').waitFor();
     await page.goBack();
-    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    await page.locator('.expense-presentation').waitFor({ state: 'detached' });
     await row.waitFor();
     assert.equal(page.url(), filteredURL, 'detail lost source filter');
     results.push({
