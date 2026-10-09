@@ -129,11 +129,11 @@
   font-size: 0.875rem;
   font-weight: 700;
 }
-.financial-form-card fieldset fieldset {
+.financial-form-card .financial-participants {
   border: 1px solid var(--color-separator);
   border-radius: var(--radius-control);
   padding: 0.75rem;
-  margin-block: 1rem;
+  margin: 0;
 }
 .financial-form-card button[type='submit'] {
   border: 0;
@@ -289,6 +289,7 @@
   background: var(--color-surface);
 }
 .expense-field textarea {
+  display: inline-block;
   resize: vertical;
   min-height: 4.5rem;
 }
@@ -677,7 +678,7 @@
   margin: 0;
 }
 .expense-presentation--create .expense-fields-grid {
-  margin-block: 22px;
+  margin: 22px 0 17px;
 }
 .expense-create-actions {
   display: flex;

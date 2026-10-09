@@ -72,7 +72,7 @@ async function captureReferences(browser) {
         lucide: process.env.REFERENCE_LUCIDE_PATH,
         widths,
         themes,
-        note: 'Original interactive source; exported outer wrappers excluded. Local Roboto and original Lucide supply dependencies only. No visual reference styles are rewritten.',
+        note: 'Original interactive source with its standards-mode HTML doctype; exported outer wrappers excluded. Local Roboto and original Lucide supply dependencies only. No visual reference styles are rewritten.',
       },
       null,
       2,
@@ -146,7 +146,7 @@ async function captureReferences(browser) {
             )
             .replace(/<link rel="stylesheet"[^>]+>/, '');
           await page.setContent(
-            `<style>html,body{margin:0;padding:0}@font-face{font-family:Roboto;src:url(data:font/ttf;base64,${font});font-weight:100 900;font-style:normal}</style>${source}`,
+            `<!doctype html><style>html,body{margin:0;padding:0}@font-face{font-family:Roboto;src:url(data:font/ttf;base64,${font});font-weight:100 900;font-style:normal}</style>${source}`,
           );
           await page.evaluate(() => document.fonts.ready);
           if (name === 'filters')
@@ -263,6 +263,10 @@ async function captureReferences(browser) {
               };
             };
             return {
+              documentMode: {
+                compatMode: document.compatMode,
+                doctype: document.doctype?.name ?? null,
+              },
               theme: getComputedStyle(app).colorScheme,
               originExcluded: { x: appRect.x, y: appRect.y },
               viewport: { width: innerWidth, height: innerHeight },
@@ -287,6 +291,8 @@ async function captureReferences(browser) {
               visibleText: app.innerText,
             };
           });
+          assert.equal(metrics.documentMode.compatMode, 'CSS1Compat');
+          assert.equal(metrics.documentMode.doctype, 'html');
           await page
             .locator('.kg-app')
             .screenshot({ path: path.join(output, `${stem}.png`) });
