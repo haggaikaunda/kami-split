@@ -420,13 +420,22 @@ function LedgerContent({
         <div className="ledger-active-filters" aria-label="Active filters">
           {activeFilterKeys.map((key) => {
             const value = params.get(key)!;
-            const memberSpace =
+            const memberSpaces =
               key === 'memberId'
-                ? spaces.find((space) =>
+                ? spaces.filter((space) =>
                     space.members.some((member) => member.id === value),
                   )
-                : undefined;
+                : [];
+            const memberSpace =
+              memberSpaces.find(
+                (space) => space.groupId === (params.get('groupId') || groupId),
+              ) ?? memberSpaces[0];
             const date = new Date(`${value}T00:00:00Z`);
+            const validDate =
+              /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+              Number(value.slice(0, 4)) > 0 &&
+              !Number.isNaN(date.getTime()) &&
+              date.toISOString().slice(0, 10) === value;
             const label =
               key === 'groupId'
                 ? `Space: ${spaces.find((space) => space.groupId === value)?.name ?? 'Selected space'}`
@@ -436,7 +445,7 @@ function LedgerContent({
                     : 'Selected member'
                   : key === 'category'
                     ? value[0] + value.slice(1).toLowerCase()
-                    : `${key === 'from' ? 'From' : 'To'} ${Number.isNaN(date.getTime()) ? value : overviewDate(value, false, value.slice(0, 4) !== today.slice(0, 4))}`;
+                    : `${key === 'from' ? 'From' : 'To'} ${!validDate ? value : overviewDate(value, false, value.slice(0, 4) !== today.slice(0, 4))}`;
             return (
               <button
                 key={key}

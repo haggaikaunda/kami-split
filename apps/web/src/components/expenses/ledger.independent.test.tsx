@@ -560,15 +560,18 @@ it('names the member source and past filter year without changing filter values'
   });
 });
 
-it('keeps an invalid date filter removable while the server rejects its URL', async () => {
-  state.params = 'from=invalid';
-  await render();
-  await respond({ __typename: 'Problem', code: 'INVALID_INPUT' });
-  expect(host.querySelector('.ledger-filter-chip')?.textContent).toContain(
-    'From invalid',
-  );
-  await click('Remove From invalid');
-  expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
-    scroll: false,
-  });
-});
+it.each(['invalid', '2026-02-31', '0000-01-01', '2026-9-01'])(
+  'keeps invalid date %s removable while the server rejects its URL',
+  async (value) => {
+    state.params = `from=${value}`;
+    await render();
+    await respond({ __typename: 'Problem', code: 'INVALID_INPUT' });
+    expect(host.querySelector('.ledger-filter-chip')?.textContent).toContain(
+      `From ${value}`,
+    );
+    await click(`Remove From ${value}`);
+    expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
+      scroll: false,
+    });
+  },
+);
