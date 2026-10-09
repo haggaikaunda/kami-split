@@ -153,16 +153,14 @@ export function ExpenseBreakdown({
                       Math.PI / 2;
                     const active = selection?.category === sector.category;
                     return (
-                      <g
-                        key={sector.category}
-                        transform={
-                          active
-                            ? `translate(${Math.cos(angle) * 6} ${Math.sin(angle) * 6})`
-                            : undefined
-                        }
-                        opacity={selection && !active ? 0.55 : 1}
-                      >
+                      <g key={sector.category}>
                         <path
+                          transform={
+                            active
+                              ? `translate(${Math.cos(angle) * 6} ${Math.sin(angle) * 6})`
+                              : undefined
+                          }
+                          opacity={selection && !active ? 0.55 : 1}
                           className={`breakdown-sector breakdown-category--${sector.category.toLowerCase()}`}
                           data-selected={active}
                           d={categoryPath(
