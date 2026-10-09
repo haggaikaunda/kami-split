@@ -5,15 +5,9 @@ import { Suspense } from 'react';
 import { FinancialSession } from '@/components/groups/session';
 import './styles.css';
 const bodyFont = localFont({
-  src: './fonts/DMSans.ttf',
-  weight: '100 1000',
-  variable: '--font-dm-sans',
-  display: 'swap',
-});
-const displayFont = localFont({
-  src: './fonts/Manrope.ttf',
-  weight: '200 800',
-  variable: '--font-manrope',
+  src: './fonts/Roboto.ttf',
+  weight: '100 900',
+  variable: '--font-roboto',
   display: 'swap',
 });
 
@@ -31,11 +25,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${bodyFont.variable} ${displayFont.variable}`}
-    >
+    <html lang="en" suppressHydrationWarning className={bodyFont.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: appearanceBootstrap }} />
       </head>

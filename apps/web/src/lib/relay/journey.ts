@@ -416,7 +416,7 @@ export const journeyWorkspaceQuery = graphql`
     $activity: Boolean!
     $filter: StructuredExpenseFilter
   ) {
-    groupExpenses(groupId: $id, first: 20, filter: $filter)
+    groupExpenses(groupId: $id, first: 6, filter: $filter)
       @include(if: $ledger) {
       ...expensesView
     }
@@ -463,9 +463,8 @@ export const journeyWorkspaceQuery = graphql`
           role
           canParticipate
         }
-        expenses(first: 5) @include(if: $overview) {
+        expenses(first: 4) @include(if: $overview) {
           edges {
-            cursor
             node {
               id
               description
@@ -473,14 +472,15 @@ export const journeyWorkspaceQuery = graphql`
               totalMinor
               category
               payer {
-                id
                 displayName
               }
+              allocations {
+                participant {
+                  id
+                }
+                amountMinor
+              }
             }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
           }
         }
         repayments(first: 5) @include(if: $balances) {

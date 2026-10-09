@@ -1,5 +1,7 @@
 # Shared visual foundation (#189)
 
+> Historical visual rules and evidence, superseded for current production by [#227](../../issue-227-implementation.md). In particular, the Manrope/DM Sans, warm palette, wide navigation and card measurements below are earlier implementation choices, not current authority. Original artwork provenance and historical evidence remain unchanged.
+
 This is the historical #191 slice record. The subsequent [remaining-screen adoption](adoption.md) supplies the outstanding panel evidence; the current [acceptance ledger](README.md) indexes both slices.
 
 This slice applies Board A2/A6 and B1/B6 to the real Household Overview and Expenses routes, and B5/B7 to shared structured filters. Other mapped surfaces remain pending full adoption. Shared primitive changes also affect existing Group/Trip screens and retain their regression requirements.

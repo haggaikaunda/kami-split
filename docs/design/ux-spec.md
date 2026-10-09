@@ -1,5 +1,7 @@
 # UX specification
 
+Current production visual authority is [issue #227](https://github.com/haggaikaunda/kami-split/issues/227) and its [commit-pinned reference pack](issue-227-parity-matrix.md). Production uses locally bundled Roboto for body and display text, with Arial and sans-serif fallbacks; the base body is 14px with 1.5 line height at the default root size. The exact Light/Dark palette, shell, spacing and component roles come from the reference source cascade. The [implementation note](issue-227-implementation.md) tracks this corrective migration without claiming acceptance.
+
 > Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
 
 Production-policy note: [ADR-004](../application/decisions/004-group-balances-membership-and-recovery.md) now accepts automatic within-group simplification, revised departure eligibility and recovery/readmission requirements. Unsimplified debt and session-only behavior in this document remain historical seeded-preview requirements/evidence, not the current production policy.
@@ -100,7 +102,7 @@ Use deterministic fixture scenarios in the seed adapter rather than production-l
 
 ## Shared visual and accessibility rules
 
-Forest-green primary actions, pale-green balance surface, white financial cards, coherent line/category icons, Manrope display and DM Sans body (system fallbacks). Extract spacing, color, radius, type, focus, elevation and breakpoint tokens; do not copy the prototype's cascading overrides. Money uses tabular numerals, integer-derived formatting and visible currency.
+For current production, use the #227 Roboto typography and exact semantic Light/Dark roles identified above. The archived seeded prototype used Manrope display and DM Sans body; those fonts and its approximate palette do not govern the application. Shared tokens own spacing, color, radius, type, focus, elevation and breakpoints. Money uses tabular numerals, integer-derived formatting and visible currency.
 
 Reusable primitives: shell/nav, avatar/member selector, money/date/currency fields, split mode and allocation rows, reconciliation status, buttons/loading, dialog/panel, confirmation, toast/error summary, cards, event row, chart/table and empty/skeleton states. Do not introduce a second design system unnecessarily.
 

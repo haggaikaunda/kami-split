@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c8858766d16b6e371157b30d4329ebd8>>
+ * @generated SignedSource<<69894fc2cc3a4b7d249bda1f5184d2f6>>
  * @lightSyntaxTransform
  */
 
@@ -58,7 +58,7 @@ v1 = [
   {
     "kind": "Literal",
     "name": "first",
-    "value": 20
+    "value": 6
   }
 ],
 v2 = {
@@ -443,16 +443,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "4c7f50deef07e35e00b1082d0f2eff60",
+    "cacheID": "d28a52406d5ee858029a090aef3d20a1",
     "id": null,
     "metadata": {},
     "name": "expensesHouseholdQuery",
     "operationKind": "query",
-    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7deb169e69ed68f18c529df84ce84123";
+(node as any).hash = "461ebb4e6b1f38c0160b2efe57ee59f1";
 
 export default node;

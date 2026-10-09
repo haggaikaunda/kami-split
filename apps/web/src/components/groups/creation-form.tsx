@@ -243,7 +243,7 @@ export function CreationForm({
   }
   const disabled = busy || !!attempt || storageFailed || denied;
   return (
-    <section aria-labelledby="creation-heading">
+    <section className="financial-form-card" aria-labelledby="creation-heading">
       <h2 id="creation-heading" tabIndex={-1}>
         Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
       </h2>
@@ -370,19 +370,21 @@ export function CreationForm({
               message,
             }))}
           />
-          <fieldset disabled={disabled}>
+          <fieldset className="financial-entry-fields" disabled={disabled}>
             <legend>Group details</legend>
-            <label htmlFor="creation-kind">Type</label>
-            <select
-              id="creation-kind"
-              value={draft.kind}
-              onChange={(e) =>
-                change({ kind: e.target.value as CreationDraft['kind'] })
-              }
-            >
-              <option value="ORDINARY">Group</option>
-              <option value="TRIP">Trip</option>
-            </select>
+            <div className="financial-field">
+              <label htmlFor="creation-kind">Type</label>
+              <select
+                id="creation-kind"
+                value={draft.kind}
+                onChange={(e) =>
+                  change({ kind: e.target.value as CreationDraft['kind'] })
+                }
+              >
+                <option value="ORDINARY">Group</option>
+                <option value="TRIP">Trip</option>
+              </select>
+            </div>
             {(
               [
                 'name',
@@ -391,7 +393,7 @@ export function CreationForm({
                   : []),
               ] as const
             ).map((key) => (
-              <div key={key}>
+              <div className="financial-field" key={key}>
                 <label htmlFor={`creation-${key}`}>
                   {
                     {

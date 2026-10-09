@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { containDialogFocus } from '@/components/primitives';
 import './ledger.css';
+import { AppIcon } from '@/components/workspace-identity';
 
 /** One mounted presentation preserves form drafts across responsive changes. */
 export function ExpensePresentation({
@@ -18,7 +19,7 @@ export function ExpensePresentation({
   const outsideStart = useRef(false);
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 650px)');
+    const media = window.matchMedia('(max-width: 600px)');
     const update = () => setMobile(media.matches);
     update();
     media.addEventListener('change', update);
@@ -83,7 +84,7 @@ export function ExpensePresentation({
           onClick={onClose}
           aria-label="Back to expenses"
         >
-          ← Back to expenses
+          <AppIcon name="back" /> Back to expenses
         </button>
         <h1 ref={heading} tabIndex={-1}>
           {title}
@@ -93,10 +94,10 @@ export function ExpensePresentation({
           onClick={onClose}
           aria-label="Close expense"
         >
-          ×
+          <AppIcon name="close" />
         </button>
       </header>
-      {children}
+      <div className="expense-presentation-content">{children}</div>
     </dialog>
   );
 }

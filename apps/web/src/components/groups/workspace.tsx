@@ -1,4 +1,6 @@
 'use client';
+import { createPortal } from 'react-dom';
+import { overviewDate } from './overview-date';
 import {
   spaceHref,
   spaceInvitationsHref,
@@ -11,15 +13,13 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { minor, money } from '@/lib/relay/money';
 import { tripState } from '@/lib/relay/discovery';
+import { minor, money } from '@/lib/relay/money';
 import {
   Member,
-  MemberBalanceRow,
   Money,
   RecommendedRepaymentRow,
   SignedBalanceMetric,
-  SpaceChip,
   SummaryMetric,
   WorkspaceHeader,
   WorkspaceTabs,
@@ -44,6 +44,7 @@ export function GroupWorkspace({
   repayment = false,
   showTabs = true,
   showHeader = true,
+  headerTarget,
   initialView,
   initialFeed,
   completed = false,
@@ -58,6 +59,7 @@ export function GroupWorkspace({
   repayment?: boolean;
   showTabs?: boolean;
   showHeader?: boolean;
+  headerTarget?: HTMLDivElement | null;
   initialView?: { filterText: string; reference: expensesView$key };
   initialFeed?: activityFeed$key;
   completed?: boolean;
@@ -74,72 +76,39 @@ export function GroupWorkspace({
   const base = spaceHref(group);
   const hrefFor = (tab: WorkspaceSection) => `${base}?tab=${tab.toLowerCase()}`;
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
+  const workspaceHeader = (
+    <WorkspaceHeader
+      title={group.name}
+      appearance={
+        group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
+      }
+      context={
+        <>
+          <Link className="banner-members-link" href={hrefFor('Members')}>
+            {activeMembers.length} members
+          </Link>{' '}
+          · {group.trip ? 'Trip' : group.isHousehold ? 'Household' : 'Group'} ·{' '}
+          {group.currency}
+        </>
+      }
+    >
+      <Link
+        className="banner-action"
+        href={`${base}?tab=expenses&create=${encodeURIComponent(group.id)}`}
+      >
+        <AppIcon name="plus" /> Add expense
+      </Link>
+    </WorkspaceHeader>
+  );
   return (
     <div
       className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
     >
-      {showHeader && (!repayment || completed) && (
-        <>
-          <WorkspaceHeader
-            title={group.name}
-            appearance={
-              group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
-            }
-            context={
-              <>
-                <SpaceChip>
-                  {group.isHousehold
-                    ? 'Household'
-                    : group.trip
-                      ? 'Trip'
-                      : 'Group'}
-                </SpaceChip>
-                <span> · {group.currency}</span>
-                {group.trip && (
-                  <p>
-                    {group.trip.destination} ·{' '}
-                    <time dateTime={group.trip.startDate}>
-                      {group.trip.startDate}
-                    </time>{' '}
-                    –{' '}
-                    <time dateTime={group.trip.endDate}>
-                      {group.trip.endDate}
-                    </time>{' '}
-                    · {tripState(group.trip, today)}
-                  </p>
-                )}
-                <div className="group-members-context">
-                  {activeMembers.slice(0, 3).map((m) => (
-                    <Member key={m.id} name={m.displayName} />
-                  ))}
-                  <Link href={hrefFor('Members')}>
-                    {activeMembers.length} active{' '}
-                    {activeMembers.length === 1 ? 'member' : 'members'}
-                  </Link>
-                </div>
-              </>
-            }
-          >
-            {group.viewerMembership.role === 'OWNER' && (
-              <div className="group-header-actions">
-                <Link href={spaceInvitationsHref(group)}>
-                  Manage invitations
-                </Link>
-                <details className="group-settings">
-                  <summary>Group settings</summary>
-                  <p>
-                    Name: {group.name} · Currency: {group.currency}
-                  </p>
-                  <p>
-                    Membership and invitations are managed separately. Metadata
-                    editing is not available in this workspace.
-                  </p>
-                </details>
-              </div>
-            )}
-          </WorkspaceHeader>
-        </>
-      )}
+      {showHeader &&
+        (!repayment || completed) &&
+        (headerTarget
+          ? createPortal(workspaceHeader, headerTarget)
+          : workspaceHeader)}
       {showTabs && (
         <WorkspaceTabs
           current={repayment ? 'Balances' : current}
@@ -148,6 +117,26 @@ export function GroupWorkspace({
         />
       )}
 
+      {current === 'Members' && (
+        <div className="workspace-owner-actions">
+          {' '}
+          {group.viewerMembership.role === 'OWNER' && (
+            <div className="group-header-actions">
+              <Link href={spaceInvitationsHref(group)}>Manage invitations</Link>
+              <details className="group-settings">
+                <summary>Group settings</summary>
+                <p>
+                  Name: {group.name} · Currency: {group.currency}
+                </p>
+                <p>
+                  Membership and invitations are managed separately. Metadata
+                  editing is not available in this workspace.
+                </p>
+              </details>
+            </div>
+          )}
+        </div>
+      )}
       {repayment && !completed ? (
         <RepaymentForm
           scope={scope}
@@ -170,7 +159,7 @@ export function GroupWorkspace({
             <section aria-labelledby="recent-expenses-title">
               <div className="group-section-heading">
                 <h2 id="recent-expenses-title">Recent expenses</h2>
-                <Link href={hrefFor('Expenses')}>View all expenses</Link>
+                <Link href={hrefFor('Expenses')}>View all</Link>
               </div>
               <Expenses scope={scope} group={group} recent />
             </section>
@@ -178,27 +167,40 @@ export function GroupWorkspace({
               className="workspace-overview-balances"
               aria-label="Overview member balances"
             >
-              <h2>Member balances</h2>
-              {group.balances?.__typename === 'GroupBalances' ? (
-                group.balances.positions.map((p) => (
-                  <MemberBalanceRow
-                    key={p.member.id}
-                    name={p.member.displayName}
-                  >
-                    <p>
-                      {minor(p.netMinor) > 0n
-                        ? 'Owed'
-                        : minor(p.netMinor) < 0n
-                          ? 'Owes'
-                          : 'Net zero'}{' '}
-                      · {money(p.netMinor)} {group.currency}
-                    </p>
-                  </MemberBalanceRow>
-                ))
-              ) : (
-                <p role="alert">Balances are unavailable.</p>
-              )}
-              <Link href={hrefFor('Balances')}>View balance details</Link>
+              <h2>Balances</h2>
+              <div className="workspace-member-balances">
+                {group.balances?.__typename === 'GroupBalances' ? (
+                  group.balances.positions.map((p) => (
+                    <div className="ui-balance-row" key={p.member.id}>
+                      <Member
+                        name={p.member.displayName}
+                        detail={
+                          minor(p.netMinor) > 0n
+                            ? 'Is owed'
+                            : minor(p.netMinor) < 0n
+                              ? 'Owes'
+                              : 'Net zero'
+                        }
+                      />
+                      <Money
+                        value={money(
+                          (minor(p.netMinor) < 0n
+                            ? -minor(p.netMinor)
+                            : minor(p.netMinor)
+                          ).toString(),
+                        )}
+                        currency={group.currency}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p role="alert">Balances are unavailable.</p>
+                )}
+              </div>
+              <p className="overview-balance-note">
+                Complete balances · Not affected by expense filters.{' '}
+                <Link href={hrefFor('Balances')}>View balance details</Link>
+              </p>
             </aside>
           </div>
           <OverviewExpense
@@ -239,31 +241,40 @@ export function GroupWorkspace({
           onEditSaved={onEditSaved}
         />
       ) : current === 'Members' ? (
-        <section>
+        <section className="workspace-panel">
           <h2>Members</h2>
-          {group.members.map((m) => (
-            <MemberBalanceRow key={m.id} name={m.displayName}>
-              <p>
-                {m.role === 'OWNER' ? 'Owner' : 'Member'} ·{' '}
-                {m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}
-              </p>
-            </MemberBalanceRow>
-          ))}
+          {group.trip && (
+            <p className="workspace-context-detail">
+              {group.trip.destination} ·{' '}
+              <time dateTime={group.trip.startDate}>
+                {group.trip.startDate}
+              </time>{' '}
+              – <time dateTime={group.trip.endDate}>{group.trip.endDate}</time>{' '}
+              · {tripState(group.trip, today)}
+            </p>
+          )}
+          <div className="group-members-list">
+            {group.members.map((m) => (
+              <div className="ui-balance-row" key={m.id}>
+                <Member
+                  name={m.displayName}
+                  detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
+                />
+              </div>
+            ))}
+          </div>
           {group.viewerMembership.role === 'OWNER' && (
             <ScopedInvitations scope={scope} group={group} />
           )}
         </section>
       ) : (
-        <section>
-          <h2>Activity</h2>
-          <ActivityFeed
-            scope={scope}
-            groupId={group.id}
-            initialFeed={initialFeed}
-            managedRefresh={!showTabs}
-            onDenied={onDenied}
-          />
-        </section>
+        <ActivityFeed
+          scope={scope}
+          groupId={group.id}
+          initialFeed={initialFeed}
+          managedRefresh={!showTabs}
+          onDenied={onDenied}
+        />
       )}
     </div>
   );
@@ -294,19 +305,16 @@ function ViewerMetric({
     <SignedBalanceMetric
       position={position}
       label="Your net balance"
-      value={`${net > 0n ? '+' : ''}${money(viewer.netMinor)}`}
+      value={money(viewer.netMinor)}
       currency={group.currency}
       detail={
         <>
-          <span aria-hidden="true">
-            {net > 0n ? '↗ ' : net < 0n ? '↘ ' : '✓ '}
-          </span>
           {net === 0n && b?.__typename === 'GroupBalances' && !b.settled
             ? 'Your balance is zero. Other members still have open obligations.'
             : net > 0n
-              ? "You're owed in this group."
+              ? "You're owed"
               : net < 0n
-                ? 'You owe in this group.'
+                ? 'You owe'
                 : 'Settled in this group.'}
           {disclosure && (
             <ScopedLink
@@ -340,6 +348,7 @@ function OverviewMetrics({
       <SummaryMetric
         label="Total expenses"
         tone="total"
+        detail={`Across this ${group.trip ? 'trip' : 'group'} · ${group.currency}`}
         icon={<AppIcon name="expense" />}
       >
         {group.balances?.__typename === 'GroupBalances' ? (
@@ -351,15 +360,21 @@ function OverviewMetrics({
           <span role="alert">Expense total unavailable</span>
         )}
       </SummaryMetric>
-      <ViewerMetric scope={scope} group={group} disclosure />
+      <ViewerMetric scope={scope} group={group} />
       <SummaryMetric
         label="Your share"
         tone="share"
-        icon={<AppIcon name="expense" />}
+        icon={<AppIcon name="pie" />}
         detail={
-          viewer
-            ? `You paid ${money(viewer.paidMinor)} ${group.currency} · Excludes repayments`
-            : undefined
+          viewer ? (
+            <>
+              You paid{' '}
+              <Money
+                value={money(viewer.paidMinor)}
+                currency={group.currency}
+              />
+            </>
+          ) : undefined
         }
       >
         {viewer ? (
@@ -388,46 +403,55 @@ function Expenses({
         there are no expenses.
       </p>
     );
-  if (!page.edges.length)
-    return (
-      <p>
-        {page.pageInfo.hasPreviousPage
-          ? 'No expenses in this page.'
-          : 'This group has no expenses.'}
-      </p>
-    );
+  if (!page.edges.length) return <p>This group has no expenses.</p>;
   return (
-    <ul className="group-expense-list">
-      {(recent ? page.edges.slice(0, 5) : page.edges).map(
-        (edge) =>
-          edge && (
-            <li key={edge.node.id}>
-              <OverviewExpenseLink
-                scope={scope}
-                group={group.id}
-                id={edge.node.id}
-                href={spaceExpenseHref(group, edge.node.id)}
-              >
-                <CategoryIcon category={edge.node.category} />
-                <span className="expense-row-copy">
-                  <strong>{edge.node.description}</strong>
-                  <span className="ui-row-detail">
-                    <time dateTime={edge.node.effectiveDate}>
-                      {edge.node.effectiveDate}
-                    </time>{' '}
-                    · {edge.node.category} · Paid by{' '}
-                    {edge.node.payer.displayName}
+    <>
+      <p className="overview-month">
+        {overviewDate(page.edges[0].node.effectiveDate, true)}
+      </p>
+      <ul className="group-expense-list">
+        {(recent ? page.edges.slice(0, 4) : page.edges).map(
+          (edge) =>
+            edge && (
+              <li key={edge.node.id}>
+                <OverviewExpenseLink
+                  scope={scope}
+                  group={group.id}
+                  id={edge.node.id}
+                  href={spaceExpenseHref(group, edge.node.id)}
+                >
+                  <CategoryIcon category={edge.node.category} />
+                  <span className="expense-row-copy">
+                    <strong>{edge.node.description}</strong>
+                    <span className="ui-row-detail">
+                      {edge.node.payer.displayName} paid ·{' '}
+                      <time dateTime={edge.node.effectiveDate}>
+                        {overviewDate(edge.node.effectiveDate)}
+                      </time>
+                    </span>
                   </span>
-                </span>
-                <Money
-                  value={money(edge.node.totalMinor)}
-                  currency={group.currency}
-                />
-              </OverviewExpenseLink>
-            </li>
-          ),
-      )}
-    </ul>
+                  <span className="overview-expense-price">
+                    <Money
+                      value={money(edge.node.totalMinor)}
+                      currency={group.currency}
+                    />
+                    <small>
+                      Your share{' '}
+                      {money(
+                        edge.node.allocations.find(
+                          (allocation) =>
+                            allocation.participant.id ===
+                            group.viewerMembership.id,
+                        )?.amountMinor ?? '0',
+                      )}
+                    </small>
+                  </span>
+                </OverviewExpenseLink>
+              </li>
+            ),
+        )}
+      </ul>
+    </>
   );
 }
 export function GroupBalances({
@@ -448,7 +472,7 @@ export function GroupBalances({
       </section>
     );
   return (
-    <section className="group-balances">
+    <section className="group-balances workspace-panel">
       <h2>Balance details</h2>
       <ViewerMetric scope={scope} group={group} />
       <p>
@@ -458,23 +482,40 @@ export function GroupBalances({
         Recording a repayment does not move money.
       </p>
       <h3>Member positions</h3>
-      {b.positions.map((p) => (
-        <MemberBalanceRow key={p.member.id} name={p.member.displayName}>
-          <p>
-            {minor(p.netMinor) > 0n
-              ? 'Owed'
-              : minor(p.netMinor) < 0n
-                ? 'Owes'
-                : 'Settled'}
-            : {money(p.netMinor).replace(/^-/, '')} USD
-            {p.member.status === 'INACTIVE' && ' · historical member'}
-          </p>
-          <p>
-            Paid {money(p.paidMinor)} · Share {money(p.owedMinor)} · Sent{' '}
-            {money(p.sentMinor)} · Received {money(p.receivedMinor)}
-          </p>
-        </MemberBalanceRow>
-      ))}
+      <div className="workspace-member-balances">
+        {b.positions.map((p) => (
+          <div className="balance-position" key={p.member.id}>
+            <div className="ui-balance-row">
+              <Member
+                name={p.member.displayName}
+                detail={`${minor(p.netMinor) > 0n ? 'Owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Settled'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
+              />
+              <Money
+                value={money(p.netMinor).replace(/^-/, '')}
+                currency={group.currency}
+              />
+            </div>
+            <details>
+              <summary>Position details for {p.member.displayName}</summary>
+              <dl className="balance-position-facts">
+                {[
+                  ['Paid', p.paidMinor],
+                  ['Share', p.owedMinor],
+                  ['Sent', p.sentMinor],
+                  ['Received', p.receivedMinor],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>
+                      <Money value={money(value)} currency={group.currency} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          </div>
+        ))}
+      </div>
       <h3>Current simplified obligations</h3>
       <p>
         Each row identifies the sender, recipient and amount within {group.name}

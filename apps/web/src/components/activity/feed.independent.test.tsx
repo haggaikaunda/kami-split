@@ -97,7 +97,7 @@ async function respond(value: unknown, index = boundary.requests.length - 1) {
 }
 async function click(label: string) {
   const button = [...host.querySelectorAll('button')].find((b) =>
-    b.textContent?.includes(label),
+    (b.getAttribute('aria-label') ?? b.textContent)?.includes(label),
   );
   expect(button).toBeTruthy();
   await act(async () => button!.click());
@@ -213,7 +213,9 @@ it('restores keyboard focus to the source row when detail closes', async () => {
   await render();
   await respond(connection());
   const trigger = [...host.querySelectorAll('button')].find((b) =>
-    b.textContent?.includes('added an expense'),
+    (b.getAttribute('aria-label') ?? b.textContent)?.includes(
+      'added an expense',
+    ),
   )!;
   trigger.focus();
   await click('added an expense');

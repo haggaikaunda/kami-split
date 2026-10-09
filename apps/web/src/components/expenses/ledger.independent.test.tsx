@@ -183,7 +183,7 @@ async function respond(value: unknown, index = state.requests.length - 1) {
 }
 async function click(text: string) {
   const b = [...host.querySelectorAll('button')].find(
-    (b) => (b.getAttribute('aria-label') ?? b.textContent) === text,
+    (b) => (b.getAttribute('aria-label') ?? b.textContent)?.trim() === text,
   )!;
   expect(b).toBeTruthy();
   await act(async () => b.click());
@@ -214,7 +214,9 @@ it('identifies household sources and omits redundant group sources and space fil
   expect(host.querySelector('.ledger-description')?.textContent).not.toContain(
     'Home',
   );
-  expect(host.textContent).toContain('Total expenses');
+  expect(
+    host.querySelector('[aria-label="Total expenses"]')?.textContent,
+  ).toContain('total');
   expect(host.textContent).not.toContain('Active spaces');
   expect(host.querySelector('input[type="search"]')).toBeNull();
 });
@@ -423,7 +425,7 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
   ).not.toContain('Home');
   expect(
     [...host.querySelectorAll('button')].find(
-      (b) => b.textContent === 'Add expense',
+      (b) => b.getAttribute('aria-label') === 'Add expense',
     )?.disabled,
   ).toBe(true);
 });
@@ -490,7 +492,7 @@ it('preserves combined filters while switching views and drilling into complete 
     '90,071,992,547,409.94',
   );
   expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
-    '2 matching expenses',
+    '2 expenses',
   );
   expect(host.querySelector('.ledger-month')).toBeNull();
   const category = host.querySelector(

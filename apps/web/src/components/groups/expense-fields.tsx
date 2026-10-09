@@ -34,79 +34,116 @@ export function ExpenseFields({
   return (
     <>
       <legend>Expense details</legend>
-      <label htmlFor="expense-description">Description</label>
-      <input
-        id="expense-description"
-        value={draft.description}
-        onChange={(e) => change({ description: e.target.value })}
-        {...field('description')}
-      />
-      <label htmlFor="expense-amount">Amount (USD)</label>
-      <input
-        id="expense-amount"
-        inputMode="decimal"
-        value={draft.amount}
-        onChange={(e) => change({ amount: e.target.value })}
-        {...field('amount')}
-      />
-      <label htmlFor="expense-date">Date</label>
-      <input
-        id="expense-date"
-        type="date"
-        value={draft.date}
-        onChange={(e) => change({ date: e.target.value })}
-        {...field('date')}
-      />
-      <label htmlFor="expense-category">Category</label>
-      <select
-        id="expense-category"
-        value={draft.category}
-        onChange={(e) =>
-          change({ category: e.target.value as Draft['category'] })
-        }
-        {...field('category')}
-      >
-        {categories.map((category) => (
-          <option key={category} value={category}>
-            {category[0] + category.slice(1).toLowerCase()}
-          </option>
-        ))}
-      </select>
-      <label htmlFor="expense-note">Note</label>
-      <textarea
-        id="expense-note"
-        value={draft.note}
-        onChange={(e) => change({ note: e.target.value })}
-        {...field('note')}
-      />
-      <label htmlFor="expense-payer">Paid by</label>
-      <select
-        id="expense-payer"
-        value={draft.payer}
-        onChange={(e) => change({ payer: e.target.value })}
-        {...field('payer')}
-      >
-        <option value="">Select payer</option>
-        {members
-          .filter((m) => m.canParticipate)
-          .map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.displayName}
-            </option>
-          ))}
-      </select>
-      <label htmlFor="expense-split">Split type</label>
-      <select
-        id="expense-split"
-        value={draft.split}
-        onChange={(e) =>
-          change(selectSplit(draft, e.target.value as Draft['split']))
-        }
-      >
-        <option value="EQUAL">Equal</option>
-        <option value="EXACT">Exact</option>
-        <option value="PERCENTAGE">Percentage</option>
-      </select>
+      <div className="expense-fields-grid">
+        <div className="expense-field expense-field--full">
+          {' '}
+          <label htmlFor="expense-description">
+            <span>Description</span>
+          </label>
+          <input
+            id="expense-description"
+            value={draft.description}
+            onChange={(e) => change({ description: e.target.value })}
+            {...field('description')}
+          />
+        </div>
+        <div className="expense-field">
+          {' '}
+          <label htmlFor="expense-amount">
+            <span>Amount (USD)</span>
+          </label>
+          <input
+            id="expense-amount"
+            inputMode="decimal"
+            value={draft.amount}
+            onChange={(e) => change({ amount: e.target.value })}
+            {...field('amount')}
+          />
+        </div>
+        <div className="expense-field">
+          {' '}
+          <label htmlFor="expense-date">
+            <span>Date</span>
+          </label>
+          <input
+            id="expense-date"
+            type="date"
+            value={draft.date}
+            onChange={(e) => change({ date: e.target.value })}
+            {...field('date')}
+          />
+        </div>
+        <div className="expense-field">
+          {' '}
+          <label htmlFor="expense-category">
+            <span>Category</span>
+          </label>
+          <select
+            id="expense-category"
+            value={draft.category}
+            onChange={(e) =>
+              change({ category: e.target.value as Draft['category'] })
+            }
+            {...field('category')}
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category[0] + category.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="expense-field">
+          {' '}
+          <label htmlFor="expense-payer">
+            <span>Paid by</span>
+          </label>
+          <select
+            id="expense-payer"
+            value={draft.payer}
+            onChange={(e) => change({ payer: e.target.value })}
+            {...field('payer')}
+          >
+            <option value="">Select payer</option>
+            {members
+              .filter((m) => m.canParticipate)
+              .map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="expense-field expense-field--full">
+          {' '}
+          <label htmlFor="expense-note">
+            <span>Note</span>
+          </label>
+          <textarea
+            id="expense-note"
+            value={draft.note}
+            onChange={(e) => change({ note: e.target.value })}
+            {...field('note')}
+          />
+        </div>
+        <div className="expense-field expense-field--full">
+          {' '}
+          <label htmlFor="expense-split">
+            <span>Split type</span>
+          </label>
+          <select
+            id="expense-split"
+            value={draft.split}
+            onChange={(e) =>
+              change(selectSplit(draft, e.target.value as Draft['split']))
+            }
+          >
+            <option value="EQUAL">Equal</option>
+            <option value="EXACT">Exact</option>
+            <option value="PERCENTAGE">Percentage</option>
+          </select>
+        </div>
+      </div>
       {draft.split === 'PERCENTAGE' && (
         <>
           <p id="percentage-rounding" className="percentage-help">
@@ -127,7 +164,12 @@ export function ExpenseFields({
           )}
         </>
       )}
-      <fieldset {...field('participants')} tabIndex={-1}>
+      <fieldset
+        className="financial-participants"
+        data-split={draft.split}
+        {...field('participants')}
+        tabIndex={-1}
+      >
         <legend>Participants and preview</legend>
         {members
           .filter((m) => m.canParticipate)

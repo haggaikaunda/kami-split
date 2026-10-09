@@ -27,6 +27,9 @@ import {
 } from '@/lib/relay/edit-draft';
 import { createSessionId } from '@/lib/session-id';
 import { ExpenseFields } from './expense-fields';
+import { CategoryIcon } from '@/components/workspace-identity';
+import { Money } from '@/components/primitives';
+import { overviewDate } from './overview-date';
 import { money } from '@/lib/relay/money';
 type Outcome =
   | expenseEditMutation['response']['updateExpense']
@@ -276,11 +279,29 @@ export function ExpenseEdit({
       className="financial-form-card"
       aria-labelledby="edit-expense-title"
     >
-      <h2 id="edit-expense-title">Edit expense</h2>
-      <p>
-        Financial changes can change balances, including previously settled
-        balances. Recorded repayments stay unchanged. No money is moved.
+      <h2 id="edit-expense-title" className="ui-visually-hidden">
+        Edit expense
+      </h2>
+      <div className="expense-detail-identity">
+        <CategoryIcon category={expense.category} />
+        <h2>{expense.description}</h2>
+      </div>
+      <p className="expense-detail-total">
+        <Money value={money(expense.totalMinor)} currency={expense.currency} />
       </p>
+      <p className="expense-paid-by">
+        {expense.payer.displayName} paid ·{' '}
+        <time dateTime={expense.effectiveDate}>
+          {overviewDate(expense.effectiveDate)}
+        </time>
+      </p>
+      <details className="expense-edit-help">
+        <summary>About financial changes</summary>
+        <p>
+          Financial changes can change balances, including previously settled
+          balances. Recorded repayments stay unchanged. No money is moved.
+        </p>
+      </details>
       <p role="status" ref={status} tabIndex={-1} className="financial-notice">
         {busy ? 'Working…' : notice}
       </p>

@@ -1,5 +1,5 @@
 'use client';
-import { CategoryIcon } from '@/components/workspace-identity';
+import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
 import {
   useEffect,
   useEffectEvent,
@@ -30,18 +30,13 @@ import groupDocument, {
 import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
-import {
-  containDialogFocus,
-  SummaryMetric,
-  SignedBalanceMetric,
-  Money,
-  SpaceChip,
-} from '@/components/primitives';
+import { containDialogFocus, Money } from '@/components/primitives';
 import { ExpenseDetail } from '@/components/groups/expense-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
 import { ExpenseBreakdown } from './breakdown';
 import './ledger.css';
+import { overviewDate } from '../groups/overview-date';
 
 type View = Extract<expensesView$data, { readonly __typename: 'ExpenseView' }>;
 export type LedgerSpace = {
@@ -291,7 +286,7 @@ function LedgerContent({
     >
       {!groupId && (
         <label>
-          Space
+          <span>Space</span>
           <select name="groupId" defaultValue={params.get('groupId') ?? ''}>
             <option value="">All spaces</option>
             {spaces.map((s) => (
@@ -303,7 +298,7 @@ function LedgerContent({
         </label>
       )}
       <label>
-        Category
+        <span>Category</span>
         <select name="category" defaultValue={params.get('category') ?? ''}>
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -314,7 +309,7 @@ function LedgerContent({
         </select>
       </label>
       <label>
-        Member
+        <span>Member</span>
         <select name="memberId" defaultValue={params.get('memberId') ?? ''}>
           <option value="">All members</option>
           {spaces.map((s) => (
@@ -329,7 +324,7 @@ function LedgerContent({
         </select>
       </label>
       <label>
-        From
+        <span>From</span>
         <input
           name="from"
           type="date"
@@ -337,7 +332,7 @@ function LedgerContent({
         />
       </label>
       <label>
-        To
+        <span>To</span>
         <input name="to" type="date" defaultValue={params.get('to') ?? ''} />
       </label>
       <div className="ledger-filter-actions">
@@ -357,6 +352,9 @@ function LedgerContent({
         >
           Reset filters
         </button>
+        <button type="button" onClick={() => setFiltersOpen(false)}>
+          Cancel
+        </button>
         <button type="submit">Apply filters</button>
       </div>
     </form>
@@ -365,86 +363,8 @@ function LedgerContent({
   return (
     <section className="expense-ledger" aria-label="Expenses">
       {navigationPending && <p role="status">Opening expense view…</p>}
-      <div className="ui-summary-row" ref={summary} tabIndex={-1}>
-        <SummaryMetric
-          tone="total"
-          label={groupId ? 'Total expenses' : 'Total shared expenses'}
-        >
-          {page && !error ? (
-            <>
-              <Money value={money(page.totalExpenseMinor)} currency="USD" />
-              <span>
-                {page.expenseCount} expenses{filterText && ' · filtered'}
-              </span>
-            </>
-          ) : (
-            <span>{loading ? 'Loading total…' : 'Total unavailable'}</span>
-          )}
-        </SummaryMetric>
-        {net === '0' ? (
-          <SummaryMetric
-            tone="net"
-            label="Your net balance"
-            detail={
-              groupId ? 'Unfiltered' : 'Net zero across spaces · unfiltered'
-            }
-          >
-            <Money value={money(net)} currency="USD" />
-          </SummaryMetric>
-        ) : net !== undefined ? (
-          <SignedBalanceMetric
-            label="Your net balance"
-            scope={groupId ? 'group' : 'household'}
-            position={
-              minor(net) > 0n
-                ? 'positive'
-                : minor(net) < 0n
-                  ? 'negative'
-                  : 'zero'
-            }
-            value={`${minor(net) > 0n ? '+' : ''}${money(net)}`}
-            currency="USD"
-            detail={`${minor(net) > 0n ? "You're owed" : 'You owe'} · unfiltered`}
-          />
-        ) : (
-          <SummaryMetric tone="net" label="Your net balance">
-            Unavailable
-          </SummaryMetric>
-        )}
-        <SummaryMetric
-          label="Your share"
-          tone="share"
-          detail="Allocated expenses · filtered"
-        >
-          {page && !error ? (
-            <Money value={money(page.viewerShareMinor)} currency="USD" />
-          ) : (
-            'Unavailable'
-          )}
-        </SummaryMetric>
-      </div>
-      <div className="ledger-toolbar">
-        <nav className="ledger-view-switch" aria-label="Expense view">
-          <button
-            aria-pressed={!breakdown}
-            onClick={() => change({ view: null })}
-          >
-            List
-          </button>
-          <button
-            aria-pressed={breakdown}
-            onClick={() => change({ view: 'breakdown' })}
-          >
-            Breakdown
-          </button>
-        </nav>
-        <button
-          ref={filterTrigger}
-          className="ledger-filter-button"
-          onClick={() => setFiltersOpen(true)}
-        >
-          Filters{filterText ? ' · active' : ''}
-        </button>
+      <div className="ledger-page-actions">
+        {' '}
         <button
           className="ledger-refresh"
           aria-label="Refresh expenses"
@@ -457,6 +377,7 @@ function LedgerContent({
         <button
           id="ledger-add"
           className="ledger-add"
+          aria-label="Add expense"
           disabled={!spaces.length}
           onClick={() =>
             choose('ledger-add', {
@@ -464,8 +385,71 @@ function LedgerContent({
             })
           }
         >
-          Add expense
+          <AppIcon name="plus" /> <span>Add expense</span>
         </button>
+      </div>
+      <div className="ledger-toolbar">
+        <nav className="ledger-view-switch" aria-label="Expense view">
+          <button
+            aria-label="List"
+            aria-pressed={!breakdown}
+            onClick={() => change({ view: null })}
+          >
+            <AppIcon name="list" /> List
+          </button>
+          <button
+            aria-label="Breakdown"
+            aria-pressed={breakdown}
+            onClick={() => change({ view: 'breakdown' })}
+          >
+            <AppIcon name="pie" /> Breakdown
+          </button>
+        </nav>
+        <button
+          aria-label={`Filters${filterText ? ' · active' : ''}`}
+          ref={filterTrigger}
+          className="ledger-filter-button"
+          onClick={() => setFiltersOpen(true)}
+        >
+          <AppIcon name="sliders" /> Filters{filterText ? ' · active' : ''}
+        </button>
+      </div>
+      <div className="ledger-summary" ref={summary} tabIndex={-1}>
+        {page && !error ? (
+          <span>
+            {page.expenseCount} expenses ·{' '}
+            <span aria-label="Total expenses">
+              <Money value={money(page.totalExpenseMinor)} currency="USD" />{' '}
+              total
+            </span>{' '}
+            · <Money value={money(page.viewerShareMinor)} currency="USD" /> your
+            share
+            {filterText && ' · filtered'}
+          </span>
+        ) : (
+          <span>{loading ? 'Loading totals…' : 'Total unavailable'}</span>
+        )}
+        <details className="ledger-net">
+          <summary aria-label="Your net balance" title="Your net balance">
+            <AppIcon name="arrow-up-right" />
+          </summary>
+          <span>
+            {net === undefined ? (
+              'Unavailable'
+            ) : (
+              <>
+                {minor(net) > 0n
+                  ? "You're owed "
+                  : minor(net) < 0n
+                    ? 'You owe '
+                    : 'Net zero '}
+                <Money value={money(net)} currency="USD" />
+              </>
+            )}{' '}
+            · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
+            in each space.
+          </span>
+        </details>
       </div>
       {filterText && (
         <div className="ledger-active-filters">
@@ -522,6 +506,12 @@ function LedgerContent({
           <>
             {breakdown ? (
               <ExpenseBreakdown
+                context={
+                  groupId
+                    ? (spaces.find((space) => space.groupId === groupId)
+                        ?.name ?? 'This space')
+                    : 'Across your spaces'
+                }
                 categories={page.categories}
                 totalExpenseMinor={page.totalExpenseMinor}
                 viewerShareMinor={page.viewerShareMinor}
@@ -557,17 +547,21 @@ function LedgerContent({
                       aria-label={month.month}
                     >
                       <header>
-                        <h2>
+                        <h2>Expenses</h2>
+                        <span className="ledger-month-context">
                           {new Intl.DateTimeFormat('en', {
                             month: 'long',
                             year: 'numeric',
                             timeZone: 'UTC',
                           }).format(new Date(`${month.month}-01T00:00:00Z`))}
-                        </h2>
-                        <span>
-                          {money(month.totalExpenseMinor)} USD ·{' '}
-                          {month.expenseCount} expenses
                         </span>
+                        <details className="ledger-month-total">
+                          <summary>Month totals</summary>
+                          <span>
+                            {money(month.totalExpenseMinor)} USD ·{' '}
+                            {month.expenseCount} expenses
+                          </span>
+                        </details>
                       </header>
                       <ul>
                         {rows
@@ -598,17 +592,14 @@ function LedgerContent({
                                     };
                                   }}
                                 >
-                                  <time dateTime={node.effectiveDate}>
-                                    {node.effectiveDate.slice(8)}
-                                  </time>
                                   <CategoryIcon category={node.category} />
                                   <span className="ledger-description">
                                     <strong>{node.description}</strong>
                                     <span>
-                                      {!groupId && (
-                                        <SpaceChip>{source.name}</SpaceChip>
-                                      )}{' '}
-                                      Paid by {node.payer.displayName}
+                                      {!groupId && <>{source.name} · </>}
+                                      <time dateTime={node.effectiveDate}>
+                                        {overviewDate(node.effectiveDate)}
+                                      </time>
                                     </span>
                                   </span>
                                   <span className="ledger-money">
@@ -623,7 +614,6 @@ function LedgerContent({
                                         : 'unavailable'}
                                     </span>
                                   </span>
-                                  <span aria-hidden="true">›</span>
                                 </Link>
                               </li>
                             );
@@ -787,7 +777,7 @@ function AuthorizedDetail({
     <p role="alert">Expense unavailable.</p>
   ) : name ? (
     <>
-      <p>Source: {name}</p>
+      <p className="expense-detail-source">Source: {name}</p>
       <ExpenseDetail
         scope={scope}
         group={source}
@@ -835,11 +825,19 @@ export function LedgerDialog({
       }}
     >
       <header>
-        <h2>{title}</h2>
-        <button autoFocus onClick={onClose}>
-          Back to expenses
+        <h2>Filter expenses</h2>
+        <button
+          className="ledger-dialog-close"
+          aria-label="Back to expenses"
+          autoFocus
+          onClick={onClose}
+        >
+          <AppIcon name="close" />
         </button>
       </header>
+      <p className="ledger-filter-description">
+        Show expenses matching all selected filters.
+      </p>
       {children}
     </dialog>
   );

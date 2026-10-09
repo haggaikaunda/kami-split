@@ -112,8 +112,15 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
     expect(summaries.children).toHaveLength(3);
     expect(summaries.textContent).toContain('90,071,992,547,409.93');
     expect(summaries.textContent).toContain('You owe');
-    expect(summaries.querySelectorAll('a')).toHaveLength(1);
-    expect(summaries.querySelector('a')!.textContent).toBe('View balance');
+    expect(summaries.querySelectorAll('a')).toHaveLength(0);
+    expect(
+      host
+        .querySelector('.workspace-overview-balances a')
+        ?.getAttribute('href'),
+    ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
+    expect(host.querySelector('.banner-action')?.getAttribute('href')).toBe(
+      `${trip ? '/trips' : '/groups'}/G?tab=expenses&create=G`,
+    );
     expect(host.querySelector('#recent-expenses-title')).not.toBeNull();
     expect(
       [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>

@@ -157,7 +157,9 @@ it('renders exact server aggregates and zero net with open source balances witho
   const row = host.querySelector('.ui-summary-row')!;
   expect(row.children).toHaveLength(3);
   expect(row.textContent).toContain('$90,071,992,547,409.93');
-  expect(row.textContent).toContain('17 expenses');
+  expect(host.querySelector('.workspace-privacy')?.textContent).toContain(
+    '17 expenses',
+  );
   expect(row.textContent).not.toContain('repayments excluded');
   expect(row.textContent).toContain('Overall net is zero');
   expect(row.textContent).toContain('source balances remain open');
@@ -183,8 +185,8 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(host.textContent).toContain('-$84.20');
 });
 it.each([
-  ['150', "Overall, you're owed"],
-  ['-150', 'Overall, you owe'],
+  ['150', "You're owed overall"],
+  ['-150', 'You owe overall'],
 ])('gives %s textual direction', async (net, text) => {
   await content('Overview', fixture(net));
   expect(host.textContent).toContain(text);

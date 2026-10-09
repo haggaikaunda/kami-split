@@ -1,5 +1,9 @@
 'use client';
-import { Brand, WorkspaceNavigation } from '@/components/workspace-identity';
+import {
+  AppIcon,
+  Brand,
+  WorkspaceNavigation,
+} from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
@@ -11,6 +15,7 @@ import { LegacyInvitations } from './legacy-invitations';
 import '../groups/journey.css';
 import { ActionRecovery } from './recovery';
 import './onboarding.css';
+import './account.css';
 export function OnboardingEntry({ mode }: { mode: Mode }) {
   if (mode === 'invitations') return <LegacyInvitations />;
   return <OnboardingRoute key={mode} mode={mode} />;
@@ -106,30 +111,45 @@ function OnboardingVisit({
               </>
             ) : account ? (
               <>
-                <h1>
-                  {mode === 'account' ? 'Your account' : 'Manage invitations'}
-                </h1>
+                <div className="workspace-crumb">Account</div>
+                <header className="account-heading">
+                  <h1>
+                    {mode === 'account' ? 'Your account' : 'Manage invitations'}
+                  </h1>
+                  <p>Profile and preferences, all in one place.</p>
+                </header>
                 {c.session ? (
                   <>
-                    <p>Signed in as {c.session.user.email}</p>
                     <ProfileEditor key={c.session.user.id} state={c} />
                     <AppearanceEditor
                       key={`appearance:${c.session.user.id}`}
                       state={c}
                     />
                     <section
-                      className="profile-card account-session"
+                      className="account-session"
                       aria-labelledby="session-heading"
                     >
-                      <h2 id="session-heading">Session</h2>
-                      <Button
-                        tone="secondary"
-                        disabled={c.busy}
-                        onClick={() => void c.run(() => c.signOut())}
-                      >
-                        Sign out of this session
-                      </Button>
-                      <p>
+                      <div className="account-session-row">
+                        <div>
+                          <h2 id="session-heading">Session</h2>
+                          <p className="account-secondary">
+                            Signed in on this device
+                          </p>
+                        </div>
+                        <Button
+                          tone="secondary"
+                          disabled={c.busy}
+                          onClick={() => void c.run(() => c.signOut())}
+                        >
+                          <AppIcon name="signout" />
+                          Sign out
+                          <span className="account-control-context">
+                            {' '}
+                            of this session
+                          </span>
+                        </Button>
+                      </div>
+                      <p className="account-footnote account-session-notice">
                         Other devices may remain signed in. Existing access
                         tokens can remain valid for up to 15 minutes.
                       </p>

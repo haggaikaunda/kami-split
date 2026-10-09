@@ -1,5 +1,7 @@
 # Approved production visual references — issue #189
 
+> Historical #189 reference and acceptance ledger. [Issue #227](https://github.com/haggaikaunda/kami-split/issues/227) and its [commit-pinned Material reference](../../issue-227-parity-matrix.md) now govern production typography, palette, shell and component layout. The original boards, rules and evidence below remain intact as provenance; they are not #227 acceptance evidence.
+
 The owner supplied and approved these original 1536 × 1024 PNGs for [issue #189](https://github.com/haggaikaunda/kami-split/issues/189). They are the visual acceptance targets, not optional inspiration. Product/API contracts remain authoritative for behavior. These assets are design references, not flattened application backgrounds or production UI.
 
 ## Original boards

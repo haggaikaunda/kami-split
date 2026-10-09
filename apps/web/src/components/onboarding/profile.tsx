@@ -1,7 +1,8 @@
 'use client';
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Field, Status, Member } from '@/components/primitives';
+import { Button, Field, Status } from '@/components/primitives';
+import { AppIcon } from '@/components/workspace-identity';
 import { useFinancialSession } from '@/components/groups/session';
 import query from '@/lib/relay/__generated__/profileQuery.graphql';
 import mutation from '@/lib/relay/__generated__/profileMutation.graphql';
@@ -133,87 +134,105 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
   };
   const dirty = profile && name !== profile.displayName;
   return (
-    <section className="profile-card" aria-labelledby="profile-heading">
-      <h2 id="profile-heading">Profile</h2>
-      {message && (
-        <div id="profile-feedback">
-          <Status kind={failed ? 'error' : 'info'}>{message}</Status>
+    <>
+      {profile && (
+        <div className="account-identity">
+          <span className="account-avatar" aria-hidden="true">
+            {Array.from(profile.displayName.trim())[0] || '?'}
+          </span>
+          <div>
+            <h2>{profile.displayName}</h2>
+            <p className="account-secondary">{c.session?.user.email}</p>
+          </div>
         </div>
       )}
-      {working && (
-        <Status kind="pending">
-          {profile
-            ? 'Saving or checking your profile…'
-            : 'Loading your profile…'}
-        </Status>
-      )}
-      {profile ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void action(save);
-          }}
-        >
-          <div className="account-identity">
-            <Member name={profile.displayName} detail={c.session?.user.email} />
+      <section className="account-card" aria-labelledby="profile-heading">
+        <div className="account-section-title">
+          <AppIcon name="account" />
+          <div>
+            <h2 id="profile-heading">Profile</h2>
+            <p className="account-secondary">
+              How you appear to people in your spaces.
+            </p>
           </div>
-          <div className="account-profile-fields">
-            <Field
-              id="display-name"
-              label="Display name"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setMessage('');
-                setFailed(false);
-              }}
-              disabled={working}
-              error={failed ? message : undefined}
-              hint="Visible to people who share your spaces. Use 1–120 characters; surrounding whitespace is removed."
-            />
-            <Field
-              id="account-email"
-              label="Email address"
-              type="email"
-              value={c.session?.user.email ?? ''}
-              readOnly
-            />
+        </div>
+        {message && (
+          <div id="profile-feedback">
+            <Status kind={failed ? 'error' : 'info'}>{message}</Status>
           </div>
-          <div className="onboarding-actions profile-actions">
-            <Button type="submit" disabled={working || !dirty || uncertain}>
-              Save changes
-            </Button>
-            <Button
-              tone="secondary"
-              disabled={working || !dirty}
-              onClick={() => {
-                setName(profile.displayName);
-                setMessage('');
-                setFailed(false);
-              }}
-            >
-              Discard edits
-            </Button>
-            {uncertain && (
-              <Button
-                tone="secondary"
+        )}
+        {working && (
+          <Status kind="pending">
+            {profile
+              ? 'Saving or checking your profile…'
+              : 'Loading your profile…'}
+          </Status>
+        )}
+        {profile ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void action(save);
+            }}
+          >
+            <div className="account-profile-fields">
+              <Field
+                id="display-name"
+                label="Display name"
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setMessage('');
+                  setFailed(false);
+                }}
                 disabled={working}
-                onClick={() => void action(() => read(true))}
-              >
-                Check current profile
+                error={failed ? message : undefined}
+                hint="Visible to people who share your spaces. Use 1–120 characters; surrounding whitespace is removed."
+              />
+              <Field
+                id="account-email"
+                label="Email address"
+                type="email"
+                value={c.session?.user.email ?? ''}
+                readOnly
+              />
+            </div>
+            <div className="account-actions">
+              <Button type="submit" disabled={working || !dirty || uncertain}>
+                Save changes
               </Button>
-            )}
-          </div>
-        </form>
-      ) : (
-        <Button
-          tone="secondary"
-          disabled={working}
-          onClick={() => void action(() => read())}
-        >
-          Retry profile
-        </Button>
-      )}
-    </section>
+              <Button
+                tone="text"
+                disabled={working || !dirty}
+                onClick={() => {
+                  setName(profile.displayName);
+                  setMessage('');
+                  setFailed(false);
+                }}
+              >
+                Discard<span className="account-control-context"> edits</span>
+              </Button>
+              {uncertain && (
+                <Button
+                  tone="secondary"
+                  disabled={working}
+                  onClick={() => void action(() => read(true))}
+                >
+                  Check current profile
+                </Button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <Button
+            tone="secondary"
+            disabled={working}
+            onClick={() => void action(() => read())}
+          >
+            Retry profile
+          </Button>
+        )}
+      </section>
+    </>
   );
 }

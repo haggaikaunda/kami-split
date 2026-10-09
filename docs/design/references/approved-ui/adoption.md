@@ -1,5 +1,7 @@
 # Remaining screen adoption (#189)
 
+> Historical #189 adoption and evidence record. Current production presentation follows [#227](../../issue-227-implementation.md); the old typography, palette, shell and metric layout below do not override its exact reference. The original screenshots, commits and verification outcomes are preserved.
+
 This slice carries the approved Board A/B foundation into onboarding, Household balances, Group/Trip overview and balances, repayment, expense detail/create, and inherited Activity/Members/discovery/account states. It preserves the existing server-owned authentication, authorization, money and recovery contracts.
 
 ## Component rules and deliberate differences

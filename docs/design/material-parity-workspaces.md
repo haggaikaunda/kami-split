@@ -1,5 +1,7 @@
 # Material migration: workspace parity inventory
 
+> Historical #223 implementation and evidence record. [Issue #227](https://github.com/haggaikaunda/kami-split/issues/227) supersedes its visual choices, including retained DM Sans/Manrope, approximate tokens, shell geometry and earlier row counts. The original observations and test results below are preserved; they do not establish #227 acceptance. See the current [implementation note](issue-227-implementation.md) and [pending parity matrix](issue-227-parity-matrix.md).
+
 Implementation-start inspection: `e7f76f58999a42c12842e70c8ba6b898fd17c6d1`
 (local primary `main` equals freshly fetched `origin/main`, 2026-10-09).
 Issue [#223](https://github.com/haggaikaunda/kami-split/issues/223) is the approved

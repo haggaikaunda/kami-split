@@ -11,7 +11,7 @@ import accessDocument from '@/lib/relay/__generated__/householdAccessQuery.graph
 import expensesDocument from '@/lib/relay/__generated__/expensesHouseholdInitialQuery.graphql';
 import { expenseFilter } from '@/lib/relay/expense-filter';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { WorkspaceNavigation } from '@/components/workspace-identity';
+import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import {
   WorkspaceHeader,
   WorkspaceTabs,
@@ -69,6 +69,7 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       id="page-content"
     >
       <WorkspaceNavigation />
+      <p className="workspace-crumb">Your household</p>
       <WorkspaceHeader
         title={ledger ? 'Household ledger' : 'Household'}
         context={
@@ -124,6 +125,9 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
 function HouseholdInvitationEntry({ scope }: { scope: FinancialScope }) {
   const { members } = useHouseholdMembers(scope);
   return members?.viewerMembership.role === 'OWNER' ? (
-    <Link href="/household?tab=members#invitations">Manage invitations</Link>
+    <Link className="banner-action" href="/household?tab=members#invitations">
+      <AppIcon name="invite" />
+      Manage invitations
+    </Link>
   ) : null;
 }

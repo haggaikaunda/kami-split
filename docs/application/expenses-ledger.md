@@ -16,7 +16,8 @@ Structured space (Household only), category, member and inclusive date filters
 are edited in a shared desktop drawer/mobile sheet, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
 are scoped to the original group, matching payer **or** explicit participant,
 including zero shares. No search control or client filtering is provided. A
-filter change starts a new traversal. Load more appends the ordered server page;
+filter change starts a new traversal. Initial requests and Load more request six
+rows; Load more appends the ordered server page;
 headline count/total and month subtotals always use server aggregates rather
 than sums of loaded rows. Money formatting uses canonical strings and `bigint`.
 
@@ -43,7 +44,7 @@ The delivery PR records actual Chrome layout/navigation tests at 320/390/768/128
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
-The #223 tonal system supersedes the earlier [Board A/B visual foundation](../design/references/approved-ui/foundation.md), retaining navigation, category identity and structured filter behavior. Reset changes the filter draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
+The [#227 corrective migration](../design/issue-227-implementation.md) applies the commit-pinned reference's exact typography, palette, shared shell and compact ledger presentation. The earlier [Board A/B visual foundation](../design/references/approved-ui/foundation.md) and #223 visual evidence are historical. Category identity and structured filter behavior remain: Reset changes the draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent. Pending visual acceptance is recorded in the [parity matrix](../design/issue-227-parity-matrix.md).
 
 The prior [screen adoption evidence](../design/references/approved-ui/adoption.md) records
 contract-preserving changes to expense detail and creation: category identity, exact total,
