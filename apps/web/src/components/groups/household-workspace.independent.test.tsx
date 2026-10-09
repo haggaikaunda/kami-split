@@ -157,7 +157,7 @@ it('renders exact server aggregates and zero net with open source balances witho
   const row = host.querySelector('.ui-summary-row')!;
   expect(row.children).toHaveLength(3);
   expect(row.textContent).toContain('$90,071,992,547,409.93');
-  expect(host.querySelector('.workspace-privacy')?.textContent).toContain(
+  expect(host.querySelector('.overview-count')?.textContent).toContain(
     '17 expenses',
   );
   expect(row.textContent).not.toContain('repayments excluded');

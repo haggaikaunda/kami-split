@@ -14,6 +14,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import {
   WorkspaceHeader,
+  WorkspacePrivacy,
   WorkspaceTabs,
   workspaceSections,
   type WorkspaceSection,
@@ -118,6 +119,7 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
         }}
       />
       {children}
+      {access.scope && <WorkspacePrivacy />}
     </main>
   );
 }

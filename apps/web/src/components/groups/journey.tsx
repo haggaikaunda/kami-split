@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { expenseFilterText } from '@/lib/relay/expense-filter';
 import {
   WorkspaceTabs,
+  WorkspacePrivacy,
   workspaceSections,
   Skeleton,
 } from '@/components/primitives';
@@ -208,6 +209,7 @@ export function GroupJourney({
         </>
       )}
       {body}
+      {initialGroup && access.scope && <WorkspacePrivacy />}
     </main>
   );
 }
@@ -631,23 +633,30 @@ function GroupDetails({
           {saved}
         </p>
       )}
-      <button
-        className="journey-refresh"
-        aria-label="Refresh group and restart list"
-        title="Refresh group and restart list"
-        disabled={busy}
-        onClick={() => {
-          if (after) {
-            const next = new URLSearchParams(params);
-            next.delete('after');
-            router.replace(
-              `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
-            );
-          } else void read();
-        }}
-      >
-        <span className="ui-visually-hidden">Refresh</span>
-      </button>
+      {(tab !== 'expenses' ||
+        busy ||
+        error ||
+        !group ||
+        expense ||
+        repayment) && (
+        <button
+          className="journey-refresh"
+          aria-label="Refresh group and restart list"
+          title="Refresh group and restart list"
+          disabled={busy}
+          onClick={() => {
+            if (after) {
+              const next = new URLSearchParams(params);
+              next.delete('after');
+              router.replace(
+                `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
+              );
+            } else void read();
+          }}
+        >
+          <span className="ui-visually-hidden">Refresh</span>
+        </button>
+      )}
       {busy ? (
         <Skeleton label="Loading current authorized group data" />
       ) : error ? (

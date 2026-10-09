@@ -191,17 +191,21 @@
   margin: 1.375rem 0 1.5rem;
 }
 .expense-detail-fields > div {
-  display: grid;
-  grid-template-columns: 5.625rem minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.9375rem;
   padding: 0.9375rem 0;
   border-top: 1px solid var(--color-separator);
 }
 .expense-detail-fields dt {
+  flex: 0 0 5.625rem;
   color: var(--color-muted);
   font-size: 0.75rem;
 }
 .expense-detail-fields dd {
+  flex: 1 1 10rem;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   font-size: 0.8125rem;
   overflow-wrap: break-word;
@@ -590,4 +594,46 @@
 .expense-note {
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+.expense-split-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.8125rem;
+}
+.expense-split-heading label {
+  margin: 0;
+}
+.financial-journey .expense-split-heading select {
+  width: auto;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  background: transparent;
+  border: 0;
+}
+.expense-split-heading .ui-space-chip {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+.financial-participants .financial-participant:nth-of-type(4n + 2) .ui-avatar {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.financial-participants .financial-participant:nth-of-type(4n + 3) .ui-avatar {
+  background: var(--color-avatar-violet);
+  color: var(--color-violet);
+}
+.financial-participants .financial-participant:nth-of-type(4n + 4) .ui-avatar {
+  background: var(--color-avatar-orange);
+  color: var(--color-orange);
+}
+.financial-participants .financial-participant:nth-of-type(4n + 5) .ui-avatar {
+  background: var(--color-avatar-blue);
+  color: var(--color-blue);
 }

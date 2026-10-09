@@ -1,5 +1,9 @@
 'use client';
-import { overviewDate } from './overview-date';
+import {
+  overviewDate,
+  overviewPeriod,
+  overviewSpansYears,
+} from './overview-date';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
@@ -20,7 +24,6 @@ import {
   SummaryMetric,
   Money,
   Member,
-  MemberBalanceRow,
   workspaceSections,
   type WorkspaceSection,
 } from '@/components/primitives';
@@ -130,21 +133,23 @@ function HouseholdMembers({
   scope: FinancialScope;
 }) {
   return (
-    <section>
+    <section className="workspace-panel household-members">
       <h2>Household members</h2>
       <p>
         Active Household members share this ledger and its full expense history.
         The overview also includes eligible groups and trips shared by every
         active Household member.
       </p>
-      {members.members.map((m) => (
-        <MemberBalanceRow key={m.id} name={m.displayName}>
-          <p>
-            {m.role === 'OWNER' ? 'Owner' : 'Member'} ·{' '}
-            {m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}
-          </p>
-        </MemberBalanceRow>
-      ))}
+      <div className="group-members-list">
+        {members.members.map((m) => (
+          <div className="ui-balance-row" key={m.id}>
+            <Member
+              name={m.displayName}
+              detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
+            />
+          </div>
+        ))}
+      </div>
       {members.viewerMembership.role === 'OWNER' && (
         <ScopedInvitations
           scope={scope}
@@ -284,6 +289,10 @@ export function HouseholdContent({
   onUnavailable?: () => void;
 }) {
   const home = dashboard.spaces.find((s) => s.isHousehold);
+  const recentDates =
+    recent?.__typename === 'ExpenseView'
+      ? recent.edges.slice(0, 4).map(({ node }) => node.effectiveDate)
+      : [];
   const totals =
     dashboard.state === 'COMPLETE' &&
     dashboard.totals?.__typename === 'HouseholdDashboardTotals'
@@ -487,7 +496,7 @@ export function HouseholdContent({
                   ) : (
                     <>
                       <p className="overview-month">
-                        {overviewDate(recent.edges[0].node.effectiveDate, true)}
+                        {overviewPeriod(recentDates)}
                       </p>
                       <ul className="group-expense-list">
                         {recent.edges.slice(0, 4).map(({ node, source }) => (
@@ -504,7 +513,11 @@ export function HouseholdContent({
                                 <span className="ui-row-detail">
                                   {source.name} ·{' '}
                                   <time dateTime={node.effectiveDate}>
-                                    {overviewDate(node.effectiveDate)}
+                                    {overviewDate(
+                                      node.effectiveDate,
+                                      false,
+                                      overviewSpansYears(recentDates),
+                                    )}
                                   </time>
                                 </span>
                               </span>
@@ -597,8 +610,7 @@ export function HouseholdContent({
             </div>
           )}
           {totals && (
-            <p className="workspace-privacy">
-              Only visible to authorized members{' '}
+            <p className="overview-count">
               <span>
                 {totals.totalSharedExpenseCount} expenses across{' '}
                 {totals.activeSpaceCount} spaces

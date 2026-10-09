@@ -9,12 +9,15 @@
 }
 .ledger-view-switch {
   display: flex;
+  flex-wrap: wrap;
   width: max-content;
+  max-width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 1.625rem;
   overflow: hidden;
 }
 .ledger-view-switch button {
+  flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -186,12 +189,13 @@
 }
 .ledger-dialog {
   color: var(--color-ink);
-  background: var(--color-surface);
+  background: var(--color-canvas);
+  margin-top: 68px;
   width: min(27.5rem, calc(100vw - 2rem));
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(100dvh - 92px);
   border: 0;
-  border-radius: var(--radius-card);
-  padding: 1.5rem;
+  border-radius: 28px;
+  padding: 27px;
   box-shadow: var(--shadow-panel);
   overflow: auto;
 }
@@ -209,9 +213,10 @@
 }
 .ledger-dialog-close {
   display: inline-grid;
+  min-height: 2.5rem;
   place-items: center;
   padding: 0;
-  width: 2.75rem;
+  width: 2.5rem;
   border: 0;
   color: var(--color-ink);
   background: transparent;
@@ -219,8 +224,8 @@
 .ledger-filters {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem 1rem;
-  padding-top: 1.5rem;
+  gap: 17px 14px;
+  padding-top: 22px;
 }
 .ledger-filters label {
   position: relative;
@@ -241,11 +246,11 @@
   min-height: 3.5rem;
   border: 1px solid var(--color-border);
   border-radius: 0.3125rem;
-  padding: 0.875rem 0.75rem;
-  background: var(--color-surface);
+  padding: 1rem;
+  background: var(--color-canvas);
   color: var(--color-ink);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 .ledger-filter-actions {
   grid-column: 1/-1;
@@ -275,6 +280,7 @@
 /* This one dialog remains mounted when its responsive presentation changes. */
 .expense-presentation {
   position: fixed;
+  background: var(--color-surface);
   inset: 0 0 0 auto;
   margin: 0;
   width: 27.5rem;
@@ -295,7 +301,7 @@
   border-bottom: 1px solid var(--color-separator);
 }
 .expense-presentation > header h1 {
-  font-size: 1.25rem;
+  font-size: 1rem;
   line-height: 1.75rem;
   margin: 0;
 }
@@ -308,11 +314,13 @@
 }
 .expense-presentation-close {
   display: inline-grid;
+  min-height: 2.5rem;
   place-items: center;
   width: 2.75rem;
 }
 .expense-presentation-back {
   display: none;
+  color: var(--color-primary);
 }
 .expense-presentation-content {
   padding: 1.5rem;
@@ -344,6 +352,8 @@
 }
 .expense-breakdown > header label {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   gap: 0.5625rem;
   font-size: 0.75rem;
@@ -352,6 +362,8 @@
 }
 .expense-breakdown > header select {
   width: auto;
+  min-width: 0;
+  max-width: 100%;
   background: var(--color-subtle);
   border-color: var(--color-separator);
   padding: 0.5625rem 0.625rem;
@@ -368,15 +380,16 @@
 }
 .breakdown-chart {
   position: relative;
+  container: breakdown-chart / inline-size;
   width: 100%;
   max-width: 23.75rem;
-  aspect-ratio: 1;
   margin-inline: auto;
 }
 .breakdown-chart svg {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  aspect-ratio: 1;
   overflow: visible;
 }
 .breakdown-sector {
@@ -420,6 +433,12 @@
   font-size: 0.6875rem;
   color: var(--color-muted);
 }
+@container breakdown-chart (max-width: 14em) {
+  .breakdown-center {
+    position: static;
+    margin-top: 0.75rem;
+  }
+}
 .breakdown-category--accommodation {
   --category-color: var(--color-violet);
 }
@@ -451,6 +470,7 @@
 }
 .breakdown-legend button {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.625rem;
   width: 100%;
@@ -478,11 +498,13 @@
   background: var(--category-color);
 }
 .breakdown-legend-label {
-  flex: 1;
+  flex: 1 1 7em;
   min-width: 0;
   font-size: 0.8125rem;
 }
 .breakdown-legend-amount {
+  margin-left: auto;
+  max-width: 100%;
   text-align: right;
 }
 .breakdown-legend-amount small {
@@ -645,7 +667,7 @@
   top: -0.5625rem;
   left: 0.75rem;
   padding-inline: 0.3125rem;
-  background: var(--color-surface);
+  background: var(--color-canvas);
 }
 @media (max-width: 600px) {
   .ledger-page-actions {
@@ -670,10 +692,11 @@
   }
   .ledger-dialog:not(.expense-presentation) {
     background: var(--color-canvas);
-    padding: 1.5rem 1.375rem;
+    padding: 22px;
     width: calc(100vw - 1.25rem);
     max-width: none;
-    margin-top: 1.5rem;
+    margin-top: 24px;
+    max-height: calc(100dvh - 48px);
   }
   .ledger-dialog:not(.expense-presentation) :is(input, select),
   .ledger-filters label > span {
@@ -684,7 +707,7 @@
 .ledger-filter-description {
   color: var(--color-muted);
   font-size: 0.75rem;
-  margin: 0.75rem 0 0;
+  margin: 9px 0 0;
 }
 .ledger-month-total {
   font-size: 0.6875rem;

@@ -5,7 +5,8 @@ import document, {
   type journeyExpenseQuery,
 } from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { CategoryIcon } from '@/components/workspace-identity';
+import { overviewDate } from './overview-date';
+import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
 import { Member, Money, Button } from '@/components/primitives';
 import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
@@ -190,8 +191,10 @@ export function ExpenseDetail({
         <Money value={money(expense.totalMinor)} currency={expense.currency} />
       </p>
       <div className="expense-paid-by">
-        <span>Paid by</span>
-        <strong>{expense.payer.displayName}</strong>
+        {expense.payer.displayName} paid ·{' '}
+        <time dateTime={expense.effectiveDate}>
+          {overviewDate(expense.effectiveDate)}
+        </time>
       </div>
       {expense.canEdit || retainedAttempt ? (
         <Button
@@ -203,6 +206,7 @@ export function ExpenseDetail({
             setEditing(true);
           }}
         >
+          <AppIcon name="edit" />
           {retainedAttempt ? 'Recover expense edit' : 'Edit expense'}
         </Button>
       ) : (

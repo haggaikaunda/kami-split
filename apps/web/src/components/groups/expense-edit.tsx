@@ -295,13 +295,6 @@ export function ExpenseEdit({
           {overviewDate(expense.effectiveDate)}
         </time>
       </p>
-      <details className="expense-edit-help">
-        <summary>About financial changes</summary>
-        <p>
-          Financial changes can change balances, including previously settled
-          balances. Recorded repayments stay unchanged. No money is moved.
-        </p>
-      </details>
       <p role="status" ref={status} tabIndex={-1} className="financial-notice">
         {busy ? 'Working…' : notice}
       </p>
@@ -477,6 +470,13 @@ export function ExpenseEdit({
           Cancel editing
         </button>
       )}
+      <details className="expense-edit-help">
+        <summary>About financial changes</summary>
+        <p>
+          Financial changes can change balances, including previously settled
+          balances. Recorded repayments stay unchanged. No money is moved.
+        </p>
+      </details>
       {cancel && (
         <aside role="alert">
           <p>Discard your unsaved changes and return to the expense?</p>

@@ -1,6 +1,10 @@
 'use client';
 import { createPortal } from 'react-dom';
-import { overviewDate } from './overview-date';
+import {
+  overviewDate,
+  overviewPeriod,
+  overviewSpansYears,
+} from './overview-date';
 import {
   spaceHref,
   spaceInvitationsHref,
@@ -404,11 +408,12 @@ function Expenses({
       </p>
     );
   if (!page.edges.length) return <p>This group has no expenses.</p>;
+  const dates = page.edges
+    .slice(0, recent ? 4 : undefined)
+    .map(({ node }) => node.effectiveDate);
   return (
     <>
-      <p className="overview-month">
-        {overviewDate(page.edges[0].node.effectiveDate, true)}
-      </p>
+      <p className="overview-month">{overviewPeriod(dates)}</p>
       <ul className="group-expense-list">
         {(recent ? page.edges.slice(0, 4) : page.edges).map(
           (edge) =>
@@ -426,7 +431,11 @@ function Expenses({
                     <span className="ui-row-detail">
                       {edge.node.payer.displayName} paid ·{' '}
                       <time dateTime={edge.node.effectiveDate}>
-                        {overviewDate(edge.node.effectiveDate)}
+                        {overviewDate(
+                          edge.node.effectiveDate,
+                          false,
+                          overviewSpansYears(dates),
+                        )}
                       </time>
                     </span>
                   </span>

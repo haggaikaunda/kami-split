@@ -828,3 +828,12 @@ export function RecommendedRepaymentRow({
     </div>
   );
 }
+
+export function WorkspacePrivacy() {
+  return (
+    <p className="workspace-privacy">
+      <AppIcon name="lock" />
+      Only visible to authorized members
+    </p>
+  );
+}

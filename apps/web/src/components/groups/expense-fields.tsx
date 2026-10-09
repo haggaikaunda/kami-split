@@ -126,23 +126,6 @@ export function ExpenseFields({
             {...field('note')}
           />
         </div>
-        <div className="expense-field expense-field--full">
-          {' '}
-          <label htmlFor="expense-split">
-            <span>Split type</span>
-          </label>
-          <select
-            id="expense-split"
-            value={draft.split}
-            onChange={(e) =>
-              change(selectSplit(draft, e.target.value as Draft['split']))
-            }
-          >
-            <option value="EQUAL">Equal</option>
-            <option value="EXACT">Exact</option>
-            <option value="PERCENTAGE">Percentage</option>
-          </select>
-        </div>
       </div>
       {draft.split === 'PERCENTAGE' && (
         <>
@@ -170,7 +153,24 @@ export function ExpenseFields({
         {...field('participants')}
         tabIndex={-1}
       >
-        <legend>Participants and preview</legend>
+        <legend className="ui-visually-hidden">Participants and preview</legend>
+        <div className="expense-split-heading">
+          <label htmlFor="expense-split">Split type</label>{' '}
+          <select
+            id="expense-split"
+            value={draft.split}
+            onChange={(e) =>
+              change(selectSplit(draft, e.target.value as Draft['split']))
+            }
+          >
+            <option value="EQUAL">Equal</option>
+            <option value="EXACT">Exact</option>
+            <option value="PERCENTAGE">Percentage</option>
+          </select>
+          <span className="ui-space-chip">
+            {draft.participants.length} members
+          </span>
+        </div>
         {members
           .filter((m) => m.canParticipate)
           .map((member) => (

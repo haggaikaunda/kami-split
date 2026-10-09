@@ -5,6 +5,13 @@ import { usePathname } from 'next/navigation';
 // Reference icon geometry: Lucide1.17.0 (ISC/MIT); see LUCIDE-LICENSE.txt.
 // The existing leaf brand remains unchanged.
 const icons = {
+  lock: (
+    <>
+      <circle cx="12" cy="16" r="1" />
+      <rect x="3" y="10" width="18" height="12" rx="2" />
+      <path d="M7 10V7a5 5 0 0 1 10 0v3" />
+    </>
+  ),
   palette: (
     <>
       <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" />
