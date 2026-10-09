@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Standalone local fixture server. */
 // Synthetic visual evidence only. All API calls terminate here; none reach Next or hosted services.
 // Start Next on :3227, then node scripts/visual-parity-fixture.cjs. Open :3228/household.
-// ?fixtureTheme=light|dark|system and ?fixtureState=complete|empty|error|loading|long-names|huge|denied|conflict|recovery select evidence states.
+// ?fixtureTheme=light|dark|system and ?fixtureState select evidence states; /__fixture/health lists every state.
+// Group/repayment/invitation success is opt-in via write-success, no-workspaces or owner-invitations.
+// Auth onboarding uses only haggai@example.com / SyntheticOnly123! and inert synthetic-* invitation links.
 const http = require('node:http');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const { parse } = require('graphql');
 const assert = require('node:assert/strict');
 const upstream = new URL(
@@ -165,7 +167,7 @@ function freshExpenses() {
       payer: members[payer],
       category,
       effectiveDate,
-      note: note || null,
+      note: note || '',
       currency: 'USD',
       createdAt: `${effectiveDate}T12:00:00Z`,
       creator: members[0],
@@ -234,12 +236,50 @@ function percentageAllocations(amount, percentages) {
   }));
 }
 const clients = new Map();
+const writeStates = new Set([
+  'write-success',
+  'no-workspaces',
+  'owner-invitations',
+]);
+const onboardingStates = new Set([
+  'signed-out',
+  'join-targeted',
+  'join-shared',
+  'join-wrong-account',
+]);
+const fixtureStates = [
+  'complete',
+  'empty',
+  'error',
+  'loading',
+  'long-names',
+  'huge',
+  'denied',
+  'conflict',
+  'recovery',
+  'write-success',
+  'no-workspaces',
+  'owner-invitations',
+  'member',
+  'single-category',
+  'tiny-category',
+  ...onboardingStates,
+];
+const fixtureNow = '2026-10-09T12:00:00Z';
+const fixtureExpiry = '2026-10-16T12:00:00Z';
 function newClient() {
   return {
     signedOut: false,
     appearance: 'LIGHT',
     displayName: 'Haggai',
     expenses: freshExpenses(),
+    groups: structuredClone(groups),
+    createdGroups: new Set(),
+    repayments: [],
+    invitations: [],
+    invitationContext: null,
+    invitationOperations: new Map(),
+    writeOperations: new Map(),
     state: 'complete',
     conflictUsed: false,
     operations: new Map(),
@@ -262,7 +302,68 @@ function setState(client, state) {
   }
   client.conflictUsed = false;
   client.state = state;
+  if (state === 'single-category')
+    client.expenses = freshExpenses().filter(
+      (expense) => expense.category === 'GROCERIES',
+    );
+  if (state === 'tiny-category') {
+    client.expenses = freshExpenses();
+    client.expenses[0].totalMinor = '1';
+    client.expenses[0].allocations = equalAllocations('1');
+  }
+  if (state === 'no-workspaces' || state.startsWith('join-')) {
+    client.groups = [];
+    client.expenses = [];
+    client.repayments = [];
+  }
+  if (onboardingStates.has(state))
+    client.signedOut = state !== 'join-wrong-account';
+  if (state === 'owner-invitations')
+    client.invitations = [
+      {
+        id: 'synthetic-shared',
+        groupID: 'F',
+        kind: 'SHARED',
+        recipient: null,
+        expiresAt: fixtureExpiry,
+        lifecycle: 'OUTSTANDING',
+        actionID: 'synthetic-shared-action',
+        delivery: 'NOT_REQUESTED',
+      },
+      {
+        id: 'synthetic-targeted',
+        groupID: 'F',
+        kind: 'TARGETED',
+        recipient: 'invitee@example.com',
+        expiresAt: fixtureExpiry,
+        lifecycle: 'OUTSTANDING',
+        actionID: 'synthetic-targeted-action',
+        delivery: 'PROVIDER_ACCEPTED',
+      },
+      {
+        id: 'synthetic-revoked',
+        groupID: 'F',
+        kind: 'TARGETED',
+        recipient: null,
+        expiresAt: fixtureExpiry,
+        lifecycle: 'REVOKED',
+        actionID: 'synthetic-revoked-action',
+        delivery: 'NOT_REQUESTED',
+      },
+    ];
   financialInvariants(client.expenses);
+}
+function groupMembers(client, id) {
+  const entries = client.createdGroups.has(id) ? members.slice(0, 1) : members;
+  return entries.map((member, index) => ({
+    ...member,
+    role:
+      client.state === 'member' || client.state.startsWith('join-')
+        ? index === 1
+          ? 'OWNER'
+          : 'MEMBER'
+        : member.role,
+  }));
 }
 function longNames(value) {
   if (Array.isArray(value)) return value.map(longNames);
@@ -315,13 +416,35 @@ function paid(expenses, member = members[0]) {
 }
 function balances(client, id) {
   const expenses = matching(client, id),
-    positions = members.map((member) => ({
+    transfers = client.repayments.filter((record) => record.groupId === id),
+    positions = groupMembers(client, id).map((member) => ({
       member,
       paidMinor: String(paid(expenses, member)),
       owedMinor: String(share(expenses, member)),
-      sentMinor: '0',
-      receivedMinor: '0',
-      netMinor: String(paid(expenses, member) - share(expenses, member)),
+      sentMinor: String(
+        total(
+          transfers.filter((r) => r.sender.id === member.id),
+          (r) => r.amountMinor,
+        ),
+      ),
+      receivedMinor: String(
+        total(
+          transfers.filter((r) => r.recipient.id === member.id),
+          (r) => r.amountMinor,
+        ),
+      ),
+      netMinor: String(
+        paid(expenses, member) -
+          share(expenses, member) +
+          total(
+            transfers.filter((r) => r.sender.id === member.id),
+            (r) => r.amountMinor,
+          ) -
+          total(
+            transfers.filter((r) => r.recipient.id === member.id),
+            (r) => r.amountMinor,
+          ),
+      ),
     }));
   const creditors = positions
     .filter((p) => BigInt(p.netMinor) > 0n)
@@ -392,7 +515,7 @@ function expenseView(client, id, filter, limit = 20, after) {
     edges: page.map((node) => ({
       cursor: node.id,
       node,
-      source: groupSummary(groups.find((g) => g.id === node.groupId)),
+      source: groupSummary(client.groups.find((g) => g.id === node.groupId)),
     })),
     pageInfo: {
       hasNextPage: start + limit < expenses.length,
@@ -403,16 +526,22 @@ function expenseView(client, id, filter, limit = 20, after) {
   };
 }
 function group(client, id, limit = 20) {
-  const found = groups.find((g) => g.id === id);
+  const found = client.groups.find((g) => g.id === id);
   if (!found) return problem('NOT_FOUND');
   const view = expenseView(client, id, null, limit);
   return {
     __typename: 'Group',
     ...found,
-    viewerMembership: members[0],
-    members,
+    viewerMembership: groupMembers(client, id)[0],
+    members: groupMembers(client, id),
     expenses: { ...view, revision: '1' },
-    repayments: { edges: [], pageInfo: { hasNextPage: false } },
+    repayments: {
+      edges: client.repayments
+        .filter((r) => r.groupId === id)
+        .map((node) => ({ node, cursor: node.id })),
+      pageInfo: { hasNextPage: false, endCursor: null },
+      revision: '1',
+    },
     balances: balances(client, id),
   };
 }
@@ -424,65 +553,462 @@ function dashboard(client) {
     contextVersion: 'visual-fixture-v1',
     totals: {
       __typename: 'HouseholdDashboardTotals',
-      viewerNetMinor: String(paid(expenses) - share(expenses)),
+      viewerNetMinor: String(
+        client.groups.reduce(
+          (sum, g) =>
+            sum + BigInt(balances(client, g.id).positions[0]?.netMinor || '0'),
+          0n,
+        ),
+      ),
       viewerShareMinor: String(share(expenses)),
       viewerPaidMinor: String(paid(expenses)),
       openBalanceCount: String(
-        groups.filter((g) => !balances(client, g.id).settled).length,
+        client.groups.filter((g) => !balances(client, g.id).settled).length,
       ),
-      activeSpaceCount: String(groups.length),
+      activeSpaceCount: String(client.groups.length),
       totalSharedExpenseMinor: String(total(expenses)),
       totalSharedExpenseCount: String(expenses.length),
     },
-    spaces: groups.map((g) => ({
+    spaces: client.groups.map((g) => ({
       ...g,
       id: undefined,
       groupId: g.id,
-      viewerMembership: members[0],
-      members,
+      viewerMembership: groupMembers(client, g.id)[0],
+      members: groupMembers(client, g.id),
       viewerNetMinor: balances(client, g.id).positions[0].netMinor,
       sharedExpenseCount: String(matching(client, g.id).length),
       balances: balances(client, g.id),
     })),
   };
 }
-function activity(client, id) {
+function activity(client, id, filter = {}) {
+  filter ||= {};
+  const repayments = client.repayments
+    .filter((record) => !id || record.groupId === id)
+    .map((record) => {
+      const source = client.groups.find((group) => group.id === record.groupId);
+      return {
+        cursor: `activity-${record.id}`,
+        node: {
+          __typename: 'ActivityEvent',
+          id: `activity-${record.id}`,
+          recordId: record.id,
+          description: null,
+          note: record.note,
+          before: null,
+          after: null,
+          kind: 'REPAYMENT_RECORDED',
+          groupId: record.groupId,
+          groupName: source.name,
+          groupKind: source.kind,
+          isHousehold: source.isHousehold,
+          amountMinor: record.amountMinor,
+          currency: 'USD',
+          effectiveDate: record.effectiveDate,
+          timestamp: record.createdAt,
+          creator: record.creator,
+          payer: null,
+          sender: record.sender,
+          recipient: record.recipient,
+        },
+      };
+    });
   return {
     __typename: 'ActivityConnection',
     __isActivityResult: 'ActivityConnection',
-    edges: matching(client, id).map((e) => {
-      const g = groups.find((item) => item.id === e.groupId);
-      return {
-        cursor: `activity-${e.id}`,
-        node: {
-          __typename: 'ActivityEvent',
-          id: `activity-${e.id}`,
-          recordId: e.id,
-          description: e.description,
-          note: e.note,
-          before: null,
-          after: e,
-          kind: 'EXPENSE_CREATED',
-          groupId: e.groupId,
-          groupName: g.name,
-          groupKind: g.kind,
-          isHousehold: g.isHousehold,
-          amountMinor: e.totalMinor,
-          currency: 'USD',
-          effectiveDate: e.effectiveDate,
-          timestamp: e.createdAt,
-          creator: e.payer,
-          payer: e.payer,
-          sender: null,
-          recipient: null,
-        },
-      };
-    }),
+    edges: [
+      ...repayments,
+      ...matching(client, id).map((e) => {
+        const g = client.groups.find((item) => item.id === e.groupId);
+        return {
+          cursor: `activity-${e.id}`,
+          node: {
+            __typename: 'ActivityEvent',
+            id: `activity-${e.id}`,
+            recordId: e.id,
+            description: e.description,
+            note: e.note,
+            before: null,
+            after: e,
+            kind: 'EXPENSE_CREATED',
+            groupId: e.groupId,
+            groupName: g.name,
+            groupKind: g.kind,
+            isHousehold: g.isHousehold,
+            amountMinor: e.totalMinor,
+            currency: 'USD',
+            effectiveDate: e.effectiveDate,
+            timestamp: e.createdAt,
+            creator: e.payer,
+            payer: e.payer,
+            sender: null,
+            recipient: null,
+          },
+        };
+      }),
+    ].filter(
+      ({ node }) =>
+        (!filter.kind || node.kind === filter.kind) &&
+        (!filter.sourceGroupId || node.groupId === filter.sourceGroupId),
+    ),
     pageInfo: { hasNextPage: false, endCursor: null },
   };
 }
 function problem(code = 'UNAVAILABLE') {
   return { __typename: 'Problem', code, message: 'Synthetic fixture response' };
+}
+function createGroup(client, input) {
+  if (!writeStates.has(client.state)) return problem('UNAVAILABLE');
+  const key = `group:${input.operationKey}`,
+    prior = client.writeOperations.get(key),
+    signature = JSON.stringify(input);
+  if (prior)
+    return prior.signature === signature
+      ? prior.result
+      : {
+          __typename: 'GroupCreationConflict',
+          operationKey: input.operationKey,
+        };
+  const fields = [];
+  if (
+    typeof input.name !== 'string' ||
+    !input.name.trim() ||
+    [...input.name].length > 120
+  )
+    fields.push({
+      path: ['input', 'name'],
+      code: 'INVALID_INPUT',
+      message: 'Enter a group name.',
+    });
+  if (
+    !['ORDINARY', 'TRIP'].includes(input.kind) ||
+    (input.kind === 'TRIP' &&
+      (!input.trip ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(input.trip.startDate) ||
+        input.trip.endDate < input.trip.startDate))
+  )
+    fields.push({
+      path: ['input', 'trip'],
+      code: 'INVALID_INPUT',
+      message: 'Enter valid trip dates.',
+    });
+  let result;
+  if (fields.length)
+    result = {
+      __typename: 'GroupCreationRejected',
+      operationKey: input.operationKey,
+      fields,
+    };
+  else {
+    const id = `synthetic-group-${randomUUID()}`;
+    client.groups.push({
+      id,
+      name: input.name.trim(),
+      kind: input.kind,
+      isHousehold: false,
+      currency: 'USD',
+      trip: input.kind === 'TRIP' ? structuredClone(input.trip) : null,
+    });
+    client.createdGroups.add(id);
+    result = {
+      __typename: 'GroupCreationCompleted',
+      operationKey: input.operationKey,
+      groupId: id,
+      creatorMembershipId: 'M0',
+      createdAt: fixtureNow,
+    };
+  }
+  client.writeOperations.set(key, { signature, result });
+  return result;
+}
+function recordRepayment(client, input) {
+  if (!writeStates.has(client.state)) return problem('UNAVAILABLE');
+  const key = `repayment:${input.groupId}:${input.key}`,
+    prior = client.writeOperations.get(key),
+    signature = JSON.stringify(input);
+  if (prior)
+    return prior.signature === signature
+      ? prior.result
+      : { __typename: 'OperationMismatch', key: input.key };
+  if (!client.groups.some((g) => g.id === input.groupId))
+    return problem('NOT_FOUND');
+  const people = groupMembers(client, input.groupId),
+    sender = people.find((m) => m.id === input.senderId),
+    recipient = people.find((m) => m.id === input.recipientId);
+  if (
+    !sender ||
+    !recipient ||
+    sender.id === recipient.id ||
+    !/^[1-9]\d*$/.test(input.amountMinor) ||
+    BigInt(input.amountMinor) > 999999999n ||
+    input.currency !== 'USD'
+  )
+    return {
+      __typename: 'ValidationProblem',
+      fields: [
+        {
+          path: ['input', 'amountMinor'],
+          code: 'INVALID_INPUT',
+          message: 'Use distinct group members and valid exact USD cents.',
+        },
+      ],
+    };
+  const record = {
+    __typename: 'Repayment',
+    id: `synthetic-repayment-${randomUUID()}`,
+    groupId: input.groupId,
+    creator: people[0],
+    sender,
+    recipient,
+    amountMinor: input.amountMinor,
+    currency: 'USD',
+    effectiveDate: input.effectiveDate,
+    note: input.note || '',
+    createdAt: fixtureNow,
+    revision: '2',
+  };
+  client.repayments.unshift(record);
+  const result = {
+    __typename: 'RepaymentCommitted',
+    key: input.key,
+    record: {
+      repaymentId: record.id,
+      groupId: record.groupId,
+      creatorMembershipId: 'M0',
+      senderMembershipId: sender.id,
+      recipientMembershipId: recipient.id,
+      amountMinor: record.amountMinor,
+      currency: 'USD',
+      effectiveDate: record.effectiveDate,
+      note: record.note,
+      committedAt: fixtureNow,
+      revision: '2',
+    },
+  };
+  assert.equal(
+    balances(client, input.groupId).positions.reduce(
+      (sum, p) => sum + BigInt(p.netMinor),
+      0n,
+    ),
+    0n,
+    'Synthetic repayments change sender and recipient equally and oppositely.',
+  );
+  client.writeOperations.set(key, { signature, result });
+  return result;
+}
+function invitationResponse(client, query, variables) {
+  const field = [
+    'ownerInvitations',
+    'createTargetedInvitation',
+    'createSharedInvitation',
+    'resendInvitation',
+    'renewSharedInvitation',
+    'revokeInvitation',
+    'retryInvitationDelivery',
+    'invitationAction',
+  ].find((name) => new RegExp(`\\b${name}\\s*\\(`).test(query));
+  if (!field) return null;
+  const denied = (code) => ({
+    [field]: {
+      __typename: 'InvitationProblem',
+      code,
+      message: 'Synthetic invitation response',
+    },
+  });
+  if (client.state === 'member' || client.state === 'denied')
+    return denied('FORBIDDEN');
+  if (field === 'ownerInvitations')
+    return {
+      ownerInvitations: {
+        __typename: 'OwnerInvitationPage',
+        items: client.invitations.filter(
+          (item) => item.groupID === variables.groupID,
+        ),
+        nextCursor: null,
+      },
+    };
+  if (!writeStates.has(client.state)) return denied('UNAVAILABLE');
+  if (field === 'invitationAction')
+    return {
+      invitationAction: client.invitationOperations.get(variables.key)
+        ?.result || {
+        __typename: 'InvitationActionResult',
+        outcome: 'NOT_OBSERVED',
+        hasAccess: false,
+      },
+    };
+  if (field === 'retryInvitationDelivery') {
+    const item = client.invitations.find(
+      (item) => item.actionID === variables.actionID,
+    );
+    if (!item) return denied('NOT_FOUND');
+    item.delivery = 'PROVIDER_ACCEPTED';
+    return {
+      retryInvitationDelivery: {
+        __typename: 'InvitationDeliveryResult',
+        status: 'ATTEMPTED',
+      },
+    };
+  }
+  if (!client.groups.some((g) => g.id === variables.groupID))
+    return denied('NOT_FOUND');
+  const signature = JSON.stringify({ field, ...variables }),
+    prior = client.invitationOperations.get(variables.key);
+  if (prior)
+    return {
+      [field]:
+        prior.signature === signature
+          ? prior.result
+          : {
+              __typename: 'InvitationActionResult',
+              outcome: 'KEY_REUSED',
+              hasAccess: false,
+            },
+    };
+  const shared =
+    field === 'createSharedInvitation' || field === 'renewSharedInvitation';
+  if (
+    field === 'createTargetedInvitation' &&
+    !/^[^@\s]+@example\.(?:com|test)$/.test(variables.email || '')
+  )
+    return denied('INVALID_EMAIL');
+  let item = client.invitations.find(
+    (item) =>
+      item.groupID === variables.groupID &&
+      (variables.id
+        ? item.id === variables.id
+        : item.lifecycle === 'OUTSTANDING' &&
+          (shared
+            ? item.kind === 'SHARED'
+            : item.recipient === variables.email)),
+  );
+  let outcome = 'SAVED';
+  if (field.startsWith('create')) {
+    if (item) outcome = 'EXISTING';
+    else {
+      item = {
+        id: `synthetic-invitation-${randomUUID()}`,
+        groupID: variables.groupID,
+        kind: shared ? 'SHARED' : 'TARGETED',
+        recipient: shared ? null : variables.email,
+        expiresAt: fixtureExpiry,
+        lifecycle: 'OUTSTANDING',
+        actionID: `synthetic-action-${randomUUID()}`,
+        delivery: shared ? 'NOT_REQUESTED' : 'PENDING',
+      };
+      client.invitations.push(item);
+    }
+  } else {
+    if (!item) return denied('NOT_FOUND');
+    if (['REVOKED', 'ACCEPTED'].includes(item.lifecycle))
+      outcome =
+        item.lifecycle === 'REVOKED' ? 'ALREADY_REVOKED' : 'ALREADY_ACCEPTED';
+    else {
+      outcome = 'APPLIED';
+      if (field === 'revokeInvitation') {
+        item.lifecycle = 'REVOKED';
+        item.recipient = null;
+        item.delivery = 'NOT_REQUESTED';
+      } else {
+        item.expiresAt = fixtureExpiry;
+        item.delivery = shared ? 'NOT_REQUESTED' : 'PENDING';
+      }
+      item.actionID = `synthetic-action-${randomUUID()}`;
+    }
+  }
+  const result = {
+    __typename: 'InvitationActionResult',
+    actionID: item.actionID,
+    invitationID: item.id,
+    groupID: item.groupID,
+    outcome,
+    committedExpiresAt: item.expiresAt,
+    currentExpiresAt: item.expiresAt,
+    lifecycle: item.lifecycle,
+    delivery: item.delivery,
+    hasAccess: false,
+  };
+  client.invitationOperations.set(variables.key, { signature, result });
+  return { [field]: result };
+}
+function onboardingResponse(client, action, input, origin) {
+  const fail = (code, status = 400) => ({ body: { code }, status });
+  const ok = (body) => ({ body, status: 200 });
+  if (action === 'copy-shared') {
+    if (!writeStates.has(client.state) || client.state === 'member')
+      return fail('FORBIDDEN', 403);
+    const invitation = client.invitations.find(
+      (item) =>
+        item.id === input.invitationID &&
+        item.groupID === input.groupID &&
+        item.kind === 'SHARED' &&
+        item.lifecycle === 'OUTSTANDING',
+    );
+    return invitation
+      ? ok({ link: `${origin}/join?fixtureState=join-shared#synthetic-shared` })
+      : fail('UNAVAILABLE_LINK');
+  }
+  if (!onboardingStates.has(client.state)) return fail('UNAVAILABLE', 503);
+  if (action === 'start') {
+    if (
+      input.token &&
+      !['synthetic-targeted', 'synthetic-shared'].includes(input.token)
+    )
+      return fail('UNAVAILABLE_LINK');
+    client.invitationContext = {
+      kind: input.token === 'synthetic-shared' ? 'SHARED' : 'TARGETED',
+      digest: createHash('sha256')
+        .update(input.token || '')
+        .digest('hex'),
+    };
+    return ok({ code: 'READY' });
+  }
+  if (!client.invitationContext) return fail('CONTEXT_EXPIRED');
+  if (action === 'preview')
+    return ok({
+      kind: client.invitationContext.kind,
+      groupName: 'Maple House',
+      inviterDisplayName: 'Alex',
+    });
+  if (
+    ['targeted-continuation', 'accept', 'provision'].includes(action) &&
+    input.tokenDigest !== client.invitationContext.digest
+  )
+    return fail('ORIGINAL_LINK_REQUIRED', 409);
+  if (action === 'targeted-continuation') {
+    if (client.state === 'join-wrong-account')
+      return fail('WRONG_ACCOUNT', 409);
+    if (!client.signedOut) return ok({ code: 'ALREADY_AUTHENTICATED' });
+    return ok({
+      tokenHash: '0'.repeat(64),
+      type: 'invite',
+      needsPassword: true,
+    });
+  }
+  if (action === 'callback-state')
+    return input.state === 'synthetic-callback'
+      ? ok({ code: 'READY', tokenDigest: client.invitationContext.digest })
+      : fail('INVALID_CALLBACK');
+  if (['provision', 'recover'].includes(action))
+    return ok({
+      code: 'CHECK_EMAIL',
+      message: 'Synthetic fixture only; no email is sent.',
+    });
+  if (action === 'accept') {
+    if (client.state === 'join-wrong-account')
+      return ok({ code: 'WRONG_ACCOUNT' });
+    if (client.signedOut) return fail('UNAUTHENTICATED', 401);
+    if (!client.groups.some((group) => group.id === 'F')) {
+      client.groups.push(
+        structuredClone(groups.find((group) => group.id === 'F')),
+      );
+      client.expenses = freshExpenses().filter(
+        (expense) => expense.groupId === 'F',
+      );
+    }
+    return ok({ code: 'ADMITTED', groupID: 'F', hasAccess: true });
+  }
+  return fail('UNAVAILABLE', 503);
 }
 function projectResponse(query, variables, data) {
   const document = parse(query);
@@ -562,7 +1088,7 @@ function graphql(client, query, variables = {}) {
     displayName: client.displayName,
     today: '2026-10-09',
     canCreateGroups: true,
-    groups: groups.map(groupSummary),
+    groups: client.groups.map(groupSummary),
   };
   let data;
   switch (op) {
@@ -663,10 +1189,12 @@ function graphql(client, query, variables = {}) {
       };
       break;
     case 'activityHouseholdQuery':
-      data = { householdActivity: activity(client) };
+      data = { householdActivity: activity(client, null, variables.filter) };
       break;
     case 'activityGroupQuery':
-      data = { groupActivity: activity(client, variables.groupId) };
+      data = {
+        groupActivity: activity(client, variables.groupId, variables.filter),
+      };
       break;
     case 'activityDetailQuery':
       data = {
@@ -728,7 +1256,7 @@ function graphql(client, query, variables = {}) {
           : input.percentages
             ? percentageAllocations(input.totalMinor, input.percentages)
             : equalAllocations(input.totalMinor, participants),
-        note: input.note || null,
+        note: input.note || '',
       };
       financialInvariants([record]);
       client.expenses = edit
@@ -787,20 +1315,38 @@ function graphql(client, query, variables = {}) {
       };
       break;
     case 'journeyRepaymentMutation':
-      data = { recordRepayment: problem('UNAVAILABLE') };
+      data = { recordRepayment: recordRepayment(client, variables.input) };
+      break;
+    case 'journeyRepaymentRecoveryQuery':
+      data = {
+        repaymentOperation: client.writeOperations.get(
+          `repayment:${variables.groupId}:${variables.key}`,
+        )?.result || {
+          __typename: 'OperationProgress',
+          key: variables.key,
+          state: 'NOT_OBSERVED',
+        },
+      };
       break;
     case 'journeyGroupCreationMutation':
-      data = { createGroup: problem('UNAVAILABLE') };
+      data = { createGroup: createGroup(client, variables.input) };
+      break;
+    case 'journeyGroupCreationRecoveryQuery':
+      data = {
+        groupCreationOperation: client.writeOperations.get(
+          `group:${variables.operationKey}`,
+        )?.result || {
+          __typename: 'GroupCreationNotStarted',
+          operationKey: variables.operationKey,
+        },
+      };
       break;
     default:
-      if (query.includes('ownerInvitations'))
-        data = {
-          ownerInvitations: {
-            __typename: 'OwnerInvitationPage',
-            items: [],
-            nextCursor: null,
-          },
-        };
+      if ((data = invitationResponse(client, query, variables))) break;
+      else if (/^\s*mutation\b/.test(query))
+        throw new Error(
+          'Unsupported synthetic mutation; no production request sent.',
+        );
       else if (query.includes('viewer')) data = { viewer };
       else if (query.includes('group('))
         data = {
@@ -850,19 +1396,7 @@ const server = http.createServer(async (request, response) => {
       ['light', 'dark', 'system'].includes(url.searchParams.get('fixtureTheme'))
     )
       client.appearance = url.searchParams.get('fixtureTheme').toUpperCase();
-    if (
-      [
-        'complete',
-        'empty',
-        'error',
-        'loading',
-        'long-names',
-        'huge',
-        'denied',
-        'conflict',
-        'recovery',
-      ].includes(url.searchParams.get('fixtureState'))
-    )
+    if (fixtureStates.includes(url.searchParams.get('fixtureState')))
       setState(client, url.searchParams.get('fixtureState'));
     response.setHeader(
       'Set-Cookie',
@@ -874,11 +1408,14 @@ const server = http.createServer(async (request, response) => {
         upstream: upstream.origin,
         state: client.state,
         appearance: client.appearance,
+        availableStates: fixtureStates,
+        syntheticWritesEnabled: writeStates.has(client.state),
       });
     if (url.pathname === '/__fixture/invariants')
       return json(response, {
         ...financialInvariants(client.expenses),
-        groups: groups.map((group) => {
+        repaymentCount: String(client.repayments.length),
+        groups: client.groups.map((group) => {
           const positions = balances(client, group.id).positions;
           const net = positions.reduce(
             (sum, position) => sum + BigInt(position.netMinor),
@@ -906,13 +1443,104 @@ const server = http.createServer(async (request, response) => {
         url: origin + '/synthetic-auth',
         key: 'synthetic-public',
       });
-    if (url.pathname === '/api/onboarding/clear') return json(response, {});
+    if (url.pathname === '/api/onboarding/clear') {
+      client.invitationContext = null;
+      return json(response, {});
+    }
+    if (url.pathname.startsWith('/api/onboarding/')) {
+      if (request.method !== 'POST')
+        return json(response, { code: 'METHOD_NOT_ALLOWED' }, 405);
+      const result = onboardingResponse(
+        client,
+        url.pathname.slice('/api/onboarding/'.length),
+        JSON.parse((await readBody(request)) || '{}'),
+        origin,
+      );
+      return json(response, result.body, result.status);
+    }
     if (url.pathname === '/synthetic-auth/auth/v1/logout') {
       client.signedOut = true;
       return json(response, {});
     }
-    if (url.pathname.startsWith('/synthetic-auth/auth/v1/'))
-      return json(response, url.pathname.endsWith('/user') ? user : session());
+    if (
+      url.pathname === '/synthetic-auth/auth/v1/token' &&
+      url.searchParams.get('grant_type') === 'password'
+    ) {
+      const input = JSON.parse((await readBody(request)) || '{}');
+      if (
+        !onboardingStates.has(client.state) ||
+        input.email !== user.email ||
+        input.password !== 'SyntheticOnly123!'
+      )
+        return json(
+          response,
+          {
+            error: 'invalid_grant',
+            error_description: 'Use the documented synthetic fixture identity.',
+          },
+          400,
+        );
+      client.signedOut = false;
+      return json(response, session());
+    }
+    if (url.pathname === '/synthetic-auth/auth/v1/verify') {
+      const input = JSON.parse((await readBody(request)) || '{}');
+      if (
+        !onboardingStates.has(client.state) ||
+        input.token_hash !== '0'.repeat(64)
+      )
+        return json(
+          response,
+          {
+            error: 'invalid_grant',
+            error_description: 'Synthetic verification unavailable.',
+          },
+          400,
+        );
+      client.signedOut = false;
+      return json(response, session());
+    }
+    if (
+      url.pathname === '/synthetic-auth/auth/v1/user' &&
+      request.method === 'PUT'
+    ) {
+      const input = JSON.parse((await readBody(request)) || '{}');
+      if (
+        !onboardingStates.has(client.state) ||
+        client.signedOut ||
+        input.password !== 'SyntheticOnly123!'
+      )
+        return json(
+          response,
+          {
+            code: 'UNAVAILABLE',
+            message:
+              'Use only the documented synthetic password in explicit onboarding states.',
+          },
+          400,
+        );
+      return json(response, user);
+    }
+    if (
+      url.pathname === '/synthetic-auth/auth/v1/user' &&
+      request.method === 'GET'
+    )
+      return client.signedOut
+        ? json(response, { code: 'UNAUTHENTICATED' }, 401)
+        : json(response, user);
+    if (
+      url.pathname === '/synthetic-auth/auth/v1/token' &&
+      url.searchParams.get('grant_type') === 'refresh_token'
+    )
+      return client.signedOut
+        ? json(response, { code: 'UNAUTHENTICATED' }, 401)
+        : json(response, session());
+    if (url.pathname.startsWith('/synthetic-auth/'))
+      return json(
+        response,
+        { code: 'UNAVAILABLE', message: 'Unsupported synthetic auth action.' },
+        503,
+      );
     if (url.pathname === '/api/graphql') {
       if (client.signedOut)
         return json(response, { code: 'UNAUTHENTICATED' }, 401);

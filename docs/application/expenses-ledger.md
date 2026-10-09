@@ -13,7 +13,7 @@ and never a cross-group repayment target. Balance metrics are explicitly
 unfiltered. A zero viewer position does not assert that every member is settled.
 
 Structured space (Household only), category, member and inclusive date filters
-are edited in a shared desktop drawer/mobile sheet, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
+are edited in a combined filter dialog on desktop and phone, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
 are scoped to the original group, matching payer **or** explicit participant,
 including zero shares. No search control or client filtering is provided. A
 filter change starts a new traversal. Initial requests and Load more request six

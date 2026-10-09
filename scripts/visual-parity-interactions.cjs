@@ -21,6 +21,212 @@ const test = (name, work) => {
     cases.push({ name, work });
 };
 const params = (page) => Object.fromEntries(new URL(page.url()).searchParams);
+test('fixture-explicit-write-contracts', async (page) => {
+  const { buildSchema, parse, execute } = require('graphql');
+  const schema = buildSchema(
+    fs
+      .readdirSync('packages/schema')
+      .filter((name) => name.endsWith('.graphql'))
+      .map((name) =>
+        fs.readFileSync(path.join('packages/schema', name), 'utf8'),
+      )
+      .join('\n'),
+  );
+  const wire = (name) =>
+    JSON.parse(
+      fs
+        .readFileSync(
+          `apps/web/src/lib/relay/__generated__/${name}.graphql.ts`,
+          'utf8',
+        )
+        .match(/"text": ("(?:[^"\\]|\\.)*")/)[1],
+    );
+  const setup = async (state) => {
+    await page.request.get(origin + '/__fixture/reset');
+    await page.request.get(`${origin}/__fixture/health?fixtureState=${state}`);
+  };
+  const graph = async (query, variables = {}) => {
+    const response = await page.request.post(origin + '/api/graphql', {
+      data: { query, variables },
+    });
+    assert.equal(response.status(), 200);
+    const payload = await response.json();
+    assert.equal(payload.errors, undefined);
+    // Execute the real selected contract over fixture values; required/null and
+    // union/type errors fail rather than being hidden by loose object assertions.
+    const checked = await execute({
+      schema,
+      document: parse(query),
+      rootValue: payload.data,
+      variableValues: variables,
+    });
+    assert.equal(checked.errors, undefined, JSON.stringify(checked.errors));
+    return payload.data;
+  };
+  const creation = {
+    operationKey: '10000000-0000-4000-8000-000000000001',
+    name: 'Synthetic new group',
+    kind: 'ORDINARY',
+    trip: null,
+  };
+  await setup('complete');
+  assert.equal(
+    (await graph(wire('journeyGroupCreationMutation'), { input: creation }))
+      .createGroup.code,
+    'UNAVAILABLE',
+  );
+  await setup('no-workspaces');
+  assert.equal(
+    (await graph(wire('journeyViewerQuery'))).viewer.groups.length,
+    0,
+  );
+  const created = (
+    await graph(wire('journeyGroupCreationMutation'), { input: creation })
+  ).createGroup;
+  assert.equal(created.__typename, 'GroupCreationCompleted');
+  assert.deepEqual(
+    (await graph(wire('journeyGroupCreationMutation'), { input: creation }))
+      .createGroup,
+    created,
+  );
+  assert.equal(
+    (
+      await graph(wire('journeyGroupCreationMutation'), {
+        input: { ...creation, name: 'Changed intent' },
+      })
+    ).createGroup.__typename,
+    'GroupCreationConflict',
+  );
+  const newGroup = (
+    await graph(wire('journeyGroupQuery'), { id: created.groupId })
+  ).group;
+  assert.equal(newGroup.name, creation.name);
+  assert.equal(newGroup.members.length, 1);
+  assert.equal(newGroup.balances.totalExpenseMinor, '0');
+  const trip = {
+    operationKey: '10000000-0000-4000-8000-000000000002',
+    name: 'Synthetic mountain trip',
+    kind: 'TRIP',
+    trip: {
+      destination: 'Mountains',
+      startDate: '2026-11-01',
+      endDate: '2026-11-03',
+    },
+  };
+  const createdTrip = (
+    await graph(wire('journeyGroupCreationMutation'), { input: trip })
+  ).createGroup;
+  assert.deepEqual(
+    (await graph(wire('journeyGroupQuery'), { id: createdTrip.groupId })).group
+      .trip,
+    trip.trip,
+  );
+  await setup('write-success');
+  const repayment = {
+    groupId: 'F',
+    key: '10000000-0000-4000-8000-000000000003',
+    senderId: 'M1',
+    recipientId: 'M0',
+    amountMinor: '1234',
+    currency: 'USD',
+    effectiveDate: '2026-10-09',
+    note: 'Synthetic transfer only',
+  };
+  const before = (await graph(wire('journeyGroupQuery'), { id: 'F' })).group
+    .balances.positions;
+  const committed = (
+    await graph(wire('journeyRepaymentMutation'), { input: repayment })
+  ).recordRepayment;
+  assert.equal(committed.__typename, 'RepaymentCommitted');
+  assert.deepEqual(
+    (await graph(wire('journeyRepaymentMutation'), { input: repayment }))
+      .recordRepayment,
+    committed,
+  );
+  const afterGroup = (await graph(wire('journeyGroupQuery'), { id: 'F' }))
+    .group;
+  assert.equal(
+    BigInt(afterGroup.balances.positions[0].netMinor) -
+      BigInt(before[0].netMinor),
+    -1234n,
+  );
+  assert.equal(
+    BigInt(afterGroup.balances.positions[1].netMinor) -
+      BigInt(before[1].netMinor),
+    1234n,
+  );
+  const invariant = await (
+    await page.request.get(origin + '/__fixture/invariants')
+  ).json();
+  assert.equal(invariant.repaymentCount, '1');
+  assert.ok(invariant.groups.every((group) => group.netMinor === '0'));
+  const fields =
+    '__typename ... on InvitationActionResult { actionID invitationID groupID outcome committedExpiresAt currentExpiresAt lifecycle delivery hasAccess } ... on InvitationProblem { code message }';
+  const createInvite = `mutation($groupID:ID!,$email:String!,$key:OperationKey!){createTargetedInvitation(groupID:$groupID,email:$email,key:$key){${fields}}}`;
+  const invitation = (
+    await graph(createInvite, {
+      groupID: 'F',
+      email: 'invitee@example.com',
+      key: '10000000-0000-4000-8000-000000000004',
+    })
+  ).createTargetedInvitation;
+  assert.equal(invitation.outcome, 'SAVED');
+  assert.equal(invitation.delivery, 'PENDING');
+  const listing =
+    'query($groupID:ID!){ownerInvitations(groupID:$groupID,first:20){__typename ... on OwnerInvitationPage { items{id kind recipient expiresAt lifecycle actionID delivery} nextCursor } ... on InvitationProblem {code}}}';
+  assert.equal(
+    (await graph(listing, { groupID: 'F' })).ownerInvitations.items[0]
+      .recipient,
+    'invitee@example.com',
+  );
+  await setup('member');
+  assert.equal(
+    (await graph(listing, { groupID: 'F' })).ownerInvitations.code,
+    'FORBIDDEN',
+  );
+  const unsupported = await page.request.post(
+    origin + '/api/unknown-synthetic-write',
+    { data: {} },
+  );
+  assert.equal(unsupported.status(), 503);
+  await setup('join-targeted');
+  const post = async (route, data) => {
+    const response = await page.request.post(origin + route, { data });
+    assert.equal(response.status(), 200);
+    return response.json();
+  };
+  await post('/api/onboarding/start', { token: 'synthetic-targeted' });
+  assert.equal((await post('/api/onboarding/preview', {})).kind, 'TARGETED');
+  const tokenDigest = require('node:crypto')
+    .createHash('sha256')
+    .update('synthetic-targeted')
+    .digest('hex');
+  const continuation = await post('/api/onboarding/targeted-continuation', {
+    tokenDigest,
+  });
+  assert.equal(continuation.needsPassword, true);
+  const auth = await post('/synthetic-auth/auth/v1/verify', {
+    token_hash: continuation.tokenHash,
+    type: continuation.type,
+  });
+  assert.equal(auth.user.email, 'haggai@example.com');
+  assert.equal(
+    (
+      await post('/api/onboarding/accept', {
+        tokenDigest,
+        key: '10000000-0000-4000-8000-000000000005',
+      })
+    ).hasAccess,
+    true,
+  );
+  return {
+    syntheticContractOnly: true,
+    checkedAgainstRepositorySDL: true,
+    createdGroup: created.groupId,
+    createdTrip: createdTrip.groupId,
+    invariant,
+  };
+});
 async function ready(page, route, state = 'complete', theme = 'light') {
   await page.request.get(origin + '/__fixture/reset');
   await page.request.get(
@@ -33,6 +239,145 @@ async function ready(page, route, state = 'complete', theme = 'light') {
   );
   await page.evaluate(() => document.fonts.ready);
 }
+test('fixture-create-group-and-trip-browser', async (page) => {
+  await ready(page, '/groups', 'no-workspaces');
+  await snapshot(page, 'no-workspaces');
+  for (const kind of ['group', 'trip']) {
+    await page.goto(`${origin}/${kind}s/new`, { waitUntil: 'networkidle' });
+    await page
+      .getByRole('checkbox', {
+        name: 'I have checked my groups and want a new creation.',
+      })
+      .check();
+    await page
+      .getByLabel('Name', { exact: true })
+      .fill(`Synthetic new ${kind}`);
+    if (kind === 'trip') {
+      await page
+        .getByLabel('Destination (optional)', { exact: true })
+        .fill('Mountains');
+      await page
+        .getByLabel('Start date (UTC)', { exact: true })
+        .fill('2026-11-01');
+      await page
+        .getByLabel('End date (UTC)', { exact: true })
+        .fill('2026-11-03');
+    }
+    await page
+      .getByRole('button', { name: `Create ${kind}`, exact: true })
+      .click();
+    await page
+      .getByRole('heading', { name: `Synthetic new ${kind}`, exact: true })
+      .waitFor();
+    await snapshot(page, `created-${kind}`);
+  }
+  return snapshot(page, 'fixture-create-group-and-trip-browser');
+});
+test('fixture-repayment-browser', async (page) => {
+  await ready(page, '/groups/F/repayments/new', 'write-success');
+  await page.getByLabel('Sender', { exact: true }).selectOption('M1');
+  await page.getByLabel('Recipient', { exact: true }).selectOption('M0');
+  await page.getByLabel('Amount (USD)', { exact: true }).fill('12.34');
+  await page.getByLabel('Transfer date', { exact: true }).fill('2026-10-09');
+  await page
+    .getByLabel('Optional note', { exact: true })
+    .fill('Synthetic transfer only');
+  await page
+    .getByRole('button', { name: 'Record repayment', exact: true })
+    .click();
+  await page
+    .getByText(
+      'Repayment recorded once. No money was moved. Current balances and recent repayments are a separately authorized read.',
+      { exact: true },
+    )
+    .waitFor();
+  const invariant = await (
+    await page.request.get(origin + '/__fixture/invariants')
+  ).json();
+  assert.equal(invariant.repaymentCount, '1');
+  return { ...(await snapshot(page, 'fixture-repayment-browser')), invariant };
+});
+test('fixture-owner-member-invitations-browser', async (page) => {
+  await ready(page, '/groups/F?tab=members', 'owner-invitations');
+  await page
+    .getByRole('heading', { name: 'Invitations for Maple House', exact: true })
+    .waitFor();
+  await page
+    .getByLabel('Invitee email address', { exact: true })
+    .fill('new-member@example.com');
+  await page
+    .getByRole('button', { name: 'Create invitation', exact: true })
+    .click();
+  await page.getByText('new-member@example.com', { exact: true }).waitFor();
+  await page
+    .getByText(
+      'Send status: PROVIDER_ACCEPTED. Provider acceptance does not confirm recipient delivery.',
+      { exact: true },
+    )
+    .first()
+    .waitFor();
+  await snapshot(page, 'owner-invitation-created');
+  await ready(page, '/groups/F?tab=members', 'member');
+  assert.equal(
+    await page
+      .getByRole('heading', {
+        name: 'Invitations for Maple House',
+        exact: true,
+      })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Create invitation', exact: true })
+      .count(),
+    0,
+  );
+  return snapshot(page, 'member-no-invitation-controls');
+});
+test('fixture-targeted-join-browser', async (page) => {
+  await ready(page, '/join#synthetic-targeted', 'join-targeted');
+  await page
+    .getByRole('button', { name: 'Continue with invitation', exact: true })
+    .click();
+  await page
+    .getByRole('heading', {
+      name: 'Create your Kami Grow account',
+      exact: true,
+    })
+    .waitFor();
+  await snapshot(page, 'targeted-password-setup');
+  await page.getByLabel('Password', { exact: true }).fill('SyntheticOnly123!');
+  await page
+    .getByLabel('Confirm password', { exact: true })
+    .fill('SyntheticOnly123!');
+  await page
+    .getByRole('button', { name: 'Create account', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Join Maple House', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'You joined Maple House!', exact: true })
+    .waitFor();
+  return snapshot(page, 'targeted-join-success');
+});
+test('fixture-shared-signin-join-browser', async (page) => {
+  await ready(page, '/join#synthetic-shared', 'join-shared');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page
+    .getByLabel('Email address', { exact: true })
+    .fill('haggai@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('SyntheticOnly123!');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Join Maple House', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'You joined Maple House!', exact: true })
+    .waitFor();
+  return snapshot(page, 'shared-join-success');
+});
 async function filters(page) {
   await page.getByRole('button', { name: /^Filters/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });

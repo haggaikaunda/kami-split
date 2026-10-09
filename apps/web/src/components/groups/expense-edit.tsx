@@ -451,25 +451,40 @@ export function ExpenseEdit({
             change={change}
             submitted={submitted}
           />
+        </fieldset>
+        <div className="expense-edit-actions">
+          {!attempt && (
+            <button
+              type="button"
+              className="ui-button ui-button--text"
+              disabled={busy}
+              onClick={() => {
+                if (unchanged) discard();
+                else setCancel(true);
+              }}
+            >
+              Cancel editing
+            </button>
+          )}
           <button
             type="submit"
-            disabled={unchanged || Object.keys(checked.errors).length > 0}
+            className="ui-button ui-button--primary"
+            disabled={
+              busy ||
+              !!attempt ||
+              blocked ||
+              conflict ||
+              unchanged ||
+              Object.keys(checked.errors).length > 0
+            }
           >
             Save changes
           </button>
-        </fieldset>
+        </div>
       </form>
-      {!attempt && (
-        <button
-          disabled={busy}
-          onClick={() => {
-            if (unchanged) discard();
-            else setCancel(true);
-          }}
-        >
-          Cancel editing
-        </button>
-      )}
+      <p className="expense-edit-hint">
+        Closing keeps your draft until you save or discard.
+      </p>
       <details className="expense-edit-help">
         <summary>About financial changes</summary>
         <p>

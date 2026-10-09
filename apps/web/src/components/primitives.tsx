@@ -132,7 +132,12 @@ export function Money({
   currency: string;
 }) {
   return (
-    <span className={`ui-money${value.length > 14 ? ' ui-money--long' : ''}`}>
+    <span
+      className={`ui-money${value.length > 14 ? ' ui-money--long' : ''}`}
+      role={value.length > 14 ? 'group' : undefined}
+      tabIndex={value.length > 14 ? 0 : undefined}
+      aria-label={value.length > 14 ? `${value} ${currency}` : undefined}
+    >
       <span className="ui-money-value">{value}</span>{' '}
       <span
         className={`ui-currency${currency === 'USD' && value.includes('$') ? ' ui-currency--redundant' : ''}`}

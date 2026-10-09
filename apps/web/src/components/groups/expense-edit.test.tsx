@@ -139,7 +139,10 @@ it('retains uncertain edits through reload and retries the original key after ab
     },
   });
   await render();
-  expect(button('Save changes').closest('fieldset')?.disabled).toBe(true);
+  expect(button('Save changes').disabled).toBe(true);
+  expect(
+    host.querySelector<HTMLFieldSetElement>('form > fieldset')?.disabled,
+  ).toBe(true);
   await act(async () => button('Recover original edit').click());
   expect(readEditDraft('actor', 'g', 'e')?.attempt).toEqual(input);
   await act(async () => button('Retry original edit').click());
@@ -243,7 +246,10 @@ it('keeps confirmed success and refreshes when clearing local recovery storage f
       'Edit saved. Its local recovery record could not be cleared.',
     );
     expect(host.textContent).not.toContain('result is uncertain');
-    expect(button('Save changes').closest('fieldset')?.disabled).toBe(true);
+    expect(button('Save changes').disabled).toBe(true);
+    expect(
+      host.querySelector<HTMLFieldSetElement>('form > fieldset')?.disabled,
+    ).toBe(true);
   } finally {
     storage.mockRestore();
   }

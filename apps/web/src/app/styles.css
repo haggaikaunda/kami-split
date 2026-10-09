@@ -858,8 +858,19 @@ td {
   min-width: 0;
 }
 .ui-money--long {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: bottom;
   font-size: min(1em, 1.25rem);
   letter-spacing: -0.025rem;
+}
+.ui-metric-value:has(.ui-money--long) {
+  min-width: 0;
+  max-width: 100%;
+}
+.overview-expense-price:has(.ui-money--long) {
+  max-width: 100%;
 }
 .ui-space-chip {
   display: inline-block;
@@ -1441,7 +1452,6 @@ td {
 }
 
 @container workspace (max-width: 20em) {
-  .ledger-page-actions,
   .household-refresh,
   .journey-refresh {
     position: static;

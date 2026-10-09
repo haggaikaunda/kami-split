@@ -74,9 +74,11 @@ owners. Generated Relay artifacts follow the handwritten query changes.
 The fixture is a local development server, not an application route or deployment
 mode. It proxies assets from a loopback Next server, terminates all API requests
 itself, and maintains synthetic state. Browser runners check its synthetic health
-marker before application work. Its expense/profile/appearance responses and
-failure scenarios exercise client behavior; group creation, repayment and
-onboarding mutations are not complete real-service simulations. Never use these
+marker before application work. Its explicit states exercise client expense/profile/appearance, group/trip creation,
+repayment, invitation and onboarding success/failure flows. `no-workspaces`,
+`write-success`, `owner-invitations`, `member`, `join-targeted`, `join-shared`,
+`single-category` and `tiny-category` provide additional coverage. These are
+controlled synthetic responses, not real persistence, delivery or authorization. Never use these
 runners against production or the owner's account. A successful synthetic result
 must be labeled accordingly.
 
