@@ -11,6 +11,9 @@ regressions and required evidence. The [durable evidence index](evidence/issue-2
 application build, comparisons, findings, independent verdict and verification
 limits. This document explains the implementation and its reproduction; PR #228
 records publication-head gates and post-merge completion evidence.
+The root [`.vercelignore`](../../.vercelignore) keeps the synthetic screenshot
+archives in GitHub while excluding them from Vercel deployment uploads. It does
+not exclude application sources or build inputs.
 
 ## Causes of the earlier divergence
 

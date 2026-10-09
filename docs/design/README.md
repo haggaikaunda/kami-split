@@ -1,6 +1,6 @@
 # Kami Split design references
 
-Current production visual acceptance is governed by [issue #227](https://github.com/haggaikaunda/kami-split/issues/227) and its [commit-pinned reference pack and parity matrix](issue-227-parity-matrix.md). The [implementation note](issue-227-implementation.md) describes the corrective migration and pending verification. The earlier [Board A/B references](references/approved-ui/README.md), specification and prototype below are historical records.
+Current production visual acceptance is governed by [issue #227](https://github.com/haggaikaunda/kami-split/issues/227) and its [commit-pinned reference pack and parity matrix](issue-227-parity-matrix.md). The [implementation note](issue-227-implementation.md) describes the corrective migration. The [sealed visual/requirements report](evidence/issue-227/reports/independent-testing.md) passes all 46 matrix rows; publication-head CI, final review and post-merge closeout are separately recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228). The earlier [Board A/B references](references/approved-ui/README.md), specification and prototype below are historical records.
 
 > Historical seeded-preview evidence only. The executable preview, its routes, providers and tests were retired in #184. This document does not require their preservation or describe current production capabilities. Current behavior is documented in the [application guide](../application/README.md).
 

@@ -31,8 +31,10 @@ commit-pinned reference's Roboto typography, exact Light/Dark semantic palette,
 banner-before-tabs hierarchy. It retains the original Trip/Household artwork and
 source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
 and #223 evidence are historical. Repayment entry keeps its recovery navigation;
-the visible **Refresh** action retains its descriptive accessible name. Visual
-acceptance remains tracked separately in the pending parity matrix.
+the visible **Refresh** action retains its descriptive accessible name. The [parity matrix](../design/issue-227-parity-matrix.md) and
+[sealed independent report](../design/evidence/issue-227/reports/independent-testing.md)
+record passing visual/requirements acceptance. Publication-head CI, final review
+and closeout are separate gates recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228).
 
 Overview recent expenses request at most four rows from the bounded connection.
 The Expenses tab uses the [structured view](expenses-ledger.md), requesting an
