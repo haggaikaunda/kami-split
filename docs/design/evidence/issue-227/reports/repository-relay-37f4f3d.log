@@ -1,0 +1,6 @@
+$ node scripts/relay/generate.mjs --validate
+[INFO] Querying files to compile...
+[INFO] [default] compiling...
+[INFO] [default] compiled documents: 29 reader, 27 normalization, 29 operation text
+[INFO] Compilation completed.
+[INFO] Done.

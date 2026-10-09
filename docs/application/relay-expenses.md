@@ -25,16 +25,21 @@ and persisted group-local repayment entry. #170 adds the shared
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-The #223 tonal system retains the scenic Trip and Household artwork, compact
-member initials and source-scoped balance rows established by the earlier
-[Board A/B adoption](../design/references/approved-ui/adoption.md). Theme-specific
-overlays and blue-grey/mint/lavender financial cards now carry the approved
-Light/Dark hierarchy. Repayment entry
-keeps its recovery navigation while focusing the main area on the existing form.
-The visible **Refresh** action retains its descriptive accessible name.
+The [#227 corrective migration](../design/issue-227-implementation.md) uses the
+commit-pinned reference's Roboto typography, exact Light/Dark semantic palette,
+76px desktop app bar and 88px rail, phone header/bottom navigation, and consistent
+banner-before-tabs hierarchy. It retains the original Trip/Household artwork and
+source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
+and #223 evidence are historical. Repayment entry keeps its recovery navigation;
+the visible **Refresh** action retains its descriptive accessible name. The [parity matrix](../design/issue-227-parity-matrix.md) and
+[sealed independent report](../design/evidence/issue-227/reports/independent-testing.md)
+record passing visual/requirements acceptance. Publication-head CI, final review
+and closeout are separate gates recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228).
 
-Overview recent expenses request five rows from the bounded connection; the Expenses tab
-uses the [structured view](expenses-ledger.md), with pages of 20 and signed cursors.
+Overview recent expenses request at most four rows from the bounded connection.
+The Expenses tab uses the [structured view](expenses-ledger.md), requesting an
+initial six rows and six-row Load more pages with signed cursors. These display
+bounds do not limit complete server totals, counts, category aggregates or balances.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net
@@ -162,7 +167,7 @@ Owner settings disclose current metadata; metadata editing remains unavailable.
 
 #112 connects `/household` to the complete authorized `householdDashboard` read.
 Overview shows expense face-value total/count, exact signed viewer net/open-space
-count, and complete viewer share with expense-payer amount in a tonal row, followed by at most five
+count, and complete viewer share with expense-payer amount in a tonal row, followed by at most four
 source-attributed expenses from `householdExpenses`. Balances uses the complete
 server source set and never derives totals from the recent page. No Household
 settlement action exists: each row opens its original group's Balances surface.

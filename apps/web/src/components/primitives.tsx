@@ -3,7 +3,6 @@ import Link, { useLinkStatus } from 'next/link';
 import { AppIcon } from './workspace-identity';
 
 import {
-  Fragment,
   useEffect,
   useId,
   useRef,
@@ -26,8 +25,9 @@ export function Button({
   type = 'button',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
+  ref?: Ref<HTMLButtonElement>;
   pending?: boolean;
-  tone?: 'primary' | 'secondary' | 'danger';
+  tone?: 'primary' | 'secondary' | 'tonal' | 'text' | 'danger';
 }) {
   return (
     <button
@@ -132,14 +132,18 @@ export function Money({
   currency: string;
 }) {
   return (
-    <span className="ui-money">
-      {value.split(/(?<=,)/).map((part, index) => (
-        <Fragment key={index}>
-          {index > 0 && <wbr />}
-          {part}
-        </Fragment>
-      ))}{' '}
-      <span className="ui-currency">{currency}</span>
+    <span
+      className={`ui-money${value.length > 14 ? ' ui-money--long' : ''}`}
+      role={value.length > 14 ? 'group' : undefined}
+      tabIndex={value.length > 14 ? 0 : undefined}
+      aria-label={value.length > 14 ? `${value} ${currency}` : undefined}
+    >
+      <span className="ui-money-value">{value}</span>{' '}
+      <span
+        className={`ui-currency${currency === 'USD' && value.includes('$') ? ' ui-currency--redundant' : ''}`}
+      >
+        {currency}
+      </span>
     </span>
   );
 }
@@ -557,24 +561,26 @@ export function WorkspaceHeader({
     <header
       className={`ui-workspace-header ${appearance ? `ui-workspace-header--${appearance}` : ''}`}
     >
-      {appearance && (
-        <span className="workspace-identity-icon">
-          <AppIcon
-            name={
-              appearance === 'household'
-                ? 'home'
-                : appearance === 'trip'
-                  ? 'trip'
-                  : 'groups'
-            }
-          />
-        </span>
-      )}
-      <div className="workspace-heading">
-        <h1 data-page-heading tabIndex={-1}>
-          {title}
-        </h1>
-        {context && <div className="ui-workspace-context">{context}</div>}
+      <div className="workspace-title">
+        {appearance && (
+          <span className="workspace-identity-icon">
+            <AppIcon
+              name={
+                appearance === 'household'
+                  ? 'home'
+                  : appearance === 'trip'
+                    ? 'trip'
+                    : 'groups'
+              }
+            />
+          </span>
+        )}
+        <div className="workspace-heading">
+          <h1 data-page-heading tabIndex={-1}>
+            {title}
+          </h1>
+          {context && <div className="ui-workspace-context">{context}</div>}
+        </div>
       </div>
       {children}
     </header>
@@ -689,7 +695,7 @@ export function SignedBalanceMetric({
     <div className={`ui-signed-balance ui-signed-balance--${position}`}>
       <SummaryMetric
         tone="net"
-        icon={<AppIcon name="activity" />}
+        icon={<AppIcon name="arrow-up-right" />}
         label={
           label ??
           (position === 'positive'
@@ -825,5 +831,14 @@ export function RecommendedRepaymentRow({
       <Money value={value} currency={currency} />
       {action}
     </div>
+  );
+}
+
+export function WorkspacePrivacy() {
+  return (
+    <p className="workspace-privacy">
+      <AppIcon name="lock" />
+      Only visible to authorized members
+    </p>
   );
 }

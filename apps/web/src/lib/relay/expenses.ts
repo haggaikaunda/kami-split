@@ -61,12 +61,7 @@ export const expensesGroupQuery = graphql`
     $after: String
     $filter: StructuredExpenseFilter
   ) {
-    groupExpenses(
-      groupId: $groupId
-      first: 20
-      after: $after
-      filter: $filter
-    ) {
+    groupExpenses(groupId: $groupId, first: 6, after: $after, filter: $filter) {
       ...expensesView
     }
   }
@@ -76,7 +71,7 @@ export const expensesHouseholdQuery = graphql`
     $after: String
     $filter: StructuredExpenseFilter
   ) {
-    householdExpenses(first: 20, after: $after, filter: $filter) {
+    householdExpenses(first: 6, after: $after, filter: $filter) {
       ...expensesView
     }
   }
@@ -123,7 +118,7 @@ export const expensesHouseholdContextQuery = graphql`
 `;
 export const expensesHouseholdInitialQuery = graphql`
   query expensesHouseholdInitialQuery($filter: StructuredExpenseFilter) {
-    householdExpenses(first: 20, filter: $filter) {
+    householdExpenses(first: 6, filter: $filter) {
       ...expensesView
     }
     viewer {

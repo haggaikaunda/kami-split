@@ -1,5 +1,7 @@
 # Material migration: shared surface inventory
 
+> Historical #223 implementation and evidence record. [Issue #227](https://github.com/haggaikaunda/kami-split/issues/227) supersedes its visual choices, including retained DM Sans/Manrope, approximate tokens, shell geometry and earlier row counts. The original observations and test results below are preserved; they do not establish #227 acceptance. See the current [implementation note](issue-227-implementation.md) and [parity matrix](issue-227-parity-matrix.md).
+
 Issue #223; inspected before implementation on 2026-10-09. This inventory covers
 the shared shell, authentication and Account slice, alongside the workspace and
 expense inventories. The approved reference is the Material pack at reference

@@ -305,6 +305,11 @@ in `z`. Local development uses the same canonical endpoints.
 
 ## Vercel production configuration
 
+The root [`.vercelignore`](../../.vercelignore) excludes synthetic design-verification
+archives under `docs/design/evidence/` from deployment uploads. They remain
+versioned in GitHub; application sources and build inputs are unaffected. This
+uses Vercel’s documented [root ignore-file fallback for monorepos](https://vercel.com/docs/deployments/vercel-ignore#monorepos).
+
 Vercel uses Node 24, pnpm 11.25.0, the repository lockfile, and the existing
 monorepo build commands described in [repository layout](../repository-layout.md).
 Provider-native Git push deployment must not race GitHub Actions; production is

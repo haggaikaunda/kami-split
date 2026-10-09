@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { expenseFilterText } from '@/lib/relay/expense-filter';
 import {
   WorkspaceTabs,
+  WorkspacePrivacy,
   workspaceSections,
   Skeleton,
 } from '@/components/primitives';
@@ -76,6 +77,7 @@ export function GroupJourney({
   const initialGroup = routeId(pathGroup),
     expense = routeId(pathExpense);
   const access = useFinancialSession();
+  const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
   const intent = useMemo(
     () => (access.scope ? createWorkspaceIntent(access.scope) : undefined),
     [access.scope],
@@ -137,11 +139,12 @@ export function GroupJourney({
     </p>
   ) : initialGroup ? (
     <>
-      <SourceReturn scope={access.scope} household={household} />
+      {household && <SourceReturn scope={access.scope} household />}
       <GroupDetails
         key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${currentTab}:${visitParams}`}
         scope={access.scope}
         household={household}
+        headerTarget={headerTarget}
         id={initialGroup}
         expense={expense}
         repayment={repayment}
@@ -179,23 +182,34 @@ export function GroupJourney({
         )}
       </header>
       {initialGroup && (
-        <WorkspaceTabs
-          current={repayment ? 'Balances' : currentTab}
-          label={trips ? 'Trip workspace' : 'Group workspace'}
-          onIntent={(section) =>
-            intent?.warm(workspaceRequest(initialGroup, section.toLowerCase()))
-          }
-          onIntentEnd={(section) =>
-            intent?.cancel(
-              section
-                ? workspaceRequest(initialGroup, section.toLowerCase()).key
-                : undefined,
-            )
-          }
-          hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
-        />
+        <>
+          {access.scope && (
+            <div className="workspace-crumb">
+              <SourceReturn scope={access.scope} />
+            </div>
+          )}
+          <div ref={setHeaderTarget} />
+          <WorkspaceTabs
+            current={repayment ? 'Balances' : currentTab}
+            label={trips ? 'Trip workspace' : 'Group workspace'}
+            onIntent={(section) =>
+              intent?.warm(
+                workspaceRequest(initialGroup, section.toLowerCase()),
+              )
+            }
+            onIntentEnd={(section) =>
+              intent?.cancel(
+                section
+                  ? workspaceRequest(initialGroup, section.toLowerCase()).key
+                  : undefined,
+              )
+            }
+            hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
+          />
+        </>
       )}
       {body}
+      {initialGroup && access.scope && <WorkspacePrivacy />}
     </main>
   );
 }
@@ -322,12 +336,15 @@ function ViewerJourney({
       {!creation && (
         <>
           {viewer.canCreateGroups && (
-            <Link href={trips ? '/trips/new' : '/groups/new'}>
+            <Link
+              className="ui-button ui-button--primary discovery-create"
+              href={trips ? '/trips/new' : '/groups/new'}
+            >
               {trips ? 'Create trip' : 'Create group'}
             </Link>
           )}
           {trips && (
-            <nav aria-label="Trip date filter">
+            <nav className="discovery-filters" aria-label="Trip date filter">
               {['all', 'upcoming', 'past'].map((value) => (
                 <Link
                   key={value}
@@ -398,6 +415,7 @@ function ViewerJourney({
   );
 }
 function GroupDetails({
+  headerTarget,
   scope,
   id,
   expense,
@@ -405,6 +423,7 @@ function GroupDetails({
   household = false,
 }: {
   household?: boolean;
+  headerTarget: HTMLDivElement | null;
   scope: FinancialScope;
   id: string;
   expense: string;
@@ -614,23 +633,30 @@ function GroupDetails({
           {saved}
         </p>
       )}
-      <button
-        className="journey-refresh"
-        aria-label="Refresh group and restart list"
-        title="Refresh group and restart list"
-        disabled={busy}
-        onClick={() => {
-          if (after) {
-            const next = new URLSearchParams(params);
-            next.delete('after');
-            router.replace(
-              `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
-            );
-          } else void read();
-        }}
-      >
-        Refresh
-      </button>
+      {(tab !== 'expenses' ||
+        busy ||
+        error ||
+        !group ||
+        expense ||
+        repayment) && (
+        <button
+          className="journey-refresh"
+          aria-label="Refresh group and restart list"
+          title="Refresh group and restart list"
+          disabled={busy}
+          onClick={() => {
+            if (after) {
+              const next = new URLSearchParams(params);
+              next.delete('after');
+              router.replace(
+                `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
+              );
+            } else void read();
+          }}
+        >
+          <span className="ui-visually-hidden">Refresh</span>
+        </button>
+      )}
       {busy ? (
         <Skeleton label="Loading current authorized group data" />
       ) : error ? (
@@ -704,6 +730,7 @@ function GroupDetails({
                   )
                 }
                 showTabs={false}
+                headerTarget={headerTarget}
                 showHeader={!household}
                 initialView={
                   destination?.groupExpenses

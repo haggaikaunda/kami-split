@@ -43,7 +43,7 @@ The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CO
 
 ## Approved production visual references
 
-Issue #223 adopts the owner-approved Material-inspired Tonal overview: pale Light summary cards and illustrated banners, contrasted Dark surfaces, and preserved production behavior. The [workspace parity inventory](design/material-parity-workspaces.md) indexes the migration and its verification. [Board A and Board B](design/references/approved-ui/README.md) preserve the earlier #189 reference and evidence; #223 supersedes their visual direction.
+[Issue #227](https://github.com/haggaikaunda/kami-split/issues/227) requires exact parity with the commit-pinned Kami Grow interactive reference pack, including Roboto, exact Light/Dark tokens, the shared app bar/rail and phone navigation, while retaining all production behavior. The [implementation note](design/issue-227-implementation.md) records the corrective changes and evidence boundaries; the [parity matrix](design/issue-227-parity-matrix.md) records independent acceptance of all 46 rows, with the [sealed visual/requirements report](design/evidence/issue-227/reports/independent-testing.md). Publication-head CI, review and post-merge closeout are recorded separately on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228). The [#223 workspace inventory](design/material-parity-workspaces.md) and [#189 Board A/B evidence](design/references/approved-ui/README.md) are preserved historical records, not current visual acceptance.
 
 ## Approved design archive
 

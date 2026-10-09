@@ -100,9 +100,7 @@ const assert = require('node:assert/strict');
     const inputs = page.locator('.percentage-input input');
     await inputs.first().fill('60');
     assert.equal(await inputs.nth(1).inputValue(), '40');
-    await page
-      .getByRole('button', { name: 'Save expense', exact: true })
-      .click();
+    await page.locator('.financial-form-card button[type="submit"]').click();
     await page.waitForFunction(
       () => !document.querySelector('#expense-description'),
     );

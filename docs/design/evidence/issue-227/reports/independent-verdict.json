@@ -1,0 +1,23 @@
+{
+  "applicationCommit": "37f4f3dc5fbf07b0d61c81330a6c651b26d32f54",
+  "buildId": "oQjqwVCa1XwhfqDd4WnhN",
+  "verdict": "PASS for issue227; retained pre-existing SDK diagnostic disclosed",
+  "reportPath": "/private/tmp/tester-227-independent-report.md",
+  "reportSHA256": "9f879af685781ec0a1bef9ac6d66633f782535915380e8d108ae03867fd06bc1",
+  "all46RowsVerified": true,
+  "rawInteractionsPassed": 33,
+  "rawInteractionsTotal": 34,
+  "normalCaptures": 290,
+  "originalComparisons": 250,
+  "selectedComparisons": 16,
+  "unitTestsPassed": 351,
+  "testFilesPassed": 48,
+  "literalJWTScan": {
+    "files": 378,
+    "matchingFiles": []
+  },
+  "sourceMode": "CSS1Compat/html",
+  "retainedSupplementalApplicationCommit": "9605a11f56b41d76f265a0186be137746f3bcf05",
+  "retainedRealServiceApplicationCommit": "2d7d1154b93fa8c598cdb180eec451195a5eb5d2",
+  "retainedRealBrowserProxyApplicationCommit": "621faca305584c61fa0a5f8e9a65ec85f03845b3"
+}

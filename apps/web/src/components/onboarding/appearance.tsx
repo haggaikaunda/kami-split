@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '@/components/primitives';
+import { AppIcon } from '@/components/workspace-identity';
 import { useApplyAppearance } from '@/components/appearance';
 import { appearance, type Appearance } from '@/lib/appearance';
 import query from '@/lib/relay/__generated__/appearanceQuery.graphql';
@@ -89,12 +90,16 @@ export function AppearanceEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <section className="profile-card" aria-labelledby="appearance-heading">
-      <h2 id="appearance-heading">Appearance</h2>
-      <p>
-        Choose how Kami Grow looks on your devices. System follows your device’s
-        appearance.
-      </p>
+    <section className="account-card" aria-labelledby="appearance-heading">
+      <div className="account-section-title">
+        <AppIcon name="palette" />
+        <div>
+          <h2 id="appearance-heading">Appearance</h2>
+          <p className="account-secondary">
+            Choose a theme that feels comfortable.
+          </p>
+        </div>
+      </div>
       {working && <Status kind="pending">Loading or saving appearance…</Status>}
       {message && <Status kind={failed ? 'error' : 'info'}>{message}</Status>}
       {saved ? (
@@ -111,7 +116,7 @@ export function AppearanceEditor({
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
               <label
-                className={`onboarding-check appearance-choice appearance-choice--${value.toLowerCase()}`}
+                className={`appearance-choice appearance-choice--${value.toLowerCase()}`}
                 key={value}
               >
                 <span className="appearance-preview" aria-hidden="true">
@@ -126,16 +131,32 @@ export function AppearanceEditor({
                   checked={selected === value}
                   onChange={() => setSelected(value)}
                 />
-                {value[0] + value.slice(1).toLowerCase()}
+                <span className="appearance-choice-label">
+                  <AppIcon
+                    name={
+                      value === 'LIGHT'
+                        ? 'sun'
+                        : value === 'DARK'
+                          ? 'moon'
+                          : 'monitor'
+                    }
+                  />
+                  {value[0] + value.slice(1).toLowerCase()}
+                </span>
               </label>
             ))}
           </fieldset>
-          <Button
-            type="submit"
-            disabled={working || uncertain || selected === saved}
-          >
-            Save appearance
-          </Button>
+          <div className="appearance-footer">
+            <p className="account-footnote">
+              System follows your device’s appearance.
+            </p>
+            <Button
+              type="submit"
+              disabled={working || uncertain || selected === saved}
+            >
+              Save appearance
+            </Button>
+          </div>
         </form>
       ) : null}
       {(!saved || uncertain) && (

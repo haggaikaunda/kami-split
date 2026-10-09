@@ -115,9 +115,7 @@ const path = require('node:path');
     await page.locator('#expense-description').fill(description);
     await page.locator('#expense-amount').fill('120.00');
     await page.locator('#expense-note').fill(' Original note ');
-    await page
-      .getByRole('button', { name: 'Save expense', exact: true })
-      .click();
+    await page.locator('.financial-form-card button[type="submit"]').click();
     await page.waitForFunction(
       () => !document.querySelector('#expense-description'),
     );
@@ -213,15 +211,9 @@ const path = require('node:path');
     await page.goto(origin + activity);
     await page.getByRole('combobox', { name: 'Event type' }).selectOption('');
     const event = page
-      .locator('.activity-events button')
-      .filter({ hasText: description })
-      .filter({ hasText: 'updated an expense' });
+      .getByRole('button', { name: /updated an expense/ })
+      .filter({ hasText: description });
     await event.first().waitFor();
-    assert(
-      (await event.first().innerText()).includes(
-        'Amount changed from $120.00 to $100.00.',
-      ),
-    );
     // Capture the chronological feed independently from its mobile detail state.
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -235,7 +227,27 @@ const path = require('node:path');
     }
     await event.first().focus();
     await page.keyboard.press('Enter');
-    await page.locator('.activity-fact-card').waitFor();
+    await page.locator('.activity-facts').waitFor();
+    // The source-aligned feed shows the current amount; verify the complete
+    // change description in its labeled historical Amount row instead.
+    const amountChange = page.locator('.activity-facts > div').filter({
+      has: page.locator('dt', { hasText: /^Amount$/ }),
+    });
+    assert.equal(await amountChange.count(), 1);
+    assert.equal(
+      (await amountChange.locator('.activity-previous').innerText())
+        .replace(/\s+/g, ' ')
+        .trim(),
+      'PREVIOUS $120.00 USD',
+      'The historical amount must preserve the exact previous value',
+    );
+    assert.equal(
+      (await amountChange.locator('.activity-new').innerText())
+        .replace(/\s+/g, ' ')
+        .trim(),
+      'NEW $100.00 USD',
+      'The historical amount must preserve the exact new value',
+    );
     assert(
       (await page.locator('.activity-detail').innerText())
         .toLowerCase()
@@ -263,12 +275,34 @@ const path = require('node:path');
             (size) => (document.documentElement.style.fontSize = size + '%'),
             scale,
           );
+          const overflow = await page.evaluate(() => ({
+            width: window.innerWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+            elements: [...document.querySelectorAll('body *')]
+              .filter(
+                (element) =>
+                  element.getClientRects().length &&
+                  element.getBoundingClientRect().right > window.innerWidth + 1,
+              )
+              .map((element) => ({
+                tag: element.tagName,
+                className: String(element.className),
+                left: element.getBoundingClientRect().left,
+                right: element.getBoundingClientRect().right,
+              })),
+          }));
+          if (overflow.scrollWidth > overflow.width + 1) {
+            await page.screenshot({
+              path: path.join(
+                evidence,
+                `${context.toLowerCase()}-overflow-${width}-${theme}-${scale}.png`,
+              ),
+              fullPage: true,
+            });
+          }
           assert(
-            await page.evaluate(
-              () =>
-                document.documentElement.scrollWidth <= window.innerWidth + 1,
-            ),
-            `${context} overflow ${width}/${theme}/${scale}`,
+            overflow.scrollWidth <= overflow.width + 1,
+            `${context} overflow ${width}/${theme}/${scale}: ${JSON.stringify(overflow)}`,
           );
           assert.equal(
             await page.evaluate(
@@ -327,13 +361,12 @@ const path = require('node:path');
       () => (document.documentElement.style.fontSize = '100%'),
     );
     await page
-      .locator('.activity-events button')
+      .getByRole('button', { name: /added an expense/ })
       .filter({ hasText: description })
-      .filter({ hasText: 'added an expense' })
       .click();
-    await page.locator('.activity-fact-card').waitFor();
+    await page.locator('.activity-facts').waitFor();
     assert(
-      (await page.locator('.activity-fact-card').innerText()).includes(
+      (await page.locator('.activity-detail-amount').innerText()).includes(
         '$120.00',
       ),
       'Creation detail remains the original snapshot',
@@ -346,11 +379,10 @@ const path = require('node:path');
       .getByRole('button', { name: 'Close detail', exact: true })
       .click();
     await page
-      .locator('.activity-events button')
-      .filter({ hasText: 'recorded a repayment' })
+      .getByRole('button', { name: /recorded a repayment/ })
       .first()
       .click();
-    await page.locator('.activity-fact-card').waitFor();
+    await page.locator('.activity-facts').waitFor();
     assert(
       (await page.locator('.activity-detail').innerText()).includes(
         'actual transfer',

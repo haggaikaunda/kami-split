@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a3c62732e43e0ec17c577ceac0c28822>>
+ * @generated SignedSource<<66904cae66c9016e934021dc9d192701>>
  * @lightSyntaxTransform
  */
 
@@ -86,6 +86,12 @@ export type householdWorkspaceQuery$data = {
     readonly __typename: "ExpenseView";
     readonly edges: ReadonlyArray<{
       readonly node: {
+        readonly allocations: ReadonlyArray<{
+          readonly amountMinor: string;
+          readonly participant: {
+            readonly id: string;
+          };
+        }>;
         readonly category: Category;
         readonly description: string;
         readonly effectiveDate: string;
@@ -206,7 +212,14 @@ v11 = [
     "storageKey": null
   }
 ],
-v12 = [
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "amountMinor",
+  "storageKey": null
+},
+v13 = [
   {
     "alias": null,
     "args": null,
@@ -382,13 +395,7 @@ v12 = [
                                 "selections": (v11/*:: as any*/),
                                 "storageKey": null
                               },
-                              {
-                                "alias": null,
-                                "args": null,
-                                "kind": "ScalarField",
-                                "name": "amountMinor",
-                                "storageKey": null
-                              }
+                              (v12/*:: as any*/)
                             ],
                             "storageKey": null
                           }
@@ -423,7 +430,7 @@ v12 = [
           {
             "kind": "Literal",
             "name": "first",
-            "value": 5
+            "value": 4
           }
         ],
         "concreteType": null,
@@ -481,6 +488,30 @@ v12 = [
                         "kind": "ScalarField",
                         "name": "category",
                         "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "concreteType": "Allocation",
+                        "kind": "LinkedField",
+                        "name": "allocations",
+                        "plural": true,
+                        "selections": [
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "Membership",
+                            "kind": "LinkedField",
+                            "name": "participant",
+                            "plural": false,
+                            "selections": [
+                              (v10/*:: as any*/)
+                            ],
+                            "storageKey": null
+                          },
+                          (v12/*:: as any*/)
+                        ],
+                        "storageKey": null
                       }
                     ],
                     "storageKey": null
@@ -509,7 +540,7 @@ v12 = [
             "abstractKey": null
           }
         ],
-        "storageKey": "householdExpenses(first:5)"
+        "storageKey": "householdExpenses(first:4)"
       }
     ]
   }
@@ -523,7 +554,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "householdWorkspaceQuery",
-    "selections": (v12/*:: as any*/),
+    "selections": (v13/*:: as any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -535,19 +566,19 @@ return {
     ],
     "kind": "Operation",
     "name": "householdWorkspaceQuery",
-    "selections": (v12/*:: as any*/)
+    "selections": (v13/*:: as any*/)
   },
   "params": {
-    "cacheID": "caac144a4c89d657577f30d553a45899",
+    "cacheID": "c6a2007209d73811c7b9f72e8727787b",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerShareMinor\n          viewerPaidMinor\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 5) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerShareMinor\n          viewerPaidMinor\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node {\n          id\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4b73bd55563079993764660c57a4f957";
+(node as any).hash = "1e4ef4a7b326b9ecf6f982fe0b75c32a";
 
 export default node;

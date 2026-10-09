@@ -1,0 +1,51 @@
+$ pnpm --filter @kami-split/web build
+$ next build
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.ts took 62ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 495ms
+  Running TypeScript ...
+  Finished TypeScript in 1235ms ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/21) ...
+  Generating static pages using 9 workers (5/21) 
+  Generating static pages using 9 workers (10/21) 
+  Generating static pages using 9 workers (15/21) 
+✓ Generating static pages using 9 workers (21/21) in 269ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /account
+├ ƒ /api/graphql
+├ ƒ /api/onboarding-config
+├ ƒ /api/onboarding/[action]
+├ ○ /auth/confirm
+├ ○ /auth/password
+├ ƒ /groups
+├ ƒ /groups/[groupId]
+├ ƒ /groups/[groupId]/activity
+├ ƒ /groups/[groupId]/expenses/[expenseId]
+├ ƒ /groups/[groupId]/repayments/new
+├ ƒ /groups/activity
+├ ƒ /groups/new
+├ ƒ /household
+├ ○ /household/activity
+├ ○ /household/expenses
+├ ○ /household/ledger
+├ ○ /icon.svg
+├ ○ /invitations
+├ ○ /join
+├ ○ /sign-in
+├ ƒ /trips
+├ ƒ /trips/[groupId]
+├ ƒ /trips/[groupId]/expenses/[expenseId]
+├ ƒ /trips/[groupId]/repayments/new
+└ ○ /trips/new
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

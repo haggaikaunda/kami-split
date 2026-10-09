@@ -347,7 +347,7 @@ const results = [];
         );
         assert.equal(
           await page
-            .getByRole('button', { name: 'Save expense', exact: true })
+            .locator('.financial-form-card button[type="submit"]')
             .isEnabled(),
           true,
         );
@@ -364,13 +364,13 @@ const results = [];
         path: `${output}/${baseline ? 'before' : 'P1-P2'}-top-${width}-${scale}.png`,
       });
       await page
-        .getByRole('button', { name: 'Save expense', exact: true })
+        .locator('.financial-form-card button[type="submit"]')
         .scrollIntoViewIfNeeded();
       await page.screenshot({
         path: `${output}/${baseline ? 'before' : 'P1-P2'}-bottom-${width}-${scale}.png`,
       });
       const saveBox = await page
-        .getByRole('button', { name: 'Save expense', exact: true })
+        .locator('.financial-form-card button[type="submit"]')
         .boundingBox();
       assert(
         saveBox.y >= 0 && saveBox.y + saveBox.height <= 900,
@@ -403,7 +403,7 @@ const results = [];
         );
         assert.equal(
           await page
-            .getByRole('button', { name: 'Save expense', exact: true })
+            .locator('.financial-form-card button[type="submit"]')
             .isDisabled(),
           true,
         );
@@ -426,7 +426,7 @@ const results = [];
       }
       if (!baseline) {
         await page
-          .getByRole('button', { name: 'Save expense', exact: true })
+          .locator('.financial-form-card button[type="submit"]')
           .click();
         const frozen = await page.evaluate(
           () =>
@@ -495,7 +495,7 @@ const results = [];
         );
         assert.equal(await page.locator('.percentage-money').count(), 0);
         await page
-          .getByRole('button', { name: 'Save expense', exact: true })
+          .locator('.financial-form-card button[type="submit"]')
           .scrollIntoViewIfNeeded();
         await page.screenshot({
           path: `${output}/P3-invalid-${width}-${scale}.png`,
@@ -554,13 +554,13 @@ const results = [];
         await page.locator('[id="percentage-M1"]').fill('40');
         assert.equal(
           await page
-            .getByRole('button', { name: 'Save expense', exact: true })
+            .locator('.financial-form-card button[type="submit"]')
             .isEnabled(),
           true,
         );
         await page.emulateMedia({ colorScheme: 'dark' });
         await page
-          .getByRole('button', { name: 'Save expense', exact: true })
+          .locator('.financial-form-card button[type="submit"]')
           .scrollIntoViewIfNeeded();
         assert(
           await page.evaluate(

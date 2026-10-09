@@ -23,12 +23,12 @@ prefetch and later filters, details or pages:
 
 | Destination        | Before #193                             | Current activation                   | Requested data                                                                                        |
 | ------------------ | --------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Group Overview     | viewer discovery → broad group          | one workspace operation              | minimal viewer date, authorized group/header/members, complete balances for metrics, five recent rows |
+| Group Overview     | viewer discovery → broad group          | one workspace operation              | minimal viewer date, authorized group/header/members, complete balances for metrics, four recent rows |
 | Group Expenses     | viewer discovery → broad group → ledger | one workspace operation              | authorized group/member context, complete position, structured first page/months/totals               |
 | Group Balances     | viewer discovery → broad group          | one workspace operation              | authorized group context, complete positions/obligations, five repayments                             |
 | Group Members      | viewer discovery → broad group          | one workspace operation              | authorized identity/header and membership; no expense, repayment or balance fields                    |
 | Group Activity     | viewer discovery → broad group → feed   | one workspace operation              | authorized identity/header plus dedicated feed; no expense page or balances                           |
-| Household Overview | dashboard + recent rows                 | one operation                        | complete dashboard metrics plus five recent rows, without obligation detail                           |
+| Household Overview | dashboard + recent rows                 | one operation                        | complete dashboard metrics plus four recent rows, without obligation detail                           |
 | Household Balances | dashboard                               | one operation                        | complete source balances/obligations and dashboard totals                                             |
 | Household Members  | broad dashboard → members               | minimal Household identity → members | authorized Household identifier, then actual membership; no financial fields                          |
 | Household Activity | dashboard → feed                        | one feed operation                   | dedicated authorized feed                                                                             |
@@ -38,7 +38,13 @@ The schema's existing resolver implementations may still calculate fields beyond
 those selected; this change reduces client payloads and request dependencies, not
 all server computation. Household Members retains a genuine identifier dependency.
 No partial page is used to calculate an aggregate. Overview reductions change
-only recent rows; complete money still comes from server projections.
+only recent rows; complete money still comes from server projections. Under #227,
+Group/Trip and Household Overview request four recent expenses. Structured
+Expenses operations request six rows initially and on each Load more; their
+complete totals and signed cursor/anchor semantics remain unchanged. The public
+shell presents Household → Groups → Trips → Account through the shared desktop
+app bar/rail and phone bottom navigation; its layout does not change private read
+ownership. See the [current visual implementation note](../design/issue-227-implementation.md).
 
 The composed Group operation supplies the initial ledger/feed reference directly
 to the child reader; it does not start the same first page again after mounting.

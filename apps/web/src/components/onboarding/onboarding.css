@@ -175,6 +175,7 @@
 
 .account-management {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
 }
@@ -183,6 +184,7 @@
 }
 .account-rows {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   list-style: none;
   padding: 0;
@@ -190,6 +192,7 @@
 }
 .account-rows > li {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   min-width: 0;
   margin: 0;
@@ -197,6 +200,9 @@
   border: 1px solid var(--color-separator);
   border-radius: var(--radius-card);
   background: var(--color-subtle);
+}
+.account-rows > li > strong {
+  overflow-wrap: anywhere;
 }
 .account-rows > li > a {
   font-weight: 700;
@@ -218,164 +224,46 @@
   gap: 0.5rem;
 }
 
-.account-content,
-.profile-card,
-.profile-card form,
 .scoped-invitations {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 1.5rem;
+  max-width: 46.25rem;
   gap: var(--space-4);
   min-width: 0;
-  overflow-wrap: anywhere;
-}
-.profile-card,
-.scoped-invitations {
+  overflow-wrap: break-word;
   padding: var(--space-6);
   border: 1px solid var(--color-separator);
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
-.profile-card h2,
 .scoped-invitations h2,
 .scoped-invitations h3 {
   margin: 0;
 }
-.profile-actions {
-  display: flex;
-  flex-wrap: wrap;
-}
-.profile-card .ui-button {
+.scoped-invitations .ui-button {
   justify-self: start;
-  width: fit-content;
-  max-width: 100%;
-}
-.scoped-invitations .ui-button,
-.profile-card .ui-button {
+  width: auto;
   white-space: normal;
 }
-.scoped-invitations .ui-button--secondary,
-.profile-card .ui-button--secondary {
+.scoped-invitations .ui-button--secondary {
   background: var(--color-surface);
   color: var(--color-primary);
 }
-
-.financial-journey .profile-card,
-.financial-journey .scoped-invitations {
-  padding: var(--space-6);
-  border: 1px solid var(--color-separator);
-  border-radius: var(--radius-card);
-}
-.account-content h1[tabindex='-1']:focus {
-  outline: none;
-}
-
-.appearance-options {
-  min-width: 0;
-  margin: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-}
-.financial-journey .appearance-options label {
+.scoped-invitations .onboarding-actions {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--target-size);
-  cursor: pointer;
-}
-.financial-journey .appearance-options input {
-  flex: 0 0 auto;
-  width: 1.25rem;
-  height: 1.25rem;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  accent-color: var(--color-primary);
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.account-profile-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-.account-profile-fields .ui-field {
-  margin: 0;
-  align-content: start;
-}
-.account-identity {
-  padding-block: var(--space-2);
-}
-.account-identity .ui-avatar {
-  width: 3.25rem;
-  height: 3.25rem;
-  flex-basis: 3.25rem;
-  color: var(--color-accent);
-  background: var(--color-accent-surface);
-}
-.account-session .ui-button {
-  justify-self: start;
-}
-.account-session p {
-  color: var(--color-muted);
-  font-size: 0.875rem;
-}
-.appearance-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.5rem), 1fr));
-  gap: var(--space-3);
-  border: 0;
-  padding: 0;
-}
-.appearance-options legend {
-  padding: 0 0 var(--space-2);
-  font-weight: 700;
-}
-.financial-journey .appearance-options .appearance-choice {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-2);
-  align-content: start;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-}
-.appearance-choice:has(input:checked) {
-  background: var(--color-primary-surface);
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
-}
-.appearance-preview {
-  display: grid;
-  grid-column: 1 / -1;
-  gap: 4px;
-  height: 3rem;
-  padding: 8px;
-  border-radius: 8px;
-  background: #edf1f5;
-}
-.appearance-preview span {
-  border-radius: 4px;
-  background: #bac9d5;
-}
-.appearance-choice--dark .appearance-preview {
-  background: #172131;
-}
-.appearance-choice--dark .appearance-preview span {
-  background: #61758e;
-}
-.appearance-choice--system .appearance-preview {
-  background: linear-gradient(90deg, #edf1f5 50%, #172131 50%);
-}
-.appearance-choice--system .appearance-preview span {
-  background: linear-gradient(90deg, #bac9d5 50%, #61758e 50%);
-}
 @media (max-width: 600px) {
-  .account-profile-fields {
-    grid-template-columns: minmax(0, 1fr);
+  .scoped-invitations {
+    padding: 20px 17px;
   }
-  .appearance-options {
-    gap: var(--space-2);
+  .scoped-invitations .account-rows > li {
+    padding: 16px;
   }
-  .financial-journey .appearance-options .appearance-choice {
-    padding: var(--space-2);
+  .scoped-invitations .ui-button {
+    padding: 10px 22px;
   }
 }

@@ -238,8 +238,11 @@ Future authenticated access loss does not grant privileged receipt access.
 Use distinct “Household ledger” and “Household dashboard” links; group rows open
 canonical #85 group routes. The Household workspace at `/household` uses Overview, Expenses, Balances, Activity
 and Members; it does not replace independently authorized Groups access. Overview
-contains three horizontal metrics and at most five recent expenses. The complete
-Expenses implementation is delivered by #170. Members reads actual `Group.members`, not
+originally specified three horizontal metrics and at most five recent expenses.
+The #227 presentation update now shows at most four recent expenses and uses the
+[approved responsive metric layout](../../design/issue-227-implementation.md);
+complete dashboard financial semantics remain unchanged. The complete Expenses
+implementation is delivered by #170. Members reads actual `Group.members`, not
 the designated pair, and exposes only existing owner invitation management.
 Source rows open `/groups/:groupId?tab=balances`; repayment entry remains on that
 original group's full-page route. Back restores source scroll and logical row focus

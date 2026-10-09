@@ -27,6 +27,9 @@ import {
 } from '@/lib/relay/edit-draft';
 import { createSessionId } from '@/lib/session-id';
 import { ExpenseFields } from './expense-fields';
+import { CategoryIcon } from '@/components/workspace-identity';
+import { Money } from '@/components/primitives';
+import { overviewDate } from './overview-date';
 import { money } from '@/lib/relay/money';
 type Outcome =
   | expenseEditMutation['response']['updateExpense']
@@ -276,10 +279,21 @@ export function ExpenseEdit({
       className="financial-form-card"
       aria-labelledby="edit-expense-title"
     >
-      <h2 id="edit-expense-title">Edit expense</h2>
-      <p>
-        Financial changes can change balances, including previously settled
-        balances. Recorded repayments stay unchanged. No money is moved.
+      <h2 id="edit-expense-title" className="ui-visually-hidden">
+        Edit expense
+      </h2>
+      <div className="expense-detail-identity">
+        <CategoryIcon category={expense.category} />
+        <h2>{expense.description}</h2>
+      </div>
+      <p className="expense-detail-total">
+        <Money value={money(expense.totalMinor)} currency={expense.currency} />
+      </p>
+      <p className="expense-paid-by">
+        {expense.payer.displayName} paid ·{' '}
+        <time dateTime={expense.effectiveDate}>
+          {overviewDate(expense.effectiveDate)}
+        </time>
       </p>
       <p role="status" ref={status} tabIndex={-1} className="financial-notice">
         {busy ? 'Working…' : notice}
@@ -430,32 +444,57 @@ export function ExpenseEdit({
           });
         }}
       >
-        <fieldset disabled={busy || !!attempt || blocked || conflict}>
+        <fieldset
+          className="expense-edit-fields"
+          disabled={busy || !!attempt || blocked || conflict}
+        >
           <ExpenseFields
             draft={draft}
             members={members}
             change={change}
             submitted={submitted}
           />
+        </fieldset>
+        <div className="expense-edit-actions">
+          {!attempt && (
+            <button
+              type="button"
+              className="ui-button ui-button--text"
+              disabled={busy}
+              onClick={() => {
+                if (unchanged) discard();
+                else setCancel(true);
+              }}
+            >
+              Cancel editing
+            </button>
+          )}
           <button
             type="submit"
-            disabled={unchanged || Object.keys(checked.errors).length > 0}
+            className="ui-button ui-button--primary"
+            disabled={
+              busy ||
+              !!attempt ||
+              blocked ||
+              conflict ||
+              unchanged ||
+              Object.keys(checked.errors).length > 0
+            }
           >
             Save changes
           </button>
-        </fieldset>
+        </div>
       </form>
-      {!attempt && (
-        <button
-          disabled={busy}
-          onClick={() => {
-            if (unchanged) discard();
-            else setCancel(true);
-          }}
-        >
-          Cancel editing
-        </button>
-      )}
+      <p className="expense-edit-hint">
+        Closing keeps your draft until you save or discard.
+      </p>
+      <details className="expense-edit-help">
+        <summary>About financial changes</summary>
+        <p>
+          Financial changes can change balances, including previously settled
+          balances. Recorded repayments stay unchanged. No money is moved.
+        </p>
+      </details>
       {cancel && (
         <aside role="alert">
           <p>Discard your unsaved changes and return to the expense?</p>

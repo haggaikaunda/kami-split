@@ -1,11 +1,20 @@
 'use client';
 import { spaceHref } from '@/lib/relay/space-routes';
-import { WorkspaceNavigation } from '@/components/workspace-identity';
+import {
+  AppIcon,
+  CategoryIcon,
+  WorkspaceNavigation,
+} from '@/components/workspace-identity';
 import Link from 'next/link';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
-import { WorkspaceHeader, WorkspaceTabs } from '@/components/primitives';
+import {
+  Button,
+  Money,
+  WorkspaceHeader,
+  WorkspaceTabs,
+} from '@/components/primitives';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { money } from '@/lib/relay/money';
 import groupDocument, {
@@ -22,8 +31,7 @@ import detailDocument, {
   type activityDetailQuery,
 } from '@/lib/relay/__generated__/activityDetailQuery.graphql';
 import './feed.css';
-import { Member } from '@/components/primitives';
-import { HistoricalDetail, eventDay, eventSummary } from './event-detail';
+import { HistoricalDetail, eventAction } from './event-detail';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 type Connection = Extract<
   activityFeed$data,
@@ -91,6 +99,7 @@ export function ActivityFeed({
   managedRefresh?: boolean;
   onDenied?: () => void;
 }) {
+  const headingId = useId();
   const initial = useRef(initialFeed);
   const generation = useRef(0);
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
@@ -249,52 +258,49 @@ export function ActivityFeed({
     <div
       className={`activity-view ${selected ? 'activity-view-selected' : ''}`}
     >
-      <div className="activity-controls">
-        <label>
-          Event type
-          <select
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value);
-              reset();
-            }}
-          >
-            <option value="">All events</option>
-            <option value="EXPENSE_CREATED">Expenses created</option>
-            <option value="EXPENSE_UPDATED">Expenses updated</option>
-            <option value="REPAYMENT_RECORDED">Repayments recorded</option>
-          </select>
-        </label>
-        <button type="button" onClick={reset}>
-          Refresh activity
-        </button>
-      </div>
-      {loading ? (
-        <p role="status">Loading activity…</p>
-      ) : error ? (
-        <p role="alert">{error}</p>
-      ) : page && page.edges.length === 0 ? (
-        <p role="status">
-          {kind || source
-            ? 'No activity matches these filters.'
-            : 'No activity yet.'}
-        </p>
-      ) : (
-        page && (
-          <>
-            <ol className="activity-events">
-              {page.edges.map(({ node }, index) => (
-                <Fragment key={node.id}>
-                  {(index === 0 ||
-                    eventDay(page.edges[index - 1].node.timestamp) !==
-                      eventDay(node.timestamp)) && (
-                    <li className="activity-day">
-                      <h2>{eventDay(node.timestamp)}</h2>
-                    </li>
-                  )}
-                  <li>
+      <section className="activity-feed-panel" aria-labelledby={headingId}>
+        <header className="activity-feed-header">
+          <h2 id={headingId}>Recent activity</h2>
+          <div className="activity-controls">
+            <label>
+              Event type
+              <select
+                value={kind}
+                onChange={(event) => {
+                  setKind(event.target.value);
+                  reset();
+                }}
+              >
+                <option value="">All events</option>
+                <option value="EXPENSE_CREATED">Expenses created</option>
+                <option value="EXPENSE_UPDATED">Expenses updated</option>
+                <option value="REPAYMENT_RECORDED">Repayments recorded</option>
+              </select>
+            </label>
+            <Button tone="text" onClick={reset}>
+              Refresh activity
+            </Button>
+          </div>
+        </header>
+        {loading ? (
+          <p role="status">Loading activity…</p>
+        ) : error ? (
+          <p role="alert">{error}</p>
+        ) : page && page.edges.length === 0 ? (
+          <p role="status">
+            {kind || source
+              ? 'No activity matches these filters.'
+              : 'No activity yet.'}
+          </p>
+        ) : (
+          page && (
+            <>
+              <ol className="activity-events">
+                {page.edges.map(({ node }) => (
+                  <li key={node.id}>
                     <button
                       type="button"
+                      aria-label={`${node.creator.displayName} ${eventAction(node.kind)}${node.description ? `: ${node.description}` : ''}. ${node.groupName}. ${money(node.amountMinor)} ${node.currency}.`}
                       onClick={(event) => {
                         triggerRef.current = event.currentTarget;
                         feedScroll.current = window.scrollY;
@@ -304,74 +310,104 @@ export function ActivityFeed({
                         setDetailLoading(true);
                       }}
                     >
-                      <span
-                        className={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
-                        aria-hidden="true"
-                      >
-                        {node.kind === 'EXPENSE_UPDATED'
-                          ? '✎'
-                          : node.kind === 'EXPENSE_CREATED'
-                            ? '+'
-                            : '⇄'}
-                      </span>
+                      {node.kind === 'EXPENSE_CREATED' && node.after ? (
+                        <CategoryIcon category={node.after.category} />
+                      ) : (
+                        <span
+                          className={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
+                          aria-hidden="true"
+                        >
+                          <AppIcon
+                            name={
+                              node.kind === 'EXPENSE_UPDATED'
+                                ? 'edit'
+                                : node.kind === 'EXPENSE_CREATED'
+                                  ? 'expense'
+                                  : 'arrow-up-right'
+                            }
+                          />
+                        </span>
+                      )}
                       <span className="activity-row-content">
-                        <span className="activity-row-actor">
-                          <Member name={node.creator.displayName} />
-                          <strong>
-                            {node.kind === 'EXPENSE_UPDATED'
-                              ? 'updated an expense'
-                              : node.kind === 'EXPENSE_CREATED'
-                                ? 'added an expense'
-                                : 'recorded a repayment'}
-                          </strong>
-                        </span>
-                        <span>
+                        <strong>
+                          {node.creator.displayName}{' '}
+                          {node.kind === 'EXPENSE_UPDATED'
+                            ? 'updated'
+                            : node.kind === 'EXPENSE_CREATED'
+                              ? 'added'
+                              : 'recorded'}{' '}
                           {node.description ||
-                            `Paid ${node.recipient?.displayName ?? 'recipient'}`}
-                        </span>
-                        <span>{eventSummary(node)}</span>
-                        <span>
-                          {node.groupName} · Effective {node.effectiveDate}
-                        </span>
-                        <span>
-                          Recorded{' '}
-                          <time dateTime={node.timestamp}>
-                            {new Date(node.timestamp).toLocaleString()}
+                            (node.kind === 'REPAYMENT_RECORDED'
+                              ? 'a repayment'
+                              : 'an expense')}
+                        </strong>
+                        <span className="activity-row-metadata">
+                          <Money
+                            value={money(node.amountMinor)}
+                            currency={node.currency}
+                          />
+                          <span aria-hidden="true">·</span>
+                          <span>{node.groupName}</span>
+                          <span aria-hidden="true">·</span>
+                          <time
+                            dateTime={node.timestamp}
+                            title={new Date(node.timestamp).toLocaleString()}
+                          >
+                            Recorded{' '}
+                            {new Date(node.timestamp).toLocaleDateString(
+                              undefined,
+                              { month: 'short', day: 'numeric' },
+                            )}
                           </time>
+                          {node.payer &&
+                          (node.payer.id !== node.creator.id ||
+                            node.payer.displayName !==
+                              node.creator.displayName) ? (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span>Paid by {node.payer.displayName}</span>
+                            </>
+                          ) : node.sender && node.recipient ? (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span>
+                                {node.sender.displayName} paid{' '}
+                                {node.recipient.displayName}
+                              </span>
+                            </>
+                          ) : null}
                         </span>
                       </span>
-                      <strong className="activity-row-amount">
-                        {money(node.amountMinor)} {node.currency}
-                      </strong>
-                      <span aria-hidden="true">›</span>
                     </button>
                   </li>
-                </Fragment>
-              ))}
-            </ol>
-            {page.pageInfo.hasNextPage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setError('');
-                  setSelected(undefined);
-                  setDetail(undefined);
-                  setPage(undefined);
-                  setLoading(true);
-                  setAfter(page.pageInfo.endCursor ?? null);
-                }}
-              >
-                Next activity page
-              </button>
-            )}
-            {after && (
-              <button type="button" onClick={reset}>
-                Return to latest activity
-              </button>
-            )}
-          </>
-        )
-      )}
+                ))}
+              </ol>
+              <div className="activity-pagination">
+                {page.pageInfo.hasNextPage && (
+                  <Button
+                    tone="text"
+                    onClick={() => {
+                      setError('');
+                      setSelected(undefined);
+                      setDetail(undefined);
+                      setPage(undefined);
+                      setLoading(true);
+                      setAfter(page.pageInfo.endCursor ?? null);
+                    }}
+                  >
+                    Next activity page
+                  </Button>
+                )}
+                {after && (
+                  <Button tone="text" onClick={reset}>
+                    Return to latest activity
+                  </Button>
+                )}
+              </div>
+            </>
+          )
+        )}
+      </section>
       {selected && (
         <section
           className="activity-detail"
@@ -379,17 +415,19 @@ export function ActivityFeed({
           tabIndex={-1}
           ref={detailRef}
         >
-          <h2>Activity · {selected.groupName}</h2>
-          <button
-            type="button"
-            onClick={() => {
-              setSelected(undefined);
-              setDetail(undefined);
-              restoreFeedFocus.current = true;
-            }}
-          >
-            Close detail
-          </button>
+          <header className="activity-detail-header">
+            <h2>Activity detail</h2>
+            <Button
+              tone="text"
+              onClick={() => {
+                setSelected(undefined);
+                setDetail(undefined);
+                restoreFeedFocus.current = true;
+              }}
+            >
+              Close detail
+            </Button>
+          </header>
           {detailLoading ? (
             <p role="status">Checking historical event access…</p>
           ) : detailError ? (

@@ -58,7 +58,7 @@ export const householdWorkspaceQuery = graphql`
         }
       }
     }
-    householdExpenses(first: 5) @include(if: $recent) {
+    householdExpenses(first: 4) @include(if: $recent) {
       __typename
       ... on Problem {
         code
@@ -72,6 +72,12 @@ export const householdWorkspaceQuery = graphql`
             effectiveDate
             totalMinor
             category
+            allocations {
+              participant {
+                id
+              }
+              amountMinor
+            }
           }
           source {
             id

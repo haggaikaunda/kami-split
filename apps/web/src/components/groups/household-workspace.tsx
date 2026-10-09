@@ -1,4 +1,9 @@
 'use client';
+import {
+  overviewDate,
+  overviewPeriod,
+  overviewSpansYears,
+} from './overview-date';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
@@ -18,7 +23,7 @@ import { minor, money } from '@/lib/relay/money';
 import {
   SummaryMetric,
   Money,
-  MemberBalanceRow,
+  Member,
   workspaceSections,
   type WorkspaceSection,
 } from '@/components/primitives';
@@ -108,7 +113,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
   return (
     <>
       <button className="household-refresh" onClick={reset}>
-        Refresh Household
+        <span className="ui-visually-hidden">Refresh Household</span>
       </button>
       {error ? (
         <p role="alert">{error}</p>
@@ -128,21 +133,23 @@ function HouseholdMembers({
   scope: FinancialScope;
 }) {
   return (
-    <section>
+    <section className="workspace-panel household-members">
       <h2>Household members</h2>
       <p>
         Active Household members share this ledger and its full expense history.
         The overview also includes eligible groups and trips shared by every
         active Household member.
       </p>
-      {members.members.map((m) => (
-        <MemberBalanceRow key={m.id} name={m.displayName}>
-          <p>
-            {m.role === 'OWNER' ? 'Owner' : 'Member'} ·{' '}
-            {m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}
-          </p>
-        </MemberBalanceRow>
-      ))}
+      <div className="group-members-list">
+        {members.members.map((m) => (
+          <div className="ui-balance-row" key={m.id}>
+            <Member
+              name={m.displayName}
+              detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
+            />
+          </div>
+        ))}
+      </div>
       {members.viewerMembership.role === 'OWNER' && (
         <ScopedInvitations
           scope={scope}
@@ -231,7 +238,7 @@ function HouseholdSummaryRead({
         </p>
       )}
       <button className="household-refresh" onClick={reset}>
-        Refresh Household
+        <span className="ui-visually-hidden">Refresh Household</span>
       </button>
       {error ? (
         <p role="alert">{error}</p>
@@ -282,6 +289,10 @@ export function HouseholdContent({
   onUnavailable?: () => void;
 }) {
   const home = dashboard.spaces.find((s) => s.isHousehold);
+  const recentDates =
+    recent?.__typename === 'ExpenseView'
+      ? recent.edges.slice(0, 4).map(({ node }) => node.effectiveDate)
+      : [];
   const totals =
     dashboard.state === 'COMPLETE' &&
     dashboard.totals?.__typename === 'HouseholdDashboardTotals'
@@ -301,7 +312,7 @@ export function HouseholdContent({
         </p>
       ) : null}
       {current === 'Members' ? (
-        <section>
+        <section className="workspace-panel household-members">
           <h2>Household members</h2>
           <p>
             Active Household members share this ledger and its full expense
@@ -310,14 +321,16 @@ export function HouseholdContent({
           </p>
           {members ? (
             <>
-              {members.members.map((m) => (
-                <MemberBalanceRow key={m.id} name={m.displayName}>
-                  <p>
-                    {m.role === 'OWNER' ? 'Owner' : 'Member'} ·{' '}
-                    {m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}
-                  </p>
-                </MemberBalanceRow>
-              ))}
+              <div className="group-members-list">
+                {members.members.map((m) => (
+                  <div className="ui-balance-row" key={m.id}>
+                    <Member
+                      name={m.displayName}
+                      detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
+                    />
+                  </div>
+                ))}
+              </div>
               {members.viewerMembership.role === 'OWNER' && (
                 <ScopedInvitations
                   scope={scope}
@@ -340,7 +353,7 @@ export function HouseholdContent({
           )}
         </section>
       ) : current === 'Balances' ? (
-        <section>
+        <section className="workspace-panel">
           <h2>Where your balance comes from</h2>
           {totals && <HouseholdNet totals={totals} />}
           <p>
@@ -405,7 +418,9 @@ export function HouseholdContent({
                     href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
                   >
                     <span>
-                      <strong className="household-source-name">
+                      <strong
+                        className={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
+                      >
                         <AppIcon
                           name={
                             space.isHousehold
@@ -444,7 +459,7 @@ export function HouseholdContent({
                 label="Total shared expenses"
                 tone="total"
                 icon={<AppIcon name="expense" />}
-                detail={`${totals.totalSharedExpenseCount} expenses`}
+                detail="Home, trips and groups · USD"
               >
                 <Money
                   value={money(totals.totalSharedExpenseMinor)}
@@ -455,8 +470,8 @@ export function HouseholdContent({
               <SummaryMetric
                 label="Your share"
                 tone="share"
-                icon={<AppIcon name="expense" />}
-                detail={`You paid ${money(totals.viewerPaidMinor)} USD · Excludes repayments`}
+                icon={<AppIcon name="pie" />}
+                detail={`You paid ${money(totals.viewerPaidMinor)}`}
               >
                 <Money value={money(totals.viewerShareMinor)} currency="USD" />
               </SummaryMetric>
@@ -467,9 +482,7 @@ export function HouseholdContent({
               <section>
                 <div className="group-section-heading">
                   <h2>Recent expenses</h2>
-                  <Link href={householdHref('Expenses')}>
-                    View all expenses
-                  </Link>
+                  <Link href={householdHref('Expenses')}>View all</Link>
                 </div>
                 {recent?.__typename === 'ExpenseView' ? (
                   !recent.edges.length ? (
@@ -481,39 +494,57 @@ export function HouseholdContent({
                       <p>When you add expenses, they’ll show up here.</p>
                     </div>
                   ) : (
-                    <ul className="group-expense-list">
-                      {recent.edges.map(({ node, source }) => (
-                        <li key={node.id}>
-                          <OverviewExpenseLink
-                            scope={scope}
-                            group={node.groupId}
-                            id={node.id}
-                            href={spaceExpenseHref(source, node.id)}
-                          >
-                            <CategoryIcon category={node.category} />
-                            <span className="expense-row-copy">
-                              <strong>{node.description}</strong>
-                              <span className="ui-row-detail">
-                                {source.name} ·{' '}
-                                {source.isHousehold
-                                  ? 'Home'
-                                  : source.kind === 'TRIP'
-                                    ? 'Trip'
-                                    : 'Group'}{' '}
-                                ·{' '}
-                                <time dateTime={node.effectiveDate}>
-                                  {node.effectiveDate}
-                                </time>
+                    <>
+                      <p className="overview-month">
+                        {overviewPeriod(recentDates)}
+                      </p>
+                      <ul className="group-expense-list">
+                        {recent.edges.slice(0, 4).map(({ node, source }) => (
+                          <li key={node.id}>
+                            <OverviewExpenseLink
+                              scope={scope}
+                              group={node.groupId}
+                              id={node.id}
+                              href={spaceExpenseHref(source, node.id)}
+                            >
+                              <CategoryIcon category={node.category} />
+                              <span className="expense-row-copy">
+                                <strong>{node.description}</strong>
+                                <span className="ui-row-detail">
+                                  {source.name} ·{' '}
+                                  <time dateTime={node.effectiveDate}>
+                                    {overviewDate(
+                                      node.effectiveDate,
+                                      false,
+                                      overviewSpansYears(recentDates),
+                                    )}
+                                  </time>
+                                </span>
                               </span>
-                            </span>
-                            <Money
-                              value={money(node.totalMinor)}
-                              currency={source.currency}
-                            />
-                          </OverviewExpenseLink>
-                        </li>
-                      ))}
-                    </ul>
+                              <span className="overview-expense-price">
+                                <Money
+                                  value={money(node.totalMinor)}
+                                  currency={source.currency}
+                                />
+                                <small>
+                                  Your share{' '}
+                                  {money(
+                                    node.allocations.find(
+                                      (allocation) =>
+                                        allocation.participant.id ===
+                                        dashboard.spaces.find(
+                                          (space) =>
+                                            space.groupId === node.groupId,
+                                        )?.viewerMembership.id,
+                                    )?.amountMinor ?? '0',
+                                  )}
+                                </small>
+                              </span>
+                            </OverviewExpenseLink>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   )
                 ) : (
                   <p role="alert">
@@ -535,7 +566,20 @@ export function HouseholdContent({
                         id={`overview-balance-${space.groupId}`}
                         href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
                       >
-                        <span>
+                        <span
+                          className={`category-icon category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`}
+                        >
+                          <AppIcon
+                            name={
+                              space.isHousehold
+                                ? 'home'
+                                : space.kind === 'TRIP'
+                                  ? 'trip'
+                                  : 'groups'
+                            }
+                          />
+                        </span>
+                        <span className="household-space-copy">
                           <strong>{space.name}</strong>
                           <span className="ui-row-detail">
                             {space.viewerNetMinor == null
@@ -557,13 +601,21 @@ export function HouseholdContent({
                     </li>
                   ))}
                 </ul>
-                <p>
+                <p className="overview-balance-note">
                   Balances stay separate in each space. A zero viewer net does
                   not settle other members.
                 </p>
                 <Link href={householdHref('Balances')}>View all balances</Link>
               </aside>
             </div>
+          )}
+          {totals && (
+            <p className="overview-count">
+              <span>
+                {totals.totalSharedExpenseCount} expenses across{' '}
+                {totals.activeSpaceCount} spaces
+              </span>
+            </p>
           )}
           <OverviewExpense
             scope={scope}
@@ -588,17 +640,14 @@ function HouseholdNet({ totals }: { totals: Totals }) {
       <SummaryMetric
         label="Your net balance"
         tone="net"
-        icon={<AppIcon name="activity" />}
+        icon={<AppIcon name="arrow-up-right" />}
         detail={
           <>
             <span className="ui-row-detail">
-              <span aria-hidden="true">
-                {net > 0n ? '↗ ' : net < 0n ? '↘ ' : '○ '}
-              </span>
               {net > 0n
-                ? "Overall, you're owed"
+                ? "You're owed overall"
                 : net < 0n
-                  ? 'Overall, you owe'
+                  ? 'You owe overall'
                   : totals.openBalanceCount !== '0'
                     ? 'Overall net is zero; source balances remain open'
                     : 'No open source balances'}

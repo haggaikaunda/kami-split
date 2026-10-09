@@ -5,8 +5,9 @@ import document, {
   type journeyExpenseQuery,
 } from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { CategoryIcon } from '@/components/workspace-identity';
-import { Member, Money } from '@/components/primitives';
+import { overviewDate } from './overview-date';
+import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
+import { Member, Money, Button } from '@/components/primitives';
 import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
 import { readEditDraft } from '@/lib/relay/edit-draft';
@@ -180,8 +181,24 @@ export function ExpenseDetail({
   return (
     <section className="expense-detail-card">
       {savedNotice}
+      <div className="expense-detail-identity">
+        <CategoryIcon category={expense.category} />
+        <div>
+          <h2>{expense.description}</h2>
+        </div>
+      </div>
+      <p className="expense-detail-total">
+        <Money value={money(expense.totalMinor)} currency={expense.currency} />
+      </p>
+      <div className="expense-paid-by">
+        {expense.payer.displayName} paid ·{' '}
+        <time dateTime={expense.effectiveDate}>
+          {overviewDate(expense.effectiveDate)}
+        </time>
+      </div>
       {expense.canEdit || retainedAttempt ? (
-        <button
+        <Button
+          tone="tonal"
           ref={editTrigger}
           onClick={() => {
             setMembers(undefined);
@@ -189,8 +206,9 @@ export function ExpenseDetail({
             setEditing(true);
           }}
         >
+          <AppIcon name="edit" />
           {retainedAttempt ? 'Recover expense edit' : 'Edit expense'}
-        </button>
+        </Button>
       ) : (
         <p className="expense-edit-lock">
           {expense.editLockReason === 'FORMER_MEMBER'
@@ -198,20 +216,6 @@ export function ExpenseDetail({
             : 'This expense is currently read-only because editing eligibility is unavailable.'}
         </p>
       )}
-      <div className="expense-detail-identity">
-        <CategoryIcon category={expense.category} />
-        <div>
-          <h2>{expense.description}</h2>
-          <time dateTime={expense.effectiveDate}>{expense.effectiveDate}</time>
-        </div>
-      </div>
-      <p className="expense-detail-total">
-        <Money value={money(expense.totalMinor)} currency={expense.currency} />
-      </p>
-      <div className="expense-paid-by">
-        <span>Paid by</span>
-        <Member name={expense.payer.displayName} />
-      </div>
       {expense.split === 'PERCENTAGE' && (
         <p className="percentage-help">
           Saved percentages describe responsibility. Fractional cents were
@@ -220,51 +224,61 @@ export function ExpenseDetail({
       )}
       <dl className="expense-detail-fields">
         <div>
+          <dt>Date</dt>
+          <dd>
+            <time dateTime={expense.effectiveDate}>
+              {new Intl.DateTimeFormat('en', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'UTC',
+              }).format(new Date(`${expense.effectiveDate}T00:00:00Z`))}
+            </time>
+          </dd>
+        </div>
+        <div>
           <dt>Category</dt>
           <dd>
             {expense.category[0] + expense.category.slice(1).toLowerCase()}
           </dd>
         </div>
         <div>
-          <dt>
-            {expense.split === 'PERCENTAGE'
-              ? 'Split by percentage'
-              : 'Participants'}
-          </dt>
-          <dd>
-            <ul className="expense-allocation-list">
-              {expense.allocations.map((share) => (
-                <li key={share.participant.id}>
-                  <Member name={share.participant.displayName} />
-                  {expense.split === 'PERCENTAGE' &&
-                    share.percentageHundredths != null && (
-                      <span className="percentage-saved">
-                        {percentageText(share.percentageHundredths)}%
-                      </span>
-                    )}
-                  <Money
-                    value={money(share.amountMinor)}
-                    currency={expense.currency}
-                  />
-                </li>
-              ))}
-            </ul>
-          </dd>
-        </div>
-        <div>
           <dt>Note</dt>
           <dd>{expense.note || 'No note added.'}</dd>
         </div>
-        <div>
-          <dt>Created by</dt>
-          <dd>
-            {expense.creator.displayName}
-            <time dateTime={expense.createdAt}>
-              {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
-            </time>
-          </dd>
-        </div>
       </dl>
+      <section className="expense-detail-split">
+        <h3>
+          {expense.split === 'PERCENTAGE'
+            ? 'Split by percentage'
+            : expense.split === 'EXACT'
+              ? 'Exact split'
+              : 'Split equally'}
+        </h3>{' '}
+        <ul className="expense-allocation-list">
+          {expense.allocations.map((share) => (
+            <li key={share.participant.id}>
+              <Member name={share.participant.displayName} />
+              {expense.split === 'PERCENTAGE' &&
+                share.percentageHundredths != null && (
+                  <span className="percentage-saved">
+                    {percentageText(share.percentageHundredths)}%
+                  </span>
+                )}
+              <Money
+                value={money(share.amountMinor)}
+                currency={expense.currency}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+      <p className="expense-detail-audit">
+        Created by {expense.creator.displayName} ·{' '}
+        <time dateTime={expense.createdAt}>
+          {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
+        </time>
+      </p>
     </section>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41e16e5fe3fdb83676533c9975adacb2>>
+ * @generated SignedSource<<a03c62c450488aca155f4516ad743c64>>
  * @lightSyntaxTransform
  */
 
@@ -62,7 +62,7 @@ v3 = [
   {
     "kind": "Literal",
     "name": "first",
-    "value": 20
+    "value": 6
   },
   {
     "kind": "Variable",
@@ -460,16 +460,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "bb7651e88802df7ec5f4dc64fefbbbfb",
+    "cacheID": "f10b0e3d359c364581f42f626e9ed2cf",
     "id": null,
     "metadata": {},
     "name": "expensesGroupQuery",
     "operationKind": "query",
-    "text": "query expensesGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  groupExpenses(groupId: $groupId, first: 20, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesGroupQuery(\n  $groupId: ID!\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  groupExpenses(groupId: $groupId, first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0492898620bb4e19bf932b2be7892f3a";
+(node as any).hash = "427fcccc7ce5eb11c4deb1f2eb00bf37";
 
 export default node;

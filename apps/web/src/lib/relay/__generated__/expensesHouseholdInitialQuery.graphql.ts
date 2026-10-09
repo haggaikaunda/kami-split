@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4828f1e56e6fd1cb54f0ccf942558f98>>
+ * @generated SignedSource<<5d8d14d874f4a8dc7ceda9e1c93c4e97>>
  * @lightSyntaxTransform
  */
 
@@ -94,7 +94,7 @@ v1 = [
   {
     "kind": "Literal",
     "name": "first",
-    "value": 20
+    "value": 6
   }
 ],
 v2 = {
@@ -657,16 +657,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "483199b3a80f8c2ca9464dcfb04bf164",
+    "cacheID": "e3feb3db267e065eabc60ef5c9caf348",
     "id": null,
     "metadata": {},
     "name": "expensesHouseholdInitialQuery",
     "operationKind": "query",
-    "text": "query expensesHouseholdInitialQuery(\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      today\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  householdDashboard {\n    __typename\n    ... on HouseholdDashboard {\n      contextVersion\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          activeSpaceCount\n        }\n      }\n      spaces {\n        groupId\n        name\n        currency\n        isHousehold\n        viewerNetMinor\n        viewerMembership {\n          id\n        }\n        members {\n          id\n          displayName\n          status\n          role\n          canParticipate\n        }\n      }\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesHouseholdInitialQuery(\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 6, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      today\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  householdDashboard {\n    __typename\n    ... on HouseholdDashboard {\n      contextVersion\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerNetMinor\n          activeSpaceCount\n        }\n      }\n      spaces {\n        groupId\n        name\n        currency\n        isHousehold\n        viewerNetMinor\n        viewerMembership {\n          id\n        }\n        members {\n          id\n          displayName\n          status\n          role\n          canParticipate\n        }\n      }\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "54ec42b52c8db0ec1a5d706504646dcf";
+(node as any).hash = "8527b74b37268c168d81c58770184cd1";
 
 export default node;

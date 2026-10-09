@@ -1,0 +1,25 @@
+Independent real financial browser verification
+Commit: 621faca305584c61fa0a5f8e9a65ec85f03845b3
+Build: Ak9k06g3RBsEurBYAs_9C
+Owned isolated synthetic local Supabase, runtime-role PostgreSQL, verified actor GraphQL.
+Command: go test -p=1 -race -tags=integration -count=1 -run Test(EditRealBrowserJourney|PercentageRealBrowserJourney)$ -v ./internal/expense
+
+=== RUN   TestEditRealBrowserJourney
+    edit_browser_integration_test.go:44: Aggregate: real create/edit/reload + historical Activity, responsive themes/text, focus passed
+        Group: real create/edit/reload + historical Activity, responsive themes/text, focus passed
+        Trip: real create/edit/reload + historical Activity, responsive themes/text, focus passed
+        Household: real create/edit/reload + historical Activity, responsive themes/text, focus passed
+        Edit browser evidence: /private/tmp/tester-227-621fac-real-browser
+        
+--- PASS: TestEditRealBrowserJourney (19.90s)
+=== RUN   TestPercentageRealBrowserJourney
+    percentage_browser_integration_test.go:34: Household: real GraphQL create, source ownership, persisted detail and reload passed
+        Group: real GraphQL create, source ownership, persisted detail and reload passed
+        Trip: real GraphQL create, source ownership, persisted detail and reload passed
+        Real verified-actor GraphQL create, persisted detail and reload: passed
+        
+--- PASS: TestPercentageRealBrowserJourney (4.03s)
+PASS
+ok  	github.com/haggaikaunda/kami-split/apps/api/internal/expense	25.593s
+
+Exit status: 0

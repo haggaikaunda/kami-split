@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/primitives';
 import { ExpenseFields } from './expense-fields';
 import { createSessionId } from '@/lib/session-id';
 import { useEffect, useRef, useState } from 'react';
@@ -34,6 +35,8 @@ export function ExpenseForm({
   members,
   onCommitted,
   onDenied,
+  embedded = false,
+  onCancel,
 }: {
   scope: FinancialScope;
   group: string;
@@ -42,6 +45,8 @@ export function ExpenseForm({
   members: readonly Member[];
   onCommitted: (expenseId: string) => Promise<void>;
   onDenied?: () => void;
+  embedded?: boolean;
+  onCancel?: () => void;
 }) {
   const [initial] = useState(() => {
     try {
@@ -220,10 +225,13 @@ export function ExpenseForm({
   return (
     <section
       className="financial-form-card"
-      aria-labelledby="new-expense-title"
+      aria-labelledby={embedded ? undefined : 'new-expense-title'}
+      aria-label={embedded ? 'Add expense' : undefined}
     >
-      <h2 id="new-expense-title">Add expense</h2>
-      <p>Record a shared expense in this group. No money is moved.</p>
+      {!embedded && <h2 id="new-expense-title">Add expense</h2>}
+      {!embedded && (
+        <p>Record a shared expense in this group. No money is moved.</p>
+      )}
       <p ref={status} role="status" tabIndex={-1} className="financial-notice">
         {busy ? 'Working…' : notice}
       </p>
@@ -276,15 +284,22 @@ export function ExpenseForm({
               change={change}
               submitted={submitted}
             />
-            <button
-              type="submit"
-              disabled={
-                draft.split === 'PERCENTAGE' &&
-                Object.keys(checked.errors).length > 0
-              }
-            >
-              Save expense
-            </button>
+            <div className={embedded ? 'expense-create-actions' : undefined}>
+              {onCancel && (
+                <Button tone="text" type="button" onClick={onCancel}>
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={
+                  draft.split === 'PERCENTAGE' &&
+                  Object.keys(checked.errors).length > 0
+                }
+              >
+                {embedded ? 'Add expense' : 'Save expense'}
+              </Button>
+            </div>
           </fieldset>
         </form>
       )}

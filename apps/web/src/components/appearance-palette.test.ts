@@ -8,20 +8,30 @@ it('keeps the approved Dark palette behind the explicit appearance selector', ()
   );
   const dark = css.match(/:root\[data-theme='dark'\]\s*\{([^}]+)\}/)?.[1];
   expect(dark).toBeDefined();
+  // Approved #227 final source cascade; the former #225 palette was superseded.
   const expected = {
-    canvas: '#0b111a',
-    surface: '#121a27',
-    'surface-raised': '#172131',
-    'surface-accent': '#142a2c',
-    separator: '#334153',
-    ink: '#f7f9fc',
-    muted: '#aebacf',
-    primary: '#58efb7',
-    'primary-surface': '#173c37',
-    indigo: '#9aa8ff',
-    'indigo-surface': '#202b47',
-    'warm-surface': '#fff1df',
-    'warm-ink': '#b66a2b',
+    canvas: '#0b111b',
+    surface: '#131d2c',
+    subtle: '#192535',
+    high: '#24364a',
+    chrome: '#101927',
+    separator: '#2a394c',
+    ink: '#f5f7ff',
+    muted: '#afbed1',
+    primary: '#50e1b4',
+    container: '#163c35',
+    'on-container': '#79f0cb',
+    border: '#7d90a7',
+    violet: '#aaa2ff',
+    blue: '#7cbdff',
+    orange: '#ffc27e',
+    coral: '#ff9ca8',
+    'summary-total': '#182436',
+    'summary-net': '#173631',
+    'summary-share': '#222b40',
+    'share-icon': '#ffc77c',
+    'chart-cyan': '#75d1dc',
+    'chart-label': '#102434',
   };
   for (const [token, value] of Object.entries(expected)) {
     expect(dark?.toLowerCase()).toContain(`--color-${token}: ${value};`);
@@ -82,6 +92,7 @@ it.each(['light', 'dark'])(
       ['info', 'info-surface'],
       ['accent', 'accent-surface'],
     ];
+    const graphicalPairs: string[][] = [];
     for (const category of [
       'dining',
       'groceries',
@@ -91,9 +102,17 @@ it.each(['light', 'dark'])(
       'home',
       'other',
     ]) {
-      pairs.push([`category-${category}`, `category-${category}-surface`]);
+      graphicalPairs.push([
+        `category-${category}`,
+        `category-${category}-surface`,
+      ]);
     }
-    for (const [foreground, background] of pairs) {
+    // Category hues paint icons/segments, not body text. Exact amounts and
+    // category names use the high-contrast legend. Graphical objects require3:1.
+    for (const [foreground, background, minimum] of [
+      ...pairs.map(([f, b]) => [f, b, 4.5] as const),
+      ...graphicalPairs.map(([f, b]) => [f, b, 3] as const),
+    ]) {
       const levels = [
         luminance(resolve(foreground)),
         luminance(resolve(background)),
@@ -101,7 +120,7 @@ it.each(['light', 'dark'])(
       expect(
         (levels[1] + 0.05) / (levels[0] + 0.05),
         `${theme}: ${foreground} on ${background}`,
-      ).toBeGreaterThanOrEqual(4.5);
+      ).toBeGreaterThanOrEqual(minimum);
     }
   },
 );

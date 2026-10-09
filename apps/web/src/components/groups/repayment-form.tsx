@@ -304,10 +304,10 @@ export function RepaymentForm({
               }))}
             />
           )}
-          <fieldset disabled={disabled}>
+          <fieldset className="financial-entry-fields" disabled={disabled}>
             <legend>Original group: {name}</legend>
             {(['sender', 'recipient'] as const).map((key) => (
-              <div key={key}>
+              <div className="financial-field" key={key}>
                 <label htmlFor={`repayment-${key}`}>
                   {key === 'sender' ? 'Sender' : 'Recipient'}
                 </label>
@@ -328,29 +328,35 @@ export function RepaymentForm({
                 </select>
               </div>
             ))}
-            <label htmlFor="repayment-amount">Amount (USD)</label>
-            <input
-              id="repayment-amount"
-              inputMode="decimal"
-              value={draft.amount}
-              aria-invalid={submitted && !!checked.errors.amount}
-              onChange={(e) => change({ amount: e.target.value })}
-            />
-            <label htmlFor="repayment-date">Transfer date</label>
-            <input
-              id="repayment-date"
-              type="date"
-              value={draft.date}
-              aria-invalid={submitted && !!checked.errors.date}
-              onChange={(e) => change({ date: e.target.value })}
-            />
-            <label htmlFor="repayment-note">Optional note</label>
-            <textarea
-              id="repayment-note"
-              value={draft.note}
-              aria-invalid={submitted && !!checked.errors.note}
-              onChange={(e) => change({ note: e.target.value })}
-            />
+            <div className="financial-field">
+              <label htmlFor="repayment-amount">Amount (USD)</label>
+              <input
+                id="repayment-amount"
+                inputMode="decimal"
+                value={draft.amount}
+                aria-invalid={submitted && !!checked.errors.amount}
+                onChange={(e) => change({ amount: e.target.value })}
+              />
+            </div>
+            <div className="financial-field">
+              <label htmlFor="repayment-date">Transfer date</label>
+              <input
+                id="repayment-date"
+                type="date"
+                value={draft.date}
+                aria-invalid={submitted && !!checked.errors.date}
+                onChange={(e) => change({ date: e.target.value })}
+              />
+            </div>
+            <div className="financial-field">
+              <label htmlFor="repayment-note">Optional note</label>
+              <textarea
+                id="repayment-note"
+                value={draft.note}
+                aria-invalid={submitted && !!checked.errors.note}
+                onChange={(e) => change({ note: e.target.value })}
+              />
+            </div>
             <button type="submit">Record repayment</button>
           </fieldset>
         </form>

@@ -229,7 +229,9 @@ it('retains exact group-local money and pre-trip history independent of date sta
   await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
-  expect(host.textContent).toContain('2025-01-01');
+  expect(host.querySelector('time[datetime="2025-01-01"]')?.textContent).toBe(
+    'Jan 1',
+  );
   expect(host.textContent).toContain('90,071,992,547,409.93');
   expect(host.textContent).not.toContain('Private household');
   expect(

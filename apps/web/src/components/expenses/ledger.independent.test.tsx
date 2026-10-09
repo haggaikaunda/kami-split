@@ -183,7 +183,7 @@ async function respond(value: unknown, index = state.requests.length - 1) {
 }
 async function click(text: string) {
   const b = [...host.querySelectorAll('button')].find(
-    (b) => (b.getAttribute('aria-label') ?? b.textContent) === text,
+    (b) => (b.getAttribute('aria-label') ?? b.textContent)?.trim() === text,
   )!;
   expect(b).toBeTruthy();
   await act(async () => b.click());
@@ -214,7 +214,9 @@ it('identifies household sources and omits redundant group sources and space fil
   expect(host.querySelector('.ledger-description')?.textContent).not.toContain(
     'Home',
   );
-  expect(host.textContent).toContain('Total expenses');
+  expect(
+    host.querySelector('[aria-label="Total expenses"]')?.textContent,
+  ).toContain('total');
   expect(host.textContent).not.toContain('Active spaces');
   expect(host.querySelector('input[type="search"]')).toBeNull();
 });
@@ -242,8 +244,9 @@ it('distinguishes filtered empty and forwards payer/member filters to server', a
     months: [],
   });
   expect(host.textContent).toContain('No expenses match these filters');
-  expect(host.textContent).toContain('Active filters');
-  expect(host.textContent).toContain('Clear filters');
+  expect(host.querySelector('[aria-label="Active filters"]')).not.toBeNull();
+  expect(host.textContent).toContain('Filters · 3');
+  expect(host.textContent).toContain('Clear all');
 });
 it('ignores responses belonging to a disposed account', async () => {
   await render();
@@ -423,7 +426,7 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
   ).not.toContain('Home');
   expect(
     [...host.querySelectorAll('button')].find(
-      (b) => b.textContent === 'Add expense',
+      (b) => b.getAttribute('aria-label') === 'Add expense',
     )?.disabled,
   ).toBe(true);
 });
@@ -463,7 +466,7 @@ it('edits structured filters in a dialog and applies an explicit reset to the UR
   await render();
   await respond(page());
   expect(host.querySelector('form.ledger-filters')).toBeNull();
-  await click('Filters · active');
+  await click('Filters · 2');
   const category = host.querySelector<HTMLSelectElement>(
     'select[name="category"]',
   )!;
@@ -490,7 +493,7 @@ it('preserves combined filters while switching views and drilling into complete 
     '90,071,992,547,409.94',
   );
   expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
-    '2 matching expenses',
+    '2 expenses',
   );
   expect(host.querySelector('.ledger-month')).toBeNull();
   const category = host.querySelector(
@@ -512,7 +515,7 @@ it('removes only the selected active filter chip', async () => {
   state.params = 'category=DINING&memberId=me&from=2026-09-01&view=breakdown';
   await render();
   await respond(page());
-  await click('Remove Category: DINING');
+  await click('Remove Dining');
   const next = new URL(
     state.push.mock.calls.at(-1)![0],
     'https://example.test',
@@ -522,3 +525,53 @@ it('removes only the selected active filter chip', async () => {
   expect(next.searchParams.get('from')).toBe('2026-09-01');
   expect(next.searchParams.get('view')).toBe('breakdown');
 });
+
+it('names the member source and past filter year without changing filter values', async () => {
+  state.params =
+    'groupId=home&category=DINING&memberId=me&from=2025-09-01&to=2026-09-03';
+  await render();
+  await respond(page());
+  expect(
+    [...host.querySelectorAll('.ledger-filter-chip')].map((chip) =>
+      chip.textContent?.trim(),
+    ),
+  ).toEqual([
+    'Space: Home',
+    'Dining',
+    'Alice · Home',
+    'From Sep 1, 2025',
+    'To Sep 3',
+  ]);
+  expect(host.querySelector('.ledger-filter-button')?.textContent).toContain(
+    'Filters · 5',
+  );
+  expect(state.requests[0].variables).toMatchObject({
+    filter: {
+      groupId: 'home',
+      category: 'DINING',
+      memberId: 'me',
+      from: '2025-09-01',
+      to: '2026-09-03',
+    },
+  });
+  await click('Clear all');
+  expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
+    scroll: false,
+  });
+});
+
+it.each(['invalid', '2026-02-31', '0000-01-01', '2026-9-01'])(
+  'keeps invalid date %s removable while the server rejects its URL',
+  async (value) => {
+    state.params = `from=${value}`;
+    await render();
+    await respond({ __typename: 'Problem', code: 'INVALID_INPUT' });
+    expect(host.querySelector('.ledger-filter-chip')?.textContent).toContain(
+      `From ${value}`,
+    );
+    await click(`Remove From ${value}`);
+    expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
+      scroll: false,
+    });
+  },
+);

@@ -2,14 +2,17 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { containDialogFocus } from '@/components/primitives';
 import './ledger.css';
+import { AppIcon } from '@/components/workspace-identity';
 
 /** One mounted presentation preserves form drafts across responsive changes. */
 export function ExpensePresentation({
   title,
+  kind = 'detail',
   onClose,
   children,
 }: {
   title: string;
+  kind?: 'detail' | 'create';
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -18,7 +21,7 @@ export function ExpensePresentation({
   const outsideStart = useRef(false);
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 650px)');
+    const media = window.matchMedia('(max-width: 600px)');
     const update = () => setMobile(media.matches);
     update();
     media.addEventListener('change', update);
@@ -48,10 +51,10 @@ export function ExpensePresentation({
   };
   return (
     <dialog
-      className="ledger-dialog expense-presentation"
+      className={`ledger-dialog expense-presentation expense-presentation--${kind}`}
       ref={ref}
-      role={mobile ? 'region' : 'dialog'}
-      aria-modal={mobile ? undefined : true}
+      role={mobile && kind === 'detail' ? 'region' : 'dialog'}
+      aria-modal={mobile && kind === 'detail' ? undefined : true}
       aria-label={title}
       tabIndex={-1}
       onKeyDown={(event) => containDialogFocus(event, ref.current)}
@@ -83,7 +86,7 @@ export function ExpensePresentation({
           onClick={onClose}
           aria-label="Back to expenses"
         >
-          ← Back to expenses
+          <AppIcon name="back" /> Back to expenses
         </button>
         <h1 ref={heading} tabIndex={-1}>
           {title}
@@ -93,10 +96,10 @@ export function ExpensePresentation({
           onClick={onClose}
           aria-label="Close expense"
         >
-          ×
+          <AppIcon name="close" />
         </button>
       </header>
-      {children}
+      <div className="expense-presentation-content">{children}</div>
     </dialog>
   );
 }
