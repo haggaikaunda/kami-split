@@ -4,11 +4,11 @@ This owner-approved design reference supports [issue #223](https://github.com/ha
 
 ## Download and use
 
-[Download the reference pack](kami-grow-material-design-reference-2026-10-09.zip) using GitHub's **Download raw file** control, then extract it and read its `README.md`. Open `desktop.html` and `mobile.html` in a current browser. No Codex conversation, application backend, credentials, build or original local path is needed. The files embed the banner art and icon runtime; Google Fonts is optional with an offline Arial fallback.
+[Download the reference pack](kami-grow-material-design-reference-2026-10-09.zip) using GitHub's **Download raw file** control, then extract it and read its `README.md`. Open `desktop.html` and `mobile.html` in a current browser. No Codex conversation, application backend, credentials, build or original local path is needed. The files embed banner artwork and load pinned Lucide and Floating UI libraries from public CDNs; full visual fidelity therefore requires network access. Google Fonts is optional with an Arial fallback. Included screenshots remain usable offline.
 
 The pack contains two standalone interactive mockups, two readable source fragments, 12 screenshots, a dated acceptance-criteria snapshot, contrast checks and a SHA-256 manifest. The live issue remains authoritative over its snapshot. The snapshot's original attachment-comment wording is superseded by this checked-in reference pack.
 
-ZIP SHA-256: `5308e749b5d582e49f6c3703db85786b12d2af6b6836cbcbbdb6a6bd24a7e98b`
+ZIP SHA-256: `26d02893c8bb6333076a772570c8775f9472d99fa95bf1f64ebf69963d0dad62`
 
 Use **Account → Light**, then return to **Household/Groups/Trips → Overview** to inspect the latest light-mode refinement. Explore **Expenses → List/Breakdown**, combined Filters, expense detail/edit, and Account. On desktop, click outside an expense drawer to dismiss it. The mobile export shows a dedicated detail page with Back. The pack's README includes walkthroughs and a screenshot index.
 
