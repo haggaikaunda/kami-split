@@ -1,0 +1,48 @@
+Independent browser evidence
+Application commit: 37f4f3dc5fbf07b0d61c81330a6c651b26d32f54
+Production build: oQjqwVCa1XwhfqDd4WnhN
+Runner: /private/tmp/tester-227-chart-help.cjs
+Synthetic origin: http://localhost:3229
+
+PASS empty 320 light
+PASS single-total 320 light
+PASS tiny-total 320 light
+PASS rounded-share 320 light
+PASS exact-filter-share 320 light
+PASS zero-share 320 light
+PASS mixed-share 320 light
+PASS empty 320 dark
+PASS single-total 320 dark
+PASS tiny-total 320 dark
+PASS rounded-share 320 dark
+PASS exact-filter-share 320 dark
+PASS zero-share 320 dark
+PASS mixed-share 320 dark
+PASS empty 390 light
+PASS single-total 390 light
+PASS tiny-total 390 light
+PASS rounded-share 390 light
+PASS exact-filter-share 390 light
+PASS zero-share 390 light
+PASS mixed-share 390 light
+PASS empty 390 dark
+PASS single-total 390 dark
+PASS tiny-total 390 dark
+PASS rounded-share 390 dark
+PASS exact-filter-share 390 dark
+PASS zero-share 390 dark
+PASS mixed-share 390 dark
+PASS empty 1440 light
+PASS single-total 1440 light
+PASS tiny-total 1440 light
+PASS rounded-share 1440 light
+PASS exact-filter-share 1440 light
+PASS zero-share 1440 light
+PASS mixed-share 1440 light
+PASS empty 1440 dark
+PASS single-total 1440 dark
+PASS tiny-total 1440 dark
+PASS rounded-share 1440 dark
+PASS exact-filter-share 1440 dark
+PASS zero-share 1440 dark
+PASS mixed-share 1440 dark

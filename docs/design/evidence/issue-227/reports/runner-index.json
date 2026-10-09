@@ -1,0 +1,144 @@
+{
+  "applicationCommit": "37f4f3dc5fbf07b0d61c81330a6c651b26d32f54",
+  "scope": "Evidence-only standalone runners. No private Supabase startup/config scripts included.",
+  "runners": [
+    {
+      "path": "/private/tmp/tester-227-final-batch.py",
+      "bytes": 3311,
+      "sha256": "f6270d9981e131170900e200f968a895f8339c4fece99c0f26a9d0304c0668c5",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-action-proof.cjs",
+      "bytes": 10336,
+      "sha256": "2b8e6a4429ef47d12bb1ce9811be3b569c0d4144fefe8fe05d9cbae10216e8f2",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-avatar-proof.cjs",
+      "bytes": 5859,
+      "sha256": "fffba5bc21bd3d8df2cbfd51fc9a12dfa8c551cf80dac221a566a981a80d493a",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-participant-stress.cjs",
+      "bytes": 3580,
+      "sha256": "3709a9f411593737c233c46cbff7628b2857d114f60f7c832e03a8672771180c",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-chart-help.cjs",
+      "bytes": 4259,
+      "sha256": "520ea0ce72b5dfba1f9524c1b7562a13adb96264198201459abc6e2d33b0c584",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-selected.cjs",
+      "bytes": 2611,
+      "sha256": "67cdcf9df07365cfd380c6962a032bd5263d9d7dff74cc8bff2c6ab6f50f04de",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-populated-filter.cjs",
+      "bytes": 2024,
+      "sha256": "a0db2db22ab21311e681c9a0a3d55f87f52d5974224fa33fb02900003deb9c0e",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-selected-compare.cjs",
+      "bytes": 2849,
+      "sha256": "a1ef6b97b56469fbe328dfdc22ef313127c770e925d5b4f3e79d2bc6d20f6e37",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-selected-labels.cjs",
+      "bytes": 3433,
+      "sha256": "15e04899f6b816bbbc65bc029c92663bbb4f2eb0fb7bdb794b0891efd7e2d7a5",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-final-filter-proof.cjs",
+      "bytes": 3145,
+      "sha256": "a3fe8ca10324d348b10a5d810d3ad56e2e3370a675fd9c5988a3ac818ffb1e66",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-acceptance.cjs",
+      "bytes": 5325,
+      "sha256": "2f4ec78530203f3de4a604353751c5362d6c12f5e1951511d30433a092b79270",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-extended.cjs",
+      "bytes": 4153,
+      "sha256": "c97e36490afc45c8b43a927e485556579be47a0768f8818f635416c6e5f35b6b",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-create-dialog.cjs",
+      "bytes": 3214,
+      "sha256": "53820e8c764f4b67d692b86a4b5b475116f1311f81710091ac4a686cbe4603f7",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-edit-text.cjs",
+      "bytes": 2199,
+      "sha256": "2fe0b29f82e335cb144145ae21e9a38042449322f7a6e82fc3ed1fb3ad2244be",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-proxy-contract.cjs",
+      "bytes": 5640,
+      "sha256": "a5c4dbfcfcc1dbf3274e94265694c4efd96e7825381735b7e52317ad85352a70",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/kami-227-selected-reference-standards.cjs",
+      "bytes": 26064,
+      "sha256": "ed3c6f35213137dc45de15050141f24f5a4de54c311c7c073f0c33d4bd4842cb",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-avatar-reference.cjs",
+      "bytes": 27339,
+      "sha256": "558c6eb2ab9d97f4d7007d118f19709c9aad4f46f228329bb7536ad497d21ab1",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-participant-reference.cjs",
+      "bytes": 27379,
+      "sha256": "5cdb44d2594915a35f27a49f9aaa8c82a769edc8ad8fd167d91ff667d0ff5f72",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-populated-create.cjs",
+      "bytes": 2514,
+      "sha256": "093b701d9b7a6b66d864115a64687e2d60dd90e91f11ce067cfcd94500f7248e",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-final-tablet-batch.py",
+      "bytes": 3251,
+      "sha256": "b303b50980d179a024a91edf2b6f048157820b2a2555c445f4a4dec18e49fe74",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-breakpoint-proof.cjs",
+      "bytes": 4923,
+      "sha256": "cdbc60bc45d53650b4b225386bf350bc9080b039149b33d9870cfccc109aaecc",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-common-style-audit.py",
+      "bytes": 1643,
+      "sha256": "284d92a9df590b28da059b181f2f9ed008a8ce176b77ac6b6e117f5bb832e905",
+      "jwtLiteralMatches": 0
+    },
+    {
+      "path": "/private/tmp/tester-227-overlay-contact.cjs",
+      "bytes": 1272,
+      "sha256": "7969e35c0af1394455ab415e0adbef56bfebf075d2196d0634109e70af130716",
+      "jwtLiteralMatches": 0
+    }
+  ]
+}

@@ -31,8 +31,11 @@ invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
 replacement disposes the entire financial scope and cancels pending requests.
 
-**Add expense** opens the existing persisted `ExpenseForm`, including original-key
-recovery, draft storage and duplicate suppression. Household selects an original
+**Add expense** opens the existing persisted `ExpenseForm` in a centered desktop
+dialog or an inset phone dialog, including original-key recovery, draft storage
+and duplicate suppression. The same form remains mounted across responsive
+changes. Detail and in-place editing retain the desktop panel/full-screen phone
+presentation. Household selects an original
 eligible ledger; success returns to the originating URL and refreshes spending
 and context. No receipt, category expansion, edit/delete or repayment command is
 added here. Free-text search remains deferred to #177.

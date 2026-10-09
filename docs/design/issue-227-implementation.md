@@ -7,9 +7,10 @@ and both interactive exports, including their final source-fragment cascade.
 The reference commit is `3824ce6a878e00d6e417bff8b0e1f7d1988f33e7`; the ZIP
 SHA-256 is `26d02893c8bb6333076a772570c8775f9472d99fa95bf1f64ebf69963d0dad62`.
 The [parity matrix](issue-227-parity-matrix.md) records routes, capabilities,
-regressions and required evidence. Its rows remain pending. This document records
-implementation intent and evidence procedures, not final-head acceptance or
-completion of the issue.
+regressions and required evidence. The [durable evidence index](evidence/issue-227/README.md) records the frozen
+application build, comparisons, findings, independent verdict and verification
+limits. This document explains the implementation and its reproduction; PR #228
+records publication-head gates and post-merge completion evidence.
 
 ## Causes of the earlier divergence
 
@@ -30,6 +31,18 @@ Source inspection at implementation baseline
   broke ordinary names and currency strings instead of fixing available space.
 - Detail width/type and individually boxed chart legends were approximations;
   chart geometry and colors did not follow the reference's distinct roles.
+- Later independent action inspection found local native-button styling and a
+  broad financial submit selector still competing with shared primitives. Shared
+  filled/text roles now own those actions; the obsolete submit margin/min-width
+  rule is removed instead of countered with another high-specificity override.
+- Standards-mode reference comparison exposed generic nested-fieldset margins
+  and block textarea flow in expense forms. Participant layout now has an
+  explicit owner; field/action gaps and the native textarea baseline follow the
+  reference without adding arbitrary spacer elements.
+- A final tablet comparison found the chart using the shell’s 820px breakpoint
+  instead of its own 760px source rule, and missing 820px summary roles. The
+  chart owner now retains two columns at 768px; summary amounts, label gaps and
+  individual card padding follow the source cascade.
 
 The remedy belongs in the shared shell, tokens, primitives and owning components.
 Adding later overrides around the same competing layout rules would retain the
@@ -43,7 +56,8 @@ OFL license, swap display, and Arial/sans-serif fallbacks. Body and display shar
 that font; the default body is 14px/1.5. Shared semantic tokens separately define
 Light/Dark canvas, chrome, panel levels, text, accents, summary borders/icons,
 category chart colors, and banner/scrim alpha values from the approved source.
-Rendered computed values and actual font loading still require verification.
+Rendered computed values and actual font loading are captured in the evidence
+index; source constants alone are not a verification result.
 
 Shared navigation owns the 76px desktop app bar and 88px rail and the phone
 header/bottom navigation. Destinations stay Household → Groups → Trips → Account;
@@ -51,7 +65,9 @@ workspace tabs stay Overview → Expenses → Balances → Activity → Members 
 the banner. The original local artwork and real authorized banner actions remain.
 Overview summaries, compact ledger tools/rows, detail/edit presentation, category
 Breakdown, Account, forms, activity, members and recovery surfaces use the same
-component roles. Production capabilities absent from a sample screenshot remain
+component roles. Creation uses the reference's centered desktop/inset phone dialog
+with one heading; detail/edit retains its desktop panel/full-screen phone layout.
+Both presentations preserve the mounted controller and its retained draft. Production capabilities absent from a sample screenshot remain
 required and must use those roles.
 
 Overview requests and displays at most four recent expenses. Structured Household
@@ -119,8 +135,9 @@ FIXTURE_UPSTREAM=http://127.0.0.1:3227 \
 Extract the checksum-verified reference pack. Set `REFERENCE_DIR` to its directory
 containing `desktop.html`, `mobile.html` and `source/`; set
 `REFERENCE_LUCIDE_PATH` to the exact Lucide UMD dependency identified by that
-export. The runner supplies local Roboto and that dependency without rewriting
-reference visual styles. Start with Household Overview in all four primary
+export. The runner preserves the original HTML doctype and asserts standards mode,
+and supplies local Roboto and that dependency without rewriting reference visual
+styles. Start with Household Overview in all four primary
 combinations before extending `SURFACES` or removing it for the full supported
 capture inventory:
 
@@ -152,8 +169,9 @@ viewport captures and internal scrolling are needed for fixed dialogs. Expand
 coverage to 1280/768/320px, 200% text, long names/large amounts, System resolution,
 keyboard/focus, failure/recovery and actual LAN startup as the matrix requires.
 
-Final verification, real-service evidence, independent requirements/visual testing,
-whole-final-diff review, current CI and canonical delivery closeout remain pending
-until their exact evidence is recorded. Consult the [testing strategy](../testing-strategy.md)
+The evidence index separates exact-build visual/client results from real-service
+contracts and records independent review. PR #228 is the source of truth for
+current publication-head CI, final whole-diff review and canonical closeout; none
+of those gates is inferred from a passing fixture assertion. Consult the [testing strategy](../testing-strategy.md)
 and [delivery workflow](../agents/delivery-workflow.md); historical screenshots,
 passing fixture assertions or this implementation description cannot close a row.

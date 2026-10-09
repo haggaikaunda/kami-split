@@ -1,0 +1,14 @@
+$ pnpm --filter @kami-split/web test
+$ vitest run
+
+ RUN  v5.0.3 /Users/haggaikaunda/.codex/worktrees/issue-227-design-parity/kami-split/apps/web
+
+
+ Test Files  48 passed (48)
+      Tests  351 passed (351)
+   Start at  06:05:46
+   Duration  5.29s (environment 63%, tests 15%, transform 11%, import 11%, worker 1%)
+
+    Isolate  48 workers spawned · ~632ms startup each (spawn + environment, per file)
+             at least ~2.74s faster with isolate: false — reuses workers across files instead of one per file
+

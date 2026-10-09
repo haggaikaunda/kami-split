@@ -1,0 +1,37 @@
+[
+  {
+    "file": "reference-1440.zip",
+    "bytes": 13745476,
+    "sha256": "f69ba823dd03537f8c51e0fb3cbad1c90130d24eebab6dc30716fc2fe632cf10",
+    "files": 154,
+    "viewportWidth": 1440
+  },
+  {
+    "file": "reference-1280.zip",
+    "bytes": 12833819,
+    "sha256": "2e0378e0e5be6d1f36a06c0a92071545ceae93df0b0ea7b7979fd2efa2055d90",
+    "files": 154,
+    "viewportWidth": 1280
+  },
+  {
+    "file": "reference-768.zip",
+    "bytes": 9283884,
+    "sha256": "b1852b528f7a94560e5605eb7193bfc9811dcc0dd40fe7377cd8d24775421da1",
+    "files": 154,
+    "viewportWidth": 768
+  },
+  {
+    "file": "reference-390.zip",
+    "bytes": 6603241,
+    "sha256": "43b1c52e9b607a616a0e95d87d3f861d4db3d35fa2c27f531b094e10f92652a5",
+    "files": 154,
+    "viewportWidth": 390
+  },
+  {
+    "file": "reference-320.zip",
+    "bytes": 5958570,
+    "sha256": "5000018bea913153fd2ed4e5b5eed25bf905fa4fede5895819585a1932c294c2",
+    "files": 154,
+    "viewportWidth": 320
+  }
+]
