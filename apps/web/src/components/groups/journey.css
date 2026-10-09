@@ -117,7 +117,7 @@
   border: 1px solid var(--color-separator);
   border-radius: var(--radius-card);
 }
-.financial-form-card > p:not(.expense-detail-total) {
+.financial-form-card > :where(p:not(.expense-detail-total)) {
   color: var(--color-muted);
   font-size: 0.875rem;
 }
@@ -180,9 +180,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--color-muted);
-  margin-bottom: 1.375rem;
+  margin: 0 0 1.375rem;
 }
 .expense-paid-by strong {
   font-weight: 400;
@@ -223,6 +223,9 @@
   gap: 0.625rem;
   padding: 0.75rem 0;
   border-top: 1px solid var(--color-separator);
+}
+.expense-allocation-list .ui-member strong {
+  font-weight: 400;
 }
 .expense-detail-split h3 {
   margin: 0 0 0.75rem;
@@ -286,7 +289,17 @@
 }
 .expense-field textarea {
   resize: vertical;
-  min-height: 5.25rem;
+  min-height: 4.5rem;
+}
+.financial-form-card > form > .expense-edit-fields {
+  margin: 0;
+}
+.expense-edit-fields > .expense-fields-grid {
+  margin-top: 0;
+  margin-bottom: 17px;
+}
+.expense-edit-fields .expense-field:has(textarea) {
+  margin-top: 20px;
 }
 .expense-presentation .financial-form-card > form > fieldset > legend {
   position: absolute;
@@ -554,6 +567,9 @@
   text-align: center;
   font-size: 0.75rem;
 }
+.financial-participants[data-split='EQUAL'] .ui-member strong {
+  font-weight: 400;
+}
 .financial-participants[data-split='EQUAL'] .ui-avatar {
   width: 2.25rem;
   height: 2.25rem;
@@ -650,4 +666,36 @@
 .expense-edit-hint {
   color: var(--color-muted);
   font-size: 0.75rem;
+}
+
+.expense-presentation--create .financial-form-card,
+.expense-presentation--create .expense-field label,
+.expense-presentation--create .expense-field :is(input, select, textarea) {
+  background: var(--color-canvas);
+}
+.expense-presentation--create .expense-field :is(input, select, textarea) {
+  font-size: 1rem;
+  padding: 1rem;
+}
+.expense-presentation--create .financial-form-card > form > fieldset {
+  margin: 0;
+}
+.expense-presentation--create .expense-fields-grid {
+  margin-block: 22px;
+}
+.expense-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+.financial-form-card .expense-create-actions button {
+  width: auto;
+  margin: 0;
+}
+.expense-create-actions button[type='button'] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-primary);
 }

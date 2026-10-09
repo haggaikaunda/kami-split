@@ -650,6 +650,7 @@ function LedgerContent({
       )}
       {(selected || create) && (
         <ExpensePresentation
+          kind={selected ? 'detail' : 'create'}
           title={selected ? 'Expense detail' : 'Add expense'}
           onClose={close}
         >
@@ -692,8 +693,12 @@ function LedgerContent({
                   </select>
                 </label>
               )}
-              <p>{createSpace.name}</p>
+              <p className="expense-create-context">
+                {createSpace.name} · No money is moved.
+              </p>
               <ExpenseForm
+                embedded
+                onCancel={close}
                 key={createSpace.groupId}
                 scope={scope}
                 group={createSpace.groupId}

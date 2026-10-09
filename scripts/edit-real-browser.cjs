@@ -115,9 +115,7 @@ const path = require('node:path');
     await page.locator('#expense-description').fill(description);
     await page.locator('#expense-amount').fill('120.00');
     await page.locator('#expense-note').fill(' Original note ');
-    await page
-      .getByRole('button', { name: 'Save expense', exact: true })
-      .click();
+    await page.locator('.financial-form-card button[type="submit"]').click();
     await page.waitForFunction(
       () => !document.querySelector('#expense-description'),
     );

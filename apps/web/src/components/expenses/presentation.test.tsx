@@ -104,3 +104,29 @@ it('keeps the mounted draft while resizing between desktop dialog and mobile scr
   expect(host.querySelector('dialog')?.getAttribute('role')).toBe('dialog');
   expect(host.textContent).toContain('Draft retained');
 });
+
+it('keeps creation modal across phone resize and preserves its mounted draft and dismissal', async () => {
+  const close = vi.fn();
+  await act(async () =>
+    root.render(
+      <ExpensePresentation title="Add expense" kind="create" onClose={close}>
+        <input aria-label="Description" defaultValue="Unsubmitted draft" />
+      </ExpensePresentation>,
+    ),
+  );
+  const input = host.querySelector('input')!;
+  await act(async () => {
+    media.matches = true;
+    resize();
+  });
+  expect(host.querySelector('dialog')?.getAttribute('role')).toBe('dialog');
+  expect(host.querySelector('dialog')?.getAttribute('aria-modal')).toBe('true');
+  expect(host.querySelector('input')).toBe(input);
+  expect(input.value).toBe('Unsubmitted draft');
+  await act(async () =>
+    host
+      .querySelector('dialog')!
+      .dispatchEvent(new Event('cancel', { cancelable: true })),
+  );
+  expect(close).toHaveBeenCalledOnce();
+});

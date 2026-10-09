@@ -444,7 +444,10 @@ export function ExpenseEdit({
           });
         }}
       >
-        <fieldset disabled={busy || !!attempt || blocked || conflict}>
+        <fieldset
+          className="expense-edit-fields"
+          disabled={busy || !!attempt || blocked || conflict}
+        >
           <ExpenseFields
             draft={draft}
             members={members}

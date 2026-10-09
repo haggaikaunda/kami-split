@@ -1027,7 +1027,7 @@ td {
   padding: 0.8125rem 0;
   gap: 0.625rem;
   flex-wrap: wrap;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 .workspace-overview-balances .ui-avatar {
   width: 2.0625rem;
@@ -1051,13 +1051,13 @@ td {
   flex-wrap: wrap;
 }
 .workspace-overview-balances .household-balances strong {
-  font-weight: 500;
+  font-weight: 400;
 }
 .workspace-overview-balances .household-balances .ui-row-detail {
   font-size: 0.6875rem;
 }
 .workspace-overview-balances .household-balances .ui-money {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 @media (max-width: 820px) {
   .financial-journey:has(> .workspace-navigation) {
@@ -1292,8 +1292,10 @@ td {
   }
 }
 @media (max-width: 340px) {
+  .ui-workspace-tabs {
+    column-gap: 0;
+  }
   .ui-workspace-tabs a {
-    font-size: 0.6875rem;
     padding-inline: 0;
   }
   .ui-summary-metric {
@@ -1407,12 +1409,23 @@ td {
 }
 .workspace-member-balances .ui-member {
   flex: 1;
+  font-size: 0.875rem;
+}
+.workspace-member-balances .ui-member strong {
+  font-weight: 400;
+}
+.workspace-member-balances .ui-avatar {
+  width: 2.0625rem;
+  height: 2.0625rem;
+  flex-basis: 2.0625rem;
+  font-size: 0.75rem;
 }
 .workspace-member-balances .ui-member-detail {
   font-size: 0.6875rem;
 }
 .workspace-member-balances .ui-balance-row > .ui-money {
   flex-shrink: 0;
+  font-size: 0.875rem;
 }
 
 .ui-visually-hidden {

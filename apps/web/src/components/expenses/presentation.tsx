@@ -7,10 +7,12 @@ import { AppIcon } from '@/components/workspace-identity';
 /** One mounted presentation preserves form drafts across responsive changes. */
 export function ExpensePresentation({
   title,
+  kind = 'detail',
   onClose,
   children,
 }: {
   title: string;
+  kind?: 'detail' | 'create';
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -49,10 +51,10 @@ export function ExpensePresentation({
   };
   return (
     <dialog
-      className="ledger-dialog expense-presentation"
+      className={`ledger-dialog expense-presentation expense-presentation--${kind}`}
       ref={ref}
-      role={mobile ? 'region' : 'dialog'}
-      aria-modal={mobile ? undefined : true}
+      role={mobile && kind === 'detail' ? 'region' : 'dialog'}
+      aria-modal={mobile && kind === 'detail' ? undefined : true}
       aria-label={title}
       tabIndex={-1}
       onKeyDown={(event) => containDialogFocus(event, ref.current)}
