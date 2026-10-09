@@ -682,6 +682,7 @@ function GroupDetails({
                     );
                   }}
                 >
+                  <p>Original source: {group.name}</p>
                   <ExpenseDetail
                     scope={scope}
                     group={id}

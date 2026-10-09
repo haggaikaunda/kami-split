@@ -465,3 +465,34 @@
     display: none;
   }
 }
+
+/* Selection is distinct from the primary action, with readable secondary text. */
+.group-workspace .ledger-view-switch button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-muted);
+}
+.group-workspace .ledger-view-switch button[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.group-workspace .breakdown-legend button {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-separator);
+}
+.group-workspace .breakdown-legend button:hover:enabled {
+  background: var(--color-subtle);
+}
+.group-workspace .breakdown-legend button[aria-pressed='true'] {
+  background: var(--color-summary-share);
+  color: var(--color-on-summary);
+  border-color: var(--color-accent);
+}
+.group-workspace
+  .breakdown-legend
+  button[aria-pressed='true']
+  > span:nth-child(2)
+  > span {
+  color: var(--color-summary-muted);
+}

@@ -46,9 +46,9 @@ These are an acceptance index, not evidence that pending checks passed.
   operation/draft ownership remain unchanged. Review found and tests now cover
   overview history and committed-save/failed-refresh cases.
 - Generated Relay operations were regenerated from SDL. Unused overview revision
-  and cursor selections were removed after independent transport testing found
-  complexity 202; current maximum is 197 against the unchanged limit of 200.
-  Existing paging fields on the complete Expenses ledger remain intact.
+  and page-boundary selections were removed after independent transport testing found
+  complexity 202; current maximum is 198 against the unchanged limit of 200.
+  The overview edge cursor and all complete Expenses paging fields remain intact.
 - Reference Roboto was not added: the repository's bundled local DM Sans/Manrope
   loading and fallback policy is retained. Original brand and artwork remain.
 

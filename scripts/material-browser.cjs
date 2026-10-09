@@ -20,6 +20,7 @@ for (const width of [320, 390, 768, 1280, 1440]) {
           SCALE: String(scale),
           THEME: theme,
           MATERIAL_TESTS: '1',
+          MATERIAL_DRAFT_TESTS: width === 1280 ? '1' : '0',
           OUTPUT_DIR: directory,
         },
         encoding: 'utf8',

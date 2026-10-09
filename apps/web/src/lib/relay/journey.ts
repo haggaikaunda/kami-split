@@ -465,6 +465,7 @@ export const journeyWorkspaceQuery = graphql`
         }
         expenses(first: 5) @include(if: $overview) {
           edges {
+            cursor
             node {
               id
               description

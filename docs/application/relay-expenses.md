@@ -25,9 +25,11 @@ and persisted group-local repayment entry. #170 adds the shared
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-The [approved Board A/B adoption](../design/references/approved-ui/adoption.md)
-uses a scenic Trip header and neutral Group/Household artwork, compact member
-initials, white financial cards and source-scoped balance rows. Repayment entry
+The #223 tonal system retains the scenic Trip and Household artwork, compact
+member initials and source-scoped balance rows established by the earlier
+[Board A/B adoption](../design/references/approved-ui/adoption.md). Theme-specific
+overlays and blue-grey/mint/lavender financial cards now carry the approved
+Light/Dark hierarchy. Repayment entry
 keeps its recovery navigation while focusing the main area on the existing form.
 The visible **Refresh** action retains its descriptive accessible name.
 

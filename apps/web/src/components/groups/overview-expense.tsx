@@ -51,11 +51,13 @@ export function OverviewExpenseLink({
 export function OverviewExpense({
   scope,
   allowed,
+  sourceNames,
   onCommitted,
   onUnavailable,
 }: {
   scope: FinancialScope;
   allowed: readonly string[];
+  sourceNames?: Readonly<Record<string, string>>;
   onCommitted: () => Promise<void>;
   onUnavailable: () => void;
 }) {
@@ -81,14 +83,17 @@ export function OverviewExpense({
       }}
     >
       {allowed.includes(group) ? (
-        <ExpenseDetail
-          key={`${group}:${id}`}
-          scope={scope}
-          group={group}
-          id={id}
-          onCommitted={onCommitted}
-          onUnavailable={onUnavailable}
-        />
+        <>
+          <p>Original source: {sourceNames?.[group] ?? 'Current workspace'}</p>
+          <ExpenseDetail
+            key={`${group}:${id}`}
+            scope={scope}
+            group={group}
+            id={id}
+            onCommitted={onCommitted}
+            onUnavailable={onUnavailable}
+          />
+        </>
       ) : (
         <p role="alert">
           Expense source is unavailable. Refresh to check current access.

@@ -204,6 +204,7 @@ export function GroupWorkspace({
           <OverviewExpense
             scope={scope}
             allowed={[group.id]}
+            sourceNames={{ [group.id]: group.name }}
             onCommitted={async () => {
               onEditSaved?.();
               await onRefresh();

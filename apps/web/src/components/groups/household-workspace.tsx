@@ -568,6 +568,9 @@ export function HouseholdContent({
           <OverviewExpense
             scope={scope}
             allowed={dashboard.spaces.map((s) => s.groupId)}
+            sourceNames={Object.fromEntries(
+              dashboard.spaces.map((s) => [s.groupId, s.name]),
+            )}
             onCommitted={onRefresh ?? (async () => {})}
             onUnavailable={onUnavailable ?? (() => {})}
           />

@@ -159,6 +159,10 @@ const expense = {
   __typename: 'Expense',
   id: 'e1',
   groupId: 'T',
+  version: '1',
+  canEdit: true,
+  editLockReason: null,
+  split: 'EQUAL',
   description: 'Fixture lunch',
   effectiveDate: '2026-10-01',
   totalMinor: '300',
@@ -320,6 +324,8 @@ const activity = {
             groups,
           },
         };
+      else if (op === 'expenseEditMembersQuery')
+        data = { group: group(variables.groupId) };
       else if (op === 'journeyGroupQuery' || op === 'householdMembersQuery')
         data = { group: group(variables.id || 'T') };
       else if (op === 'householdWorkspaceQuery')
@@ -398,6 +404,23 @@ const activity = {
         'Groups must contain ordinary groups only',
       );
       assert.equal(await cards.first().getAttribute('href'), '/groups/F');
+      if (process.env.MATERIAL_TESTS === '1') {
+        await page.goto(origin + '/groups/F?tab=overview');
+        await page
+          .getByRole('heading', { name: 'Recent expenses', exact: true })
+          .waitFor();
+        assert.equal(
+          await page
+            .locator('.ui-summary-row .ui-metric-label')
+            .last()
+            .innerText(),
+          'Your share',
+        );
+        await page.screenshot({
+          path: path.join(output, 'overview-ordinary-group.png'),
+          fullPage: true,
+        });
+      }
       await page.goto(origin + '/trips');
       await page.locator('a[href="/trips/T"]').waitFor();
       assert.equal(await page.locator('a[href="/groups/H"]').count(), 0);
@@ -626,9 +649,69 @@ const activity = {
       await page.getByLabel('Chart amount').selectOption('share');
       await page.waitForURL((url) => url.searchParams.get('basis') === 'share');
       const sector = page.locator('.breakdown-legend button');
+      const legendContrast = async () =>
+        sector.evaluate((button) => {
+          const luminance = (color) =>
+            color
+              .match(/[\d.]+/g)
+              .slice(0, 3)
+              .map(Number)
+              .map((channel) => {
+                const value = channel / 255;
+                return value <= 0.04045
+                  ? value / 12.92
+                  : ((value + 0.055) / 1.055) ** 2.4;
+              })
+              .reduce(
+                (sum, value, index) =>
+                  sum + value * [0.2126, 0.7152, 0.0722][index],
+                0,
+              );
+          const foreground = luminance(
+            getComputedStyle(button.querySelector('span:nth-child(2) > span'))
+              .color,
+          );
+          const background = luminance(
+            getComputedStyle(button).backgroundColor,
+          );
+          return (
+            (Math.max(foreground, background) + 0.05) /
+            (Math.min(foreground, background) + 0.05)
+          );
+        });
+      const unselectedContrast = await legendContrast();
+      assert(
+        unselectedContrast >= 4.5,
+        `unselected legend text contrast ${unselectedContrast}`,
+      );
+      const switchColors = await page
+        .locator('.ledger-view-switch button')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => getComputedStyle(button).backgroundColor),
+        );
+      assert.notEqual(
+        switchColors[0],
+        switchColors[1],
+        'pressed List/Breakdown appearance must be distinct',
+      );
       await sector.focus();
       await page.keyboard.press('Enter');
       assert.equal(await sector.getAttribute('aria-pressed'), 'true');
+      const selectedContrast = await legendContrast();
+      assert(
+        selectedContrast >= 4.5,
+        `selected legend text contrast ${selectedContrast}`,
+      );
+      await page.screenshot({
+        path: path.join(output, `chart-selected-${workspace}.png`),
+        fullPage: true,
+      });
+      results.push({
+        workspace,
+        unselectedContrast,
+        selectedContrast,
+        viewSelectionDistinct: true,
+      });
       await page
         .getByRole('button', { name: 'View expenses', exact: true })
         .click();
@@ -698,6 +781,68 @@ const activity = {
         outsideDismiss: width > 650,
         insidePreserved: true,
         focusContained: true,
+      });
+    }
+    if (process.env.MATERIAL_DRAFT_TESTS === '1') {
+      await page
+        .getByRole('button', { name: 'Edit expense', exact: true })
+        .click();
+      await page
+        .locator('#expense-note')
+        .fill('Recoverable unsaved browser draft');
+      await page.setViewportSize({
+        width: width > 650 ? 390 : 1280,
+        height: 900,
+      });
+      assert.equal(
+        await page.locator('#expense-note').inputValue(),
+        'Recoverable unsaved browser draft',
+        'resize preserves mounted draft',
+      );
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.mouse.click(8, 8);
+      await page
+        .locator('.expense-presentation')
+        .waitFor({ state: 'detached' });
+      assert.equal(page.url(), filteredURL, 'draft dismiss retains source URL');
+      await row.click();
+      await page
+        .getByRole('button', { name: 'Edit expense', exact: true })
+        .click();
+      assert.equal(
+        await page.locator('#expense-note').inputValue(),
+        'Recoverable unsaved browser draft',
+        'reopening restores unsaved draft',
+      );
+      await page.screenshot({
+        path: path.join(output, `recovered-edit-${workspace}.png`),
+        fullPage: true,
+      });
+      assert(
+        !log.some((request) => request.op === 'expenseEditMutation'),
+        'dismiss and resize never save',
+      );
+      await page
+        .getByRole('button', { name: 'Cancel editing', exact: true })
+        .click();
+      await page
+        .getByRole('button', { name: 'Discard changes', exact: true })
+        .click();
+      await page
+        .getByRole('button', { name: 'Edit expense', exact: true })
+        .click();
+      assert.equal(
+        await page.locator('#expense-note').inputValue(),
+        'Private fixture note',
+        'discard restores confirmed values',
+      );
+      await page.setViewportSize({ width, height: 900 });
+      results.push({
+        workspace,
+        draftResizePreserved: true,
+        outsideDismissDraftRecovery: true,
+        noImplicitSave: true,
+        explicitDiscard: true,
       });
     }
     await page.keyboard.press('Escape');
