@@ -39,7 +39,7 @@ The pre-implementation inventories remain the action/state index:
 - [Groups](groups-dark.png), [Trips](trips-dark.png),
   [Balances](balances-dark.png), [Activity](activity-dark.png),
   [Members](members-dark.png), [Invitations](invitations-dark.png).
-- Expense [desktop detail](detail-desktop.png), [mobile detail](detail-phone.png),
+- Expense [desktop filters](filters-desktop.png), [desktop detail](detail-desktop.png), [mobile detail](detail-phone.png),
   [mobile Breakdown](breakdown-phone.png),
   [recovered edit](expense-edit-desktop.png).
 - Disposable real API: [persisted expense detail](real-expense-detail.png),
