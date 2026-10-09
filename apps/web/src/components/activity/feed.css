@@ -162,6 +162,8 @@
   color: var(--color-muted);
 }
 .activity-detail-amount {
+  max-width: 100%;
+  overflow-x: auto;
   margin: 1.5rem 0 0.5rem;
   font-size: 2.5rem;
   line-height: 1.2;

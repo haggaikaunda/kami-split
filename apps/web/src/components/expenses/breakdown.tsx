@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppIcon } from '@/components/workspace-identity';
 import { Money } from '@/components/primitives';
 import { minor, money } from '@/lib/relay/money';
@@ -24,13 +24,13 @@ function categoryName(value: string) {
   return value[0] + value.slice(1).toLowerCase();
 }
 /** Two arcs per edge also represent a single category covering the full circle. */
-export function categoryPath(start: number, length: number) {
-  const outer = 169.1,
-    inner = 105.64;
+export function categoryPath(start: number, length: number, size = 380) {
+  const outer = size * 0.445,
+    inner = size * 0.278;
   const angle = (percent: number) =>
     (percent / 100) * Math.PI * 2 - Math.PI / 2;
   const point = (radius: number, percent: number) =>
-    `${190 + Math.cos(angle(percent)) * radius},${190 + Math.sin(angle(percent)) * radius}`;
+    `${size / 2 + Math.cos(angle(percent)) * radius},${size / 2 + Math.sin(angle(percent)) * radius}`;
   const middle = start + length / 2,
     end = start + length;
   return `M${point(outer, start)} A${outer},${outer} 0 0 1 ${point(outer, middle)} A${outer},${outer} 0 0 1 ${point(outer, end)} L${point(inner, end)} A${inner},${inner} 0 0 0 ${point(inner, middle)} A${inner},${inner} 0 0 0 ${point(inner, start)} Z`;
@@ -87,6 +87,18 @@ export function ExpenseBreakdown({
   onViewExpenses: (category: string | null) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const chart = useRef<HTMLDivElement>(null);
+  const [chartSize, setChartSize] = useState(380);
+  useEffect(() => {
+    const element = chart.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const width = Math.round(element.getBoundingClientRect().width);
+      if (width > 0) setChartSize(width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [expenseCount]);
   const total = minor(basis === 'share' ? viewerShareMinor : totalExpenseMinor);
   const sectors = categorySectors(categories, basis, total);
   const selection = sectors.find((sector) => sector.category === selected);
@@ -121,16 +133,16 @@ export function ExpenseBreakdown({
             <p>Your share is zero for these matching expenses.</p>
           )}
           <div className="breakdown-content">
-            <div className="breakdown-chart">
-              <svg viewBox="0 0 380 380" aria-hidden="true">
+            <div className="breakdown-chart" ref={chart}>
+              <svg viewBox={`0 0 ${chartSize} ${chartSize}`} aria-hidden="true">
                 {total === 0n && (
                   <circle
-                    cx="190"
-                    cy="190"
-                    r="137.37"
+                    cx={chartSize / 2}
+                    cy={chartSize / 2}
+                    r={chartSize * 0.3615}
                     fill="none"
                     stroke="var(--color-subtle)"
-                    strokeWidth="63.46"
+                    strokeWidth={chartSize * 0.167}
                   />
                 )}
                 {sectors
@@ -153,14 +165,25 @@ export function ExpenseBreakdown({
                         <path
                           className={`breakdown-sector breakdown-category--${sector.category.toLowerCase()}`}
                           data-selected={active}
-                          d={categoryPath(sector.start, sector.length)}
+                          d={categoryPath(
+                            sector.start,
+                            sector.length,
+                            chartSize,
+                          )}
                           onClick={() => choose(sector.category)}
                         />
                         {sector.amount * 100n >= total * 8n && (
                           <text
                             className="breakdown-slice-label"
-                            x={190 + Math.cos(angle) * 137.37}
-                            y={190 + Math.sin(angle) * 137.37}
+                            x={
+                              chartSize / 2 +
+                              Math.cos(angle) * chartSize * 0.3615
+                            }
+                            y={
+                              chartSize / 2 +
+                              Math.sin(angle) * chartSize * 0.3615 +
+                              4
+                            }
                           >
                             {`${(sector.amount * 100n + total / 2n) / total}%`}
                           </text>

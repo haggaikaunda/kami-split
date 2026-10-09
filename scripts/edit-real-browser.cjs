@@ -240,14 +240,14 @@ const path = require('node:path');
       (await amountChange.locator('.activity-previous').innerText())
         .replace(/\s+/g, ' ')
         .trim(),
-      'Previous $120.00 USD',
+      'PREVIOUS $120.00 USD',
       'The historical amount must preserve the exact previous value',
     );
     assert.equal(
       (await amountChange.locator('.activity-new').innerText())
         .replace(/\s+/g, ' ')
         .trim(),
-      'New $100.00 USD',
+      'NEW $100.00 USD',
       'The historical amount must preserve the exact new value',
     );
     assert(
@@ -277,12 +277,34 @@ const path = require('node:path');
             (size) => (document.documentElement.style.fontSize = size + '%'),
             scale,
           );
+          const overflow = await page.evaluate(() => ({
+            width: window.innerWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+            elements: [...document.querySelectorAll('body *')]
+              .filter(
+                (element) =>
+                  element.getClientRects().length &&
+                  element.getBoundingClientRect().right > window.innerWidth + 1,
+              )
+              .map((element) => ({
+                tag: element.tagName,
+                className: String(element.className),
+                left: element.getBoundingClientRect().left,
+                right: element.getBoundingClientRect().right,
+              })),
+          }));
+          if (overflow.scrollWidth > overflow.width + 1) {
+            await page.screenshot({
+              path: path.join(
+                evidence,
+                `${context.toLowerCase()}-overflow-${width}-${theme}-${scale}.png`,
+              ),
+              fullPage: true,
+            });
+          }
           assert(
-            await page.evaluate(
-              () =>
-                document.documentElement.scrollWidth <= window.innerWidth + 1,
-            ),
-            `${context} overflow ${width}/${theme}/${scale}`,
+            overflow.scrollWidth <= overflow.width + 1,
+            `${context} overflow ${width}/${theme}/${scale}: ${JSON.stringify(overflow)}`,
           );
           assert.equal(
             await page.evaluate(

@@ -175,6 +175,7 @@
 
 .account-management {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
 }
@@ -183,6 +184,7 @@
 }
 .account-rows {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   list-style: none;
   padding: 0;
@@ -190,6 +192,7 @@
 }
 .account-rows > li {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   min-width: 0;
   margin: 0;
@@ -197,6 +200,9 @@
   border: 1px solid var(--color-separator);
   border-radius: var(--radius-card);
   background: var(--color-subtle);
+}
+.account-rows > li > strong {
+  overflow-wrap: anywhere;
 }
 .account-rows > li > a {
   font-weight: 700;
@@ -220,6 +226,9 @@
 
 .scoped-invitations {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 1.5rem;
+  max-width: 46.25rem;
   gap: var(--space-4);
   min-width: 0;
   overflow-wrap: break-word;
@@ -241,18 +250,20 @@
   background: var(--color-surface);
   color: var(--color-primary);
 }
-.financial-journey .scoped-invitations {
-  padding: var(--space-6);
-  border: 1px solid var(--color-separator);
-  border-radius: var(--radius-card);
-}
-
-.scoped-invitations {
-  margin-top: 1.5rem;
-  max-width: 46.25rem;
-}
 .scoped-invitations .onboarding-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .scoped-invitations {
+    padding: 20px 17px;
+  }
+  .scoped-invitations .account-rows > li {
+    padding: 16px;
+  }
+  .scoped-invitations .ui-button {
+    padding: 10px 22px;
+  }
 }

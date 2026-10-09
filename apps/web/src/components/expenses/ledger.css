@@ -36,7 +36,7 @@
   background: var(--color-container);
   color: var(--color-on-container);
 }
-.ledger-toolbar .app-icon {
+.ledger-view-switch .app-icon {
   width: 1.0625rem;
   height: 1.0625rem;
 }
@@ -409,7 +409,6 @@
   font-size: 12px;
   font-weight: 500;
   text-anchor: middle;
-  dominant-baseline: middle;
   pointer-events: none;
 }
 .breakdown-center {

@@ -104,7 +104,12 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
           <p>{event.groupName}</p>
         </div>
       </header>
-      <p className="activity-detail-amount">
+      <p
+        className="activity-detail-amount"
+        role="group"
+        tabIndex={0}
+        aria-label={`${money(event.amountMinor)} ${event.currency}`}
+      >
         <Money value={money(event.amountMinor)} currency={event.currency} />
       </p>
       <p className="activity-detail-attribution">
