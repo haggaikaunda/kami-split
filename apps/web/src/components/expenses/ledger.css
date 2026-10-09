@@ -271,7 +271,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.4375rem;
-  margin-top: 0.5rem;
+  margin-top: 1.5rem;
 }
 .ledger-filter-actions button:first-child {
   margin-right: auto;
