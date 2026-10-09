@@ -30,7 +30,7 @@ import groupDocument, {
 import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
-import { containDialogFocus, Money } from '@/components/primitives';
+import { Button, containDialogFocus, Money } from '@/components/primitives';
 import { ExpenseDetail } from '@/components/groups/expense-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
@@ -337,7 +337,8 @@ function LedgerContent({
         <input name="to" type="date" defaultValue={params.get('to') ?? ''} />
       </label>
       <div className="ledger-filter-actions">
-        <button
+        <Button
+          tone="text"
           type="button"
           onClick={(event) => {
             const form = event.currentTarget.form;
@@ -352,11 +353,11 @@ function LedgerContent({
           }}
         >
           Reset filters
-        </button>
-        <button type="button" onClick={() => setFiltersOpen(false)}>
+        </Button>
+        <Button tone="text" type="button" onClick={() => setFiltersOpen(false)}>
           Cancel
-        </button>
-        <button type="submit">Apply filters</button>
+        </Button>
+        <Button type="submit">Apply filters</Button>
       </div>
     </form>
   );
@@ -406,6 +407,27 @@ function LedgerContent({
             <AppIcon name="pie" /> Breakdown
           </button>
         </nav>
+        <details className="ledger-net">
+          <summary aria-label="Your net balance" title="Your net balance">
+            <AppIcon name="arrow-up-right" />
+          </summary>
+          <span>
+            {net === undefined ? (
+              'Unavailable'
+            ) : (
+              <>
+                {minor(net) > 0n
+                  ? "You're owed "
+                  : minor(net) < 0n
+                    ? 'You owe '
+                    : 'Net zero '}
+                <Money value={money(net)} currency="USD" />
+              </>
+            )}{' '}
+            · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
+            in each space.
+          </span>
+        </details>
         <button
           aria-label={`Filters${activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}`}
           ref={filterTrigger}
@@ -460,7 +482,8 @@ function LedgerContent({
               </button>
             );
           })}
-          <button
+          <Button
+            tone="text"
             className="ledger-clear-filters"
             onClick={() => {
               reset();
@@ -468,7 +491,7 @@ function LedgerContent({
             }}
           >
             Clear all
-          </button>
+          </Button>
         </div>
       )}
       <div className="ledger-summary" ref={summary} tabIndex={-1}>
@@ -487,27 +510,6 @@ function LedgerContent({
         ) : (
           <span>{loading ? 'Loading totals…' : 'Total unavailable'}</span>
         )}
-        <details className="ledger-net">
-          <summary aria-label="Your net balance" title="Your net balance">
-            <AppIcon name="arrow-up-right" />
-          </summary>
-          <span>
-            {net === undefined ? (
-              'Unavailable'
-            ) : (
-              <>
-                {minor(net) > 0n
-                  ? "You're owed "
-                  : minor(net) < 0n
-                    ? 'You owe '
-                    : 'Net zero '}
-                <Money value={money(net)} currency="USD" />
-              </>
-            )}{' '}
-            · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
-            in each space.
-          </span>
-        </details>
       </div>
       {notice && <p role="status">{notice}</p>}
       {loading && <p role="status">Loading authorized expenses…</p>}

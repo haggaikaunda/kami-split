@@ -46,6 +46,10 @@ it('retains zero-share category counts and an accessible amount instead of divid
     '0.0% · 4 expenses',
   );
   expect(host.querySelector('.breakdown-sector')).toBeNull();
+  expect(host.textContent).toContain(
+    'Counts include all matching expenses, including any with zero viewer share.',
+  );
+  expect(host.textContent).not.toContain('Percentages are rounded');
   await act(async () => root.unmount());
 });
 
@@ -122,5 +126,82 @@ it('selects and clears a legend category with exact totals and matching drilldow
       .click(),
   );
   expect(drill).toHaveBeenLastCalledWith(null);
+  await act(async () => root.unmount());
+});
+
+it.each([
+  { home: '500', dining: '500', total: '1000', rounded: false },
+  { home: '1', dining: '2', total: '3', rounded: true },
+])(
+  'explains displayed percentage rounding only when needed: $total',
+  async ({ home, dining, total, rounded }) => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <ExpenseBreakdown
+          categories={[
+            {
+              category: 'HOME',
+              totalExpenseMinor: home,
+              viewerShareMinor: '0',
+              expenseCount: '1',
+            },
+            {
+              category: 'DINING',
+              totalExpenseMinor: dining,
+              viewerShareMinor: '0',
+              expenseCount: '1',
+            },
+          ]}
+          totalExpenseMinor={total}
+          viewerShareMinor="0"
+          expenseCount="2"
+          basis="total"
+          onBasis={vi.fn()}
+          onViewExpenses={vi.fn()}
+        />,
+      ),
+    );
+    expect(host.textContent?.includes('Percentages are rounded')).toBe(rounded);
+    expect(host.textContent).not.toContain(
+      'Counts include all matching expenses, including any with zero viewer share.',
+    );
+    await act(async () => root.unmount());
+  },
+);
+
+it('explains share counts even when a positive aggregate can include zero-share expenses', async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <ExpenseBreakdown
+        categories={[
+          {
+            category: 'HOME',
+            totalExpenseMinor: '1000',
+            viewerShareMinor: '500',
+            expenseCount: '2',
+          },
+        ]}
+        totalExpenseMinor="1000"
+        viewerShareMinor="500"
+        expenseCount="2"
+        basis="share"
+        onBasis={vi.fn()}
+        onViewExpenses={vi.fn()}
+      />,
+    ),
+  );
+  expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
+    '100.0% · 2 expenses',
+  );
+  expect(host.textContent).toContain(
+    'Counts include all matching expenses, including any with zero viewer share.',
+  );
+  expect(host.textContent).not.toContain('Percentages are rounded');
   await act(async () => root.unmount());
 });

@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/primitives';
 import { ExpenseFields } from './expense-fields';
 import { createSessionId } from '@/lib/session-id';
 import { useEffect, useRef, useState } from 'react';
@@ -285,11 +286,11 @@ export function ExpenseForm({
             />
             <div className={embedded ? 'expense-create-actions' : undefined}>
               {onCancel && (
-                <button type="button" onClick={onCancel}>
+                <Button tone="text" type="button" onClick={onCancel}>
                   Cancel
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 type="submit"
                 disabled={
                   draft.split === 'PERCENTAGE' &&
@@ -297,7 +298,7 @@ export function ExpenseForm({
                 }
               >
                 {embedded ? 'Add expense' : 'Save expense'}
-              </button>
+              </Button>
             </div>
           </fieldset>
         </form>

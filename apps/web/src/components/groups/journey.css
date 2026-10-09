@@ -136,6 +136,7 @@
   margin-block: 1rem;
 }
 .financial-form-card button[type='submit'] {
+  border: 0;
   background: var(--color-primary);
   color: var(--color-on-primary, white);
   width: 100%;
@@ -307,11 +308,6 @@
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
-}
-.expense-presentation .financial-form-card button[type='submit'] {
-  width: auto;
-  min-width: 8rem;
-  margin: 1rem 0;
 }
 @media (max-width: 600px) {
   .expense-detail-total {
@@ -655,8 +651,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin: 1.5rem 0 0.5rem;
+  gap: 0.625rem;
+  margin: 1.25rem 0 0;
 }
 .financial-form-card .expense-edit-actions .ui-button {
   width: auto;
@@ -687,15 +683,10 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 7px;
   margin-top: 24px;
 }
 .financial-form-card .expense-create-actions button {
   width: auto;
   margin: 0;
-}
-.expense-create-actions button[type='button'] {
-  border-color: transparent;
-  background: transparent;
-  color: var(--color-primary);
 }
