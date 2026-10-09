@@ -103,7 +103,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4375rem;
-  margin-block: 0.75rem;
+  margin-top: 0.75rem;
   font-size: 0.75rem;
 }
 .ledger-active-filters .ledger-filter-chip {
@@ -117,6 +117,16 @@
   padding: 0.4375rem 0.5625rem;
   min-height: 2.25rem;
   font-size: 0.75rem;
+}
+.ledger-filter-chip .app-icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+.ledger-clear-filters {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-primary);
+  padding: 0 0.75rem;
 }
 .ledger-month {
   background: var(--color-surface);

@@ -242,7 +242,9 @@ export function ExpenseBreakdown({
           </div>
           <div className="breakdown-drilldown">
             <span>
-              {selection ? categoryName(selection.category) : 'All categories'}
+              {selection
+                ? `${categoryName(selection.category)} · ${categoryPercentage(selection.amount, total)} of this view`
+                : 'All categories'}
             </span>
             <button onClick={() => onViewExpenses(selection?.category ?? null)}>
               View expenses <AppIcon name="arrow-right" />

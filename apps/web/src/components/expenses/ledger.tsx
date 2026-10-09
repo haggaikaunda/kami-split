@@ -110,6 +110,7 @@ function LedgerContent({
     router = useRouter(),
     pathname = usePathname();
   const filterText = expenseFilterText(params);
+  const activeFilterKeys = filterKeys.filter((key) => params.get(key));
   const initial = useRef(initialView);
   const selected = params.get('expense') ?? '',
     source = params.get('expenseGroup') ?? groupId;
@@ -303,7 +304,7 @@ function LedgerContent({
           <option value="">All categories</option>
           {categories.map((c) => (
             <option key={c} value={c}>
-              {c.toLowerCase()}
+              {c[0] + c.slice(1).toLowerCase()}
             </option>
           ))}
         </select>
@@ -316,7 +317,7 @@ function LedgerContent({
             <optgroup label={s.name} key={s.groupId}>
               {s.members.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.displayName}
+                  {m.displayName} · {s.name}
                 </option>
               ))}
             </optgroup>
@@ -406,25 +407,73 @@ function LedgerContent({
           </button>
         </nav>
         <button
-          aria-label={`Filters${filterText ? ' · active' : ''}`}
+          aria-label={`Filters${activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}`}
           ref={filterTrigger}
           className="ledger-filter-button"
           onClick={() => setFiltersOpen(true)}
         >
-          <AppIcon name="sliders" /> Filters{filterText ? ' · active' : ''}
+          <AppIcon name="sliders" /> Filters
+          {activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}
         </button>
       </div>
+      {activeFilterKeys.length > 0 && (
+        <div className="ledger-active-filters" aria-label="Active filters">
+          {activeFilterKeys.map((key) => {
+            const value = params.get(key)!;
+            const memberSpace =
+              key === 'memberId'
+                ? spaces.find((space) =>
+                    space.members.some((member) => member.id === value),
+                  )
+                : undefined;
+            const date = new Date(`${value}T00:00:00Z`);
+            const label =
+              key === 'groupId'
+                ? `Space: ${spaces.find((space) => space.groupId === value)?.name ?? 'Selected space'}`
+                : key === 'memberId'
+                  ? memberSpace
+                    ? `${memberSpace.members.find((member) => member.id === value)!.displayName} · ${memberSpace.name}`
+                    : 'Selected member'
+                  : key === 'category'
+                    ? value[0] + value.slice(1).toLowerCase()
+                    : `${key === 'from' ? 'From' : 'To'} ${Number.isNaN(date.getTime()) ? value : overviewDate(value, false, value.slice(0, 4) !== today.slice(0, 4))}`;
+            return (
+              <button
+                key={key}
+                className="ledger-filter-chip"
+                aria-label={`Remove ${label}`}
+                onClick={() => {
+                  reset();
+                  change({ [key]: null });
+                }}
+              >
+                {label} <AppIcon name="close" />
+              </button>
+            );
+          })}
+          <button
+            className="ledger-clear-filters"
+            onClick={() => {
+              reset();
+              change(Object.fromEntries(filterKeys.map((key) => [key, null])));
+            }}
+          >
+            Clear all
+          </button>
+        </div>
+      )}
       <div className="ledger-summary" ref={summary} tabIndex={-1}>
         {page && !error ? (
           <span>
-            {page.expenseCount} expenses ·{' '}
+            {page.expenseCount}{' '}
+            {page.expenseCount === '1' ? 'expense' : 'expenses'} ·{' '}
             <span aria-label="Total expenses">
               <Money value={money(page.totalExpenseMinor)} currency="USD" />{' '}
               total
             </span>{' '}
             · <Money value={money(page.viewerShareMinor)} currency="USD" /> your
             share
-            {filterText && ' · filtered'}
+            {filterText && ' · All filters combined'}
           </span>
         ) : (
           <span>{loading ? 'Loading totals…' : 'Total unavailable'}</span>
@@ -451,52 +500,6 @@ function LedgerContent({
           </span>
         </details>
       </div>
-      {filterText && (
-        <div className="ledger-active-filters">
-          <span>Active filters:</span>
-          {filterKeys
-            .filter((key) => params.get(key))
-            .map((key) => {
-              const label =
-                key === 'groupId'
-                  ? 'Space'
-                  : key === 'memberId'
-                    ? 'Member'
-                    : key[0].toUpperCase() + key.slice(1);
-              const value =
-                key === 'groupId'
-                  ? (spaces.find((s) => s.groupId === params.get(key))?.name ??
-                    'Selected space')
-                  : key === 'memberId'
-                    ? (spaces
-                        .flatMap((s) => s.members)
-                        .find((m) => m.id === params.get(key))?.displayName ??
-                      'Selected member')
-                    : params.get(key);
-              return (
-                <button
-                  key={key}
-                  className="ledger-filter-chip"
-                  aria-label={`Remove ${label}: ${value}`}
-                  onClick={() => {
-                    reset();
-                    change({ [key]: null });
-                  }}
-                >
-                  {label}: {value} <span aria-hidden="true">×</span>
-                </button>
-              );
-            })}
-          <button
-            onClick={() => {
-              reset();
-              change(Object.fromEntries(filterKeys.map((key) => [key, null])));
-            }}
-          >
-            Clear filters
-          </button>
-        </div>
-      )}
       {notice && <p role="status">{notice}</p>}
       {loading && <p role="status">Loading authorized expenses…</p>}
       {error ? (
