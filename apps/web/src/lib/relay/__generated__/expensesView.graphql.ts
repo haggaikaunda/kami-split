@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<798b6a9a174114adee732a4a87462be4>>
+ * @generated SignedSource<<7266399214add41cd71aa842cc03e0e7>>
  * @lightSyntaxTransform
  */
 
@@ -14,6 +14,12 @@ export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "
 import { FragmentRefs } from "relay-runtime";
 export type expensesView$data = {
   readonly __typename: "ExpenseView";
+  readonly categories: ReadonlyArray<{
+    readonly category: Category;
+    readonly expenseCount: string;
+    readonly totalExpenseMinor: string;
+    readonly viewerShareMinor: string;
+  }>;
   readonly contextVersion: string;
   readonly edges: ReadonlyArray<{
     readonly cursor: string;
@@ -51,6 +57,8 @@ export type expensesView$data = {
     readonly hasNextPage: boolean;
   };
   readonly totalExpenseMinor: string;
+  readonly viewerPaidMinor: string;
+  readonly viewerShareMinor: string;
   readonly " $fragmentType": "expensesView";
 } | {
   readonly __typename: "Problem";
@@ -72,6 +80,6 @@ const node: ReaderInlineDataFragment = {
   "name": "expensesView"
 };
 
-(node as any).hash = "7935ce8994159b3bab715df02b510f58";
+(node as any).hash = "301790ed6f354830ec2262996c989f86";
 
 export default node;

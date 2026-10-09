@@ -16,7 +16,7 @@
   margin-block: 1rem 1.5rem;
   padding: 1rem;
   border: 1px solid var(--color-separator);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-card);
 }
 .financial-journey nav {
   display: flex;
@@ -58,7 +58,7 @@
   padding: 0.5rem;
   font: inherit;
   border: 1px solid var(--color-border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-ink);
 }
@@ -128,7 +128,7 @@
   display: inline-block;
   padding: 0.5rem;
 }
-/* Authenticated workspaces share Quietly Warm patterns; context carries decoration. */
+/* Authenticated workspaces retain source context within the tonal system. */
 .group-workspace header,
 .group-workspace section {
   border: 0;
@@ -210,6 +210,7 @@
   background-color: var(--color-surface);
 }
 .financial-journey .ui-summary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 .financial-journey .group-expense-list {
@@ -230,7 +231,8 @@
 }
 @media (max-width: 650px) {
   .financial-journey .ui-summary-row {
-    gap: 0.35rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
   }
   .financial-journey .ui-summary-metric {
     padding: 0.5rem;
@@ -240,7 +242,7 @@
   }
 }
 
-/* Production adoption of A4/A5/A9/A10: context carries art, money stays on plain cards. */
+/* Context art stays visible in both themes; text receives a legible tonal layer. */
 .financial-journey > .journey-page-heading {
   border: 0;
   padding: 0;
@@ -259,37 +261,42 @@
   padding: 1.25rem;
   border-radius: var(--radius-card);
 }
-.ui-workspace-header--trip {
+.ui-workspace-header--trip,
+.ui-workspace-header--group,
+.financial-journey > .ui-workspace-header--household {
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--color-art-shade) 93%, transparent),
-      color-mix(in srgb, var(--color-art-shade) 40%, transparent)
+      var(--color-banner-mist) 12%,
+      color-mix(in srgb, var(--color-banner-mist) 92%, transparent) 48%,
+      color-mix(in srgb, var(--color-banner-mist) 15%, transparent)
     ),
-    url('/art/trip.png') center / cover;
-  color: var(--color-on-art);
-  min-height: 13rem;
+    url('/art/household.png') right center / cover;
+  color: var(--color-ink);
+  min-height: 12rem;
+}
+.ui-workspace-header--trip {
+  background-image:
+    linear-gradient(
+      90deg,
+      var(--color-banner-mist) 12%,
+      color-mix(in srgb, var(--color-banner-mist) 92%, transparent) 48%,
+      color-mix(in srgb, var(--color-banner-mist) 15%, transparent)
+    ),
+    url('/art/trip.png');
 }
 .ui-workspace-header--trip .ui-workspace-context,
 .ui-workspace-header--trip a {
-  color: var(--color-on-art);
+  color: inherit;
 }
-.ui-workspace-header--trip .ui-space-chip {
-  background: #ffffff24;
-  color: var(--color-on-art);
-}
-.ui-workspace-header--trip .workspace-identity-icon {
-  background: #ffffffde;
-  color: #00664d;
-}
-.ui-workspace-header--group {
-  background: var(--color-surface) url('/art/household.png') right center / auto
-    100% no-repeat;
-}
-.ui-workspace-header--group .workspace-heading {
-  background: color-mix(in srgb, var(--color-surface) 93%, transparent);
-  border-radius: var(--radius-control);
+.ui-workspace-header .workspace-heading {
+  max-width: 42rem;
+  background: color-mix(in srgb, var(--color-banner-mist) 96%, transparent);
   padding: 0.5rem;
+  border-radius: var(--radius-control);
+}
+.ui-workspace-header--trip .group-header-actions {
+  background: color-mix(in srgb, var(--color-banner-mist) 96%, transparent);
 }
 .group-members-context {
   gap: 0.4rem;
@@ -508,9 +515,6 @@
   padding: 0.25rem;
   border-radius: var(--radius-control);
 }
-.ui-workspace-header--trip .group-header-actions {
-  background: var(--color-art-shade);
-}
 
 .group-workspace .journey-refresh {
   background: transparent;
@@ -626,4 +630,48 @@
   input[type='checkbox'] {
   width: auto;
   margin: 0;
+}
+
+.workspace-overview-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2.5fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.group-workspace .workspace-overview-columns > section,
+.workspace-overview-balances {
+  padding: 1.25rem;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  margin-block: 1rem;
+}
+.workspace-overview-balances .ui-balance-row {
+  padding: 0.75rem 0;
+}
+.workspace-overview-balances p {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+@media (max-width: 900px) {
+  .workspace-overview-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-overview-balances {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .group-workspace .ui-workspace-header,
+  .financial-journey > .ui-workspace-header--household {
+    background-position: 65% center;
+    min-height: 12rem;
+  }
+}
+
+@media (max-width: 650px) {
+  .group-workspace .ui-workspace-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }

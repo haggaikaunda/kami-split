@@ -39,7 +39,10 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	if err != nil {
 		return problem(ctx, err), nil
 	}
-	result := &model.ExpenseView{ContextVersion: out.ContextVersion, TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
+	result := &model.ExpenseView{ContextVersion: out.ContextVersion, ViewerShareMinor: ledger.MinorUnits(out.ViewerShare), ViewerPaidMinor: ledger.MinorUnits(out.ViewerPaid), Categories: []*model.ExpenseCategoryTotal{}, TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
+	for _, c := range out.Categories {
+		result.Categories = append(result.Categories, &model.ExpenseCategoryTotal{Category: model.Category(c.Category), TotalExpenseMinor: ledger.MinorUnits(c.Total), ViewerShareMinor: ledger.MinorUnits(c.ViewerShare), ExpenseCount: ledger.MinorUnits(c.Count)})
+	}
 	for _, m := range out.Months {
 		result.Months = append(result.Months, &model.ExpenseMonth{Month: m.Month, TotalExpenseMinor: ledger.MinorUnits(m.Total), ExpenseCount: ledger.MinorUnits(m.Count)})
 	}

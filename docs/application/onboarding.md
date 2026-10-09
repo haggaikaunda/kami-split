@@ -4,9 +4,8 @@ Issues #80 and #164 connect the [targeted invitation service](targeted-invitatio
 
 ## Presentation
 
-The real entry routes use the shared Quietly Warm tokens and loaded typography.
-Board A1 is the [approved reference](../design/references/approved-ui/README.md).
-A warm canvas, white form card, local decorative house illustration and one labelled group identity
+The real entry routes use the shared tonal tokens and locally loaded typography
+under #223. A soft canvas, themed form card, local decorative house illustration and one labelled group identity
 region provide invitation context; only the approved group name and inviter name
 are shown before authentication. Secondary actions use quiet text styling, while
 inputs, focus rings, status messages and explicit Join retain the existing accessible

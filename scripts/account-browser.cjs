@@ -169,7 +169,12 @@ const spaces = [
                     code: 'UNAVAILABLE',
                     message: 'Unavailable',
                   }
-                : { __typename: 'Profile', id: 'v', displayName: name },
+                : {
+                    __typename: 'Profile',
+                    id: 'v',
+                    displayName: name,
+                    appearance: 'SYSTEM',
+                  },
             };
           else if (query.includes('ownerInvitations'))
             data = {
@@ -357,6 +362,9 @@ const spaces = [
           .waitFor();
         await capture('household-invitations');
         await page.emulateMedia({ colorScheme: 'dark' });
+        await page.waitForFunction(
+          () => document.documentElement.dataset.theme === 'dark',
+        );
         assert.equal(
           await page.evaluate(
             () => getComputedStyle(document.body).colorScheme,
@@ -418,6 +426,9 @@ const spaces = [
         await page.getByRole('button', { name: 'Retry profile' }).click();
         await page.getByLabel('Display name', { exact: true }).waitFor();
         await page.emulateMedia({ colorScheme: 'dark' });
+        await page.waitForFunction(
+          () => document.documentElement.dataset.theme === 'dark',
+        );
         assert.equal(
           await page.evaluate(
             () => getComputedStyle(document.body).colorScheme,
@@ -447,7 +458,7 @@ const spaces = [
             document.querySelector('.profile-card'),
           ).backgroundColor;
           return {
-            body: getComputedStyle(document.body).backgroundColor,
+            canvas: getComputedStyle(document.documentElement).backgroundColor,
             brand: ratio(
               getComputedStyle(document.querySelector('.workspace-brand'))
                 .color,
@@ -466,7 +477,7 @@ const spaces = [
             ),
           };
         });
-        assert.equal(darkContrast.body, 'rgb(16, 27, 23)');
+        assert.equal(darkContrast.canvas, 'rgb(11, 17, 26)');
         assert(
           darkContrast.heading >= 4.5 &&
             darkContrast.label >= 4.5 &&

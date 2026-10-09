@@ -117,17 +117,23 @@ function OnboardingVisit({
                       key={`appearance:${c.session.user.id}`}
                       state={c}
                     />
-                    <Button
-                      tone="secondary"
-                      disabled={c.busy}
-                      onClick={() => void c.run(() => c.signOut())}
+                    <section
+                      className="profile-card account-session"
+                      aria-labelledby="session-heading"
                     >
-                      Sign out of this session
-                    </Button>
-                    <p>
-                      Other devices may remain signed in. Existing access tokens
-                      can remain valid for up to 15 minutes.
-                    </p>
+                      <h2 id="session-heading">Session</h2>
+                      <Button
+                        tone="secondary"
+                        disabled={c.busy}
+                        onClick={() => void c.run(() => c.signOut())}
+                      >
+                        Sign out of this session
+                      </Button>
+                      <p>
+                        Other devices may remain signed in. Existing access
+                        tokens can remain valid for up to 15 minutes.
+                      </p>
+                    </section>
                   </>
                 ) : (
                   <Link href="/sign-in">Sign in to your account</Link>

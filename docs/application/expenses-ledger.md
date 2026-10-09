@@ -43,10 +43,10 @@ The delivery PR records actual Chrome layout/navigation tests at 320/390/768/128
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
-The [approved visual foundation](../design/references/approved-ui/foundation.md) applies the published Board A/B palette, navigation, cards, category icons and structured filter drawer. Reset changes the filter draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
+The #223 tonal system supersedes the earlier [Board A/B visual foundation](../design/references/approved-ui/foundation.md), retaining navigation, category identity and structured filter behavior. Reset changes the filter draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
 
-[Remaining screen adoption](../design/references/approved-ui/adoption.md) applies
-the same system to expense detail and creation: category identity, exact total,
+The prior [screen adoption evidence](../design/references/approved-ui/adoption.md) records
+contract-preserving changes to expense detail and creation: category identity, exact total,
 payer and allocation rows, retained note/audit fields, and the existing explicit
 payer/split/participant controls. The boards do not remove required contract fields.
 
@@ -60,3 +60,15 @@ Current detail and complete balances use the current projection. Household detai
 edits always target the original source expense and recheck its membership; no
 aggregate writes or duplicated expenses are introduced. See
 [expense editing](expense-editing.md).
+
+## Category breakdown and viewer spending (#223)
+
+Expenses has URL-backed List and Breakdown views using the same active structured
+filters and traversal. Category aggregates, counts, viewer allocations and viewer
+payer totals describe every authorized matching expense at the traversal anchor,
+independently of loaded pages. Repayments are excluded. The category legend gives
+exact amounts and matching-expense counts even where viewer allocation is zero;
+percentages are rounded to one decimal place and may not sum to exactly 100%.
+Chart geometry converts only bounded integer ratios to numbers. Selecting a
+category and View expenses retains the other filters. A fresh traversal after an
+edit refreshes category/share aggregates along with list/month totals.

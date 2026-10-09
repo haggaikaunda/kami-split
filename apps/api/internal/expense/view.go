@@ -35,6 +35,13 @@ type SpendingMonth struct {
 	Total, Count int64
 }
 
+// SpendingCategory contains complete matching face values and stored viewer shares.
+// Count includes matching expenses with zero viewer allocations.
+type SpendingCategory struct {
+	Category                  string
+	Total, ViewerShare, Count int64
+}
+
 // ExpenseViewEdge preserves original expense and current authorized source metadata.
 type ExpenseViewEdge struct {
 	Record  Record
@@ -47,11 +54,13 @@ type ExpenseViewEdge struct {
 // global forward page. It exposes no balances or cross-group financial obligation.
 type ExpenseView struct {
 	// ContextVersion binds current authorized source/member metadata, not financial anchors.
-	ContextVersion       string
-	Total, Count         int64
-	Months               []SpendingMonth
-	Edges                []ExpenseViewEdge
-	HasNext, HasPrevious bool
+	ContextVersion          string
+	Total, Count            int64
+	ViewerShare, ViewerPaid int64
+	Categories              []SpendingCategory
+	Months                  []SpendingMonth
+	Edges                   []ExpenseViewEdge
+	HasNext, HasPrevious    bool
 }
 
 type viewScope struct {
@@ -60,6 +69,8 @@ type viewScope struct {
 }
 type viewWire struct {
 	State, Eligibility, ContextVersion, Total, Count string
+	ViewerShare, ViewerPaid                          string
+	Categories                                       []struct{ Category, Total, ViewerShare, Count string }
 	Groups                                           []string
 	ValidGroup, ValidMember                          bool
 	Revisions                                        []struct {
@@ -254,7 +265,7 @@ func checkedSpending(s string) (int64, error) {
 }
 
 func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseViewCursor, anchors []ledger.SpaceRevision, codec *ledger.CursorCodec) (ExpenseView, error) {
-	result := ExpenseView{ContextVersion: wire.ContextVersion, Months: []SpendingMonth{}, Edges: []ExpenseViewEdge{}, HasPrevious: cursor != nil}
+	result := ExpenseView{ContextVersion: wire.ContextVersion, Months: []SpendingMonth{}, Categories: []SpendingCategory{}, Edges: []ExpenseViewEdge{}, HasPrevious: cursor != nil}
 	var err error
 	result.Total, err = checkedSpending(wire.Total)
 	if err != nil {
@@ -263,6 +274,29 @@ func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseView
 	result.Count, err = checkedSpending(wire.Count)
 	if err != nil {
 		return ExpenseView{}, err
+	}
+	result.ViewerShare, err = checkedSpending(wire.ViewerShare)
+	if err != nil {
+		return ExpenseView{}, err
+	}
+	result.ViewerPaid, err = checkedSpending(wire.ViewerPaid)
+	if err != nil {
+		return ExpenseView{}, err
+	}
+	for _, c := range wire.Categories {
+		total, err := checkedSpending(c.Total)
+		if err != nil {
+			return ExpenseView{}, err
+		}
+		share, err := checkedSpending(c.ViewerShare)
+		if err != nil {
+			return ExpenseView{}, err
+		}
+		count, err := checkedSpending(c.Count)
+		if err != nil {
+			return ExpenseView{}, err
+		}
+		result.Categories = append(result.Categories, SpendingCategory{Category: c.Category, Total: total, ViewerShare: share, Count: count})
 	}
 	for _, m := range wire.Months {
 		total, err := checkedSpending(m.Total)

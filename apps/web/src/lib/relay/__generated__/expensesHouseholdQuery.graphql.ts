@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<07db37f429f42e38cf1c46cf70c19085>>
+ * @generated SignedSource<<c8858766d16b6e371157b30d4329ebd8>>
  * @lightSyntaxTransform
  */
 
@@ -100,10 +100,46 @@ v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "expenseCount",
+  "name": "viewerShareMinor",
   "storageKey": null
 },
 v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "viewerPaidMinor",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "category",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "expenseCount",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ExpenseCategoryTotal",
+  "kind": "LinkedField",
+  "name": "categories",
+  "plural": true,
+  "selections": [
+    (v8/*:: as any*/),
+    (v5/*:: as any*/),
+    (v6/*:: as any*/),
+    (v9/*:: as any*/)
+  ],
+  "storageKey": null
+},
+v11 = {
   "alias": null,
   "args": null,
   "concreteType": "ExpenseMonth",
@@ -119,39 +155,39 @@ v7 = {
       "storageKey": null
     },
     (v5/*:: as any*/),
-    (v6/*:: as any*/)
+    (v9/*:: as any*/)
   ],
   "storageKey": null
 },
-v8 = {
+v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cursor",
   "storageKey": null
 },
-v9 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "name",
   "storageKey": null
 },
-v10 = {
+v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "currency",
   "storageKey": null
 },
-v11 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v12 = {
+v16 = {
   "alias": null,
   "args": null,
   "concreteType": "Expense",
@@ -159,7 +195,7 @@ v12 = {
   "name": "node",
   "plural": false,
   "selections": [
-    (v11/*:: as any*/),
+    (v15/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -181,13 +217,7 @@ v12 = {
       "name": "effectiveDate",
       "storageKey": null
     },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "category",
-      "storageKey": null
-    },
+    (v8/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -203,7 +233,7 @@ v12 = {
       "name": "payer",
       "plural": false,
       "selections": [
-        (v11/*:: as any*/),
+        (v15/*:: as any*/),
         {
           "alias": null,
           "args": null,
@@ -230,7 +260,7 @@ v12 = {
           "name": "participant",
           "plural": false,
           "selections": [
-            (v11/*:: as any*/)
+            (v15/*:: as any*/)
           ],
           "storageKey": null
         },
@@ -247,7 +277,7 @@ v12 = {
   ],
   "storageKey": null
 },
-v13 = {
+v17 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -300,6 +330,9 @@ return {
                   (v5/*:: as any*/),
                   (v6/*:: as any*/),
                   (v7/*:: as any*/),
+                  (v10/*:: as any*/),
+                  (v9/*:: as any*/),
+                  (v11/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -308,7 +341,7 @@ return {
                     "name": "edges",
                     "plural": true,
                     "selections": [
-                      (v8/*:: as any*/),
+                      (v12/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -317,16 +350,16 @@ return {
                         "name": "source",
                         "plural": false,
                         "selections": [
-                          (v9/*:: as any*/),
-                          (v10/*:: as any*/)
+                          (v13/*:: as any*/),
+                          (v14/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v12/*:: as any*/)
+                      (v16/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v13/*:: as any*/)
+                  (v17/*:: as any*/)
                 ],
                 "type": "ExpenseView",
                 "abstractKey": null
@@ -369,6 +402,9 @@ return {
               (v5/*:: as any*/),
               (v6/*:: as any*/),
               (v7/*:: as any*/),
+              (v10/*:: as any*/),
+              (v9/*:: as any*/),
+              (v11/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -377,7 +413,7 @@ return {
                 "name": "edges",
                 "plural": true,
                 "selections": [
-                  (v8/*:: as any*/),
+                  (v12/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -386,17 +422,17 @@ return {
                     "name": "source",
                     "plural": false,
                     "selections": [
-                      (v9/*:: as any*/),
-                      (v10/*:: as any*/),
-                      (v11/*:: as any*/)
+                      (v13/*:: as any*/),
+                      (v14/*:: as any*/),
+                      (v15/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v12/*:: as any*/)
+                  (v16/*:: as any*/)
                 ],
                 "storageKey": null
               },
-              (v13/*:: as any*/)
+              (v17/*:: as any*/)
             ],
             "type": "ExpenseView",
             "abstractKey": null
@@ -407,12 +443,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "40890d6f894cbb1816d4b2bf993f8bfd",
+    "cacheID": "4c7f50deef07e35e00b1082d0f2eff60",
     "id": null,
     "metadata": {},
     "name": "expensesHouseholdQuery",
     "operationKind": "query",
-    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 20, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

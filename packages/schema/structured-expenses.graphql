@@ -40,6 +40,18 @@ type ExpenseView {
   """
   totalExpenseMinor: MinorUnits!
   """
+  Complete viewer allocated expense amount at the same filtered anchor, excluding repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Complete expenses paid by the viewer at the same filtered anchor, excluding repayments.
+  """
+  viewerPaidMinor: MinorUnits!
+  """
+  Complete matching category aggregates, ordered by category; unmatched categories omitted, zero viewer shares retained.
+  """
+  categories: [ExpenseCategoryTotal!]!
+  """
   Exact count of all matching expenses at the same anchor.
   """
   expenseCount: MinorUnits!
@@ -89,4 +101,26 @@ type ExpenseViewEdge {
   Original source Group ID, current label/kind/currency/trip metadata.
   """
   source: GroupSummary!
+}
+
+"""
+One category in the complete authorized filtered dataset at the traversal anchor.
+"""
+type ExpenseCategoryTotal {
+  """
+  Authoritative category shared by every expense in this aggregate.
+  """
+  category: Category!
+  """
+  Complete matching face-value amount, excluding repayments.
+  """
+  totalExpenseMinor: MinorUnits!
+  """
+  Complete stored viewer allocations, zero when absent; excludes repayments.
+  """
+  viewerShareMinor: MinorUnits!
+  """
+  Matching expense count in either basis, including expenses with zero viewer share.
+  """
+  expenseCount: MinorUnits!
 }

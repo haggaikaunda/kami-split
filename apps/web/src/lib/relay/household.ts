@@ -11,6 +11,8 @@ export const householdWorkspaceQuery = graphql`
         totals {
           __typename
           ... on HouseholdDashboardTotals {
+            viewerShareMinor
+            viewerPaidMinor
             viewerNetMinor
             openBalanceCount
             activeSpaceCount
@@ -69,6 +71,7 @@ export const householdWorkspaceQuery = graphql`
             description
             effectiveDate
             totalMinor
+            category
           }
           source {
             id

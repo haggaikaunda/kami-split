@@ -312,3 +312,187 @@
   background: var(--color-primary);
   color: var(--color-on-primary, white);
 }
+
+.ledger-view-switch {
+  display: flex;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  border-radius: 2rem;
+  background: var(--color-subtle);
+}
+.ledger-view-switch button[aria-pressed='true'],
+.breakdown-legend button[aria-pressed='true'] {
+  background: var(--color-primary-container, var(--color-subtle));
+  border-color: var(--color-primary);
+}
+.ledger-filter-chip {
+  border-radius: 2rem;
+  font-size: 0.85rem;
+}
+.expense-presentation > header {
+  position: sticky;
+  top: -1.25rem;
+  background: var(--color-surface);
+  z-index: 1;
+  padding-block: 0.75rem;
+}
+.expense-presentation > header h1 {
+  font-size: 1.25rem;
+}
+.expense-presentation {
+  overscroll-behavior: contain;
+  border-radius: 1.5rem 0 0 1.5rem;
+}
+.expense-breakdown {
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.expense-breakdown > header,
+.breakdown-drilldown {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.breakdown-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+.breakdown-chart {
+  position: relative;
+  max-width: 24rem;
+  width: 100%;
+  margin-inline: auto;
+}
+.breakdown-chart svg {
+  display: block;
+  width: 100%;
+}
+.breakdown-center {
+  position: absolute;
+  inset: 28% 21%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  overflow-wrap: anywhere;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+.breakdown-center .ui-money {
+  font-weight: 700;
+  font-size: clamp(0.85rem, 1.6vw, 1.2rem);
+}
+.breakdown-sector {
+  stroke: var(--color-category-other, #a795e4);
+}
+.breakdown-category--dining {
+  stroke: var(--color-category-dining, #eb9972);
+}
+.breakdown-category--groceries {
+  stroke: var(--color-category-groceries, #75bd91);
+}
+.breakdown-category--accommodation {
+  stroke: var(--color-category-accommodation, #a795e4);
+}
+.breakdown-category--transport {
+  stroke: var(--color-category-transport, #70afe2);
+}
+.breakdown-category--activities {
+  stroke: var(--color-category-activities, #dc91b3);
+}
+.breakdown-category--home {
+  stroke: var(--color-category-home, #dec17c);
+}
+.breakdown-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.breakdown-legend li {
+  margin-block: 0.4rem;
+}
+.breakdown-legend button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: 0.75rem;
+  text-align: start;
+  padding: 0.75rem;
+}
+.breakdown-legend button > span:nth-child(2) {
+  display: grid;
+  gap: 0.3rem;
+}
+.breakdown-legend button > span:nth-child(2) > span,
+.breakdown-rounding {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.breakdown-legend .ui-money {
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .expense-presentation {
+    border-radius: 0;
+  }
+  .breakdown-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+  .breakdown-chart {
+    max-width: 20rem;
+  }
+  .breakdown-legend button {
+    gap: 0.4rem;
+    padding: 0.6rem;
+  }
+}
+.expense-presentation-back {
+  display: none;
+}
+@media (max-width: 650px) {
+  .expense-presentation-back {
+    display: inline-flex;
+  }
+  .expense-presentation-close {
+    display: none;
+  }
+}
+
+/* Selection is distinct from the primary action, with readable secondary text. */
+.group-workspace .ledger-view-switch button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-muted);
+}
+.group-workspace .ledger-view-switch button[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.group-workspace .breakdown-legend button {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-separator);
+}
+.group-workspace .breakdown-legend button:hover:enabled {
+  background: var(--color-subtle);
+}
+.group-workspace .breakdown-legend button[aria-pressed='true'] {
+  background: var(--color-summary-share);
+  color: var(--color-on-summary);
+  border-color: var(--color-accent);
+}
+.group-workspace
+  .breakdown-legend
+  button[aria-pressed='true']
+  > span:nth-child(2)
+  > span {
+  color: var(--color-summary-muted);
+}

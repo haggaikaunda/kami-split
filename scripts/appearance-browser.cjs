@@ -87,6 +87,8 @@ function dashboard(state) {
           : {
               __typename: 'HouseholdDashboardTotals',
               viewerNetMinor: state.net,
+              viewerShareMinor: '4503599627370496',
+              viewerPaidMinor: '4503599627370496',
               openBalanceCount: '2',
               activeSpaceCount: '3',
               totalSharedExpenseMinor: '9007199254740993',
@@ -149,7 +151,7 @@ const path = require('node:path');
 const output = process.env.OUTPUT_DIR || '/tmp/kami-appearance-browser';
 fs.mkdirSync(output, { recursive: true });
 const port = process.env.PORT || '3193';
-const origin = `http://localhost:${port}`;
+const origin = process.env.BROWSER_ORIGIN || `http://localhost:${port}`;
 const delay = Number(process.env.FIXTURE_DELAY_MS || 250);
 const width = Number(process.env.WIDTH || 1280);
 const expense = {
@@ -169,6 +171,16 @@ const view = {
   __typename: 'ExpenseView',
   __isExpenseViewResult: 'ExpenseView',
   totalExpenseMinor: '300',
+  viewerShareMinor: '300',
+  viewerPaidMinor: '300',
+  categories: [
+    {
+      category: 'GROCERIES',
+      totalExpenseMinor: '300',
+      viewerShareMinor: '300',
+      expenseCount: '1',
+    },
+  ],
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
   edges: [{ cursor: 'e1', node: expense, source: groups[0] }],
@@ -398,6 +410,8 @@ async function checkContrast(page) {
         totals: {
           ...data.householdDashboard.totals,
           viewerNetMinor: '0',
+          viewerShareMinor: '0',
+          viewerPaidMinor: '0',
           openBalanceCount: '0',
           totalSharedExpenseMinor: '0',
           totalSharedExpenseCount: '0',

@@ -1,7 +1,7 @@
 'use client';
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Field, Status } from '@/components/primitives';
+import { Button, Field, Status, Member } from '@/components/primitives';
 import { useFinancialSession } from '@/components/groups/session';
 import query from '@/lib/relay/__generated__/profileQuery.graphql';
 import mutation from '@/lib/relay/__generated__/profileMutation.graphql';
@@ -154,29 +154,31 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
             void action(save);
           }}
         >
-          <p>
-            Current display name: <strong>{profile.displayName}</strong>
-          </p>
-          <Field
-            id="display-name"
-            label="Display name"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setMessage('');
-              setFailed(false);
-            }}
-            disabled={working}
-            error={failed ? message : undefined}
-            hint="Visible to people who share your spaces. Use 1–120 characters; surrounding whitespace is removed."
-          />
-          <Field
-            id="account-email"
-            label="Email address"
-            type="email"
-            value={c.session?.user.email ?? ''}
-            readOnly
-          />
+          <div className="account-identity">
+            <Member name={profile.displayName} detail={c.session?.user.email} />
+          </div>
+          <div className="account-profile-fields">
+            <Field
+              id="display-name"
+              label="Display name"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setMessage('');
+                setFailed(false);
+              }}
+              disabled={working}
+              error={failed ? message : undefined}
+              hint="Visible to people who share your spaces. Use 1–120 characters; surrounding whitespace is removed."
+            />
+            <Field
+              id="account-email"
+              label="Email address"
+              type="email"
+              value={c.session?.user.email ?? ''}
+              readOnly
+            />
+          </div>
           <div className="onboarding-actions profile-actions">
             <Button type="submit" disabled={working || !dirty || uncertain}>
               Save changes

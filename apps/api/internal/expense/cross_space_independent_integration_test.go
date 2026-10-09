@@ -18,7 +18,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
-const independentViewFields = `__typename ... on Problem{code message} ... on ExpenseView{totalExpenseMinor expenseCount months{month totalExpenseMinor expenseCount} edges{cursor source{id name kind currency isHousehold trip{destination startDate endDate}} node{id groupId totalMinor effectiveDate createdAt category payer{id displayName} creator{id} allocations{participant{id} amountMinor}}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}}`
+const independentViewFields = `__typename ... on Problem{code message} ... on ExpenseView{viewerShareMinor viewerPaidMinor categories{category totalExpenseMinor viewerShareMinor expenseCount} totalExpenseMinor expenseCount months{month totalExpenseMinor expenseCount} edges{cursor source{id name kind currency isHousehold trip{destination startDate endDate}} node{id groupId totalMinor effectiveDate createdAt category payer{id displayName} creator{id} allocations{participant{id} amountMinor}}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}}`
 const independentHouseholdViewQuery = `query($first:Int!,$after:String,$filter:StructuredExpenseFilter){householdExpenses(first:$first,after:$after,filter:$filter){` + independentViewFields + `}}`
 const independentGroupViewQuery = `query($group:ID!,$first:Int!,$after:String,$filter:StructuredExpenseFilter){groupExpenses(groupId:$group,first:$first,after:$after,filter:$filter){` + independentViewFields + `}}`
 

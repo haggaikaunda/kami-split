@@ -39,6 +39,8 @@ import {
 } from '@/components/primitives';
 import { ExpenseDetail } from '@/components/groups/expense-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
+import { ExpensePresentation } from './presentation';
+import { ExpenseBreakdown } from './breakdown';
 import './ledger.css';
 
 type View = Extract<expensesView$data, { readonly __typename: 'ExpenseView' }>;
@@ -83,7 +85,6 @@ function LedgerContent({
   spaces,
   today,
   net,
-  activeSpaces,
   onDenied,
   onRefreshContext,
   onEditSaved,
@@ -118,6 +119,8 @@ function LedgerContent({
   const selected = params.get('expense') ?? '',
     source = params.get('expenseGroup') ?? groupId;
   const create = params.get('create') ?? '';
+  const breakdown = params.get('view') === 'breakdown';
+  const basis = params.get('basis') === 'share' ? 'share' : 'total';
   const [page, setPage] = useState<View>();
   const [rows, setRows] = useState<View['edges']>([]);
   const [after, setAfter] = useState<string | null>(null);
@@ -364,6 +367,7 @@ function LedgerContent({
       {navigationPending && <p role="status">Opening expense view…</p>}
       <div className="ui-summary-row" ref={summary} tabIndex={-1}>
         <SummaryMetric
+          tone="total"
           label={groupId ? 'Total expenses' : 'Total shared expenses'}
         >
           {page && !error ? (
@@ -379,7 +383,8 @@ function LedgerContent({
         </SummaryMetric>
         {net === '0' ? (
           <SummaryMetric
-            label={groupId ? 'Your balance' : 'Your net balance'}
+            tone="net"
+            label="Your net balance"
             detail={
               groupId ? 'Unfiltered' : 'Net zero across spaces · unfiltered'
             }
@@ -388,7 +393,7 @@ function LedgerContent({
           </SummaryMetric>
         ) : net !== undefined ? (
           <SignedBalanceMetric
-            label={groupId ? 'Your balance' : 'Your net balance'}
+            label="Your net balance"
             scope={groupId ? 'group' : 'household'}
             position={
               minor(net) > 0n
@@ -402,15 +407,37 @@ function LedgerContent({
             detail={`${minor(net) > 0n ? "You're owed" : 'You owe'} · unfiltered`}
           />
         ) : (
-          <SummaryMetric label="Your balance">Unavailable</SummaryMetric>
-        )}
-        {!groupId && (
-          <SummaryMetric label="Active spaces">
-            {activeSpaces ?? 'Unavailable'}
+          <SummaryMetric tone="net" label="Your net balance">
+            Unavailable
           </SummaryMetric>
         )}
+        <SummaryMetric
+          label="Your share"
+          tone="share"
+          detail="Allocated expenses · filtered"
+        >
+          {page && !error ? (
+            <Money value={money(page.viewerShareMinor)} currency="USD" />
+          ) : (
+            'Unavailable'
+          )}
+        </SummaryMetric>
       </div>
       <div className="ledger-toolbar">
+        <nav className="ledger-view-switch" aria-label="Expense view">
+          <button
+            aria-pressed={!breakdown}
+            onClick={() => change({ view: null })}
+          >
+            List
+          </button>
+          <button
+            aria-pressed={breakdown}
+            onClick={() => change({ view: 'breakdown' })}
+          >
+            Breakdown
+          </button>
+        </nav>
         <button
           ref={filterTrigger}
           className="ledger-filter-button"
@@ -442,16 +469,40 @@ function LedgerContent({
       </div>
       {filterText && (
         <div className="ledger-active-filters">
-          <p>
-            Active filters:{' '}
-            {filterKeys
-              .filter((key) => params.get(key))
-              .map(
-                (key) =>
-                  `${key === 'groupId' ? 'Space' : key === 'memberId' ? 'Member' : key}: ${key === 'groupId' ? (spaces.find((s) => s.groupId === params.get(key))?.name ?? 'Selected space') : key === 'memberId' ? (spaces.flatMap((s) => s.members).find((m) => m.id === params.get(key))?.displayName ?? 'Selected member') : params.get(key)}`,
-              )
-              .join(' · ')}
-          </p>
+          <span>Active filters:</span>
+          {filterKeys
+            .filter((key) => params.get(key))
+            .map((key) => {
+              const label =
+                key === 'groupId'
+                  ? 'Space'
+                  : key === 'memberId'
+                    ? 'Member'
+                    : key[0].toUpperCase() + key.slice(1);
+              const value =
+                key === 'groupId'
+                  ? (spaces.find((s) => s.groupId === params.get(key))?.name ??
+                    'Selected space')
+                  : key === 'memberId'
+                    ? (spaces
+                        .flatMap((s) => s.members)
+                        .find((m) => m.id === params.get(key))?.displayName ??
+                      'Selected member')
+                    : params.get(key);
+              return (
+                <button
+                  key={key}
+                  className="ledger-filter-chip"
+                  aria-label={`Remove ${label}: ${value}`}
+                  onClick={() => {
+                    reset();
+                    change({ [key]: null });
+                  }}
+                >
+                  {label}: {value} <span aria-hidden="true">×</span>
+                </button>
+              );
+            })}
           <button
             onClick={() => {
               reset();
@@ -469,105 +520,129 @@ function LedgerContent({
       ) : (
         page && (
           <>
-            {!rows.length && !loading && (
-              <p>
-                {filterText
-                  ? 'No expenses match these filters.'
-                  : 'No expenses yet.'}
-              </p>
-            )}
-            {page.months
-              .filter((month) =>
-                rows.some(({ node }) =>
-                  node.effectiveDate.startsWith(month.month),
-                ),
-              )
-              .map((month) => (
-                <section
-                  className="ledger-month"
-                  key={month.month}
-                  aria-label={month.month}
-                >
-                  <header>
-                    <h2>
-                      {new Intl.DateTimeFormat('en', {
-                        month: 'long',
-                        year: 'numeric',
-                        timeZone: 'UTC',
-                      }).format(new Date(`${month.month}-01T00:00:00Z`))}
-                    </h2>
-                    <span>
-                      {money(month.totalExpenseMinor)} USD ·{' '}
-                      {month.expenseCount} expenses
-                    </span>
-                  </header>
-                  <ul>
-                    {rows
-                      .filter(({ node }) =>
-                        node.effectiveDate.startsWith(month.month),
-                      )
-                      .map(({ node, source }) => {
-                        const viewer = spaces.find(
-                          (s) => s.groupId === node.groupId,
-                        )?.viewerMembership.id;
-                        const share = node.allocations.find(
-                          (a) => a.participant.id === viewer,
-                        )?.amountMinor;
-                        const next = new URLSearchParams(params);
-                        next.set('expense', node.id);
-                        next.set('expenseGroup', node.groupId);
-                        const id = `ledger-expense-${node.id}`;
-                        return (
-                          <li key={node.id}>
-                            <Link
-                              id={id}
-                              href={`${pathname}?${next}`}
-                              scroll={false}
-                              onNavigate={() => {
-                                origin.current = { id, scroll: window.scrollY };
-                              }}
-                            >
-                              <time dateTime={node.effectiveDate}>
-                                {node.effectiveDate.slice(8)}
-                              </time>
-                              <CategoryIcon category={node.category} />
-                              <span className="ledger-description">
-                                <strong>{node.description}</strong>
-                                <span>
-                                  {!groupId && (
-                                    <SpaceChip>{source.name}</SpaceChip>
-                                  )}{' '}
-                                  Paid by {node.payer.displayName}
-                                </span>
-                              </span>
-                              <span className="ledger-money">
-                                <Money
-                                  value={money(node.totalMinor)}
-                                  currency={source.currency}
-                                />
-                                <span>
-                                  Your share{' '}
-                                  {viewer ? money(share ?? '0') : 'unavailable'}
-                                </span>
-                              </span>
-                              <span aria-hidden="true">›</span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </section>
-              ))}
-            {page.pageInfo.hasNextPage && (
-              <button
-                disabled={loading}
-                onClick={() => {
-                  setLoading(true);
-                  setAfter(page.pageInfo.endCursor ?? null);
+            {breakdown ? (
+              <ExpenseBreakdown
+                categories={page.categories}
+                totalExpenseMinor={page.totalExpenseMinor}
+                viewerShareMinor={page.viewerShareMinor}
+                expenseCount={page.expenseCount}
+                basis={basis}
+                onBasis={(next) =>
+                  change({ basis: next === 'share' ? 'share' : null })
+                }
+                onViewExpenses={(category) => {
+                  if (category && category !== params.get('category')) reset();
+                  change({ view: null, ...(category ? { category } : {}) });
                 }}
-              >
-                Load more expenses
-              </button>
+              />
+            ) : (
+              <>
+                {!rows.length && !loading && (
+                  <p>
+                    {filterText
+                      ? 'No expenses match these filters.'
+                      : 'No expenses yet.'}
+                  </p>
+                )}
+                {page.months
+                  .filter((month) =>
+                    rows.some(({ node }) =>
+                      node.effectiveDate.startsWith(month.month),
+                    ),
+                  )
+                  .map((month) => (
+                    <section
+                      className="ledger-month"
+                      key={month.month}
+                      aria-label={month.month}
+                    >
+                      <header>
+                        <h2>
+                          {new Intl.DateTimeFormat('en', {
+                            month: 'long',
+                            year: 'numeric',
+                            timeZone: 'UTC',
+                          }).format(new Date(`${month.month}-01T00:00:00Z`))}
+                        </h2>
+                        <span>
+                          {money(month.totalExpenseMinor)} USD ·{' '}
+                          {month.expenseCount} expenses
+                        </span>
+                      </header>
+                      <ul>
+                        {rows
+                          .filter(({ node }) =>
+                            node.effectiveDate.startsWith(month.month),
+                          )
+                          .map(({ node, source }) => {
+                            const viewer = spaces.find(
+                              (s) => s.groupId === node.groupId,
+                            )?.viewerMembership.id;
+                            const share = node.allocations.find(
+                              (a) => a.participant.id === viewer,
+                            )?.amountMinor;
+                            const next = new URLSearchParams(params);
+                            next.set('expense', node.id);
+                            next.set('expenseGroup', node.groupId);
+                            const id = `ledger-expense-${node.id}`;
+                            return (
+                              <li key={node.id}>
+                                <Link
+                                  id={id}
+                                  href={`${pathname}?${next}`}
+                                  scroll={false}
+                                  onNavigate={() => {
+                                    origin.current = {
+                                      id,
+                                      scroll: window.scrollY,
+                                    };
+                                  }}
+                                >
+                                  <time dateTime={node.effectiveDate}>
+                                    {node.effectiveDate.slice(8)}
+                                  </time>
+                                  <CategoryIcon category={node.category} />
+                                  <span className="ledger-description">
+                                    <strong>{node.description}</strong>
+                                    <span>
+                                      {!groupId && (
+                                        <SpaceChip>{source.name}</SpaceChip>
+                                      )}{' '}
+                                      Paid by {node.payer.displayName}
+                                    </span>
+                                  </span>
+                                  <span className="ledger-money">
+                                    <Money
+                                      value={money(node.totalMinor)}
+                                      currency={source.currency}
+                                    />
+                                    <span>
+                                      Your share{' '}
+                                      {viewer
+                                        ? money(share ?? '0')
+                                        : 'unavailable'}
+                                    </span>
+                                  </span>
+                                  <span aria-hidden="true">›</span>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    </section>
+                  ))}
+                {page.pageInfo.hasNextPage && (
+                  <button
+                    disabled={loading}
+                    onClick={() => {
+                      setLoading(true);
+                      setAfter(page.pageInfo.endCursor ?? null);
+                    }}
+                  >
+                    Load more expenses
+                  </button>
+                )}
+              </>
             )}
           </>
         )
@@ -581,7 +656,7 @@ function LedgerContent({
         </LedgerDialog>
       )}
       {(selected || create) && (
-        <LedgerDialog
+        <ExpensePresentation
           title={selected ? 'Expense detail' : 'Add expense'}
           onClose={close}
         >
@@ -650,7 +725,7 @@ function LedgerContent({
               Source space unavailable. Refresh current access.
             </p>
           )}
-        </LedgerDialog>
+        </ExpensePresentation>
       )}
     </section>
   );

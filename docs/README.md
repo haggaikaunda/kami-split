@@ -43,7 +43,7 @@ The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CO
 
 ## Approved production visual references
 
-[Board A and Board B](design/references/approved-ui/README.md) are the required visual targets for #189, with original assets, panel mapping, semantic corrections and an implementation/evidence ledger.
+Issue #223 adopts the owner-approved Material-inspired Tonal overview: pale Light summary cards and illustrated banners, contrasted Dark surfaces, and preserved production behavior. The [workspace parity inventory](design/material-parity-workspaces.md) indexes the migration and its verification. [Board A and Board B](design/references/approved-ui/README.md) preserve the earlier #189 reference and evidence; #223 supersedes their visual direction.
 
 ## Approved design archive
 

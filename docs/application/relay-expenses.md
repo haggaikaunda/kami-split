@@ -18,17 +18,18 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery and `/trips` lists independent authenticated Trip groups. This slice does not implement
-expense edit/delete.
+[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-The [approved Board A/B adoption](../design/references/approved-ui/adoption.md)
-uses a scenic Trip header and neutral Group/Household artwork, compact member
-initials, white financial cards and source-scoped balance rows. Repayment entry
+The #223 tonal system retains the scenic Trip and Household artwork, compact
+member initials and source-scoped balance rows established by the earlier
+[Board A/B adoption](../design/references/approved-ui/adoption.md). Theme-specific
+overlays and blue-grey/mint/lavender financial cards now carry the approved
+Light/Dark hierarchy. Repayment entry
 keeps its recovery navigation while focusing the main area on the existing form.
 The visible **Refresh** action retains its descriptive accessible name.
 
@@ -150,7 +151,7 @@ The canonical group route defaults to Overview. The common Overview, Expenses,
 Balances, Activity and Members navigation uses `tab` in the URL, preserving direct
 entry and history. Ordinary groups use neutral contextual art; trips add travel
 metadata/abstract illustration. Complete server totals and viewer positions drive
-two horizontal overview metrics; a zero viewer position does not imply every
+three tonal overview metrics (total, viewer net, and complete viewer share); a zero viewer position does not imply every
 member is settled. Balance details identify each simplified obligation and offer
 repayment entry only on an explicit eligible sender/recipient row. Summary cards
 only disclose balance details. See [persisted repayments](persisted-repayments.md)
@@ -161,7 +162,7 @@ Owner settings disclose current metadata; metadata editing remains unavailable.
 
 #112 connects `/household` to the complete authorized `householdDashboard` read.
 Overview shows expense face-value total/count, exact signed viewer net/open-space
-count, and eligible-space count in a horizontal row, followed by at most five
+count, and complete viewer share with expense-payer amount in a tonal row, followed by at most five
 source-attributed expenses from `householdExpenses`. Balances uses the complete
 server source set and never derives totals from the recent page. No Household
 settlement action exists: each row opens its original group's Balances surface.

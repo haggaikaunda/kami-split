@@ -10,6 +10,19 @@ import {
 } from './household-workspace';
 import type { FinancialScope } from '@/lib/relay/environment';
 const queries = vi.hoisted(() => ({ fetch: vi.fn() }));
+vi.mock('./overview-expense', () => ({
+  OverviewExpense: ({ onCommitted }: { onCommitted: () => Promise<void> }) => (
+    <button onClick={() => void onCommitted()}>Complete confirmed edit</button>
+  ),
+  OverviewExpenseLink: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
+}));
+
 vi.mock('@/components/onboarding/scoped-invitations', () => ({
   ScopedInvitations: ({ group }: { group: { id: string; name: string } }) => (
     <section data-invitation-group={group.id}>
@@ -69,6 +82,8 @@ function fixture(net = '0'): Dashboard {
     state: 'COMPLETE',
     totals: {
       __typename: 'HouseholdDashboardTotals',
+      viewerShareMinor: '12345',
+      viewerPaidMinor: '20000',
       viewerNetMinor: net,
       openBalanceCount: '2',
       activeSpaceCount: '3',
@@ -422,4 +437,33 @@ it('shows one concise settled status without a duplicate open balance count', as
   expect(net.textContent).toContain('No open source balances');
   expect(net.textContent).not.toContain('0 open balances');
   expect(net.querySelector('a')).toBeNull();
+});
+
+it('keeps confirmed edit success distinct from a failed Household refresh without replaying the save', async () => {
+  queries.fetch
+    .mockReturnValueOnce({ toPromise: async () => result() })
+    .mockReturnValueOnce({
+      toPromise: async () => {
+        throw new Error('refresh offline');
+      },
+    });
+  await act(async () =>
+    root.render(<HouseholdRead scope={scope} current="Overview" />),
+  );
+  expect(host.textContent).toContain('Maui');
+  await act(async () =>
+    Array.from(host.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Complete confirmed edit')!
+      .click(),
+  );
+  expect(queries.fetch).toHaveBeenCalledTimes(2);
+  expect(host.textContent).toContain('Expense edit saved.');
+  expect(host.textContent).toContain(
+    'unavailable data does not undo your edit.',
+  );
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    'Household data is unavailable.',
+  );
+  expect(host.textContent).not.toContain('Maui');
+  expect(host.textContent).not.toContain('Complete confirmed edit');
 });

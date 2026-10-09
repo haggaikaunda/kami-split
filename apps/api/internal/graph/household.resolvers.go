@@ -34,7 +34,7 @@ func (r *queryResolver) HouseholdDashboard(ctx context.Context) (model.Household
 	}
 	if out.Totals != nil {
 		t := out.Totals
-		result.Totals = &model.HouseholdDashboardTotals{ViewerNetMinor: ledger.MinorUnits(t.ViewerNetMinor), OpenBalanceCount: ledger.MinorUnits(t.OpenBalanceCount), ActiveSpaceCount: ledger.MinorUnits(t.ActiveSpaceCount), TotalSharedExpenseMinor: ledger.MinorUnits(t.TotalSharedExpenseMinor), TotalSharedExpenseCount: ledger.MinorUnits(t.TotalSharedExpenseCount)}
+		result.Totals = &model.HouseholdDashboardTotals{ViewerShareMinor: ledger.MinorUnits(t.ViewerShareMinor), ViewerPaidMinor: ledger.MinorUnits(t.ViewerPaidMinor), ViewerNetMinor: ledger.MinorUnits(t.ViewerNetMinor), OpenBalanceCount: ledger.MinorUnits(t.OpenBalanceCount), ActiveSpaceCount: ledger.MinorUnits(t.ActiveSpaceCount), TotalSharedExpenseMinor: ledger.MinorUnits(t.TotalSharedExpenseMinor), TotalSharedExpenseCount: ledger.MinorUnits(t.TotalSharedExpenseCount)}
 	} else if out.State == "INCOMPLETE" {
 		result.Totals = problem(ctx, expense.Failure("AMOUNT_OVERFLOW"))
 	}

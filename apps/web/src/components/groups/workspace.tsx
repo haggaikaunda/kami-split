@@ -5,7 +5,8 @@ import {
   spaceExpenseHref,
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
-import { CategoryIcon } from '@/components/workspace-identity';
+import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
+import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
@@ -165,13 +166,51 @@ export function GroupWorkspace({
       ) : current === 'Overview' ? (
         <>
           <OverviewMetrics scope={scope} group={group} />
-          <section aria-labelledby="recent-expenses-title">
-            <div className="group-section-heading">
-              <h2 id="recent-expenses-title">Recent expenses</h2>
-              <Link href={hrefFor('Expenses')}>View all expenses</Link>
-            </div>
-            <Expenses scope={scope} group={group} recent />
-          </section>
+          <div className="workspace-overview-columns">
+            <section aria-labelledby="recent-expenses-title">
+              <div className="group-section-heading">
+                <h2 id="recent-expenses-title">Recent expenses</h2>
+                <Link href={hrefFor('Expenses')}>View all expenses</Link>
+              </div>
+              <Expenses scope={scope} group={group} recent />
+            </section>
+            <aside
+              className="workspace-overview-balances"
+              aria-label="Overview member balances"
+            >
+              <h2>Member balances</h2>
+              {group.balances?.__typename === 'GroupBalances' ? (
+                group.balances.positions.map((p) => (
+                  <MemberBalanceRow
+                    key={p.member.id}
+                    name={p.member.displayName}
+                  >
+                    <p>
+                      {minor(p.netMinor) > 0n
+                        ? 'Owed'
+                        : minor(p.netMinor) < 0n
+                          ? 'Owes'
+                          : 'Net zero'}{' '}
+                      · {money(p.netMinor)} {group.currency}
+                    </p>
+                  </MemberBalanceRow>
+                ))
+              ) : (
+                <p role="alert">Balances are unavailable.</p>
+              )}
+              <Link href={hrefFor('Balances')}>View balance details</Link>
+            </aside>
+          </div>
+          <OverviewExpense
+            scope={scope}
+            allowed={[group.id]}
+            sourceNames={{ [group.id]: group.name }}
+            onCommitted={async () => {
+              onEditSaved?.();
+              await onRefresh();
+            }}
+            onUnavailable={onDenied}
+          />
         </>
       ) : current === 'Expenses' ? (
         <ExpenseLedger
@@ -245,7 +284,7 @@ function ViewerMetric({
       : undefined;
   if (!viewer)
     return (
-      <SummaryMetric label="Your balance">
+      <SummaryMetric label="Your net balance">
         <span role="alert">Balances are unavailable</span>
       </SummaryMetric>
     );
@@ -254,7 +293,7 @@ function ViewerMetric({
   return (
     <SignedBalanceMetric
       position={position}
-      label="Your balance"
+      label="Your net balance"
       value={`${net > 0n ? '+' : ''}${money(viewer.netMinor)}`}
       currency={group.currency}
       detail={
@@ -290,9 +329,19 @@ function OverviewMetrics({
   scope: FinancialScope;
   group: WorkspaceGroup;
 }) {
+  const viewer =
+    group.balances?.__typename === 'GroupBalances'
+      ? group.balances.positions.find(
+          (p) => p.member.id === group.viewerMembership.id,
+        )
+      : undefined;
   return (
     <div className="ui-summary-row">
-      <SummaryMetric label="Total expenses">
+      <SummaryMetric
+        label="Total expenses"
+        tone="total"
+        icon={<AppIcon name="expense" />}
+      >
         {group.balances?.__typename === 'GroupBalances' ? (
           <Money
             value={money(group.balances.totalExpenseMinor)}
@@ -303,6 +352,22 @@ function OverviewMetrics({
         )}
       </SummaryMetric>
       <ViewerMetric scope={scope} group={group} disclosure />
+      <SummaryMetric
+        label="Your share"
+        tone="share"
+        icon={<AppIcon name="expense" />}
+        detail={
+          viewer
+            ? `You paid ${money(viewer.paidMinor)} ${group.currency} · Excludes repayments`
+            : undefined
+        }
+      >
+        {viewer ? (
+          <Money value={money(viewer.owedMinor)} currency={group.currency} />
+        ) : (
+          <span role="alert">Your share is unavailable</span>
+        )}
+      </SummaryMetric>
     </div>
   );
 }
@@ -311,9 +376,9 @@ function Expenses({
   group,
   recent = false,
 }: {
-  scope: FinancialScope;
   group: WorkspaceGroup;
   recent?: boolean;
+  scope: FinancialScope;
 }) {
   const page = group.expenses;
   if (!page)
@@ -337,9 +402,10 @@ function Expenses({
         (edge) =>
           edge && (
             <li key={edge.node.id}>
-              <ScopedLink
+              <OverviewExpenseLink
                 scope={scope}
-                id={`expense-${edge.node.id}`}
+                group={group.id}
+                id={edge.node.id}
                 href={spaceExpenseHref(group, edge.node.id)}
               >
                 <CategoryIcon category={edge.node.category} />
@@ -357,7 +423,7 @@ function Expenses({
                   value={money(edge.node.totalMinor)}
                   currency={group.currency}
                 />
-              </ScopedLink>
+              </OverviewExpenseLink>
             </li>
           ),
       )}

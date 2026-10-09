@@ -10,7 +10,10 @@ selected AS (SELECT value::uuid AS id FROM scope,jsonb_array_elements_text(scope
 revisions AS (SELECT s.id,coalesce(max(f.revision),0) AS revision FROM selected s LEFT JOIN app.financial_records f ON f.group_id=s.id GROUP BY s.id),
 anchors AS (SELECT x.group_id::uuid AS id,x.revision FROM jsonb_to_recordset(coalesce($6::jsonb,'[]'::jsonb)) x(group_id text,revision bigint)),
 filtered AS MATERIALIZED (
- SELECT e.* FROM selected s JOIN revisions r ON r.id=s.id CROSS JOIN LATERAL app.expenses_at_revision(s.id,coalesce((SELECT revision FROM anchors WHERE id=s.id),r.revision)) e
+ SELECT e.*,
+  coalesce((SELECT sum(a.amount_minor) FROM app.allocations_at_revision(e.id,e.version) a WHERE a.participant_id=app.viewer_membership(e.group_id)),0) AS viewer_share_minor,
+  CASE WHEN e.payer_id=app.viewer_membership(e.group_id) THEN e.total_minor ELSE 0 END AS viewer_paid_minor
+ FROM selected s JOIN revisions r ON r.id=s.id CROSS JOIN LATERAL app.expenses_at_revision(s.id,coalesce((SELECT revision FROM anchors WHERE id=s.id),r.revision)) e
  WHERE ($1::uuid IS NULL OR e.group_id=$1) AND ($2::uuid IS NULL OR e.payer_id=$2 OR EXISTS(SELECT FROM app.allocations_at_revision(e.id,e.version) a WHERE a.expense_id=e.id AND a.participant_id=$2))
  AND ($3::date IS NULL OR e.effective_date>=$3) AND ($4::date IS NULL OR e.effective_date<=$4) AND ($5::text IS NULL OR e.category=$5)
 ), page AS (
@@ -23,6 +26,8 @@ SELECT jsonb_build_object(
  'ValidMember',($2::uuid IS NULL OR EXISTS(SELECT FROM app.memberships m JOIN selected s ON s.id=m.group_id WHERE m.id=$2 AND ($1::uuid IS NULL OR m.group_id=$1))),
  'Revisions',coalesce((SELECT jsonb_agg(jsonb_build_object('GroupID',id,'Revision',revision) ORDER BY id) FROM revisions),'[]'::jsonb),
  'Total',(SELECT coalesce(sum(total_minor),0)::text FROM filtered),'Count',(SELECT count(*)::text FROM filtered),
+ 'ViewerShare',(SELECT coalesce(sum(viewer_share_minor),0)::text FROM filtered),'ViewerPaid',(SELECT coalesce(sum(viewer_paid_minor),0)::text FROM filtered),
+ 'Categories',coalesce((SELECT jsonb_agg(jsonb_build_object('Category',category,'Total',total,'ViewerShare',share,'Count',count) ORDER BY category) FROM (SELECT category,sum(total_minor)::text AS total,sum(viewer_share_minor)::text AS share,count(*)::text AS count FROM filtered GROUP BY category) categories),'[]'::jsonb),
  'Months',coalesce((SELECT jsonb_agg(jsonb_build_object('Month',month,'Total',total,'Count',count) ORDER BY month DESC) FROM months),'[]'::jsonb),
  'Sources',coalesce((SELECT jsonb_agg(jsonb_build_object('ID',g.id,'Name',g.name,'Currency',g.currency,'IsHousehold',app.is_household_group(g.id),
   'Trip',(SELECT jsonb_build_object('destination',t.destination,'startDate',to_char(t.start_date,'YYYY-MM-DD'),'endDate',to_char(t.end_date,'YYYY-MM-DD')) FROM app.group_trip t WHERE t.group_id=g.id),

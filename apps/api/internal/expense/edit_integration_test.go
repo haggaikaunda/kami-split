@@ -106,7 +106,7 @@ func TestEditCollaborativeVersionsHistoryAndAnchoredViews(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if current.Total != 800 || current.Count != 1 || len(current.Months) != 1 || current.Months[0].Month != "2026-10" {
+		if current.ViewerShare != 600 || current.ViewerPaid != 800 || len(current.Categories) != 1 || current.Categories[0].Category != "GROCERIES" || current.Categories[0].ViewerShare != 600 || current.Total != 800 || current.Count != 1 || len(current.Months) != 1 || current.Months[0].Month != "2026-10" {
 			t.Fatalf("current totals: %+v", current)
 		}
 		anchored := viewIn
@@ -115,7 +115,7 @@ func TestEditCollaborativeVersionsHistoryAndAnchoredViews(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if continuation.Total != 1000 || continuation.Count != 1 || continuation.Months[0].Month != "2026-09" || len(continuation.Edges) != 0 {
+		if continuation.ViewerShare != first.ViewerShare || continuation.ViewerPaid != first.ViewerPaid || len(continuation.Categories) != 1 || continuation.Categories[0] != first.Categories[0] || continuation.Total != 1000 || continuation.Count != 1 || continuation.Months[0].Month != "2026-09" || len(continuation.Edges) != 0 {
 			t.Fatalf("mutated anchored dataset: %+v", continuation)
 		}
 		events, err := service.ReadActivity(ctx, expense.ActivityRequest{GroupID: f.input.GroupID, First: 10}, codec)

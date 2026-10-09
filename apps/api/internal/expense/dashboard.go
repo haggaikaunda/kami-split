@@ -27,15 +27,17 @@ type Dashboard struct {
 // DashboardSpace keeps each original ledger independently actionable. Net is
 // absent when the complete financial projection exceeds its exact bounds.
 type DashboardSpace struct {
-	Snapshot     Snapshot
-	ViewerNet    *int64
-	ExpenseCount int64
+	Snapshot                Snapshot
+	ViewerNet               *int64
+	ExpenseCount            int64
+	ViewerShare, ViewerPaid int64
 }
 
 // DashboardTotals contains informational exact sums, never a repayment target.
 // Counts use the canonical exact scalar range, independently of pagination.
 type DashboardTotals struct {
 	ViewerNetMinor, OpenBalanceCount, ActiveSpaceCount int64
+	ViewerShareMinor, ViewerPaidMinor                  int64
 	TotalSharedExpenseMinor, TotalSharedExpenseCount   int64
 }
 
@@ -109,6 +111,8 @@ func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
 						if p.MemberID == snapshot.ViewerMembershipID {
 							net := p.Net
 							space.ViewerNet = &net
+							space.ViewerShare = p.Owed
+							space.ViewerPaid = p.Paid
 						}
 					}
 				}
@@ -137,22 +141,25 @@ func (s *Service) ReadDashboard(ctx context.Context) (Dashboard, error) {
 
 func dashboardTotals(spaces []DashboardSpace) *DashboardTotals {
 	net, total, count := new(big.Int), new(big.Int), new(big.Int)
+	share, paid := new(big.Int), new(big.Int)
 	open := int64(0)
 	for _, space := range spaces {
 		if space.ViewerNet == nil || space.Snapshot.BalanceError != "" {
 			return nil
 		}
 		net.Add(net, big.NewInt(*space.ViewerNet))
+		share.Add(share, big.NewInt(space.ViewerShare))
+		paid.Add(paid, big.NewInt(space.ViewerPaid))
 		total.Add(total, big.NewInt(space.Snapshot.Total))
 		count.Add(count, big.NewInt(space.ExpenseCount))
 		if *space.ViewerNet != 0 {
 			open++
 		}
 	}
-	if !net.IsInt64() || (net.IsInt64() && net.Int64() == math.MinInt64) || !total.IsInt64() || !count.IsInt64() {
+	if !net.IsInt64() || (net.IsInt64() && net.Int64() == math.MinInt64) || !total.IsInt64() || !count.IsInt64() || !share.IsInt64() || !paid.IsInt64() {
 		return nil
 	}
-	return &DashboardTotals{ViewerNetMinor: net.Int64(), OpenBalanceCount: open, ActiveSpaceCount: int64(len(spaces)), TotalSharedExpenseMinor: total.Int64(), TotalSharedExpenseCount: count.Int64()}
+	return &DashboardTotals{ViewerShareMinor: share.Int64(), ViewerPaidMinor: paid.Int64(), ViewerNetMinor: net.Int64(), OpenBalanceCount: open, ActiveSpaceCount: int64(len(spaces)), TotalSharedExpenseMinor: total.Int64(), TotalSharedExpenseCount: count.Int64()}
 }
 
 func dashboardProjectionSQL() string {

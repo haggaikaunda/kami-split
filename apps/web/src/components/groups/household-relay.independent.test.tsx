@@ -26,6 +26,8 @@ const dashboard = {
   state: 'COMPLETE',
   totals: {
     __typename: 'HouseholdDashboardTotals',
+    viewerShareMinor: '12345',
+    viewerPaidMinor: '20000',
     viewerNetMinor: '800',
     openBalanceCount: '1',
     activeSpaceCount: '1',
