@@ -355,14 +355,15 @@ button:disabled {
 .ui-avatar {
   display: grid;
   place-items: center;
-  flex: 0 0 2.75rem;
-  width: 2.75rem;
-  height: 2.75rem;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--color-balance);
-  color: var(--color-primary);
-  font-weight: 700;
+  background: var(--color-high);
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 .ui-avatar img {
   width: 100%;
