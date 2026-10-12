@@ -28,8 +28,16 @@ module.exports = async function verifyRefresh({
   );
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
-  const refresh = page.locator('.workspace-refresh button');
-  assert.equal(await refresh.count(), 1, 'one refresh owner');
+  assert.equal(
+    await page.locator('.workspace-refresh').count(),
+    1,
+    'one refresh owner',
+  );
+  assert.equal(
+    await page.locator('.workspace-refresh button').count(),
+    0,
+    'no routine refresh button',
+  );
   assert.equal(
     await page
       .locator(
@@ -39,7 +47,7 @@ module.exports = async function verifyRefresh({
     0,
   );
   const beforeUrl = page.url();
-  const docs = documentCount();
+  let docs = documentCount();
   const query =
     workspace === 'group'
       ? 'journeyWorkspaceQuery'
@@ -47,9 +55,12 @@ module.exports = async function verifyRefresh({
   const count = () => requests().filter((r) => r.op === query).length;
   const surface = page.locator('.workspace-loading-surface').first();
   const previousHeight = (await surface.boundingBox()).height;
-  await refresh.focus();
+
   let before = count();
-  await page.keyboard.press('Enter');
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('focus'));
+  });
   await page.getByText('Updating…', { exact: true }).waitFor();
   const loadingHeight = (await surface.boundingBox()).height;
   assert(
@@ -64,15 +75,9 @@ module.exports = async function verifyRefresh({
     0,
     'no stale private rows',
   );
-  await page.keyboard.press('Enter');
   await page.locator('#ledger-expense-e1').waitFor();
   await page.getByText('Up to date', { exact: true }).waitFor();
-  assert.equal(count(), before + 1, 'repeat keyboard requests coalesce');
-  assert.equal(
-    await refresh.evaluate((b) => document.activeElement === b),
-    true,
-    'focus stays on refresh',
-  );
+  assert.equal(count(), before + 1, 'foreground event burst coalesces');
   assert.equal(page.url(), beforeUrl);
   assert.equal(documentCount(), docs);
   await page.screenshot({
@@ -107,35 +112,39 @@ module.exports = async function verifyRefresh({
     });
   }
   await page.evaluate(() => scrollTo(0, 0));
-  const point = await page.evaluate(() => {
-    const controls = [
-      ...document.querySelectorAll(
-        'nav, button, a, input, select, textarea, dialog',
-      ),
-    ]
-      .map((element) => element.getBoundingClientRect())
-      .filter((rect) => rect.width && rect.height);
-    // Touch hit testing can retarget near-misses to a nearby link. Keep the
-    // gesture away from controls, not merely outside their exact rectangles.
-    for (let y = 80; y < innerHeight - 240; y += 20) {
-      for (const x of [40, innerWidth / 2, innerWidth - 40]) {
-        const target = document.elementFromPoint(x, y);
-        if (
-          target?.closest('main') &&
-          !target.closest('nav, button, a, input, select, textarea, dialog') &&
-          controls.every(
-            (rect) =>
-              x < rect.left - 32 ||
-              x > rect.right + 32 ||
-              y < rect.top - 32 ||
-              y > rect.bottom + 32,
+  const pickPoint = () =>
+    page.evaluate(() => {
+      const controls = [
+        ...document.querySelectorAll(
+          'nav, button, a, input, select, textarea, dialog',
+        ),
+      ]
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width && rect.height);
+      // Touch hit testing can retarget near-misses to a nearby link. Keep the
+      // gesture away from controls, not merely outside their exact rectangles.
+      for (let y = 80; y < innerHeight - 240; y += 20) {
+        for (const x of [40, innerWidth / 2, innerWidth - 40]) {
+          const target = document.elementFromPoint(x, y);
+          if (
+            target?.closest('main') &&
+            !target.closest(
+              'nav, button, a, input, select, textarea, dialog',
+            ) &&
+            controls.every(
+              (rect) =>
+                x < rect.left - 32 ||
+                x > rect.right + 32 ||
+                y < rect.top - 32 ||
+                y > rect.bottom + 32,
+            )
           )
-        )
-          return { x, y };
+            return { x, y };
+        }
       }
-    }
-    throw new Error('No unobstructed page surface for top pull');
-  });
+      throw new Error('No unobstructed page surface for top pull');
+    });
+  let point = await pickPoint();
   touchX = point.x;
   before = count();
   await drag(point.y, 120);
@@ -152,28 +161,39 @@ module.exports = async function verifyRefresh({
 
   await page.evaluate(() => scrollTo(0, 0));
   setOffline(true);
-  await refresh.click();
+  await drag(point.y, 120);
   await page
     .getByText('Couldn’t refresh. Try again.', { exact: true })
     .waitFor();
   assert.equal(await page.locator('#ledger-expense-e1').count(), 0);
   assert(await page.getByRole('alert').count());
   setOffline(false);
-  await refresh.click();
+  point = await pickPoint();
+  touchX = point.x;
+  await drag(point.y, 120);
   await page.locator('#ledger-expense-e1').waitFor();
   assert.equal(page.url(), beforeUrl);
 
-  await page.getByRole('button', { name: 'Add expense', exact: true }).click();
+  await page.getByRole('link', { name: 'Add expense', exact: true }).click();
   const description = page.getByLabel('Description', { exact: true });
   await description.fill('Unsaved refresh draft');
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await description.waitFor();
 
   assert.equal(await description.inputValue(), 'Unsaved refresh draft');
+  await page.reload();
+  await description.waitFor();
+  assert.equal(await description.inputValue(), 'Unsaved refresh draft');
+  assert.equal(
+    documentCount(),
+    docs + 1,
+    'browser reload remains available and drafts recover',
+  );
+  docs = documentCount();
   // Close the form before testing access revocation of the owning page.
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   setDenied(true);
-  await page.locator('.workspace-refresh button').click();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.getByRole('alert').first().waitFor();
   assert.equal(await page.locator('#ledger-expense-e1').count(), 0);
   assert.equal(
@@ -183,7 +203,7 @@ module.exports = async function verifyRefresh({
   setDenied(false);
   results.push({
     workspace,
-    keyboardFocus: true,
+    browserReload: true,
     topTouchPull: true,
     belowTopScroll: true,
     coalesced: true,

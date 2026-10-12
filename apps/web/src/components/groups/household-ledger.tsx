@@ -9,6 +9,7 @@ import document, {
 import type { FinancialScope } from '@/lib/relay/environment';
 import { useFinancialSession } from './session';
 import { GroupJourney } from './journey';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { Skeleton } from '@/components/primitives';
 import { useForegroundRefresh } from './foreground';
 /** Resolve the original ledger from fresh authorized metadata, never a supplied ID. */
@@ -82,14 +83,14 @@ function LedgerRead({ scope }: { scope: FinancialScope }) {
           Household ledger access is unavailable. Refresh to check current
           access.
         </p>
-        <button
-          onClick={() => {
+        <WorkspaceRefresh
+          busy={false}
+          error="Access unavailable"
+          onRefresh={() => {
             invalidate();
             setVersion((v) => v + 1);
           }}
-        >
-          Refresh Household ledger
-        </button>
+        />
       </>
     );
   if (!home || !scope.isLive())

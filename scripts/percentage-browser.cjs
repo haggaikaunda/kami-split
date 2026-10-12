@@ -315,13 +315,17 @@ const results = [];
         await r.fulfill({ json: { data } });
       });
       await page.goto(origin + '/household/expenses');
-      await page.locator('#ledger-add').waitFor();
+      await page
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .waitFor();
       await page.evaluate(
         (scale) =>
           (document.documentElement.style.fontSize = `${scale * 16}px`),
         scale,
       );
-      await page.locator('#ledger-add').click();
+      await page
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .click();
       await page.locator('#expense-description').waitFor();
       await page.locator('#expense-description').fill('Weekend groceries');
       await page.locator('#expense-amount').fill('125.00');
@@ -475,8 +479,12 @@ const results = [];
       if (!baseline) {
         mode = 'three';
         await page.goto(origin + '/groups/F?tab=expenses');
-        await page.locator('#ledger-add').waitFor();
-        await page.locator('#ledger-add').click();
+        await page
+          .getByRole('link', { name: 'Add expense', exact: true })
+          .waitFor();
+        await page
+          .getByRole('link', { name: 'Add expense', exact: true })
+          .click();
         await page.locator('#expense-description').waitFor();
         await page.locator('#expense-description').fill('Group dinner');
         await page.locator('#expense-amount').fill('200');
@@ -541,8 +549,12 @@ const results = [];
         members[0].displayName =
           'Kaunda with a very long participant name that wraps safely';
         await page.goto(origin + '/trips/T?tab=expenses');
-        await page.locator('#ledger-add').waitFor();
-        await page.locator('#ledger-add').click();
+        await page
+          .getByRole('link', { name: 'Add expense', exact: true })
+          .waitFor();
+        await page
+          .getByRole('link', { name: 'Add expense', exact: true })
+          .click();
         await page.locator('#expense-description').waitFor();
         await page.locator('#expense-description').fill('Trip groceries');
         await page.locator('#expense-amount').fill('125.00');

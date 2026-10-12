@@ -32,7 +32,7 @@ chrome, centered widths and compact working-tab headings are superseded by #238.
 The application retains the artwork and
 source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
 and #223 evidence are historical. Repayment entry keeps its recovery navigation;
-the visible **Refresh** action retains its descriptive accessible name. The [parity matrix](../design/issue-227-parity-matrix.md) and
+refresh continuity now follows #269 below, using pull/foreground boundaries and native browser reload. The [parity matrix](../design/issue-227-parity-matrix.md) and
 [sealed independent report](../design/evidence/issue-227/reports/independent-testing.md)
 record passing visual/requirements acceptance. Publication-head CI, final review
 and closeout are separate gates recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228).
@@ -42,7 +42,7 @@ The Expenses tab uses the [structured view](expenses-ledger.md), requesting an
 initial six rows and six-row scroll-triggered pages with signed cursors and a
 manual Load more fallback. These display
 bounds do not limit complete server totals, counts, category aggregates or balances.
-**Refresh group and restart list** resets the traversal after changes. Complete
+Fresh authorization after mutations, pull or foreground refresh resets the traversal. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net
 settlement result is displayed. Initial loading, denied reads and failed balance projections hide previous
@@ -260,8 +260,7 @@ those device behaviors.
 
 The content wrapper owns container queries and centers lists/tables within a
 72rem maximum width; Account uses 46rem and existing form cards use 42rem.
-Working tabs retain workspace identity, context and actions in compact headings;
-Overview keeps its illustrated banner. Filter dates use the same bounded native
+Under #269 below, every tab retains the illustrated workspace banner and its Add expense action. Filter dates use the same bounded native
 date styling as expense forms, and the filter grid stacks when enlarged text or
 a narrow dialog leaves insufficient width. These changes supersede the scrolling
 chrome and working-tab banner layout in the historical #227 visual evidence.
@@ -282,4 +281,23 @@ has exact server amounts and a displayed equation; examples cover a payer receiv
 a repayment and a participant sending one. Positive means owed and negative means
 owing. “Who owes whom” lists suggested repayments within that source, without
 counting original expenses again. Activity and its expense before/after history
-remain linked. Expenses uses a visible “Balance details” disclosure.
+remain linked. Under #269, optional explanations appear on summary and Balances surfaces; Expenses no longer has a Balance details disclosure.
+
+## Workspace summaries and banner (#269)
+
+All workspace tabs retain their identity banner and existing background image, with
+a single labeled Add expense action targeting an authorized original source.
+Household uses “Shared spending, at home and away.” and optional What’s included
+help; balance/share definitions are optional rich help with explicit dismissal.
+Your balance shows “Payments still to settle” for offsetting nonzero source balances
+and “Nothing to pay or collect” only for personal zero in every included source.
+Incomplete/unavailable reads remain errors. Detailed member contributions, repayment
+suggestions and Activity history remain accessible; explanations and worked examples
+are disclosures on Balances. Routine Refresh controls are removed across screens;
+existing pull/foreground boundaries and native browser reload remain. The Expenses
+list is compact at ordinary phone widths; Spending by category and Recent expenses
+retain their existing content and presentation.
+
+[The #269 verification report](../design/evidence/issue-269/README.md) records the
+LAN browser matrix, exact baseline preservation comparison, screenshots and
+physical-device/server limitations.

@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import Link from 'next/link';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GroupJourney } from './journey';
 import { HouseholdLedger } from './household-ledger';
 import { HouseholdFrame } from './household-frame';
+// Banner source authorization has dedicated coverage; keep this journey harness focused on its existing requests.
+vi.mock('./household-banner-action', () => ({
+  HouseholdBannerAction: () => null,
+}));
 import { RestoreSource, SourceReturn } from './navigation';
 const mock = vi.hoisted(() => ({
   path: '/groups',
@@ -242,8 +247,7 @@ it('distinguishes an actual empty group from failed expense and balance reads', 
   await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T', { empty: true }));
   expect(host.textContent).toContain('This group has no expenses.');
-  const refresh = host.querySelector('button')!;
-  await act(async () => refresh.click());
+  await foregroundRefresh();
   await resolveGroup(
     groupResult('T', { pageFailed: true, balancesFailed: true }),
   );
@@ -255,12 +259,12 @@ it('distinguishes an actual empty group from failed expense and balance reads', 
 it('hides records on access refresh and restores full history after readmission', async () => {
   await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
-  await act(async () => host.querySelector('button')!.click());
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Pre-trip booking');
   await resolveGroup({ group: { __typename: 'Problem', code: 'NOT_FOUND' } });
   expect(host.textContent).not.toContain('Pre-trip booking');
   expect(host.textContent).not.toContain('Add expense');
-  await act(async () => host.querySelector('button')!.click());
+  await foregroundRefresh();
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
 });
@@ -689,7 +693,7 @@ it('resolves the original Household ledger from authorized discovery and keeps o
   expect(mock.requests.at(-1)?.variables).toMatchObject({ id: 'H' });
   await resolveGroup(groupResult('H'));
   expect(mock.push).not.toHaveBeenCalled();
-  expect(host.querySelector('h1')?.textContent).toBe('Household ledger');
+  expect(host.querySelector('h1')?.textContent).toBe('Household');
   expect(
     host.querySelector('.workspace-navigation a[aria-current="page"]')
       ?.textContent,
@@ -840,7 +844,7 @@ it('canonical Household expense details retain original IDs and the dedicated fr
   expect(host.querySelectorAll('main')).toHaveLength(1);
   expect(
     host.querySelector('main > h1, .ui-workspace-header h1')?.textContent,
-  ).toBe('Household ledger');
+  ).toBe('Household');
   expect(host.querySelector('dialog[open] h1')?.textContent).toBe(
     'Expense detail',
   );
@@ -885,7 +889,7 @@ it('canonical Household repayments keep the original group operation scope and s
     obligations: [{ from: a, to: b, amountMinor: '1001' }],
   });
   await resolveGroup(data);
-  expect(host.querySelector('h1')?.textContent).toBe('Household ledger');
+  expect(host.querySelector('h1')?.textContent).toBe('Household');
   expect(host.querySelectorAll('main')).toHaveLength(1);
   expect(
     (host.querySelector('#repayment-sender') as HTMLSelectElement).value,

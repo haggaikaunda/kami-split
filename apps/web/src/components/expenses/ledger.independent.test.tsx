@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExpenseLedger } from './ledger';
@@ -223,7 +224,7 @@ it('identifies household sources and omits redundant group sources and space fil
 it('removes stale rows immediately and rejects late responses and unavailable totals', async () => {
   await render();
   await respond(page());
-  await click('Refresh expenses');
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Dinner one');
   await respond(page(), 0);
   expect(host.textContent).not.toContain('Dinner one');
@@ -384,19 +385,17 @@ async function renderHousehold() {
 async function respondContext(value: object) {
   preparedContext = value;
 }
-it('manual household refresh replaces net balance and eligible-space snapshot from its context owner', async () => {
+it('manual household refresh replaces expense rows and eligible-space snapshot from its context owner', async () => {
   await renderHousehold();
   await respondContext(context('-101'));
   await respond(page());
-  expect(host.textContent).toContain('$1.01');
-  expect(host.textContent).toContain('You owe');
-  await click('Refresh expenses');
-  expect(host.textContent).not.toContain('$1.01');
+  expect(host.textContent).toContain('Dinner one');
+  await foregroundRefresh();
+  expect(host.textContent).not.toContain('Dinner one');
   expect(host.textContent).toContain('Loading expenses');
   await respondContext(context('205', 'New eligible space'));
   await respond(page([]));
-  expect(host.textContent).toContain('$2.05');
-  expect(host.textContent).toContain("You're owed");
+  expect(host.textContent).not.toContain('Dinner one');
   await click('Filters');
   expect(host.querySelector('select[name="groupId"]')?.textContent).toContain(
     'New eligible space',
@@ -414,7 +413,7 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
     async () =>
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
-  expect(host.textContent).not.toContain('$1.01');
+  expect(host.textContent).not.toContain('Dinner one');
   const revoked = context('0');
   revoked.householdDashboard.spaces = [];
   await respondContext(revoked);
@@ -432,7 +431,7 @@ it('foreground refresh rechecks the household owner and removes revoked spaces',
     [...host.querySelectorAll('button')].find(
       (b) => b.getAttribute('aria-label') === 'Add expense',
     )?.disabled,
-  ).toBe(true);
+  ).toBeUndefined();
 });
 it('successful persisted creation refreshes owning household totals and eligible context', async () => {
   state.params = 'create=home';
@@ -444,9 +443,16 @@ it('successful persisted creation refreshes owning household totals and eligible
   expect(state.replace).toHaveBeenCalledWith('/household/expenses?', {
     scroll: false,
   });
-  await respondContext(context('302'));
-  await respond(page());
-  expect(host.textContent).toContain('$3.02');
+  await respondContext(context('302', 'Updated home'));
+  await respond({
+    ...page([edge('created', '2026-09-02', '302')]),
+    totalExpenseMinor: '302',
+  });
+  expect(host.textContent).toContain('Dinner created');
+  expect(
+    host.querySelector('[aria-label="Total expenses"]')?.textContent,
+  ).toContain('$3.02');
+  expect(host.textContent).toContain('Updated home');
 });
 it('returns from Expenses to canonical Household workspace tabs instead of group discovery', async () => {
   await renderHousehold();
@@ -598,6 +604,16 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   expect(september.textContent).toContain('September 2026');
   expect(september.textContent).toContain('$90,071,992,547,409.94');
   expect(september.textContent).toContain('8 expenses');
+  expect(september.querySelector('.ledger-month-count')?.textContent).toBe(
+    '8 expenses',
+  );
+  expect(
+    september.querySelector('.ledger-month-heading > h2')?.textContent,
+  ).toBe('September 2026');
+  expect(september.querySelector('.ledger-month-total')?.textContent).toBe(
+    '$90,071,992,547,409.94 USD',
+  );
+  expect(host.querySelectorAll('.ledger-month li')).toHaveLength(1);
   expect(september.querySelector('details')).toBeNull();
   expect(host.querySelector('.ledger-payer')?.textContent).toBe('Paid by Bob');
   expect(
@@ -614,8 +630,13 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   expect(headers).toHaveLength(2);
   expect(headers[0].textContent).toBe(september.textContent);
   expect(headers[1].textContent).toContain('August 2026');
-  expect(headers[1].textContent).toContain('$12.34 USD · 1 expense');
-  await click('Refresh expenses');
+  expect(headers[1].querySelector('.ledger-month-heading')?.textContent).toBe(
+    'August 20261 expense',
+  );
+  expect(headers[1].querySelector('.ledger-month-total')?.textContent).toBe(
+    '$12.34 USD',
+  );
+  await foregroundRefresh();
   expect(host.querySelector('.ledger-month')).toBeNull();
   await act(async () => state.requests.at(-1)?.error?.());
   expect(host.querySelector('.ledger-month')).toBeNull();
@@ -623,13 +644,18 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   expect(host.textContent).not.toContain('Paid by Bob');
 });
 
-it('offers a descriptive keyboard-native balance disclosure and canonical details route', async () => {
+it('keeps expense controls focused on views and filters without a balance explainer', async () => {
   await renderHousehold();
   await respondContext(context('0'));
   await respond(page([]));
-  const summary = host.querySelector('.ledger-net summary')!;
-  expect(summary.textContent).toContain('Balance details');
-  expect(host.querySelector('.ledger-net')?.tagName).toBe('DETAILS');
+  expect(host.textContent).not.toContain('Balance details');
+  expect(host.querySelector('.ledger-net')).toBeNull();
+  expect(host.querySelector('.ledger-view-switch')?.textContent).toContain(
+    'Breakdown',
+  );
+  expect(host.querySelector('.ledger-filter-button')?.textContent).toContain(
+    'Filters',
+  );
 });
 
 it('preserves interleaved month order for amount sort and displays complete monthly totals', async () => {
@@ -701,4 +727,65 @@ it('removes one selected category and retains other categories and payer filters
   );
   expect(next.searchParams.getAll('categories')).toEqual(['GROCERIES']);
   expect(next.searchParams.getAll('paidByIds')).toEqual(['me']);
+});
+
+it('captures the shared banner creation origin with complete loaded rows and returns through history on cancel', async () => {
+  const banner = document.createElement('a');
+  banner.id = 'workspace-add';
+  banner.href = '/household/expenses?create=home';
+  banner.textContent = 'Add expense';
+  banner.addEventListener('click', (event) => event.preventDefault());
+  document.body.append(banner);
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function (this: HTMLElement) {
+      return {
+        x: 0,
+        y: this === banner ? 20 : 0,
+        width: 390,
+        height: this.classList.contains('expense-ledger') ? 850 : 44,
+        top: this === banner ? 20 : 0,
+        left: 0,
+        bottom: 850,
+        right: 390,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+  const positions = (scope.expensePositions ??= new Map());
+  positions.clear();
+  state.back.mockClear();
+  try {
+    await render('home');
+    await respond(page([edge('one', '2026-09-02')], true));
+    await click('Load more expenses');
+    await respond(page([edge('two', '2026-09-01', '1')]));
+    await act(async () =>
+      banner.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+        }),
+      ),
+    );
+    expect(positions.size).toBe(0);
+    await act(async () =>
+      banner.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    );
+    const saved = [...positions.values()][0];
+    expect(saved).toMatchObject({ id: 'workspace-add', count: 2, offset: 20 });
+    expect(saved.height).toBe(850);
+    expect(saved.scroll).toBe(window.scrollY);
+    state.params = 'create=home';
+    await render('home');
+    await click('Close expense');
+    expect(state.back).toHaveBeenCalledTimes(1);
+    expect(state.replace).not.toHaveBeenCalled();
+  } finally {
+    positions.clear();
+    banner.remove();
+    rect.mockRestore();
+  }
 });

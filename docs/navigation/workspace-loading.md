@@ -159,11 +159,12 @@ GraphQL approximation, for Household and Trip roles across all tabs.
 
 ## Refresh and loading continuity (#243)
 
-Every financial workspace has a labeled refresh button in page content, below the
-persistent navigation. The app bar no longer carries a reload icon. The same
-network owner handles the button and custom pull gesture; embedded Expenses and
-Activity readers do not register another gesture. Repeated button presses or
-pulls coalesce while that owner is pending. Foreground events still invalidate
+Under #269, routine in-app Refresh buttons are removed from financial workspaces
+and invitations. Each network owner retains its custom pull gesture and live
+progress, completion and failure feedback; embedded Expenses and Activity readers
+do not register another gesture. Repeated pulls coalesce while that owner is pending.
+Desktop and keyboard users can use the browser’s reload command (Cmd/Ctrl+R or
+its native menu); this performs a fresh document load with actor-scoped draft recovery. Foreground events still invalidate
 synchronously and coalesce their new read on an animation frame; a foreground
 boundary cancels an older in-flight read rather than accepting pre-event access.
 
@@ -171,10 +172,10 @@ Chromium and Gecko browsers with CSS overscroll control use custom downward pull
 that begin at the document top. The gesture requires 80 CSS pixels, excludes
 interactive controls, dialogs and nested scrollers, and cancels on horizontal,
 upward, multitouch or canceled input. Progress, completion and retry feedback
-accompany the keyboard-focusable refresh button. WebKit, including Safari and iOS
+remain visible without a refresh button. WebKit, including Safari and iOS
 browser wrappers, retains its native gesture, as do browsers without overscroll
 support. No custom gesture listener or overscroll override is installed there;
-the explicit button always remains the app-refresh fallback. CSS feature support
+the browser’s reload command remains available. CSS feature support
 alone is insufficient to establish suppression of Safari's native reload (see
 [WebKit #275947](https://bugs.webkit.org/show_bug.cgi?id=275947)).
 
@@ -192,7 +193,7 @@ financial persistence.
 Run the browser refresh matrix with `REFRESH_TESTS=1` in the existing harness,
 using the actual LAN `BROWSER_ORIGIN`, `FIXTURE_DELAY_MS=700`, widths 320/390/1440,
 `SCALE=1`/`2`, and Light/Dark appearances. It exercises browser-dispatched touch
-input, ordinary scrolling, keyboard focus, repeated actions, URL continuity,
+input, ordinary scrolling, native document reload, repeated gestures, URL continuity,
 offline/retry, unsaved expense drafts and revoked reads. Its synthetic services
 and desktop Chromium touch emulation do not prove physical iOS/Android native
 browser gestures; record those device limits with delivery evidence.

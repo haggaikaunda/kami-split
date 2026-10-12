@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ActivityFeed } from './feed';
@@ -114,7 +115,7 @@ it('distinguishes loading, empty, filtered empty and unavailable without retaini
   });
   await respond(connection([]));
   expect(host.textContent).toContain('No activity matches these filters');
-  await click('Refresh activity');
+  await foregroundRefresh();
   await act(async () => boundary.requests.at(-1)!.error?.());
   expect(host.querySelector('[role="alert"]')?.textContent).toContain(
     'unavailable',
@@ -124,7 +125,7 @@ it('fresh refresh immediately removes cached rows and ignores superseded respons
   await render();
   await respond(connection());
   expect(host.textContent).toContain('Alice');
-  await click('Refresh activity');
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Alice');
   expect(boundary.requests[0].unsubscribe).toHaveBeenCalled();
   expect(boundary.requests[1].options).toEqual({ fetchPolicy: 'network-only' });

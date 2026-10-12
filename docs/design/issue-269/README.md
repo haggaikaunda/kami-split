@@ -95,8 +95,8 @@ that all responsive/device acceptance checks have passed.
 
 ## Delivery status
 
-This is a documentation-only, partial delivery for #269. The application issue
-remains open. Earlier incomplete application edits remain paused in a separate
-worktree; they are not included in this archive and are not a completed or
-reviewed implementation. A future builder must use the live issue, this reference,
-and the existing application together, then follow the canonical delivery workflow.
+This package remains a frozen visual reference. PR #270 now also implements the
+application scope from #269; its verification and independent review evidence
+are recorded on the PR. The original partial application worktree is preserved.
+The reference screenshots above remain mockup evidence, not production or device
+verification. Delivery and merge status remain authoritative in GitHub.

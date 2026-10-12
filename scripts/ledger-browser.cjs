@@ -29,12 +29,42 @@ module.exports = async function verifyLedger({
       (workspace === 'group' ? '/trips/T?tab=expenses' : '/household/expenses'),
   );
   await page.locator('#ledger-expense-e1').waitFor();
+  const freshReturn = async (action) => {
+    const response = page.waitForResponse((r) => {
+      const request = r.request();
+      if (!request.url().endsWith('/api/graphql')) return false;
+      const body = request.postDataJSON();
+      return (
+        /expenses(?:Group|Household)Query/.test(body?.query || '') &&
+        !body.variables.after
+      );
+    });
+    await action();
+    await response;
+    await page
+      .locator('#ledger-expense-e9')
+      .waitFor()
+      .catch(async (error) => {
+        await page.screenshot({
+          path: path.join(output, 'fresh-return-failure.png'),
+          fullPage: true,
+        });
+        throw error;
+      });
+  };
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
   const header = page.locator('.ledger-month > header').first();
   assert.match(await header.innerText(), /October 2026/);
-  assert.match(await header.innerText(), /\$24.00\s+USD\s+· 8 expenses/);
+  assert.match(await header.innerText(), /8 expenses\s*\$24.00\s+USD/);
   assert.equal(await page.locator('.ledger-month details').count(), 0);
+  assert.equal(
+    await header.locator('.ledger-month-count').innerText(),
+    '8 expenses',
+  );
+  assert(
+    !/expenses/.test(await header.locator('.ledger-month-total').innerText()),
+  );
   assert.equal(await page.locator('.ledger-month li').count(), 6);
   assert.match(
     await page.locator('.ledger-payer').first().innerText(),
@@ -61,6 +91,60 @@ module.exports = async function verifyLedger({
   );
   if (width === 1440 && scale === 1) assert.equal(metrics.columns, 'grid');
   if (width <= 390) assert.equal(metrics.columns, 'none');
+  assert.equal(
+    await page.getByText('Balance details', { exact: true }).count(),
+    0,
+  );
+  if (width <= 440 && scale === 1) {
+    const toggle = await page.locator('.ledger-view-switch').boundingBox();
+    const filter = await page.locator('.ledger-filter-button').boundingBox();
+    assert(
+      Math.abs(toggle.y + toggle.height / 2 - filter.y - filter.height / 2) < 2,
+      'Filters aligns with view toggle',
+    );
+    assert(
+      filter.x > toggle.x + toggle.width,
+      'Filters sits right of view toggle',
+    );
+    const compact = await page.locator('#ledger-expense-e2').evaluate((row) => {
+      const box = (selector) =>
+        row.querySelector(selector).getBoundingClientRect();
+      const payer = box('.ledger-payer');
+      const amount = box('.ledger-money');
+      return {
+        height: row.getBoundingClientRect().height,
+        payerRight: payer.right,
+        payerBottom: payer.bottom,
+        amountLeft: amount.left,
+        amountTop: amount.top,
+        categoryDisplay: getComputedStyle(
+          row.querySelector('.ledger-category-text'),
+        ).display,
+      };
+    });
+    await page.screenshot({
+      path: path.join(output, `compact-${workspace}-${width}-${scale}.png`),
+      fullPage: true,
+    });
+    assert(
+      compact.height <= 130,
+      `Ordinary phone rows stay compact: ${JSON.stringify(compact)}`,
+    );
+    assert(
+      compact.amountLeft >= compact.payerRight,
+      'Amount stays right of payer',
+    );
+    assert(
+      compact.amountTop < compact.payerBottom,
+      'Amount stays alongside left details',
+    );
+    assert.equal(compact.categoryDisplay, 'none');
+    assert.match(
+      await page.locator('#ledger-expense-e2 .ledger-payer').innerText(),
+      /Paid by Sasha/,
+    );
+    results.push({ workspace, width, scale, compact });
+  }
   await page.locator('.ledger-pagination').scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: 'Retry loading expenses' }).waitFor();
   assert.equal(
@@ -83,7 +167,7 @@ module.exports = async function verifyLedger({
   await page.locator('#ledger-expense-e1').focus();
   await page.keyboard.press('Enter');
   await page.locator('.expense-presentation').waitFor();
-  await page.keyboard.press('Escape');
+  await freshReturn(() => page.keyboard.press('Escape'));
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e1',
   );
@@ -95,7 +179,7 @@ module.exports = async function verifyLedger({
   );
   await page.keyboard.press('Enter');
   await page.locator('.expense-presentation').waitFor();
-  await page.goBack();
+  await freshReturn(() => page.goBack());
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e8',
   );
@@ -113,7 +197,7 @@ module.exports = async function verifyLedger({
   );
   await page.goForward();
   await page.locator('.expense-presentation').waitFor();
-  await page.keyboard.press('Escape');
+  await freshReturn(() => page.keyboard.press('Escape'));
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e8',
   );
@@ -129,10 +213,16 @@ module.exports = async function verifyLedger({
     .locator('.expense-presentation')
     .getByText('Edited late expense', { exact: true })
     .waitFor();
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(
-    () => document.activeElement?.id === 'ledger-expense-e8',
-  );
+  await freshReturn(() => page.keyboard.press('Escape'));
+  await page
+    .waitForFunction(() => document.activeElement?.id === 'ledger-expense-e8')
+    .catch(async (error) => {
+      await page.screenshot({
+        path: path.join(output, 'edit-return-failure.png'),
+        fullPage: true,
+      });
+      throw error;
+    });
   assert.match(await returnRow.innerText(), /Edited late expense/);
   assert(
     Math.abs(
@@ -142,10 +232,10 @@ module.exports = async function verifyLedger({
     'Saved edit remount restores the authorized late row offset',
   );
   assert.equal(await page.locator('.ledger-month li').count(), 9);
-  assert.match(await header.innerText(), /\$24.00\s+USD\s+· 8 expenses/);
+  assert.match(await header.innerText(), /8 expenses\s*\$24.00\s+USD/);
   assert.match(
     await page.locator('.ledger-month > header').nth(1).innerText(),
-    /September 2026.*\$3.00\s+USD\s+· 1 expense/s,
+    /September 2026.*1 expense\s*\$3.00\s+USD/s,
   );
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });

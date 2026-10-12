@@ -293,7 +293,6 @@ function ViewerJourney({
     <WorkspaceRefresh
       busy={!viewer && !error}
       error={error}
-      label={trips ? 'Refresh trips' : 'Refresh groups'}
       onRefresh={refresh}
     />
   );
@@ -665,7 +664,6 @@ function GroupDetails({
       <WorkspaceRefresh
         busy={busy || activityRead.busy}
         error={error || activityRead.error}
-        label="Refresh group"
         onRefresh={() => {
           scope.expensePositions?.clear();
           if (after) {

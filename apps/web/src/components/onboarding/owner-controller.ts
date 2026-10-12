@@ -78,7 +78,7 @@ export function useOwnerInvitations({
     if (data.retryInvitationDelivery.code)
       throw new Error(data.retryInvitationDelivery.code);
     tell(
-      'Send attempted. Refresh invitations to see the recorded provider status; provider acceptance does not guarantee arrival.',
+      'Send attempted. Reload the page to check the recorded provider status; provider acceptance does not guarantee arrival.',
     );
   };
   const ownerAction = async (

@@ -107,7 +107,7 @@ const path = require('node:path');
     });
     const description = `Real expense edit ${context} — shared dinner and supplies for our weekend with friends`;
     await page.goto(origin + entry);
-    await page.locator('#ledger-add').click();
+    await page.getByRole('link', { name: 'Add expense', exact: true }).click();
     if (context === 'Aggregate')
       await page
         .getByRole('combobox', { name: /Source space/ })

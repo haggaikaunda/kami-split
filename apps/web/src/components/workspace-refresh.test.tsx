@@ -40,7 +40,7 @@ function pull(start = 0, end = 100) {
   touch('touchend', 20, end, host, 0);
   return move;
 }
-it('coalesces clicks and gestures, reports pending/success/failure, and permits retry without moving focus', () => {
+it('coalesces gestures, reports pending/success/failure, and permits retry without moving focus', () => {
   const refresh = vi.fn();
   const render = (busy: boolean, error = '') =>
     act(() =>
@@ -49,24 +49,23 @@ it('coalesces clicks and gestures, reports pending/success/failure, and permits 
       ),
     );
   render(false);
-  const button = host.querySelector('button')!;
-  button.focus();
-  act(() => {
-    button.click();
-    button.click();
-  });
+  expect(host.querySelector('button')).toBeNull();
+  host.tabIndex = -1;
+  host.focus();
+  pull();
+  pull();
   pull();
   expect(refresh).toHaveBeenCalledTimes(1);
   render(true);
   expect(host.textContent).toContain('Updating');
-  expect(document.activeElement).toBe(button);
+  expect(document.activeElement).toBe(host);
   render(false);
   expect(host.textContent).toContain('Up to date');
-  act(() => button.click());
+  pull();
   render(true);
   render(false, 'offline');
   expect(host.textContent).toContain('Couldn’t refresh');
-  act(() => button.click());
+  pull();
   expect(refresh).toHaveBeenCalledTimes(3);
 });
 it('only claims deliberate single-touch downward pulls that began at the document top', () => {
@@ -85,14 +84,16 @@ it('only claims deliberate single-touch downward pulls that began at the documen
   touch('touchstart', 0, 0);
   touch('touchmove', 0, 100, host, 2);
   touch('touchend', 0, 100);
-  touch('touchstart', 0, 0, host.querySelector('button')!);
+  const button = document.createElement('button');
+  host.append(button);
+  touch('touchstart', 0, 0, button);
   touch('touchmove', 0, 100);
   touch('touchend', 0, 100);
   expect(refresh).not.toHaveBeenCalled();
   expect(pull().defaultPrevented).toBe(true);
   expect(refresh).toHaveBeenCalledTimes(1);
 });
-it('leaves native gestures alone when overscroll suppression is unavailable and retains the button fallback', () => {
+it('leaves native gestures alone when overscroll suppression is unavailable and permits browser reload', () => {
   vi.stubGlobal('CSS', { supports: () => false });
   const refresh = vi.fn();
   act(() => root.render(<WorkspaceRefresh busy={false} onRefresh={refresh} />));
@@ -101,8 +102,7 @@ it('leaves native gestures alone when overscroll suppression is unavailable and 
   expect(
     document.documentElement.classList.contains('workspace-pull-refresh'),
   ).toBe(false);
-  act(() => host.querySelector('button')!.click());
-  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(host.querySelector('button')).toBeNull();
 });
 it('does not refresh on canceled gestures or while a request is pending, and releases overscroll ownership on unmount', () => {
   const refresh = vi.fn();
@@ -121,4 +121,20 @@ it('does not refresh on canceled gestures or while a request is pending, and rel
   ).toBe(false);
   pull();
   expect(refresh).not.toHaveBeenCalled();
+});
+
+it('reports completion for owning-reader automatic refreshes without a button or gesture', () => {
+  const refresh = vi.fn();
+  const render = (busy: boolean) =>
+    act(() =>
+      root.render(<WorkspaceRefresh busy={busy} onRefresh={refresh} />),
+    );
+  render(false);
+  expect(host.textContent).toBe('');
+  render(true);
+  expect(host.textContent).toContain('Updating');
+  render(false);
+  expect(host.textContent).toContain('Up to date');
+  expect(refresh).not.toHaveBeenCalled();
+  expect(host.querySelector('button')).toBeNull();
 });

@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { WorkspaceNavigation } from './workspace-identity';
+import { CategoryIcon, WorkspaceNavigation } from './workspace-identity';
 const route = vi.hoisted(() => ({ pathname: '/household/expenses' }));
 vi.mock('next/navigation', () => ({ usePathname: () => route.pathname }));
 it('keeps canonical navigation available and current across source routes without implicit financial actions', () => {
@@ -37,6 +37,23 @@ it('keeps canonical navigation available and current across source routes withou
         container.querySelectorAll('svg:not([aria-hidden="true"])'),
       ).toHaveLength(0);
     }
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+it('retains accessible category identity when compact rows hide category text', () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  try {
+    act(() => root.render(<CategoryIcon category="GROCERIES" />));
+    expect(
+      container.querySelector('[role="img"]')?.getAttribute('aria-label'),
+    ).toBe('groceries');
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
   } finally {
     act(() => root.unmount());
   }

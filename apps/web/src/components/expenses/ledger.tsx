@@ -24,7 +24,7 @@ import {
 } from '@/lib/relay/expense-filter';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { categories, type Member } from '@/lib/relay/draft';
-import { minor, money } from '@/lib/relay/money';
+import { money } from '@/lib/relay/money';
 import viewDocument, {
   type expensesView$data,
   type expensesView$key,
@@ -93,7 +93,6 @@ function LedgerContent({
   groupId = '',
   spaces,
   today,
-  net,
   onDenied,
   onRefreshContext,
   onEditSaved,
@@ -114,7 +113,6 @@ function LedgerContent({
   groupId?: string;
   spaces: readonly LedgerSpace[];
   today: string;
-  net?: string;
   activeSpaces?: string;
   onDenied: () => void;
   onRefreshContext?: () => Promise<void> | void;
@@ -388,7 +386,15 @@ function LedgerContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, create]);
   useEffect(() => {
-    if (!restoring || loading || error || pageError || !page) return;
+    if (
+      inFlight.current ||
+      !restoring ||
+      loading ||
+      error ||
+      pageError ||
+      !page
+    )
+      return;
     if (
       rows.length < restoreCount.current &&
       replayRemaining.current > 0 &&
@@ -401,8 +407,17 @@ function LedgerContent({
       return;
     }
     if (selected || create) return;
+    const saved = origin.current;
+    const returnGeneration = generation.current;
     const frame = requestAnimationFrame(() => {
-      const saved = origin.current;
+      // A newer overlay intent supersedes this return frame, even before the
+      // navigation commit can run the effect cleanup.
+      if (
+        inFlight.current ||
+        generation.current !== returnGeneration ||
+        saved !== origin.current
+      )
+        return;
       const nearest = rows[Math.min(saved?.index ?? 0, rows.length - 1)];
       const target =
         (saved && document.getElementById(saved.id)) ||
@@ -447,10 +462,36 @@ function LedgerContent({
     setReservedHeight(origin.current.height);
     positions.set(visitKey, origin.current);
   };
-  const choose = (id: string, patch: Record<string, string>) => {
-    remember(id);
-    change(patch);
-  };
+  useEffect(() => {
+    // The shared banner enters this mounted ledger through a native link. Keep
+    // the same authorized traversal/geometry record used by row detail entry.
+    const capture = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const link =
+        event.target instanceof Element
+          ? event.target.closest<HTMLAnchorElement>('a#workspace-add')
+          : null;
+      if (
+        link &&
+        !selected &&
+        !create &&
+        new URL(link.href).searchParams.has('create')
+      )
+        remember(link.id);
+    };
+    document.addEventListener('click', capture, true);
+    return () => document.removeEventListener('click', capture, true);
+    // Snapshot the current authorized rows when the banner is activated.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, create, rows, visitKey]);
   const close = () => {
     if (origin.current) router.back();
     else change({ expense: null, expenseGroup: null, create: null }, true);
@@ -620,12 +661,7 @@ function LedgerContent({
       style={restoring ? { minHeight: reservedHeight } : undefined}
     >
       {!managedRefresh && (
-        <WorkspaceRefresh
-          busy={loading}
-          error={error}
-          onRefresh={refresh}
-          label="Refresh expenses"
-        />
+        <WorkspaceRefresh busy={loading} error={error} onRefresh={refresh} />
       )}
       {navigationPending && <p role="status">Opening expense view…</p>}
       <div className="ledger-toolbar">
@@ -645,31 +681,6 @@ function LedgerContent({
             <AppIcon name="pie" /> Breakdown
           </button>
         </nav>
-        <details className="ledger-net">
-          <summary>
-            <AppIcon name="arrow-up-right" /> Balance details
-          </summary>
-          <span>
-            {net === undefined ? (
-              'Unavailable'
-            ) : (
-              <>
-                {minor(net) > 0n
-                  ? "You're owed "
-                  : minor(net) < 0n
-                    ? 'You owe '
-                    : 'Net zero '}
-                <Money value={money(net)} currency="USD" />
-              </>
-            )}{' '}
-            · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
-            in each space. A zero net does not establish that every member is
-            settled.{' '}
-            <Link href={`${groupId ? pathname : '/household'}?tab=balances`}>
-              View who owes whom
-            </Link>
-          </span>
-        </details>
         <button
           aria-label={`Filters${activeFilters.length ? ` · ${activeFilters.length}` : ''}`}
           ref={filterTrigger}
@@ -679,21 +690,6 @@ function LedgerContent({
           <AppIcon name="sliders" /> Filters
           {activeFilters.length ? ` · ${activeFilters.length}` : ''}
         </button>
-        <div className="ledger-page-actions">
-          <button
-            id="ledger-add"
-            className="ledger-add"
-            aria-label="Add expense"
-            disabled={!spaces.length}
-            onClick={() =>
-              choose('ledger-add', {
-                create: groupId || params.get('groupId') || spaces[0].groupId,
-              })
-            }
-          >
-            <AppIcon name="plus" /> <span>Add expense</span>
-          </button>
-        </div>
       </div>
       {activeFilters.length > 0 && (
         <div className="ledger-active-filters" aria-label="Active filters">
@@ -879,23 +875,30 @@ function LedgerContent({
                       aria-label={month.month}
                     >
                       <header>
-                        <h2>
-                          {month.month
-                            ? new Intl.DateTimeFormat('en', {
-                                month: 'long',
-                                year: 'numeric',
-                                timeZone: 'UTC',
-                              }).format(new Date(`${month.month}-01T00:00:00Z`))
-                            : 'Expenses in amount order'}
-                        </h2>
+                        <div className="ledger-month-heading">
+                          <h2>
+                            {month.month
+                              ? new Intl.DateTimeFormat('en', {
+                                  month: 'long',
+                                  year: 'numeric',
+                                  timeZone: 'UTC',
+                                }).format(
+                                  new Date(`${month.month}-01T00:00:00Z`),
+                                )
+                              : 'Expenses in amount order'}
+                          </h2>
+                          <span className="ledger-month-count">
+                            {month.expenseCount}{' '}
+                            {month.expenseCount === '1'
+                              ? 'expense'
+                              : 'expenses'}
+                          </span>
+                        </div>
                         <span className="ledger-month-total">
                           <Money
                             value={money(month.totalExpenseMinor)}
                             currency="USD"
                           />
-                          {' · '}
-                          {month.expenseCount}{' '}
-                          {month.expenseCount === '1' ? 'expense' : 'expenses'}
                         </span>
                       </header>
                       <div className="ledger-columns" aria-hidden="true">
@@ -933,11 +936,12 @@ function LedgerContent({
                                   <span className="ledger-description">
                                     <strong>{node.description}</strong>
                                     <span>
-                                      {node.category[0] +
-                                        node.category
-                                          .slice(1)
-                                          .toLowerCase()}{' '}
-                                      · {!groupId && <>{source.name} · </>}
+                                      <span className="ledger-category-text">
+                                        {node.category[0] +
+                                          node.category.slice(1).toLowerCase()}
+                                        {' · '}
+                                      </span>
+                                      {!groupId && <>{source.name} · </>}
                                       <time dateTime={node.effectiveDate}>
                                         {overviewDate(node.effectiveDate)}
                                       </time>

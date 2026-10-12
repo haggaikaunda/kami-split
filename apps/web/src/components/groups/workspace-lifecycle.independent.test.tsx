@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import {
+  foregroundRefresh,
+  pullRefresh,
+} from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import {
   Environment,
@@ -70,6 +74,10 @@ const group = {
 const viewer = { __typename: 'Viewer', today: '2026-10-05' };
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  vi.stubGlobal('CSS', { supports: () => true });
+  vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+    'Chrome/140.0.0.0',
+  );
   search = 'tab=members';
   requests = [];
   const environment = new Environment({
@@ -109,6 +117,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 it('keeps the same public tab shell while destination changes cancel old requests without viewer discovery', async () => {
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
@@ -194,11 +204,7 @@ it.each([
     expect(host.textContent).not.toContain('Private group');
     expect(host.textContent).not.toContain('Private member');
     expect(host.textContent).not.toContain('Settled');
-    await act(async () =>
-      host
-        .querySelector<HTMLButtonElement>('.workspace-refresh button')!
-        .click(),
-    );
+    await foregroundRefresh();
     expect(host.querySelector('[role=alert]')).toBeNull();
     expect(requests).toHaveLength(2);
     expect(requests[1].variables.id).toBe('G');
@@ -410,9 +416,7 @@ it('preserves selected Activity kind across manual and foreground authorization 
     'REPAYMENT_RECORDED',
   );
   const before = requests.length;
-  await act(async () =>
-    host.querySelector<HTMLButtonElement>('.workspace-refresh button')!.click(),
-  );
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Private group');
   expect(requests).toHaveLength(before + 1);
   await act(async () => requests.at(-1)!.next(result));
@@ -449,32 +453,31 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   await act(async () => requests[0].next(result));
   expect(requests[1].name).toBe('activityGroupQuery');
   await act(async () => requests[1].next({ groupActivity: feed }));
-  const control = () =>
-    host.querySelector<HTMLButtonElement>('.workspace-refresh button')!;
+  const control = () => pullRefresh(host.querySelector('.workspace-refresh')!);
   const status = () =>
     host.querySelector('.workspace-refresh [role=status]')!.textContent;
-  await act(async () => control().click());
+  await act(async () => control());
   expect(requests[2].name).toBe('journeyWorkspaceQuery');
   await act(async () => requests[2].next(result));
   expect(requests[3].name).toBe('activityGroupQuery');
   expect(requests[3].variables.filter).toMatchObject({
     kind: 'REPAYMENT_RECORDED',
   });
-  expect(control().getAttribute('aria-disabled')).toBe('true');
+  expect(host.querySelector('.workspace-refresh button')).toBeNull();
   expect(status()).toContain('Updating');
   expect(status()).not.toContain('Up to date');
-  await act(async () => control().click());
+  await act(async () => control());
   expect(requests).toHaveLength(4);
   await act(async () => requests[3].fail());
-  expect(control().getAttribute('aria-disabled')).toBe('false');
+  expect(host.querySelector('.workspace-refresh button')).toBeNull();
   expect(status()).toContain('Try again');
   expect(status()).not.toContain('Up to date');
-  await act(async () => control().click());
+  await act(async () => control());
   expect(requests[4].name).toBe('journeyWorkspaceQuery');
   await act(async () => requests[4].next(result));
   expect(status()).toContain('Updating');
   expect(requests[5].name).toBe('activityGroupQuery');
   await act(async () => requests[5].next({ groupActivity: feed }));
   expect(status()).toContain('Up to date');
-  expect(control().getAttribute('aria-disabled')).toBe('false');
+  expect(host.querySelector('.workspace-refresh button')).toBeNull();
 });

@@ -5,11 +5,9 @@ import { PeopleList, type Person } from './people-list';
 export function InvitationPanel({
   state: c,
   members = [],
-  onRefresh,
 }: {
   state: OnboardingController;
   members?: readonly Person[];
-  onRefresh?: () => void | Promise<void>;
 }) {
   const {
     busy,
@@ -197,18 +195,6 @@ export function InvitationPanel({
                 <p>No invitation history in the loaded records.</p>
               )}
             </details>
-            <Button
-              tone="secondary"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  if (onRefresh) await onRefresh();
-                  else await loadInvites(group);
-                })
-              }
-            >
-              Refresh invitations
-            </Button>
             {next && (
               <Button
                 tone="secondary"

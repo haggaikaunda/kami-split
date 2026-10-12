@@ -1,4 +1,9 @@
-# Refresh verification (#243)
+# Historical refresh verification (#243)
+
+This records the #243 implementation before #269 removed routine in-app Refresh
+controls. Current gesture/reload behavior is described in
+[workspace loading](workspace-loading.md#refresh-and-loading-continuity-243); the
+updated browser suite verifies native reload and gesture/foreground boundaries.
 
 The opt-in `scripts/refresh-browser.cjs` suite runs inside the existing
 `navigation-browser.cjs` synthetic Auth/GraphQL harness. It exercises rendered

@@ -214,10 +214,20 @@ if (process.env.LEDGER_TESTS === '1') {
   expense.description = 'Long dinner description '.repeat(8);
   members[0].displayName = 'Long payer name '.repeat(8);
   expense.payer = members[0];
+  members[2].displayName = 'Sasha';
   view.edges = Array.from({ length: 6 }, (_, i) => ({
     cursor: `e${i + 1}`,
-    node: { ...expense, id: `e${i + 1}` },
-    source: groups[1],
+    node: {
+      ...expense,
+      id: `e${i + 1}`,
+      ...(i === 1
+        ? {
+            description: 'Uber',
+            payer: { ...members[2], displayName: 'Sasha' },
+          }
+        : {}),
+    },
+    source: i === 1 ? { ...groups[1], name: 'Maui' } : groups[1],
   }));
   view.expenseCount = '9';
   view.totalExpenseMinor = '2700';
@@ -486,6 +496,22 @@ const activity = {
               }
             : {}),
         };
+      if (process.env.LEDGER_TESTS === '1' && data.householdExpenses?.edges) {
+        // A genuinely short Household row uses the short native Household
+        // source. Do not rename the Trip's shared Relay record for one row.
+        data.householdExpenses = {
+          ...data.householdExpenses,
+          edges: data.householdExpenses.edges.map((edge) =>
+            edge.node.id === 'e2'
+              ? {
+                  ...edge,
+                  node: { ...edge.node, groupId: 'H' },
+                  source: groups[0],
+                }
+              : edge,
+          ),
+        };
+      }
       await new Promise((resolve) => setTimeout(resolve, delay));
       item.end = Date.now();
       await r.fulfill({ json: { data } }).catch(() => {
@@ -557,6 +583,20 @@ const activity = {
       log = [];
       documents = 0;
     }
+    if (process.env.PRESERVATION_TESTS === '1') {
+      await require('./preservation-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        width,
+        scale,
+        output,
+        results,
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
     if (process.env.REFRESH_TESTS === '1') {
       await require('./refresh-browser.cjs')({
         page,
@@ -589,6 +629,16 @@ const activity = {
         output,
         results,
       });
+      if (process.env.ISSUE269_TESTS === '1')
+        await require('./issue-269-browser.cjs')({
+          page,
+          origin,
+          workspace,
+          width,
+          scale,
+          output,
+          results,
+        });
       assert.deepEqual(errors, []);
       await page.close();
       continue;
