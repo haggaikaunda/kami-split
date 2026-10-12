@@ -5114,14 +5114,22 @@ type ExpenseCategoryTotal {
 Full authorized result ordering; amount ties additionally use effective date.
 """
 enum ExpenseSort {
- """Newest effective date first."""
- DATE_DESC
- """Oldest effective date first."""
- DATE_ASC
- """Largest exact face value first."""
- AMOUNT_DESC
- """Smallest exact face value first."""
- AMOUNT_ASC
+  """
+  Newest effective date first.
+  """
+  DATE_DESC
+  """
+  Oldest effective date first.
+  """
+  DATE_ASC
+  """
+  Largest exact face value first.
+  """
+  AMOUNT_DESC
+  """
+  Smallest exact face value first.
+  """
+  AMOUNT_ASC
 }
 `, BuiltIn: false},
 }
