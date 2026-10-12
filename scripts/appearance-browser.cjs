@@ -506,7 +506,10 @@ async function checkContrast(page) {
     latestKeyboardIntentPersisted: true,
   });
   for (const choice of ['Dark', 'Light', 'System']) {
-    await page.getByRole('radio', { name: choice, exact: true }).check();
+    await page
+      .locator('.appearance-choice')
+      .filter({ has: page.getByRole('radio', { name: choice, exact: true }) })
+      .click();
     await page
       .getByText('Appearance saved for your account.', { exact: true })
       .waitFor();
@@ -517,7 +520,10 @@ async function checkContrast(page) {
     await theme(choice === 'Light' ? 'light' : 'dark');
     results.push({ choice, liveOSChange: true });
   }
-  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await page
+    .locator('.appearance-choice')
+    .filter({ has: page.getByRole('radio', { name: 'Dark', exact: true }) })
+    .click();
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
@@ -549,20 +555,24 @@ async function checkContrast(page) {
     cachedFirstPaint: true,
   });
   await checkContrast(page);
+  // Approved #227 palette, also guarded by appearance-palette.test.ts.
   const canonical = {
-    canvas: '#0B111A',
-    surface: '#121A27',
-    'surface-raised': '#172131',
-    'surface-accent': '#142A2C',
-    separator: '#334153',
-    ink: '#F7F9FC',
-    muted: '#AEBACF',
-    primary: '#58EFB7',
-    'primary-surface': '#173C37',
-    indigo: '#9AA8FF',
-    'indigo-surface': '#202B47',
-    'warm-surface': '#FFF1DF',
-    'warm-ink': '#B66A2B',
+    canvas: '#0B111B',
+    surface: '#131D2C',
+    subtle: '#192535',
+    high: '#24364A',
+    chrome: '#101927',
+    separator: '#2A394C',
+    ink: '#F5F7FF',
+    muted: '#AFBED1',
+    primary: '#50E1B4',
+    container: '#163C35',
+    'on-container': '#79F0CB',
+    border: '#7D90A7',
+    violet: '#AAA2FF',
+    blue: '#7CBDFF',
+    orange: '#FFC27E',
+    coral: '#FF9CA8',
   };
   for (const [name, expected] of Object.entries(canonical)) {
     const actual = await page.evaluate(
