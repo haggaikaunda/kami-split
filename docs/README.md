@@ -47,6 +47,8 @@ The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CO
 
 Current system-font typography and mobile expense-sheet behavior supersede the #227 typography baseline under #237; see [the current expense journey](application/relay-expenses.md#mobile-typography-and-expense-sheets-237).
 
+Persistent navigation, compact working headings and constrained content widths now follow #238; see [the current expense journey](application/relay-expenses.md#persistent-navigation-and-content-widths-238).
+
 ## Approved design archive
 
 The [design index](design/README.md) archives the former seeded UX specification, navigation contracts and data-access design. The prototype and numbered issue specifications preserve the original approved scope. Historical readiness instructions and unchecked specification checkboxes are not an active backlog; completion and subsequent changes are recorded in GitHub and linked implementation guides.

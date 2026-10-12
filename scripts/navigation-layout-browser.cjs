@@ -97,7 +97,17 @@ module.exports = async function verifyLayout({
   await geometry('top');
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   let metrics = await geometry('bottom');
-  assert(metrics.last.y >= metrics.header.bottom, 'Final row below header');
+  // Enlarged household rows can be taller than the usable viewport: both
+  // ends must be reachable, but need not fit simultaneously.
+  await page
+    .locator('#ledger-expense-e40')
+    .evaluate((row) => row.scrollIntoView({ block: 'start' }));
+  const lastTop = await page.locator('#ledger-expense-e40').boundingBox();
+  assert(
+    lastTop.y >= metrics.header.bottom - 1,
+    'Final row top reachable below header',
+  );
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   assert(
     metrics.last.bottom <= (width <= 600 ? metrics.nav.y : metrics.height),
     'Final row above navigation',
@@ -116,20 +126,25 @@ module.exports = async function verifyLayout({
       top: r.top,
       bottom: r.bottom,
       headerBottom: header.bottom,
-      navTop: nav.top,
+      navTop: innerWidth <= 600 ? nav.top : innerHeight,
     };
   });
   assert(
-    focus.top >= focus.headerBottom - 1,
+    focus.bottom > focus.headerBottom &&
+      (focus.top >= focus.headerBottom - 1 ||
+        focus.bottom - focus.top > focus.navTop - focus.headerBottom),
     'Keyboard focus is not behind header',
   );
   if (width <= 600)
     assert(
-      focus.bottom <= focus.navTop + 1,
+      focus.top < focus.navTop &&
+        (focus.bottom <= focus.navTop + 1 ||
+          focus.bottom - focus.top > focus.navTop - focus.headerBottom),
       'Keyboard focus is not behind bottom navigation',
     );
 
   await page.setViewportSize({ width, height: scale === 2 ? 600 : 420 });
+  await page.waitForTimeout(100);
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   metrics = await geometry('short-viewport');
   assert(
@@ -137,6 +152,36 @@ module.exports = async function verifyLayout({
     'Short viewport final row unobscured',
   );
   await page.setViewportSize({ width, height: 900 });
+  await page.waitForTimeout(100);
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Expense filters' });
+  await dialog.waitFor();
+  const dateBounds = await dialog.evaluate((el) => {
+    const d = el.getBoundingClientRect();
+    return [...el.querySelectorAll('input[type=date]')].map((i) => {
+      const r = i.getBoundingClientRect();
+      return {
+        left: r.left,
+        right: r.right,
+        dialogLeft: d.left,
+        dialogRight: d.right,
+        width: r.width,
+        scroll: i.scrollWidth,
+        client: i.clientWidth,
+      };
+    });
+  });
+  results.push({ workspace, dateBounds });
+  await page.screenshot({
+    path: path.join(output, workspace + '-filters.png'),
+  });
+  for (const b of dateBounds)
+    assert(
+      b.left >= b.dialogLeft && b.right <= b.dialogRight,
+      'Date controls within dialog bounds',
+    );
+  await page.keyboard.press('Escape');
+
   await page
     .locator('.workspace-navigation')
     .getByRole('link', { name: 'Account', exact: true })
@@ -147,6 +192,21 @@ module.exports = async function verifyLayout({
       .locator('.workspace-navigation a[aria-current="page"]')
       .getAttribute('href'),
     '/account',
+  );
+  await page.evaluate(() => scrollTo(0, 0));
+  const shortPage = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth > innerWidth,
+    contentTop: document
+      .querySelector('.account-content')
+      .getBoundingClientRect().top,
+    headerBottom: document
+      .querySelector('.workspace-navigation-brand')
+      .getBoundingClientRect().bottom,
+  }));
+  assert(!shortPage.overflow, 'Account no horizontal overflow');
+  assert(
+    shortPage.contentTop >= shortPage.headerBottom,
+    'Account starts below header',
   );
   const account = await page.locator('.account-content').boundingBox();
   assert(account.width <= 46.25 * 16 * scale + 1, 'Settings width is narrower');
