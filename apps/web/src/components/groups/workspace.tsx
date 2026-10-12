@@ -93,8 +93,13 @@ export function GroupWorkspace({
           <Link className="banner-members-link" href={hrefFor('Members')}>
             {activeMembers.length} members
           </Link>{' '}
-          · {group.trip ? 'Trip' : group.isHousehold ? 'Household' : 'Group'} ·{' '}
-          {group.currency}
+          ·{' '}
+          {group.trip
+            ? 'Trip'
+            : group.isHousehold
+              ? 'Household source ledger'
+              : 'Group'}{' '}
+          · {group.currency}
         </>
       }
     >
@@ -357,7 +362,7 @@ function OverviewMetrics({
       <SummaryMetric
         label="Total expenses"
         tone="total"
-        detail={`Across this ${group.trip ? 'trip' : 'group'} · ${group.currency}`}
+        detail={`This ${group.isHousehold ? 'Household source ledger only' : group.trip ? 'trip only' : 'group only'} · ${group.currency}`}
         icon={<AppIcon name="expense" />}
       >
         {group.balances?.__typename === 'GroupBalances' ? (
@@ -491,18 +496,34 @@ export function GroupBalances({
       <ViewerMetric scope={scope} group={group} />
       <p>
         {b.settled
-          ? 'Settled: every individual net is zero.'
+          ? 'Everyone in this space is settled: each member’s balance is zero.'
           : 'This group has outstanding balances.'}{' '}
         Recording a repayment does not move money.
       </p>
-      <h3>Member positions</h3>
+      <p>
+        Your balance is what you paid for expenses minus your allocated share,
+        plus repayments you sent, minus repayments you received. A positive
+        balance means you are owed money; a negative balance means you owe
+        money. Your share includes only amounts allocated to you, even when
+        someone else paid. Repayments do not change expense totals or shares.
+      </p>
+      <p>
+        For example, paying $60.00 with a $20.00 share means you are owed
+        $40.00. Receiving a $15.00 repayment leaves $25.00 owed to you. Paying
+        nothing with a $20.00 share means you owe $20.00; sending a $5.00
+        repayment leaves $15.00 to pay.
+      </p>
+      <Link href={`${spaceHref(group)}?tab=activity`}>
+        View Activity and expense before/after history
+      </Link>
+      <h3>Each member’s balance</h3>
       <div className="workspace-member-balances">
         {b.positions.map((p) => (
           <div className="balance-position" key={p.member.id}>
             <div className="ui-balance-row">
               <Member
                 name={p.member.displayName}
-                detail={`${minor(p.netMinor) > 0n ? 'Owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Settled'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
+                detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
               />
               <Money
                 value={money(p.netMinor).replace(/^-/, '')}
@@ -513,10 +534,10 @@ export function GroupBalances({
               <summary>Position details for {p.member.displayName}</summary>
               <dl className="balance-position-facts">
                 {[
-                  ['Paid', p.paidMinor],
-                  ['Share', p.owedMinor],
-                  ['Sent', p.sentMinor],
-                  ['Received', p.receivedMinor],
+                  ['Paid for expenses (+)', p.paidMinor],
+                  ['Allocated share (−)', p.owedMinor],
+                  ['Repayments sent (+)', p.sentMinor],
+                  ['Repayments received (−)', p.receivedMinor],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <dt>{label}</dt>
@@ -526,16 +547,28 @@ export function GroupBalances({
                   </div>
                 ))}
               </dl>
+              <p aria-label={`Balance calculation for ${p.member.displayName}`}>
+                {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
+                {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
+                {money(p.netMinor)} {group.currency}
+              </p>
             </details>
           </div>
         ))}
       </div>
-      <h3>Current simplified obligations</h3>
+      <h3>Who owes whom</h3>
       <p>
-        Each row identifies the sender, recipient and amount within {group.name}
-        . Original expenses are history, not additional debts.
+        These suggested repayments would settle the current balances within{' '}
+        {group.name}. They combine expense shares and recorded repayments, so do
+        not pay original expense amounts again on top of these amounts.
       </p>
-      {!b.obligations?.length && <p>No current simplified obligations.</p>}
+      {!b.obligations?.length && (
+        <p>
+          {b.settled
+            ? 'No repayments are needed in this space.'
+            : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+        </p>
+      )}
       {(b.obligations ?? []).map((o) => {
         const eligible = [o.from.id, o.to.id].every((id) =>
           group.members.some((m) => m.id === id && m.canParticipate),

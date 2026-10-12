@@ -575,3 +575,12 @@ it.each(['invalid', '2026-02-31', '0000-01-01', '2026-9-01'])(
     });
   },
 );
+
+it('offers a descriptive keyboard-native balance disclosure and canonical details route', async () => {
+  await renderHousehold();
+  await respondContext(context('0'));
+  await respond(page([]));
+  const summary = host.querySelector('.ledger-net summary')!;
+  expect(summary.textContent).toContain('Balance details');
+  expect(host.querySelector('.ledger-net')?.tagName).toBe('DETAILS');
+});
