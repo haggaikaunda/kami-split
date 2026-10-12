@@ -108,12 +108,28 @@ module.exports = async function verifyRefresh({
   }
   await page.evaluate(() => scrollTo(0, 0));
   const point = await page.evaluate(() => {
-    for (let y = 160; y < innerHeight - 240; y += 30) {
-      for (const x of [12, innerWidth / 2, innerWidth - 12]) {
+    const controls = [
+      ...document.querySelectorAll(
+        'nav, button, a, input, select, textarea, dialog',
+      ),
+    ]
+      .map((element) => element.getBoundingClientRect())
+      .filter((rect) => rect.width && rect.height);
+    // Touch hit testing can retarget near-misses to a nearby link. Keep the
+    // gesture away from controls, not merely outside their exact rectangles.
+    for (let y = 80; y < innerHeight - 240; y += 20) {
+      for (const x of [40, innerWidth / 2, innerWidth - 40]) {
         const target = document.elementFromPoint(x, y);
         if (
           target?.closest('main') &&
-          !target.closest('nav, button, a, input, select, textarea, dialog')
+          !target.closest('nav, button, a, input, select, textarea, dialog') &&
+          controls.every(
+            (rect) =>
+              x < rect.left - 32 ||
+              x > rect.right + 32 ||
+              y < rect.top - 32 ||
+              y > rect.bottom + 32,
+          )
         )
           return { x, y };
       }
