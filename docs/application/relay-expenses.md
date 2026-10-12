@@ -243,5 +243,7 @@ The rail can scroll at short desktop heights without adding a content scroller.
 The content wrapper owns container queries and centers lists/tables within a
 72rem maximum width; Account uses 46rem and existing form cards use 42rem.
 Working tabs retain workspace identity, context and actions in compact headings;
-Overview keeps its illustrated banner. These changes supersede the scrolling
+Overview keeps its illustrated banner. Filter dates use the same bounded native
+date styling as expense forms, and the filter grid stacks when enlarged text or
+a narrow dialog leaves insufficient width. These changes supersede the scrolling
 chrome and working-tab banner layout in the historical #227 visual evidence.
