@@ -130,3 +130,70 @@ it('keeps creation modal across phone resize and preserves its mounted draft and
   );
   expect(close).toHaveBeenCalledOnce();
 });
+
+it('tracks keyboard viewport changes, leaves pinch scaling alone, and removes listeners', async () => {
+  const viewport = new EventTarget();
+  Object.assign(viewport, { height: 800, offsetTop: 0, scale: 1 });
+  const remove = vi.spyOn(viewport, 'removeEventListener');
+  const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: viewport,
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <ExpensePresentation
+          title="Add expense"
+          kind="create"
+          onClose={vi.fn()}
+        >
+          <input aria-label="Description" />
+        </ExpensePresentation>,
+      ),
+    );
+    const dialog = host.querySelector('dialog')!;
+    expect(dialog.style.getPropertyValue('--expense-viewport-height')).toBe(
+      '800px',
+    );
+    Object.assign(viewport, { height: 350, offsetTop: 40 });
+    viewport.dispatchEvent(new Event('resize'));
+    expect(dialog.style.getPropertyValue('--expense-viewport-height')).toBe(
+      '350px',
+    );
+    expect(dialog.style.getPropertyValue('--expense-viewport-top')).toBe(
+      '40px',
+    );
+    Object.assign(viewport, { offsetTop: 65 });
+    viewport.dispatchEvent(new Event('scroll'));
+    expect(dialog.style.getPropertyValue('--expense-viewport-top')).toBe(
+      '65px',
+    );
+    Object.assign(viewport, { height: 175, offsetTop: 100, scale: 2 });
+    viewport.dispatchEvent(new Event('resize'));
+    expect(dialog.style.getPropertyValue('--expense-viewport-height')).toBe(
+      '350px',
+    );
+    expect(dialog.style.getPropertyValue('--expense-viewport-top')).toBe(
+      '65px',
+    );
+    Object.assign(viewport, { height: 800, offsetTop: 0, scale: 1 });
+    viewport.dispatchEvent(new Event('resize'));
+    expect(dialog.style.getPropertyValue('--expense-viewport-height')).toBe(
+      '800px',
+    );
+    await act(async () => root.render(null));
+    expect(remove.mock.calls.map(([name]) => name)).toEqual([
+      'resize',
+      'scroll',
+    ]);
+    Object.assign(viewport, { height: 200 });
+    viewport.dispatchEvent(new Event('resize'));
+    expect(dialog.style.getPropertyValue('--expense-viewport-height')).toBe(
+      '800px',
+    );
+  } finally {
+    if (original) Object.defineProperty(window, 'visualViewport', original);
+    else Reflect.deleteProperty(window, 'visualViewport');
+  }
+});

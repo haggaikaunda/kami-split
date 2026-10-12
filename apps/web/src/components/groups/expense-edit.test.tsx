@@ -257,3 +257,15 @@ it('keeps confirmed success and refreshes when clearing local recovery storage f
     options.variables.input.key,
   );
 });
+
+it('initially focuses its title and leaves editable controls for deliberate user focus', async () => {
+  await render();
+  const heading = host.querySelector('#edit-expense-title')!;
+  expect(document.activeElement).toBe(heading);
+  expect(heading.getAttribute('tabindex')).toBe('-1');
+  const description = host.querySelector<HTMLInputElement>(
+    '#expense-description',
+  )!;
+  description.focus();
+  expect(document.activeElement).toBe(description);
+});

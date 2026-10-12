@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import {
   categories,
   selectSplit,
@@ -23,6 +24,9 @@ export function ExpenseFields({
   submitted: boolean;
 }) {
   const checked = validate(draft, members);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const showNotes =
+    notesExpanded || !!draft.note || (submitted && !!checked.errors.note);
   const field = (key: string) => ({
     'aria-invalid':
       (submitted || draft.split === 'PERCENTAGE') && !!checked.errors[key],
@@ -116,15 +120,26 @@ export function ExpenseFields({
         </div>
         <div className="expense-field expense-field--full">
           {' '}
-          <label htmlFor="expense-note">
-            <span>Note</span>
-          </label>
-          <textarea
-            id="expense-note"
-            value={draft.note}
-            onChange={(e) => change({ note: e.target.value })}
-            {...field('note')}
-          />
+          <button
+            type="button"
+            aria-expanded={showNotes}
+            aria-controls="expense-notes"
+            onClick={() => setNotesExpanded(!notesExpanded)}
+            hidden={!!draft.note || (submitted && !!checked.errors.note)}
+          >
+            {notesExpanded ? 'Hide optional note' : 'Add optional note'}
+          </button>
+          <div id="expense-notes" hidden={!showNotes}>
+            <label htmlFor="expense-note">
+              <span>Note</span>
+            </label>
+            <textarea
+              id="expense-note"
+              value={draft.note}
+              onChange={(e) => change({ note: e.target.value })}
+              {...field('note')}
+            />
+          </div>
         </div>
       </div>
       {draft.split === 'PERCENTAGE' && (

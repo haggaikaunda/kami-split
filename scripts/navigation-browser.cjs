@@ -791,6 +791,10 @@ const activity = {
       await page
         .getByRole('button', { name: 'Edit expense', exact: true })
         .click();
+      if (!(await page.locator('#expense-note').isVisible()))
+        await page
+          .getByRole('button', { name: 'Add optional note', exact: true })
+          .click();
       await page
         .locator('#expense-note')
         .fill('Recoverable unsaved browser draft');

@@ -267,3 +267,7 @@
     padding: 10px 22px;
   }
 }
+
+.onboarding :is(input, select, textarea) {
+  font-size: max(1rem, 16px);
+}

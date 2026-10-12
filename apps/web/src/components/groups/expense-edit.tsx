@@ -81,6 +81,7 @@ export function ExpenseEdit({
   const alive = useRef(true),
     pending = useRef(false),
     form = useRef<HTMLFormElement>(null),
+    heading = useRef<HTMLHeadingElement>(null),
     status = useRef<HTMLParagraphElement>(null);
   const current = () => alive.current && scope.isLive();
   const checked = validate(draft, members);
@@ -105,7 +106,7 @@ export function ExpenseEdit({
   })();
   useEffect(() => {
     alive.current = true;
-    form.current?.querySelector<HTMLInputElement>('input')?.focus();
+    heading.current?.focus({ preventScroll: true });
     return () => {
       alive.current = false;
     };
@@ -279,7 +280,7 @@ export function ExpenseEdit({
       className="financial-form-card"
       aria-labelledby="edit-expense-title"
     >
-      <h2 id="edit-expense-title" className="ui-visually-hidden">
+      <h2 id="edit-expense-title" ref={heading} tabIndex={-1}>
         Edit expense
       </h2>
       <div className="expense-detail-identity">

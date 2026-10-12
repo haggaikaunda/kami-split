@@ -114,6 +114,10 @@ const path = require('node:path');
         .selectOption(group);
     await page.locator('#expense-description').fill(description);
     await page.locator('#expense-amount').fill('120.00');
+    if (!(await page.locator('#expense-note').isVisible()))
+      await page
+        .getByRole('button', { name: 'Add optional note', exact: true })
+        .click();
     await page.locator('#expense-note').fill(' Original note ');
     await page.locator('.financial-form-card button[type="submit"]').click();
     await page.waitForFunction(

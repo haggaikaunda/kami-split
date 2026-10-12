@@ -284,23 +284,31 @@ export function ExpenseForm({
               change={change}
               submitted={submitted}
             />
-            <div className={embedded ? 'expense-create-actions' : undefined}>
-              {onCancel && (
-                <Button tone="text" type="button" onClick={onCancel}>
-                  Cancel
-                </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={
-                  draft.split === 'PERCENTAGE' &&
-                  Object.keys(checked.errors).length > 0
-                }
-              >
-                {embedded ? 'Add expense' : 'Save expense'}
-              </Button>
-            </div>
           </fieldset>
+          <div className="expense-create-actions">
+            {onCancel && (
+              <Button
+                tone="text"
+                type="button"
+                onClick={onCancel}
+                disabled={busy || !!attempt || storageFailed}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={
+                busy ||
+                !!attempt ||
+                storageFailed ||
+                (draft.split === 'PERCENTAGE' &&
+                  Object.keys(checked.errors).length > 0)
+              }
+            >
+              {embedded ? 'Add expense' : 'Save expense'}
+            </Button>
+          </div>
         </form>
       )}
     </section>
