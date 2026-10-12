@@ -656,7 +656,7 @@ export function SummaryMetric({
   icon,
   tone,
 }: {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   detail?: ReactNode;
   icon?: ReactNode;
@@ -690,7 +690,7 @@ export function SignedBalanceMetric({
 }: {
   position: 'positive' | 'negative' | 'zero';
   scope?: 'group' | 'household';
-  label?: string;
+  label?: ReactNode;
   value: string;
   currency: string;
   detail?: ReactNode;

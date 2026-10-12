@@ -366,6 +366,7 @@ export function CategoryIcon({ category }: { category: string }) {
   return (
     <span
       className={`category-icon category-icon--${category.toLowerCase()}`}
+      role="img"
       aria-label={category.toLowerCase()}
     >
       <AppIcon name={categories[category] ?? 'other'} />

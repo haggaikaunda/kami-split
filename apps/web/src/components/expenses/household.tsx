@@ -124,7 +124,6 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
         scope.expensePositions?.clear();
         refresh();
       }}
-      label="Refresh expenses"
     />
   );
   if (error)
@@ -162,11 +161,6 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
           reference: context.result.householdExpenses,
         }}
         managedRefresh
-        net={
-          dashboard.totals?.__typename === 'HouseholdDashboardTotals'
-            ? dashboard.totals.viewerNetMinor
-            : undefined
-        }
         activeSpaces={
           dashboard.totals?.__typename === 'HouseholdDashboardTotals'
             ? dashboard.totals.activeSpaceCount

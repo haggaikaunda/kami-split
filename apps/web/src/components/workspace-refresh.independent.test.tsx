@@ -37,12 +37,12 @@ function gesture(target: Element, distance = 100) {
   touch(target, 'touchend', 20, 20 + distance, 0);
   return move;
 }
-it('coalesces repeated gestures and clicks, then allows retry after failure', () => {
+it('coalesces repeated gestures, then allows retry after failure', () => {
   const refresh = vi.fn();
   act(() => root.render(<WorkspaceRefresh busy={false} onRefresh={refresh} />));
   expect(gesture(host).defaultPrevented).toBe(true);
   gesture(host);
-  act(() => host.querySelector('button')!.click());
+  gesture(host);
   expect(refresh).toHaveBeenCalledTimes(1);
   act(() => root.render(<WorkspaceRefresh busy onRefresh={refresh} />));
   expect(host.textContent).toContain('Updating');
@@ -54,7 +54,7 @@ it('coalesces repeated gestures and clicks, then allows retry after failure', ()
     ),
   );
   expect(host.textContent).toContain('Try again');
-  act(() => host.querySelector('button')!.click());
+  gesture(host);
   expect(refresh).toHaveBeenCalledTimes(2);
 });
 it('rejects below-top origins, horizontal drags, cancelled and multi-touch gestures', () => {
@@ -97,14 +97,13 @@ it('leaves editor and nested scroller gestures alone', () => {
   expect(gesture(nested.querySelector('p')!).defaultPrevented).toBe(false);
   expect(refresh).not.toHaveBeenCalled();
 });
-it('keeps button fallback when browser cannot suppress native overscroll', () => {
+it('leaves browser reload available when browser cannot suppress native overscroll', () => {
   vi.stubGlobal('CSS', { supports: () => false });
   const refresh = vi.fn();
   act(() => root.render(<WorkspaceRefresh busy={false} onRefresh={refresh} />));
   expect(gesture(host).defaultPrevented).toBe(false);
   expect(refresh).not.toHaveBeenCalled();
-  act(() => host.querySelector('button')!.click());
-  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(host.querySelector('button')).toBeNull();
 });
 
 it.each([
@@ -121,7 +120,6 @@ it.each([
     );
     expect(gesture(host).defaultPrevented).toBe(false);
     expect(refresh).not.toHaveBeenCalled();
-    act(() => host.querySelector('button')!.click());
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('button')).toBeNull();
   },
 );

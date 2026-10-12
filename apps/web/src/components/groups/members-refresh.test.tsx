@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot } from 'react-dom/client';
 import {
   Environment,
@@ -24,7 +25,7 @@ vi.mock('next/link', () => ({
   useLinkStatus: () => ({ pending: false }),
   default: 'a',
 }));
-it('Refresh invitations reauthorizes membership and reconciles accepted reactivation without stale or duplicate people', async () => {
+it('foreground refresh reauthorizes membership and reconciles accepted reactivation without stale or duplicate people', async () => {
   const requests: { name: string; next(data: unknown): void }[] = [];
   const environment = new Environment({
     network: Network.create((operation) =>
@@ -97,11 +98,7 @@ it('Refresh invitations reauthorizes membership and reconciles accepted reactiva
       ...state.current,
       invites: [{ ...invite, lifecycle: 'ACCEPTED' }],
     };
-    await act(async () =>
-      [...host.querySelectorAll('button')]
-        .find((b) => b.textContent === 'Refresh invitations')!
-        .click(),
-    );
+    await foregroundRefresh();
     expect(requests[2].name).toBe('householdAccessQuery');
     expect(host.textContent).not.toContain('Bob');
     await act(async () => requests[2].next(access));

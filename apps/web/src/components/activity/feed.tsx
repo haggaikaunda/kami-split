@@ -278,12 +278,7 @@ export function ActivityFeed({
       className={`activity-view ${selected ? 'activity-view-selected' : ''}`}
     >
       {!managedRefresh && (
-        <WorkspaceRefresh
-          busy={loading}
-          error={error}
-          onRefresh={reset}
-          label="Refresh activity"
-        />
+        <WorkspaceRefresh busy={loading} error={error} onRefresh={reset} />
       )}
       <section className="activity-feed-panel" aria-labelledby={headingId}>
         <header className="activity-feed-header">

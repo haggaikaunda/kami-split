@@ -77,8 +77,10 @@ const assert = require('node:assert/strict');
     });
 
     await page.goto(origin + entry);
-    await page.locator('#ledger-add').waitFor();
-    await page.locator('#ledger-add').click();
+    await page
+      .getByRole('link', { name: 'Add expense', exact: true })
+      .waitFor();
+    await page.getByRole('link', { name: 'Add expense', exact: true }).click();
     if (context === 'Household') {
       await page
         .getByRole('combobox', { name: /Source space/ })

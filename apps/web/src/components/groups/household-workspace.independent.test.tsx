@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -171,17 +172,18 @@ it('renders exact server aggregates and zero net with open source balances witho
     '17 expenses',
   );
   expect(row.textContent).not.toContain('repayments excluded');
-  expect(row.textContent).toContain('Overall net is zero');
-  expect(row.textContent).toContain(
-    'you still owe or are owed money in individual spaces',
-  );
+  expect(row.textContent).toContain('Payments still to settle');
+  expect(row.textContent).not.toContain('Nothing to pay or collect');
   expect(row.querySelector('a')).toBeNull();
   expect(row.textContent).not.toContain('2 open balances');
   expect(host.querySelector('a[href="/household/expenses"]')).not.toBeNull();
   await content('Balances');
   expect(host.querySelectorAll('.household-balances li')).toHaveLength(3);
   expect(host.querySelectorAll('a[href*="repayments"]')).toHaveLength(0);
-  expect(host.querySelectorAll('button')).toHaveLength(0);
+  expect(host.querySelectorAll('button[aria-haspopup=dialog]')).toHaveLength(1);
+  expect(
+    host.querySelectorAll('button:not([aria-haspopup=dialog])'),
+  ).toHaveLength(0);
   expect(host.textContent).not.toContain('Settled');
   expect(
     host.querySelector('a[href="/household/ledger?tab=balances"]'),
@@ -232,10 +234,15 @@ it('uses real ledger membership beyond two people and only owner invitation mana
   await content('Members', fixture(), members);
   for (const name of ['Alice', 'Bob', 'Carol'])
     expect(host.textContent).toContain(name);
-  expect(host.textContent).toContain('every active Household member');
+  expect(host.textContent).toContain(
+    'Active Household members share this ledger',
+  );
   expect(host.textContent).not.toContain('designated');
   expect(host.textContent).not.toContain('pair');
-  expect(host.querySelectorAll('button')).toHaveLength(0);
+  expect(host.querySelectorAll('button[aria-haspopup=dialog]')).toHaveLength(0);
+  expect(
+    host.querySelectorAll('button:not([aria-haspopup=dialog])'),
+  ).toHaveLength(0);
   expect(
     host.querySelector('[data-invitation-group="home/a"]')?.textContent,
   ).toBe('Invitations for Real Household');
@@ -259,7 +266,7 @@ it('clears private rows during refresh and rejects an older response', async () 
   );
   await act(async () => first.resolve(result()));
   expect(host.textContent).toContain('Maui');
-  await act(async () => host.querySelector('button')!.click());
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Maui');
   await act(async () => window.dispatchEvent(new Event('focus')));
   await act(
@@ -450,9 +457,7 @@ it('shows one concise settled status without a duplicate open balance count', as
     totals: { ...totals, openBalanceCount: '0' },
   } as Dashboard);
   const net = host.querySelector('.ui-signed-balance')!;
-  expect(net.textContent).toContain(
-    'Your balance is zero in every eligible space; other members may still owe money',
-  );
+  expect(net.textContent).toContain('Nothing to pay or collect');
   expect(net.textContent).not.toContain('0 open balances');
   expect(net.querySelector('a')).toBeNull();
 });
@@ -488,8 +493,8 @@ it('keeps confirmed edit success distinct from a failed Household refresh withou
 
 it('identifies aggregate and individual source scope without claiming unavailable sources are settled', async () => {
   await content('Overview');
-  expect(host.textContent).toContain('currently eligible');
-  expect(host.textContent).toContain('Home · Household source ledger');
+  expect(host.textContent).not.toContain('currently eligible');
+  expect(host.textContent).toContain('Home · Household expenses');
   expect(host.textContent).toContain('Maui · Trip');
   expect(host.textContent).toContain('Cabin · Group');
   const dashboard = fixture();
@@ -539,7 +544,7 @@ it('replaces eligible sources after revalidation rather than retaining a removed
   expect(
     host.querySelector('a[href="/trips/trip-b?tab=balances"]'),
   ).not.toBeNull();
-  await act(async () => host.querySelector('button')!.click());
+  await foregroundRefresh();
   expect(host.textContent).not.toContain('Maui');
   expect(host.querySelector('a[href="/trips/trip-b?tab=balances"]')).toBeNull();
   expect(host.querySelectorAll('.household-balances li')).toHaveLength(2);
@@ -567,7 +572,7 @@ it.each(['INCOMPLETE', 'UNAVAILABLE', 'FORBIDDEN', 'NETWORK'])(
       root.render(<HouseholdRead scope={scope} current="Balances" />),
     );
     expect(host.textContent).toContain('Maui');
-    await act(async () => host.querySelector('button')!.click());
+    await foregroundRefresh();
     expect(host.textContent).not.toContain('Maui');
     expect(host.querySelector('.household-balances')).toBeNull();
     expect(host.querySelector('.ui-signed-balance')).toBeNull();

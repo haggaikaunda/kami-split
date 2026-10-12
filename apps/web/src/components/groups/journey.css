@@ -729,3 +729,20 @@
     position: static;
   }
 }
+
+/* Summary amounts remain exact and readable when text is enlarged. This does
+   not change the category chart or Recent expenses presentation. */
+.financial-journey .ui-summary-metric .ui-metric-value {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.financial-journey .ui-summary-metric .ui-money-value {
+  white-space: normal;
+}
+
+.financial-journey .ui-summary-metric .ui-metric-detail,
+.financial-journey .ui-summary-metric .ui-metric-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -22,8 +22,12 @@ with a manual Load more fallback;
 headline count/total and month subtotals always use server aggregates rather
 than sums of loaded rows. Under #239, each displayed month header immediately
 shows its complete filtered total and count. Desktop records align description,
-category/source/date, payer and right-aligned amounts; mobile records stack payer
-and amount where needed. Long labels wrap without truncating the accessible link.
+category/source/date, payer and right-aligned amounts. Under #269, ordinary
+320/390/440px phone rows show the payer beneath description/source/date on the
+left, with amount and Your share alongside on the right. Category identity remains
+accessible through the icon; redundant category text is hidden in compact rows.
+Enlarged text can use a readable stacked fallback. Complete counts sit directly
+beneath month/year, with only the monthly amount on the right. Long labels wrap without truncating the accessible link.
 Money formatting uses canonical strings and `bigint`.
 
 An expense selection adds `expense` and `expenseGroup` to the originating URL.
@@ -38,12 +42,12 @@ invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
 replacement disposes the entire financial scope and cancels pending requests.
 
-**Add expense** opens the existing persisted `ExpenseForm` in a centered desktop
+**Add expense** in the persistent workspace banner opens the existing persisted `ExpenseForm` in a centered desktop
 dialog or an inset phone dialog, including original-key recovery, draft storage
 and duplicate suppression. The same form remains mounted across responsive
 changes. Detail and in-place editing retain the desktop panel/full-screen phone
 presentation. Household selects an original
-eligible ledger; success returns to the originating URL and refreshes spending
+authorized source; success returns to the originating URL and refreshes spending
 and context. No receipt, category expansion, edit/delete or repayment command is
 added here. Free-text search remains deferred to #177.
 
@@ -139,3 +143,16 @@ and account responses, remount replay, moved/removed rows and focus. The opt-in
 retry and late-row Back/Forward scroll/focus at desktop/mobile widths and doubled
 text. Its synthetic Auth/GraphQL responses establish browser behavior, not server
 authorization; the unchanged server authorization/database suites own that boundary.
+
+## Shared workspace shell (#269)
+
+The identity banner and its existing background art remain above the tabs on every
+workspace tab. Add expense appears only in that banner, retaining the original
+source creation form and source selection. Expenses has List/Breakdown and Filters
+on one toolbar row at ordinary phone widths; its balance disclosure is removed.
+Balance and share explanations live behind labeled rich help on summary surfaces,
+and the Household scope explanation appears once in its banner. By group or trip
+and optional balance explanations retain access to source balances and member detail.
+Spending by category and Overview Recent expenses are unchanged. Routine Refresh
+controls are removed while pull gestures, foreground reauthorization and browser
+reload remain available; see [refresh continuity](../navigation/workspace-loading.md#refresh-and-loading-continuity-243).

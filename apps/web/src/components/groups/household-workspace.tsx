@@ -1,4 +1,10 @@
 'use client';
+import {
+  RichHelp,
+  BalanceExplanation,
+  balanceHelp,
+  shareHelp,
+} from '@/components/rich-help';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import {
@@ -131,7 +137,6 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
         busy={!members && !error}
         error={error}
         onRefresh={reset}
-        label="Refresh Household"
       />
       {error ? (
         <p role="alert">{error}</p>
@@ -157,8 +162,6 @@ function HouseholdMembers({
       <h2>Household members</h2>
       <p>
         Active Household members share this ledger and its full expense history.
-        The overview also includes eligible groups and trips shared by every
-        active Household member.
       </p>
       {members.viewerMembership.role === 'OWNER' ? (
         <ScopedInvitations
@@ -258,7 +261,6 @@ function HouseholdSummaryRead({
         busy={!data && !error}
         error={error}
         onRefresh={reset}
-        label="Refresh Household"
       />
       {error ? (
         <p role="alert">{error}</p>
@@ -320,12 +322,6 @@ export function HouseholdContent({
       : undefined;
   return (
     <>
-      <p className="workspace-context-detail">
-        Household summaries include its own source ledger and currently eligible
-        groups and trips shared by every active Household member. Each space
-        keeps its own balances and repayments. Open a source for its calculation
-        and Activity history.
-      </p>
       {dashboard.state === 'UNAVAILABLE' ? (
         <p role="status">
           Shared overview is unavailable. Refresh to check current access.{' '}
@@ -352,19 +348,17 @@ export function HouseholdContent({
       ) : current === 'Expenses' ? (
         <section>
           <h2>Expenses</h2>
-          <p>Read complete shared expenses across eligible spaces.</p>
+          <p>Read your shared expenses.</p>
           {home && (
             <Link href={householdHref('Expenses')}>Open shared Expenses</Link>
           )}
         </section>
       ) : current === 'Balances' ? (
         <section className="workspace-panel">
-          <h2>Your balance across eligible spaces</h2>
+          <h2>Your balance</h2>
           {totals && <HouseholdNet totals={totals} />}
-          <p>
-            Balances stay separate in their original spaces. A zero overall net
-            does not settle amounts owed within each group or trip.
-          </p>
+          <BalanceExplanation household />
+          <h3>By group or trip</h3>
           {totals && (
             <ul className="household-balances">
               {dashboard.spaces.map((space) => {
@@ -413,7 +407,7 @@ export function HouseholdContent({
                           ? space.sharedExpenseCount === '0'
                             ? 'No shared expenses · Settled'
                             : 'Settled'
-                          : 'Your net is zero; this space has open balances';
+                          : 'Nothing to pay or collect · Other members still owe each other';
                 return (
                   <li
                     key={space.groupId}
@@ -439,7 +433,7 @@ export function HouseholdContent({
                           />
                           {space.name} ·{' '}
                           {space.isHousehold
-                            ? 'Household source ledger'
+                            ? 'Household expenses'
                             : space.kind === 'TRIP'
                               ? 'Trip'
                               : 'Group'}
@@ -472,7 +466,7 @@ export function HouseholdContent({
                 label="Total shared expenses"
                 tone="total"
                 icon={<AppIcon name="expense" />}
-                detail="Household ledger and currently eligible groups/trips · USD"
+                detail="USD"
               >
                 <Money
                   value={money(totals.totalSharedExpenseMinor)}
@@ -481,7 +475,7 @@ export function HouseholdContent({
               </SummaryMetric>
               <HouseholdNet totals={totals} />
               <SummaryMetric
-                label="Your share"
+                label={<RichHelp label="Your share">{shareHelp}</RichHelp>}
                 tone="share"
                 icon={<AppIcon name="pie" />}
                 detail={`You paid ${money(totals.viewerPaidMinor)}`}
@@ -570,7 +564,7 @@ export function HouseholdContent({
                 className="workspace-overview-balances"
                 aria-label="Overview balances by space"
               >
-                <h2>By space</h2>
+                <h2>By group or trip</h2>
                 <ul className="household-balances">
                   {dashboard.spaces.map((space) => (
                     <li key={space.groupId}>
@@ -596,7 +590,7 @@ export function HouseholdContent({
                           <strong>
                             {space.name} ·{' '}
                             {space.isHousehold
-                              ? 'Household source ledger'
+                              ? 'Household expenses'
                               : space.kind === 'TRIP'
                                 ? 'Trip'
                                 : 'Group'}
@@ -608,7 +602,7 @@ export function HouseholdContent({
                                 ? "You're owed"
                                 : minor(space.viewerNetMinor) < 0n
                                   ? 'You owe'
-                                  : 'Your net is zero'}
+                                  : 'Nothing to pay or collect'}
                           </span>
                         </span>
                         {space.viewerNetMinor != null && (
@@ -621,10 +615,6 @@ export function HouseholdContent({
                     </li>
                   ))}
                 </ul>
-                <p className="overview-balance-note">
-                  Balances stay separate in each space. A zero viewer net does
-                  not settle other members.
-                </p>
                 <Link href={householdHref('Balances')}>View all balances</Link>
               </aside>
             </div>
@@ -658,7 +648,7 @@ function HouseholdNet({ totals }: { totals: Totals }) {
       className={`ui-signed-balance ui-signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`}
     >
       <SummaryMetric
-        label="Your net across eligible spaces"
+        label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
         tone="net"
         icon={<AppIcon name="arrow-up-right" />}
         detail={
@@ -669,8 +659,8 @@ function HouseholdNet({ totals }: { totals: Totals }) {
                 : net < 0n
                   ? 'You owe overall'
                   : totals.openBalanceCount !== '0'
-                    ? 'Overall net is zero; you still owe or are owed money in individual spaces'
-                    : 'Your balance is zero in every eligible space; other members may still owe money'}
+                    ? 'Payments still to settle'
+                    : 'Nothing to pay or collect'}
             </span>
           </>
         }

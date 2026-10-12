@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
+import { HouseholdBannerAction } from './household-banner-action';
+import { RichHelp, householdScopeHelp } from '@/components/rich-help';
 import { createWorkspaceIntent } from '@/lib/relay/intent';
 import householdDocument from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
 import activityDocument from '@/lib/relay/__generated__/activityHouseholdQuery.graphql';
@@ -70,15 +72,23 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       <div className="workspace-content">
         <p className="workspace-crumb">Your household</p>
         <WorkspaceHeader
-          title={ledger ? 'Household ledger' : 'Household'}
+          title="Household"
           context={
-            ledger
-              ? 'Household source ledger only. Expenses and repayments stay in this space.'
-              : 'Household ledger and currently eligible groups and trips.'
+            <>
+              <span>Shared spending, at home and away.</span>
+              <br />
+              <RichHelp label="What’s included">{householdScopeHelp}</RichHelp>
+            </>
           }
           appearance="household"
-          compact={current !== 'Overview'}
-        />
+        >
+          {access.scope && (
+            <HouseholdBannerAction
+              key={`${access.scope.id}:${intentVisit}`}
+              scope={access.scope}
+            />
+          )}
+        </WorkspaceHeader>
         <WorkspaceTabs
           current={current}
           hrefFor={

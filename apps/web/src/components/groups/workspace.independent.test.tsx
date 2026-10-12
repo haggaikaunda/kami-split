@@ -153,9 +153,7 @@ it('states positive means owed and distinguishes zero viewer from unsettled grou
     "You're owed",
   );
   await render(fixture('0'));
-  expect(host.textContent).toContain(
-    'Other members still have open obligations',
-  );
+  expect(host.textContent).toContain('Other members still owe each other');
   nav.search = 'tab=balances';
   await render(fixture('0'));
   expect(host.textContent).toContain('This group has outstanding balances');
@@ -186,13 +184,13 @@ it('shows complete viewer expense allocations and payer amount without deriving 
   await render(updated);
   const summary = host.querySelector('.ui-summary-row')!;
   expect(
-    [...summary.querySelectorAll('.ui-metric-label')].map((n) => n.textContent),
-  ).toEqual(['Total expenses', 'Your net balance', 'Your share']);
+    [...summary.querySelectorAll('.ui-metric-label')].map((n) =>
+      n.textContent?.replace('ⓘ', ''),
+    ),
+  ).toEqual(['Total expenses', 'Your balance', 'Your share']);
   expect(summary.textContent).toContain('3.75');
   expect(summary.textContent).toContain('You paid $90,071,992,547,409.93 USD');
-  expect(summary.textContent).toContain(
-    'Other members still have open obligations',
-  );
+  expect(summary.textContent).toContain('Other members still owe each other');
 });
 
 it('explains authoritative expense and repayment contributions with exact displayed amounts', async () => {
@@ -233,10 +231,10 @@ it('explains authoritative expense and repayment contributions with exact displa
       ],
     },
   });
-  expect(host.textContent).toContain('Household source ledger');
+  expect(host.textContent).toContain('Household expenses');
   expect(host.textContent).toContain('Who owes whom');
   expect(host.textContent).toContain(
-    'Repayments do not change expense totals or shares',
+    'including recorded repayments you sent and received',
   );
   const calculations = [
     ...host.querySelectorAll('[aria-label^="Balance calculation"]'),
@@ -292,7 +290,7 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
   };
   await render({ ...group, balances });
   expect(host.textContent).toContain(
-    'Your balance is zero. Other members still have open obligations.',
+    'Nothing to pay or collect. Other members still owe each other.',
   );
   expect(host.textContent).not.toContain('Everyone in this space is settled');
   expect(

@@ -1,33 +1,39 @@
 'use client';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
-/** One control per network owner. Refresh never reloads the document or its drafts. */
+/** One gesture/status owner per network read. Browser reload remains available. */
 export function WorkspaceRefresh({
   busy,
   error,
   onRefresh,
-  label = 'Refresh view',
 }: {
   busy: boolean;
   error?: string;
   onRefresh: () => void;
-  label?: string;
 }) {
   const [pull, setPull] = useState(0);
   const [requested, setRequested] = useState(false);
+  const [previousBusy, setPreviousBusy] = useState(busy);
+  // Track an owning reader update during render, rather than scheduling a
+  // second render in an effect. Initial loading does not count as a refresh.
+  if (previousBusy !== busy) {
+    setPreviousBusy(busy);
+    if (busy) setRequested(true);
+  }
   const locked = useRef(false);
   const refresh = useEffectEvent(() => {
     if (busy || locked.current) return;
     locked.current = true;
     setRequested(true);
+    window.dispatchEvent(new Event('workspace-refresh-request'));
     onRefresh();
   });
   useEffect(() => {
     if (!busy) locked.current = false;
   }, [busy, error]);
   useEffect(() => {
-    // Without overscroll control the browser owns its native gesture. The button
-    // remains available; never run an app refresh alongside a native reload.
+    // Without overscroll control the browser owns its native gesture.
+    // Never run an app refresh alongside a native reload.
     const webkit =
       /AppleWebKit/.test(navigator.userAgent) &&
       !/Chrome\/|Chromium\/|Edg\/|OPR\//.test(navigator.userAgent);
@@ -110,18 +116,6 @@ export function WorkspaceRefresh({
             : '';
   return (
     <div className="workspace-refresh">
-      <button
-        type="button"
-        aria-disabled={busy}
-        onClick={() => {
-          if (busy || locked.current) return;
-          locked.current = true;
-          setRequested(true);
-          onRefresh();
-        }}
-      >
-        {label}
-      </button>
       <span role="status" aria-live="polite">
         {status}
       </span>

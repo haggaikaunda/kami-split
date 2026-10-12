@@ -38,6 +38,12 @@ import { ExpenseLedger } from '@/components/expenses/ledger';
 import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
+import {
+  RichHelp,
+  BalanceExplanation,
+  balanceHelp,
+  shareHelp,
+} from '@/components/rich-help';
 export type WorkspaceGroup = Extract<
   journeyWorkspaceQuery['response']['group'],
   { readonly __typename: 'Group' }
@@ -86,11 +92,18 @@ export function GroupWorkspace({
     (params.has('after') ? 'Expenses' : 'Overview');
   const base = spaceHref(group);
   const hrefFor = (tab: WorkspaceSection) => `${base}?tab=${tab.toLowerCase()}`;
+  const addParams =
+    current === 'Expenses' && !repayment
+      ? new URLSearchParams(params)
+      : new URLSearchParams();
+  for (const key of ['expense', 'expenseGroup', 'detailSource', 'after'])
+    addParams.delete(key);
+  addParams.set('tab', 'expenses');
+  addParams.set('create', group.id);
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
   const workspaceHeader = (
     <WorkspaceHeader
       title={group.name}
-      compact={current !== 'Overview' || repayment}
       appearance={
         group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
       }
@@ -103,15 +116,17 @@ export function GroupWorkspace({
           {group.trip
             ? 'Trip'
             : group.isHousehold
-              ? 'Household source ledger'
+              ? 'Household expenses'
               : 'Group'}{' '}
           · {group.currency}
         </>
       }
     >
       <Link
+        id="workspace-add"
+        scroll={false}
         className="banner-action"
-        href={`${base}?tab=expenses&create=${encodeURIComponent(group.id)}`}
+        href={`${base}?${addParams}`}
       >
         <AppIcon name="plus" /> Add expense
       </Link>
@@ -122,7 +137,6 @@ export function GroupWorkspace({
       className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
     >
       {showHeader &&
-        (!repayment || completed) &&
         (headerTarget
           ? createPortal(workspaceHeader, headerTarget)
           : workspaceHeader)}
@@ -231,31 +245,27 @@ export function GroupWorkspace({
           />
         </>
       ) : current === 'Expenses' ? (
-        <ExpenseLedger
-          initialView={initialView}
-          managedRefresh={!showTabs}
-          scope={scope}
-          groupId={group.id}
-          spaces={[
-            {
-              groupId: group.id,
-              name: group.name,
-              viewerMembership: group.viewerMembership,
-              members: group.members,
-            },
-          ]}
-          today={today}
-          net={
-            group.balances?.__typename === 'GroupBalances'
-              ? group.balances.positions.find(
-                  (p) => p.member.id === group.viewerMembership.id,
-                )?.netMinor
-              : undefined
-          }
-          onDenied={onDenied}
-          onRefreshContext={onRefresh}
-          onEditSaved={onEditSaved}
-        />
+        <>
+          {group.isHousehold && <h2>Household expenses</h2>}
+          <ExpenseLedger
+            initialView={initialView}
+            managedRefresh={!showTabs}
+            scope={scope}
+            groupId={group.id}
+            spaces={[
+              {
+                groupId: group.id,
+                name: group.name,
+                viewerMembership: group.viewerMembership,
+                members: group.members,
+              },
+            ]}
+            today={today}
+            onDenied={onDenied}
+            onRefreshContext={onRefresh}
+            onEditSaved={onEditSaved}
+          />
+        </>
       ) : current === 'Members' ? (
         <section className="workspace-panel members-panel">
           <h2>Members</h2>
@@ -317,7 +327,9 @@ function ViewerMetric({
       : undefined;
   if (!viewer)
     return (
-      <SummaryMetric label="Your net balance">
+      <SummaryMetric
+        label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
+      >
         <span role="alert">Balances are unavailable</span>
       </SummaryMetric>
     );
@@ -326,18 +338,18 @@ function ViewerMetric({
   return (
     <SignedBalanceMetric
       position={position}
-      label="Your net balance"
+      label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
       value={money(viewer.netMinor)}
       currency={group.currency}
       detail={
         <>
           {net === 0n && b?.__typename === 'GroupBalances' && !b.settled
-            ? 'Your balance is zero. Other members still have open obligations.'
+            ? 'Nothing to pay or collect. Other members still owe each other.'
             : net > 0n
               ? "You're owed"
               : net < 0n
                 ? 'You owe'
-                : 'Settled in this group.'}
+                : 'Nothing to pay or collect'}
           {disclosure && (
             <ScopedLink
               scope={scope}
@@ -370,7 +382,11 @@ function OverviewMetrics({
       <SummaryMetric
         label="Total expenses"
         tone="total"
-        detail={`This ${group.isHousehold ? 'Household source ledger only' : group.trip ? 'trip only' : 'group only'} · ${group.currency}`}
+        detail={
+          group.isHousehold
+            ? `Household expenses · ${group.currency}`
+            : group.currency
+        }
         icon={<AppIcon name="expense" />}
       >
         {group.balances?.__typename === 'GroupBalances' ? (
@@ -384,7 +400,7 @@ function OverviewMetrics({
       </SummaryMetric>
       <ViewerMetric scope={scope} group={group} />
       <SummaryMetric
-        label="Your share"
+        label={<RichHelp label="Your share">{shareHelp}</RichHelp>}
         tone="share"
         icon={<AppIcon name="pie" />}
         detail={
@@ -492,7 +508,9 @@ export function GroupBalances({
   if (b?.__typename !== 'GroupBalances')
     return (
       <section>
-        <h2>Complete balances</h2>
+        <h2>
+          {group.isHousehold ? 'Household expenses' : 'Complete balances'}
+        </h2>
         <p role="alert">
           Balances are unavailable. This group cannot be shown as settled.
         </p>
@@ -500,27 +518,14 @@ export function GroupBalances({
     );
   return (
     <section className="group-balances workspace-panel">
-      <h2>Balance details</h2>
+      <h2>{group.isHousehold ? 'Household expenses' : 'Balance details'}</h2>
       <ViewerMetric scope={scope} group={group} />
       <p>
         {b.settled
           ? 'Everyone in this space is settled: each member’s balance is zero.'
-          : 'This group has outstanding balances.'}{' '}
-        Recording a repayment does not move money.
+          : 'This group has outstanding balances.'}
       </p>
-      <p>
-        Your balance is what you paid for expenses minus your allocated share,
-        plus repayments you sent, minus repayments you received. A positive
-        balance means you are owed money; a negative balance means you owe
-        money. Your share includes only amounts allocated to you, even when
-        someone else paid. Repayments do not change expense totals or shares.
-      </p>
-      <p>
-        For example, paying $60.00 with a $20.00 share means you are owed
-        $40.00. Receiving a $15.00 repayment leaves $25.00 owed to you. Paying
-        nothing with a $20.00 share means you owe $20.00; sending a $5.00
-        repayment leaves $15.00 to pay.
-      </p>
+      <BalanceExplanation />
       <Link href={`${spaceHref(group)}?tab=activity`}>
         View Activity and expense before/after history
       </Link>
@@ -543,7 +548,7 @@ export function GroupBalances({
               <dl className="balance-position-facts">
                 {[
                   ['Paid for expenses (+)', p.paidMinor],
-                  ['Allocated share (−)', p.owedMinor],
+                  ['Expense share (−)', p.owedMinor],
                   ['Repayments sent (+)', p.sentMinor],
                   ['Repayments received (−)', p.receivedMinor],
                 ].map(([label, value]) => (
@@ -565,11 +570,6 @@ export function GroupBalances({
         ))}
       </div>
       <h3>Who owes whom</h3>
-      <p>
-        These suggested repayments would settle the current balances within{' '}
-        {group.name}. They combine expense shares and recorded repayments, so do
-        not pay original expense amounts again on top of these amounts.
-      </p>
       {!b.obligations?.length && (
         <p>
           {b.settled

@@ -41,20 +41,15 @@
   width: 1.0625rem;
   height: 1.0625rem;
 }
-.ledger-filter-button,
-.ledger-add {
+.ledger-filter-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
 }
 .ledger-toolbar .ledger-filter-button {
+  margin-left: auto;
   color: var(--color-ink);
-}
-.ledger-page-actions .ledger-add {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: 0;
 }
 .ledger-summary {
   display: flex;
@@ -64,41 +59,6 @@
   color: var(--color-muted);
   font-size: 0.875rem;
   margin: 0.8125rem 0 1.25rem;
-}
-.ledger-net {
-  margin-left: auto;
-  color: var(--color-muted);
-}
-.ledger-net summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.5rem;
-  min-height: 2.75rem;
-  list-style: none;
-}
-.ledger-net summary::-webkit-details-marker {
-  display: none;
-}
-.ledger-net summary {
-  cursor: pointer;
-}
-.ledger-net[open] > span {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 2;
-  width: min(20rem, 80vw);
-  padding: 1rem;
-  border: 1px solid var(--color-separator);
-  border-radius: 0.875rem;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-panel);
-}
-.ledger-net > span {
-  display: block;
-  margin-top: 0.5rem;
 }
 .ledger-active-filters {
   display: flex;
@@ -136,6 +96,15 @@
   align-items: baseline;
   gap: 0.5rem;
   padding: 1.3125rem 1.375rem 0.75rem;
+}
+.ledger-month-heading {
+  min-width: 0;
+}
+.ledger-month-count {
+  display: block;
+  margin-top: 0.1875rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
 }
 .ledger-month h2 {
   margin: 0;
@@ -548,9 +517,6 @@
   .ledger-toolbar .ledger-filter-button {
     padding-inline: 0.75rem;
   }
-  .ledger-page-actions .ledger-add {
-    margin-left: auto;
-  }
   .ledger-summary {
     margin-bottom: 1rem;
   }
@@ -650,16 +616,6 @@
   }
 }
 
-.ledger-page-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.ledger-page-actions button {
-  font-weight: 400;
-}
-
 .ledger-filters label > span {
   position: absolute;
   top: -0.5625rem;
@@ -668,17 +624,6 @@
   background: var(--color-canvas);
 }
 @media (max-width: 600px) {
-  .ledger-page-actions .ledger-add {
-    width: 2.75rem;
-    padding: 0;
-  }
-  .ledger-page-actions .ledger-add > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
   .ledger-month-total {
     font-size: 0.875rem;
   }
@@ -704,10 +649,6 @@
 .ledger-month-total {
   font-size: 0.875rem;
   color: var(--color-muted);
-}
-.ledger-net .app-icon {
-  width: 1rem;
-  height: 1rem;
 }
 
 .expense-presentation--create > header {
@@ -847,7 +788,8 @@
   margin-left: 0;
 }
 @container workspace (max-width: 48em) {
-  .ledger-columns {
+  .ledger-columns,
+  .ledger-category-text {
     display: none;
   }
   .ledger-month li a {
@@ -874,7 +816,8 @@
     height: auto;
   }
 }
-@container workspace (max-width: 24em) {
+/* Preserve a readable fallback when enlarged text leaves too little room. */
+@container workspace (max-width: 16em) {
   .ledger-month li a {
     grid-template-columns: 2rem minmax(0, 1fr);
     grid-template-areas: 'icon description' 'icon payer' '. amount';

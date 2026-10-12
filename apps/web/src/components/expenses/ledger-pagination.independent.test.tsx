@@ -410,3 +410,106 @@ it('bounds replay even if a server returns duplicate-only pages with changing cu
   expect(state.requests).toHaveLength(count);
   expect(document.activeElement?.id).toBe('ledger-expense-e');
 });
+
+it('keeps a newer detail origin when an earlier restoration frame runs before the route transition commits', async () => {
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrame = 0;
+  const frameSpy = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementation((callback) => {
+      const id = ++nextFrame;
+      frames.set(id, callback);
+      return id;
+    });
+  const cancelSpy = vi
+    .spyOn(window, 'cancelAnimationFrame')
+    .mockImplementation((id) => {
+      frames.delete(id);
+    });
+  try {
+    await render();
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'first'));
+    await click('Load more expenses');
+    await respond(result(['two', 'late'], null));
+    await act(async () =>
+      host.querySelector<HTMLAnchorElement>('#ledger-expense-late')!.click(),
+    );
+    await act(async () => root.render(null));
+    await render();
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'fresh-first'));
+    await respond(result(['two', 'late'], null));
+    expect(frames.size).toBeGreaterThan(0);
+    const previous = scope.expensePositions!.get('/household/expenses::');
+    expect(previous?.count).toBe(8);
+    // A row activation records its new return origin synchronously; the native
+    // route transition may commit after the already queued restoration frame.
+    await act(async () =>
+      host.querySelector<HTMLAnchorElement>('#ledger-expense-late')!.click(),
+    );
+    const current = scope.expensePositions!.get('/household/expenses::');
+    expect(current).not.toBe(previous);
+    await act(async () => {
+      for (const callback of frames.values()) callback(0);
+    });
+    expect(scope.expensePositions!.get('/household/expenses::')).toBe(current);
+  } finally {
+    frameSpy.mockRestore();
+    cancelSpy.mockRestore();
+  }
+});
+
+it('does not finish a saved-overlay return from the old page while fresh authorization is pending', async () => {
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrame = 0;
+  const frameSpy = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementation((callback) => {
+      const id = ++nextFrame;
+      frames.set(id, callback);
+      return id;
+    });
+  const cancelSpy = vi
+    .spyOn(window, 'cancelAnimationFrame')
+    .mockImplementation((id) => {
+      frames.delete(id);
+    });
+  try {
+    await render();
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'first'));
+    await click('Load more expenses');
+    await respond(result(['two', 'late'], null));
+    await act(async () =>
+      host.querySelector<HTMLAnchorElement>('#ledger-expense-late')!.click(),
+    );
+    await act(async () => root.render(null));
+    state.params = 'create=home';
+    await render();
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'saved-first'));
+    await respond(result(['two', 'late'], null));
+    const origin = scope.expensePositions!.get('/household/expenses::');
+    expect(origin?.count).toBe(8);
+    expect(frames.size).toBe(0);
+    // Closing a remounted saved overlay starts a fresh read. The previous page
+    // from this same commit must not finish restoration before that read.
+    state.params = '';
+    await render();
+    await act(async () => {
+      for (const callback of frames.values()) callback(0);
+    });
+    expect(scope.expensePositions!.get('/household/expenses::')).toBe(origin);
+    expect(document.activeElement?.id).not.toBe('ledger-expense-late');
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'return-first'));
+    expect(state.requests.at(-1)?.variables).toMatchObject({
+      after: 'return-first',
+    });
+    await respond(result(['two', 'late'], null));
+    await act(async () => {
+      for (const callback of frames.values()) callback(0);
+    });
+    expect(document.activeElement?.id).toBe('ledger-expense-late');
+    expect(host.querySelectorAll('.ledger-month li')).toHaveLength(8);
+  } finally {
+    frameSpy.mockRestore();
+    cancelSpy.mockRestore();
+  }
+});

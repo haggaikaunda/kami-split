@@ -14,7 +14,6 @@ export function ScopedInvitations({
   scope,
   group,
   members,
-  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
@@ -27,7 +26,6 @@ export function ScopedInvitations({
       scope={scope}
       group={group}
       members={members}
-      onRefresh={onRefresh}
     />
   );
 }
@@ -35,7 +33,6 @@ function InvitationVisit({
   scope,
   group,
   members,
-  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
@@ -84,7 +81,7 @@ function InvitationVisit({
           ) : (
             <ActionRecovery state={c} />
           )}
-          <InvitationPanel state={c} members={members} onRefresh={onRefresh} />
+          <InvitationPanel state={c} members={members} />
         </>
       )}
     </section>

@@ -123,8 +123,8 @@ Unaddressed shared links appear in their own link area, never as people. Expired
 accepted and cancelled records are initially collapsed under Invitation history;
 expired records retain their existing renewal/retry controls. Pagination continues
 to load the server's owner-authorized records, without implying the first page is
-complete. Refresh invitations reauthorizes the workspace membership and reloads
-invitation state together, so accepted invitations reconcile to fresh member
+complete. Pull/foreground refresh or native browser reload reauthorizes the
+workspace membership and reloads invitation state together, so accepted invitations reconcile to fresh member
 identities and reactivated members show their current access. Plain
 language describes email delivery uncertainty without treating sending as arrival.
 The operation keys, original-request recovery, reactivation rules, server access

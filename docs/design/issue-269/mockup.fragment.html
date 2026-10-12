@@ -1,0 +1,177 @@
+<div id="kami-design-preview" class="viz-dotted-background">
+<style>
+#kami-design-preview { padding: 24px 8px; }
+#kami-design-preview .kg-phone { --kg-bg:light-dark(#f7f9fc,#0b121d); --kg-shell:light-dark(#edf2f7,#101a28); --kg-panel:light-dark(#ffffff,#142031); --kg-ink:light-dark(#172334,#edf1f8); --kg-muted:light-dark(#596b7d,#a9b9ca); --kg-line:light-dark(#d8e1e9,#2d4052); --kg-green:light-dark(#007c61,#45ddb3); --kg-tint:light-dark(#d9f1e9,#163d36); --kg-blue:light-dark(#2869ad,#81bfff); --kg-purple:light-dark(#7562bf,#b5a2ff); --kg-pink:light-dark(#b54969,#f49ab3); font: 16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--kg-ink); background:var(--kg-bg); width:100%; max-width:440px; margin:0 auto; border:1px solid var(--kg-line); border-radius:24px; overflow:hidden; }
+#kami-design-preview .kg-phone * { box-sizing:border-box; }
+#kami-design-preview .kg-phone button { font:inherit; color:inherit; cursor:pointer; }
+#kami-design-preview .kg-brand { display:flex; align-items:center; gap:12px; padding:24px 16px; background:var(--kg-shell); font-size:21px; font-weight:500; }
+#kami-design-preview .kg-logo { display:grid; place-items:center; width:40px; height:40px; border-radius:14px; background:var(--kg-tint); color:var(--kg-green); }
+#kami-design-preview .kg-tabs { display:flex; justify-content:space-between; margin:0 16px; border-bottom:1px solid var(--kg-line); gap:8px; }
+#kami-design-preview .kg-tabs button,#kami-design-preview .kg-tabs span { border:0; background:none; padding:20px 0 16px; font-size:14px; white-space:nowrap; }
+#kami-design-preview .kg-tabs button[aria-selected=true] { color:var(--kg-green); border-bottom:3px solid var(--kg-green); }
+#kami-design-preview .kg-tabs span { color:var(--kg-muted); }
+#kami-design-preview .kg-content { padding:20px 16px 24px; min-height:520px; }
+#kami-design-preview .kg-phone { position:relative; }
+#kami-design-preview .kg-banner { margin:16px 16px 4px; padding:20px; border-radius:24px; background:linear-gradient(125deg,var(--kg-tint),var(--kg-panel)); }
+#kami-design-preview .kg-banner-heading { display:flex; align-items:center; gap:12px; }
+#kami-design-preview .kg-home { width:44px; height:44px; display:grid; place-items:center; border-radius:16px; color:var(--kg-green); background:var(--kg-panel); }
+#kami-design-preview .kg-banner h1 { font:500 25px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0; }
+#kami-design-preview .kg-banner p { margin:12px 0 3px; color:var(--kg-muted); font-size:14px; }
+#kami-design-preview .kg-banner-actions { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:12px; }
+#kami-design-preview .kg-banner-add { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 16px; border:1px solid var(--kg-green); border-radius:24px; color:var(--kg-green)!important; background:var(--kg-panel); font-size:15px!important; }
+#kami-design-preview .kg-text-help { display:inline-flex; align-items:center; gap:6px; padding:8px 0; min-height:40px; border:0; background:none; color:var(--kg-muted)!important; text-align:left; font-size:13px!important; }
+#kami-design-preview .kg-summary { margin-top:18px; }
+#kami-design-preview .kg-metric-label .kg-text-help { font-size:14px!important; min-height:32px; padding:0; }
+#kami-design-preview .kg-rich-tip { position:absolute; z-index:20; width:320px; max-width:calc(100% - 32px); border:0; border-radius:12px; padding:12px 16px 8px; background:light-dark(#e4efeb,#283d38); color:var(--kg-ink); box-shadow:0 4px 8px #0003,0 8px 18px #0002; font-size:14px; }
+#kami-design-preview .kg-rich-tip h3 { font:500 16px/24px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0 0 4px; }
+#kami-design-preview .kg-rich-tip p { margin:0; line-height:20px; }
+#kami-design-preview .kg-rich-tip .kg-tip-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+#kami-design-preview .kg-rich-tip button { background:none; border:0; min-height:40px; padding:8px 12px; color:var(--kg-green); font-size:14px; font-weight:500; }
+#kami-design-preview .kg-refresh { color:var(--kg-green); display:flex; gap:6px; align-items:center; margin:4px 0 24px 8px; font-size:16px; }
+#kami-design-preview .kg-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#kami-design-preview .kg-segment { display:flex; border:1px solid var(--kg-muted); border-radius:28px; overflow:hidden; }
+#kami-design-preview .kg-segment button { border:0; padding:10px 11px; display:flex; align-items:center; gap:6px; background:none; font-size:14px; }
+#kami-design-preview .kg-segment button[aria-pressed=true] { color:var(--kg-green); background:var(--kg-tint); }
+#kami-design-preview .kg-segment button+button { border-left:1px solid var(--kg-muted); }
+#kami-design-preview .kg-filter { display:flex; align-items:center; gap:6px; padding:10px 12px; border:1px solid var(--kg-muted); border-radius:28px; background:none; font-size:14px!important; }
+#kami-design-preview .kg-addline { display:flex; justify-content:flex-end; margin:10px 0 14px; }
+#kami-design-preview .kg-add { display:grid; place-items:center; width:44px; height:44px; border:0; border-radius:50%; background:var(--kg-green); color:var(--kg-bg)!important; }
+#kami-design-preview .kg-summary { color:var(--kg-muted); font-size:13px; margin:18px 0; }
+#kami-design-preview .kg-month { background:var(--kg-panel); border-radius:22px; overflow:hidden; }
+#kami-design-preview .kg-month-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:18px 14px 14px; }
+#kami-design-preview h2 { font:500 19px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0; }
+#kami-design-preview .kg-month-count { display:block; color:var(--kg-muted); font-size:13px; margin-top:3px; }
+#kami-design-preview .kg-month-total { color:var(--kg-muted); font-size:16px; padding-top:2px; font-variant-numeric:tabular-nums; }
+#kami-design-preview .kg-row { display:grid; grid-template-columns:34px minmax(0,1fr) max-content; gap:9px; align-items:center; padding:13px 14px; border-top:1px solid var(--kg-line); }
+#kami-design-preview .kg-category { width:34px; height:36px; display:grid; place-items:center; border-radius:12px; background:color-mix(in srgb,var(--kg-blue) 15%,var(--kg-panel)); color:var(--kg-blue); }
+#kami-design-preview .kg-category.other { color:var(--kg-purple); background:color-mix(in srgb,var(--kg-purple) 15%,var(--kg-panel)); }
+#kami-design-preview .kg-category.dining { color:var(--kg-pink); background:color-mix(in srgb,var(--kg-pink) 15%,var(--kg-panel)); }
+#kami-design-preview .kg-desc { min-width:0; }
+#kami-design-preview .kg-name { display:block; font-weight:500; font-size:14px; overflow-wrap:anywhere; }
+#kami-design-preview .kg-meta,#kami-design-preview .kg-payer { display:block; font-size:13px; color:var(--kg-muted); margin-top:3px; }
+#kami-design-preview .kg-money { text-align:right; font-size:14px; font-variant-numeric:tabular-nums; align-self:start; padding-top:1px; }
+#kami-design-preview .kg-share { display:block; font-size:13px; color:var(--kg-muted); margin-top:3px; }
+#kami-design-preview .kg-foot { margin:22px 0 0; display:flex; align-items:center; gap:7px; color:var(--kg-muted); font-size:13px; }
+#kami-design-preview .kg-bottom { background:var(--kg-shell); display:flex; justify-content:space-around; padding:14px 6px 20px; gap:8px; }
+#kami-design-preview .kg-bottom span { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:13px; }
+#kami-design-preview .kg-bottom .kg-active { color:var(--kg-green); }
+#kami-design-preview .kg-bottom i { width:22px; height:22px; }
+#kami-design-preview .kg-scope { display:flex; justify-content:space-between; align-items:center; gap:6px; color:var(--kg-muted); font-size:14px; margin:0 0 18px; }
+#kami-design-preview .kg-help { display:inline-flex; align-items:center; justify-content:center; padding:8px; margin:-6px; min-width:36px; min-height:36px; border:0; background:none; color:var(--kg-muted)!important; }
+#kami-design-preview .kg-metrics { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 20px; }
+#kami-design-preview .kg-metric { padding:15px 13px; background:var(--kg-panel); border-radius:20px; }
+#kami-design-preview .kg-metric.balance { background:var(--kg-tint); }
+#kami-design-preview .kg-metric-label { display:flex; justify-content:space-between; align-items:center; font-size:14px; color:var(--kg-muted); }
+#kami-design-preview .kg-value { display:block; font-size:25px; font-weight:500; margin:10px 0 7px; font-variant-numeric:tabular-nums; }
+#kami-design-preview .kg-note { font-size:13px; color:var(--kg-muted); }
+#kami-design-preview .kg-wide { grid-column:1/-1; }
+#kami-design-preview .kg-note-extra { display:none; }
+#kami-design-preview .kg-recent-head { display:flex; align-items:center; justify-content:space-between; padding:18px 14px; }
+#kami-design-preview .kg-link { color:var(--kg-green)!important; border:0; background:none; padding:4px 0; font-size:14px!important; }
+#kami-design-preview .kg-section-title { margin:22px 0 10px; }
+#kami-design-preview .kg-space { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 14px; border-top:1px solid var(--kg-line); }
+#kami-design-preview .kg-space:first-child { border:0; }
+#kami-design-preview .kg-space strong { font-weight:500; font-size:15px; }
+#kami-design-preview .kg-space small { display:block; font-size:13px; color:var(--kg-muted); margin-top:4px; }
+#kami-design-preview .kg-disclosure { background:var(--kg-panel); padding:14px; border-radius:16px; margin-top:16px; font-size:14px; }
+#kami-design-preview .kg-disclosure summary { cursor:pointer; color:var(--kg-green); }
+#kami-design-preview .kg-disclosure p { margin:12px 0 0; color:var(--kg-muted); }
+#kami-design-preview .kg-popover { background:var(--kg-panel); border:1px solid var(--kg-line); border-radius:16px; padding:16px; margin-bottom:18px; font-size:14px; box-shadow:0 8px 20px #0002; }
+#kami-design-preview .kg-popover p { margin:0; }
+#kami-design-preview .kg-popover button { display:block; margin:10px 0 0 auto; padding:5px 8px; border:0; color:var(--kg-green); background:none; }
+#kami-design-preview .kg-filter-panel { border:1px solid var(--kg-line); border-radius:16px; background:var(--kg-panel); padding:14px; margin-top:12px; }
+#kami-design-preview .kg-filter-panel label { display:block; margin:8px 0; font-size:14px; }
+#kami-design-preview .kg-bar { background:var(--kg-tint); border-radius:6px; height:12px; margin:8px 0 18px; }
+#kami-design-preview .kg-bar span { display:block; height:100%; background:var(--kg-green); border-radius:6px; }
+#kami-design-preview [hidden] { display:none!important; }
+@media(max-width:370px) { #kami-design-preview {padding-inline:0} #kami-design-preview .kg-content {padding-inline:12px} #kami-design-preview .kg-tabs {gap:5px;margin-inline:12px} #kami-design-preview .kg-tabs button,#kami-design-preview .kg-tabs span{font-size:12px} #kami-design-preview .kg-segment i{display:none} #kami-design-preview .kg-row{padding-inline:10px;gap:7px;grid-template-columns:30px minmax(0,1fr) max-content} #kami-design-preview .kg-category{width:30px} #kami-design-preview .kg-share{max-width:92px} }
+</style>
+<div class="kg-phone" aria-label="Kami Grow mobile design preview">
+  <div class="kg-brand"><span class="kg-logo"><i data-lucide="leaf" aria-hidden="true"></i></span>Kami Grow</div>
+  <header class="kg-banner">
+    <div class="kg-banner-heading"><span class="kg-home"><i data-lucide="house" aria-hidden="true"></i></span><h1>Household</h1></div>
+    <p>Shared spending, at home and away.</p>
+    <div class="kg-banner-actions"><button type="button" class="kg-banner-add"><i data-lucide="plus" aria-hidden="true"></i>Add expense</button><button type="button" class="kg-text-help" data-help-title="What’s included" data-help="Your Household expenses, plus groups and trips that everyone in your household belongs to. Each keeps its own balances.">What’s included<i data-lucide="info" aria-hidden="true"></i></button></div>
+  </header>
+  <nav class="kg-tabs" aria-label="Household pages">
+    <button type="button" data-page="overview" aria-selected="false">Overview</button>
+    <button type="button" data-page="expenses" aria-selected="true">Expenses</button>
+    <button type="button" data-page="balances" aria-selected="false">Balances</button>
+    <button type="button" aria-selected="false" disabled>Activity</button><button type="button" aria-selected="false" disabled>Members</button>
+  </nav>
+  <div class="kg-content" data-main-content>
+    <section data-screen="expenses" aria-label="Proposed Expenses layout">
+      <div class="kg-toolbar">
+        <div class="kg-segment" aria-label="Expense view"><button type="button" data-view="list" aria-pressed="true"><i data-lucide="list" aria-hidden="true"></i>List</button><button type="button" data-view="breakdown" aria-pressed="false" disabled><i data-lucide="chart-pie" aria-hidden="true"></i>Breakdown</button></div>
+        <button type="button" class="kg-filter" aria-expanded="false"><i data-lucide="sliders-horizontal" aria-hidden="true"></i>Filters</button>
+      </div>
+      <div class="kg-filter-panel" hidden><strong>Groups &amp; trips</strong><label><input type="checkbox" checked> Maui</label><label><input type="checkbox" checked> Household</label><button type="button" class="kg-link" data-close-filter>Done</button></div>
+      <p class="kg-summary">42 expenses · $5,806.01 total · $3,117.26 your share</p>
+      <div data-list>
+      <div class="kg-month">
+        <div class="kg-month-head"><div><h2>September 2026</h2><span class="kg-month-count">38 expenses</span></div><span class="kg-month-total">$2,363.56</span></div>
+        <div class="kg-row"><span class="kg-category"><i data-lucide="car" aria-label="Transport"></i></span><div class="kg-desc"><span class="kg-name">Uber</span><span class="kg-meta">Maui · Sep 14</span><span class="kg-payer">Paid by Sasha</span></div><div class="kg-money">$31.93<span class="kg-share">Your share $15.97</span></div></div>
+        <div class="kg-row"><span class="kg-category other"><i data-lucide="receipt-text" aria-label="Other"></i></span><div class="kg-desc"><span class="kg-name">TSA fee</span><span class="kg-meta">Maui · Sep 14</span><span class="kg-payer">Paid by Haggai</span></div><div class="kg-money">$45.00<span class="kg-share">Your share $45.00</span></div></div>
+        <div class="kg-row"><span class="kg-category"><i data-lucide="car" aria-label="Transport"></i></span><div class="kg-desc"><span class="kg-name">Jeep car rental</span><span class="kg-meta">Maui · Sep 14</span><span class="kg-payer">Paid by Sasha</span></div><div class="kg-money">$796.36<span class="kg-share">Your share $398.18</span></div></div>
+        <div class="kg-row"><span class="kg-category dining"><i data-lucide="utensils" aria-label="Dining"></i></span><div class="kg-desc"><span class="kg-name">food truck dinner</span><span class="kg-meta">Maui · Sep 13</span><span class="kg-payer">Paid by Haggai</span></div><div class="kg-money">$43.69<span class="kg-share">Your share $21.85</span></div></div>
+      </div>
+      </div>
+      <p class="kg-foot"><i data-lucide="lock-keyhole" aria-hidden="true"></i>Only visible to authorized members</p>
+    </section>
+    <section data-screen="overview" aria-label="Proposed Overview copy" hidden>
+      <div class="kg-metrics">
+        <div class="kg-metric kg-wide"><div class="kg-metric-label">Total expenses</div><span class="kg-value">$5,806.01</span><span class="kg-note">Household, groups &amp; trips</span></div>
+        <div class="kg-metric balance"><div class="kg-metric-label"><button type="button" class="kg-text-help" data-help-title="Your balance" aria-label="About your balance" data-help="This is your balance across the groups and trips included here. Other members may still owe each other. Open Balances to see the details.">Your balance<i data-lucide="info" aria-hidden="true"></i></button></div><span class="kg-value">$0.00</span><span class="kg-note" data-balance-state>Nothing to pay or collect</span><span class="kg-note kg-note-extra">Other members may still owe each other.</span></div>
+        <div class="kg-metric"><div class="kg-metric-label"><button type="button" class="kg-text-help" data-help-title="Your share" aria-label="What is your share?" data-help="Your part of the shared expenses, even if someone else paid. Repayments do not change your share.">Your share<i data-lucide="info" aria-hidden="true"></i></button></div><span class="kg-value">$3,117.26</span><span class="kg-note">You paid $5,469.28</span></div>
+      </div>
+      <div class="kg-month"><div class="kg-recent-head"><h2>Recent expenses</h2><button type="button" class="kg-link" data-page="expenses">View all</button></div><div class="kg-row"><span class="kg-category"><i data-lucide="car" aria-hidden="true"></i></span><div><span class="kg-name">Uber</span><span class="kg-meta">Maui · Sep 14</span></div><div class="kg-money">$31.93<span class="kg-share">Your share $15.97</span></div></div><div class="kg-row"><span class="kg-category other"><i data-lucide="receipt-text" aria-hidden="true"></i></span><div><span class="kg-name">TSA fee</span><span class="kg-meta">Maui · Sep 14</span></div><div class="kg-money">$45.00<span class="kg-share">Your share $45.00</span></div></div></div>
+    </section>
+    <section data-screen="balances" aria-label="Proposed Balances copy" hidden>
+      <div class="kg-metric balance"><div class="kg-metric-label"><button type="button" class="kg-text-help" data-help-title="Your balance" aria-label="About your balance" data-help="This total combines what you owe and what you’re owed. Settle payments in the group or trip where they belong.">Your balance<i data-lucide="info" aria-hidden="true"></i></button></div><span class="kg-value">$0.00</span><span class="kg-note" data-balance-state>Nothing to pay or collect</span></div>
+      <h2 class="kg-section-title">By group or trip</h2>
+      <div class="kg-month"><div class="kg-space"><div><strong>Household</strong><small data-household-note>Household expenses only</small></div><span data-household-value>$0.00</span></div><div class="kg-space"><div><strong>Maui</strong><small data-trip-note>Trip · Your balance is $0</small></div><span data-trip-value>$0.00</span></div></div>
+      <details class="kg-disclosure"><summary>How your balance works</summary><p>We compare what you paid with your share, then include any repayments you’ve recorded.</p><p>Pay more than your share and you’re owed money. Pay less and you owe money.</p><details style="margin-top:14px"><summary>See an example</summary><p>You paid $60 and your share was $20. You’re owed $40. If someone repays you $15, you’re still owed $25.</p></details></details>
+      <details class="kg-disclosure"><summary>Why can my total be $0?</summary><p>You may have nothing left to pay or collect. Or what you owe in one group may match what you’re owed in another. Those payments still need to be settled separately.</p><p>Other members may still owe each other, even when your balance is zero.</p></details>
+    </section>
+  </div>
+  <aside id="kg-rich-tooltip" class="kg-rich-tip" role="dialog" aria-modal="false" aria-labelledby="kg-tip-heading" hidden><h3 id="kg-tip-heading"></h3><p></p><div class="kg-tip-actions"><button type="button" data-close-help>Got it</button></div></aside>
+  <div class="kg-bottom"><span class="kg-active"><i data-lucide="house" aria-hidden="true"></i>Household</span><span><i data-lucide="users" aria-hidden="true"></i>Groups</span><span><i data-lucide="mountain" aria-hidden="true"></i>Trips</span><span><i data-lucide="user-round" aria-hidden="true"></i>Account</span></div>
+</div>
+<script>
+(() => {
+const root = document.getElementById('kami-design-preview');
+const phone = root.querySelector('.kg-phone');
+const help = root.querySelector('.kg-rich-tip');
+let helpAnchor = null;
+const state = { page:'expenses', rowPadding:13, inlineHint:false, offsetBalances:false };
+function render(){
+  root.querySelectorAll('[data-screen]').forEach(el=>el.hidden=el.dataset.screen!==state.page);
+  root.querySelectorAll('.kg-tabs [data-page]').forEach(el=>el.setAttribute('aria-selected',String(el.dataset.page===state.page)));
+  root.querySelectorAll('[data-screen="expenses"] .kg-row').forEach(el=>el.style.paddingBlock=state.rowPadding+'px');
+  root.querySelectorAll('.kg-note-extra').forEach(el=>el.style.display=state.inlineHint?'block':'none');
+  root.querySelectorAll('[data-balance-state]').forEach(el=>el.textContent=state.offsetBalances?'Payments still to settle':'Nothing to pay or collect');
+  root.querySelector('[data-household-note]').textContent=state.offsetBalances?'You owe $40':'Household expenses only';
+  root.querySelector('[data-household-value]').textContent=state.offsetBalances?'−$40.00':'$0.00';
+  root.querySelector('[data-trip-note]').textContent=state.offsetBalances?'You’re owed $40':'Trip · Your balance is $0';
+  root.querySelector('[data-trip-value]').textContent=state.offsetBalances?'+$40.00':'$0.00';
+}
+function save(){ if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{page:state.page,rowPadding:state.rowPadding,inlineHint:state.inlineHint,offsetBalances:state.offsetBalances}}).catch(()=>{}); }
+function closeHelp(restoreFocus=false){help.hidden=true;if(helpAnchor){helpAnchor.setAttribute('aria-expanded','false');if(restoreFocus)helpAnchor.focus();}helpAnchor=null;}
+function positionHelp(){if(!helpAnchor||help.hidden)return;const b=helpAnchor.getBoundingClientRect(),p=phone.getBoundingClientRect();const w=help.getBoundingClientRect().width;help.style.left=Math.max(16,Math.min(b.left-p.left,phone.clientWidth-w-16))+'px';help.style.top=(b.bottom-p.top+8)+'px';}
+root.querySelectorAll('[data-page]').forEach(btn=>btn.addEventListener('click',()=>{state.page=btn.dataset.page;closeHelp();render();save();}));
+root.querySelectorAll('[data-help]').forEach(btn=>{btn.setAttribute('aria-haspopup','dialog');btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','kg-rich-tooltip');btn.addEventListener('click',()=>{if(helpAnchor===btn){closeHelp();return;}closeHelp();helpAnchor=btn;help.querySelector('h3').textContent=btn.dataset.helpTitle;help.querySelector('p').textContent=btn.dataset.help;help.hidden=false;btn.setAttribute('aria-expanded','true');positionHelp();help.querySelector('button').focus();});});
+root.querySelector('[data-close-help]').addEventListener('click',()=>closeHelp(true));
+root.addEventListener('keydown',event=>{if(event.key==='Escape')closeHelp(true);});
+root.addEventListener('click',event=>{if(!event.target.closest('[data-help]')&&!help.contains(event.target))closeHelp();});
+window.addEventListener('resize',positionHelp);
+
+const filter=root.querySelector('.kg-filter'), filterPanel=root.querySelector('.kg-filter-panel');
+filter.addEventListener('click',()=>{filterPanel.hidden=!filterPanel.hidden;filter.setAttribute('aria-expanded',String(!filterPanel.hidden));});
+root.querySelector('[data-close-filter]').addEventListener('click',()=>{filterPanel.hidden=true;filter.setAttribute('aria-expanded','false');filter.focus();});
+function restore(saved){const m=saved?.modelContent;if(m){if(['expenses','overview','balances'].includes(m.page))state.page=m.page;if(typeof m.rowPadding==='number')state.rowPadding=Math.max(8,Math.min(18,m.rowPadding));if(typeof m.inlineHint==='boolean')state.inlineHint=m.inlineHint;if(typeof m.offsetBalances==='boolean')state.offsetBalances=m.offsetBalances;}render();}
+restore(window.openai?.widgetState);
+window.addEventListener('openai:set_globals',event=>restore(event.detail?.globals?.widgetState));
+if(globalThis.Tweak){const t=new Tweak({container:phone,onChange:()=>{render();save();}});t.addSlider(state,'rowPadding',{label:'Row spacing',min:8,max:18,unit:'px'});t.addToggle(state,'inlineHint',{label:'Keep zero-balance caveat visible'});t.addToggle(state,'offsetBalances',{label:'Preview offsetting balances'});}
+})();
+</script>
+</div>
