@@ -502,7 +502,9 @@ const activity = {
       );
       await page.goto(origin + '/groups/T?tab=balances');
       await page.waitForURL('**/trips/T?tab=balances');
-      await page.getByText('Current simplified obligations').waitFor();
+      await page
+        .getByRole('heading', { name: 'Who owes whom', exact: true })
+        .waitFor();
       assert.equal(
         await page
           .locator('.workspace-navigation a[aria-current="page"]')
