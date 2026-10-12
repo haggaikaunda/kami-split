@@ -35,8 +35,12 @@ Refresh after an uncertain transport result before explicitly retrying.
 
 The shared browser root resolves the preference into `data-theme="light|dark"`.
 Only System follows live OS/browser color-scheme changes. Account settings offers
-Light, System, and Dark with an explicit save; uncertain writes require checking
-the saved value before retrying. Other devices read the account preference at
+Light, System, and Dark that apply immediately and save in the background. Guarded
+writes are serialized, with rapid selections coalesced to the latest choice.
+Only confirmed preferences enter the reload cache. Background focus reads cannot
+overwrite a pending selection. Uncertain or conflicting writes require checking
+the saved value before explicitly applying the retained selection again; rereading
+never automatically overwrites a concurrent change. Other devices read the account preference at
 startup and when their window regains focus.
 
 A small local presentation cache is bound to the Auth session's account ID and
