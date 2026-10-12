@@ -257,3 +257,21 @@ Overview keeps its illustrated banner. Filter dates use the same bounded native
 date styling as expense forms, and the filter grid stacks when enlarged text or
 a narrow dialog leaves insufficient width. These changes supersede the scrolling
 chrome and working-tab banner layout in the historical #227 visual evidence.
+
+## Balance explanations and Household scope (#241)
+
+Household overview and balance summaries identify their aggregation of the
+Household source ledger and currently eligible Groups/Trips shared by every active
+Household member. Source links distinguish the Household ledger, Group and Trip.
+A zero aggregate may offset debts across spaces; a zero balance in every eligible
+space describes only the viewer and does not establish every member is settled.
+Incomplete aggregate reads hide source balance rows; failed source projections
+show unavailable rather than a zero or settlement claim.
+
+Source balance details explain the authoritative calculation: paid for expenses
+minus allocated share plus repayments sent minus repayments received. Each member
+has exact server amounts and a displayed equation; examples cover a payer receiving
+a repayment and a participant sending one. Positive means owed and negative means
+owing. “Who owes whom” lists suggested repayments within that source, without
+counting original expenses again. Activity and its expense before/after history
+remain linked. Expenses uses a visible “Balance details” disclosure.

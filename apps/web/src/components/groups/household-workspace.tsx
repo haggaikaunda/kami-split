@@ -300,6 +300,12 @@ export function HouseholdContent({
       : undefined;
   return (
     <>
+      <p className="workspace-context-detail">
+        Household summaries include its own source ledger and currently eligible
+        groups and trips shared by every active Household member. Each space
+        keeps its own balances and repayments. Open a source for its calculation
+        and Activity history.
+      </p>
       {dashboard.state === 'UNAVAILABLE' ? (
         <p role="status">
           Shared overview is unavailable. Refresh to check current access.{' '}
@@ -354,102 +360,110 @@ export function HouseholdContent({
         </section>
       ) : current === 'Balances' ? (
         <section className="workspace-panel">
-          <h2>Where your balance comes from</h2>
+          <h2>Your balance across eligible spaces</h2>
           {totals && <HouseholdNet totals={totals} />}
           <p>
             Balances stay separate in their original spaces. A zero overall net
-            does not settle open source balances.
+            does not settle amounts owed within each group or trip.
           </p>
-          <ul className="household-balances">
-            {dashboard.spaces.map((space) => {
-              const net =
-                space.viewerNetMinor == null
-                  ? undefined
-                  : minor(space.viewerNetMinor);
-              const state =
-                net === undefined
-                  ? 'unavailable'
-                  : net > 0n
-                    ? 'positive'
-                    : net < 0n
-                      ? 'negative'
-                      : 'zero';
-              const balances = space.balances;
-              const viewer = space.viewerMembership.id;
-              const parties =
-                balances?.__typename === 'GroupBalances'
-                  ? balances.obligations
-                      .filter(
-                        (o) =>
-                          net !== undefined &&
-                          (net > 0n
-                            ? o.to.id === viewer
-                            : net < 0n && o.from.id === viewer),
-                      )
-                      .map((o) =>
-                        net! > 0n ? o.from.displayName : o.to.displayName,
-                      )
-                  : [];
-              const detail =
-                net === undefined
-                  ? 'Balance unavailable'
-                  : net > 0n
-                    ? parties.length === 1
-                      ? `${parties[0]} owes you`
-                      : "You're owed in this space"
-                    : net < 0n
+          {totals && (
+            <ul className="household-balances">
+              {dashboard.spaces.map((space) => {
+                const net =
+                  space.viewerNetMinor == null ||
+                  space.balances?.__typename !== 'GroupBalances'
+                    ? undefined
+                    : minor(space.viewerNetMinor);
+                const state =
+                  net === undefined
+                    ? 'unavailable'
+                    : net > 0n
+                      ? 'positive'
+                      : net < 0n
+                        ? 'negative'
+                        : 'zero';
+                const balances = space.balances;
+                const viewer = space.viewerMembership.id;
+                const parties =
+                  balances?.__typename === 'GroupBalances'
+                    ? balances.obligations
+                        .filter(
+                          (o) =>
+                            net !== undefined &&
+                            (net > 0n
+                              ? o.to.id === viewer
+                              : net < 0n && o.from.id === viewer),
+                        )
+                        .map((o) =>
+                          net! > 0n ? o.from.displayName : o.to.displayName,
+                        )
+                    : [];
+                const detail =
+                  net === undefined
+                    ? 'Balance unavailable'
+                    : net > 0n
                       ? parties.length === 1
-                        ? `You owe ${parties[0]}`
-                        : 'You owe in this space'
-                      : balances?.__typename === 'GroupBalances' &&
-                          balances.settled
-                        ? space.sharedExpenseCount === '0'
-                          ? 'No shared expenses · Settled'
-                          : 'Settled'
-                        : 'Your net is zero; this space has open balances';
-              return (
-                <li
-                  key={space.groupId}
-                  className={`household-balance--${state}`}
-                >
-                  <ScopedLink
-                    scope={scope}
-                    id={`household-source-${space.groupId}`}
-                    href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                        ? `${parties[0]} owes you`
+                        : "You're owed in this space"
+                      : net < 0n
+                        ? parties.length === 1
+                          ? `You owe ${parties[0]}`
+                          : 'You owe in this space'
+                        : balances?.__typename === 'GroupBalances' &&
+                            balances.settled
+                          ? space.sharedExpenseCount === '0'
+                            ? 'No shared expenses · Settled'
+                            : 'Settled'
+                          : 'Your net is zero; this space has open balances';
+                return (
+                  <li
+                    key={space.groupId}
+                    className={`household-balance--${state}`}
                   >
-                    <span>
-                      <strong
-                        className={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
-                      >
-                        <AppIcon
-                          name={
-                            space.isHousehold
-                              ? 'home'
-                              : space.kind === 'TRIP'
-                                ? 'trip'
-                                : 'groups'
-                          }
-                        />
-                        {space.name}
-                      </strong>
-                      <span className="ui-row-detail">{detail}</span>
-                    </span>
-                    <span>
-                      {net === undefined ? (
-                        'Unavailable'
-                      ) : (
-                        <Money
-                          value={`${net > 0n ? '+' : ''}${money(space.viewerNetMinor!)}`}
-                          currency={space.currency}
-                        />
-                      )}
-                      <span aria-hidden="true"> →</span>
-                    </span>
-                  </ScopedLink>
-                </li>
-              );
-            })}
-          </ul>
+                    <ScopedLink
+                      scope={scope}
+                      id={`household-source-${space.groupId}`}
+                      href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                    >
+                      <span>
+                        <strong
+                          className={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
+                        >
+                          <AppIcon
+                            name={
+                              space.isHousehold
+                                ? 'home'
+                                : space.kind === 'TRIP'
+                                  ? 'trip'
+                                  : 'groups'
+                            }
+                          />
+                          {space.name} ·{' '}
+                          {space.isHousehold
+                            ? 'Household source ledger'
+                            : space.kind === 'TRIP'
+                              ? 'Trip'
+                              : 'Group'}
+                        </strong>
+                        <span className="ui-row-detail">{detail}</span>
+                      </span>
+                      <span>
+                        {net === undefined ? (
+                          'Unavailable'
+                        ) : (
+                          <Money
+                            value={`${net > 0n ? '+' : ''}${money(space.viewerNetMinor!)}`}
+                            currency={space.currency}
+                          />
+                        )}
+                        <span aria-hidden="true"> →</span>
+                      </span>
+                    </ScopedLink>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
       ) : (
         <>
@@ -459,7 +473,7 @@ export function HouseholdContent({
                 label="Total shared expenses"
                 tone="total"
                 icon={<AppIcon name="expense" />}
-                detail="Home, trips and groups · USD"
+                detail="Household ledger and currently eligible groups/trips · USD"
               >
                 <Money
                   value={money(totals.totalSharedExpenseMinor)}
@@ -580,7 +594,14 @@ export function HouseholdContent({
                           />
                         </span>
                         <span className="household-space-copy">
-                          <strong>{space.name}</strong>
+                          <strong>
+                            {space.name} ·{' '}
+                            {space.isHousehold
+                              ? 'Household source ledger'
+                              : space.kind === 'TRIP'
+                                ? 'Trip'
+                                : 'Group'}
+                          </strong>
                           <span className="ui-row-detail">
                             {space.viewerNetMinor == null
                               ? 'Unavailable'
@@ -638,7 +659,7 @@ function HouseholdNet({ totals }: { totals: Totals }) {
       className={`ui-signed-balance ui-signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`}
     >
       <SummaryMetric
-        label="Your net balance"
+        label="Your net across eligible spaces"
         tone="net"
         icon={<AppIcon name="arrow-up-right" />}
         detail={
@@ -649,8 +670,8 @@ function HouseholdNet({ totals }: { totals: Totals }) {
                 : net < 0n
                   ? 'You owe overall'
                   : totals.openBalanceCount !== '0'
-                    ? 'Overall net is zero; source balances remain open'
-                    : 'No open source balances'}
+                    ? 'Overall net is zero; you still owe or are owed money in individual spaces'
+                    : 'Your balance is zero in every eligible space; other members may still owe money'}
             </span>
           </>
         }

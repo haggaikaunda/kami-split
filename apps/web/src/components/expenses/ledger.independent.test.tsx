@@ -618,3 +618,12 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   expect(host.textContent).toContain('Total unavailable');
   expect(host.textContent).not.toContain('Paid by Bob');
 });
+
+it('offers a descriptive keyboard-native balance disclosure and canonical details route', async () => {
+  await renderHousehold();
+  await respondContext(context('0'));
+  await respond(page([]));
+  const summary = host.querySelector('.ledger-net summary')!;
+  expect(summary.textContent).toContain('Balance details');
+  expect(host.querySelector('.ledger-net')?.tagName).toBe('DETAILS');
+});
