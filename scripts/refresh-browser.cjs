@@ -51,9 +51,10 @@ module.exports = async function verifyRefresh({
   let before = count();
   await page.keyboard.press('Enter');
   await page.getByText('Updating…', { exact: true }).waitFor();
+  const loadingHeight = (await surface.boundingBox()).height;
   assert(
-    (await surface.boundingBox()).height >= previousHeight,
-    'loading preserves prior page geometry',
+    loadingHeight >= previousHeight,
+    `loading preserves prior page geometry: ${loadingHeight} >= ${previousHeight}`,
   );
   await page.screenshot({
     path: path.join(output, `loading-${workspace}-${width}-${scale}.png`),
