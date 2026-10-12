@@ -1,4 +1,6 @@
 'use client';
+import { WorkspaceLoading } from '@/components/workspace-loading';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { Timestamp } from '@/components/date-time';
 import { spaceHref } from '@/lib/relay/space-routes';
 import {
@@ -7,11 +9,12 @@ import {
   WorkspaceNavigation,
 } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import {
   Button,
+  Skeleton,
   Money,
   WorkspaceHeader,
   WorkspaceTabs,
@@ -68,7 +71,7 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
         }
       />
       {access.loading ? (
-        <p role="status">Loading secure access…</p>
+        <p role="status">Loading workspace…</p>
       ) : access.error ? (
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
@@ -88,6 +91,9 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
 
 /** Network-only refreshes discard prior rows before rechecking current access. */
 export function ActivityFeed({
+  kind: controlledKind,
+  onKindChange,
+  onReadState,
   scope,
   groupId,
   initialFeed,
@@ -96,6 +102,9 @@ export function ActivityFeed({
 }: {
   scope: FinancialScope;
   groupId: string;
+  onReadState?: (state: { busy: boolean; error: string }) => void;
+  kind?: string;
+  onKindChange?: (kind: string) => void;
   initialFeed?: activityFeed$key;
   managedRefresh?: boolean;
   onDenied?: () => void;
@@ -108,13 +117,21 @@ export function ActivityFeed({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const feedScroll = useRef(0);
   const restoreFeedFocus = useRef(false);
-  const [kind, setKind] = useState('');
+  const [localKind, setLocalKind] = useState('');
+  const kind = controlledKind ?? localKind;
+  const setKind = onKindChange ?? setLocalKind;
   const source = '';
   const [version, setVersion] = useState(0);
   const [after, setAfter] = useState<string | null>(null);
   const [page, setPage] = useState<Connection>();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const reportRead = useEffectEvent(() =>
+    onReadState?.({ busy: loading, error }),
+  );
+  useEffect(() => {
+    reportRead();
+  }, [loading, error]);
   const [selected, setSelected] = useState<Event>();
   const [detail, setDetail] = useState<Detail>();
   const [detailError, setDetailError] = useState('');
@@ -256,9 +273,18 @@ export function ActivityFeed({
   }, [scope, groupId, selected]);
 
   return (
-    <div
+    <WorkspaceLoading
+      busy={loading}
       className={`activity-view ${selected ? 'activity-view-selected' : ''}`}
     >
+      {!managedRefresh && (
+        <WorkspaceRefresh
+          busy={loading}
+          error={error}
+          onRefresh={reset}
+          label="Refresh activity"
+        />
+      )}
       <section className="activity-feed-panel" aria-labelledby={headingId}>
         <header className="activity-feed-header">
           <h2 id={headingId}>Recent activity</h2>
@@ -278,13 +304,10 @@ export function ActivityFeed({
                 <option value="REPAYMENT_RECORDED">Repayments recorded</option>
               </select>
             </label>
-            <Button tone="text" onClick={reset}>
-              Refresh activity
-            </Button>
           </div>
         </header>
         {loading ? (
-          <p role="status">Loading activity…</p>
+          <Skeleton label="Loading activity" />
         ) : error ? (
           <p role="alert">{error}</p>
         ) : page && page.edges.length === 0 ? (
@@ -423,7 +446,7 @@ export function ActivityFeed({
             </Button>
           </header>
           {detailLoading ? (
-            <p role="status">Checking historical event access…</p>
+            <p role="status">Loading activity detail…</p>
           ) : detailError ? (
             <p role="alert">{detailError}</p>
           ) : (
@@ -442,6 +465,6 @@ export function ActivityFeed({
           )}
         </section>
       )}
-    </div>
+    </WorkspaceLoading>
   );
 }

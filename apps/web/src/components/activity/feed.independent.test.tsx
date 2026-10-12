@@ -149,7 +149,7 @@ it('reauthorizes the complete source context in event detail and clears revoked 
   expect(document.activeElement).toBe(
     host.querySelector('[aria-label="Historical event detail"]'),
   );
-  expect(host.textContent).toContain('Checking historical event access');
+  expect(host.textContent).toContain('Loading activity detail');
   expect(boundary.requests).toHaveLength(2);
   await act(async () =>
     boundary.requests[1].resolve?.({

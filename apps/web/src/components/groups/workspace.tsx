@@ -43,6 +43,9 @@ export type WorkspaceGroup = Extract<
   { readonly __typename: 'Group' }
 >;
 export function GroupWorkspace({
+  activityKind,
+  onActivityReadState,
+  onActivityKindChange,
   scope,
   group,
   today,
@@ -58,6 +61,9 @@ export function GroupWorkspace({
   onRefresh,
   onDenied,
 }: {
+  onActivityReadState?: (state: { busy: boolean; error: string }) => void;
+  activityKind?: string;
+  onActivityKindChange?: (kind: string) => void;
   scope: FinancialScope;
   group: WorkspaceGroup;
   today: string;
@@ -282,6 +288,9 @@ export function GroupWorkspace({
         </section>
       ) : (
         <ActivityFeed
+          onReadState={onActivityReadState}
+          kind={activityKind}
+          onKindChange={onActivityKindChange}
           scope={scope}
           groupId={group.id}
           initialFeed={initialFeed}

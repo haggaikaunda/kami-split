@@ -288,6 +288,8 @@ export function Skeleton({ label = 'Loading expenses' }: { label?: string }) {
     <div role="status" className="ui-loading">
       <span>{label}…</span>
       <span aria-hidden="true" className="ui-skeleton" />
+      <span aria-hidden="true" className="ui-skeleton" />
+      <span aria-hidden="true" className="ui-skeleton" />
     </div>
   );
 }

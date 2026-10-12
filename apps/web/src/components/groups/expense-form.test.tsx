@@ -222,3 +222,28 @@ it('uses the device calendar on each new opening without overwriting an open or 
     vi.useRealTimers();
   }
 });
+
+it('restores unsaved edited fields after authorization refresh remount without dispatching a write', async () => {
+  await render();
+  const input = host.querySelector<HTMLInputElement>('#expense-description')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!.call(input, 'Unfinished dinner draft');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(readDraft(scope.actor, group)?.draft.description).toBe(
+    'Unfinished dinner draft',
+  );
+  await act(async () => root.render(null));
+  await render();
+  expect(
+    host.querySelector<HTMLInputElement>('#expense-description')!.value,
+  ).toBe('Unfinished dinner draft');
+  expect(host.querySelector<HTMLInputElement>('#expense-amount')!.value).toBe(
+    '10.01',
+  );
+  expect(network.mutate).not.toHaveBeenCalled();
+});
