@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<69894fc2cc3a4b7d249bda1f5184d2f6>>
+ * @generated SignedSource<<f4def22dc75a6c06ff7c6b86b6a3da64>>
  * @lightSyntaxTransform
  */
 
@@ -10,11 +10,16 @@
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
+export type ExpenseSort = "AMOUNT_ASC" | "AMOUNT_DESC" | "DATE_ASC" | "DATE_DESC" | "%future added value";
 export type StructuredExpenseFilter = {
+  categories?: ReadonlyArray<Category> | null | undefined;
   category?: Category | null | undefined;
   from?: string | null | undefined;
   groupId?: string | null | undefined;
   memberId?: string | null | undefined;
+  memberIds?: ReadonlyArray<string> | null | undefined;
+  paidByIds?: ReadonlyArray<string> | null | undefined;
+  sort?: ExpenseSort | null | undefined;
   to?: string | null | undefined;
 };
 export type expensesHouseholdQuery$variables = {

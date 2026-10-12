@@ -100,6 +100,11 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 			return ExpenseView{}, err
 		}
 	}
+	validInput := in.First >= 1 && in.First <= 100 && ledger.ValidateStructuredFilter(in.Filter) == nil &&
+		!(in.GroupFilterPresent && in.Filter.GroupID == "") && !(in.MemberFilterPresent && in.Filter.MemberID == "")
+	if validInput {
+		in.Filter = ledger.CanonicalStructuredFilter(in.Filter)
+	}
 	for attempt := 0; attempt < 3; attempt++ {
 		var result ExpenseView
 		err := s.transaction(ctx, func(tx pgx.Tx, _ auth.Actor) error {
@@ -126,8 +131,7 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 			}
 			// Authorize before reporting malformed filter or cursor state. The query
 			// also authorizes each referenced group/member in the final statement snapshot.
-			if in.First < 1 || in.First > 100 || ledger.ValidateStructuredFilter(in.Filter) != nil ||
-				(in.GroupFilterPresent && in.Filter.GroupID == "") || (in.MemberFilterPresent && in.Filter.MemberID == "") {
+			if !validInput {
 				return Failure("INVALID_INPUT")
 			}
 			if codec == nil {
@@ -189,17 +193,24 @@ func (s *Service) ReadExpenseView(ctx context.Context, in ExpenseViewRequest, co
 }
 
 func readViewWire(ctx context.Context, tx pgx.Tx, group string, in ExpenseViewRequest, cursor *ledger.ExpenseViewCursor) (viewWire, error) {
-	var selected, member any
+	var selected any
+	members := make([]string, 0, len(in.Filter.MemberIDs))
+	payers := make([]string, 0, len(in.Filter.PaidByIDs))
+	for _, id := range in.Filter.MemberIDs {
+		raw, _ := ledger.ParseID(id, "Membership")
+		members = append(members, raw)
+	}
+	for _, id := range in.Filter.PaidByIDs {
+		raw, _ := ledger.ParseID(id, "Membership")
+		payers = append(payers, raw)
+	}
 	if in.Filter.GroupID != "" {
 		raw, _ := ledger.ParseID(in.Filter.GroupID, "Group")
 		selected = raw
 	}
-	if in.Filter.MemberID != "" {
-		raw, _ := ledger.ParseID(in.Filter.MemberID, "Membership")
-		member = raw
-	}
+
 	var anchorJSON any
-	var date, created, boundaryGroup, boundaryExpense any
+	var date, created, boundaryGroup, boundaryExpense, amount any
 	if cursor != nil {
 		anchors := make([]map[string]any, 0, len(cursor.Anchors))
 		for _, a := range cursor.Anchors {
@@ -211,17 +222,18 @@ func readViewWire(ctx context.Context, tx pgx.Tx, group string, in ExpenseViewRe
 			return viewWire{}, err
 		}
 		anchorJSON = encoded
+		amount = cursor.TotalMinor
 		date = cursor.EffectiveDate
 		created = cursor.CreatedAt
 		boundaryGroup, _ = ledger.ParseID(cursor.GroupID, "Group")
 		boundaryExpense, _ = ledger.ParseID(cursor.ExpenseID, "Expense")
 	}
-	args := []any{selected, member, nullable(in.Filter.From), nullable(in.Filter.To), nullable(in.Filter.Category), anchorJSON, date, created, boundaryGroup, boundaryExpense, in.First + 1}
+	args := []any{selected, members, nullable(in.Filter.From), nullable(in.Filter.To), in.Filter.Categories, anchorJSON, date, created, boundaryGroup, boundaryExpense, in.First + 1, payers, amount}
 	if group != "" {
 		args = append(args, group)
 	}
 	var raw []byte
-	if err := tx.QueryRow(ctx, viewProjectionSQL(group != ""), args...).Scan(&raw); err != nil {
+	if err := tx.QueryRow(ctx, viewProjectionSQL(group != "", in.Filter.Sort), args...).Scan(&raw); err != nil {
 		return viewWire{}, err
 	}
 	var result viewWire
@@ -341,7 +353,7 @@ func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseView
 			r.Allocations[i].ParticipantID = ledger.PublicID("Membership", r.Allocations[i].ParticipantID)
 		}
 		setEditEligibility(&r, source.Members)
-		token, err := codec.EncodeExpenseView(ledger.ExpenseViewCursor{Scope: in.Scope, Filter: in.Filter, Eligibility: wire.Eligibility, Anchors: anchors, EffectiveDate: r.EffectiveDate, CreatedAt: r.CommittedAt, GroupID: r.GroupID, ExpenseID: r.ExpenseID})
+		token, err := codec.EncodeExpenseView(ledger.ExpenseViewCursor{Scope: in.Scope, Filter: in.Filter, Eligibility: wire.Eligibility, Anchors: anchors, EffectiveDate: r.EffectiveDate, CreatedAt: r.CommittedAt, GroupID: r.GroupID, ExpenseID: r.ExpenseID, TotalMinor: r.TotalMinor})
 		if err != nil {
 			return ExpenseView{}, Failure("UNAVAILABLE")
 		}

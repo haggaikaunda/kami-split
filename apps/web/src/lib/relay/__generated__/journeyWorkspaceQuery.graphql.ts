@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<feea1c09bb80e68fe1290b14b1ef9f72>>
+ * @generated SignedSource<<98469494b6cd6b6ac7f1773c14e7fc53>>
  * @lightSyntaxTransform
  */
 
@@ -12,15 +12,20 @@ import { FragmentRefs } from "relay-runtime";
 export type AccessState = "DISABLED" | "UNPROVISIONED" | "%future added value";
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type ExpenseSort = "AMOUNT_ASC" | "AMOUNT_DESC" | "DATE_ASC" | "DATE_DESC" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type MembershipStatus = "ACTIVE" | "INACTIVE" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 export type StructuredExpenseFilter = {
+  categories?: ReadonlyArray<Category> | null | undefined;
   category?: Category | null | undefined;
   from?: string | null | undefined;
   groupId?: string | null | undefined;
   memberId?: string | null | undefined;
+  memberIds?: ReadonlyArray<string> | null | undefined;
+  paidByIds?: ReadonlyArray<string> | null | undefined;
+  sort?: ExpenseSort | null | undefined;
   to?: string | null | undefined;
 };
 export type journeyWorkspaceQuery$variables = {

@@ -7,7 +7,23 @@ input StructuredExpenseFilter {
   """
   groupId: ID
   """
-  Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+  Categories combined with OR; all different filter fields combine with AND.
+  """
+  categories: [Category!]
+  """
+  Original Membership IDs matching payer or saved split participant, including zero shares. Every ID must be authorized within the selected scope.
+  """
+  memberIds: [ID!]
+  """
+  Original Membership IDs matching only the payer, combined with OR. Every ID must be authorized within the selected scope.
+  """
+  paidByIds: [ID!]
+  """
+  Complete-result order, default DATE_DESC. Ties use created time, source UUID and expense UUID in the selected direction.
+  """
+  sort: ExpenseSort
+  """
+  Legacy single Involving Membership ID, combined with memberIds using OR. Matches payer OR saved allocation including zero share, only in its original group.
   """
   memberId: ID
   """
@@ -19,7 +35,7 @@ input StructuredExpenseFilter {
   """
   to: Date
   """
-  Authoritative category; absent means all categories.
+  Legacy single category, combined with categories using OR; absent selections mean all categories.
   """
   category: Category
 }
@@ -60,11 +76,11 @@ type ExpenseView {
   """
   months: [ExpenseMonth!]!
   """
-  Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+  Full-result order selected by filter.sort, default effectiveDate descending. Deterministic ties use createdAt, original group UUID and expense UUID; amount orders use effectiveDate before those ties.
   """
   edges: [ExpenseViewEdge!]!
   """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
+  Forward-only traversal. Cursors bind actor/scope, structured filters and sort, eligible membership/account generations and revision anchors.
   """
   pageInfo: PageInfo!
 }
@@ -123,4 +139,26 @@ type ExpenseCategoryTotal {
   Matching expense count in either basis, including expenses with zero viewer share.
   """
   expenseCount: MinorUnits!
+}
+
+"""
+Full authorized result ordering; amount ties additionally use effective date.
+"""
+enum ExpenseSort {
+  """
+  Newest effective date first.
+  """
+  DATE_DESC
+  """
+  Oldest effective date first.
+  """
+  DATE_ASC
+  """
+  Largest exact face value first.
+  """
+  AMOUNT_DESC
+  """
+  Smallest exact face value first.
+  """
+  AMOUNT_ASC
 }

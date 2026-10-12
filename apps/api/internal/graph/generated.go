@@ -4976,7 +4976,23 @@ input StructuredExpenseFilter {
   """
   groupId: ID
   """
-  Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+  Categories combined with OR; all different filter fields combine with AND.
+  """
+  categories: [Category!]
+  """
+  Original Membership IDs matching payer or saved split participant, including zero shares. Every ID must be authorized within the selected scope.
+  """
+  memberIds: [ID!]
+  """
+  Original Membership IDs matching only the payer, combined with OR. Every ID must be authorized within the selected scope.
+  """
+  paidByIds: [ID!]
+  """
+  Complete-result order, default DATE_DESC. Ties use created time, source UUID and expense UUID in the selected direction.
+  """
+  sort: ExpenseSort
+  """
+  Legacy single Involving Membership ID, combined with memberIds using OR. Matches payer OR saved allocation including zero share, only in its original group.
   """
   memberId: ID
   """
@@ -4988,7 +5004,7 @@ input StructuredExpenseFilter {
   """
   to: Date
   """
-  Authoritative category; absent means all categories.
+  Legacy single category, combined with categories using OR; absent selections mean all categories.
   """
   category: Category
 }
@@ -5029,11 +5045,11 @@ type ExpenseView {
   """
   months: [ExpenseMonth!]!
   """
-  Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+  Full-result order selected by filter.sort, default effectiveDate descending. Deterministic ties use createdAt, original group UUID and expense UUID; amount orders use effectiveDate before those ties.
   """
   edges: [ExpenseViewEdge!]!
   """
-  Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
+  Forward-only traversal. Cursors bind actor/scope, structured filters and sort, eligible membership/account generations and revision anchors.
   """
   pageInfo: PageInfo!
 }
@@ -5092,6 +5108,20 @@ type ExpenseCategoryTotal {
   Matching expense count in either basis, including expenses with zero viewer share.
   """
   expenseCount: MinorUnits!
+}
+
+"""
+Full authorized result ordering; amount ties additionally use effective date.
+"""
+enum ExpenseSort {
+ """Newest effective date first."""
+ DATE_DESC
+ """Oldest effective date first."""
+ DATE_ASC
+ """Largest exact face value first."""
+ AMOUNT_DESC
+ """Smallest exact face value first."""
+ AMOUNT_ASC
 }
 `, BuiltIn: false},
 }
@@ -15688,7 +15718,7 @@ func (ec *executionContext) unmarshalInputStructuredExpenseFilter(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"groupId", "memberId", "from", "to", "category"}
+	fieldsInOrder := [...]string{"groupId", "categories", "memberIds", "paidByIds", "sort", "memberId", "from", "to", "category"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -15702,6 +15732,34 @@ func (ec *executionContext) unmarshalInputStructuredExpenseFilter(ctx context.Co
 				return it, err
 			}
 			it.GroupID = data
+		case "categories":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categories"))
+			data, err := ec.unmarshalOCategory2ᚕgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategoryᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Categories = data
+		case "memberIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memberIds"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MemberIds = data
+		case "paidByIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paidByIds"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PaidByIds = data
+		case "sort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sort"))
+			data, err := ec.unmarshalOExpenseSort2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSort(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sort = data
 		case "memberId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memberId"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -22008,6 +22066,42 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOCategory2ᚕgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategoryᚄ(ctx context.Context, v any) ([]model.Category, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]model.Category, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOCategory2ᚕgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.Category) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOCategory2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx context.Context, v any) (*model.Category, error) {
 	if v == nil {
 		return nil, nil
@@ -22104,6 +22198,22 @@ func (ec *executionContext) unmarshalOExpenseFilter2ᚖgithubᚗcomᚋhaggaikaun
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOExpenseSort2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSort(ctx context.Context, v any) (*model.ExpenseSort, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.ExpenseSort)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOExpenseSort2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSort(ctx context.Context, sel ast.SelectionSet, v *model.ExpenseSort) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) marshalOGroupTrip2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupTrip(ctx context.Context, sel ast.SelectionSet, v *model.GroupTrip) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -22124,6 +22234,41 @@ func (ec *executionContext) marshalOHouseholdDashboardTotalsResult2githubᚗcom�
 		return graphql.Null
 	}
 	return ec._HouseholdDashboardTotalsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {

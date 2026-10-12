@@ -53,3 +53,23 @@ func TestStructuredFiltersRejectInvalidSyntaxWithoutChangingLegacyMeaning(t *tes
 		t.Fatal("valid same-group identity rejected")
 	}
 }
+
+func TestStructuredAlternativeValidationAndOwnership(t *testing.T) {
+	member := PublicID("Membership", "16900000-0000-4000-8000-000000000001")
+	for _, f := range []StructuredFilter{{Categories: []string{"HOME", ""}}, {Categories: []string{"UNKNOWN"}}, {MemberIDs: []string{member, ""}}, {PaidByIDs: []string{member, "bad"}}, {Sort: "OTHER"}, {Categories: make([]string, 101)}} {
+		if ValidateStructuredFilter(f) == nil {
+			t.Fatalf("invalid selection accepted: %+v", f)
+		}
+	}
+	original := StructuredFilter{Category: "HOME", Categories: []string{"DINING", "HOME"}, MemberIDs: []string{member, member}, PaidByIDs: []string{member}}
+	canonical := CanonicalStructuredFilter(original)
+	if canonical.Category != "" || len(canonical.Categories) != 2 || len(canonical.MemberIDs) != 1 || canonical.Sort != "DATE_DESC" {
+		t.Fatal(canonical)
+	}
+	canonical.Categories[0] = "OTHER"
+	canonical.MemberIDs[0] = "changed"
+	canonical.PaidByIDs[0] = "changed"
+	if original.Categories[0] != "DINING" || original.MemberIDs[0] != member || original.PaidByIDs[0] != member {
+		t.Fatal("retained caller mutable values")
+	}
+}

@@ -9,18 +9,26 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"reflect"
+	"slices"
 	"strings"
 )
 
-// StructuredFilter selects face-value expense spending. MemberID matches payer
-// OR explicit allocation (including zero); legacy Filter remains participant-only.
+// StructuredFilter combines fields with AND and each field's alternatives with OR.
+// MemberIDs matches payer or saved allocation (including zero); PaidByIDs matches
+// only payer. Singular MemberID/Category are additive legacy alternatives.
 // GroupID selects one authorized source ledger; empty means the whole scope.
+// Sort selects date or exact amount order, defaulting to DATE_DESC.
 type StructuredFilter struct {
-	GroupID  string `json:"group"`
-	MemberID string `json:"member"`
-	From     string `json:"from"`
-	To       string `json:"to"`
-	Category string `json:"category"`
+	GroupID    string   `json:"group"`
+	MemberID   string   `json:"member"`
+	From       string   `json:"from"`
+	To         string   `json:"to"`
+	Category   string   `json:"category"`
+	Categories []string `json:"categories,omitempty"`
+	MemberIDs  []string `json:"members,omitempty"`
+	PaidByIDs  []string `json:"paidBy,omitempty"`
+	Sort       string   `json:"sort,omitempty"`
 }
 
 // ValidateStructuredFilter validates wire syntax, never authorizes identifiers.
@@ -35,7 +43,53 @@ func ValidateStructuredFilter(f StructuredFilter) error {
 			}
 		}
 	}
+	for _, values := range [][]string{f.Categories, f.MemberIDs, f.PaidByIDs} {
+		if len(values) > 100 {
+			return errors.New("INVALID_INPUT")
+		}
+	}
+	for _, category := range f.Categories {
+		if category == "" || ValidateFilter(Filter{Category: category}) != nil {
+			return errors.New("INVALID_INPUT")
+		}
+	}
+	for _, id := range append(slices.Clone(f.MemberIDs), f.PaidByIDs...) {
+		if _, err := ParseID(id, "Membership"); err != nil {
+			return errors.New("INVALID_INPUT")
+		}
+	}
+	switch f.Sort {
+	case "", "DATE_DESC", "DATE_ASC", "AMOUNT_DESC", "AMOUNT_ASC":
+	default:
+		return errors.New("INVALID_INPUT")
+	}
 	return nil
+}
+
+// CanonicalStructuredFilter copies and sorts alternatives so equivalent selections
+// bind the same traversal, regardless of caller selection order.
+func CanonicalStructuredFilter(f StructuredFilter) StructuredFilter {
+	canonical := func(values []string, legacy string) []string {
+		values = slices.Clone(values)
+		if legacy != "" {
+			values = append(values, legacy)
+		}
+		slices.Sort(values)
+		values = slices.Compact(values)
+		if len(values) == 0 {
+			return nil
+		}
+		return values
+	}
+	f.Categories = canonical(f.Categories, f.Category)
+	f.MemberIDs = canonical(f.MemberIDs, f.MemberID)
+	f.PaidByIDs = canonical(f.PaidByIDs, "")
+	f.Category = ""
+	f.MemberID = ""
+	if f.Sort == "" {
+		f.Sort = "DATE_DESC"
+	}
+	return f
 }
 
 // SpaceRevision is one canonical original ledger's append-only traversal anchor.
@@ -46,7 +100,7 @@ type SpaceRevision struct {
 }
 
 // ExpenseViewCursor freezes the complete filtered dataset and strict global
-// descending boundary. Eligibility is an opaque SHA256 actor/scope binding;
+// ordered boundary. Eligibility is an opaque SHA256 actor/scope binding;
 // no peer user identities enter the token. Anchors are sorted by GroupID.
 type ExpenseViewCursor struct {
 	Scope         string           `json:"scope"`
@@ -57,6 +111,7 @@ type ExpenseViewCursor struct {
 	CreatedAt     string           `json:"created"`
 	GroupID       string           `json:"group"`
 	ExpenseID     string           `json:"expense"`
+	TotalMinor    int64            `json:"amount,omitempty"`
 }
 
 type viewCursorEnvelope struct {
@@ -73,6 +128,9 @@ func validViewCursor(v ExpenseViewCursor) bool {
 		}
 	}
 	if ValidateStructuredFilter(v.Filter) != nil || !ValidDate(v.EffectiveDate) {
+		return false
+	}
+	if (v.Filter.Sort == "AMOUNT_ASC" || v.Filter.Sort == "AMOUNT_DESC") && v.TotalMinor <= 0 {
 		return false
 	}
 	var created DateTime
@@ -174,7 +232,7 @@ func (c *CursorCodec) DecodeExpenseView(token, scope string, filter StructuredFi
 	if err != nil || !bytes.Equal(canonical, raw) {
 		return fail()
 	}
-	if env.Version != 2 || !validViewCursor(env.Cursor) || env.Cursor.Scope != scope || env.Cursor.Filter != filter {
+	if env.Version != 2 || !validViewCursor(env.Cursor) || env.Cursor.Scope != scope || !reflect.DeepEqual(CanonicalStructuredFilter(env.Cursor.Filter), CanonicalStructuredFilter(filter)) {
 		return fail()
 	}
 	return env.Cursor, nil
