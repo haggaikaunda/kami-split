@@ -1,0 +1,108 @@
+{
+  "commit": "e50ed2763a0733e9a5af1b07d7980170fd5a327c",
+  "browser": "155.0.8059.39",
+  "results": [
+    {
+      "keyboardRadioDuringSave": true,
+      "latestKeyboardIntentPersisted": true
+    },
+    {
+      "choice": "Dark",
+      "liveOSChange": true
+    },
+    {
+      "choice": "Light",
+      "liveOSChange": true
+    },
+    {
+      "choice": "System",
+      "liveOSChange": true
+    },
+    {
+      "serverPreferenceWithoutLocalCache": true,
+      "reloadPersistence": true,
+      "cachedFirstPaint": true
+    },
+    {
+      "route": "/household",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/groups",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips/T?tab=balances",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=expenses",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "keyboardDialog": true,
+      "escapeFocusReturned": true
+    },
+    {
+      "route": "/household/ledger?tab=activity",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=members",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/invitations",
+      "dark": true,
+      "overflow": false
+    },
+    {
+      "route": "/household",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "route": "/trips/T?tab=balances",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "route": "/household/ledger?tab=expenses",
+      "light": true,
+      "overflow": false
+    },
+    {
+      "loadingAndErrorDarkTheme": true
+    }
+  ],
+  "canonical": {
+    "canvas": "#0B111B",
+    "surface": "#131D2C",
+    "subtle": "#192535",
+    "high": "#24364A",
+    "chrome": "#101927",
+    "separator": "#2A394C",
+    "ink": "#F5F7FF",
+    "muted": "#AFBED1",
+    "primary": "#50E1B4",
+    "container": "#163C35",
+    "on-container": "#79F0CB",
+    "border": "#7D90A7",
+    "violet": "#AAA2FF",
+    "blue": "#7CBDFF",
+    "orange": "#FFC27E",
+    "coral": "#FF9CA8"
+  },
+  "errors": []
+}

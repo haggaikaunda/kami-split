@@ -26,7 +26,7 @@ Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
 The [#227 corrective migration](../design/issue-227-implementation.md) uses the
-commit-pinned reference's Roboto typography, exact Light/Dark semantic palette,
+commit-pinned reference's original typography, exact Light/Dark semantic palette,
 76px desktop app bar and 88px rail, phone header/bottom navigation, and consistent
 banner-before-tabs hierarchy. It retains the original Trip/Household artwork and
 source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
@@ -209,3 +209,22 @@ financial session ownership changes. Conflict review never silently overwrites
 the draft. Current detail, ledgers and balances refresh after a committed edit;
 failed refresh is separate from failed mutation. See the
 [editing contract](expense-editing.md) and [historical Activity](activity.md).
+
+## Mobile typography and expense sheets (#237)
+
+The current interface uses system fonts, rem-based text, a 17 CSS-pixel mobile
+body baseline and secondary text of at least 14 CSS pixels in financial workspaces.
+This supersedes the #227 Roboto typography baseline; historical reference evidence
+is unchanged. Editable login and expense controls use at least 16 CSS pixels,
+without limiting pinch zoom or text enlargement.
+
+Expense sheets retain their title/close controls while the body scrolls. Actions
+stay at the bottom of the form scroll area when space permits; at short heights
+they join the scroll flow so enlarged actions cannot obscure the fields. The visual viewport follows keyboard
+resizing at normal scale; pinch zoom remains browser-owned. Opening a sheet or
+switching to editing focuses a heading, while validation deliberately focuses an
+invalid field. Empty optional notes can be expanded; saved/recovered note text and
+note errors stay exposed. Draft, original-attempt and dismissal contracts are unchanged.
+
+Desktop/mobile browser emulation is layout evidence only. Actual iPhone Safari or
+an iOS simulator must separately verify focus zoom and the software keyboard.

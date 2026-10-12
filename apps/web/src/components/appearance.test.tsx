@@ -26,7 +26,12 @@ const result = (value: string) => ({
 function Probe() {
   const apply = useApplyAppearance();
   return (
-    <button onClick={() => apply('alice', 'DARK')}>Accept saved Dark</button>
+    <>
+      <button onClick={() => apply('alice', 'DARK')}>Accept saved Dark</button>
+      <button onClick={() => apply('alice', 'SYSTEM', false)}>
+        Preview System
+      </button>
+    </>
   );
 }
 beforeEach(() => {
@@ -115,4 +120,23 @@ it('boot applies only the matching account cache before hydration and fails safe
   localStorage.setItem('kami-auth', '{');
   window.eval(appearanceBootstrap);
   expect(document.documentElement.dataset.theme).toBe('light');
+});
+
+it('optimistic choices follow the OS without caching or being overwritten by focus reads', async () => {
+  await render(scope('alice'));
+  requests[0].next(result('LIGHT'));
+  act(() => host.querySelectorAll('button')[1].click());
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  expect(JSON.parse(localStorage.getItem(appearanceCacheKey)!).value).toBe(
+    'LIGHT',
+  );
+  requests[0].next(result('DARK'));
+  window.dispatchEvent(new Event('focus'));
+  expect(requests).toHaveLength(1);
+  dark = false;
+  listeners.forEach((fn) => fn());
+  expect(document.documentElement.dataset.theme).toBe('light');
+  act(() => host.querySelector('button')!.click());
+  window.dispatchEvent(new Event('focus'));
+  expect(requests).toHaveLength(2);
 });

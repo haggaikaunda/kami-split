@@ -47,7 +47,7 @@
   margin-bottom: 1.5rem;
 }
 .journey-viewer {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .financial-recovery {
@@ -94,7 +94,7 @@
   width: 1.6875rem;
   height: 1.6875rem;
   flex-basis: 1.6875rem;
-  font-size: 0.625rem;
+  font-size: 0.875rem;
 }
 .group-members-context .ui-member > span:last-child {
   position: absolute;
@@ -181,7 +181,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
   margin: 0 0 1.375rem;
 }
@@ -201,14 +201,14 @@
 .expense-detail-fields dt {
   flex: 0 0 5.625rem;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .expense-detail-fields dd {
   flex: 1 1 10rem;
   min-width: 0;
   max-width: 100%;
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   overflow-wrap: break-word;
 }
 .expense-allocation-list {
@@ -241,7 +241,7 @@
   padding-top: 1rem;
   border-top: 1px solid var(--color-separator);
   color: var(--color-muted);
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
 }
 .expense-presentation .financial-form-card {
   padding: 0;
@@ -272,7 +272,7 @@
   margin: 0;
   background: var(--color-surface);
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .expense-field :is(input, select, textarea),
 .financial-field :is(input, select, textarea) {
@@ -286,6 +286,10 @@
   font: inherit;
   color: var(--color-ink);
   background: var(--color-surface);
+}
+/* iOS date controls otherwise add native padding beyond their grid width. */
+.expense-field input[type='date'] {
+  appearance: none;
 }
 .expense-field textarea {
   display: inline-block;
@@ -382,7 +386,7 @@
   padding-block: 0.5rem;
 }
 .percentage-share > label {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 .percentage-value {
   display: flex;
@@ -422,7 +426,7 @@
   border-color: var(--color-separator);
 }
 .percentage-share .financial-error {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 .financial-participant > label:first-child {
   display: flex;
@@ -456,10 +460,10 @@
 .workspace-panel > p,
 .workspace-context-detail {
   color: var(--color-muted);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 .group-members-list .ui-member-detail {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .balance-position {
   padding: 0.75rem 0;
@@ -471,7 +475,7 @@
 }
 .balance-position details {
   padding-left: 2.6875rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .balance-position summary {
@@ -520,7 +524,7 @@
 }
 .expense-edit-help {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   margin-bottom: 1.25rem;
 }
 .expense-edit-help summary {
@@ -543,7 +547,7 @@
   align-items: center;
   justify-content: start;
   gap: 0.1875rem;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
 }
 .financial-participants[data-split='EQUAL'] .financial-participant > label {
   flex: none;
@@ -558,7 +562,7 @@
   flex-direction: column;
   gap: 0.3125rem;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .financial-participants[data-split='EQUAL'] .ui-member strong {
   font-weight: 400;
@@ -601,7 +605,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   margin-bottom: 0.8125rem;
 }
 .expense-split-heading label {
@@ -612,13 +616,13 @@
   max-width: 100%;
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   background: transparent;
   border: 0;
 }
 .expense-split-heading .ui-space-chip {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .financial-participant-grid
   .financial-participant:nth-child(4n + 1)
@@ -660,7 +664,7 @@
 }
 .expense-edit-hint {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .expense-presentation--create .financial-form-card,
@@ -688,4 +692,40 @@
 .financial-form-card .expense-create-actions button {
   width: auto;
   margin: 0;
+}
+
+/* Editable controls use at least the default 16 CSS px, including split fields. */
+.financial-journey :is(input, select, textarea),
+.expense-presentation :is(input, select, textarea) {
+  font-size: max(1rem, 16px);
+}
+.expense-fields-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+#expense-notes {
+  position: relative;
+  margin-top: 1rem;
+}
+.expense-presentation :is(.expense-create-actions, .expense-edit-actions) {
+  position: sticky;
+  bottom: -1rem;
+  z-index: 1;
+  padding: 0.75rem 0 max(0.75rem, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-separator);
+}
+.expense-presentation--create .expense-create-actions {
+  background: var(--color-canvas);
+}
+
+/* With enlarged text or a keyboard, a pinned action row can cover all fields.
+   Keep it in the scroll flow when the remaining viewport is too short. */
+.expense-presentation[data-compact='true']
+  :is(.expense-create-actions, .expense-edit-actions) {
+  position: static;
+}
+@media (max-height: 30rem) {
+  .expense-presentation :is(.expense-create-actions, .expense-edit-actions) {
+    position: static;
+  }
 }

@@ -20,50 +20,81 @@ export function AppearanceEditor({
   const [uncertain, setUncertain] = useState(false);
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
-  const active = useRef(true),
-    lock = useRef(false);
-  const accept = (raw: unknown) => {
-    const next = appearance(raw);
-    setSaved(next);
-    setSelected(next);
-    setUncertain(false);
-    if (c.session) apply(c.session.user.id, next);
+  const active = useRef(true);
+  const lock = useRef(false);
+  const confirmed = useRef<Appearance>(undefined);
+  const intent = useRef<Appearance>('LIGHT');
+  const paint = (value: Appearance, persisted: boolean) => {
+    if (c.session) apply(c.session.user.id, value, persisted);
   };
-  const read = async () => {
-    const result = await c.call('/api/graphql', { query: query.params.text });
-    if (!active.current) return;
-    const profile = result.data?.currentProfile;
-    if (profile?.__typename !== 'Profile') throw new Error('UNAVAILABLE');
-    accept(profile.appearance);
-  };
-  const run = async (save: boolean) => {
+  const read = async (recover: boolean) => {
     if (lock.current) return;
     lock.current = true;
-    setWorking(true);
-    setMessage('');
-    setFailed(false);
     try {
-      if (!save) await read();
-      else {
+      const result = await c.call('/api/graphql', { query: query.params.text });
+      if (!active.current) return;
+      const profile = result.data?.currentProfile;
+      if (profile?.__typename !== 'Profile') throw new Error('UNAVAILABLE');
+      const next = appearance(profile.appearance);
+      confirmed.current = next;
+      setSaved(next);
+      setUncertain(false);
+      if (!recover) {
+        intent.current = next;
+        setSelected(next);
+      }
+      paint(next, true);
+      if (intent.current !== next) {
+        paint(intent.current, false);
+        setMessage(
+          'Saved appearance checked. Apply your selected theme to try again.',
+        );
+      } else if (recover) setMessage('Appearance saved for your account.');
+    } catch {
+      if (active.current) {
+        setFailed(true);
+        setMessage('Appearance could not be loaded. Try again.');
+      }
+    } finally {
+      lock.current = false;
+      if (active.current) setWorking(false);
+    }
+  };
+  const save = async () => {
+    if (lock.current || !confirmed.current || uncertain) return;
+    lock.current = true;
+    setWorking(true);
+    setFailed(false);
+    setMessage('');
+    try {
+      // Serialize guarded writes and coalesce queued choices. A response may
+      // advance the confirmed baseline, but must never repaint a newer intent.
+      while (active.current && intent.current !== confirmed.current) {
+        const desired: Appearance = intent.current;
         const result = await c.call('/api/graphql', {
           query: mutation.params.text,
-          variables: { appearance: selected, expectedAppearance: saved },
+          variables: {
+            appearance: desired,
+            expectedAppearance: confirmed.current,
+          },
         });
         if (!active.current) return;
         const profile = result.data?.updateMyAppearance;
-        if (profile?.__typename !== 'Profile')
+        if (profile?.__typename !== 'Profile' || profile.appearance !== desired)
           throw new Error('SAVE_UNCONFIRMED');
-        accept(profile.appearance);
+        confirmed.current = desired;
+        setSaved(desired);
+      }
+      if (active.current) {
+        paint(intent.current, true);
         setMessage('Appearance saved for your account.');
       }
     } catch {
       if (active.current) {
         setFailed(true);
-        if (save) setUncertain(true);
+        setUncertain(true);
         setMessage(
-          save
-            ? 'Save could not be confirmed or the preference changed elsewhere. Check saved appearance before trying again.'
-            : 'Appearance could not be loaded. Try again.',
+          'Save could not be confirmed or the preference changed elsewhere. Check saved appearance before trying again.',
         );
       }
     } finally {
@@ -71,20 +102,21 @@ export function AppearanceEditor({
       if (active.current) setWorking(false);
     }
   };
+  const choose = (value: Appearance) => {
+    intent.current = value;
+    setSelected(value);
+    paint(value, false);
+    void save();
+  };
   useEffect(() => {
     active.current = true;
-    void read()
-      .catch(() => {
-        if (active.current) {
-          setFailed(true);
-          setMessage('Appearance could not be loaded. Try again.');
-        }
-      })
-      .finally(() => {
-        if (active.current) setWorking(false);
-      });
+    void Promise.resolve().then(() => {
+      if (active.current) return read(false);
+    });
     return () => {
       active.current = false;
+      // Release the optimistic presentation when leaving this actor's editor.
+      if (confirmed.current) paint(confirmed.current, true);
     };
     // The parent keys by authenticated actor; c.call rejects stale epochs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,19 +132,19 @@ export function AppearanceEditor({
           </p>
         </div>
       </div>
-      {working && <Status kind="pending">Loading or saving appearance…</Status>}
+      {working && (
+        <Status kind="pending">
+          {uncertain
+            ? 'Checking saved appearance…'
+            : saved
+              ? 'Saving appearance…'
+              : 'Loading appearance…'}
+        </Status>
+      )}
       {message && <Status kind={failed ? 'error' : 'info'}>{message}</Status>}
       {saved ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(true);
-          }}
-        >
-          <fieldset
-            className="appearance-options"
-            disabled={working || uncertain}
-          >
+        <div>
+          <fieldset className="appearance-options" disabled={uncertain}>
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
               <label
@@ -129,7 +161,7 @@ export function AppearanceEditor({
                   name="appearance"
                   value={value}
                   checked={selected === value}
-                  onChange={() => setSelected(value)}
+                  onChange={() => choose(value)}
                 />
                 <span className="appearance-choice-label">
                   <AppIcon
@@ -150,20 +182,24 @@ export function AppearanceEditor({
             <p className="account-footnote">
               System follows your device’s appearance.
             </p>
-            <Button
-              type="submit"
-              disabled={working || uncertain || selected === saved}
-            >
-              Save appearance
-            </Button>
           </div>
-        </form>
+        </div>
       ) : null}
+      {saved && !uncertain && !working && selected !== saved && (
+        <Button tone="secondary" onClick={() => void save()}>
+          Apply selected theme
+        </Button>
+      )}
       {(!saved || uncertain) && (
         <Button
           tone="secondary"
           disabled={working}
-          onClick={() => void run(false)}
+          onClick={() => {
+            setWorking(true);
+            setFailed(false);
+            setMessage('');
+            void read(Boolean(saved));
+          }}
         >
           {uncertain ? 'Check saved appearance' : 'Retry appearance'}
         </Button>
