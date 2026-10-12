@@ -4,6 +4,8 @@ import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
 import {
   useEffect,
+  useCallback,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -131,6 +133,8 @@ function LedgerContent({
   const basis = params.get('basis') === 'share' ? 'share' : 'total';
   const [page, setPage] = useState<View>();
   const [rows, setRows] = useState<View['edges']>([]);
+  const [retry, setRetry] = useState(0);
+  const [pageError, setPageError] = useState('');
   const [after, setAfter] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true),
@@ -138,8 +142,25 @@ function LedgerContent({
   const [navigationPending, startNavigation] = useTransition();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notice, setNotice] = useState('');
-  const origin = useRef<{ id: string; scroll: number } | null>(null);
-  const opened = useRef(false);
+  const visitKey = `${pathname}:${groupId}:${filterText}`;
+  const positions = useMemo(
+    () => (scope.expensePositions ??= new Map()),
+    [scope],
+  );
+  const [savedPosition] = useState(() => positions.get(visitKey));
+  const [reservedHeight, setReservedHeight] = useState(savedPosition?.height);
+  const origin = useRef(savedPosition);
+  const opened = useRef(!!selected || !!create);
+  const restoreCount = useRef(savedPosition?.count ?? 0);
+  const [restoring, setRestoring] = useState(!!savedPosition);
+  const replayRemaining = useRef(
+    Math.max(0, Math.ceil((savedPosition?.count ?? 0) / 6) - 1),
+  );
+  const container = useRef<HTMLElement>(null);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const inFlight = useRef(true);
+  const consumedCursors = useRef(new Set<string>());
+  const automaticArmed = useRef(true);
   const generation = useRef(0);
   const requestRef = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const summary = useRef<HTMLDivElement>(null);
@@ -162,6 +183,9 @@ function LedgerContent({
   const invalidate = () => {
     generation.current++;
     requestRef.current?.unsubscribe();
+    inFlight.current = true;
+    consumedCursors.current.clear();
+    setPageError('');
     setRows([]);
     setPage(undefined);
     setAfter(null);
@@ -173,6 +197,10 @@ function LedgerContent({
     setVersion((v) => v + 1);
   };
   const refresh = () => {
+    positions.delete(visitKey);
+    origin.current = undefined;
+    restoreCount.current = 0;
+    setRestoring(false);
     if (managedRefresh && onRefreshContext) {
       void onRefreshContext();
       return;
@@ -191,11 +219,30 @@ function LedgerContent({
         result.__typename === 'ExpenseView' &&
         (!contextVersion || result.contextVersion === contextVersion)
       ) {
+        if (
+          result.pageInfo.hasNextPage &&
+          (!result.edges.length ||
+            !result.pageInfo.endCursor ||
+            consumedCursors.current.has(result.pageInfo.endCursor))
+        ) {
+          setPage(undefined);
+          setRows([]);
+          setError('Expense pagination changed. Refresh to restart the list.');
+          inFlight.current = false;
+          setLoading(false);
+          return;
+        }
         setNotice('');
         setPage(result);
-        setRows((previous) =>
-          after ? [...previous, ...result.edges] : result.edges,
-        );
+        setRows((previous) => {
+          const combined = after
+            ? [...previous, ...result.edges]
+            : result.edges;
+          return [
+            ...new Map(combined.map((edge) => [edge.node.id, edge])).values(),
+          ];
+        });
+        setPageError('');
       } else {
         setPage(undefined);
         setRows([]);
@@ -208,13 +255,22 @@ function LedgerContent({
         )
           onDenied();
       }
+      inFlight.current = false;
       setLoading(false);
     };
-    const fail = () => {
+    const fail = (failure: Error) => {
       if (live && scope.isLive() && ticket === generation.current) {
-        setPage(undefined);
-        setRows([]);
-        setError('Expenses unavailable. Refresh to recheck current access.');
+        if (
+          after &&
+          !['UNAUTHENTICATED', 'SESSION_CHANGED'].includes(failure?.message)
+        ) {
+          setPageError('More expenses could not be loaded. Retry when ready.');
+        } else {
+          setPage(undefined);
+          setRows([]);
+          setError('Expenses unavailable. Refresh to recheck current access.');
+        }
+        inFlight.current = false;
         setLoading(false);
       }
     };
@@ -252,7 +308,7 @@ function LedgerContent({
     };
     // Parent owns the denial boundary; URL filters and scope own this traversal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, groupId, filterText, after, version]);
+  }, [scope, groupId, filterText, after, version, retry]);
   useForegroundRefresh(
     invalidate,
     () => {
@@ -261,6 +317,58 @@ function LedgerContent({
     },
     !managedRefresh,
   );
+  const loadMore = useCallback(() => {
+    const cursor = page?.pageInfo.endCursor;
+    if (
+      inFlight.current ||
+      !scope.isLive() ||
+      error ||
+      pageError ||
+      !page?.pageInfo.hasNextPage ||
+      !cursor ||
+      consumedCursors.current.has(cursor)
+    )
+      return;
+    inFlight.current = true;
+    automaticArmed.current = false;
+    consumedCursors.current.add(cursor);
+    setLoading(true);
+    setAfter(cursor);
+  }, [page, scope, error, pageError]);
+  useEffect(() => {
+    if (
+      selected ||
+      create ||
+      breakdown ||
+      restoring ||
+      !sentinel.current ||
+      typeof IntersectionObserver === 'undefined'
+    )
+      return;
+    const trigger = () => {
+      if (automaticArmed.current) loadMore();
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) trigger();
+      },
+      { rootMargin: '0px 0px 240px 0px' },
+    );
+    observer.observe(sentinel.current);
+    // One automatic page per scroll gesture; a still-visible sentinel cannot drain the list.
+    const scroll = () => {
+      if (inFlight.current) return;
+      automaticArmed.current = true;
+      const rect = sentinel.current?.getBoundingClientRect();
+      if (rect && rect.top <= window.innerHeight + 240 && rect.bottom >= 0)
+        trigger();
+    };
+    window.addEventListener('scroll', scroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', scroll);
+    };
+  }, [loadMore, selected, create, breakdown, restoring]);
   useEffect(() => {
     if (selected || create) {
       opened.current = true;
@@ -268,15 +376,79 @@ function LedgerContent({
     }
     if (!opened.current) return;
     opened.current = false;
-    requestAnimationFrame(() => {
-      const target =
-        origin.current && document.getElementById(origin.current.id);
-      (target || summary.current)?.focus({ preventScroll: true });
-      if (origin.current) window.scrollTo(0, origin.current.scroll);
-    });
+    // Re-read the anchored traversal: detail may have changed externally as well as locally.
+    restoreCount.current = origin.current?.count ?? rows.length;
+    replayRemaining.current = Math.max(
+      0,
+      Math.ceil(restoreCount.current / 6) - 1,
+    );
+    setRestoring(true);
+    reset();
+    // Overlay transitions alone own reconciliation, not page insertions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, create]);
+  useEffect(() => {
+    if (!restoring || loading || error || pageError || !page) return;
+    if (
+      rows.length < restoreCount.current &&
+      replayRemaining.current > 0 &&
+      page.pageInfo.hasNextPage &&
+      page.pageInfo.endCursor &&
+      !consumedCursors.current.has(page.pageInfo.endCursor)
+    ) {
+      replayRemaining.current--;
+      loadMore();
+      return;
+    }
+    if (selected || create) return;
+    const frame = requestAnimationFrame(() => {
+      const saved = origin.current;
+      const nearest = rows[Math.min(saved?.index ?? 0, rows.length - 1)];
+      const target =
+        (saved && document.getElementById(saved.id)) ||
+        (nearest &&
+          document.getElementById(`ledger-expense-${nearest.node.id}`));
+      (target || summary.current)?.focus({ preventScroll: true });
+      if (saved) {
+        const top = target
+          ? window.scrollY + target.getBoundingClientRect().top - saved.offset
+          : saved.scroll;
+        window.scrollTo(0, Math.max(0, top));
+      }
+      positions.delete(visitKey);
+      setRestoring(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    restoring,
+    loading,
+    error,
+    pageError,
+    page,
+    rows,
+    selected,
+    create,
+    loadMore,
+    positions,
+    visitKey,
+  ]);
+  const remember = (id: string) => {
+    origin.current = {
+      id,
+      scroll: window.scrollY,
+      offset: document.getElementById(id)?.getBoundingClientRect().top ?? 0,
+      index: Math.max(
+        0,
+        rows.findIndex((edge) => `ledger-expense-${edge.node.id}` === id),
+      ),
+      count: rows.length,
+      height: container.current?.getBoundingClientRect().height ?? 0,
+    };
+    setReservedHeight(origin.current.height);
+    positions.set(visitKey, origin.current);
+  };
   const choose = (id: string, patch: Record<string, string>) => {
-    origin.current = { id, scroll: window.scrollY };
+    remember(id);
     change(patch);
   };
   const close = () => {
@@ -441,7 +613,12 @@ function LedgerContent({
   );
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
-    <section className="expense-ledger" aria-label="Expenses">
+    <section
+      className="expense-ledger"
+      aria-label="Expenses"
+      ref={container}
+      style={restoring ? { minHeight: reservedHeight } : undefined}
+    >
       {!managedRefresh && (
         <WorkspaceRefresh
           busy={loading}
@@ -603,7 +780,7 @@ function LedgerContent({
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
-      {loading && <Skeleton label="Loading expenses" />}
+      {loading && !page && <Skeleton label="Loading expenses" />}
       {error ? (
         <p role="alert">{error}</p>
       ) : (
@@ -749,10 +926,7 @@ function LedgerContent({
                                   href={`${pathname}?${next}`}
                                   scroll={false}
                                   onNavigate={() => {
-                                    origin.current = {
-                                      id,
-                                      scroll: window.scrollY,
-                                    };
+                                    remember(id);
                                   }}
                                 >
                                   <CategoryIcon category={node.category} />
@@ -794,17 +968,45 @@ function LedgerContent({
                       </ul>
                     </section>
                   ))}
-                {page.pageInfo.hasNextPage && (
-                  <button
-                    disabled={loading}
-                    onClick={() => {
-                      setLoading(true);
-                      setAfter(page.pageInfo.endCursor ?? null);
-                    }}
-                  >
-                    Load more expenses
-                  </button>
-                )}
+                <div
+                  ref={sentinel}
+                  className="ledger-pagination"
+                  aria-live="polite"
+                >
+                  {loading ? (
+                    <p role="status">Loading more expenses…</p>
+                  ) : pageError ? (
+                    <>
+                      <p role="alert">{pageError}</p>
+                      <button
+                        onClick={() => {
+                          if (inFlight.current) return;
+                          inFlight.current = true;
+                          automaticArmed.current = false;
+                          setPageError('');
+                          setLoading(true);
+                          setRetry((value) => value + 1);
+                        }}
+                      >
+                        Retry loading expenses
+                      </button>
+                    </>
+                  ) : !page.pageInfo.hasNextPage ? (
+                    <p role="status">All expenses loaded.</p>
+                  ) : null}
+                  {!pageError && rows.length > 0 && (
+                    <button
+                      aria-disabled={
+                        loading ||
+                        !page.pageInfo.hasNextPage ||
+                        !page.pageInfo.endCursor
+                      }
+                      onClick={loadMore}
+                    >
+                      Load more expenses
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </>
@@ -840,9 +1042,12 @@ function LedgerContent({
                 await onRefreshContext?.();
               }}
               onDenied={() => {
-                setPage(undefined);
-                setRows([]);
-                setError('Expense access changed. Refresh to recheck.');
+                restoreCount.current = origin.current?.count ?? rows.length;
+                setRestoring(true);
+                reset();
+                setNotice(
+                  'Expense access changed. Rechecking authorized expenses.',
+                );
                 close();
               }}
             />

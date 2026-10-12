@@ -270,6 +270,7 @@ const activity = {
       hasTouch: process.env.REFRESH_TESTS === '1',
       colorScheme: process.env.COLOR_SCHEME === 'dark' ? 'dark' : 'light',
     });
+    let ledgerEdited = false;
     let log = [],
       documents = 0,
       denied = false,
@@ -344,10 +345,36 @@ const activity = {
           },
           householdExpenses: view,
         };
-      else if (op === 'journeyExpenseQuery')
+      else if (
+        op === 'expenseEditMutation' &&
+        process.env.LEDGER_TESTS === '1'
+      ) {
+        ledgerEdited = true;
+        data = {
+          updateExpense: {
+            __typename: 'ExpenseEditCommitted',
+            key: variables.input.key,
+            version: '2',
+            changed: true,
+            record: {
+              expenseId: variables.input.expenseId,
+              groupId: 'T',
+              totalMinor: '300',
+            },
+          },
+        };
+      } else if (op === 'journeyExpenseQuery')
         data = {
           node: {
             ...expense,
+            ...(process.env.LEDGER_TESTS === '1'
+              ? {
+                  id: variables.id,
+                  ...(ledgerEdited && variables.id === 'e8'
+                    ? { description: 'Edited late expense', version: '2' }
+                    : {}),
+                }
+              : {}),
             currency: 'USD',
             note: 'Private fixture note',
             creator: members[0],
@@ -413,7 +440,13 @@ const activity = {
           edges: [
             ...[7, 8].map((i) => ({
               cursor: `e${i}`,
-              node: { ...expense, id: `e${i}` },
+              node: {
+                ...expense,
+                id: `e${i}`,
+                ...(ledgerEdited && i === 8
+                  ? { description: 'Edited late expense', version: '2' }
+                  : {}),
+              },
               source: groups[1],
             })),
             {

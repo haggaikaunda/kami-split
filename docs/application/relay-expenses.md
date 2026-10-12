@@ -39,14 +39,16 @@ and closeout are separate gates recorded on [PR #228](https://github.com/haggaik
 
 Overview recent expenses request at most four rows from the bounded connection.
 The Expenses tab uses the [structured view](expenses-ledger.md), requesting an
-initial six rows and six-row Load more pages with signed cursors. These display
+initial six rows and six-row scroll-triggered pages with signed cursors and a
+manual Load more fallback. These display
 bounds do not limit complete server totals, counts, category aggregates or balances.
 **Refresh group and restart list** resets the traversal after changes. Complete
 balances include all financial history, including inactive members and actual
 repayments, independently of loaded pages. Only the server's individual-net
-settlement result is displayed. Loading, denied and failed reads hide previous
-financial fields; failed page and balance projections have explicit unavailable
-states rather than zero values. The simplified obligation list is within one
+settlement result is displayed. Initial loading, denied reads and failed balance projections hide previous
+financial fields rather than establish zero values. A retryable transport failure
+on a later expense page retains the already authorized rows and complete anchored
+totals, with an explicit retry; authentication/session errors hide the list. The simplified obligation list is within one
 group and does not add original direct expense debts a second time.
 
 Wire money stays in canonical decimal strings; validation and previews use

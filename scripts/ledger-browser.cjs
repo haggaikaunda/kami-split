@@ -10,6 +10,20 @@ module.exports = async function verifyLedger({
   output,
   results,
 }) {
+  let failedPage = false;
+  let pageRequests = 0;
+  await page.route('**/api/graphql', async (route) => {
+    const { variables } = route.request().postDataJSON();
+    if (variables.after) {
+      pageRequests++;
+      if (!failedPage) {
+        failedPage = true;
+        await route.abort('failed');
+        return;
+      }
+    }
+    await route.fallback();
+  });
   await page.goto(
     origin +
       (workspace === 'group' ? '/trips/T?tab=expenses' : '/household/expenses'),
@@ -47,6 +61,25 @@ module.exports = async function verifyLedger({
   );
   if (width === 1440 && scale === 1) assert.equal(metrics.columns, 'grid');
   if (width <= 390) assert.equal(metrics.columns, 'none');
+  await page.locator('.ledger-pagination').scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Retry loading expenses' }).waitFor();
+  assert.equal(
+    pageRequests,
+    1,
+    'Failed automatic page is not retried automatically',
+  );
+  assert.equal(
+    await page.locator('.ledger-month li').count(),
+    6,
+    'Authorized loaded rows survive transport failure',
+  );
+  await page.getByRole('button', { name: 'Retry loading expenses' }).click();
+  await page.locator('#ledger-expense-e9').waitFor();
+  assert.equal(pageRequests, 2, 'Explicit retry dispatches exactly once');
+  await page
+    .getByRole('status')
+    .filter({ hasText: 'All expenses loaded.' })
+    .waitFor();
   await page.locator('#ledger-expense-e1').focus();
   await page.keyboard.press('Enter');
   await page.locator('.expense-presentation').waitFor();
@@ -54,10 +87,60 @@ module.exports = async function verifyLedger({
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e1',
   );
+  const returnRow = page.locator('#ledger-expense-e8');
+  await returnRow.scrollIntoViewIfNeeded();
+  await returnRow.focus();
+  const beforeDetail = await returnRow.evaluate(
+    (el) => el.getBoundingClientRect().top,
+  );
+  await page.keyboard.press('Enter');
+  await page.locator('.expense-presentation').waitFor();
+  await page.goBack();
+  await page.waitForFunction(
+    () => document.activeElement?.id === 'ledger-expense-e8',
+  );
+  assert.equal(
+    await page.locator('.ledger-month li').count(),
+    9,
+    'Back replays enough freshly authorized pages',
+  );
+  assert(
+    Math.abs(
+      (await returnRow.evaluate((el) => el.getBoundingClientRect().top)) -
+        beforeDetail,
+    ) < 3,
+    'Back restores row viewport position',
+  );
+  await page.goForward();
+  await page.locator('.expense-presentation').waitFor();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    () => document.activeElement?.id === 'ledger-expense-e8',
+  );
+  await returnRow.focus();
+  const beforeEdit = await returnRow.evaluate(
+    (el) => el.getBoundingClientRect().top,
+  );
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Edit expense', exact: true }).click();
+  await page.locator('#expense-description').fill('Edited late expense');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Load more expenses', exact: true })
-    .click();
-  await page.locator('#ledger-expense-e9').waitFor();
+    .locator('.expense-presentation')
+    .getByText('Edited late expense', { exact: true })
+    .waitFor();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    () => document.activeElement?.id === 'ledger-expense-e8',
+  );
+  assert.match(await returnRow.innerText(), /Edited late expense/);
+  assert(
+    Math.abs(
+      (await returnRow.evaluate((el) => el.getBoundingClientRect().top)) -
+        beforeEdit,
+    ) < 3,
+    'Saved edit remount restores the authorized late row offset',
+  );
   assert.equal(await page.locator('.ledger-month li').count(), 9);
   assert.match(await header.innerText(), /\$24.00\s+USD\s+· 8 expenses/);
   assert.match(
@@ -154,5 +237,9 @@ module.exports = async function verifyLedger({
     completeMonthTotals: true,
     keyboardDetailFocus: true,
     multipleMonths: true,
+    automaticNearEnd: true,
+    explicitRetryWithoutLoop: true,
+    loadedRowsAndPositionAfterBackForward: true,
+    savedEditRemountRestoration: true,
   });
 };
