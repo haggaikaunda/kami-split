@@ -271,3 +271,43 @@
 .onboarding :is(input, select, textarea) {
   font-size: max(1rem, 16px);
 }
+
+/* The members surface shares one people list; infrequent controls disclose inline. */
+.scoped-invitations {
+  margin-top: 0;
+  max-width: none;
+  padding: 0;
+  border: 0;
+}
+.add-member,
+.invitation-history,
+.invitation-actions {
+  min-width: 0;
+}
+.add-member > summary,
+.invitation-history > summary,
+.invitation-actions > summary {
+  cursor: pointer;
+  min-height: var(--target-size);
+  padding: 0.75rem;
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+}
+.add-member > summary {
+  width: fit-content;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 700;
+}
+.add-member[open] > :not(summary),
+.invitation-history[open] > :not(summary) {
+  margin-top: var(--space-4);
+}
+.add-member form {
+  display: grid;
+  gap: var(--space-4);
+}
+.scoped-invitations summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}

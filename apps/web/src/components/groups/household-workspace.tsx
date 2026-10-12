@@ -6,6 +6,7 @@ import {
 } from './overview-date';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
+import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
 import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
@@ -23,7 +24,6 @@ import { minor, money } from '@/lib/relay/money';
 import {
   SummaryMetric,
   Money,
-  Member,
   workspaceSections,
   type WorkspaceSection,
 } from '@/components/primitives';
@@ -140,21 +140,17 @@ function HouseholdMembers({
         The overview also includes eligible groups and trips shared by every
         active Household member.
       </p>
-      <div className="group-members-list">
-        {members.members.map((m) => (
-          <div className="ui-balance-row" key={m.id}>
-            <Member
-              name={m.displayName}
-              detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
-            />
-          </div>
-        ))}
-      </div>
-      {members.viewerMembership.role === 'OWNER' && (
+      {members.viewerMembership.role === 'OWNER' ? (
         <ScopedInvitations
           scope={scope}
           group={{ id: members.id, name: members.name }}
+          members={members.members}
         />
+      ) : (
+        <>
+          <PeopleList members={members.members} />
+          <p>Ask the owner to invite someone to this Household.</p>
+        </>
       )}
     </section>
   );
@@ -312,36 +308,11 @@ export function HouseholdContent({
         </p>
       ) : null}
       {current === 'Members' ? (
-        <section className="workspace-panel household-members">
-          <h2>Household members</h2>
-          <p>
-            Active Household members share this ledger and its full expense
-            history. The overview also includes eligible groups and trips shared
-            by every active Household member.
-          </p>
-          {members ? (
-            <>
-              <div className="group-members-list">
-                {members.members.map((m) => (
-                  <div className="ui-balance-row" key={m.id}>
-                    <Member
-                      name={m.displayName}
-                      detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
-                    />
-                  </div>
-                ))}
-              </div>
-              {members.viewerMembership.role === 'OWNER' && (
-                <ScopedInvitations
-                  scope={scope}
-                  group={{ id: members.id, name: members.name }}
-                />
-              )}
-            </>
-          ) : (
-            <p role="status">Loading Household membership…</p>
-          )}
-        </section>
+        members ? (
+          <HouseholdMembers members={members} scope={scope} />
+        ) : (
+          <p role="status">Loading Household membership…</p>
+        )
       ) : current === 'Activity' ? (
         <ActivityFeed scope={scope} groupId="" />
       ) : current === 'Expenses' ? (

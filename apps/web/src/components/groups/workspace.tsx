@@ -8,7 +8,6 @@ import {
 } from './overview-date';
 import {
   spaceHref,
-  spaceInvitationsHref,
   spaceExpenseHref,
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
@@ -36,6 +35,7 @@ import { ActivityFeed } from '@/components/activity/feed';
 import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
 import type { activityFeed$key } from '@/lib/relay/__generated__/activityFeed.graphql';
 import { ExpenseLedger } from '@/components/expenses/ledger';
+import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
@@ -128,7 +128,6 @@ export function GroupWorkspace({
           {' '}
           {group.viewerMembership.role === 'OWNER' && (
             <div className="group-header-actions">
-              <Link href={spaceInvitationsHref(group)}>Manage invitations</Link>
               <details className="group-settings">
                 <summary>Group settings</summary>
                 <p>
@@ -262,18 +261,17 @@ export function GroupWorkspace({
               · {tripState(group.trip, today)}
             </p>
           )}
-          <div className="group-members-list">
-            {group.members.map((m) => (
-              <div className="ui-balance-row" key={m.id}>
-                <Member
-                  name={m.displayName}
-                  detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
-                />
-              </div>
-            ))}
-          </div>
-          {group.viewerMembership.role === 'OWNER' && (
-            <ScopedInvitations scope={scope} group={group} />
+          {group.viewerMembership.role === 'OWNER' ? (
+            <ScopedInvitations
+              scope={scope}
+              group={group}
+              members={group.members}
+            />
+          ) : (
+            <>
+              <PeopleList members={group.members} />
+              <p>Ask the owner to invite someone to this group.</p>
+            </>
           )}
         </section>
       ) : (

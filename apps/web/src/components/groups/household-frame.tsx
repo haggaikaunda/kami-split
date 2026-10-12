@@ -1,7 +1,4 @@
 'use client';
-import Link from 'next/link';
-import { useHouseholdMembers } from './household-members';
-import type { FinancialScope } from '@/lib/relay/environment';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
 import { createWorkspaceIntent } from '@/lib/relay/intent';
@@ -11,7 +8,7 @@ import accessDocument from '@/lib/relay/__generated__/householdAccessQuery.graph
 import expensesDocument from '@/lib/relay/__generated__/expensesHouseholdInitialQuery.graphql';
 import { expenseFilter } from '@/lib/relay/expense-filter';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
+import { WorkspaceNavigation } from '@/components/workspace-identity';
 import {
   WorkspaceHeader,
   WorkspacePrivacy,
@@ -81,14 +78,7 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
           }
           appearance="household"
           compact={current !== 'Overview'}
-        >
-          {access.scope && (
-            <HouseholdInvitationEntry
-              key={access.scope.id}
-              scope={access.scope}
-            />
-          )}
-        </WorkspaceHeader>
+        />
         <WorkspaceTabs
           current={current}
           hrefFor={
@@ -125,14 +115,4 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       </div>
     </main>
   );
-}
-
-function HouseholdInvitationEntry({ scope }: { scope: FinancialScope }) {
-  const { members } = useHouseholdMembers(scope);
-  return members?.viewerMembership.role === 'OWNER' ? (
-    <Link className="banner-action" href="/household?tab=members#invitations">
-      <AppIcon name="invite" />
-      Manage invitations
-    </Link>
-  ) : null;
 }

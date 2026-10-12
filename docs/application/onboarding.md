@@ -107,3 +107,24 @@ is created by these tests.
 `onboarding/entry.tsx` owns the accessible shell and chooses focused presentations. `controller.ts` owns session epochs, isolated Auth work and explicit invitation actions; `owner-controller.ts` retains owner management and durable delivery/recovery operations. `screens.tsx` contains invitation, sign-in, verification, password, confirmation and success presentations using shared Button, Field, Card and Status primitives. Account/owner and uncertain-action presentation are separate components. Account reads the personal application profile independently of groups, retaining the shared primary navigation. Invitation administration is scoped to each Household/Group/Trip Members tab, using the same owner controller. Legacy `/invitations?group=<safe ID>` resolves an explicit authorized owner target to its canonical Members destination; the untargeted landing only explains the move. Successful explicit current-session sign-out replaces the route with `/sign-in`; invitation Switch account preserves its separate continuation. See [profile editing](profile.md) for persistence and conflict behavior. Successful admission opens `/groups?group=<safe group ID>` in the real Relay journey, which still authorizes every read server-side.
 
 The supported [Supabase generateLink contract](https://supabase.com/docs/reference/javascript/auth-admin-generatelink) returns `verification_type=signup` for a new identity requested with `type=magiclink`, and `magiclink` for an existing identity. The API validates that response against the trusted recipient and rechecks current link validity and application identity status before releasing the one-time hash. Disposable CLI 2.118.0 integration tests verify both key families and no extra targeted email; they do not claim a hosted production rehearsal.
+
+## Members and invitation presentation (#240)
+
+Group, Trip and Household Members pages show one people list with Active and
+Inactive membership labels; inactive people have no access and retain authorized
+historical context. Owners additionally see Pending email invitations in that
+list, explicitly labelled as invitations without access. Accepted invitations
+appear only in collapsed invitation history, so they do not create another
+person row or replace the server's membership identity. Non-owners see only the
+authorized membership read and are directed to ask their owner to add someone.
+
+Add member discloses the existing targeted email and shared-link operations.
+Unaddressed shared links appear in their own link area, never as people. Expired,
+accepted and cancelled records are initially collapsed under Invitation history;
+expired records retain their existing renewal/retry controls. Pagination continues
+to load the server's owner-authorized records, without implying the first page is
+complete. Refresh invitations checks current lifecycle and delivery state. Plain
+language describes email delivery uncertainty without treating sending as arrival.
+The operation keys, original-request recovery, reactivation rules, server access
+checks and session isolation are unchanged. Working-page headers rely on Members
+navigation rather than a prominent Manage invitations action.

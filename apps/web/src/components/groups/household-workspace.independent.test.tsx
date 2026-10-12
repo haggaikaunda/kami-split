@@ -8,6 +8,7 @@ import {
   householdHref,
   type Dashboard,
 } from './household-workspace';
+import { PeopleList, type Person } from '@/components/onboarding/people-list';
 import type { FinancialScope } from '@/lib/relay/environment';
 const queries = vi.hoisted(() => ({ fetch: vi.fn() }));
 vi.mock('./overview-expense', () => ({
@@ -24,10 +25,19 @@ vi.mock('./overview-expense', () => ({
 }));
 
 vi.mock('@/components/onboarding/scoped-invitations', () => ({
-  ScopedInvitations: ({ group }: { group: { id: string; name: string } }) => (
-    <section data-invitation-group={group.id}>
-      Invitations for {group.name}
-    </section>
+  ScopedInvitations: ({
+    group,
+    members,
+  }: {
+    group: { id: string; name: string };
+    members: readonly Person[];
+  }) => (
+    <>
+      <PeopleList members={members} />
+      <section data-invitation-group={group.id}>
+        Invitations for {group.name}
+      </section>
+    </>
   ),
 }));
 vi.mock('relay-runtime', () => ({
