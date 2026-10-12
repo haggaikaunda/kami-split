@@ -68,7 +68,7 @@
   flex-wrap: wrap;
   gap: 0.5rem 0.25rem;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   margin: 0.8125rem 0 1.25rem;
 }
 .ledger-net {
@@ -148,7 +148,7 @@
 }
 .ledger-month > header > span {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .ledger-month ul {
   list-style: none;
@@ -183,7 +183,7 @@
 }
 .ledger-description > span {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .ledger-money {
   display: grid;
@@ -197,7 +197,7 @@
   font-weight: 500;
 }
 .ledger-money > span:last-child {
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .ledger-dialog {
@@ -247,7 +247,7 @@
   gap: 0.375rem;
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .ledger-filters label:has(select) {
   grid-column: 1/-1;
@@ -326,7 +326,7 @@
 }
 .expense-detail-source {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   margin: 0 0 1.25rem;
 }
 .expense-breakdown {
@@ -346,7 +346,7 @@
 }
 .expense-breakdown > header p {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .expense-breakdown > header label {
@@ -355,7 +355,7 @@
   max-width: 100%;
   align-items: center;
   gap: 0.5625rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
   margin: 0;
 }
@@ -368,7 +368,7 @@
   padding: 0.5625rem 0.625rem;
   border-radius: 0.5625rem;
   min-height: 2.5rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .breakdown-content {
   display: grid;
@@ -419,7 +419,7 @@
   pointer-events: none;
 }
 .breakdown-center > span:first-child {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .breakdown-center .ui-money {
@@ -428,7 +428,7 @@
   font-weight: 500;
 }
 .breakdown-center > small {
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 @container breakdown-chart (max-width: 14em) {
@@ -498,7 +498,7 @@
 .breakdown-legend-label {
   flex: 1 1 7em;
   min-width: 0;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 .breakdown-legend-amount {
   margin-left: auto;
@@ -507,7 +507,7 @@
 }
 .breakdown-legend-amount small {
   display: block;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   margin-top: 0.125rem;
   color: var(--color-muted);
 }
@@ -521,11 +521,11 @@
   padding-top: 0.75rem;
   margin-top: 1.375rem;
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 .breakdown-rounding {
   color: var(--color-muted);
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   margin: 0.75rem 0 0;
 }
 @media (max-width: 760px) {
@@ -543,7 +543,7 @@
   }
   .ledger-view-switch button {
     padding: 0.5625rem 0.6875rem;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
   .ledger-toolbar .ledger-filter-button {
     padding-inline: 0.75rem;
@@ -566,10 +566,10 @@
   }
   .ledger-description strong,
   .ledger-money > .ui-money {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
   .ledger-description > span {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
   }
   .expense-presentation--detail {
     inset: 0;
@@ -695,7 +695,7 @@
     clip-path: inset(50%);
   }
   .ledger-month-total {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
   }
   .ledger-dialog:not(.expense-presentation--detail) {
     background: var(--color-canvas);
@@ -713,11 +713,11 @@
 
 .ledger-filter-description {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   margin: 9px 0 0;
 }
 .ledger-month-total {
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
 }
 .ledger-month-total summary {
@@ -768,6 +768,70 @@
 }
 .expense-create-context {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
+}
+
+/* The header stays outside the independently scrolling form/detail body. */
+.ledger-dialog.expense-presentation[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  top: var(--expense-viewport-top, 0px);
+  margin-top: 0;
+  max-height: var(--expense-viewport-height, 100dvh);
+  padding: 0;
+}
+.expense-presentation > header {
+  flex: none;
+  margin: 0;
+  padding: 1rem;
+  background: inherit;
+}
+.expense-presentation > header h1 {
+  min-width: 0;
+}
+.expense-presentation .expense-presentation-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 1rem 7rem;
+  padding: 1rem;
+}
+.ledger-dialog.expense-presentation--detail {
+  top: var(--expense-viewport-top, 0px);
+  height: var(--expense-viewport-height, 100dvh);
+  max-height: var(--expense-viewport-height, 100dvh);
+}
+@media (max-width: 600px) {
+  .ledger-dialog.expense-presentation[open] {
+    position: fixed;
+    inset: var(--expense-viewport-top, 0px) 0 auto;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    height: var(--expense-viewport-height, 100dvh);
+    max-height: var(--expense-viewport-height, 100dvh);
+    border-radius: 0;
+  }
+  .expense-presentation--detail > header h1 {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
+  .expense-presentation--detail .expense-presentation-back {
+    display: none;
+  }
+  .expense-presentation--detail .expense-presentation-close {
+    display: inline-grid;
+  }
+}
+.expense-presentation[data-compact='true'] .expense-presentation-content {
+  scroll-padding-block: 0;
+}
+@media (max-height: 30rem) {
+  .expense-presentation .expense-presentation-content {
+    scroll-padding-block: 0;
+  }
 }

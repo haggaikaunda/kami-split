@@ -13,8 +13,7 @@ separate feed/detail states, not three phone frames in the application. Desktop
 uses a contextual detail panel; mobile retains a reachable Back action and focus
 restoration. These #212 behavioral and historical-detail requirements remain
 applicable. Current typography, palette, shared navigation and component roles
-follow [#227 and its exact reference](../../issue-227-implementation.md), including
-locally bundled Roboto. The earlier [A/B system](../approved-ui/README.md) and
+follow [#227 and its exact reference](../../issue-227-implementation.md), with typography superseded by the system-font hierarchy in #237. The earlier [A/B system](../approved-ui/README.md) and
 [foundation](../approved-ui/foundation.md) preserve the visual history only.
 
 Names, dates and amounts are illustrative. Use supported categories and EQUAL,

@@ -43,6 +43,35 @@ export function ExpensePresentation({
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
   }, []);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    // Follow the keyboard's visible area without resizing away pinch zoom.
+    const update = () => {
+      const dialog = ref.current;
+      if (!dialog) return;
+      if (viewport.scale !== 1) return;
+      dialog.dataset.compact = String(
+        viewport.height <
+          30 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+      );
+      dialog.style.setProperty(
+        '--expense-viewport-height',
+        `${viewport.height}px`,
+      );
+      dialog.style.setProperty(
+        '--expense-viewport-top',
+        `${viewport.offsetTop}px`,
+      );
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  }, []);
   const outside = (x: number, y: number) => {
     const bounds = ref.current!.getBoundingClientRect();
     return (
