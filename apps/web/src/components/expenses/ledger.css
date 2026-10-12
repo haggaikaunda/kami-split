@@ -827,3 +827,11 @@
     display: inline-grid;
   }
 }
+.expense-presentation[data-compact='true'] .expense-presentation-content {
+  scroll-padding-block: 0;
+}
+@media (max-height: 30rem) {
+  .expense-presentation .expense-presentation-content {
+    scroll-padding-block: 0;
+  }
+}
