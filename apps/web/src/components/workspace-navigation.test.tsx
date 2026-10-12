@@ -9,6 +9,7 @@ afterEach(() => vi.restoreAllMocks());
 
 it('reserves measured mobile chrome, follows keyboard resizing, and releases global offsets', () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
   vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(320);
   vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(640);
   const viewport = Object.assign(new EventTarget(), {
@@ -58,6 +59,29 @@ it('reserves measured mobile chrome, follows keyboard resizing, and releases glo
     expect(
       document.documentElement.style.getPropertyValue('--chrome-footer'),
     ).toBe('420px');
+    const input = document.createElement('input');
+    main.append(input);
+    act(() => input.focus());
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('344px');
+    expect(main.style.getPropertyValue('--chrome-footer')).toBe('484px');
+    viewport.height = 540;
+    act(() => viewport.dispatchEvent(new Event('resize')));
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('100px');
+    viewport.height = 360;
+    viewport.offsetTop = 30;
+    act(() => viewport.dispatchEvent(new Event('scroll')));
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('314px');
+    expect(main.style.getPropertyValue('--chrome-header')).toBe('100px');
+    viewport.offsetTop = 0;
+
+    act(() => input.blur());
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
+    input.type = 'checkbox';
+    act(() => input.focus());
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
+    act(() => input.blur());
+    input.type = 'text';
+    act(() => input.focus());
     viewport.scale = 2;
     act(() => viewport.dispatchEvent(new Event('resize')));
     expect(main.style.getPropertyValue('--chrome-bottom')).toBe('0px');

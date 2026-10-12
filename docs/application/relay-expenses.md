@@ -235,8 +235,13 @@ an iOS simulator must separately verify focus zoom and the software keyboard.
 Global navigation keeps the app header and desktop rail or mobile bottom bar
 available while the document scrolls. The shared navigation measures its rendered
 height so wrapped/enlarged labels and safe-area padding reserve real content space.
-At normal scale the mobile bar follows visual-viewport keyboard resizing; pinch
-zoom remains browser-owned. Document scroll padding keeps focused controls clear
+At normal scale the mobile bar follows visual-viewport keyboard resizing. iOS
+additionally reserves 64 CSS pixels for the observed floating input accessory
+bar while an editable control is focused and the keyboard shrinks the viewport;
+Safari includes that overlay inside the reported visual viewport and exposes no
+accessory inset. This conservative allowance includes a gap above the observed
+58-pixel toolbar; different iOS versions and keyboards may vary. Pinch zoom
+remains browser-owned. Document scroll padding keeps focused controls clear
 of the chrome, while existing source-return scroll/focus restoration stays intact.
 The rail can scroll at short desktop heights without adding a content scroller.
 
