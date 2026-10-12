@@ -242,7 +242,10 @@ Safari includes that overlay inside the reported visual viewport and exposes no
 accessory inset. This conservative allowance includes a gap above the observed
 58-pixel toolbar; different iOS versions and keyboards may vary. Pinch zoom
 remains browser-owned. Visual-viewport panning moves the fixed chrome but never increases the document
-header reserve, allowing Safari to scroll a focused field into view. Document
+header reserve, allowing Safari to scroll a focused field into view. The mobile
+bar anchors to the visual viewport's top plus height, avoiding Safari's shifting
+fixed-bottom viewport during keyboard scrolling. Keyboard detection retains the
+expanded viewport height across scrolls and resets when the viewport width changes. Document
 scroll padding keeps focused controls clear
 of the chrome, while existing source-return scroll/focus restoration stays intact.
 The rail can scroll at short desktop heights without adding a content scroller.

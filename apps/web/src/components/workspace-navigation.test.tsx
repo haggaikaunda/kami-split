@@ -11,7 +11,9 @@ it('reserves measured mobile chrome, follows keyboard resizing, and releases glo
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
   vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(320);
-  vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(640);
+  const innerHeight = vi
+    .spyOn(window, 'innerHeight', 'get')
+    .mockReturnValue(640);
   const viewport = Object.assign(new EventTarget(), {
     scale: 1,
     offsetTop: 0,
@@ -96,9 +98,18 @@ it('reserves measured mobile chrome, follows keyboard resizing, and releases glo
     act(() => input.blur());
     input.type = 'text';
     act(() => input.focus());
+    viewport.offsetTop = 90;
+    viewport.height = 371;
+    innerHeight.mockReturnValue(371);
+    act(() => viewport.dispatchEvent(new Event('scroll')));
+    // Safari changing innerHeight must not drop accessory clearance or shift the bar.
+    expect(main.style.getPropertyValue('--chrome-nav-top')).toBe('257px');
+    expect(main.style.getPropertyValue('--chrome-nav-bottom')).toBe('auto');
     viewport.scale = 2;
     act(() => viewport.dispatchEvent(new Event('resize')));
     expect(main.style.getPropertyValue('--chrome-bottom')).toBe('0px');
+    expect(main.style.getPropertyValue('--chrome-nav-top')).toBe('auto');
+    expect(main.style.getPropertyValue('--chrome-nav-bottom')).toBe('0px');
     expect(main.style.getPropertyValue('--chrome-footer')).toBe('140px');
   } finally {
     act(() => root.unmount());

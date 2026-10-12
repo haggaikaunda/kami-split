@@ -298,18 +298,30 @@ export function WorkspaceNavigation() {
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     let focused = document.activeElement;
+    let viewportWidth = window.innerWidth;
+    let expandedHeight = Math.max(window.innerHeight, viewport?.height ?? 0);
     const update = () => {
       const mobile = window.innerWidth <= 600;
       // Keyboard resizing follows the visual viewport; pinch zoom stays browser-owned.
       const normalScale = viewport && Math.abs(viewport.scale - 1) < 0.01;
       const top = normalScale ? viewport.offsetTop : 0;
+      if (normalScale) {
+        // Safari can shrink innerHeight to the keyboard viewport during scrolling.
+        // Retain the expanded baseline until a width/orientation change.
+        const height = Math.max(window.innerHeight, viewport.height);
+        expandedHeight =
+          viewportWidth === window.innerWidth
+            ? Math.max(expandedHeight, height)
+            : height;
+        viewportWidth = window.innerWidth;
+      }
       // iOS includes its floating input accessory bar inside the visual viewport.
       // Reserve its observed toolbar plus clearance (64px) overlay only while an editable has a keyboard.
       const accessory =
         mobile &&
         ios &&
         normalScale &&
-        window.innerHeight - viewport.height > 100 &&
+        expandedHeight - viewport.height > 100 &&
         focused?.matches(
           'input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="range"], [type="color"], [type="file"], [type="hidden"]), textarea, [contenteditable]:not([contenteditable="false"])',
         )
@@ -325,7 +337,19 @@ export function WorkspaceNavigation() {
       frame.style.setProperty('--chrome-bottom', `${bottom}px`);
       // Visual-viewport panning moves chrome, not document content.
       const header = brand.getBoundingClientRect().height;
-      const footer = mobile ? links.getBoundingClientRect().height + bottom : 0;
+      const navHeight = links.getBoundingClientRect().height;
+      // Top anchoring avoids Safari's changing fixed-bottom containing viewport.
+      frame.style.setProperty(
+        '--chrome-nav-top',
+        mobile && normalScale
+          ? `${top + viewport.height - navHeight - accessory}px`
+          : 'auto',
+      );
+      frame.style.setProperty(
+        '--chrome-nav-bottom',
+        mobile && normalScale ? 'auto' : '0px',
+      );
+      const footer = mobile ? navHeight + bottom : 0;
       frame.style.setProperty('--chrome-header', `${header}px`);
       frame.style.setProperty('--chrome-footer', `${footer}px`);
       root.style.setProperty('--chrome-header', `${header + top}px`);

@@ -1120,7 +1120,8 @@ td {
     display: contents;
   }
   .workspace-navigation-links {
-    top: auto;
+    top: var(--chrome-nav-top, auto);
+    bottom: var(--chrome-nav-bottom, 0px);
     right: 0;
     width: auto;
     padding: 0.5rem max(0.25rem, env(safe-area-inset-right))
