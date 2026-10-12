@@ -70,56 +70,59 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
       id="page-content"
     >
       <WorkspaceNavigation />
-      <p className="workspace-crumb">Your household</p>
-      <WorkspaceHeader
-        title={ledger ? 'Household ledger' : 'Household'}
-        context={
-          ledger
-            ? 'Original home ledger. Expenses and repayments stay in this Household.'
-            : 'Shared expenses across home, trips and groups.'
-        }
-        appearance="household"
-      >
-        {access.scope && (
-          <HouseholdInvitationEntry
-            key={access.scope.id}
-            scope={access.scope}
-          />
-        )}
-      </WorkspaceHeader>
-      <WorkspaceTabs
-        current={current}
-        hrefFor={
-          ledger
-            ? (section) => `/household/ledger?tab=${section.toLowerCase()}`
-            : householdHref
-        }
-        label="Household workspace"
-        onIntentEnd={(section) => intent?.cancel(section)}
-        onIntent={(section) => {
-          if (ledger) return;
-          const document =
-            section === 'Activity'
-              ? activityDocument
-              : section === 'Members'
-                ? accessDocument
+      <div className="workspace-content">
+        <p className="workspace-crumb">Your household</p>
+        <WorkspaceHeader
+          title={ledger ? 'Household ledger' : 'Household'}
+          context={
+            ledger
+              ? 'Original home ledger. Expenses and repayments stay in this Household.'
+              : 'Shared expenses across home, trips and groups.'
+          }
+          appearance="household"
+          compact={current !== 'Overview'}
+        >
+          {access.scope && (
+            <HouseholdInvitationEntry
+              key={access.scope.id}
+              scope={access.scope}
+            />
+          )}
+        </WorkspaceHeader>
+        <WorkspaceTabs
+          current={current}
+          hrefFor={
+            ledger
+              ? (section) => `/household/ledger?tab=${section.toLowerCase()}`
+              : householdHref
+          }
+          label="Household workspace"
+          onIntentEnd={(section) => intent?.cancel(section)}
+          onIntent={(section) => {
+            if (ledger) return;
+            const document =
+              section === 'Activity'
+                ? activityDocument
+                : section === 'Members'
+                  ? accessDocument
+                  : section === 'Expenses'
+                    ? expensesDocument
+                    : householdDocument;
+            const variables =
+              section === 'Activity' || section === 'Members'
+                ? {}
                 : section === 'Expenses'
-                  ? expensesDocument
-                  : householdDocument;
-          const variables =
-            section === 'Activity' || section === 'Members'
-              ? {}
-              : section === 'Expenses'
-                ? { filter: expenseFilter('') }
-                : {
-                    recent: section === 'Overview',
-                    balances: section === 'Balances',
-                  };
-          intent?.warm({ document, variables, key: section });
-        }}
-      />
-      {children}
-      {access.scope && <WorkspacePrivacy />}
+                  ? { filter: expenseFilter('') }
+                  : {
+                      recent: section === 'Overview',
+                      balances: section === 'Balances',
+                    };
+            intent?.warm({ document, variables, key: section });
+          }}
+        />
+        {children}
+        {access.scope && <WorkspacePrivacy />}
+      </div>
     </main>
   );
 }

@@ -44,7 +44,7 @@ Expenses operations request six rows initially and on each Load more; their
 complete totals and signed cursor/anchor semantics remain unchanged. The public
 shell presents Household → Groups → Trips → Account through the shared desktop
 app bar/rail and phone bottom navigation; its layout does not change private read
-ownership. See the [current visual implementation note](../design/issue-227-implementation.md).
+ownership. See the [persistent navigation contract](../application/relay-expenses.md#persistent-navigation-and-content-widths-238) and the historical [visual implementation note](../design/issue-227-implementation.md).
 
 The composed Group operation supplies the initial ledger/feed reference directly
 to the child reader; it does not start the same first page again after mounting.

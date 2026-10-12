@@ -551,15 +551,17 @@ export function WorkspaceHeader({
   context,
   children,
   appearance,
+  compact = false,
 }: {
   title: string;
   context?: ReactNode;
   children?: ReactNode;
   appearance?: 'household' | 'trip' | 'group';
+  compact?: boolean;
 }) {
   return (
     <header
-      className={`ui-workspace-header ${appearance ? `ui-workspace-header--${appearance}` : ''}`}
+      className={`ui-workspace-header ${appearance ? `ui-workspace-header--${appearance}` : ''}${compact ? ' ui-workspace-header--compact' : ''}`}
     >
       <div className="workspace-title">
         {appearance && (

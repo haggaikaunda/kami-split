@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
 // Reference icon geometry: Lucide1.17.0 (ISC/MIT); see LUCIDE-LICENSE.txt.
@@ -280,6 +281,53 @@ export function Brand() {
 /** Static navigation never reads or retains private group data. */
 export function WorkspaceNavigation() {
   const pathname = usePathname();
+  const navigation = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = navigation.current;
+    const frame = nav?.closest('main');
+    if (!nav || !frame) return;
+    const root = document.documentElement;
+    const brand = nav.querySelector<HTMLElement>(
+      '.workspace-navigation-brand',
+    )!;
+    const links = nav.querySelector<HTMLElement>(
+      '.workspace-navigation-links',
+    )!;
+    const viewport = window.visualViewport;
+    const update = () => {
+      const mobile = window.innerWidth <= 600;
+      // Keyboard resizing follows the visual viewport; pinch zoom stays browser-owned.
+      const normalScale = viewport && Math.abs(viewport.scale - 1) < 0.01;
+      const top = normalScale ? viewport.offsetTop : 0;
+      const bottom = normalScale
+        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        : 0;
+      frame.style.setProperty('--chrome-top', `${top}px`);
+      frame.style.setProperty('--chrome-bottom', `${bottom}px`);
+      const header = brand.getBoundingClientRect().height + top;
+      const footer = mobile ? links.getBoundingClientRect().height + bottom : 0;
+      frame.style.setProperty('--chrome-header', `${header}px`);
+      frame.style.setProperty('--chrome-footer', `${footer}px`);
+      root.style.setProperty('--chrome-header', `${header}px`);
+      root.style.setProperty('--chrome-footer', `${footer}px`);
+    };
+    update();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(brand);
+    observer?.observe(links);
+    window.addEventListener('resize', update);
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', update);
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      root.style.removeProperty('--chrome-header');
+      root.style.removeProperty('--chrome-footer');
+    };
+  }, []);
   const items = [
     { href: '/household', label: 'Household', icon: 'home' },
     { href: '/groups', label: 'Groups', icon: 'groups' },
@@ -287,7 +335,11 @@ export function WorkspaceNavigation() {
     { href: '/account', label: 'Account', icon: 'account' },
   ] as const;
   return (
-    <nav className="workspace-navigation" aria-label="Financial navigation">
+    <nav
+      ref={navigation}
+      className="workspace-navigation"
+      aria-label="Financial navigation"
+    >
       <span className="workspace-navigation-brand">
         <Brand />
       </span>

@@ -40,18 +40,20 @@ export function LegacyInvitations() {
   return (
     <main className="financial-journey group-workspace" id="page-content">
       <WorkspaceNavigation />
-      <h1>Invitations have moved</h1>
-      <p>
-        Open Household, a group or a trip, then choose Members → Invitations.
-      </p>
-      {c.notice && <p role="alert">{c.notice}</p>}
-      {c.loading || c.busy ? (
-        <p role="status">Checking secure workspace access…</p>
-      ) : !c.session ? (
-        <Link href="/sign-in">Sign in to open your workspace</Link>
-      ) : (
-        <Link href="/household">Return to Household</Link>
-      )}
+      <div className="workspace-content">
+        <h1>Invitations have moved</h1>
+        <p>
+          Open Household, a group or a trip, then choose Members → Invitations.
+        </p>
+        {c.notice && <p role="alert">{c.notice}</p>}
+        {c.loading || c.busy ? (
+          <p role="status">Checking secure workspace access…</p>
+        ) : !c.session ? (
+          <Link href="/sign-in">Sign in to open your workspace</Link>
+        ) : (
+          <Link href="/household">Return to Household</Link>
+        )}
+      </div>
     </main>
   );
 }
