@@ -607,7 +607,7 @@ td {
 .workspace-navigation-links {
   position: fixed;
   z-index: 20;
-  top: var(--chrome-header);
+  top: calc(var(--chrome-header) + var(--chrome-top, 0px));
   left: 0;
   bottom: var(--chrome-bottom, 0px);
   width: 5.5rem;

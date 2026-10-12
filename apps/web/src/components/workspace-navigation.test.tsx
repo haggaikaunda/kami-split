@@ -71,11 +71,25 @@ it('reserves measured mobile chrome, follows keyboard resizing, and releases glo
     viewport.offsetTop = 30;
     act(() => viewport.dispatchEvent(new Event('scroll')));
     expect(main.style.getPropertyValue('--chrome-bottom')).toBe('314px');
-    expect(main.style.getPropertyValue('--chrome-header')).toBe('100px');
+    expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
+    expect(
+      document.documentElement.style.getPropertyValue('--chrome-header'),
+    ).toBe('100px');
     viewport.offsetTop = 0;
 
     act(() => input.blur());
     expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
+    viewport.offsetTop = 170;
+    act(() => viewport.dispatchEvent(new Event('scroll')));
+    expect(main.style.getPropertyValue('--chrome-top')).toBe('170px');
+    // Panning must not add padding that cancels Safari's movement of the field.
+    expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
+    expect(
+      document.documentElement.style.getPropertyValue('--chrome-header'),
+    ).toBe('240px');
+    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('110px');
+    viewport.offsetTop = 0;
+    act(() => viewport.dispatchEvent(new Event('scroll')));
     input.type = 'checkbox';
     act(() => input.focus());
     expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');

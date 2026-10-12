@@ -323,11 +323,12 @@ export function WorkspaceNavigation() {
         : 0;
       frame.style.setProperty('--chrome-top', `${top}px`);
       frame.style.setProperty('--chrome-bottom', `${bottom}px`);
-      const header = brand.getBoundingClientRect().height + top;
+      // Visual-viewport panning moves chrome, not document content.
+      const header = brand.getBoundingClientRect().height;
       const footer = mobile ? links.getBoundingClientRect().height + bottom : 0;
       frame.style.setProperty('--chrome-header', `${header}px`);
       frame.style.setProperty('--chrome-footer', `${footer}px`);
-      root.style.setProperty('--chrome-header', `${header}px`);
+      root.style.setProperty('--chrome-header', `${header + top}px`);
       root.style.setProperty('--chrome-footer', `${footer}px`);
     };
     const focusChanged = (event: FocusEvent) => {
