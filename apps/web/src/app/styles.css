@@ -1345,22 +1345,6 @@ td {
   }
 }
 
-/* Retain explicit refresh without inserting a legacy toolbar between tabs and summaries. */
-.household-refresh,
-.journey-refresh {
-  position: absolute;
-  top: 1rem;
-  right: 1.75rem;
-}
-@media (max-width: 600px) {
-  .household-refresh,
-  .journey-refresh {
-    top: 0.625rem;
-    right: 1rem;
-    font-size: 0.875rem;
-  }
-}
-
 .overview-month {
   color: var(--color-muted);
   font-size: 0.875rem;
@@ -1479,28 +1463,6 @@ td {
   margin-bottom: 0;
 }
 
-.household-refresh::before,
-.journey-refresh::before {
-  content: '↻';
-}
-.household-refresh,
-.journey-refresh {
-  width: 2.75rem;
-  min-width: 2.75rem;
-  padding: 0;
-}
-
-@container workspace (max-width: 20em) {
-  .household-refresh,
-  .journey-refresh {
-    position: static;
-    margin-left: auto;
-    margin-bottom: 1rem;
-    align-self: flex-end;
-    justify-content: flex-end;
-  }
-}
-
 /* The document remains the scroll owner for source-return restoration. */
 html {
   scroll-padding-top: calc(var(--chrome-header, 0px) + 1rem);
@@ -1547,4 +1509,38 @@ html {
   .workspace-navigation-icon {
     max-width: 100%;
   }
+}
+
+/* Refresh belongs to page content, below persistent navigation. */
+html.workspace-pull-refresh,
+html.workspace-pull-refresh body {
+  overscroll-behavior-y: none;
+}
+.workspace-refresh {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  min-height: 3rem;
+  margin-block: 0.25rem 0.75rem;
+}
+.workspace-refresh button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-primary);
+}
+.workspace-refresh [role='status'] {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.workspace-refresh button[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: progress;
+}
+.financial-journey .ui-loading {
+  min-height: 22rem;
+  align-content: start;
+}
+.financial-journey .ui-loading .ui-skeleton {
+  height: 5rem;
 }

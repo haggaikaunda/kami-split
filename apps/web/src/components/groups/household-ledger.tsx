@@ -18,8 +18,7 @@ export function HouseholdLedger() {
   const next = new URLSearchParams(params);
   next.delete('source');
   next.delete('restore');
-  if (access.loading)
-    return <Skeleton label="Loading secure Household access" />;
+  if (access.loading) return <Skeleton label="Loading Household" />;
   if (access.error) return <p role="alert">{access.error}</p>;
   if (!access.scope)
     return (
@@ -94,7 +93,7 @@ function LedgerRead({ scope }: { scope: FinancialScope }) {
       </>
     );
   if (!home || !scope.isLive())
-    return <Skeleton label="Loading authorized Household ledger" />;
+    return <Skeleton label="Loading Household ledger" />;
   return (
     <GroupJourney
       key={`${scope.id}:${home}:${params.toString()}`}

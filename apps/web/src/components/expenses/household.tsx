@@ -1,4 +1,6 @@
 'use client';
+import { WorkspaceLoading } from '@/components/workspace-loading';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -19,7 +21,7 @@ import '@/components/groups/journey.css';
 export function HouseholdExpenses() {
   const access = useFinancialSession();
   return access.loading ? (
-    <Skeleton label="Loading secure access" />
+    <Skeleton label="Loading workspace" />
   ) : access.error ? (
     <p role="alert">{access.error}</p>
   ) : !access.scope ? (
@@ -114,13 +116,21 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   }, [scope, version]);
   const dashboard = context?.result.householdDashboard,
     viewer = context?.result.viewer;
+  const refreshControl = (
+    <WorkspaceRefresh
+      busy={!context && !error}
+      error={error}
+      onRefresh={refresh}
+      label="Refresh expenses"
+    />
+  );
   if (error)
     return (
-      <>
+      <WorkspaceLoading busy={!context && !error}>
         {savedNotice}
+        {refreshControl}
         <p role="alert">{error}</p>
-        <button onClick={refresh}>Refresh Household access</button>
-      </>
+      </WorkspaceLoading>
     );
   if (
     dashboard?.__typename !== 'HouseholdDashboard' ||
@@ -128,14 +138,16 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     !context
   )
     return (
-      <>
+      <WorkspaceLoading busy={!context && !error}>
         {savedNotice}
-        <Skeleton label="Loading complete Household access" />
-      </>
+        {refreshControl}
+        <Skeleton label="Loading expenses" />
+      </WorkspaceLoading>
     );
   return (
-    <>
+    <WorkspaceLoading busy={!context && !error}>
       {savedNotice}
+      {refreshControl}
       <ExpenseLedger
         key={version}
         scope={scope}
@@ -166,6 +178,6 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
           );
         }}
       />
-    </>
+    </WorkspaceLoading>
   );
 }

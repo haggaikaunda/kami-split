@@ -195,7 +195,9 @@ it('hides private context synchronously and coalesces overlapping foreground rea
 it('retains committed edit status when the separately refreshed Household list fails', async () => {
   await act(async () => root.render(<HouseholdLedger scope={scope} />));
   await act(async () => requests[0].next(result()));
-  await act(async () => host.querySelector('button')!.click());
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[data-ledger] button')!.click(),
+  );
   expect(host.textContent).toContain('Expense edit saved');
   await act(async () =>
     requests[1].next({

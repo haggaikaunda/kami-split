@@ -273,7 +273,7 @@ it('invalidates visible records on foregrounding before accepting another author
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   expect(host.textContent).not.toContain('Pre-trip booking');
-  expect(host.textContent).toContain('Loading current authorized group data');
+  expect(host.textContent).toContain('Loading workspace');
   expect(host.querySelector('nav[aria-label="Trip workspace"]')).not.toBeNull();
 });
 

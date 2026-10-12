@@ -249,7 +249,11 @@ it('clears private rows during refresh and rejects an older response', async () 
   expect(host.textContent).toContain('Maui');
   await act(async () => host.querySelector('button')!.click());
   expect(host.textContent).not.toContain('Maui');
-  await act(async () => host.querySelector('button')!.click());
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  await act(
+    async () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   await act(async () => second.resolve(result(fixture('999'))));
   expect(host.textContent).not.toContain('$9.99');
   await act(async () => third.resolve(result(fixture('123'))));
@@ -343,9 +347,7 @@ it('foreground refresh removes prior authorized content while a new read is pend
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   expect(host.textContent).not.toContain('Maui');
-  expect(host.querySelector('[role="status"]')?.textContent).toContain(
-    'Loading current authorized',
-  );
+  expect(host.textContent).toContain('Loading Household');
   await act(async () => pending.resolve(result()));
   expect(host.textContent).toContain('Maui');
   visibility.mockRestore();

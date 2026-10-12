@@ -1,8 +1,9 @@
 'use client';
+import { useForegroundRefresh } from '@/components/groups/foreground';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
 import {
   useEffect,
-  useEffectEvent,
   useRef,
   useState,
   useTransition,
@@ -30,7 +31,12 @@ import groupDocument, {
 import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
-import { Button, containDialogFocus, Money } from '@/components/primitives';
+import {
+  Button,
+  containDialogFocus,
+  Money,
+  Skeleton,
+} from '@/components/primitives';
 import { ExpenseDetail } from '@/components/groups/expense-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
@@ -129,6 +135,7 @@ function LedgerContent({
   const origin = useRef<{ id: string; scroll: number } | null>(null);
   const opened = useRef(false);
   const generation = useRef(0);
+  const requestRef = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const summary = useRef<HTMLDivElement>(null);
   const change = (patch: Record<string, string | null>, replace = false) => {
     const next = new URLSearchParams(params);
@@ -141,13 +148,17 @@ function LedgerContent({
       else router.push(href, { scroll: false });
     });
   };
-  const reset = () => {
+  const invalidate = () => {
     generation.current++;
+    requestRef.current?.unsubscribe();
     setRows([]);
     setPage(undefined);
     setAfter(null);
     setError('');
     setLoading(true);
+  };
+  const reset = () => {
+    invalidate();
     setVersion((v) => v + 1);
   };
   const refresh = () => {
@@ -223,6 +234,7 @@ function LedgerContent({
           { after, filter },
           { fetchPolicy: 'network-only' },
         ).subscribe({ next: (r) => accept(r.householdExpenses), error: fail });
+    requestRef.current = request;
     return () => {
       live = false;
       request.unsubscribe();
@@ -230,23 +242,14 @@ function LedgerContent({
     // Parent owns the denial boundary; URL filters and scope own this traversal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, groupId, filterText, after, version]);
-  const refreshFromForeground = useEffectEvent(() => {
-    setNotice('Access is stale. Refreshing expenses…');
-    refresh();
-  });
-  useEffect(() => {
-    if (managedRefresh) return;
-    const refreshOnFocus = () => refreshFromForeground();
-    const foreground = () => {
-      if (document.visibilityState === 'visible') refreshOnFocus();
-    };
-    window.addEventListener('focus', refreshOnFocus);
-    document.addEventListener('visibilitychange', foreground);
-    return () => {
-      window.removeEventListener('focus', refreshOnFocus);
-      document.removeEventListener('visibilitychange', foreground);
-    };
-  }, [managedRefresh]);
+  useForegroundRefresh(
+    invalidate,
+    () => {
+      setVersion((v) => v + 1);
+      void onRefreshContext?.();
+    },
+    !managedRefresh,
+  );
   useEffect(() => {
     if (selected || create) {
       opened.current = true;
@@ -364,32 +367,15 @@ function LedgerContent({
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
     <section className="expense-ledger" aria-label="Expenses">
+      {!managedRefresh && (
+        <WorkspaceRefresh
+          busy={loading}
+          error={error}
+          onRefresh={refresh}
+          label="Refresh expenses"
+        />
+      )}
       {navigationPending && <p role="status">Opening expense view…</p>}
-      <div className="ledger-page-actions">
-        {' '}
-        <button
-          className="ledger-refresh"
-          aria-label="Refresh expenses"
-          title="Refresh expenses"
-          onClick={refresh}
-          disabled={loading}
-        >
-          <span aria-hidden="true">↻</span>
-        </button>
-        <button
-          id="ledger-add"
-          className="ledger-add"
-          aria-label="Add expense"
-          disabled={!spaces.length}
-          onClick={() =>
-            choose('ledger-add', {
-              create: groupId || params.get('groupId') || spaces[0].groupId,
-            })
-          }
-        >
-          <AppIcon name="plus" /> <span>Add expense</span>
-        </button>
-      </div>
       <div className="ledger-toolbar">
         <nav className="ledger-view-switch" aria-label="Expense view">
           <button
@@ -437,6 +423,21 @@ function LedgerContent({
           <AppIcon name="sliders" /> Filters
           {activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}
         </button>
+        <div className="ledger-page-actions">
+          <button
+            id="ledger-add"
+            className="ledger-add"
+            aria-label="Add expense"
+            disabled={!spaces.length}
+            onClick={() =>
+              choose('ledger-add', {
+                create: groupId || params.get('groupId') || spaces[0].groupId,
+              })
+            }
+          >
+            <AppIcon name="plus" /> <span>Add expense</span>
+          </button>
+        </div>
       </div>
       {activeFilterKeys.length > 0 && (
         <div className="ledger-active-filters" aria-label="Active filters">
@@ -512,7 +513,7 @@ function LedgerContent({
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
-      {loading && <p role="status">Loading authorized expenses…</p>}
+      {loading && <Skeleton label="Loading expenses" />}
       {error ? (
         <p role="alert">{error}</p>
       ) : (
@@ -805,7 +806,7 @@ function AuthorizedDetail({
       />
     </>
   ) : (
-    <p role="status">Checking current source access…</p>
+    <p role="status">Loading expense…</p>
   );
 }
 export function LedgerDialog({
