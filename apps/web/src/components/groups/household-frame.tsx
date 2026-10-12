@@ -76,8 +76,8 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
           title={ledger ? 'Household ledger' : 'Household'}
           context={
             ledger
-              ? 'Original home ledger. Expenses and repayments stay in this Household.'
-              : 'Shared expenses across home, trips and groups.'
+              ? 'Household source ledger only. Expenses and repayments stay in this space.'
+              : 'Household ledger and currently eligible groups and trips.'
           }
           appearance="household"
           compact={current !== 'Overview'}

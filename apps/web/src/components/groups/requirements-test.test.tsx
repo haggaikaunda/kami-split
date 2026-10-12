@@ -531,7 +531,9 @@ it('refreshes complete positions and repayment history after recording while exp
     },
   });
   await resolveGroup(data);
-  expect(host.textContent).toContain('Settled: every individual net is zero');
+  expect(host.textContent).toContain(
+    'Everyone in this space is settled: each member’s balance is zero',
+  );
   expect(host.textContent).toContain('Alice → Bob');
   expect(host.textContent).toContain('10.01 USD');
   mock.path = '/trips/T';

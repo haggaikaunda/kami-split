@@ -408,8 +408,8 @@ function LedgerContent({
           </button>
         </nav>
         <details className="ledger-net">
-          <summary aria-label="Your net balance" title="Your net balance">
-            <AppIcon name="arrow-up-right" />
+          <summary>
+            <AppIcon name="arrow-up-right" /> Balance details
           </summary>
           <span>
             {net === undefined ? (
@@ -425,7 +425,11 @@ function LedgerContent({
               </>
             )}{' '}
             · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
-            in each space.
+            in each space. A zero net does not establish that every member is
+            settled.{' '}
+            <Link href={`${groupId ? pathname : '/household'}?tab=balances`}>
+              View who owes whom
+            </Link>
           </span>
         </details>
         <button
