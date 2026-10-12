@@ -575,3 +575,55 @@ it.each(['invalid', '2026-02-31', '0000-01-01', '2026-9-01'])(
     });
   },
 );
+
+it('shows complete filtered month totals before later pages and keeps payer and detail links readable', async () => {
+  state.params = 'category=DINING&from=2026-08-15';
+  await render();
+  const first = page([edge('one', '2026-09-02', '100')], true);
+  first.expenseCount = '9';
+  first.months = [
+    {
+      month: '2026-09',
+      totalExpenseMinor: '9007199254740994',
+      expenseCount: '8',
+    },
+    { month: '2026-08', totalExpenseMinor: '1234', expenseCount: '1' },
+  ];
+  await respond(first);
+  const september = host.querySelector('.ledger-month > header')!;
+  expect(september.textContent).toContain('September 2026');
+  expect(september.textContent).toContain('$90,071,992,547,409.94');
+  expect(september.textContent).toContain('8 expenses');
+  expect(september.querySelector('details')).toBeNull();
+  expect(host.querySelector('.ledger-payer')?.textContent).toBe('Paid by Bob');
+  expect(
+    host.querySelector('#ledger-expense-one')?.getAttribute('href'),
+  ).toContain('expense=one');
+  expect(
+    host.querySelector('#ledger-expense-one')?.getAttribute('href'),
+  ).toContain('category=DINING');
+  await click('Load more expenses');
+  const second = page([edge('two', '2026-08-20', '1234')]);
+  second.months = first.months;
+  await respond(second);
+  const headers = host.querySelectorAll('.ledger-month > header');
+  expect(headers).toHaveLength(2);
+  expect(headers[0].textContent).toBe(september.textContent);
+  expect(headers[1].textContent).toContain('August 2026');
+  expect(headers[1].textContent).toContain('$12.34 USD · 1 expense');
+  await click('Refresh expenses');
+  expect(host.querySelector('.ledger-month')).toBeNull();
+  await act(async () => state.requests.at(-1)?.error?.());
+  expect(host.querySelector('.ledger-month')).toBeNull();
+  expect(host.textContent).toContain('Total unavailable');
+  expect(host.textContent).not.toContain('Paid by Bob');
+});
+
+it('offers a descriptive keyboard-native balance disclosure and canonical details route', async () => {
+  await renderHousehold();
+  await respondContext(context('0'));
+  await respond(page([]));
+  const summary = host.querySelector('.ledger-net summary')!;
+  expect(summary.textContent).toContain('Balance details');
+  expect(host.querySelector('.ledger-net')?.tagName).toBe('DETAILS');
+});

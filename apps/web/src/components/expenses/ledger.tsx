@@ -394,8 +394,8 @@ function LedgerContent({
           </button>
         </nav>
         <details className="ledger-net">
-          <summary aria-label="Your net balance" title="Your net balance">
-            <AppIcon name="arrow-up-right" />
+          <summary>
+            <AppIcon name="arrow-up-right" /> Balance details
           </summary>
           <span>
             {net === undefined ? (
@@ -411,7 +411,11 @@ function LedgerContent({
               </>
             )}{' '}
             · Unfiltered{!groupId && ' across spaces'}. Balances stay separate
-            in each space.
+            in each space. A zero net does not establish that every member is
+            settled.{' '}
+            <Link href={`${groupId ? pathname : '/household'}?tab=balances`}>
+              View who owes whom
+            </Link>
           </span>
         </details>
         <button
@@ -562,22 +566,28 @@ function LedgerContent({
                       aria-label={month.month}
                     >
                       <header>
-                        <h2>Expenses</h2>
-                        <span className="ledger-month-context">
+                        <h2>
                           {new Intl.DateTimeFormat('en', {
                             month: 'long',
                             year: 'numeric',
                             timeZone: 'UTC',
                           }).format(new Date(`${month.month}-01T00:00:00Z`))}
+                        </h2>
+                        <span className="ledger-month-total">
+                          <Money
+                            value={money(month.totalExpenseMinor)}
+                            currency="USD"
+                          />
+                          {' · '}
+                          {month.expenseCount}{' '}
+                          {month.expenseCount === '1' ? 'expense' : 'expenses'}
                         </span>
-                        <details className="ledger-month-total">
-                          <summary>Month totals</summary>
-                          <span>
-                            {money(month.totalExpenseMinor)} USD ·{' '}
-                            {month.expenseCount} expenses
-                          </span>
-                        </details>
                       </header>
+                      <div className="ledger-columns" aria-hidden="true">
+                        <span>Expense / source / date</span>
+                        <span>Paid by</span>
+                        <span>Amount</span>
+                      </div>
                       <ul>
                         {rows
                           .filter(({ node }) =>
@@ -611,11 +621,21 @@ function LedgerContent({
                                   <span className="ledger-description">
                                     <strong>{node.description}</strong>
                                     <span>
-                                      {!groupId && <>{source.name} · </>}
+                                      {node.category[0] +
+                                        node.category
+                                          .slice(1)
+                                          .toLowerCase()}{' '}
+                                      · {!groupId && <>{source.name} · </>}
                                       <time dateTime={node.effectiveDate}>
                                         {overviewDate(node.effectiveDate)}
                                       </time>
                                     </span>
+                                  </span>
+                                  <span className="ledger-payer">
+                                    <span className="ledger-payer-label">
+                                      Paid by{' '}
+                                    </span>
+                                    {node.payer.displayName}
                                   </span>
                                   <span className="ledger-money">
                                     <Money

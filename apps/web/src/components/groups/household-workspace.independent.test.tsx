@@ -8,6 +8,7 @@ import {
   householdHref,
   type Dashboard,
 } from './household-workspace';
+import { PeopleList, type Person } from '@/components/onboarding/people-list';
 import type { FinancialScope } from '@/lib/relay/environment';
 const queries = vi.hoisted(() => ({ fetch: vi.fn() }));
 vi.mock('./overview-expense', () => ({
@@ -24,10 +25,19 @@ vi.mock('./overview-expense', () => ({
 }));
 
 vi.mock('@/components/onboarding/scoped-invitations', () => ({
-  ScopedInvitations: ({ group }: { group: { id: string; name: string } }) => (
-    <section data-invitation-group={group.id}>
-      Invitations for {group.name}
-    </section>
+  ScopedInvitations: ({
+    group,
+    members,
+  }: {
+    group: { id: string; name: string };
+    members: readonly Person[];
+  }) => (
+    <>
+      <PeopleList members={members} />
+      <section data-invitation-group={group.id}>
+        Invitations for {group.name}
+      </section>
+    </>
   ),
 }));
 vi.mock('relay-runtime', () => ({
@@ -162,7 +172,9 @@ it('renders exact server aggregates and zero net with open source balances witho
   );
   expect(row.textContent).not.toContain('repayments excluded');
   expect(row.textContent).toContain('Overall net is zero');
-  expect(row.textContent).toContain('source balances remain open');
+  expect(row.textContent).toContain(
+    'you still owe or are owed money in individual spaces',
+  );
   expect(row.querySelector('a')).toBeNull();
   expect(row.textContent).not.toContain('2 open balances');
   expect(host.querySelector('a[href="/household/expenses"]')).not.toBeNull();
@@ -438,7 +450,9 @@ it('shows one concise settled status without a duplicate open balance count', as
     totals: { ...totals, openBalanceCount: '0' },
   } as Dashboard);
   const net = host.querySelector('.ui-signed-balance')!;
-  expect(net.textContent).toContain('No open source balances');
+  expect(net.textContent).toContain(
+    'Your balance is zero in every eligible space; other members may still owe money',
+  );
   expect(net.textContent).not.toContain('0 open balances');
   expect(net.querySelector('a')).toBeNull();
 });
@@ -471,3 +485,96 @@ it('keeps confirmed edit success distinct from a failed Household refresh withou
   expect(host.textContent).not.toContain('Maui');
   expect(host.textContent).not.toContain('Complete confirmed edit');
 });
+
+it('identifies aggregate and individual source scope without claiming unavailable sources are settled', async () => {
+  await content('Overview');
+  expect(host.textContent).toContain('currently eligible');
+  expect(host.textContent).toContain('Home · Household source ledger');
+  expect(host.textContent).toContain('Maui · Trip');
+  expect(host.textContent).toContain('Cabin · Group');
+  const dashboard = fixture();
+  await content('Balances', {
+    ...dashboard,
+    spaces: dashboard.spaces.map((space) => ({
+      ...space,
+      viewerNetMinor: '0',
+      balances: { __typename: 'Problem', code: 'UNAVAILABLE' },
+    })),
+  } as Dashboard);
+  expect(host.textContent).not.toContain('this space has open balances');
+  expect(host.textContent).not.toContain('Settled');
+  expect(host.querySelectorAll('.household-balance--unavailable')).toHaveLength(
+    3,
+  );
+  await content('Balances', { ...dashboard, state: 'INCOMPLETE' } as Dashboard);
+  expect(host.querySelector('.household-balances')).toBeNull();
+  expect(host.textContent).not.toContain('Maui');
+});
+
+it('replaces eligible sources after revalidation rather than retaining a removed Trip', async () => {
+  const dashboard = fixture();
+  const totals = dashboard.totals;
+  if (totals?.__typename !== 'HouseholdDashboardTotals')
+    throw new Error('fixture');
+  queries.fetch
+    .mockReturnValueOnce({ toPromise: async () => result(dashboard) })
+    .mockReturnValueOnce({
+      toPromise: async () =>
+        result({
+          ...dashboard,
+          totals: {
+            ...totals,
+            viewerNetMinor: '8420',
+            activeSpaceCount: '2',
+            openBalanceCount: '1',
+          },
+          spaces: dashboard.spaces.filter(
+            (space) => space.groupId !== 'trip-b',
+          ),
+        }),
+    });
+  await act(async () =>
+    root.render(<HouseholdRead scope={scope} current="Balances" />),
+  );
+  expect(
+    host.querySelector('a[href="/trips/trip-b?tab=balances"]'),
+  ).not.toBeNull();
+  await act(async () => host.querySelector('button')!.click());
+  expect(host.textContent).not.toContain('Maui');
+  expect(host.querySelector('a[href="/trips/trip-b?tab=balances"]')).toBeNull();
+  expect(host.querySelectorAll('.household-balances li')).toHaveLength(2);
+  expect(host.querySelector('.ui-signed-balance')?.textContent).toContain(
+    '$84.20',
+  );
+});
+
+it.each(['INCOMPLETE', 'UNAVAILABLE', 'FORBIDDEN', 'NETWORK'])(
+  'removes previous source details after a %s revalidation without claiming zero or settled',
+  async (failure) => {
+    queries.fetch
+      .mockReturnValueOnce({ toPromise: async () => result() })
+      .mockReturnValueOnce({
+        toPromise: async () => {
+          if (failure === 'NETWORK') throw new Error('offline');
+          if (failure === 'FORBIDDEN')
+            return {
+              householdDashboard: { __typename: 'Problem', code: failure },
+            };
+          return result({ ...fixture(), state: failure } as Dashboard);
+        },
+      });
+    await act(async () =>
+      root.render(<HouseholdRead scope={scope} current="Balances" />),
+    );
+    expect(host.textContent).toContain('Maui');
+    await act(async () => host.querySelector('button')!.click());
+    expect(host.textContent).not.toContain('Maui');
+    expect(host.querySelector('.household-balances')).toBeNull();
+    expect(host.querySelector('.ui-signed-balance')).toBeNull();
+    expect(host.textContent).not.toContain('$0.00');
+    expect(host.textContent).not.toContain('Everyone in this space is settled');
+    expect(host.textContent).not.toContain(
+      'Your balance is zero in every eligible space',
+    );
+  },
+);

@@ -8,7 +8,6 @@ import {
 } from './overview-date';
 import {
   spaceHref,
-  spaceInvitationsHref,
   spaceExpenseHref,
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
@@ -36,6 +35,7 @@ import { ActivityFeed } from '@/components/activity/feed';
 import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
 import type { activityFeed$key } from '@/lib/relay/__generated__/activityFeed.graphql';
 import { ExpenseLedger } from '@/components/expenses/ledger';
+import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
 export type WorkspaceGroup = Extract<
@@ -99,8 +99,13 @@ export function GroupWorkspace({
           <Link className="banner-members-link" href={hrefFor('Members')}>
             {activeMembers.length} members
           </Link>{' '}
-          · {group.trip ? 'Trip' : group.isHousehold ? 'Household' : 'Group'} ·{' '}
-          {group.currency}
+          ·{' '}
+          {group.trip
+            ? 'Trip'
+            : group.isHousehold
+              ? 'Household source ledger'
+              : 'Group'}{' '}
+          · {group.currency}
         </>
       }
     >
@@ -134,7 +139,6 @@ export function GroupWorkspace({
           {' '}
           {group.viewerMembership.role === 'OWNER' && (
             <div className="group-header-actions">
-              <Link href={spaceInvitationsHref(group)}>Manage invitations</Link>
               <details className="group-settings">
                 <summary>Group settings</summary>
                 <p>
@@ -253,7 +257,7 @@ export function GroupWorkspace({
           onEditSaved={onEditSaved}
         />
       ) : current === 'Members' ? (
-        <section className="workspace-panel">
+        <section className="workspace-panel members-panel">
           <h2>Members</h2>
           {group.trip && (
             <p className="workspace-context-detail">
@@ -268,18 +272,18 @@ export function GroupWorkspace({
               · {tripState(group.trip, today)}
             </p>
           )}
-          <div className="group-members-list">
-            {group.members.map((m) => (
-              <div className="ui-balance-row" key={m.id}>
-                <Member
-                  name={m.displayName}
-                  detail={`${m.role === 'OWNER' ? 'Owner' : 'Member'} · ${m.status === 'ACTIVE' ? 'Active' : 'Historical membership'}`}
-                />
-              </div>
-            ))}
-          </div>
-          {group.viewerMembership.role === 'OWNER' && (
-            <ScopedInvitations scope={scope} group={group} />
+          {group.viewerMembership.role === 'OWNER' ? (
+            <ScopedInvitations
+              scope={scope}
+              group={group}
+              members={group.members}
+              onRefresh={onRefresh}
+            />
+          ) : (
+            <>
+              <PeopleList members={group.members} />
+              <p>Ask the owner to invite someone to this group.</p>
+            </>
           )}
         </section>
       ) : (
@@ -366,7 +370,7 @@ function OverviewMetrics({
       <SummaryMetric
         label="Total expenses"
         tone="total"
-        detail={`Across this ${group.trip ? 'trip' : 'group'} · ${group.currency}`}
+        detail={`This ${group.isHousehold ? 'Household source ledger only' : group.trip ? 'trip only' : 'group only'} · ${group.currency}`}
         icon={<AppIcon name="expense" />}
       >
         {group.balances?.__typename === 'GroupBalances' ? (
@@ -500,18 +504,34 @@ export function GroupBalances({
       <ViewerMetric scope={scope} group={group} />
       <p>
         {b.settled
-          ? 'Settled: every individual net is zero.'
+          ? 'Everyone in this space is settled: each member’s balance is zero.'
           : 'This group has outstanding balances.'}{' '}
         Recording a repayment does not move money.
       </p>
-      <h3>Member positions</h3>
+      <p>
+        Your balance is what you paid for expenses minus your allocated share,
+        plus repayments you sent, minus repayments you received. A positive
+        balance means you are owed money; a negative balance means you owe
+        money. Your share includes only amounts allocated to you, even when
+        someone else paid. Repayments do not change expense totals or shares.
+      </p>
+      <p>
+        For example, paying $60.00 with a $20.00 share means you are owed
+        $40.00. Receiving a $15.00 repayment leaves $25.00 owed to you. Paying
+        nothing with a $20.00 share means you owe $20.00; sending a $5.00
+        repayment leaves $15.00 to pay.
+      </p>
+      <Link href={`${spaceHref(group)}?tab=activity`}>
+        View Activity and expense before/after history
+      </Link>
+      <h3>Each member’s balance</h3>
       <div className="workspace-member-balances">
         {b.positions.map((p) => (
           <div className="balance-position" key={p.member.id}>
             <div className="ui-balance-row">
               <Member
                 name={p.member.displayName}
-                detail={`${minor(p.netMinor) > 0n ? 'Owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Settled'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
+                detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
               />
               <Money
                 value={money(p.netMinor).replace(/^-/, '')}
@@ -522,10 +542,10 @@ export function GroupBalances({
               <summary>Position details for {p.member.displayName}</summary>
               <dl className="balance-position-facts">
                 {[
-                  ['Paid', p.paidMinor],
-                  ['Share', p.owedMinor],
-                  ['Sent', p.sentMinor],
-                  ['Received', p.receivedMinor],
+                  ['Paid for expenses (+)', p.paidMinor],
+                  ['Allocated share (−)', p.owedMinor],
+                  ['Repayments sent (+)', p.sentMinor],
+                  ['Repayments received (−)', p.receivedMinor],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <dt>{label}</dt>
@@ -535,16 +555,28 @@ export function GroupBalances({
                   </div>
                 ))}
               </dl>
+              <p aria-label={`Balance calculation for ${p.member.displayName}`}>
+                {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
+                {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
+                {money(p.netMinor)} {group.currency}
+              </p>
             </details>
           </div>
         ))}
       </div>
-      <h3>Current simplified obligations</h3>
+      <h3>Who owes whom</h3>
       <p>
-        Each row identifies the sender, recipient and amount within {group.name}
-        . Original expenses are history, not additional debts.
+        These suggested repayments would settle the current balances within{' '}
+        {group.name}. They combine expense shares and recorded repayments, so do
+        not pay original expense amounts again on top of these amounts.
       </p>
-      {!b.obligations?.length && <p>No current simplified obligations.</p>}
+      {!b.obligations?.length && (
+        <p>
+          {b.settled
+            ? 'No repayments are needed in this space.'
+            : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+        </p>
+      )}
       {(b.obligations ?? []).map((o) => {
         const eligible = [o.from.id, o.to.id].every((id) =>
           group.members.some((m) => m.id === id && m.canParticipate),

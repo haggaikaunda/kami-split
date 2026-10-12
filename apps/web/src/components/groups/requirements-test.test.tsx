@@ -531,7 +531,9 @@ it('refreshes complete positions and repayment history after recording while exp
     },
   });
   await resolveGroup(data);
-  expect(host.textContent).toContain('Settled: every individual net is zero');
+  expect(host.textContent).toContain(
+    'Everyone in this space is settled: each member’s balance is zero',
+  );
   expect(host.textContent).toContain('Alice → Bob');
   expect(host.textContent).toContain('10.01 USD');
   mock.path = '/trips/T';
@@ -725,7 +727,7 @@ it.each([
     ).toHaveLength(1);
     expect(
       mock.requests.find((r) => r.name === 'householdAccessQuery'),
-    ).toBeDefined();
+    ).toBeUndefined();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       'Household ledger access is unavailable',
     );
@@ -744,16 +746,15 @@ it('Household ledger discovery and workspace discard old-account results immedia
   )!;
   await resolveGroup(householdViewer());
   const oldWorkspace = mock.requests.at(-1)!;
-  const oldHeader = mock.requests.find(
-    (r) => r.name === 'householdAccessQuery',
-  )!;
+  expect(mock.requests.some((r) => r.name === 'householdAccessQuery')).toBe(
+    false,
+  );
   mock.access = {
     scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
     loading: false,
   };
   await render(originalLedger());
   expect(oldDiscovery.canceled).toBe(true);
-  expect(oldHeader.canceled).toBe(true);
   expect(oldWorkspace.canceled).toBe(true);
   expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
   await act(async () => {

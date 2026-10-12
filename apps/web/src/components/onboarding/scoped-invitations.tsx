@@ -6,30 +6,41 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { useOnboarding } from './controller';
 import { InvitationPanel } from './invitations';
 import { ActionRecovery } from './recovery';
+import { PeopleList, type Person } from './people-list';
 import './onboarding.css';
 /** Mounted only from an authorized owner's Members workspace. Requests and
  * pending operations retain their original scope through route transitions. */
 export function ScopedInvitations({
   scope,
   group,
+  members,
+  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
+  members: readonly Person[];
+  onRefresh?: () => void | Promise<void>;
 }) {
   return (
     <InvitationVisit
       key={`${scope.id}:${group.id}`}
       scope={scope}
       group={group}
+      members={members}
+      onRefresh={onRefresh}
     />
   );
 }
 function InvitationVisit({
   scope,
   group,
+  members,
+  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
+  members: readonly Person[];
+  onRefresh?: () => void | Promise<void>;
 }) {
   const c = useOnboarding('invitations');
   const started = useRef(false);
@@ -46,9 +57,9 @@ function InvitationVisit({
     <section
       id="invitations"
       className="scoped-invitations"
-      aria-labelledby="invitations-heading"
+      aria-label={`People and invitations for ${group.name}`}
     >
-      <h2 id="invitations-heading">Invitations for {group.name}</h2>
+      {(c.loading || !c.session) && <PeopleList members={members} />}
       {c.loading ? (
         <Status kind="pending">Loading secure invitation access…</Status>
       ) : !c.session ? (
@@ -73,7 +84,7 @@ function InvitationVisit({
           ) : (
             <ActionRecovery state={c} />
           )}
-          <InvitationPanel state={c} />
+          <InvitationPanel state={c} members={members} onRefresh={onRefresh} />
         </>
       )}
     </section>

@@ -194,3 +194,144 @@ it('shows complete viewer expense allocations and payer amount without deriving 
     'Other members still have open obligations',
   );
 });
+
+it('explains authoritative expense and repayment contributions with exact displayed amounts', async () => {
+  nav.search = 'tab=balances';
+  const group = fixture('2500');
+  if (group.balances?.__typename !== 'GroupBalances')
+    throw new Error('fixture');
+  await render({
+    ...group,
+    isHousehold: true,
+    balances: {
+      ...group.balances,
+      positions: [
+        {
+          member: a,
+          paidMinor: '6000',
+          owedMinor: '2000',
+          sentMinor: '0',
+          receivedMinor: '1500',
+          netMinor: '2500',
+        },
+        {
+          member: b,
+          paidMinor: '0',
+          owedMinor: '2000',
+          sentMinor: '500',
+          receivedMinor: '0',
+          netMinor: '-1500',
+        },
+        {
+          member: c,
+          paidMinor: '0',
+          owedMinor: '2000',
+          sentMinor: '1000',
+          receivedMinor: '0',
+          netMinor: '-1000',
+        },
+      ],
+    },
+  });
+  expect(host.textContent).toContain('Household source ledger');
+  expect(host.textContent).toContain('Who owes whom');
+  expect(host.textContent).toContain(
+    'Repayments do not change expense totals or shares',
+  );
+  const calculations = [
+    ...host.querySelectorAll('[aria-label^="Balance calculation"]'),
+  ].map((node) => node.textContent?.replace(/\s+/g, ' '));
+  expect(calculations).toEqual([
+    '$60.00 − $20.00 + $0.00 − $15.00 = $25.00 USD',
+    '$0.00 − $20.00 + $5.00 − $0.00 = -$15.00 USD',
+    '$0.00 − $20.00 + $10.00 − $0.00 = -$10.00 USD',
+  ]);
+  expect(
+    host.querySelector(
+      '.group-balances a[href="/household/ledger?tab=activity"]',
+    )?.textContent,
+  ).toContain('before/after history');
+});
+
+it('distinguishes a fully repaid viewer from outstanding obligations between other members', async () => {
+  nav.search = 'tab=balances';
+  const group = fixture('0');
+  if (group.balances?.__typename !== 'GroupBalances')
+    throw new Error('fixture');
+  const balances = {
+    ...group.balances,
+    totalExpenseMinor: '6000',
+    settled: false,
+    positions: [
+      {
+        member: a,
+        paidMinor: '6000',
+        owedMinor: '2000',
+        sentMinor: '0',
+        receivedMinor: '4000',
+        netMinor: '0',
+      },
+      {
+        member: b,
+        paidMinor: '0',
+        owedMinor: '2000',
+        sentMinor: '3000',
+        receivedMinor: '0',
+        netMinor: '1000',
+      },
+      {
+        member: c,
+        paidMinor: '0',
+        owedMinor: '2000',
+        sentMinor: '1000',
+        receivedMinor: '0',
+        netMinor: '-1000',
+      },
+    ],
+    obligations: [{ from: c, to: b, amountMinor: '1000' }],
+  };
+  await render({ ...group, balances });
+  expect(host.textContent).toContain(
+    'Your balance is zero. Other members still have open obligations.',
+  );
+  expect(host.textContent).not.toContain('Everyone in this space is settled');
+  expect(
+    host.querySelector('[aria-label="Balance calculation for Alice"]')
+      ?.textContent,
+  ).toContain('$60.00 − $20.00 + $0.00 − $40.00 = $0.00 USD');
+  expect(
+    [...host.querySelectorAll('a[href*="repayments/new"]')].map((node) =>
+      node.getAttribute('href'),
+    ),
+  ).toEqual(['/groups/G/repayments/new?sender=c&recipient=b&amount=1000']);
+  await render({
+    ...group,
+    balances: {
+      ...balances,
+      settled: true,
+      positions: balances.positions.map((position) => ({
+        ...position,
+        sentMinor: position.member.id === 'c' ? '2000' : position.sentMinor,
+        receivedMinor:
+          position.member.id === 'b' ? '1000' : position.receivedMinor,
+        netMinor: '0',
+      })),
+      obligations: [],
+    },
+  });
+  expect(host.textContent).toContain(
+    'Everyone in this space is settled: each member’s balance is zero.',
+  );
+  expect(host.textContent).toContain('No repayments are needed in this space.');
+  expect(host.querySelector('a[href*="repayments/new"]')).toBeNull();
+  await render({
+    ...group,
+    balances: { __typename: 'Problem', code: 'UNAVAILABLE' },
+  } as unknown as WorkspaceGroup);
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    'Balances are unavailable',
+  );
+  expect(host.querySelector('.balance-position')).toBeNull();
+  expect(host.textContent).not.toContain('Everyone in this space is settled');
+  expect(host.textContent).not.toContain('$0.00');
+});

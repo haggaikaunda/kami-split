@@ -125,7 +125,9 @@ const scoped = async (id = 'group-a', name = 'House') => {
     isLive: () => true,
   } as unknown as FinancialScope;
   await act(async () =>
-    root.render(<ScopedInvitations scope={scope} group={{ id, name }} />),
+    root.render(
+      <ScopedInvitations scope={scope} group={{ id, name }} members={[]} />,
+    ),
   );
 };
 const button = (name: string) =>
@@ -1404,7 +1406,9 @@ it('keeps unresolved invitation recovery in its original workspace when navigati
     data: { ownerInvitations: { items: [], nextCursor: null } },
   });
   await scoped('group-b', 'Maui');
-  expect(container.textContent).toContain('Invitations for Maui');
+  expect(
+    container.querySelector('[aria-label="People and invitations for Maui"]'),
+  ).not.toBeNull();
   expect(container.textContent).toContain('belongs to another workspace');
   expect(container.querySelector('a')?.getAttribute('href')).toBe(
     '/invitations?group=group-a',
@@ -1446,7 +1450,9 @@ it('replaces invitation scope and ignores a late private listing response', asyn
       },
     }),
   );
-  expect(container.textContent).toContain('Invitations for Maui');
+  expect(
+    container.querySelector('[aria-label="People and invitations for Maui"]'),
+  ).not.toBeNull();
   expect(container.textContent).not.toContain('private@example.test');
   expect(
     requests
