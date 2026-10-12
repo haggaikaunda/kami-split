@@ -690,9 +690,12 @@ test('system-theme-and-isolated-signout', async (page) => {
   await system.focus();
   await page.keyboard.press('Space');
   assert.equal(await system.isChecked(), true);
-  await page
-    .getByRole('button', { name: 'Save appearance', exact: true })
-    .click();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Save appearance', exact: true })
+      .count(),
+    0,
+  );
   await page.waitForFunction(
     () =>
       JSON.parse(localStorage.getItem('kami-appearance') || '{}').value ===

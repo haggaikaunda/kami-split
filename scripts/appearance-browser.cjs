@@ -431,10 +431,8 @@ async function checkContrast(page) {
 
   if (process.env.TEXT_ONLY === '1') {
     preference = 'DARK';
-    await page.goto(origin + '/household');
-    await page
-      .getByRole('heading', { name: 'Recent expenses', exact: true })
-      .waitFor();
+    await page.goto(origin + '/account');
+    await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';
     });
@@ -445,7 +443,7 @@ async function checkContrast(page) {
       '200% text document overflow',
     );
     await page.screenshot({
-      path: path.join(output, `household-text200-dark-${width}.png`),
+      path: path.join(output, `account-text200-dark-${width}.png`),
       fullPage: true,
     });
     fs.writeFileSync(
@@ -474,10 +472,44 @@ async function checkContrast(page) {
     .waitFor();
   await page.getByRole('radio', { name: 'Light', exact: true }).waitFor();
   await theme('light');
+  assert.equal(
+    await page.getByRole('button', { name: 'Save appearance' }).count(),
+    0,
+  );
   await checkContrast(page);
+  const darkRadio = page.getByRole('radio', { name: 'Dark', exact: true });
+  await darkRadio.focus();
+  await page.keyboard.press('Space');
+  await theme('dark');
+  await page.getByText('Saving appearance…', { exact: true }).waitFor();
+  assert(
+    await darkRadio.evaluate((e) => e === document.activeElement),
+    'selection keeps focus during save',
+  );
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page
+    .getByText('Appearance saved for your account.', { exact: true })
+    .waitFor();
+  await theme('light');
+  assert(
+    await page.getByRole('radio', { name: 'Light', exact: true }).isChecked(),
+    'rapid keyboard selection keeps latest intent',
+  );
+  assert.equal(
+    preference,
+    'LIGHT',
+    'queued keyboard selection persists latest choice',
+  );
+  results.push({
+    keyboardRadioDuringSave: true,
+    latestKeyboardIntentPersisted: true,
+  });
   for (const choice of ['Dark', 'Light', 'System']) {
-    await page.getByRole('radio', { name: choice, exact: true }).check();
-    await page.getByRole('button', { name: 'Save appearance' }).click();
+    await page
+      .locator('.appearance-choice')
+      .filter({ has: page.getByRole('radio', { name: choice, exact: true }) })
+      .click();
     await page
       .getByText('Appearance saved for your account.', { exact: true })
       .waitFor();
@@ -488,8 +520,10 @@ async function checkContrast(page) {
     await theme(choice === 'Light' ? 'light' : 'dark');
     results.push({ choice, liveOSChange: true });
   }
-  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
-  await page.getByRole('button', { name: 'Save appearance' }).click();
+  await page
+    .locator('.appearance-choice')
+    .filter({ has: page.getByRole('radio', { name: 'Dark', exact: true }) })
+    .click();
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
@@ -521,20 +555,24 @@ async function checkContrast(page) {
     cachedFirstPaint: true,
   });
   await checkContrast(page);
+  // Approved #227 palette, also guarded by appearance-palette.test.ts.
   const canonical = {
-    canvas: '#0B111A',
-    surface: '#121A27',
-    'surface-raised': '#172131',
-    'surface-accent': '#142A2C',
-    separator: '#334153',
-    ink: '#F7F9FC',
-    muted: '#AEBACF',
-    primary: '#58EFB7',
-    'primary-surface': '#173C37',
-    indigo: '#9AA8FF',
-    'indigo-surface': '#202B47',
-    'warm-surface': '#FFF1DF',
-    'warm-ink': '#B66A2B',
+    canvas: '#0B111B',
+    surface: '#131D2C',
+    subtle: '#192535',
+    high: '#24364A',
+    chrome: '#101927',
+    separator: '#2A394C',
+    ink: '#F5F7FF',
+    muted: '#AFBED1',
+    primary: '#50E1B4',
+    container: '#163C35',
+    'on-container': '#79F0CB',
+    border: '#7D90A7',
+    violet: '#AAA2FF',
+    blue: '#7CBDFF',
+    orange: '#FFC27E',
+    coral: '#FF9CA8',
   };
   for (const [name, expected] of Object.entries(canonical)) {
     const actual = await page.evaluate(
@@ -668,9 +706,7 @@ async function checkContrast(page) {
   await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
   profileDelay = 1500;
   await page.reload();
-  await page
-    .getByText('Loading or saving appearance…', { exact: true })
-    .waitFor();
+  await page.getByText('Loading appearance…', { exact: true }).waitFor();
   await page.screenshot({
     path: path.join(output, `account-loading-dark-${width}.png`),
     fullPage: true,

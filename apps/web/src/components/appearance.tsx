@@ -12,9 +12,9 @@ import {
   cachedAppearance,
   type Appearance,
 } from '@/lib/appearance';
-const Context = createContext<(actor: string, value: Appearance) => void>(
-  () => {},
-);
+const Context = createContext<
+  (actor: string, value: Appearance, confirmed?: boolean) => void
+>(() => {});
 export const useApplyAppearance = () => useContext(Context);
 /** The session owns identity; late profile responses must never recolor a new account. */
 export function AppearanceProvider({
@@ -26,7 +26,9 @@ export function AppearanceProvider({
   loading: boolean;
   children: React.ReactNode;
 }) {
-  const accept = useRef<(actor: string, value: Appearance) => void>(() => {});
+  const accept = useRef<
+    (actor: string, value: Appearance, confirmed?: boolean) => void
+  >(() => {});
   useEffect(() => {
     if (loading) return;
     if (!scope) {
@@ -34,21 +36,24 @@ export function AppearanceProvider({
       return;
     }
     let live = true,
-      revision = 0;
+      revision = 0,
+      optimistic = false;
     let value = cachedAppearance(scope.actor);
     const apply = () => applyAppearance(value);
     apply();
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     media.addEventListener('change', apply);
-    accept.current = (actor, next) => {
+    accept.current = (actor, next, confirmed = true) => {
       if (!live || !scope.isLive() || actor !== scope.actor) return;
       revision++;
       value = next;
-      cacheAppearance(actor, value);
+      optimistic = !confirmed;
+      if (confirmed) cacheAppearance(actor, value);
       apply();
     };
     let pending: { unsubscribe(): void } | undefined;
     const refresh = () => {
+      if (optimistic) return;
       pending?.unsubscribe();
       const started = ++revision;
       pending = fetchQuery<appearanceQuery>(
@@ -81,7 +86,11 @@ export function AppearanceProvider({
     };
   }, [scope, loading]);
   return (
-    <Context.Provider value={(actor, value) => accept.current(actor, value)}>
+    <Context.Provider
+      value={(actor, value, confirmed) =>
+        accept.current(actor, value, confirmed)
+      }
+    >
       {children}
     </Context.Provider>
   );
