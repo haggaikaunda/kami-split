@@ -113,6 +113,10 @@ export function GroupJourney({
     'groupId',
     'category',
     'memberId',
+    'categories',
+    'memberIds',
+    'paidByIds',
+    'sort',
     'from',
     'to',
   ])

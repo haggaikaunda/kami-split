@@ -64,6 +64,78 @@ module.exports = async function verifyLedger({
     await page.locator('.ledger-month > header').nth(1).innerText(),
     /September 2026.*\$3.00\s+USD\s+· 1 expense/s,
   );
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Expense filters' });
+  await dialog.getByLabel('Groceries', { exact: true }).check();
+  await dialog.getByLabel('Dining', { exact: true }).check();
+  await dialog.locator('input[name="paidByIds"]').first().check();
+  await dialog.locator('input[name="memberIds"]').first().check();
+  await dialog.getByLabel(/^Date preset/).selectOption('last7');
+  assert.equal(
+    await dialog.locator('input[name="from"]').inputValue(),
+    '2026-09-29',
+  );
+  assert.equal(
+    await dialog.locator('input[name="to"]').inputValue(),
+    '2026-10-05',
+  );
+  await dialog.getByLabel(/^Sort/).selectOption('AMOUNT_DESC');
+  await dialog.getByRole('button', { name: 'Apply filters' }).click();
+  await page.waitForURL(
+    (url) => url.searchParams.get('sort') === 'AMOUNT_DESC',
+  );
+  await page.locator('#ledger-expense-e1').waitFor();
+  assert.deepEqual(
+    new URL(page.url()).searchParams.getAll('categories').sort(),
+    ['DINING', 'GROCERIES'],
+  );
+  assert.equal(
+    await page.locator('.ledger-month li').count(),
+    6,
+    'Filter resets loaded traversal',
+  );
+  assert(
+    await page
+      .getByRole('region', { name: 'Monthly totals', exact: true })
+      .isVisible(),
+  );
+  assert(
+    await page
+      .locator('.ledger-filter-button')
+      .evaluate((el) => el === document.activeElement),
+    'Apply restores filter trigger focus',
+  );
+  await page
+    .getByRole('button', { name: 'Remove Dining', exact: true })
+    .click();
+  await page.waitForURL(
+    (url) => url.searchParams.getAll('categories').length === 1,
+  );
+  assert(new URL(page.url()).searchParams.has('paidByIds'));
+  await page.goBack();
+  await page.waitForURL(
+    (url) => url.searchParams.getAll('categories').length === 2,
+  );
+  await page.locator('#ledger-expense-e1').waitFor();
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await dialog.waitFor();
+  await page.keyboard.press('Tab');
+  assert(
+    await dialog.evaluate((el) => el.contains(document.activeElement)),
+    'Keyboard remains in dialog',
+  );
+  assert(
+    await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth),
+    'Filter controls fit dialog',
+  );
+  await page.screenshot({
+    path: path.join(output, `filters-${workspace}-${width}-${scale}.png`),
+    fullPage: true,
+  });
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+  await page.waitForURL((url) => !url.searchParams.has('sort'));
+  await page.locator('#ledger-expense-e1').waitFor();
   await page.screenshot({
     path: path.join(output, `ledger-${workspace}-${width}-${scale}.png`),
     fullPage: true,
@@ -73,6 +145,12 @@ module.exports = async function verifyLedger({
     width,
     scale,
     ...metrics,
+    combinedMultiValueFilters: true,
+    inclusiveCalendarPreset: true,
+    amountOrderPresentation: true,
+    individualChipAndBack: true,
+    applyFocusRestoration: true,
+    filterDialogKeyboardAndOverflow: true,
     completeMonthTotals: true,
     keyboardDetailFocus: true,
     multipleMonths: true,

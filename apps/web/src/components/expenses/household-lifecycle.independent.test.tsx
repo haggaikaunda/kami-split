@@ -151,13 +151,13 @@ it.each(['householdDashboard', 'householdExpenses'])(
 it('preserves original filter identity when navigation changes during the composed request', async () => {
   await act(async () => root.render(<HouseholdLedger scope={scope} />));
   expect(requests[0].variables).toMatchObject({
-    filter: { category: 'GROCERIES' },
+    filter: { categories: ['GROCERIES'] },
   });
   search = 'category=TRANSPORT';
   await act(async () => root.render(<HouseholdLedger scope={scope} />));
   await act(async () => requests[0].next(result()));
   expect(requests).toHaveLength(1);
-  expect(host.textContent).toContain('category=GROCERIES');
+  expect(host.textContent).toContain('categories=GROCERIES');
   expect(host.textContent).not.toContain('TRANSPORT');
 });
 it('rejects late old-scope responses even when transport delivers after account disposal', async () => {
