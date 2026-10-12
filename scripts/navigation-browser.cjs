@@ -943,6 +943,7 @@ const activity = {
       await page
         .getByRole('button', { name: 'Edit expense', exact: true })
         .click();
+      await page.locator('#expense-note').waitFor({ state: 'attached' });
       if (!(await page.locator('#expense-note').isVisible()))
         await page
           .getByRole('button', { name: 'Add optional note', exact: true })

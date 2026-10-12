@@ -293,91 +293,26 @@ export function WorkspaceNavigation() {
     const links = nav.querySelector<HTMLElement>(
       '.workspace-navigation-links',
     )!;
-    const viewport = window.visualViewport;
-    const ios =
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    let focused = document.activeElement;
-    let viewportWidth = window.innerWidth;
-    let expandedHeight = Math.max(window.innerHeight, viewport?.height ?? 0);
+    // Measure occupied space only. CSS owns positioning; visual-viewport
+    // panning, browser toolbars and pinch zoom must not move global chrome.
     const update = () => {
-      const mobile = window.innerWidth <= 600;
-      // Keyboard resizing follows the visual viewport; pinch zoom stays browser-owned.
-      const normalScale = viewport && Math.abs(viewport.scale - 1) < 0.01;
-      const top = normalScale ? viewport.offsetTop : 0;
-      if (normalScale) {
-        // Safari can shrink innerHeight to the keyboard viewport during scrolling.
-        // Retain the expanded baseline until a width/orientation change.
-        const height = Math.max(window.innerHeight, viewport.height);
-        expandedHeight =
-          viewportWidth === window.innerWidth
-            ? Math.max(expandedHeight, height)
-            : height;
-        viewportWidth = window.innerWidth;
-      }
-      // iOS includes its floating input accessory bar inside the visual viewport.
-      // Reserve its observed toolbar plus clearance (64px) overlay only while an editable has a keyboard.
-      const accessory =
-        mobile &&
-        ios &&
-        normalScale &&
-        expandedHeight - viewport.height > 100 &&
-        focused?.matches(
-          'input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="range"], [type="color"], [type="file"], [type="hidden"]), textarea, [contenteditable]:not([contenteditable="false"])',
-        )
-          ? 64
-          : 0;
-      const bottom = normalScale
-        ? Math.max(
-            0,
-            window.innerHeight - viewport.height - viewport.offsetTop,
-          ) + accessory
-        : 0;
-      frame.style.setProperty('--chrome-top', `${top}px`);
-      frame.style.setProperty('--chrome-bottom', `${bottom}px`);
-      // Visual-viewport panning moves chrome, not document content.
       const header = brand.getBoundingClientRect().height;
-      const navHeight = links.getBoundingClientRect().height;
-      // Top anchoring avoids Safari's changing fixed-bottom containing viewport.
-      frame.style.setProperty(
-        '--chrome-nav-top',
-        mobile && normalScale
-          ? `${top + viewport.height - navHeight - accessory}px`
-          : 'auto',
-      );
-      frame.style.setProperty(
-        '--chrome-nav-bottom',
-        mobile && normalScale ? 'auto' : '0px',
-      );
-      const footer = mobile ? navHeight + bottom : 0;
+      const footer =
+        window.innerWidth <= 600 ? links.getBoundingClientRect().height : 0;
       frame.style.setProperty('--chrome-header', `${header}px`);
       frame.style.setProperty('--chrome-footer', `${footer}px`);
-      root.style.setProperty('--chrome-header', `${header + top}px`);
+      root.style.setProperty('--chrome-header', `${header}px`);
       root.style.setProperty('--chrome-footer', `${footer}px`);
-    };
-    const focusChanged = (event: FocusEvent) => {
-      const target =
-        event.type === 'focusout' ? event.relatedTarget : event.target;
-      focused = target instanceof Element ? target : null;
-      update();
     };
     update();
     const observer =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
     observer?.observe(brand);
     observer?.observe(links);
-    document.addEventListener('focusin', focusChanged);
-    document.addEventListener('focusout', focusChanged);
     window.addEventListener('resize', update);
-    viewport?.addEventListener('resize', update);
-    viewport?.addEventListener('scroll', update);
     return () => {
       observer?.disconnect();
-      document.removeEventListener('focusin', focusChanged);
-      document.removeEventListener('focusout', focusChanged);
       window.removeEventListener('resize', update);
-      viewport?.removeEventListener('resize', update);
-      viewport?.removeEventListener('scroll', update);
       root.style.removeProperty('--chrome-header');
       root.style.removeProperty('--chrome-footer');
     };

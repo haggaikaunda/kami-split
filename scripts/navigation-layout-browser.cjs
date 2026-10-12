@@ -68,13 +68,19 @@ module.exports = async function verifyLayout({
     });
     assert(!metrics.overflow, `${label}: horizontal page overflow`);
     assert(
-      metrics.header.y >= -1 && metrics.header.bottom < metrics.height,
+      Math.abs(metrics.header.y) <= 1 && metrics.header.bottom < metrics.height,
       `${label}: header unavailable`,
     );
     assert(
       metrics.nav.y >= -1 && metrics.nav.bottom <= metrics.height + 1,
       `${label}: navigation unavailable`,
     );
+    if (width <= 600) {
+      assert(
+        Math.abs(metrics.nav.bottom - metrics.height) <= 1,
+        `${label}: mobile navigation must touch the bottom edge`,
+      );
+    }
     if (width > 600) {
       assert(
         metrics.content.width <= 72 * 16 * scale + 1,
@@ -94,7 +100,20 @@ module.exports = async function verifyLayout({
     return metrics;
   }
   await page.evaluate(() => scrollTo(0, 0));
-  await geometry('top');
+  const initial = await geometry('top');
+  assert(
+    initial.content.y >= initial.header.bottom,
+    'Initial content below header',
+  );
+  assert(
+    initial.content.y - initial.header.bottom < 24 * scale,
+    'In-flow header must not reserve its height twice',
+  );
+  for (const delta of [180, 240, -120]) {
+    await page.mouse.wheel(0, delta);
+    await page.waitForTimeout(100);
+    await geometry(`wheel-${delta}`);
+  }
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   let metrics = await geometry('bottom');
   // Enlarged household rows can be taller than the usable viewport: both
@@ -143,6 +162,7 @@ module.exports = async function verifyLayout({
       'Keyboard focus is not behind bottom navigation',
     );
 
+  await page.evaluate(() => document.activeElement?.blur());
   await page.setViewportSize({ width, height: scale === 2 ? 600 : 420 });
   await page.waitForTimeout(100);
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));

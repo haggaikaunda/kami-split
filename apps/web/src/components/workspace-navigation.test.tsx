@@ -7,7 +7,7 @@ import { WorkspaceNavigation } from './workspace-identity';
 vi.mock('next/navigation', () => ({ usePathname: () => '/trips/summer' }));
 afterEach(() => vi.restoreAllMocks());
 
-it('reserves measured mobile chrome, follows keyboard resizing, and releases global offsets', () => {
+it('measures chrome without repositioning it during viewport, focus or zoom changes', () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone');
   vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(320);
@@ -55,62 +55,50 @@ it('reserves measured mobile chrome, follows keyboard resizing, and releases glo
     barHeight = 140;
     act(() => resized?.([], {} as ResizeObserver));
     expect(main.style.getPropertyValue('--chrome-footer')).toBe('140px');
-    viewport.height = 360;
-    act(() => viewport.dispatchEvent(new Event('resize')));
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
-    expect(
-      document.documentElement.style.getPropertyValue('--chrome-footer'),
-    ).toBe('420px');
     const input = document.createElement('input');
     main.append(input);
-    act(() => input.focus());
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('344px');
-    expect(main.style.getPropertyValue('--chrome-footer')).toBe('484px');
-    viewport.height = 540;
-    act(() => viewport.dispatchEvent(new Event('resize')));
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('100px');
+    const assertMeasuredClearance = () => {
+      expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
+      expect(main.style.getPropertyValue('--chrome-footer')).toBe('140px');
+      expect(
+        document.documentElement.style.getPropertyValue('--chrome-header'),
+      ).toBe('70px');
+      expect(
+        document.documentElement.style.getPropertyValue('--chrome-footer'),
+      ).toBe('140px');
+      for (const property of [
+        '--chrome-top',
+        '--chrome-bottom',
+        '--chrome-nav-top',
+        '--chrome-nav-bottom',
+      ]) {
+        expect(main.style.getPropertyValue(property)).toBe('');
+      }
+    };
+    // Toolbar resize and overscroll/panning without any focused input.
     viewport.height = 360;
-    viewport.offsetTop = 30;
-    act(() => viewport.dispatchEvent(new Event('scroll')));
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('314px');
-    expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
-    expect(
-      document.documentElement.style.getPropertyValue('--chrome-header'),
-    ).toBe('100px');
-    viewport.offsetTop = 0;
-
-    act(() => input.blur());
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
     viewport.offsetTop = 170;
+    act(() => viewport.dispatchEvent(new Event('resize')));
     act(() => viewport.dispatchEvent(new Event('scroll')));
-    expect(main.style.getPropertyValue('--chrome-top')).toBe('170px');
-    // Panning must not add padding that cancels Safari's movement of the field.
-    expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
-    expect(
-      document.documentElement.style.getPropertyValue('--chrome-header'),
-    ).toBe('240px');
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('110px');
-    viewport.offsetTop = 0;
-    act(() => viewport.dispatchEvent(new Event('scroll')));
-    input.type = 'checkbox';
+    assertMeasuredClearance();
     act(() => input.focus());
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('280px');
-    act(() => input.blur());
-    input.type = 'text';
-    act(() => input.focus());
-    viewport.offsetTop = 90;
-    viewport.height = 371;
     innerHeight.mockReturnValue(371);
-    act(() => viewport.dispatchEvent(new Event('scroll')));
-    // Safari changing innerHeight must not drop accessory clearance or shift the bar.
-    expect(main.style.getPropertyValue('--chrome-nav-top')).toBe('257px');
-    expect(main.style.getPropertyValue('--chrome-nav-bottom')).toBe('auto');
+    viewport.height = 371;
+    viewport.offsetTop = 90;
+    act(() => window.dispatchEvent(new Event('resize')));
+    assertMeasuredClearance();
     viewport.scale = 2;
     act(() => viewport.dispatchEvent(new Event('resize')));
-    expect(main.style.getPropertyValue('--chrome-bottom')).toBe('0px');
-    expect(main.style.getPropertyValue('--chrome-nav-top')).toBe('auto');
-    expect(main.style.getPropertyValue('--chrome-nav-bottom')).toBe('0px');
-    expect(main.style.getPropertyValue('--chrome-footer')).toBe('140px');
+    assertMeasuredClearance();
+    act(() => input.blur());
+    viewport.scale = 1;
+    viewport.offsetTop = 0;
+    viewport.height = 640;
+    act(() => viewport.dispatchEvent(new Event('resize')));
+    assertMeasuredClearance();
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(main.style.getPropertyValue('--chrome-footer')).toBe('0px');
   } finally {
     act(() => root.unmount());
     main.remove();
