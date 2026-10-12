@@ -1,3 +1,5 @@
+import { validCalendarDate as validDate } from '@/lib/dates';
+export { validCalendarDate as validDate } from '@/lib/dates';
 import type { CreateExpenseInput } from './__generated__/journeyCreateMutation.graphql';
 import {
   parsePercentage,
@@ -197,15 +199,6 @@ export function newDraft(
 /** Reject invalid Unicode and NUL before financial submission. */
 export function validText(value: string) {
   return !/[\u0000\uD800-\uDFFF]/u.test(value);
-}
-/** Strict Gregorian wire date validation, including leap days. */
-export function validDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000'))
-    return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return (
-    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
-  );
 }
 export function validate(draft: Draft, members: readonly Member[]) {
   const errors: Record<string, string> = {};

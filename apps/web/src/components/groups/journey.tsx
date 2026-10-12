@@ -1,4 +1,5 @@
 'use client';
+import { calendarDate } from '@/lib/dates';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { expenseFilterText } from '@/lib/relay/expense-filter';
@@ -392,11 +393,11 @@ function ViewerJourney({
                     <p>
                       {item.trip.destination} ·{' '}
                       <time dateTime={item.trip.startDate}>
-                        {item.trip.startDate}
+                        {calendarDate(item.trip.startDate)}
                       </time>{' '}
                       –{' '}
                       <time dateTime={item.trip.endDate}>
-                        {item.trip.endDate}
+                        {calendarDate(item.trip.endDate)}
                       </time>{' '}
                       · {tripState(item.trip, viewer.today)}
                     </p>

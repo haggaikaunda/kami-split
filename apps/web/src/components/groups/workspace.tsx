@@ -1,4 +1,5 @@
 'use client';
+import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
 import {
   overviewDate,
@@ -251,9 +252,12 @@ export function GroupWorkspace({
             <p className="workspace-context-detail">
               {group.trip.destination} ·{' '}
               <time dateTime={group.trip.startDate}>
-                {group.trip.startDate}
+                {calendarDate(group.trip.startDate)}
               </time>{' '}
-              – <time dateTime={group.trip.endDate}>{group.trip.endDate}</time>{' '}
+              –{' '}
+              <time dateTime={group.trip.endDate}>
+                {calendarDate(group.trip.endDate)}
+              </time>{' '}
               · {tripState(group.trip, today)}
             </p>
           )}
@@ -590,7 +594,9 @@ function RecentRepayments({ group }: { group: WorkspaceGroup }) {
             <li key={node.id}>
               {node.sender.displayName} → {node.recipient.displayName} ·{' '}
               {money(node.amountMinor)} USD ·{' '}
-              <time dateTime={node.effectiveDate}>{node.effectiveDate}</time>
+              <time dateTime={node.effectiveDate}>
+                {calendarDate(node.effectiveDate)}
+              </time>
               {node.note && <p>{node.note}</p>}
             </li>
           ))}

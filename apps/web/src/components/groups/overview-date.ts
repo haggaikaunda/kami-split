@@ -1,15 +1,15 @@
+import { calendarDate } from '@/lib/dates';
 /** Present a stored calendar date without shifting it into the device time zone. */
 export function overviewDate(
   value: string,
   month = false,
   includeYear = false,
 ) {
-  return new Intl.DateTimeFormat('en-US', {
+  return calendarDate(value, {
     month: month ? 'long' : 'short',
-    ...(month ? { year: 'numeric' as const } : { day: 'numeric' as const }),
-    ...(includeYear ? { year: 'numeric' as const } : {}),
-    timeZone: 'UTC',
-  }).format(new Date(`${value}T00:00:00Z`));
+    year: month || includeYear ? 'numeric' : undefined,
+    day: month ? undefined : 'numeric',
+  });
 }
 
 /** Label the actual range of recent rows, which can span months or years. */

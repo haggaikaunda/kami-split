@@ -1,3 +1,4 @@
+import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { Button, Field } from '@/components/primitives';
 import type { OnboardingController } from './controller';
 export function InvitationPanel({ state: c }: { state: OnboardingController }) {
@@ -76,8 +77,9 @@ export function InvitationPanel({ state: c }: { state: OnboardingController }) {
                   </strong>
                   <p>
                     {item.lifecycle} · Expires{' '}
-                    {new Date(item.expiresAt).toLocaleString()}
+                    <Timestamp value={item.expiresAt} />
                   </p>
+                  <ExactTimestamp value={item.expiresAt} />
                   {item.kind !== 'SHARED' && (
                     <p>
                       Send status: {item.delivery}. Provider acceptance does not

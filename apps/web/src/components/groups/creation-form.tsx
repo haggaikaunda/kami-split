@@ -399,8 +399,8 @@ export function CreationForm({
                     {
                       name: 'Name',
                       destination: 'Destination (optional)',
-                      startDate: 'Start date (UTC)',
-                      endDate: 'End date (UTC)',
+                      startDate: 'Start date',
+                      endDate: 'End date',
                     }[key]
                   }
                 </label>
