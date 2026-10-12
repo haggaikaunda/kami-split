@@ -19,7 +19,11 @@ including zero shares. No search control or client filtering is provided. A
 filter change starts a new traversal. Initial requests and Load more request six
 rows; Load more appends the ordered server page;
 headline count/total and month subtotals always use server aggregates rather
-than sums of loaded rows. Money formatting uses canonical strings and `bigint`.
+than sums of loaded rows. Under #239, each displayed month header immediately
+shows its complete filtered total and count. Desktop records align description,
+category/source/date, payer and right-aligned amounts; mobile records stack payer
+and amount where needed. Long labels wrap without truncating the accessible link.
+Money formatting uses canonical strings and `bigint`.
 
 An expense selection adds `expense` and `expenseGroup` to the originating URL.
 The native dialog is a contextual desktop panel and full-screen phone detail.
@@ -76,3 +80,9 @@ percentages are rounded to one decimal place and may not sum to exactly 100%.
 Chart geometry converts only bounded integer ratios to numbers. Selecting a
 category and View expenses retains the other filters. A fresh traversal after an
 edit refreshes category/share aggregates along with list/month totals.
+
+Run `LEDGER_TESTS=1` with `scripts/navigation-browser.cjs` (using the browser
+configuration in [workspace loading](../navigation/workspace-loading.md)) for
+the #239 regression at 320/390/1440px and 100%/200% text. It exercises long
+labels, complete month totals beyond the first six rows, multiple months, aligned
+amounts and keyboard detail/focus restoration in Group and Household workspaces.
