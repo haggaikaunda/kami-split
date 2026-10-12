@@ -18,7 +18,9 @@ export function ExactTimestamp({ value }: { value: string }) {
   return (
     <details>
       <summary>Exact timestamp</summary>
-      <time dateTime={value}>{value}</time>
+      <time dateTime={value} style={{ overflowWrap: 'anywhere' }}>
+        {value}
+      </time>
     </details>
   );
 }
