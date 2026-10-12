@@ -476,9 +476,9 @@ type ExpenseView struct {
 	ExpenseCount ledger.MinorUnits `json:"expenseCount"`
 	// Complete matching calendar-month subtotals/counts, descending YYYY-MM; no empty month placeholders.
 	Months []*ExpenseMonth `json:"months"`
-	// Merged order: effectiveDate, createdAt, original group UUID and expense UUID, all descending.
+	// Full-result order selected by filter.sort, default effectiveDate descending. Deterministic ties use createdAt, original group UUID and expense UUID; amount orders use effectiveDate before those ties.
 	Edges []*ExpenseViewEdge `json:"edges"`
-	// Forward-only traversal. Cursors bind actor/scope, structured filters, eligible membership/account generations and revision anchors.
+	// Forward-only traversal. Cursors bind actor/scope, structured filters and sort, eligible membership/account generations and revision anchors.
 	PageInfo *PageInfo `json:"pageInfo"`
 }
 
@@ -1078,13 +1078,21 @@ type RepaymentOperationRecord struct {
 type StructuredExpenseFilter struct {
 	// One currently authorized eligible source Group ID; absent means All.
 	GroupID *string `json:"groupId,omitempty"`
-	// Same-group Membership ID matching payer OR explicit allocation, including zero share. It filters only its original group, never a global person; with groupId it must belong to that group.
+	// Categories combined with OR; all different filter fields combine with AND.
+	Categories []Category `json:"categories,omitempty"`
+	// Original Membership IDs matching payer or saved split participant, including zero shares. Every ID must be authorized within the selected scope.
+	MemberIds []string `json:"memberIds,omitempty"`
+	// Original Membership IDs matching only the payer, combined with OR. Every ID must be authorized within the selected scope.
+	PaidByIds []string `json:"paidByIds,omitempty"`
+	// Complete-result order, default DATE_DESC. Ties use created time, source UUID and expense UUID in the selected direction.
+	Sort *ExpenseSort `json:"sort,omitempty"`
+	// Legacy single Involving Membership ID, combined with memberIds using OR. Matches payer OR saved allocation including zero share, only in its original group.
 	MemberID *string `json:"memberId,omitempty"`
 	// Inclusive minimum effective date; valid Gregorian YYYY-MM-DD.
 	From *ledger.Date `json:"from,omitempty"`
 	// Inclusive maximum effective date at or after from.
 	To *ledger.Date `json:"to,omitempty"`
-	// Authoritative category; absent means all categories.
+	// Legacy single category, combined with categories using OR; absent selections mean all categories.
 	Category *Category `json:"category,omitempty"`
 }
 
@@ -1529,6 +1537,70 @@ func (e *ExpenseEditLockReason) UnmarshalJSON(b []byte) error {
 }
 
 func (e ExpenseEditLockReason) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Full authorized result ordering; amount ties additionally use effective date.
+type ExpenseSort string
+
+const (
+	// Newest effective date first.
+	ExpenseSortDateDesc ExpenseSort = "DATE_DESC"
+	// Oldest effective date first.
+	ExpenseSortDateAsc ExpenseSort = "DATE_ASC"
+	// Largest exact face value first.
+	ExpenseSortAmountDesc ExpenseSort = "AMOUNT_DESC"
+	// Smallest exact face value first.
+	ExpenseSortAmountAsc ExpenseSort = "AMOUNT_ASC"
+)
+
+var AllExpenseSort = []ExpenseSort{
+	ExpenseSortDateDesc,
+	ExpenseSortDateAsc,
+	ExpenseSortAmountDesc,
+	ExpenseSortAmountAsc,
+}
+
+func (e ExpenseSort) IsValid() bool {
+	switch e {
+	case ExpenseSortDateDesc, ExpenseSortDateAsc, ExpenseSortAmountDesc, ExpenseSortAmountAsc:
+		return true
+	}
+	return false
+}
+
+func (e ExpenseSort) String() string {
+	return string(e)
+}
+
+func (e *ExpenseSort) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ExpenseSort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ExpenseSort", str)
+	}
+	return nil
+}
+
+func (e ExpenseSort) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ExpenseSort) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ExpenseSort) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

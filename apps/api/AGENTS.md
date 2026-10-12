@@ -14,8 +14,13 @@ and complete monthly totals/counts independent of page size. Issue #223 adds
 complete category totals/counts and exact viewer allocation/payer amounts from
 the same filtered anchored dataset; dashboard totals also expose complete viewer
 share/paid. These expense-spending amounts exclude repayments. Filters combine source
-group, category, inclusive dates and a same-group Membership ID matching the payer
-or an explicit participant (including zero-share participants). The legacy
+group, multiple categories, inclusive calendar dates, Involving Membership IDs
+(payer or saved split participant, including zero shares), and separate Paid by
+Membership IDs (payer only). Fields combine with AND; alternatives within each
+field combine with OR. Every selected Membership ID must belong to the authorized
+scope and any selected group. Date and exact amount sorting support both directions
+over the complete anchored dataset; ties use date (for amount), creation time,
+source UUID and expense UUID in the selected direction. The legacy
 `Group.expenses` participant-only filter remains unchanged. Signed continuation
 cursors bind scope, filters, current authorized eligibility and per-space financial
 anchors; rows and summaries share the anchored dataset, while every request checks

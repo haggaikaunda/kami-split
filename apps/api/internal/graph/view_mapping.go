@@ -17,6 +17,14 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 		request.HasAfter = true
 	}
 	if filter != nil {
+		request.Filter.MemberIDs = append([]string(nil), filter.MemberIds...)
+		request.Filter.PaidByIDs = append([]string(nil), filter.PaidByIds...)
+		for _, category := range filter.Categories {
+			request.Filter.Categories = append(request.Filter.Categories, string(category))
+		}
+		if filter.Sort != nil {
+			request.Filter.Sort = string(*filter.Sort)
+		}
 		if filter.GroupID != nil {
 			request.Filter.GroupID = *filter.GroupID
 			request.GroupFilterPresent = true

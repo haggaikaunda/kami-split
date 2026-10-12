@@ -732,14 +732,16 @@ const activity = {
     const filterControls = page.getByRole('dialog', {
       name: 'Expense filters',
     });
-    await filterControls.getByLabel('Category').selectOption('GROCERIES');
+    await filterControls.getByLabel('Groceries', { exact: true }).check();
     await filterControls.getByRole('button', { name: 'Apply filters' }).click();
     await page.waitForURL(
-      (url) => url.searchParams.get('category') === 'GROCERIES',
+      (url) => url.searchParams.get('categories') === 'GROCERIES',
     );
     await page.locator('#ledger-expense-e1').waitFor();
     assert(
-      log.some((request) => request.variables.filter?.category === 'GROCERIES'),
+      log.some((request) =>
+        request.variables.filter?.categories?.includes('GROCERIES'),
+      ),
       'filter not sent to server',
     );
     if (process.env.MATERIAL_TESTS === '1') {
@@ -756,7 +758,7 @@ const activity = {
         fullPage: true,
       });
       assert.equal(
-        new URL(page.url()).searchParams.get('category'),
+        new URL(page.url()).searchParams.get('categories'),
         'GROCERIES',
       );
       assert(
@@ -834,7 +836,7 @@ const activity = {
         .click();
       await page.locator('#ledger-expense-e1').waitFor();
       assert.equal(
-        new URL(page.url()).searchParams.get('category'),
+        new URL(page.url()).searchParams.get('categories'),
         'GROCERIES',
       );
       results.push({

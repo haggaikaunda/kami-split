@@ -17,6 +17,8 @@ import {
   filterKeys,
   expenseFilterText,
   expenseFilter,
+  filterValues,
+  datePreset,
 } from '@/lib/relay/expense-filter';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { categories, type Member } from '@/lib/relay/draft';
@@ -59,13 +61,17 @@ export function ExpenseLedger(
 ) {
   const params = useSearchParams();
   const [initialView, setInitialView] = useState(props.initialView);
-  const filters = filterKeys.map((key) => params.get(key) ?? '').join('\n');
+  const filters = expenseFilterText(params);
   const filterTrigger = useRef<HTMLButtonElement>(null);
   const restoreFilterScope = useRef<string | null>(null);
   useEffect(() => {
-    if (restoreFilterScope.current === props.scope.id)
-      filterTrigger.current?.focus({ preventScroll: true });
+    const restore = restoreFilterScope.current === props.scope.id;
     restoreFilterScope.current = null;
+    if (!restore) return;
+    const frame = requestAnimationFrame(() =>
+      filterTrigger.current?.focus({ preventScroll: true }),
+    );
+    return () => cancelAnimationFrame(frame);
   }, [filters, props.scope.id]);
   return (
     <LedgerContent
@@ -116,7 +122,7 @@ function LedgerContent({
     router = useRouter(),
     pathname = usePathname();
   const filterText = expenseFilterText(params);
-  const activeFilterKeys = filterKeys.filter((key) => params.get(key));
+  const activeFilters = [...new URLSearchParams(filterText).entries()];
   const initial = useRef(initialView);
   const selected = params.get('expense') ?? '',
     source = params.get('expenseGroup') ?? groupId;
@@ -137,11 +143,16 @@ function LedgerContent({
   const generation = useRef(0);
   const requestRef = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const summary = useRef<HTMLDivElement>(null);
-  const change = (patch: Record<string, string | null>, replace = false) => {
+  const change = (
+    patch: Record<string, string | string[] | null>,
+    replace = false,
+  ) => {
     const next = new URLSearchParams(params);
-    Object.entries(patch).forEach(([key, value]) =>
-      value ? next.set(key, value) : next.delete(key),
-    );
+    Object.entries(patch).forEach(([key, value]) => {
+      next.delete(key);
+      for (const item of Array.isArray(value) ? value : value ? [value] : [])
+        next.append(key, item);
+    });
     const href = `${pathname}?${next}`;
     startNavigation(() => {
       if (replace) router.replace(href, { scroll: false });
@@ -279,10 +290,17 @@ function LedgerContent({
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const patch = Object.fromEntries(
-          filterKeys.map((key) => [key, String(data.get(key) || '')]),
+          filterKeys.map((key) => [
+            key,
+            data.getAll(key).map(String).filter(Boolean),
+          ]),
         );
-        if (groupId) patch.groupId = '';
-        onFilterApply(filterKeys.map((key) => patch[key]).join('\n'));
+        if (groupId) patch.groupId = [];
+        if (patch.sort[0] === 'DATE_DESC') patch.sort = [];
+        const applied = new URLSearchParams();
+        for (const [key, values] of Object.entries(patch))
+          for (const value of values) applied.append(key, value);
+        onFilterApply(expenseFilterText(applied));
         reset();
         change({ ...patch, expense: null, expenseGroup: null, create: null });
         setFiltersOpen(false);
@@ -301,30 +319,80 @@ function LedgerContent({
           </select>
         </label>
       )}
-      <label>
-        <span>Category</span>
-        <select name="category" defaultValue={params.get('category') ?? ''}>
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c[0] + c.slice(1).toLowerCase()}
-            </option>
+      <fieldset className="ledger-filter-options">
+        <legend>Categories</legend>
+        {categories.map((c) => (
+          <label key={c}>
+            <input
+              type="checkbox"
+              name="categories"
+              value={c}
+              defaultChecked={filterValues(params, 'categories').includes(c)}
+            />
+            <span>{c[0] + c.slice(1).toLowerCase()}</span>
+          </label>
+        ))}
+      </fieldset>
+      {(['paidByIds', 'memberIds'] as const).map((key) => (
+        <fieldset className="ledger-filter-options" key={key}>
+          <legend>{key === 'paidByIds' ? 'Paid by' : 'Involving'}</legend>
+          {key === 'memberIds' && (
+            <p>Payer or included participant, including a zero share.</p>
+          )}
+          {spaces.map((space) => (
+            <div key={space.groupId}>
+              <strong>{space.name}</strong>
+              {space.members.map((member) => (
+                <label key={member.id}>
+                  <input
+                    type="checkbox"
+                    name={key}
+                    value={member.id}
+                    defaultChecked={filterValues(params, key).includes(
+                      member.id,
+                    )}
+                  />
+                  <span>
+                    {member.displayName} · {space.name}
+                  </span>
+                </label>
+              ))}
+            </div>
           ))}
+        </fieldset>
+      ))}
+      <label>
+        <span>Date preset</span>
+        <select
+          defaultValue="custom"
+          onChange={(event) => {
+            if (event.target.value === 'custom') return;
+            const range = datePreset(today, event.target.value);
+            for (const key of ['from', 'to'] as const) {
+              const input = event.currentTarget.form?.elements.namedItem(key);
+              if (input instanceof HTMLInputElement) input.value = range[key];
+            }
+          }}
+        >
+          <option value="custom">Custom dates</option>
+          <option value="all">All dates</option>
+          <option value="today">Today</option>
+          <option value="last7">Last 7 days</option>
+          <option value="month">This month to date</option>
+          <option value="previousMonth">Previous month</option>
         </select>
       </label>
+      <p>
+        Dates include both endpoints. Presets use the server calendar date (
+        {today}); last 7 days includes today and the six preceding dates.
+      </p>
       <label>
-        <span>Member</span>
-        <select name="memberId" defaultValue={params.get('memberId') ?? ''}>
-          <option value="">All members</option>
-          {spaces.map((s) => (
-            <optgroup label={s.name} key={s.groupId}>
-              {s.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName} · {s.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
+        <span>Sort</span>
+        <select name="sort" defaultValue={params.get('sort') || 'DATE_DESC'}>
+          <option value="DATE_DESC">Date: newest first</option>
+          <option value="DATE_ASC">Date: oldest first</option>
+          <option value="AMOUNT_DESC">Amount: highest first</option>
+          <option value="AMOUNT_ASC">Amount: lowest first</option>
         </select>
       </label>
       <label>
@@ -351,7 +419,14 @@ function LedgerContent({
                   field instanceof HTMLInputElement ||
                   field instanceof HTMLSelectElement
                 )
-                  field.value = '';
+                  if (
+                    field instanceof HTMLInputElement &&
+                    field.type === 'checkbox'
+                  )
+                    field.checked = false;
+                  else
+                    field.value =
+                      field.getAttribute('name') === 'sort' ? 'DATE_DESC' : '';
               }
           }}
         >
@@ -419,13 +494,13 @@ function LedgerContent({
           </span>
         </details>
         <button
-          aria-label={`Filters${activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}`}
+          aria-label={`Filters${activeFilters.length ? ` · ${activeFilters.length}` : ''}`}
           ref={filterTrigger}
           className="ledger-filter-button"
           onClick={() => setFiltersOpen(true)}
         >
           <AppIcon name="sliders" /> Filters
-          {activeFilterKeys.length ? ` · ${activeFilterKeys.length}` : ''}
+          {activeFilters.length ? ` · ${activeFilters.length}` : ''}
         </button>
         <div className="ledger-page-actions">
           <button
@@ -443,12 +518,11 @@ function LedgerContent({
           </button>
         </div>
       </div>
-      {activeFilterKeys.length > 0 && (
+      {activeFilters.length > 0 && (
         <div className="ledger-active-filters" aria-label="Active filters">
-          {activeFilterKeys.map((key) => {
-            const value = params.get(key)!;
+          {activeFilters.map(([key, value]) => {
             const memberSpaces =
-              key === 'memberId'
+              key === 'memberIds' || key === 'paidByIds'
                 ? spaces.filter((space) =>
                     space.members.some((member) => member.id === value),
                   )
@@ -466,21 +540,33 @@ function LedgerContent({
             const label =
               key === 'groupId'
                 ? `Space: ${spaces.find((space) => space.groupId === value)?.name ?? 'Selected space'}`
-                : key === 'memberId'
+                : key === 'memberIds' || key === 'paidByIds'
                   ? memberSpace
-                    ? `${memberSpace.members.find((member) => member.id === value)!.displayName} · ${memberSpace.name}`
+                    ? `${key === 'paidByIds' ? 'Paid by' : 'Involving'}: ${memberSpace.members.find((member) => member.id === value)!.displayName} · ${memberSpace.name}`
                     : 'Selected member'
-                  : key === 'category'
+                  : key === 'categories'
                     ? value[0] + value.slice(1).toLowerCase()
-                    : `${key === 'from' ? 'From' : 'To'} ${!validDate ? value : overviewDate(value, false, value.slice(0, 4) !== today.slice(0, 4))}`;
+                    : key === 'sort'
+                      ? `Sort: ${{ DATE_ASC: 'Date: oldest first', AMOUNT_ASC: 'Amount: lowest first', AMOUNT_DESC: 'Amount: highest first' }[value] ?? value}`
+                      : `${key === 'from' ? 'From' : 'To'} ${!validDate ? value : overviewDate(value, false, value.slice(0, 4) !== today.slice(0, 4))}`;
             return (
               <button
-                key={key}
+                key={`${key}:${value}`}
                 className="ledger-filter-chip"
                 aria-label={`Remove ${label}`}
                 onClick={() => {
                   reset();
-                  change({ [key]: null });
+                  change({
+                    [key]: filterValues(
+                      new URLSearchParams(filterText),
+                      key,
+                    ).filter((item) => item !== value),
+                    ...(key === 'categories'
+                      ? { category: null }
+                      : key === 'memberIds'
+                        ? { memberId: null }
+                        : {}),
+                  });
                 }}
               >
                 {label} <AppIcon name="close" />
@@ -540,8 +626,25 @@ function LedgerContent({
                   change({ basis: next === 'share' ? 'share' : null })
                 }
                 onViewExpenses={(category) => {
-                  if (category && category !== params.get('category')) reset();
-                  change({ view: null, ...(category ? { category } : {}) });
+                  if (
+                    category &&
+                    !filterValues(params, 'categories').includes(category)
+                  )
+                    reset();
+                  change({
+                    view: null,
+                    ...(category
+                      ? {
+                          category: null,
+                          categories: [
+                            ...new Set([
+                              ...filterValues(params, 'categories'),
+                              category,
+                            ]),
+                          ],
+                        }
+                      : {}),
+                  });
                 }}
               />
             ) : (
@@ -553,7 +656,40 @@ function LedgerContent({
                       : 'No expenses yet.'}
                   </p>
                 )}
-                {page.months
+                {params.get('sort')?.startsWith('AMOUNT_') && (
+                  <section
+                    className="ledger-month-summaries"
+                    aria-label="Monthly totals"
+                  >
+                    <h2>Monthly totals for all matching expenses</h2>
+                    {page.months.map((month) => (
+                      <p key={month.month}>
+                        {month.month}:{' '}
+                        <Money
+                          value={money(month.totalExpenseMinor)}
+                          currency="USD"
+                        />{' '}
+                        · {month.expenseCount} expenses
+                      </p>
+                    ))}
+                  </section>
+                )}
+                {(params.get('sort')?.startsWith('AMOUNT_')
+                  ? [
+                      {
+                        month: '',
+                        totalExpenseMinor: page.totalExpenseMinor,
+                        expenseCount: page.expenseCount,
+                      },
+                    ]
+                  : [
+                      ...new Set(
+                        rows.map(({ node }) => node.effectiveDate.slice(0, 7)),
+                      ),
+                    ].flatMap((month) =>
+                      page.months.filter((item) => item.month === month),
+                    )
+                )
                   .filter((month) =>
                     rows.some(({ node }) =>
                       node.effectiveDate.startsWith(month.month),
@@ -567,11 +703,13 @@ function LedgerContent({
                     >
                       <header>
                         <h2>
-                          {new Intl.DateTimeFormat('en', {
-                            month: 'long',
-                            year: 'numeric',
-                            timeZone: 'UTC',
-                          }).format(new Date(`${month.month}-01T00:00:00Z`))}
+                          {month.month
+                            ? new Intl.DateTimeFormat('en', {
+                                month: 'long',
+                                year: 'numeric',
+                                timeZone: 'UTC',
+                              }).format(new Date(`${month.month}-01T00:00:00Z`))
+                            : 'Expenses in amount order'}
                         </h2>
                         <span className="ledger-month-total">
                           <Money

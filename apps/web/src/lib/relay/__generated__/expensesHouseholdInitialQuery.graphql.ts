@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5d8d14d874f4a8dc7ceda9e1c93c4e97>>
+ * @generated SignedSource<<87febfe2f8192ea25cff1ed9aeaa5483>>
  * @lightSyntaxTransform
  */
 
@@ -11,14 +11,19 @@ import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
+export type ExpenseSort = "AMOUNT_ASC" | "AMOUNT_DESC" | "DATE_ASC" | "DATE_DESC" | "%future added value";
 export type HouseholdDashboardState = "COMPLETE" | "INCOMPLETE" | "UNAVAILABLE" | "%future added value";
 export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type MembershipStatus = "ACTIVE" | "INACTIVE" | "%future added value";
 export type StructuredExpenseFilter = {
+  categories?: ReadonlyArray<Category> | null | undefined;
   category?: Category | null | undefined;
   from?: string | null | undefined;
   groupId?: string | null | undefined;
   memberId?: string | null | undefined;
+  memberIds?: ReadonlyArray<string> | null | undefined;
+  paidByIds?: ReadonlyArray<string> | null | undefined;
+  sort?: ExpenseSort | null | undefined;
   to?: string | null | undefined;
 };
 export type expensesHouseholdInitialQuery$variables = {

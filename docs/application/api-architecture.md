@@ -7,8 +7,13 @@ The authenticated `householdDashboard` read implements the [ADR-007 summary](dec
 The #169 `householdExpenses` and `groupExpenses` reads add structured-filtered
 expense views with original-space attribution, complete face-value totals/counts,
 and complete monthly totals/counts independent of page size. Filters combine source
-group, category, inclusive dates and a same-group Membership ID matching the payer
-or an explicit participant (including zero-share participants). The legacy
+group, multiple categories, inclusive calendar dates, Involving Membership IDs
+(payer or saved split participant, including zero shares), and separate Paid by
+Membership IDs (payer only). Fields combine with AND; alternatives within each
+field combine with OR. Every selected Membership ID must belong to the authorized
+scope and any selected group. Date and exact amount sorting support both directions
+over the complete anchored dataset; ties use date (for amount), creation time,
+source UUID and expense UUID in the selected direction. The legacy
 `Group.expenses` participant-only filter remains unchanged. Signed continuation
 cursors bind scope, filters, current authorized eligibility and per-space financial
 anchors; rows and summaries share the anchored dataset, while every request checks

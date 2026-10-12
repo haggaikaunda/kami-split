@@ -235,7 +235,11 @@ it('distinguishes filtered empty and forwards payer/member filters to server', a
   state.params = 'category=DINING&memberId=other&from=2026-09-01';
   await render();
   expect(state.requests[0].variables).toMatchObject({
-    filter: { category: 'DINING', memberId: 'other', from: '2026-09-01' },
+    filter: {
+      categories: ['DINING'],
+      memberIds: ['other'],
+      from: '2026-09-01',
+    },
   });
   await respond({
     ...page([]),
@@ -265,7 +269,7 @@ it('starts a new traversal when browser history changes structured filters after
   await render();
   expect(state.requests.at(-1)?.variables).toMatchObject({
     after: null,
-    filter: { category: 'GROCERIES' },
+    filter: { categories: ['GROCERIES'] },
   });
   expect(host.textContent).not.toContain('Dinner one');
 });
@@ -467,12 +471,12 @@ it('edits structured filters in a dialog and applies an explicit reset to the UR
   await respond(page());
   expect(host.querySelector('form.ledger-filters')).toBeNull();
   await click('Filters · 2');
-  const category = host.querySelector<HTMLSelectElement>(
-    'select[name="category"]',
+  const category = host.querySelector<HTMLInputElement>(
+    'input[name="categories"][value="DINING"]',
   )!;
-  expect(category.value).toBe('DINING');
+  expect(category.checked).toBe(true);
   await click('Reset filters');
-  expect(category.value).toBe('');
+  expect(category.checked).toBe(false);
   expect(
     host.querySelector<HTMLInputElement>('input[name="from"]')!.value,
   ).toBe('');
@@ -506,7 +510,7 @@ it('preserves combined filters while switching views and drilling into complete 
     'https://example.test',
   );
   expect(next.searchParams.get('view')).toBeNull();
-  expect(next.searchParams.get('category')).toBe('DINING');
+  expect(next.searchParams.get('categories')).toBe('DINING');
   expect(next.searchParams.get('memberId')).toBe('me');
   expect(next.searchParams.get('from')).toBe('2026-09-01');
   expect(next.searchParams.get('to')).toBe('2026-09-30');
@@ -537,10 +541,10 @@ it('names the member source and past filter year without changing filter values'
     ),
   ).toEqual([
     'Space: Home',
-    'Dining',
-    'Alice · Home',
     'From Sep 1, 2025',
     'To Sep 3',
+    'Dining',
+    'Involving: Alice · Home',
   ]);
   expect(host.querySelector('.ledger-filter-button')?.textContent).toContain(
     'Filters · 5',
@@ -548,8 +552,8 @@ it('names the member source and past filter year without changing filter values'
   expect(state.requests[0].variables).toMatchObject({
     filter: {
       groupId: 'home',
-      category: 'DINING',
-      memberId: 'me',
+      categories: ['DINING'],
+      memberIds: ['me'],
       from: '2025-09-01',
       to: '2026-09-03',
     },
@@ -626,4 +630,75 @@ it('offers a descriptive keyboard-native balance disclosure and canonical detail
   const summary = host.querySelector('.ledger-net summary')!;
   expect(summary.textContent).toContain('Balance details');
   expect(host.querySelector('.ledger-net')?.tagName).toBe('DETAILS');
+});
+
+it('preserves interleaved month order for amount sort and displays complete monthly totals', async () => {
+  state.params = 'sort=AMOUNT_DESC';
+  await render();
+  await respond({
+    ...page([
+      edge('large', '2026-08-01', '300'),
+      edge('middle', '2026-09-01', '200'),
+      edge('small', '2026-08-02', '100'),
+    ]),
+    months: [
+      { month: '2026-09', totalExpenseMinor: '200', expenseCount: '1' },
+      { month: '2026-08', totalExpenseMinor: '400', expenseCount: '2' },
+    ],
+  });
+  expect(
+    [...host.querySelectorAll('.ledger-description strong')].map(
+      (el) => el.textContent,
+    ),
+  ).toEqual(['Dinner large', 'Dinner middle', 'Dinner small']);
+  expect(
+    host.querySelector('[aria-label="Monthly totals"]')?.textContent,
+  ).toContain('2026-08: $4.00');
+});
+it('uses server encounter order for ascending date month groups', async () => {
+  state.params = 'sort=DATE_ASC';
+  await render();
+  await respond({
+    ...page([edge('first', '2026-08-01'), edge('second', '2026-09-01')]),
+    months: [
+      { month: '2026-09', totalExpenseMinor: '2', expenseCount: '1' },
+      { month: '2026-08', totalExpenseMinor: '1', expenseCount: '1' },
+    ],
+  });
+  expect(
+    [...host.querySelectorAll('.ledger-month')].map((el) =>
+      el.getAttribute('aria-label'),
+    ),
+  ).toEqual(['2026-08', '2026-09']);
+});
+it('restarts paging when only a second selected value changes and ignores the superseded response', async () => {
+  state.params = 'categories=DINING&categories=GROCERIES';
+  await render();
+  await respond(page(undefined, true));
+  await click('Load more expenses');
+  const old = state.requests.at(-1)!;
+  state.params = 'categories=DINING&categories=TRANSPORT';
+  await render();
+  expect(state.requests.at(-1)?.variables).toMatchObject({
+    after: null,
+    filter: { categories: ['DINING', 'TRANSPORT'] },
+  });
+  await act(async () =>
+    old.next?.({ householdExpenses: page([edge('stale', '2026-09-02')]) }),
+  );
+  expect(host.textContent).not.toContain('Dinner stale');
+  await respond(page([edge('fresh', '2026-09-02')]));
+  expect(host.textContent).toContain('Dinner fresh');
+});
+it('removes one selected category and retains other categories and payer filters', async () => {
+  state.params = 'categories=DINING&categories=GROCERIES&paidByIds=me';
+  await render();
+  await respond(page());
+  await click('Remove Dining');
+  const next = new URL(
+    state.push.mock.calls.at(-1)![0],
+    'https://example.test',
+  );
+  expect(next.searchParams.getAll('categories')).toEqual(['GROCERIES']);
+  expect(next.searchParams.getAll('paidByIds')).toEqual(['me']);
 });

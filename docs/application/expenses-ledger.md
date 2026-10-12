@@ -12,8 +12,8 @@ come from complete server projections; the signed viewer position is information
 and never a cross-group repayment target. Balance metrics are explicitly
 unfiltered. A zero viewer position does not assert that every member is settled.
 
-Structured space (Household only), category, member and inclusive date filters
-are edited in a combined filter dialog on desktop and phone, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Member IDs
+Structured space (Household only), categories, Paid by, Involving and inclusive date filters
+are edited in a combined filter dialog on desktop and phone, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Involving membership IDs
 are scoped to the original group, matching payer **or** explicit participant,
 including zero shares. No search control or client filtering is provided. A
 filter change starts a new traversal. Initial requests and Load more request six
@@ -86,3 +86,23 @@ configuration in [workspace loading](../navigation/workspace-loading.md)) for
 the #239 regression at 320/390/1440px and 100%/200% text. It exercises long
 labels, complete month totals beyond the first six rows, multiple months, aligned
 amounts and keyboard detail/focus restoration in Group and Household workspaces.
+
+## Combined filters and ordering (#242)
+
+Categories, Paid by and Involving accept multiple selections, combined with OR
+within each field and AND across fields. Involving matches the payer or a saved
+participant, including a zero share; Paid by only matches the payer. Membership
+choices retain their source-space names. The URL uses repeated `categories`,
+`paidByIds` and `memberIds` keys; legacy `category` and `memberId` links join the
+respective selection. Every chip removes only its own value. Clear all restores
+the default newest-first view. Breakdown category actions add to existing
+category selections and preserve the other fields.
+
+Date presets use the server calendar date and produce visible inclusive From/To
+bounds: Today, Last 7 days (today plus six preceding dates), This month to date,
+and Previous month. Custom dates use the same inclusive calendar contract.
+Ordering offers date newest/oldest and amount highest/lowest over the complete
+matching set. Date views retain month sections in server order; amount views
+render the server order as one list, with visible authoritative monthly totals
+above it. Neither ordering nor totals are computed from loaded rows. Any change
+to a selected value or order resets the full traversal and ignores old results.
