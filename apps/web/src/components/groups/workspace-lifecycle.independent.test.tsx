@@ -21,7 +21,12 @@ vi.mock('./session', () => ({
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(search),
   usePathname: () => '/groups/G',
-  useRouter: () => ({ push() {}, replace() {} }),
+  useRouter: () => ({
+    push() {},
+    replace(href: string) {
+      search = href.split('?')[1] ?? '';
+    },
+  }),
 }));
 vi.mock('next/link', () => ({
   useLinkStatus: () => ({ pending: false }),
@@ -42,6 +47,7 @@ let root: Root,
     variables: Variables;
     canceled: boolean;
     next(data: unknown): void;
+    fail(): void;
   }[];
 const member = {
   id: 'M',
@@ -73,6 +79,9 @@ beforeEach(() => {
           name: operation.name,
           variables,
           canceled: false,
+          fail() {
+            sink.error(new Error('Offline'));
+          },
           next(data: unknown) {
             sink.next({ data } as never);
           },
@@ -151,6 +160,7 @@ it('consumes the composed Activity result without a second dedicated read and co
     }),
   );
   expect(host.textContent).toContain('No activity');
+  expect(host.querySelectorAll('.workspace-refresh')).toHaveLength(1);
   expect(requests).toHaveLength(1);
   act(() => {
     window.dispatchEvent(new Event('focus'));
@@ -185,7 +195,9 @@ it.each([
     expect(host.textContent).not.toContain('Private member');
     expect(host.textContent).not.toContain('Settled');
     await act(async () =>
-      host.querySelector<HTMLButtonElement>('button.journey-refresh')!.click(),
+      host
+        .querySelector<HTMLButtonElement>('.workspace-refresh button')!
+        .click(),
     );
     expect(host.querySelector('[role=alert]')).toBeNull();
     expect(requests).toHaveLength(2);
@@ -363,4 +375,106 @@ it('Household returning to the initial filter cannot revive previously authorize
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();
   expect(host.textContent).not.toContain('$123.45');
+});
+
+it('preserves selected Activity kind across manual and foreground authorization refreshes', async () => {
+  search = 'tab=activity';
+  const result = {
+    viewer,
+    group,
+    groupActivity: {
+      __typename: 'ActivityConnection',
+      edges: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+  };
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  await act(async () => requests[0].next(result));
+  const filter =
+    host.querySelector<HTMLSelectElement>('.activity-feed-filters select') ??
+    host.querySelector<HTMLSelectElement>('select');
+  expect(filter).not.toBeNull();
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLSelectElement.prototype,
+      'value',
+    )!.set!.call(filter, 'REPAYMENT_RECORDED');
+    filter!.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(new URLSearchParams(search).get('activityKind')).toBe(
+    'REPAYMENT_RECORDED',
+  );
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  if (requests.length > 1) await act(async () => requests.at(-1)!.next(result));
+  expect(host.querySelector<HTMLSelectElement>('select')!.value).toBe(
+    'REPAYMENT_RECORDED',
+  );
+  const before = requests.length;
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('.workspace-refresh button')!.click(),
+  );
+  expect(host.textContent).not.toContain('Private group');
+  expect(requests).toHaveLength(before + 1);
+  await act(async () => requests.at(-1)!.next(result));
+  expect(requests.at(-1)!.name).toBe('activityGroupQuery');
+  await act(async () =>
+    requests.at(-1)!.next({ groupActivity: result.groupActivity }),
+  );
+  expect(host.querySelector<HTMLSelectElement>('select')!.value).toBe(
+    'REPAYMENT_RECORDED',
+  );
+  act(() => window.dispatchEvent(new Event('focus')));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  await act(async () => requests.at(-1)!.next(result));
+  expect(requests.at(-1)!.name).toBe('activityGroupQuery');
+  await act(async () =>
+    requests.at(-1)!.next({ groupActivity: result.groupActivity }),
+  );
+  expect(host.querySelector<HTMLSelectElement>('select')!.value).toBe(
+    'REPAYMENT_RECORDED',
+  );
+});
+
+it('keeps filtered Activity refresh pending through its child read and exposes retry after transport failure', async () => {
+  search = 'tab=activity&activityKind=REPAYMENT_RECORDED';
+  const feed = {
+    __typename: 'ActivityConnection',
+    edges: [],
+    pageInfo: { hasNextPage: false, endCursor: null },
+  };
+  const result = { viewer, group, groupActivity: feed };
+  await act(async () => root.render(<GroupJourney initialGroup="G" />));
+  await act(async () => requests[0].next(result));
+  expect(requests[1].name).toBe('activityGroupQuery');
+  await act(async () => requests[1].next({ groupActivity: feed }));
+  const control = () =>
+    host.querySelector<HTMLButtonElement>('.workspace-refresh button')!;
+  const status = () =>
+    host.querySelector('.workspace-refresh [role=status]')!.textContent;
+  await act(async () => control().click());
+  expect(requests[2].name).toBe('journeyWorkspaceQuery');
+  await act(async () => requests[2].next(result));
+  expect(requests[3].name).toBe('activityGroupQuery');
+  expect(requests[3].variables.filter).toMatchObject({
+    kind: 'REPAYMENT_RECORDED',
+  });
+  expect(control().getAttribute('aria-disabled')).toBe('true');
+  expect(status()).toContain('Updating');
+  expect(status()).not.toContain('Up to date');
+  await act(async () => control().click());
+  expect(requests).toHaveLength(4);
+  await act(async () => requests[3].fail());
+  expect(control().getAttribute('aria-disabled')).toBe('false');
+  expect(status()).toContain('Try again');
+  expect(status()).not.toContain('Up to date');
+  await act(async () => control().click());
+  expect(requests[4].name).toBe('journeyWorkspaceQuery');
+  await act(async () => requests[4].next(result));
+  expect(status()).toContain('Updating');
+  expect(requests[5].name).toBe('activityGroupQuery');
+  await act(async () => requests[5].next({ groupActivity: feed }));
+  expect(status()).toContain('Up to date');
+  expect(control().getAttribute('aria-disabled')).toBe('false');
 });

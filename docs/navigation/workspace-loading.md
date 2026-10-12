@@ -155,3 +155,43 @@ The exact compiled workspace query counts conditional selections towards gqlgen
 complexity. The API uses a finite 200 budget and retains parser/body/auth limits.
 Regression tests execute the checked-in Relay wire operation, not a simplified
 GraphQL approximation, for Household and Trip roles across all tabs.
+
+## Refresh and loading continuity (#243)
+
+Every financial workspace has a labeled refresh button in page content, below the
+persistent navigation. The app bar no longer carries a reload icon. The same
+network owner handles the button and custom pull gesture; embedded Expenses and
+Activity readers do not register another gesture. Repeated button presses or
+pulls coalesce while that owner is pending. Foreground events still invalidate
+synchronously and coalesce their new read on an animation frame; a foreground
+boundary cancels an older in-flight read rather than accepting pre-event access.
+
+Chromium and Gecko browsers with CSS overscroll control use custom downward pulls
+that begin at the document top. The gesture requires 80 CSS pixels, excludes
+interactive controls, dialogs and nested scrollers, and cancels on horizontal,
+upward, multitouch or canceled input. Progress, completion and retry feedback
+accompany the keyboard-focusable refresh button. WebKit, including Safari and iOS
+browser wrappers, retains its native gesture, as do browsers without overscroll
+support. No custom gesture listener or overscroll override is installed there;
+the explicit button always remains the app-refresh fallback. CSS feature support
+alone is insufficient to establish suppression of Safari's native reload (see
+[WebKit #275947](https://bugs.webkit.org/show_bug.cgi?id=275947)).
+
+Private readers still disappear immediately at authorization boundaries. Only
+public skeletons and previously measured layout height remain while new data is
+pending; names, rows and totals are not retained as placeholders. Errors remain
+distinct from empty lists or zero balances. Workspace/tab and expense filters are
+URL-owned; Activity's event-type selection is also URL-owned (`activityKind`), so
+revalidation and native reload retain the selection. Existing actor-scoped draft
+and original-attempt recovery storage survives reader remounts. Account changes
+continue to dispose the old scope and clear financial storage. Storage-write
+failures remain explicit form errors; this change adds no background sync or new
+financial persistence.
+
+Run the browser refresh matrix with `REFRESH_TESTS=1` in the existing harness,
+using the actual LAN `BROWSER_ORIGIN`, `FIXTURE_DELAY_MS=700`, widths 320/390/1440,
+`SCALE=1`/`2`, and Light/Dark appearances. It exercises browser-dispatched touch
+input, ordinary scrolling, keyboard focus, repeated actions, URL continuity,
+offline/retry, unsaved expense drafts and revoked reads. Its synthetic services
+and desktop Chromium touch emulation do not prove physical iOS/Android native
+browser gestures; record those device limits with delivery evidence.

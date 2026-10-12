@@ -1,4 +1,6 @@
 'use client';
+import { WorkspaceLoading } from '@/components/workspace-loading';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { calendarDate } from '@/lib/dates';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
@@ -117,6 +119,7 @@ export function GroupJourney({
     'memberIds',
     'paidByIds',
     'sort',
+    'activityKind',
     'from',
     'to',
   ])
@@ -128,7 +131,7 @@ export function GroupJourney({
   }
   const signInReturn = pathname + (returnQuery.size ? `?${returnQuery}` : '');
   const body = access.loading ? (
-    <p role="status">Loading secure access…</p>
+    <p role="status">Loading workspace…</p>
   ) : access.error ? (
     <p role="alert">{access.error}</p>
   ) : !access.scope ? (
@@ -230,28 +233,31 @@ function ViewerJourney({
   const [viewer, setViewer] = useState<Viewer>();
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
-  const [stale, setStale] = useState(false);
+
   const pathname = usePathname();
   const visit = pathname;
+  const generation = useRef(0);
+  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
+  const invalidate = () => {
+    generation.current++;
+    request.current?.unsubscribe();
+    setViewer(undefined);
+    setError('');
+  };
+  const refresh = () => {
+    invalidate();
+    setVersion((v) => v + 1);
+  };
+  useForegroundRefresh(invalidate, () => setVersion((v) => v + 1));
   useEffect(() => {
-    const refresh = () => {
-      setViewer(undefined);
-      setError('');
-      setStale(true);
-      setVersion((v) => v + 1);
-    };
-    const foreground = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
     const timer = setTimeout(refresh, 86400000 - (Date.now() % 86400000));
-    document.addEventListener('visibilitychange', foreground);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('visibilitychange', foreground);
-    };
+    return () => clearTimeout(timer);
+    // Each read resets the next calendar-boundary check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
   useEffect(() => {
     let active = true;
+    const ticket = ++generation.current;
     const subscription = fetchQuery<journeyViewerQuery>(
       scope.environment,
       viewerDocument,
@@ -259,7 +265,7 @@ function ViewerJourney({
       { fetchPolicy: 'network-only' },
     ).subscribe({
       next: (result) => {
-        if (!active || !scope.isLive()) return;
+        if (!active || !scope.isLive() || ticket !== generation.current) return;
         if (result.viewer.__typename === 'Viewer') setViewer(result.viewer);
         else
           setError(
@@ -273,36 +279,37 @@ function ViewerJourney({
           );
       },
       error: (failure: Error) => {
-        if (active && scope.isLive()) setError(message(failure.message));
+        if (active && scope.isLive() && ticket === generation.current)
+          setError(message(failure.message));
       },
     });
+    request.current = subscription;
     return () => {
       active = false;
       subscription.unsubscribe();
     };
   }, [scope, version, visit]);
+  const refreshControl = (
+    <WorkspaceRefresh
+      busy={!viewer && !error}
+      error={error}
+      label={trips ? 'Refresh trips' : 'Refresh groups'}
+      onRefresh={refresh}
+    />
+  );
   if (error)
     return (
-      <>
+      <WorkspaceLoading busy={!viewer && !error}>
+        {refreshControl}
         <p role="alert">{error}</p>
-        <button
-          onClick={() => {
-            setError('');
-            setViewer(undefined);
-            setVersion((v) => v + 1);
-          }}
-        >
-          Refresh access
-        </button>
-      </>
+      </WorkspaceLoading>
     );
   if (!viewer)
     return (
-      <p role="status">
-        {stale
-          ? 'Access is stale. Refreshing current authorized groups…'
-          : 'Loading your groups…'}
-      </p>
+      <WorkspaceLoading busy={!viewer && !error}>
+        {refreshControl}
+        <Skeleton label={trips ? 'Loading trips' : 'Loading groups'} />
+      </WorkspaceLoading>
     );
   const groups = viewer.groups.filter(
     (item) =>
@@ -316,7 +323,8 @@ function ViewerJourney({
   );
 
   return (
-    <>
+    <WorkspaceLoading busy={!viewer && !error}>
+      {refreshControl}
       <p className="journey-viewer">Signed in as {viewer.displayName}</p>
       {creation &&
         (viewer.canCreateGroups ? (
@@ -414,7 +422,7 @@ function ViewerJourney({
           />
         </>
       )}
-    </>
+    </WorkspaceLoading>
   );
 }
 function GroupDetails({
@@ -441,6 +449,13 @@ function GroupDetails({
       (section) => section.toLowerCase() === params.get('tab'),
     ) ?? (after ? 'Expenses' : 'Overview')
   ).toLowerCase();
+  const activityKind = params.get('activityKind') ?? '';
+  const setActivityKind = (kind: string) => {
+    const next = new URLSearchParams(params);
+    if (kind) next.set('activityKind', kind);
+    else next.delete('activityKind');
+    router.replace(`${pathname}?${next}`, { scroll: false });
+  };
   const [today, setToday] = useState('');
   const [destination, setDestination] =
     useState<journeyWorkspaceQuery['response']>();
@@ -449,6 +464,7 @@ function GroupDetails({
   const [group, setGroup] = useState<Group>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
+  const [activityRead, setActivityRead] = useState({ busy: false, error: '' });
   const [failureHeading, setFailureHeading] = useState('Group unavailable');
   const [saved, setSaved] = useState('');
   const generation = useRef(0),
@@ -467,6 +483,10 @@ function GroupDetails({
     request.current?.unsubscribe();
     const ticket = ++generation.current;
     setBusy(true);
+    setActivityRead({
+      busy: tab === 'activity' && !expense && !repayment,
+      error: '',
+    });
     setError('');
     setGroup(undefined);
     return new Promise<void>((resolve) => {
@@ -533,11 +553,16 @@ function GroupDetails({
               repayment ||
               activity?.__typename === 'ActivityConnection')
           ) {
+            setActivityRead({
+              busy: tab === 'activity' && !expense && !repayment,
+              error: '',
+            });
             setLoadedFilters(initialFilters);
             setDestination(result);
             setGroup(result.group);
             setToday(result.viewer.today);
           } else {
+            setActivityRead({ busy: false, error: '' });
             if (
               params.has('restore') &&
               !scope.restored.has(params.get('restore')!) &&
@@ -579,6 +604,7 @@ function GroupDetails({
         },
         error: (failure: Error) => {
           if (live.current && scope.isLive() && generation.current === ticket) {
+            setActivityRead({ busy: false, error: '' });
             setFailureHeading('Workspace unavailable');
             setError(message(failure.message));
             setBusy(false);
@@ -625,10 +651,10 @@ function GroupDetails({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, scope, after]);
   return (
-    <>
+    <WorkspaceLoading busy={busy}>
       {!household && !group && (
         <h1 ref={heading} tabIndex={-1} data-page-heading>
-          {busy ? 'Group access' : failureHeading}
+          {busy ? 'Workspace' : failureHeading}
         </h1>
       )}
       {saved && (
@@ -636,32 +662,20 @@ function GroupDetails({
           {saved}
         </p>
       )}
-      {(tab !== 'expenses' ||
-        busy ||
-        error ||
-        !group ||
-        expense ||
-        repayment) && (
-        <button
-          className="journey-refresh"
-          aria-label="Refresh group and restart list"
-          title="Refresh group and restart list"
-          disabled={busy}
-          onClick={() => {
-            if (after) {
-              const next = new URLSearchParams(params);
-              next.delete('after');
-              router.replace(
-                `${household ? '/household/ledger' : `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(id)}`}?${next}`,
-              );
-            } else void read();
-          }}
-        >
-          <span className="ui-visually-hidden">Refresh</span>
-        </button>
-      )}
+      <WorkspaceRefresh
+        busy={busy || activityRead.busy}
+        error={error || activityRead.error}
+        label="Refresh group"
+        onRefresh={() => {
+          if (after) {
+            const next = new URLSearchParams(params);
+            next.delete('after');
+            router.replace(`${pathname}?${next}`, { scroll: false });
+          } else void read();
+        }}
+      />
       {busy ? (
-        <Skeleton label="Loading current authorized group data" />
+        <Skeleton label="Loading workspace" />
       ) : error ? (
         <>
           <p role="alert">{error}</p>
@@ -722,6 +736,9 @@ function GroupDetails({
               </>
             ) : (
               <GroupWorkspace
+                onActivityReadState={setActivityRead}
+                activityKind={activityKind}
+                onActivityKindChange={setActivityKind}
                 onEditSaved={() =>
                   setSaved(
                     'Expense edit saved. Current expense and balances are a separate authorized refresh; any unavailable data below does not undo your edit.',
@@ -762,6 +779,6 @@ function GroupDetails({
           </>
         )
       )}
-    </>
+    </WorkspaceLoading>
   );
 }

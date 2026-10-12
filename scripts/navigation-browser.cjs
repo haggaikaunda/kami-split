@@ -191,7 +191,7 @@ const view = {
   edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
-if (process.env.LAYOUT_TESTS === '1') {
+if (process.env.LAYOUT_TESTS === '1' || process.env.REFRESH_TESTS === '1') {
   view.edges = Array.from({ length: 40 }, (_, i) => ({
     cursor: `e${i + 1}`,
     node: {
@@ -267,10 +267,13 @@ const activity = {
     const page = await browser.newPage({
       viewport: { width, height: 900 },
       reducedMotion: 'reduce',
+      hasTouch: process.env.REFRESH_TESTS === '1',
+      colorScheme: process.env.COLOR_SCHEME === 'dark' ? 'dark' : 'light',
     });
     let log = [],
       documents = 0,
-      denied = false;
+      denied = false,
+      offline = false;
     const errors = [];
     const requestRecords = new WeakMap();
     page.on('requestfailed', (request) => {
@@ -301,6 +304,7 @@ const activity = {
       const op = query.match(/(?:query|mutation) (\w+)/)?.[1];
       const item = { op, start: Date.now(), variables };
       log.push(item);
+      if (offline) return r.abort('internetdisconnected');
       requestRecords.set(r.request(), item);
       let data;
       if (op === 'appearanceQuery' || op === 'profileQuery')
@@ -519,6 +523,28 @@ const activity = {
       });
       log = [];
       documents = 0;
+    }
+    if (process.env.REFRESH_TESTS === '1') {
+      await require('./refresh-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        width,
+        scale,
+        output,
+        results,
+        requests: () => log,
+        documentCount: () => documents,
+        setOffline: (value) => {
+          offline = value;
+        },
+        setDenied: (value) => {
+          denied = value;
+        },
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
     }
     if (process.env.LEDGER_TESTS === '1') {
       await require('./ledger-browser.cjs')({

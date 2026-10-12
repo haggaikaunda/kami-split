@@ -92,7 +92,10 @@ it('refresh cancels the actual Relay request and denies access despite a late pr
     root.render(<HouseholdRead scope={scope} current="Balances" />),
   );
   expect(requests).toHaveLength(1);
-  await act(async () => host.querySelector('button')!.click());
+  act(() => window.dispatchEvent(new Event('focus')));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
   expect(requests[0].canceled).toBe(true);
   expect(requests).toHaveLength(2);
   await act(async () =>
@@ -119,7 +122,10 @@ it('refresh cancels an in-flight Members request and rejects its delayed private
     }),
   );
   expect(requests[1].name).toBe('householdMembersQuery');
-  await act(async () => host.querySelector('button')!.click());
+  act(() => window.dispatchEvent(new Event('focus')));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
   expect(requests[0].canceled).toBe(true);
   expect(requests[1].canceled).toBe(true);
   expect(requests).toHaveLength(3);

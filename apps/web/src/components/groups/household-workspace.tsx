@@ -1,4 +1,6 @@
 'use client';
+import { WorkspaceLoading } from '@/components/workspace-loading';
+import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import {
   overviewDate,
   overviewPeriod,
@@ -10,7 +12,7 @@ import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
 import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { fetchQuery } from 'relay-runtime';
 import document, {
@@ -54,9 +56,11 @@ export function HouseholdWorkspace({
   activity?: boolean;
 }) {
   const access = useFinancialSession();
+  const router = useRouter();
   const params = useSearchParams(),
     pathname = usePathname();
   const visitParams = new URLSearchParams(params);
+  visitParams.delete('activityKind');
   visitParams.delete('expense');
   visitParams.delete('expenseGroup');
   visitParams.delete('detailSource');
@@ -67,7 +71,7 @@ export function HouseholdWorkspace({
   return (
     <>
       {access.loading ? (
-        <p role="status">Loading secure access…</p>
+        <p role="status">Loading workspace…</p>
       ) : access.error ? (
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
@@ -80,7 +84,18 @@ export function HouseholdWorkspace({
           to see your Household.
         </p>
       ) : activity ? (
-        <ActivityFeed key={access.scope.id} scope={access.scope} groupId="" />
+        <ActivityFeed
+          key={access.scope.id}
+          scope={access.scope}
+          groupId=""
+          kind={params.get('activityKind') ?? ''}
+          onKindChange={(kind) => {
+            const next = new URLSearchParams(params);
+            if (kind) next.set('activityKind', kind);
+            else next.delete('activityKind');
+            router.replace(`${pathname}?${next}`, { scroll: false });
+          }}
+        />
       ) : (
         <HouseholdRead
           key={`${access.scope.id}:${pathname}:${visitParams.toString()}`}
@@ -111,10 +126,13 @@ export function HouseholdRead({
 function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
   const { members, error, reset } = useHouseholdMembers(scope);
   return (
-    <>
-      <button className="household-refresh" onClick={reset}>
-        <span className="ui-visually-hidden">Refresh Household</span>
-      </button>
+    <WorkspaceLoading busy={!members && !error}>
+      <WorkspaceRefresh
+        busy={!members && !error}
+        error={error}
+        onRefresh={reset}
+        label="Refresh Household"
+      />
       {error ? (
         <p role="alert">{error}</p>
       ) : members ? (
@@ -122,7 +140,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       ) : (
         <Skeleton label="Loading Household membership" />
       )}
-    </>
+    </WorkspaceLoading>
   );
 }
 function HouseholdMembers({
@@ -229,20 +247,23 @@ function HouseholdSummaryRead({
     };
   }, [scope, current, version]);
   return (
-    <>
+    <WorkspaceLoading busy={!data && !error}>
       {saved && (
         <p role="status">
           Expense edit saved. Current Household data is a separate authorized
           refresh; unavailable data does not undo your edit.
         </p>
       )}
-      <button className="household-refresh" onClick={reset}>
-        <span className="ui-visually-hidden">Refresh Household</span>
-      </button>
+      <WorkspaceRefresh
+        busy={!data && !error}
+        error={error}
+        onRefresh={reset}
+        label="Refresh Household"
+      />
       {error ? (
         <p role="alert">{error}</p>
       ) : !data ? (
-        <Skeleton label="Loading current authorized Household data" />
+        <Skeleton label="Loading Household" />
       ) : (
         <>
           <HouseholdContent
@@ -267,7 +288,7 @@ function HouseholdSummaryRead({
           />
         </>
       )}
-    </>
+    </WorkspaceLoading>
   );
 }
 export function HouseholdContent({

@@ -307,7 +307,7 @@ it('hides cached selected detail and source during foreground reauthorization an
   );
   expect(host.textContent).not.toContain('Private detail note');
   expect(host.textContent).not.toContain('Source: Home');
-  expect(host.textContent).toContain('Checking current source access');
+  expect(host.textContent).toContain('Loading expense');
   expect(state.requests[sourceIndex].unsubscribe).toHaveBeenCalled();
   await respond(page(), sourceIndex);
   expect(host.textContent).not.toContain('Private detail note');
@@ -392,7 +392,7 @@ it('manual household refresh replaces net balance and eligible-space snapshot fr
   expect(host.textContent).toContain('You owe');
   await click('Refresh expenses');
   expect(host.textContent).not.toContain('$1.01');
-  expect(host.textContent).toContain('Loading complete Household access');
+  expect(host.textContent).toContain('Loading expenses');
   await respondContext(context('205', 'New eligible space'));
   await respond(page([]));
   expect(host.textContent).toContain('$2.05');
@@ -440,7 +440,7 @@ it('successful persisted creation refreshes owning household totals and eligible
   await respondContext(context('-101'));
   await respond(page());
   await click('Commit persisted expense');
-  expect(host.textContent).toContain('Loading complete Household access');
+  expect(host.textContent).toContain('Loading expenses');
   expect(state.replace).toHaveBeenCalledWith('/household/expenses?', {
     scroll: false,
   });
