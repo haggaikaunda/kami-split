@@ -8,3 +8,7 @@ supabase/.temp
 supabase/.branches
 
 apps/web/src/lib/relay/__generated__
+
+# Frozen approved design exports; retain exact source bytes and hashes.
+docs/design/issue-269/mockup.fragment.html
+docs/design/issue-269/mockup.html
