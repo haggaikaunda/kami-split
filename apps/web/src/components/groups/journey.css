@@ -287,6 +287,10 @@
   color: var(--color-ink);
   background: var(--color-surface);
 }
+/* iOS date controls otherwise add native padding beyond their grid width. */
+.expense-field input[type='date'] {
+  appearance: none;
+}
 .expense-field textarea {
   display: inline-block;
   resize: vertical;
