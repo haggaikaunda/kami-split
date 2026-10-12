@@ -26,11 +26,7 @@ import groupDocument, {
 } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ScopedLink, RestoreSource, SourceReturn } from './navigation';
-import {
-  householdLedgerHref,
-  spaceHref,
-  spaceInvitationsHref,
-} from '@/lib/relay/space-routes';
+import { householdLedgerHref, spaceHref } from '@/lib/relay/space-routes';
 import { tripState, routeId } from '@/lib/relay/discovery';
 import { ExpensePresentation } from '@/components/expenses/presentation';
 import { ExpenseDetail } from './expense-detail';
@@ -685,11 +681,6 @@ function GroupDetails({
         group && (
           <>
             <RestoreSource scope={scope} allowed={[id]} />
-            {household && group.viewerMembership.role === 'OWNER' && (
-              <Link href={spaceInvitationsHref(group)}>
-                Manage Household invitations
-              </Link>
-            )}
             {expense ? (
               <>
                 {!household && (
