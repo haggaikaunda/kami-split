@@ -777,7 +777,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: calc(var(--expense-viewport-height, 100dvh) - 2rem);
+  margin-top: var(--expense-viewport-top, 0px);
+  max-height: var(--expense-viewport-height, 100dvh);
   padding: 0;
 }
 .expense-presentation > header {
