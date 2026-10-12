@@ -118,7 +118,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       {error ? (
         <p role="alert">{error}</p>
       ) : members ? (
-        <HouseholdMembers members={members} scope={scope} />
+        <HouseholdMembers members={members} scope={scope} onRefresh={reset} />
       ) : (
         <Skeleton label="Loading Household membership" />
       )}
@@ -128,12 +128,14 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
 function HouseholdMembers({
   members,
   scope,
+  onRefresh,
 }: {
   members: Members;
   scope: FinancialScope;
+  onRefresh?: () => void | Promise<void>;
 }) {
   return (
-    <section className="workspace-panel household-members">
+    <section className="workspace-panel household-members members-panel">
       <h2>Household members</h2>
       <p>
         Active Household members share this ledger and its full expense history.
@@ -145,6 +147,7 @@ function HouseholdMembers({
           scope={scope}
           group={{ id: members.id, name: members.name }}
           members={members.members}
+          onRefresh={onRefresh}
         />
       ) : (
         <>
@@ -309,7 +312,11 @@ export function HouseholdContent({
       ) : null}
       {current === 'Members' ? (
         members ? (
-          <HouseholdMembers members={members} scope={scope} />
+          <HouseholdMembers
+            members={members}
+            scope={scope}
+            onRefresh={onRefresh}
+          />
         ) : (
           <p role="status">Loading Household membership…</p>
         )

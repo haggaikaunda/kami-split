@@ -14,10 +14,12 @@ export function ScopedInvitations({
   scope,
   group,
   members,
+  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
   members: readonly Person[];
+  onRefresh?: () => void | Promise<void>;
 }) {
   return (
     <InvitationVisit
@@ -25,6 +27,7 @@ export function ScopedInvitations({
       scope={scope}
       group={group}
       members={members}
+      onRefresh={onRefresh}
     />
   );
 }
@@ -32,10 +35,12 @@ function InvitationVisit({
   scope,
   group,
   members,
+  onRefresh,
 }: {
   scope: FinancialScope;
   group: { id: string; name: string };
   members: readonly Person[];
+  onRefresh?: () => void | Promise<void>;
 }) {
   const c = useOnboarding('invitations');
   const started = useRef(false);
@@ -79,7 +84,7 @@ function InvitationVisit({
           ) : (
             <ActionRecovery state={c} />
           )}
-          <InvitationPanel state={c} members={members} />
+          <InvitationPanel state={c} members={members} onRefresh={onRefresh} />
         </>
       )}
     </section>

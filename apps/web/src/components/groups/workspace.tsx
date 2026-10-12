@@ -246,7 +246,7 @@ export function GroupWorkspace({
           onEditSaved={onEditSaved}
         />
       ) : current === 'Members' ? (
-        <section className="workspace-panel">
+        <section className="workspace-panel members-panel">
           <h2>Members</h2>
           {group.trip && (
             <p className="workspace-context-detail">
@@ -266,6 +266,7 @@ export function GroupWorkspace({
               scope={scope}
               group={group}
               members={group.members}
+              onRefresh={onRefresh}
             />
           ) : (
             <>

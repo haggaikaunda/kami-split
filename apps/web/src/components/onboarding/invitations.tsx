@@ -5,9 +5,11 @@ import { PeopleList, type Person } from './people-list';
 export function InvitationPanel({
   state: c,
   members = [],
+  onRefresh,
 }: {
   state: OnboardingController;
   members?: readonly Person[];
+  onRefresh?: () => void | Promise<void>;
 }) {
   const {
     busy,
@@ -198,7 +200,12 @@ export function InvitationPanel({
             <Button
               tone="secondary"
               disabled={busy}
-              onClick={() => void run(() => loadInvites(group))}
+              onClick={() =>
+                void run(async () => {
+                  if (onRefresh) await onRefresh();
+                  else await loadInvites(group);
+                })
+              }
             >
               Refresh invitations
             </Button>
