@@ -587,15 +587,21 @@ td {
   max-width: none;
   margin: 0;
   min-height: 100dvh;
-  padding: calc(var(--chrome-header) + 1.25rem)
-    max(1.25rem, env(safe-area-inset-right))
-    calc(var(--chrome-footer) + 1.25rem)
-    calc(5.5rem + max(1.25rem, env(safe-area-inset-left)));
+  --shell-right: max(1.25rem, env(safe-area-inset-right));
+  --shell-left: calc(5.5rem + max(1.25rem, env(safe-area-inset-left)));
+  --shell-gap: 1.25rem;
+  padding: 0 var(--shell-right) calc(var(--chrome-footer) + 1.25rem)
+    var(--shell-left);
+}
+.workspace-navigation {
+  display: contents;
 }
 .workspace-navigation-brand {
-  position: fixed;
+  position: sticky;
   z-index: 20;
-  inset: var(--chrome-top, 0px) 0 auto;
+  top: 0;
+  margin-inline: calc(-1 * var(--shell-left)) calc(-1 * var(--shell-right));
+  margin-bottom: var(--shell-gap);
   min-height: 4.75rem;
   padding-block: max(0.75rem, env(safe-area-inset-top)) 0.75rem;
   padding-inline: max(1.25rem, env(safe-area-inset-left))
@@ -607,9 +613,9 @@ td {
 .workspace-navigation-links {
   position: fixed;
   z-index: 20;
-  top: calc(var(--chrome-header) + var(--chrome-top, 0px));
+  top: var(--chrome-header);
   left: 0;
-  bottom: var(--chrome-bottom, 0px);
+  bottom: 0;
   width: 5.5rem;
   padding: 1.4375rem 0.5rem max(1.25rem, env(safe-area-inset-bottom));
   display: flex;
@@ -1106,9 +1112,10 @@ td {
   .financial-journey:has(> .workspace-navigation) {
     --chrome-header: 4rem;
     --chrome-footer: 5.125rem;
-    padding: calc(var(--chrome-header) + 0.75rem)
-      max(1rem, env(safe-area-inset-right)) calc(var(--chrome-footer) + 1rem)
-      max(1rem, env(safe-area-inset-left));
+    --shell-left: max(1rem, env(safe-area-inset-left));
+    --shell-right: max(1rem, env(safe-area-inset-right));
+    --shell-gap: 0.75rem;
+    padding-bottom: calc(var(--chrome-footer) + 1rem);
   }
   .workspace-navigation-brand {
     min-height: 4rem;
@@ -1116,12 +1123,9 @@ td {
   .workspace-brand {
     font-size: 1.25rem;
   }
-  .workspace-navigation {
-    display: contents;
-  }
   .workspace-navigation-links {
-    top: var(--chrome-nav-top, auto);
-    bottom: var(--chrome-nav-bottom, 0px);
+    top: auto;
+    bottom: 0;
     right: 0;
     width: auto;
     padding: 0.5rem max(0.25rem, env(safe-area-inset-right))

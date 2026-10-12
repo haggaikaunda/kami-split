@@ -237,20 +237,26 @@ an iOS simulator must separately verify focus zoom and the software keyboard.
 Global navigation keeps the app header and desktop rail or mobile bottom bar
 available while the document scrolls. The shared navigation measures its rendered
 height so wrapped/enlarged labels and safe-area padding reserve real content space.
-At normal scale the mobile bar follows visual-viewport keyboard resizing. iOS
-additionally reserves 64 CSS pixels for the observed floating input accessory
-bar while an editable control is focused and the keyboard shrinks the viewport;
-Safari includes that overlay inside the reported visual viewport and exposes no
-accessory inset. This conservative allowance includes a gap above the observed
-58-pixel toolbar; different iOS versions and keyboards may vary. Pinch zoom
-remains browser-owned. Visual-viewport panning moves the fixed chrome but never increases the document
-header reserve, allowing Safari to scroll a focused field into view. The mobile
-bar anchors to the visual viewport's top plus height, avoiding Safari's shifting
-fixed-bottom viewport during keyboard scrolling. Keyboard detection retains the
-expanded viewport height across scrolls and resets when the viewport width changes. Document
-scroll padding keeps focused controls clear
-of the chrome, while existing source-return scroll/focus restoration stays intact.
-The rail can scroll at short desktop heights without adding a content scroller.
+Under #267, the global brand bar is in normal document flow with `position:
+sticky; top: 0`; its navigation wrapper uses `display: contents` so the full-height
+page shell supplies the sticky boundary. The shell reserves only the gap after
+the header, not a second header height. The mobile navigation is fixed with
+`top: auto; bottom: 0`, including safe-area padding. The desktop rail remains
+fixed below the measured header and can scroll at short desktop heights.
+
+ResizeObserver measures header and navigation heights for content clearance and
+document scroll padding. Global navigation does not read visualViewport or set
+viewport-derived offsets, even during keyboard focus, toolbar changes or pinch
+zoom. The document remains the scroll owner for source-return restoration;
+workspace banners and tabs continue scrolling normally. Expense sheets retain
+their own focused-form keyboard accommodation. Browser-owned zoom and rubber
+banding are not suppressed.
+
+Physical iPhone verification of toolbar expansion/collapse, overscroll return,
+keyboard panning/dismissal and portrait/landscape safe areas remains required
+for #267 in Safari and the affected in-app browser, with device, OS, mode and
+revision recorded on the delivery PR. Desktop browser fixtures do not establish
+those device behaviors.
 
 The content wrapper owns container queries and centers lists/tables within a
 72rem maximum width; Account uses 46rem and existing form cards use 42rem.
