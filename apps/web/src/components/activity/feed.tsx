@@ -1,4 +1,5 @@
 'use client';
+import { Timestamp } from '@/components/date-time';
 import { spaceHref } from '@/lib/relay/space-routes';
 import {
   AppIcon,
@@ -349,16 +350,9 @@ export function ActivityFeed({
                           <span aria-hidden="true">·</span>
                           <span>{node.groupName}</span>
                           <span aria-hidden="true">·</span>
-                          <time
-                            dateTime={node.timestamp}
-                            title={new Date(node.timestamp).toLocaleString()}
-                          >
-                            Recorded{' '}
-                            {new Date(node.timestamp).toLocaleDateString(
-                              undefined,
-                              { month: 'short', day: 'numeric' },
-                            )}
-                          </time>
+                          <span>
+                            Recorded <Timestamp value={node.timestamp} />
+                          </span>
                           {node.payer &&
                           (node.payer.id !== node.creator.id ||
                             node.payer.displayName !==

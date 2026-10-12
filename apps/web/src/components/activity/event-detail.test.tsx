@@ -63,7 +63,7 @@ it('retains complete created-event facts while showing the unchanged title and t
   expect(host.querySelector('.activity-detail-amount')?.textContent).toContain(
     '$1.01',
   );
-  expect(fact(host, 'Date').textContent).toBe('2026-10-01');
+  expect(fact(host, 'Date').textContent).toBe('Oct 1, 2026');
   expect(fact(host, 'Payer').textContent).toBe('Alice');
   expect(fact(host, 'Note').textContent).toBe('Original recorded note');
   const shares = [...fact(host, 'Participants').querySelectorAll('li')].map(
@@ -131,8 +131,50 @@ it('keeps repayment sender, recipient, effective date and note separate from rec
   expect(host.querySelector('h3')?.textContent).toBe('Paid Bob');
   expect(fact(host, 'Sender').textContent).toBe('Alice');
   expect(fact(host, 'Recipient').textContent).toBe('Bob');
-  expect(fact(host, 'Date').textContent).toBe('2026-10-01');
+  expect(fact(host, 'Date').textContent).toBe('Oct 1, 2026');
   expect(fact(host, 'Note').textContent).toBe('Bank transfer');
   expect(host.querySelector('time')?.dateTime).toBe('2026-10-02T12:00:00Z');
   expect(host.textContent).toContain('No money is moved by this app.');
+});
+
+it('compares original calendar dates before formatting historical previous and new values', () => {
+  const changed = render({
+    ...event,
+    kind: 'EXPENSE_UPDATED',
+    before: { ...snapshot, effectiveDate: '2026-12-31' },
+    after: { ...snapshot, effectiveDate: '2027-01-01' },
+  });
+  const row = fact(changed, 'Date');
+  expect(row.querySelector('.activity-previous')?.textContent).toBe(
+    'PreviousDec 31, 2026',
+  );
+  expect(row.querySelector('.activity-new')?.textContent).toBe(
+    'NewJan 1, 2027',
+  );
+  expect(
+    [...row.querySelectorAll('time')].map((node) => node.dateTime),
+  ).toEqual(['2026-12-31', '2027-01-01']);
+  const unchanged = fact(
+    render({ ...event, kind: 'EXPENSE_UPDATED', before: snapshot }),
+    'Date',
+  );
+  expect(unchanged.textContent).toBe('Oct 1, 2026 (unchanged)');
+  expect(unchanged.querySelector('.activity-previous')).toBeNull();
+});
+
+it('retains exact offset and fractional precision behind a semantic timestamp disclosure', () => {
+  const value = '2026-11-01T01:30:00.123456-07:00';
+  const host = render({ ...event, timestamp: value });
+  const ordinary =
+    host.querySelector('.activity-detail-recorded time') ??
+    host.querySelector('time');
+  expect(ordinary?.textContent).toBe('Nov 1, 2026, 8:30:00 AM UTC');
+  expect(ordinary?.getAttribute('datetime')).toBe(value);
+  expect(ordinary?.getAttribute('aria-label')).toContain(value);
+  const disclosure = host.querySelector('details')!;
+  expect(disclosure.open).toBe(false);
+  expect(disclosure.querySelector('summary')?.textContent).toBe(
+    'Exact timestamp',
+  );
+  expect(disclosure.querySelector('time')?.textContent).toBe(value);
 });

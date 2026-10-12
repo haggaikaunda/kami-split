@@ -60,7 +60,6 @@ async function render() {
       <ExpenseForm
         scope={scope}
         group={group}
-        today="2026-09-30"
         payer={members[0].id}
         members={members}
         onCommitted={committed}
@@ -191,4 +190,35 @@ it('does not send when storage fails before first submission', async () => {
   await act(async () => button('Save expense').click());
   expect(network.mutate).not.toHaveBeenCalled();
   expect(host.querySelector('fieldset')!.disabled).toBe(true);
+});
+it('uses the device calendar on each new opening without overwriting an open or recovered date', async () => {
+  sessionStorage.clear();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  try {
+    vi.setSystemTime(new Date(2026, 9, 11, 23, 59, 59));
+    await render();
+    const date = () => host.querySelector<HTMLInputElement>('#expense-date')!;
+    expect(date().value).toBe('2026-10-11');
+    const set = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    )!.set!;
+    await act(async () => {
+      set.call(date(), '2026-10-01');
+      date().dispatchEvent(new Event('change', { bubbles: true }));
+      date().dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    vi.setSystemTime(new Date(2026, 9, 12, 0, 0, 0));
+    await render();
+    expect(date().value).toBe('2026-10-01');
+    await act(async () => root.render(null));
+    await render();
+    expect(date().value).toBe('2026-10-01');
+    await act(async () => root.render(null));
+    sessionStorage.clear();
+    await render();
+    expect(date().value).toBe('2026-10-12');
+  } finally {
+    vi.useRealTimers();
+  }
 });

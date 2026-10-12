@@ -53,7 +53,7 @@ Wire money stays in canonical decimal strings; validation and previews use
 Equal remainders follow ascending canonical membership IDs; exact shares include
 explicit zero. [Percentage splits](percentage-splits.md) retain normalized intended
 percentages and resolve cents by largest remainder with canonical-ID tie breaks. Description counts Unicode scalar values after ASCII trimming;
-notes preserve whitespace. Dates allow valid future dates. Server validation and
+notes preserve whitespace. Dates allow valid future dates. New expenses default to the device-local calendar day at form opening, preserving chosen and recovered dates; [date presentation](dates.md) distinguishes calendar values from UTC-labelled recorded instants. Server validation and
 current membership authorization remain authoritative.
 
 ## Sessions, drafts and recovery

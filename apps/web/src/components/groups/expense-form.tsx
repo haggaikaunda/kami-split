@@ -1,4 +1,5 @@
 'use client';
+import { localCalendarDate } from '@/lib/dates';
 import { Button } from '@/components/primitives';
 import { ExpenseFields } from './expense-fields';
 import { createSessionId } from '@/lib/session-id';
@@ -30,7 +31,6 @@ type Outcome =
 export function ExpenseForm({
   scope,
   group,
-  today,
   payer,
   members,
   onCommitted,
@@ -40,7 +40,6 @@ export function ExpenseForm({
 }: {
   scope: FinancialScope;
   group: string;
-  today: string;
   payer: string;
   members: readonly Member[];
   onCommitted: (expenseId: string) => Promise<void>;
@@ -59,7 +58,7 @@ export function ExpenseForm({
     }
   });
   const [draft, setDraft] = useState<Draft>(
-    initial.value?.draft ?? newDraft(today, payer, members),
+    () => initial.value?.draft ?? newDraft(localCalendarDate(), payer, members),
   );
   const [attempt, setAttempt] = useState(initial.value?.attempt);
   const [busy, setBusy] = useState(false);
@@ -127,7 +126,7 @@ export function ExpenseForm({
         );
       removeDraft(group);
       setAttempt(undefined);
-      setDraft(newDraft(today, payer, members));
+      setDraft(newDraft(localCalendarDate(), payer, members));
       setSubmitted(false);
       setNotice(
         `Saved ${money(outcome.record.totalMinor)}. Expense reference: ${outcome.record.expenseId}. Refreshing current balances…`,

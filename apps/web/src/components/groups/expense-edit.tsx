@@ -1,4 +1,5 @@
 'use client';
+import { calendarDate } from '@/lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import { commitMutation, fetchQuery } from 'relay-runtime';
 import mutation, {
@@ -373,7 +374,7 @@ export function ExpenseEdit({
                 <dd>{money(latest.totalMinor)}</dd>
                 <dt>Date / category</dt>
                 <dd>
-                  {latest.effectiveDate} · {latest.category}
+                  {calendarDate(latest.effectiveDate)} · {latest.category}
                 </dd>
                 <dt>Payer</dt>
                 <dd>{latest.payer.displayName}</dd>

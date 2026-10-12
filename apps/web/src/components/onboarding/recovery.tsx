@@ -1,3 +1,4 @@
+import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { Button, Field } from '@/components/primitives';
 import type { OnboardingController } from './controller';
 export function ActionRecovery({ state: c }: { state: OnboardingController }) {
@@ -88,16 +89,17 @@ export function ActionRecovery({ state: c }: { state: OnboardingController }) {
           <h2>Action result</h2>
           <p>{receipt.outcome}</p>
           {receipt.committedExpiresAt && (
-            <p>
+            <div>
               Expiry saved by this action:{' '}
-              {new Date(receipt.committedExpiresAt).toLocaleString()}
-            </p>
+              <Timestamp value={receipt.committedExpiresAt} />
+              <ExactTimestamp value={receipt.committedExpiresAt} />
+            </div>
           )}
           {receipt.currentExpiresAt && (
-            <p>
-              Current expiry:{' '}
-              {new Date(receipt.currentExpiresAt).toLocaleString()}
-            </p>
+            <div>
+              Current expiry: <Timestamp value={receipt.currentExpiresAt} />
+              <ExactTimestamp value={receipt.currentExpiresAt} />
+            </div>
           )}
           {receipt.delivery && <p>Send status: {receipt.delivery}</p>}
         </section>

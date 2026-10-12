@@ -5,6 +5,8 @@ import document, {
   type journeyExpenseQuery,
 } from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
+import { calendarDate } from '@/lib/dates';
+import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { overviewDate } from './overview-date';
 import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
 import { Member, Money, Button } from '@/components/primitives';
@@ -227,12 +229,7 @@ export function ExpenseDetail({
           <dt>Date</dt>
           <dd>
             <time dateTime={expense.effectiveDate}>
-              {new Intl.DateTimeFormat('en', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-                timeZone: 'UTC',
-              }).format(new Date(`${expense.effectiveDate}T00:00:00Z`))}
+              {calendarDate(expense.effectiveDate)}
             </time>
           </dd>
         </div>
@@ -275,10 +272,9 @@ export function ExpenseDetail({
       </section>
       <p className="expense-detail-audit">
         Created by {expense.creator.displayName} ·{' '}
-        <time dateTime={expense.createdAt}>
-          {expense.createdAt.replace('T', ' ').replace('Z', ' UTC')}
-        </time>
+        <Timestamp value={expense.createdAt} />
       </p>
+      <ExactTimestamp value={expense.createdAt} />
     </section>
   );
 }

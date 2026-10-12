@@ -50,3 +50,7 @@ routes use the sole authenticated financial session. Group Overview/Balances/Mem
 The PR is stacked on #111; its SQL discovery contract must be deployed first.
 The original #172 slice added no mutation or migration. [Expense editing](expense-editing.md)
 adds guarded edits, immutable revision backfill and real update events under #212.
+
+Recorded instants use the shared [UTC display policy](dates.md), with readable
+labels and an Exact timestamp disclosure. Effective date-only facts keep their
+calendar day, and history comparisons/order retain the underlying values.

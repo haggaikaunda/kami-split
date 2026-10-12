@@ -713,7 +713,6 @@ function LedgerContent({
                 key={createSpace.groupId}
                 scope={scope}
                 group={createSpace.groupId}
-                today={today}
                 payer={createSpace.viewerMembership.id}
                 members={createSpace.members}
                 onCommitted={async () => {

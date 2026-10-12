@@ -1,3 +1,5 @@
+import { calendarDate } from '@/lib/dates';
+import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { AppIcon } from '@/components/workspace-identity';
 import { Money } from '@/components/primitives';
 import { money } from '@/lib/relay/money';
@@ -54,6 +56,8 @@ function HistoricalValue({
   snapshot: Snapshot;
   currency: string;
 }) {
+  if (name === 'Date')
+    return <time dateTime={value}>{calendarDate(value)}</time>;
   if (name === 'Amount')
     return <Money value={money(snapshot.totalMinor)} currency={currency} />;
   if (name === 'Participants')
@@ -116,10 +120,11 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
         <span>
           {event.creator.displayName} {eventAction(event.kind)}
         </span>
-        <time dateTime={event.timestamp}>
-          Recorded {new Date(event.timestamp).toLocaleString()}
-        </time>
+        <span>
+          Recorded <Timestamp value={event.timestamp} />
+        </span>
       </p>
+      <ExactTimestamp value={event.timestamp} />
       {after ? (
         <dl className="activity-facts">
           {Object.entries(after).map(([key, value]) => {
@@ -186,7 +191,13 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
           }).map(([key, value]) => (
             <div key={key}>
               <dt>{key}</dt>
-              <dd>{value}</dd>
+              <dd>
+                {key === 'Date' ? (
+                  <time dateTime={value}>{calendarDate(value)}</time>
+                ) : (
+                  value
+                )}
+              </dd>
             </div>
           ))}
         </dl>

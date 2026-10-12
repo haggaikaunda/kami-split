@@ -59,7 +59,6 @@ async function mount(draft: Draft, attempt?: ReturnType<typeof createInput>) {
       <ExpenseForm
         scope={scope}
         group={group}
-        today="2026-10-05"
         payer={members[0].id}
         members={members}
         onCommitted={async () => {}}
