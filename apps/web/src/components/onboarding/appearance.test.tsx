@@ -280,3 +280,17 @@ it('does not drain queued prior-account intent after an access boundary unmount'
   expect(apply).not.toHaveBeenCalled();
   expect(host.textContent).toBe('Access unavailable');
 });
+it('does not report success when a Profile response fails to confirm the attempted value', async () => {
+  const call = vi
+    .fn()
+    .mockResolvedValueOnce(profile('LIGHT'))
+    .mockResolvedValueOnce(profile('SYSTEM', true));
+  await render(call);
+  await click('Dark');
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    'Save could not be confirmed',
+  );
+  expect(host.textContent).not.toContain('Appearance saved for your account.');
+  expect(apply).toHaveBeenLastCalledWith('alice', 'DARK', false);
+  expect(host.querySelector('fieldset')!.disabled).toBe(true);
+});
