@@ -210,6 +210,23 @@ if (process.env.LAYOUT_TESTS === '1') {
   view.months[0].expenseCount = '40';
   view.pageInfo.endCursor = 'e40';
 }
+if (process.env.LEDGER_TESTS === '1') {
+  expense.description = 'Long dinner description '.repeat(8);
+  members[0].displayName = 'Long payer name '.repeat(8);
+  expense.payer = members[0];
+  view.edges = Array.from({ length: 6 }, (_, i) => ({
+    cursor: `e${i + 1}`,
+    node: { ...expense, id: `e${i + 1}` },
+    source: groups[1],
+  }));
+  view.expenseCount = '9';
+  view.totalExpenseMinor = '2700';
+  view.months = [
+    { month: '2026-10', totalExpenseMinor: '2400', expenseCount: '8' },
+    { month: '2026-09', totalExpenseMinor: '300', expenseCount: '1' },
+  ];
+  view.pageInfo = { hasNextPage: true, endCursor: 'e6' };
+}
 const activity = {
   __typename: 'ActivityConnection',
   __isActivityResult: 'ActivityConnection',
@@ -292,7 +309,12 @@ const activity = {
             __typename: 'Profile',
             id: 'v',
             displayName: 'Alex',
-            appearance: process.env.THEME === 'dark' ? 'DARK' : 'LIGHT',
+            appearance:
+              process.env.THEME === 'system'
+                ? 'SYSTEM'
+                : process.env.THEME === 'dark'
+                  ? 'DARK'
+                  : 'LIGHT',
           },
         };
       else if (op === 'journeyWorkspaceQuery')
@@ -381,6 +403,26 @@ const activity = {
           },
         };
       else throw new Error('Unknown ' + op);
+      if (process.env.LEDGER_TESTS === '1' && variables.after) {
+        const next = {
+          ...view,
+          edges: [
+            ...[7, 8].map((i) => ({
+              cursor: `e${i}`,
+              node: { ...expense, id: `e${i}` },
+              source: groups[1],
+            })),
+            {
+              cursor: 'e9',
+              node: { ...expense, id: 'e9', effectiveDate: '2026-09-30' },
+              source: groups[1],
+            },
+          ],
+          pageInfo: { hasNextPage: false, endCursor: 'e9' },
+        };
+        if (data.groupExpenses) data.groupExpenses = next;
+        if (data.householdExpenses) data.householdExpenses = next;
+      }
       if (denied)
         data = {
           ...data,
@@ -460,7 +502,9 @@ const activity = {
       );
       await page.goto(origin + '/groups/T?tab=balances');
       await page.waitForURL('**/trips/T?tab=balances');
-      await page.getByText('Current simplified obligations').waitFor();
+      await page
+        .getByRole('heading', { name: 'Who owes whom', exact: true })
+        .waitFor();
       assert.equal(
         await page
           .locator('.workspace-navigation a[aria-current="page"]')
@@ -475,6 +519,20 @@ const activity = {
       });
       log = [];
       documents = 0;
+    }
+    if (process.env.LEDGER_TESTS === '1') {
+      await require('./ledger-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        width,
+        scale,
+        output,
+        results,
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
     }
     if (process.env.LAYOUT_TESTS === '1') {
       await require('./navigation-layout-browser.cjs')({
