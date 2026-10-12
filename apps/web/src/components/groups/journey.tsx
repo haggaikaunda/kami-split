@@ -167,50 +167,52 @@ export function GroupJourney({
       id="page-content"
     >
       <WorkspaceNavigation />
-      <header className="journey-page-heading">
-        {!initialGroup && (
-          <h1 data-page-heading tabIndex={-1}>
-            {creation
-              ? creation === 'TRIP'
-                ? 'New trip'
-                : 'New group'
-              : trips
-                ? 'Your trips'
-                : initialGroup
-                  ? 'Your group'
-                  : 'Your groups'}
-          </h1>
-        )}
-      </header>
-      {initialGroup && (
-        <>
-          {access.scope && (
-            <div className="workspace-crumb">
-              <SourceReturn scope={access.scope} />
-            </div>
+      <div className="workspace-content">
+        <header className="journey-page-heading">
+          {!initialGroup && (
+            <h1 data-page-heading tabIndex={-1}>
+              {creation
+                ? creation === 'TRIP'
+                  ? 'New trip'
+                  : 'New group'
+                : trips
+                  ? 'Your trips'
+                  : initialGroup
+                    ? 'Your group'
+                    : 'Your groups'}
+            </h1>
           )}
-          <div ref={setHeaderTarget} />
-          <WorkspaceTabs
-            current={repayment ? 'Balances' : currentTab}
-            label={trips ? 'Trip workspace' : 'Group workspace'}
-            onIntent={(section) =>
-              intent?.warm(
-                workspaceRequest(initialGroup, section.toLowerCase()),
-              )
-            }
-            onIntentEnd={(section) =>
-              intent?.cancel(
-                section
-                  ? workspaceRequest(initialGroup, section.toLowerCase()).key
-                  : undefined,
-              )
-            }
-            hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
-          />
-        </>
-      )}
-      {body}
-      {initialGroup && access.scope && <WorkspacePrivacy />}
+        </header>
+        {initialGroup && (
+          <>
+            {access.scope && (
+              <div className="workspace-crumb">
+                <SourceReturn scope={access.scope} />
+              </div>
+            )}
+            <div ref={setHeaderTarget} />
+            <WorkspaceTabs
+              current={repayment ? 'Balances' : currentTab}
+              label={trips ? 'Trip workspace' : 'Group workspace'}
+              onIntent={(section) =>
+                intent?.warm(
+                  workspaceRequest(initialGroup, section.toLowerCase()),
+                )
+              }
+              onIntentEnd={(section) =>
+                intent?.cancel(
+                  section
+                    ? workspaceRequest(initialGroup, section.toLowerCase()).key
+                    : undefined,
+                )
+              }
+              hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
+            />
+          </>
+        )}
+        {body}
+        {initialGroup && access.scope && <WorkspacePrivacy />}
+      </div>
     </main>
   );
 }

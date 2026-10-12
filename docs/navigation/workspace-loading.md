@@ -44,7 +44,7 @@ Expenses operations request six rows initially and on each Load more; their
 complete totals and signed cursor/anchor semantics remain unchanged. The public
 shell presents Household → Groups → Trips → Account through the shared desktop
 app bar/rail and phone bottom navigation; its layout does not change private read
-ownership. See the [current visual implementation note](../design/issue-227-implementation.md).
+ownership. See the [persistent navigation contract](../application/relay-expenses.md#persistent-navigation-and-content-widths-238) and the historical [visual implementation note](../design/issue-227-implementation.md).
 
 The composed Group operation supplies the initial ledger/feed reference directly
 to the child reader; it does not start the same first page again after mounting.
@@ -130,6 +130,12 @@ no production credentials or financial data are used. It records requests,
 feedback/content timing, exact shell retention and document loads, and asserts
 keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,
 native modified-click entry and denial after completed intent warming.
+
+Set `LAYOUT_TESTS=1` for the #238 layout regression matrix instead of the request
+profile. It uses a long synthetic expense list and checks both scroll extremes,
+compact working headers, desktop widths, short viewports, keyboard focus, date
+filter bounds, account navigation and Back. Run at 320/390/1440 CSS pixels and
+200% text; native iPhone keyboard and date-picker checks remain separate.
 
 ## Canonical workspace routes (#201)
 

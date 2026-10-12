@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
 // Reference icon geometry: Lucide1.17.0 (ISC/MIT); see LUCIDE-LICENSE.txt.
@@ -280,6 +281,107 @@ export function Brand() {
 /** Static navigation never reads or retains private group data. */
 export function WorkspaceNavigation() {
   const pathname = usePathname();
+  const navigation = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = navigation.current;
+    const frame = nav?.closest('main');
+    if (!nav || !frame) return;
+    const root = document.documentElement;
+    const brand = nav.querySelector<HTMLElement>(
+      '.workspace-navigation-brand',
+    )!;
+    const links = nav.querySelector<HTMLElement>(
+      '.workspace-navigation-links',
+    )!;
+    const viewport = window.visualViewport;
+    const ios =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    let focused = document.activeElement;
+    let viewportWidth = window.innerWidth;
+    let expandedHeight = Math.max(window.innerHeight, viewport?.height ?? 0);
+    const update = () => {
+      const mobile = window.innerWidth <= 600;
+      // Keyboard resizing follows the visual viewport; pinch zoom stays browser-owned.
+      const normalScale = viewport && Math.abs(viewport.scale - 1) < 0.01;
+      const top = normalScale ? viewport.offsetTop : 0;
+      if (normalScale) {
+        // Safari can shrink innerHeight to the keyboard viewport during scrolling.
+        // Retain the expanded baseline until a width/orientation change.
+        const height = Math.max(window.innerHeight, viewport.height);
+        expandedHeight =
+          viewportWidth === window.innerWidth
+            ? Math.max(expandedHeight, height)
+            : height;
+        viewportWidth = window.innerWidth;
+      }
+      // iOS includes its floating input accessory bar inside the visual viewport.
+      // Reserve its observed toolbar plus clearance (64px) overlay only while an editable has a keyboard.
+      const accessory =
+        mobile &&
+        ios &&
+        normalScale &&
+        expandedHeight - viewport.height > 100 &&
+        focused?.matches(
+          'input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="range"], [type="color"], [type="file"], [type="hidden"]), textarea, [contenteditable]:not([contenteditable="false"])',
+        )
+          ? 64
+          : 0;
+      const bottom = normalScale
+        ? Math.max(
+            0,
+            window.innerHeight - viewport.height - viewport.offsetTop,
+          ) + accessory
+        : 0;
+      frame.style.setProperty('--chrome-top', `${top}px`);
+      frame.style.setProperty('--chrome-bottom', `${bottom}px`);
+      // Visual-viewport panning moves chrome, not document content.
+      const header = brand.getBoundingClientRect().height;
+      const navHeight = links.getBoundingClientRect().height;
+      // Top anchoring avoids Safari's changing fixed-bottom containing viewport.
+      frame.style.setProperty(
+        '--chrome-nav-top',
+        mobile && normalScale
+          ? `${top + viewport.height - navHeight - accessory}px`
+          : 'auto',
+      );
+      frame.style.setProperty(
+        '--chrome-nav-bottom',
+        mobile && normalScale ? 'auto' : '0px',
+      );
+      const footer = mobile ? navHeight + bottom : 0;
+      frame.style.setProperty('--chrome-header', `${header}px`);
+      frame.style.setProperty('--chrome-footer', `${footer}px`);
+      root.style.setProperty('--chrome-header', `${header + top}px`);
+      root.style.setProperty('--chrome-footer', `${footer}px`);
+    };
+    const focusChanged = (event: FocusEvent) => {
+      const target =
+        event.type === 'focusout' ? event.relatedTarget : event.target;
+      focused = target instanceof Element ? target : null;
+      update();
+    };
+    update();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(brand);
+    observer?.observe(links);
+    document.addEventListener('focusin', focusChanged);
+    document.addEventListener('focusout', focusChanged);
+    window.addEventListener('resize', update);
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('focusin', focusChanged);
+      document.removeEventListener('focusout', focusChanged);
+      window.removeEventListener('resize', update);
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      root.style.removeProperty('--chrome-header');
+      root.style.removeProperty('--chrome-footer');
+    };
+  }, []);
   const items = [
     { href: '/household', label: 'Household', icon: 'home' },
     { href: '/groups', label: 'Groups', icon: 'groups' },
@@ -287,7 +389,11 @@ export function WorkspaceNavigation() {
     { href: '/account', label: 'Account', icon: 'account' },
   ] as const;
   return (
-    <nav className="workspace-navigation" aria-label="Financial navigation">
+    <nav
+      ref={navigation}
+      className="workspace-navigation"
+      aria-label="Financial navigation"
+    >
       <span className="workspace-navigation-brand">
         <Brand />
       </span>

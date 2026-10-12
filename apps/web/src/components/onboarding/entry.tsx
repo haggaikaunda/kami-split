@@ -80,7 +80,9 @@ function OnboardingVisit({
     >
       {account && <WorkspaceNavigation />}
       <div
-        className={account ? 'account-content' : 'onboarding-panel'}
+        className={
+          account ? 'workspace-content account-content' : 'onboarding-panel'
+        }
         ref={panel}
       >
         {!account && (

@@ -191,6 +191,25 @@ const view = {
   edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
+if (process.env.LAYOUT_TESTS === '1') {
+  view.edges = Array.from({ length: 40 }, (_, i) => ({
+    cursor: `e${i + 1}`,
+    node: {
+      ...expense,
+      id: `e${i + 1}`,
+      description: `Fixture lunch ${i + 1}`,
+    },
+    source: groups[1],
+  }));
+  view.expenseCount = '40';
+  view.totalExpenseMinor =
+    view.viewerShareMinor =
+    view.viewerPaidMinor =
+      '12000';
+  view.months[0].totalExpenseMinor = '12000';
+  view.months[0].expenseCount = '40';
+  view.pageInfo.endCursor = 'e40';
+}
 const activity = {
   __typename: 'ActivityConnection',
   __isActivityResult: 'ActivityConnection',
@@ -456,6 +475,20 @@ const activity = {
       });
       log = [];
       documents = 0;
+    }
+    if (process.env.LAYOUT_TESTS === '1') {
+      await require('./navigation-layout-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        width,
+        scale,
+        output,
+        results,
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
     }
     let start = Date.now();
     await page.goto(

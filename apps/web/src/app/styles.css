@@ -581,33 +581,42 @@ td {
   background: var(--color-container);
 }
 .financial-journey:has(> .workspace-navigation) {
+  --chrome-header: 4.75rem;
+  --chrome-footer: 0px;
   position: relative;
-  container: workspace / inline-size;
   max-width: none;
   margin: 0;
   min-height: 100dvh;
-  padding: calc(4.75rem + 1.1875rem) 1.75rem 1.75rem calc(5.5rem + 1.125rem);
+  padding: calc(var(--chrome-header) + 1.25rem)
+    max(1.25rem, env(safe-area-inset-right))
+    calc(var(--chrome-footer) + 1.25rem)
+    calc(5.5rem + max(1.25rem, env(safe-area-inset-left)));
 }
 .workspace-navigation-brand {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4.75rem;
-  padding-inline: 1.75rem;
+  position: fixed;
+  z-index: 20;
+  inset: var(--chrome-top, 0px) 0 auto;
+  min-height: 4.75rem;
+  padding-block: max(0.75rem, env(safe-area-inset-top)) 0.75rem;
+  padding-inline: max(1.25rem, env(safe-area-inset-left))
+    max(1.25rem, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   background: var(--color-chrome);
 }
 .workspace-navigation-links {
-  position: absolute;
-  top: 4.75rem;
+  position: fixed;
+  z-index: 20;
+  top: calc(var(--chrome-header) + var(--chrome-top, 0px));
   left: 0;
-  bottom: 0;
-  min-height: calc(100dvh - 4.75rem);
+  bottom: var(--chrome-bottom, 0px);
   width: 5.5rem;
-  padding: 1.4375rem 0.5rem 1.25rem;
+  padding: 1.4375rem 0.5rem max(1.25rem, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 0.9375rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--color-chrome);
 }
 .workspace-navigation-links a {
@@ -1082,10 +1091,7 @@ td {
   .ui-metric-value {
     font-size: 1.625rem;
   }
-  .financial-journey:has(> .workspace-navigation) {
-    padding-right: 1.25rem;
-    padding-left: calc(5.5rem + 0.75rem);
-  }
+
   .workspace-overview-columns {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1098,13 +1104,14 @@ td {
 }
 @media (max-width: 600px) {
   .financial-journey:has(> .workspace-navigation) {
-    display: flex;
-    flex-direction: column;
-    padding: calc(4rem + 1.375rem) 1rem 0;
+    --chrome-header: 4rem;
+    --chrome-footer: 5.125rem;
+    padding: calc(var(--chrome-header) + 0.75rem)
+      max(1rem, env(safe-area-inset-right)) calc(var(--chrome-footer) + 1rem)
+      max(1rem, env(safe-area-inset-left));
   }
   .workspace-navigation-brand {
-    height: 4rem;
-    padding-inline: 1.125rem;
+    min-height: 4rem;
   }
   .workspace-brand {
     font-size: 1.25rem;
@@ -1113,25 +1120,22 @@ td {
     display: contents;
   }
   .workspace-navigation-links {
-    position: relative;
-    order: 100;
-    margin: 1.375rem -1rem 0;
-    z-index: 10;
-    top: auto;
-    bottom: auto;
-    width: calc(100% + 2rem);
-    min-height: 0;
-    padding: 0.8125rem 0.5rem max(0.8125rem, env(safe-area-inset-bottom));
+    top: var(--chrome-nav-top, auto);
+    bottom: var(--chrome-nav-bottom, 0px);
+    right: 0;
+    width: auto;
+    padding: 0.5rem max(0.25rem, env(safe-area-inset-right))
+      max(0.5rem, env(safe-area-inset-bottom))
+      max(0.25rem, env(safe-area-inset-left));
     flex-direction: row;
     justify-content: space-around;
-    flex-wrap: wrap;
-    row-gap: 0.75rem;
     gap: 0;
+    overflow: visible;
   }
   .workspace-navigation-links a {
-    flex: 1 1 auto;
-    min-width: max-content;
-    font-size: 0.875rem;
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.125rem;
     gap: 0.125rem;
     min-height: 3.5rem;
   }
@@ -1494,5 +1498,53 @@ td {
     margin-bottom: 1rem;
     align-self: flex-end;
     justify-content: flex-end;
+  }
+}
+
+/* The document remains the scroll owner for source-return restoration. */
+html {
+  scroll-padding-top: calc(var(--chrome-header, 0px) + 1rem);
+  scroll-padding-bottom: calc(var(--chrome-footer, 0px) + 1rem);
+}
+
+.workspace-content {
+  container: workspace / inline-size;
+  width: 100%;
+  max-width: 72rem;
+  min-width: 0;
+  margin-inline: auto;
+}
+.workspace-content.account-content {
+  max-width: 46rem;
+}
+
+.ui-workspace-header.ui-workspace-header--compact {
+  min-height: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-subtle);
+  color: var(--color-ink);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.ui-workspace-header--compact h1 {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+.ui-workspace-header--compact .ui-workspace-context {
+  max-width: none;
+  color: var(--color-muted);
+}
+.ui-workspace-header--compact .workspace-identity-icon {
+  display: none;
+}
+.ui-workspace-header--compact .banner-action {
+  margin: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+@media (max-width: 600px) {
+  .workspace-navigation-icon {
+    max-width: 100%;
   }
 }

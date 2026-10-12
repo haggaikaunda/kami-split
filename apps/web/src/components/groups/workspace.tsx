@@ -84,6 +84,7 @@ export function GroupWorkspace({
   const workspaceHeader = (
     <WorkspaceHeader
       title={group.name}
+      compact={current !== 'Overview' || repayment}
       appearance={
         group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
       }

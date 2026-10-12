@@ -25,10 +25,11 @@ and persisted group-local repayment entry. #170 adds the shared
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-The [#227 corrective migration](../design/issue-227-implementation.md) uses the
-commit-pinned reference's original typography, exact Light/Dark semantic palette,
-76px desktop app bar and 88px rail, phone header/bottom navigation, and consistent
-banner-before-tabs hierarchy. It retains the original Trip/Household artwork and
+The [#227 corrective migration](../design/issue-227-implementation.md) established the
+reference Light/Dark semantic palette, desktop app bar and rail, phone navigation
+and Trip/Household artwork. Typography is superseded by #237 below; persistent
+chrome, centered widths and compact working-tab headings are superseded by #238.
+The application retains the artwork and
 source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
 and #223 evidence are historical. Repayment entry keeps its recovery navigation;
 the visible **Refresh** action retains its descriptive accessible name. The [parity matrix](../design/issue-227-parity-matrix.md) and
@@ -228,3 +229,31 @@ note errors stay exposed. Draft, original-attempt and dismissal contracts are un
 
 Desktop/mobile browser emulation is layout evidence only. Actual iPhone Safari or
 an iOS simulator must separately verify focus zoom and the software keyboard.
+
+## Persistent navigation and content widths (#238)
+
+Global navigation keeps the app header and desktop rail or mobile bottom bar
+available while the document scrolls. The shared navigation measures its rendered
+height so wrapped/enlarged labels and safe-area padding reserve real content space.
+At normal scale the mobile bar follows visual-viewport keyboard resizing. iOS
+additionally reserves 64 CSS pixels for the observed floating input accessory
+bar while an editable control is focused and the keyboard shrinks the viewport;
+Safari includes that overlay inside the reported visual viewport and exposes no
+accessory inset. This conservative allowance includes a gap above the observed
+58-pixel toolbar; different iOS versions and keyboards may vary. Pinch zoom
+remains browser-owned. Visual-viewport panning moves the fixed chrome but never increases the document
+header reserve, allowing Safari to scroll a focused field into view. The mobile
+bar anchors to the visual viewport's top plus height, avoiding Safari's shifting
+fixed-bottom viewport during keyboard scrolling. Keyboard detection retains the
+expanded viewport height across scrolls and resets when the viewport width changes. Document
+scroll padding keeps focused controls clear
+of the chrome, while existing source-return scroll/focus restoration stays intact.
+The rail can scroll at short desktop heights without adding a content scroller.
+
+The content wrapper owns container queries and centers lists/tables within a
+72rem maximum width; Account uses 46rem and existing form cards use 42rem.
+Working tabs retain workspace identity, context and actions in compact headings;
+Overview keeps its illustrated banner. Filter dates use the same bounded native
+date styling as expense forms, and the filter grid stacks when enlarged text or
+a narrow dialog leaves insufficient width. These changes supersede the scrolling
+chrome and working-tab banner layout in the historical #227 visual evidence.
