@@ -916,3 +916,8 @@
 .ledger-month-summaries {
   padding: 1rem;
 }
+
+.ledger-pagination button[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: default;
+}

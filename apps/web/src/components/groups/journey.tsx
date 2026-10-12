@@ -667,6 +667,7 @@ function GroupDetails({
         error={error || activityRead.error}
         label="Refresh group"
         onRefresh={() => {
+          scope.expensePositions?.clear();
           if (after) {
             const next = new URLSearchParams(params);
             next.delete('after');

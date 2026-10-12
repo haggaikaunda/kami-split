@@ -16,8 +16,9 @@ Structured space (Household only), categories, Paid by, Involving and inclusive 
 are edited in a combined filter dialog on desktop and phone, live in the URL and are sent to `householdExpenses`/`groupExpenses`. Involving membership IDs
 are scoped to the original group, matching payer **or** explicit participant,
 including zero shares. No search control or client filtering is provided. A
-filter change starts a new traversal. Initial requests and Load more request six
-rows; Load more appends the ordered server page;
+filter change starts a new traversal. Initial requests and subsequent pages request six
+rows; approaching the list end automatically appends the next ordered server page,
+with a manual Load more fallback;
 headline count/total and month subtotals always use server aggregates rather
 than sums of loaded rows. Under #239, each displayed month header immediately
 shows its complete filtered total and count. Desktop records align description,
@@ -27,9 +28,11 @@ Money formatting uses canonical strings and `bigint`.
 
 An expense selection adds `expense` and `expenseGroup` to the originating URL.
 The native dialog is a contextual desktop panel and full-screen phone detail.
-The mounted list retains loaded pages, filters and month position across detail
-Back/Forward, restores trigger focus/scroll, and provides a list fallback for a
-direct URL. Every detail first rechecks source eligibility, then reads the stable
+The list retains its query and session-owned row/position metadata across detail
+Back/Forward and edit-triggered parent remounts. Returning rebuilds the previously
+loaded extent from freshly authorized pages and restores trigger focus and viewport
+offset. If a row moved outside that extent or disappeared, the nearest surviving
+row by prior ordinal is used; direct URLs fall back to the list summary. Every detail first rechecks source eligibility, then reads the stable
 expense node and verifies both expense and group identity. Refresh/foreground
 invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
@@ -106,3 +109,33 @@ matching set. Date views retain month sections in server order; amount views
 render the server order as one list, with visible authoritative monthly totals
 above it. Neither ordering nor totals are computed from loaded rows. Any change
 to a selected value or order resets the full traversal and ignores old results.
+
+## Scroll loading and authorized restoration (#244)
+
+An intersection observer requests a page within 240 pixels of the list end.
+A synchronous in-flight guard absorbs repeated callbacks and manual activations;
+one automatic page is allowed per scroll gesture, so a sentinel that stays visible
+cannot drain the traversal. Load more remains keyboard accessible, including a
+stable inactive button at exhaustion so insertion does not discard its focus.
+Loading, retryable transport failure, and all-results-loaded messages are distinct.
+Transport failures preserve the already authorized rows and require an explicit
+retry; authentication/session failures and domain denials hide private content.
+Duplicate IDs are coalesced, and nonprogressing or malformed cursors require a
+fresh traversal rather than a retry loop. Complete query aggregates remain server-owned.
+
+Detail return restarts the anchored query so edits, sort movement and loss of access
+cannot leave an old selected row in the visible list. Replay is bounded by the
+previous loaded page count, stops on failure/exhaustion, and never scans indefinitely
+for a moved record. Only row identity, ordinal, loaded count and geometry live in
+the financial session; no private row payload is cached for restoration. Scope,
+URL filters and ordering identify each visit. Account disposal clears this metadata,
+and explicit Refresh discards it and all incompatible cursors. Restoring reserves
+the prior list height while reauthorization is pending and focuses only after the
+fresh extent is available; ordinary page insertion does not move focus.
+
+`ledger-pagination.independent.test.tsx` exercises observer/retry races, stale query
+and account responses, remount replay, moved/removed rows and focus. The opt-in
+`LEDGER_TESTS=1` browser harness additionally checks automatic loading, transport
+retry and late-row Back/Forward scroll/focus at desktop/mobile widths and doubled
+text. Its synthetic Auth/GraphQL responses establish browser behavior, not server
+authorization; the unchanged server authorization/database suites own that boundary.

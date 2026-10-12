@@ -16,6 +16,18 @@ export function createScope(client: SupabaseClient, actor: string) {
     string,
     { href: string; focus: string; scroll: number; group?: string }
   >();
+  // Navigation metadata only: private expense rows must be read again after remount.
+  const expensePositions = new Map<
+    string,
+    {
+      id: string;
+      scroll: number;
+      offset: number;
+      index: number;
+      count: number;
+      height: number;
+    }
+  >();
   const requests = new Set<AbortController>();
   const restoreHistory = () => {
     const token = window.history.state?.financialRestore;
@@ -82,6 +94,7 @@ export function createScope(client: SupabaseClient, actor: string) {
   return {
     actor,
     visits,
+    expensePositions,
     restored,
     id: createSessionId(),
     environment,
@@ -91,6 +104,7 @@ export function createScope(client: SupabaseClient, actor: string) {
       if (typeof window !== 'undefined')
         window.removeEventListener('popstate', restoreHistory);
       visits.clear();
+      expensePositions.clear();
       restored.clear();
       for (const request of requests) request.abort();
       requests.clear();

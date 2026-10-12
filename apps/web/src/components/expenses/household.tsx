@@ -120,7 +120,10 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     <WorkspaceRefresh
       busy={!context && !error}
       error={error}
-      onRefresh={refresh}
+      onRefresh={() => {
+        scope.expensePositions?.clear();
+        refresh();
+      }}
       label="Refresh expenses"
     />
   );
