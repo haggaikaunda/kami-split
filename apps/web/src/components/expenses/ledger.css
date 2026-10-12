@@ -777,7 +777,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin-top: var(--expense-viewport-top, 0px);
+  top: var(--expense-viewport-top, 0px);
+  margin-top: 0;
   max-height: var(--expense-viewport-height, 100dvh);
   padding: 0;
 }
