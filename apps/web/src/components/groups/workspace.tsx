@@ -1,4 +1,5 @@
 'use client';
+import { useExpenseEntry } from '@/components/expenses/entry';
 import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
 import {
@@ -86,6 +87,7 @@ export function GroupWorkspace({
   onDenied: () => void;
 }) {
   const params = useSearchParams();
+  const expenseEntry = useExpenseEntry();
   const requested = params.get('tab');
   const current: WorkspaceSection =
     workspaceSections.find((t) => t.toLowerCase() === requested) ??
@@ -123,6 +125,7 @@ export function GroupWorkspace({
       }
     >
       <Link
+        onClick={(event) => expenseEntry?.activate(event, group.id)}
         id="workspace-add"
         scroll={false}
         className="banner-action"

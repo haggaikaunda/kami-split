@@ -1,4 +1,5 @@
 'use client';
+import { ExpenseEntryProvider } from '@/components/expenses/entry';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
 import { HouseholdBannerAction } from './household-banner-action';
@@ -64,65 +65,69 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
               (s) => s.toLowerCase() === params.get('tab'),
             ) ?? 'Overview');
   return (
-    <main
-      className="financial-journey group-workspace household-workspace"
-      id="page-content"
-    >
-      <WorkspaceNavigation />
-      <div className="workspace-content">
-        <p className="workspace-crumb">Your household</p>
-        <WorkspaceHeader
-          title="Household"
-          context={
-            <>
-              <span>Shared spending, at home and away.</span>
-              <br />
-              <RichHelp label="What’s included">{householdScopeHelp}</RichHelp>
-            </>
-          }
-          appearance="household"
-        >
-          {access.scope && (
-            <HouseholdBannerAction
-              key={`${access.scope.id}:${intentVisit}`}
-              scope={access.scope}
-            />
-          )}
-        </WorkspaceHeader>
-        <WorkspaceTabs
-          current={current}
-          hrefFor={
-            ledger
-              ? (section) => `/household/ledger?tab=${section.toLowerCase()}`
-              : householdHref
-          }
-          label="Household workspace"
-          onIntentEnd={(section) => intent?.cancel(section)}
-          onIntent={(section) => {
-            if (ledger) return;
-            const document =
-              section === 'Activity'
-                ? activityDocument
-                : section === 'Members'
-                  ? accessDocument
+    <ExpenseEntryProvider scope={access.scope} visit={`${pathname}:${current}`}>
+      <main
+        className="financial-journey group-workspace household-workspace"
+        id="page-content"
+      >
+        <WorkspaceNavigation />
+        <div className="workspace-content">
+          <p className="workspace-crumb">Your household</p>
+          <WorkspaceHeader
+            title="Household"
+            context={
+              <>
+                <span>Shared spending, at home and away.</span>
+                <br />
+                <RichHelp label="What’s included">
+                  {householdScopeHelp}
+                </RichHelp>
+              </>
+            }
+            appearance="household"
+          >
+            {access.scope && (
+              <HouseholdBannerAction
+                key={`${access.scope.id}:${intentVisit}`}
+                scope={access.scope}
+              />
+            )}
+          </WorkspaceHeader>
+          <WorkspaceTabs
+            current={current}
+            hrefFor={
+              ledger
+                ? (section) => `/household/ledger?tab=${section.toLowerCase()}`
+                : householdHref
+            }
+            label="Household workspace"
+            onIntentEnd={(section) => intent?.cancel(section)}
+            onIntent={(section) => {
+              if (ledger) return;
+              const document =
+                section === 'Activity'
+                  ? activityDocument
+                  : section === 'Members'
+                    ? accessDocument
+                    : section === 'Expenses'
+                      ? expensesDocument
+                      : householdDocument;
+              const variables =
+                section === 'Activity' || section === 'Members'
+                  ? {}
                   : section === 'Expenses'
-                    ? expensesDocument
-                    : householdDocument;
-            const variables =
-              section === 'Activity' || section === 'Members'
-                ? {}
-                : section === 'Expenses'
-                  ? { filter: expenseFilter('') }
-                  : {
-                      recent: section === 'Overview',
-                      balances: section === 'Balances',
-                    };
-            intent?.warm({ document, variables, key: section });
-          }}
-        />
-        {children}
-        {access.scope && <WorkspacePrivacy />}
-      </div>
-    </main>
+                    ? { filter: expenseFilter('') }
+                    : {
+                        recent: section === 'Overview',
+                        balances: section === 'Balances',
+                      };
+              intent?.warm({ document, variables, key: section });
+            }}
+          />
+          {children}
+          {access.scope && <WorkspacePrivacy />}
+        </div>
+      </main>
+    </ExpenseEntryProvider>
   );
 }

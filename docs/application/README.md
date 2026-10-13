@@ -4,6 +4,8 @@
 
 ## Browser and product contracts
 
+- [Frontend ownership](frontend.md): component-owned operations, account-scoped Relay and explicit interaction boundaries.
+
 - [Web authentication routing](web-auth-routing.md): only sign-in is public; cookie verification, safe continuation, onboarding handoffs and history/session transitions guard every application page.
 
 - [Home Screen installation](home-screen-app.md): shared standalone scope, launch destination, install metadata and iPhone verification.

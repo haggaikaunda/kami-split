@@ -1,6 +1,7 @@
 import { explain } from './messages';
 import { useState } from 'react';
-import { actionFields, type Attempt } from '@/lib/onboarding/client';
+import { type Attempt } from '@/lib/onboarding/client';
+import { actionFields } from '@/components/onboarding/invitation-operations';
 import type { Receipt } from './controller';
 type Group = { id: string; name: string; isHousehold: boolean; kind: string };
 type Invite = {

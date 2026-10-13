@@ -13,11 +13,11 @@ import {
   jsonRequest,
   loadClient,
   readAttempt,
-  recoveryQuery,
   RequestEpoch,
   saveAttempt,
   type Attempt,
 } from '@/lib/onboarding/client';
+import { recoveryQuery } from '@/components/onboarding/invitation-operations';
 
 export type Mode =
   'sign-in' | 'join' | 'confirm' | 'password' | 'account' | 'invitations';

@@ -1,5 +1,5 @@
 {
-  "src": "./src/lib/relay",
+  "src": "./src",
   "schema": "../../.tools/relay-schema.graphql",
   "language": "typescript",
   "artifactDirectory": "./src/lib/relay/__generated__",

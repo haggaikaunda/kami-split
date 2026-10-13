@@ -12,6 +12,14 @@ Follow root [AGENTS.md](../../AGENTS.md) and the shared [delivery workflow](../.
 - Preserve exact-money behavior, account-scoped drafts, recovery, and production access-denial tests. The seeded preview architecture and its simulation-only tests were retired in #184; do not restore them.
 - Do not run type checking and build concurrently, because Next.js generates types. Stop a production preview before rebuilding its output.
 
+## Frontend ownership
+
+Follow the [frontend guide](../../docs/application/frontend.md) for operation location,
+account-scoped Relay ownership and cross-component interactions. Keep authored
+GraphQL documents beside their owning feature; import compiled artifacts from
+`src/lib/relay/__generated__` and run `pnpm relay:check`. Keep exact-money, draft and
+same-attempt recovery protocols intact when changing read or presentation ownership.
+
 ## Framework guidance
 
 <!-- BEGIN:nextjs-agent-rules -->

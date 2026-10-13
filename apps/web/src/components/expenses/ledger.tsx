@@ -1,4 +1,5 @@
 'use client';
+import { useExpenseEntry } from './entry';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
@@ -468,36 +469,15 @@ function LedgerContent({
     setReservedHeight(origin.current.height);
     positions.set(visitKey, origin.current);
   };
+  const expenseEntry = useExpenseEntry();
   useEffect(() => {
-    // The shared banner enters this mounted ledger through a native link. Keep
-    // the same authorized traversal/geometry record used by row detail entry.
-    const capture = (event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      )
-        return;
-      const link =
-        event.target instanceof Element
-          ? event.target.closest<HTMLAnchorElement>('a#workspace-add')
-          : null;
-      if (
-        link &&
-        !selected &&
-        !create &&
-        new URL(link.href).searchParams.has('create')
-      )
-        remember(link.id);
-    };
-    document.addEventListener('click', capture, true);
-    return () => document.removeEventListener('click', capture, true);
-    // Snapshot the current authorized rows when the banner is activated.
+    if (selected || create) return;
+    return expenseEntry?.register({}, ({ source, focus }) => {
+      if (spaces.some((space) => space.groupId === source)) remember(focus);
+    });
+    // Snapshot the current authorized rows only for this workspace's banner.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, create, rows, visitKey]);
+  }, [expenseEntry, selected, create, rows, visitKey, spaces]);
   const close = () => {
     if (origin.current) router.back();
     else change({ expense: null, expenseGroup: null, create: null }, true);

@@ -1,4 +1,5 @@
 'use client';
+import { RelayEnvironmentProvider } from 'react-relay';
 import { AppearanceProvider } from '@/components/appearance';
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -150,9 +151,20 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
   }, []);
   return (
     <Context.Provider value={access}>
-      <AppearanceProvider scope={access.scope} loading={access.loading}>
-        {children}
-      </AppearanceProvider>
+      {access.scope ? (
+        <RelayEnvironmentProvider
+          key={access.scope.id}
+          environment={access.scope.environment}
+        >
+          <AppearanceProvider scope={access.scope} loading={access.loading}>
+            {children}
+          </AppearanceProvider>
+        </RelayEnvironmentProvider>
+      ) : (
+        <AppearanceProvider loading={access.loading}>
+          {children}
+        </AppearanceProvider>
+      )}
     </Context.Provider>
   );
 }

@@ -87,7 +87,9 @@ not automatically recreating a similar expense.
 into a complete server schema in ignored `.tools`, resolving `extend type` fields before compiling checked-in TypeScript operation artifacts. This prevents Relay from treating persisted server operations as client-only fields. Wire-operation tests validate every compiled request against the authoritative SDL.
 `pnpm relay:check` validates schema/operation generation drift without changing
 artifacts and runs in required web CI. Scalar mappings are explicitly strings.
-Application modules import compiled artifacts directly, so no runtime GraphQL tag
+Authored documents live beside their owning components/features; the compiler scans
+`apps/web/src` and writes `src/lib/relay/__generated__`. See the [frontend guide](frontend.md)
+for ownership and interaction boundaries. Application modules import compiled artifacts directly, so no runtime GraphQL tag
 or additional Babel transform is required. Generated code is excluded from
 handwritten formatting/lint rules and checked by the pinned compiler.
 
