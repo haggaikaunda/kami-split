@@ -78,12 +78,17 @@ module.exports = async function verifyFilters({
       'header outside scrolling body',
     );
     assert(
+      metrics.footer.bottom <= metrics.dialog.bottom + 1,
+      'footer inside dialog',
+    );
+    assert(metrics.body.bottom - metrics.body.y >= 80, 'usable scrolling body');
+    assert(
       metrics.body.bottom <= metrics.footer.y + 1,
       'footer outside scrolling body',
     );
     for (const button of metrics.buttons) {
       assert(
-        button.y >= metrics.footer.y && button.bottom <= metrics.height,
+        button.y >= metrics.footer.y && button.bottom <= metrics.dialog.bottom,
         'footer action reachable',
       );
       assert(
@@ -179,6 +184,11 @@ module.exports = async function verifyFilters({
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await page.setViewportSize({ width: width < 600 ? 1280 : 320, height: 640 });
   await geometry('resized');
+  await page.setViewportSize({ width: 320, height: 640 });
+  await geometry('short-narrow-screen');
+  await page.screenshot({
+    path: path.join(output, `filters-${workspace}-${width}-${scale}-short.png`),
+  });
   assert(
     await section('Categories')
       .getByLabel('Dining', { exact: true })

@@ -767,10 +767,10 @@
 
 /* Keep filter actions outside the only scrolling region, even at larger text. */
 .ledger-dialog.ledger-dialog--filters {
-  width: min(28rem, calc(100vw - 1rem));
+  width: min(28rem, calc(100vw - 16px));
   max-width: none;
   max-height: calc(
-    100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
   );
   margin: auto;
   padding: 0;
@@ -783,18 +783,23 @@
 }
 .ledger-dialog--filters > header {
   flex: none;
-  padding: 1rem 1.25rem 0.75rem;
+  gap: min(0.75rem, 12px);
+  padding: 16px 20px 12px;
   border-bottom: 1px solid var(--color-border);
 }
 .ledger-dialog--filters > header h2 {
   font-size: 1.25rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 .ledger-dialog--filters .ledger-dialog-close {
   flex: none;
-  width: 2.75rem;
-  min-height: 2.75rem;
+  width: 44px;
+  min-height: 44px;
   border-radius: 50%;
+}
+.ledger-dialog--filters .ledger-dialog-close .app-icon {
+  width: 24px;
+  height: 24px;
 }
 .ledger-filters {
   display: flex;
@@ -803,7 +808,7 @@
 }
 .ledger-filter-scroll {
   min-height: 0;
-  padding: 1rem 1.25rem;
+  padding: 16px 20px;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -939,17 +944,20 @@
 .ledger-filter-actions {
   flex: none;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
-  gap: 0.75rem;
-  padding: 0.75rem 1.25rem 1rem;
+  gap: min(0.75rem, 12px);
+  padding: 12px 20px 16px;
   border-top: 1px solid var(--color-border);
 }
 .ledger-filter-actions .ui-button {
   min-width: 0;
-  padding-inline: 0.75rem;
+  padding-inline: min(0.75rem, 12px);
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+}
+.ledger-filter-actions .ui-button:first-child {
+  white-space: nowrap;
 }
 
 .ledger-pagination button[aria-disabled='true'] {
