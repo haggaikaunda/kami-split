@@ -15,7 +15,19 @@ import (
 func TestAppearancePersistenceIsolationAndConcurrency(t *testing.T) {
 	f := newExpenseFixture(t)
 	query := `query { currentProfile { __typename ... on Profile { id displayName appearance } ... on ProfileProblem { code } } }`
-	mutation := `mutation($value:Appearance!,$expected:Appearance!) { updateMyAppearance(appearance:$value,expectedAppearance:$expected) { __typename ... on Profile { id displayName appearance } ... on ProfileProblem { code } } }`
+	mutation := `mutation ($value: Appearance!, $expected: Appearance!) {
+  updateMyAppearance(appearance: $value, expectedAppearance: $expected) {
+    __typename
+    ... on Profile {
+      id
+      displayName
+      appearance
+    }
+    ... on ProfileProblem {
+      code
+    }
+  }
+}`
 	read := func(actor int) map[string]any {
 		return groupRequest(t, f, actor, query, nil, "currentProfile", "Profile")
 	}
@@ -43,7 +55,15 @@ func TestAppearancePersistenceIsolationAndConcurrency(t *testing.T) {
 	if read(1)["appearance"] != "LIGHT" {
 		t.Fatal("another user's preference changed")
 	}
-	name := groupRequest(t, f, 2, `mutation { updateMyProfile(displayName:"Renamed",expectedDisplayName:"Actor 2") { __typename ... on Profile { displayName appearance } } }`, nil, "updateMyProfile", "Profile")
+	name := groupRequest(t, f, 2, `mutation {
+  updateMyProfile(displayName: "Renamed", expectedDisplayName: "Actor 2") {
+    __typename
+    ... on Profile {
+      displayName
+      appearance
+    }
+  }
+}`, nil, "updateMyProfile", "Profile")
 	if name["appearance"] != "DARK" {
 		t.Fatal("name edit reset appearance", name)
 	}

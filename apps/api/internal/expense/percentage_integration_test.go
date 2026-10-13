@@ -234,7 +234,12 @@ func TestPercentageDeferredConstraintsRejectAtomically(t *testing.T) {
 			record.Revision++
 			record.Split = mode
 			var committed time.Time
-			err = tx.QueryRow(f.ctx, `INSERT INTO app.expenses(id,group_id,creator_id,payer_id,total_minor,currency,description,effective_date,category,note,split,revision) VALUES($1,$2,$3,$4,1001,'USD','Constraint probe','2026-10-05','OTHER','',$5,$6) RETURNING created_at`, id, f.id(201), f.id(301), f.id(303), mode, record.Revision).Scan(&committed)
+			err = tx.QueryRow(f.ctx, `INSERT INTO app.expenses(
+  id, group_id, creator_id, payer_id, total_minor, currency, description, effective_date,
+  category, note, split, revision
+)
+VALUES($1, $2, $3, $4, 1001, 'USD', 'Constraint probe', '2026-10-05', 'OTHER', '', $5, $6)
+RETURNING created_at`, id, f.id(201), f.id(301), f.id(303), mode, record.Revision).Scan(&committed)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -260,7 +265,8 @@ func TestPercentageDeferredConstraintsRejectAtomically(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if _, err = tx.Exec(f.ctx, `INSERT INTO app.expense_audit(expense_id,group_id,actor_user_id,creator_id,event,committed_at) VALUES($1,$2,$3,$4,'CREATE_EXPENSE',$5)`, id, f.id(201), f.id(101), f.id(301), committed); err != nil {
+			if _, err = tx.Exec(f.ctx, `INSERT INTO app.expense_audit(expense_id, group_id, actor_user_id, creator_id, event, committed_at)
+VALUES($1, $2, $3, $4, 'CREATE_EXPENSE', $5)`, id, f.id(201), f.id(101), f.id(301), committed); err != nil {
 				t.Fatal(err)
 			}
 			record.Percentages = append([]ledger.Percentage(nil), record.Percentages...)
@@ -273,14 +279,38 @@ func TestPercentageDeferredConstraintsRejectAtomically(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = tx.Exec(f.ctx, `INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,expense_id,outcome) VALUES($1,$2,'CREATE_EXPENSE',$3,'create-expense-percentage-v2',$4,$5,$6,$7)`, f.id(101), f.id(201), key, canonical, hash[:], id, payload); err != nil {
+			if _, err = tx.Exec(f.ctx, `INSERT INTO app.expense_operations(
+  actor_user_id, group_id, operation_kind, key, canonical_version, canonical, canonical_hash,
+  expense_id, outcome
+)
+VALUES($1, $2, 'CREATE_EXPENSE', $3, 'create-expense-percentage-v2', $4, $5, $6, $7)`, f.id(101), f.id(201), key, canonical, hash[:], id, payload); err != nil {
 				t.Fatal(err)
 			}
 			if err = tx.Commit(f.ctx); err == nil {
 				t.Fatal("committed invalid percentage history")
 			}
 			var count int
-			if err = f.admin.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM app.expenses WHERE id=$1)+(SELECT count(*) FROM app.expense_operations WHERE expense_id=$1)+(SELECT count(*) FROM app.allocations WHERE expense_id=$1)+(SELECT count(*) FROM app.expense_audit WHERE expense_id=$1)+(SELECT count(*) FROM app.financial_records WHERE record_id=$1)`, id).Scan(&count); err != nil || count != 0 {
+			if err = f.admin.QueryRow(f.ctx, `SELECT(
+  SELECT count(*)
+  FROM app.expenses
+  WHERE id = $1
+) +(
+  SELECT count(*)
+  FROM app.expense_operations
+  WHERE expense_id = $1
+) +(
+  SELECT count(*)
+  FROM app.allocations
+  WHERE expense_id = $1
+) +(
+  SELECT count(*)
+  FROM app.expense_audit
+  WHERE expense_id = $1
+) +(
+  SELECT count(*)
+  FROM app.financial_records
+  WHERE record_id = $1
+)`, id).Scan(&count); err != nil || count != 0 {
 				t.Fatal("partial effect", count, err)
 			}
 		})

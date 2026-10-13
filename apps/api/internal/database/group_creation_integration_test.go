@@ -69,7 +69,13 @@ func TestGroupCreationAtomicAndRecovery(t *testing.T) {
 	}
 	if err := f.db.WithIdentity(f.ctx, f.id(2), func(tx pgx.Tx) error {
 		var total, revision, allocations int64
-		if err := tx.QueryRow(f.ctx, `SELECT coalesce(sum(total_minor),0),coalesce(max(revision),0),(SELECT count(*) FROM app.allocations WHERE group_id=$1) FROM app.expenses WHERE group_id=$1`, first.GroupID).Scan(&total, &revision, &allocations); err != nil {
+		if err := tx.QueryRow(f.ctx, `SELECT coalesce(sum(total_minor), 0), coalesce(max(revision), 0), (
+  SELECT count(*)
+  FROM app.allocations
+  WHERE group_id = $1
+)
+FROM app.expenses
+WHERE group_id = $1`, first.GroupID).Scan(&total, &revision, &allocations); err != nil {
 			return err
 		}
 		if total != 0 || revision != 0 || allocations != 0 {
@@ -94,7 +100,16 @@ func TestGroupCreationAtomicAndRecovery(t *testing.T) {
 	}
 	var count int
 	var destination, start, end, currency, name string
-	err := f.admin.QueryRow(f.ctx, `SELECT g.name,g.currency,t.destination,t.start_date::text,t.end_date::text,(SELECT count(*) FROM app.memberships m WHERE m.group_id=g.id AND m.active) FROM app.groups g JOIN app.group_trip t ON t.group_id=g.id WHERE g.id=$1`, first.GroupID).Scan(&name, &currency, &destination, &start, &end, &count)
+	err := f.admin.QueryRow(f.ctx, `SELECT g.name, g.currency, t.destination, t.start_date::text, t.end_date::text,
+(
+  SELECT count(*)
+  FROM app.memberships m
+  WHERE m.group_id = g.id
+  AND m.active
+)
+FROM app.groups g
+JOIN app.group_trip t ON t.group_id = g.id
+WHERE g.id = $1`, first.GroupID).Scan(&name, &currency, &destination, &start, &end, &count)
 	if err != nil || count != 1 || name != "Journey" || currency != "USD" || destination != "  京都 🌏  " || start != "2024-02-29" || end != start {
 		t.Fatalf("metadata count=%d %q %q %q %q %q err=%v", count, name, currency, destination, start, end, err)
 	}
@@ -223,7 +238,18 @@ func TestGroupCreationAuthorityAndGrants(t *testing.T) {
 	f.reject(fmt.Sprintf(`INSERT INTO app.group_trip VALUES('%s','','2026-01-01','2026-01-01')`, f.id(11)))
 	f.reject(fmt.Sprintf(`UPDATE app.installation SET household_group_id='%s'`, result.GroupID))
 	var unsafe int
-	if err := f.admin.QueryRow(f.ctx, `SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='app' AND p.proname IN ('create_group','group_creation_operation','group_creator_lock','group_creation_result','trip_household_guard','household_trip_guard') AND NOT ('search_path=pg_catalog, pg_temp'=ANY(p.proconfig) OR 'search_path=pg_catalog,pg_temp'=ANY(p.proconfig))`).Scan(&unsafe); err != nil || unsafe != 0 {
+	if err := f.admin.QueryRow(f.ctx, `SELECT count(*)
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'app'
+AND p.proname IN(
+  'create_group', 'group_creation_operation', 'group_creator_lock', 'group_creation_result',
+  'trip_household_guard', 'household_trip_guard'
+)
+AND NOT(
+  'search_path=pg_catalog, pg_temp' = ANY(p.proconfig)
+  OR 'search_path=pg_catalog,pg_temp' = ANY(p.proconfig)
+)`).Scan(&unsafe); err != nil || unsafe != 0 {
 		t.Fatalf("unsafe search path %d %v", unsafe, err)
 	}
 	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.users SET enabled=false WHERE id='%s'; RESET ROLE`, f.id(2)))

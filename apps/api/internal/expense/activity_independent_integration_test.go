@@ -12,7 +12,53 @@ import (
 	"github.com/google/uuid"
 )
 
-const independentActivityQuery = `query($group:ID!,$first:Int!,$after:String,$filter:ActivityFilter){groupActivity(groupId:$group,first:$first,after:$after,filter:$filter){__typename ... on Problem{code} ... on ActivityConnection{edges{cursor node{id recordId kind groupId groupName amountMinor currency effectiveDate timestamp creator{id displayName} payer{id} sender{id} recipient{id}}} pageInfo{hasNextPage startCursor endCursor}}}}`
+const independentActivityQuery = `query ($group: ID!, $first: Int!, $after: String, $filter: ActivityFilter) {
+  groupActivity(
+    groupId: $group
+    first: $first
+    after: $after
+    filter: $filter
+  ) {
+    __typename
+    ... on Problem {
+      code
+    }
+    ... on ActivityConnection {
+      edges {
+        cursor
+        node {
+          id
+          recordId
+          kind
+          groupId
+          groupName
+          amountMinor
+          currency
+          effectiveDate
+          timestamp
+          creator {
+            id
+            displayName
+          }
+          payer {
+            id
+          }
+          sender {
+            id
+          }
+          recipient {
+            id
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+}`
 
 func independentActivity(t *testing.T, f *expenseFixture, actor int, variables map[string]any) map[string]any {
 	t.Helper()

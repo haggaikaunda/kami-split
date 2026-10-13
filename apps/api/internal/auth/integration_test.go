@@ -41,11 +41,17 @@ func TestVerifiedRequestRuntimeBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	execute(fmt.Sprintf(`INSERT INTO auth.users(id,email) VALUES ('%s','one78@example.invalid'),('%s','two78@example.invalid');
- BEGIN; SET LOCAL ROLE kami_migrator;
- INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES ('%s','%s','%s','One'),('%s','%s','%s','Two');
- INSERT INTO app.groups(id,name,owner_membership_id) VALUES ('%s','First','%s'),('%s','Second','%s');
- INSERT INTO app.memberships(id,group_id,user_id,active) VALUES ('%s','%s','%s',true),('%s','%s','%s',true),('%s','%s','%s',false); COMMIT;`, id(1), id(2), id(101), id(1), id(1), id(102), id(2), id(2), id(201), id(301), id(202), id(302), id(301), id(201), id(101), id(302), id(202), id(102), id(303), id(202), id(101)))
+	execute(fmt.Sprintf(`INSERT INTO auth.users(id, email)
+VALUES('%s', 'one78@example.invalid'), ('%s', 'two78@example.invalid');
+BEGIN;
+SET LOCAL ROLE kami_migrator;
+INSERT INTO app.users(id, auth_subject, live_auth_id, display_name)
+VALUES('%s', '%s', '%s', 'One'), ('%s', '%s', '%s', 'Two');
+INSERT INTO app.groups(id, name, owner_membership_id)
+VALUES('%s', 'First', '%s'), ('%s', 'Second', '%s');
+INSERT INTO app.memberships(id, group_id, user_id, active)
+VALUES('%s', '%s', '%s', true), ('%s', '%s', '%s', true), ('%s', '%s', '%s', false);
+COMMIT;`, id(1), id(2), id(101), id(1), id(1), id(102), id(2), id(2), id(201), id(301), id(202), id(302), id(301), id(201), id(101), id(302), id(202), id(102), id(303), id(202), id(101)))
 	defer func() {
 		cleanup, done := context.WithTimeout(context.Background(), 5*time.Second)
 		defer done()

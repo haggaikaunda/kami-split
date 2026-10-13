@@ -22,10 +22,27 @@ func TestSelfProfilePersistenceAndConcurrency(t *testing.T) {
 		var snapshot string
 		err := f.db.WithIdentity(f.ctx, f.id(1), func(tx pgx.Tx) error {
 			return tx.QueryRow(f.ctx, `SELECT jsonb_build_object(
-    'expenses',(SELECT jsonb_agg(to_jsonb(e) ORDER BY e.id) FROM app.expenses e WHERE group_id=$1),
-    'allocations',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.participant_id) FROM app.allocations a WHERE group_id=$1),
-    'audit',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.expense_id) FROM app.expense_audit a WHERE group_id=$1),
-    'operations',(SELECT jsonb_agg(to_jsonb(o) ORDER BY o.key) FROM app.expense_operations o WHERE group_id=$1))::text`, f.id(201)).Scan(&snapshot)
+  'expenses', (
+    SELECT jsonb_agg(to_jsonb(e) ORDER BY e.id)
+    FROM app.expenses e
+    WHERE group_id = $1
+  ),
+  'allocations', (
+    SELECT jsonb_agg(to_jsonb(a) ORDER BY a.participant_id)
+    FROM app.allocations a
+    WHERE group_id = $1
+  ),
+  'audit', (
+    SELECT jsonb_agg(to_jsonb(a) ORDER BY a.expense_id)
+    FROM app.expense_audit a
+    WHERE group_id = $1
+  ),
+  'operations', (
+    SELECT jsonb_agg(to_jsonb(o) ORDER BY o.key)
+    FROM app.expense_operations o
+    WHERE group_id = $1
+  )
+)::text`, f.id(201)).Scan(&snapshot)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -38,7 +55,9 @@ func TestSelfProfilePersistenceAndConcurrency(t *testing.T) {
 			if _, err := tx.Exec(f.ctx, "SET LOCAL ROLE kami_migrator"); err != nil {
 				return err
 			}
-			return tx.QueryRow(f.ctx, `SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id)::text FROM app.memberships m WHERE group_id=$1`, f.id(201)).Scan(&memberships)
+			return tx.QueryRow(f.ctx, `SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id)::text
+FROM app.memberships m
+WHERE group_id = $1`, f.id(201)).Scan(&memberships)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +86,18 @@ func TestSelfProfilePersistenceAndConcurrency(t *testing.T) {
 		return result
 	}
 	query := `query { currentProfile { __typename ... on Profile { id displayName } ... on ProfileProblem { code } } }`
-	mutation := `mutation($name:String!,$expected:String!) { updateMyProfile(displayName:$name,expectedDisplayName:$expected) { __typename ... on Profile { id displayName } ... on ProfileProblem { code } } }`
+	mutation := `mutation ($name: String!, $expected: String!) {
+  updateMyProfile(displayName: $name, expectedDisplayName: $expected) {
+    __typename
+    ... on Profile {
+      id
+      displayName
+    }
+    ... on ProfileProblem {
+      code
+    }
+  }
+}`
 	operation := func(actor int, name, expected string) map[string]any {
 		return request(actor, mutation, map[string]any{"name": name, "expected": expected})
 	}

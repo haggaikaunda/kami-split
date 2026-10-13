@@ -73,9 +73,16 @@ ALTER TABLE app.repayments FORCE ROW LEVEL SECURITY;
 ALTER TABLE app.repayment_audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.repayment_audit FORCE ROW LEVEL SECURITY;
 CREATE POLICY repayment_read ON app.repayments FOR SELECT TO kami_api USING(app.can_read_group(group_id));
-CREATE POLICY repayment_insert ON app.repayments FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id) AND creator_id=app.viewer_membership(group_id));
+CREATE POLICY repayment_insert ON app.repayments FOR INSERT TO kami_api WITH CHECK (app.can_read_group(group_id) AND creator_id = app.viewer_membership(group_id));
 CREATE POLICY repayment_audit_read ON app.repayment_audit FOR SELECT TO kami_api USING(app.can_read_group(group_id));
-CREATE POLICY repayment_audit_insert ON app.repayment_audit FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id) AND creator_id=app.viewer_membership(group_id) AND actor_user_id=(SELECT id FROM app.viewer_identity()));
+CREATE POLICY repayment_audit_insert ON app.repayment_audit FOR INSERT TO kami_api WITH CHECK(
+  app.can_read_group(group_id)
+  AND creator_id = app.viewer_membership(group_id)
+  AND actor_user_id =(
+    SELECT id
+    FROM app.viewer_identity()
+  )
+);
 GRANT SELECT,INSERT ON app.repayments,app.repayment_audit TO kami_api;
 CREATE FUNCTION app.check_repayment_complete() RETURNS trigger
 LANGUAGE plpgsql SET search_path=pg_catalog,pg_temp AS $$
@@ -85,7 +92,14 @@ BEGIN
  IF target IS NULL THEN RETURN NULL; END IF;
  SELECT * INTO STRICT r FROM app.repayments WHERE id=target;
  IF r.creation_tx<>pg_current_xact_id()
- OR NOT EXISTS(SELECT FROM app.financial_records f WHERE f.group_id=r.group_id AND f.revision=r.revision AND f.kind='RECORD_REPAYMENT' AND f.record_id=r.id)
+ OR NOT EXISTS(
+   SELECT
+   FROM app.financial_records f
+   WHERE f.group_id = r.group_id
+   AND f.revision = r.revision
+   AND f.kind = 'RECORD_REPAYMENT'
+   AND f.record_id = r.id
+ )
  OR NOT EXISTS(SELECT FROM app.repayment_audit a JOIN app.expense_operations o ON o.repayment_id=a.repayment_id
  WHERE a.repayment_id=r.id AND a.group_id=r.group_id AND a.creator_id=r.creator_id AND a.committed_at=r.created_at
  AND o.group_id=r.group_id AND o.actor_user_id=a.actor_user_id AND o.operation_kind='RECORD_REPAYMENT'

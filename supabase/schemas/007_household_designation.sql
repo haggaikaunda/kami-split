@@ -47,7 +47,13 @@ BEGIN
   UPDATE app.household_designation_guard SET version=version+1,
    state=CASE WHEN d.state='PENDING' THEN 'CANCELLED' ELSE 'SUSPENDED' END,
    first_consented=false,second_consented=false WHERE singleton;
-  PERFORM app.household_audit((SELECT id FROM app.users WHERE auth_subject=app.verified_subject()),CASE WHEN owner_change THEN 'OWNER_CHANGED' ELSE 'ELIGIBILITY_LOST' END,d.state);
+  PERFORM app.household_audit(
+    (
+      SELECT id
+      FROM app.users
+      WHERE auth_subject = app.verified_subject()
+    ), CASE WHEN owner_change THEN 'OWNER_CHANGED' ELSE 'ELIGIBILITY_LOST' END, d.state
+  );
  END IF;
 END $$;
 -- Administrative membership/ownership lifecycle uses this before any group
@@ -57,7 +63,11 @@ LANGUAGE plpgsql SET search_path=pg_catalog,pg_temp AS $$
 DECLARE discovered uuid[]; d app.household_designation_guard;
 BEGIN
  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'READ COMMITTED required' USING ERRCODE='25000'; END IF;
- SELECT array_remove(ARRAY[first_user_id,second_user_id,proposer_user_id]||coalesce(affected,'{}'),NULL) INTO discovered FROM app.household_designation_guard;
+ SELECT array_remove(
+   ARRAY[first_user_id, second_user_id, proposer_user_id] || coalesce(affected, '{}'),
+   NULL
+ ) INTO discovered
+ FROM app.household_designation_guard;
  PERFORM id FROM app.users WHERE id=ANY(discovered) ORDER BY id FOR SHARE;
  SELECT * INTO d FROM app.household_designation_guard WHERE singleton FOR UPDATE;
  IF NOT array_remove(ARRAY[d.first_user_id,d.second_user_id,d.proposer_user_id],NULL)<@discovered THEN
@@ -106,7 +116,7 @@ BEGIN
  PERFORM set_config('app.household_account_transaction',txid_current()::text,true);
  RETURN NULL;
 END $$;
-CREATE TRIGGER household_account_lock BEFORE UPDATE OF enabled,live_auth_id ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.household_account_lock();
+CREATE TRIGGER household_account_lock BEFORE UPDATE OF enabled, live_auth_id ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.household_account_lock();
 -- UPDATE has already locked the affected user. FK-driven managed Auth unlink
 -- takes this same path; enabled users still cannot lose their required Auth link.
 CREATE FUNCTION app.household_account_transition() RETURNS trigger
@@ -126,7 +136,11 @@ BEGIN
  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'READ COMMITTED required' USING ERRCODE='25000'; END IF;
  SELECT id INTO actor FROM app.users WHERE auth_subject=app.verified_subject();
  IF actor IS NULL THEN RETURN jsonb_build_object('state','NOT_FOUND'); END IF;
- SELECT array_remove(ARRAY[first_user_id,second_user_id,proposer_user_id,actor,first_id,second_id],NULL) INTO discovered FROM app.household_designation_guard;
+ SELECT array_remove(
+   ARRAY[first_user_id, second_user_id, proposer_user_id, actor, first_id, second_id],
+   NULL
+ ) INTO discovered
+ FROM app.household_designation_guard;
  PERFORM id FROM app.users WHERE id=ANY(discovered) ORDER BY id FOR SHARE;
  SELECT * INTO d FROM app.household_designation_guard WHERE singleton FOR UPDATE;
  IF NOT array_remove(ARRAY[d.first_user_id,d.second_user_id,d.proposer_user_id],NULL)<@discovered THEN
@@ -151,28 +165,72 @@ BEGIN
  IF action='PROPOSE' THEN
   IF d.state IN ('ACTIVE','SUSPENDED') THEN RETURN jsonb_build_object('state','CONFLICT','version',d.version); END IF;
   IF first_id IS NULL OR second_id IS NULL OR first_id>=second_id OR
-   (SELECT count(*) FROM app.users u JOIN app.memberships m ON m.user_id=u.id WHERE u.id IN(first_id,second_id) AND u.enabled AND u.live_auth_id=u.auth_subject AND m.group_id=household AND m.active)<>2 THEN
+   (
+     SELECT count(*)
+     FROM app.users u
+     JOIN app.memberships m ON m.user_id = u.id
+     WHERE u.id IN(first_id, second_id)
+     AND u.enabled
+     AND u.live_auth_id = u.auth_subject
+     AND m.group_id = household
+     AND m.active
+   ) <> 2 THEN
    RETURN jsonb_build_object('state','NOT_FOUND');
   END IF;
-  UPDATE app.household_designation_guard SET version=version+1,state='PENDING',first_user_id=first_id,second_user_id=second_id,proposer_user_id=actor,first_consented=false,second_consented=false WHERE singleton;
+  UPDATE app.household_designation_guard
+  SET version = version + 1, state = 'PENDING', first_user_id = first_id, second_user_id = second_id,
+  proposer_user_id = actor, first_consented = false, second_consented = false
+  WHERE singleton;
   changed:=true;
  ELSIF action='CONSENT' THEN
-  IF first_id IS DISTINCT FROM d.first_user_id OR second_id IS DISTINCT FROM d.second_user_id THEN RETURN jsonb_build_object('state','CONFLICT','version',d.version); END IF;
-  IF d.state NOT IN ('PENDING','SUSPENDED','ACTIVE') THEN RETURN jsonb_build_object('state','CONFLICT','version',d.version); END IF;
-  IF (SELECT count(*) FROM app.users u JOIN app.memberships m ON m.user_id=u.id WHERE u.id IN(d.first_user_id,d.second_user_id) AND u.enabled AND u.live_auth_id=u.auth_subject AND m.group_id=household AND m.active)<>2 THEN RETURN jsonb_build_object('state','NOT_FOUND'); END IF;
+  IF first_id IS DISTINCT
+  FROM d.first_user_id
+  OR second_id IS DISTINCT
+  FROM d.second_user_id THEN RETURN jsonb_build_object('state', 'CONFLICT', 'version', d.version);
+  END IF;
+  IF d.state NOT IN('PENDING', 'SUSPENDED', 'ACTIVE') THEN RETURN jsonb_build_object('state', 'CONFLICT', 'version', d.version);
+  END IF;
+  IF(
+    SELECT count(*)
+    FROM app.users u
+    JOIN app.memberships m ON m.user_id = u.id
+    WHERE u.id IN(d.first_user_id, d.second_user_id)
+    AND u.enabled
+    AND u.live_auth_id = u.auth_subject
+    AND m.group_id = household
+    AND m.active
+  ) <> 2 THEN RETURN jsonb_build_object('state', 'NOT_FOUND');
+  END IF;
   changed:=CASE WHEN actor=d.first_user_id THEN NOT d.first_consented ELSE NOT d.second_consented END;
-  UPDATE app.household_designation_guard SET first_consented=first_consented OR actor=first_user_id,second_consented=second_consented OR actor=second_user_id WHERE singleton;
+  UPDATE app.household_designation_guard
+  SET first_consented = first_consented
+  OR actor = first_user_id, second_consented = second_consented
+  OR actor = second_user_id
+  WHERE singleton;
  ELSIF action='CANCEL' THEN
   IF d.state='CANCELLED' THEN RETURN jsonb_build_object('state',d.state,'version',d.version); END IF;
   IF d.state<>'PENDING' THEN RETURN jsonb_build_object('state','CONFLICT','version',d.version); END IF;
-  UPDATE app.household_designation_guard SET state='CANCELLED',first_consented=false,second_consented=false WHERE singleton; changed:=true;
+  UPDATE app.household_designation_guard
+  SET state = 'CANCELLED', first_consented = false, second_consented = false
+  WHERE singleton;
+  changed : = true;
  ELSE
   IF d.state='ENDED' THEN RETURN jsonb_build_object('state',d.state,'version',d.version); END IF;
   IF d.state NOT IN ('ACTIVE','SUSPENDED') THEN RETURN jsonb_build_object('state','CONFLICT','version',d.version); END IF;
-  UPDATE app.household_designation_guard SET state='ENDED',first_consented=false,second_consented=false WHERE singleton; changed:=true;
+  UPDATE app.household_designation_guard
+  SET state = 'ENDED', first_consented = false, second_consented = false
+  WHERE singleton;
+  changed : = true;
  END IF;
  IF changed THEN PERFORM app.household_audit(actor,action,previous); END IF;
- IF action='CONSENT' AND previous<>'ACTIVE' AND EXISTS(SELECT FROM app.household_designation_guard WHERE first_consented AND second_consented) THEN
+ IF action = 'CONSENT'
+ AND previous <> 'ACTIVE'
+ AND EXISTS(
+   SELECT
+   FROM app.household_designation_guard
+   WHERE first_consented
+   AND second_consented
+ ) THEN
   UPDATE app.household_designation_guard SET state='ACTIVE' WHERE singleton;
   PERFORM app.household_audit(actor,'FINALIZED',previous);
  END IF;
@@ -194,7 +252,9 @@ BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended(subject::text,79));
  SELECT id INTO actor_id FROM app.users WHERE auth_subject=subject;
  IF actor_id IS NULL THEN
-  INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES(gen_random_uuid(),subject,subject,'Member') RETURNING id INTO actor_id;
+  INSERT INTO app.users(id, auth_subject, live_auth_id, display_name)
+  VALUES(gen_random_uuid(), subject, subject, 'Member')
+  RETURNING id INTO actor_id;
  END IF;
  IF EXISTS(SELECT FROM app.installation WHERE household_group_id=target) THEN
   PERFORM app.household_lifecycle_lock(ARRAY[actor_id]);

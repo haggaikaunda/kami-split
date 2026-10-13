@@ -105,7 +105,24 @@ func repaymentSnapshot(t *testing.T, call repaymentCaller, in ledger.RepaymentIn
 func repaymentCounts(t *testing.T, f *expenseFixture) [4]int {
 	t.Helper()
 	var n [4]int
-	if e := f.admin.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM app.repayments WHERE group_id=$1),(SELECT count(*) FROM app.repayment_audit WHERE group_id=$1),(SELECT count(*) FROM app.expense_operations WHERE group_id=$1 AND operation_kind='RECORD_REPAYMENT'),(SELECT count(*) FROM app.financial_records WHERE group_id=$1)`, f.id(201)).Scan(&n[0], &n[1], &n[2], &n[3]); e != nil {
+	if e := f.admin.QueryRow(f.ctx, `SELECT(
+  SELECT count(*)
+  FROM app.repayments
+  WHERE group_id = $1
+), (
+  SELECT count(*)
+  FROM app.repayment_audit
+  WHERE group_id = $1
+), (
+  SELECT count(*)
+  FROM app.expense_operations
+  WHERE group_id = $1
+  AND operation_kind = 'RECORD_REPAYMENT'
+), (
+  SELECT count(*)
+  FROM app.financial_records
+  WHERE group_id = $1
+)`, f.id(201)).Scan(&n[0], &n[1], &n[2], &n[3]); e != nil {
 		t.Fatal(e)
 	}
 	return n
@@ -327,7 +344,13 @@ func TestRepaymentRestrictedOrphanSuccessAndDurableRejection(t *testing.T) {
 		t.Fatal(e)
 	}
 	err := f.db.WithIdentity(f.ctx, f.id(1), func(tx pgx.Tx) error {
-		_, e := tx.Exec(f.ctx, `INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,outcome) VALUES($1,$2,'RECORD_REPAYMENT',$3,'record-repayment-v1',$4,$5,'{"Kind":"COMMITTED"}'::jsonb)`, f.id(101), f.id(201), in.Key, canonical, hash[:])
+		_, e := tx.Exec(f.ctx, `INSERT INTO app.expense_operations(
+  actor_user_id, group_id, operation_kind, key, canonical_version, canonical, canonical_hash,
+  outcome
+)
+VALUES(
+  $1, $2, 'RECORD_REPAYMENT', $3, 'record-repayment-v1', $4, $5, '{"Kind":"COMMITTED"}'::jsonb
+)`, f.id(101), f.id(201), in.Key, canonical, hash[:])
 		return e
 	})
 	if err == nil {
@@ -556,7 +579,11 @@ func TestRepaymentRestrictedRegistryAndImmutableStorage(t *testing.T) {
 		name, sql, code string
 		args            []any
 	}{
-		{"cross-kind revision", `INSERT INTO app.repayments(id,group_id,creator_id,sender_id,recipient_id,amount_minor,currency,effective_date,note,revision) VALUES($1,$2,$3,$3,$4,1,'USD','2026-09-30','',1)`, "23505", []any{uuid.NewString(), f.id(201), f.id(301), f.id(302)}},
+		{"cross-kind revision", `INSERT INTO app.repayments(
+  id, group_id, creator_id, sender_id, recipient_id, amount_minor, currency, effective_date,
+  note, revision
+)
+VALUES($1, $2, $3, $3, $4, 1, 'USD', '2026-09-30', '', 1)`, "23505", []any{uuid.NewString(), f.id(201), f.id(301), f.id(302)}},
 		{"direct registry", `INSERT INTO app.financial_records(group_id,revision,kind,record_id) VALUES($1,2,'RECORD_REPAYMENT',$2)`, "42501", []any{f.id(201), uuid.NewString()}},
 		{"repayment update", `UPDATE app.repayments SET note='tampered' WHERE group_id=$1`, "42501", []any{f.id(201)}},
 		{"repayment delete", `DELETE FROM app.repayments WHERE group_id=$1`, "42501", []any{f.id(201)}},
@@ -639,7 +666,30 @@ func TestRepaymentPreservesOldSignedExpenseCursor(t *testing.T) {
 	call := repaymentEndpoint(t, f, f.db)
 	query := func(after any) map[string]any {
 		t.Helper()
-		body, _ := json.Marshal(map[string]any{"query": `query($id:ID!,$after:String){group(id:$id){... on Group{expenses(first:1,after:$after){revision edges{node{id}} pageInfo{endCursor hasNextPage}} balances{... on GroupBalances{revision totalExpenseMinor}}}}}`, "variables": map[string]any{"id": f.input.GroupID, "after": after}})
+		body, _ := json.Marshal(map[string]any{"query": `query ($id: ID!, $after: String) {
+  group(id: $id) {
+    ... on Group {
+      expenses(first: 1, after: $after) {
+        revision
+        edges {
+          node {
+            id
+          }
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+      }
+      balances {
+        ... on GroupBalances {
+          revision
+          totalExpenseMinor
+        }
+      }
+    }
+  }
+}`, "variables": map[string]any{"id": f.input.GroupID, "after": after}})
 		req, _ := http.NewRequestWithContext(f.ctx, "POST", f.endpoint.URL+"/graphql", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+f.token(1))
 		req.Header.Set("Content-Type", "application/json")

@@ -353,7 +353,11 @@ func TestPersistedExpenseRuntimeConstraintsRejectPartialEffectsAndLaterZeroAlloc
 		if e != nil {
 			return e
 		}
-		_, e = tx.Exec(ctx, `INSERT INTO app.expenses(id,group_id,creator_id,payer_id,total_minor,currency,description,effective_date,category,note,split,revision) VALUES($1,$2,$3,$3,1,'USD','partial','2026-01-01','OTHER','','EQUAL',3)`, uuid.NewString(), id(201), id(301))
+		_, e = tx.Exec(ctx, `INSERT INTO app.expenses(
+  id, group_id, creator_id, payer_id, total_minor, currency, description, effective_date,
+  category, note, split, revision
+)
+VALUES($1, $2, $3, $3, 1, 'USD', 'partial', '2026-01-01', 'OTHER', '', 'EQUAL', 3)`, uuid.NewString(), id(201), id(301))
 		return e
 	})
 	if err == nil {
@@ -397,7 +401,62 @@ func TestPersistedExpenseGraphqlProjectionNodesAndSignedPagination(t *testing.T)
 		}
 		return data
 	}
-	q := `query($id:ID!,$after:String){group(id:$id){__typename ... on Group{id viewerMembership{id} members{id canParticipate} expenses(first:1,after:$after){revision edges{cursor node{id totalMinor payer{id} creator{id} allocations{amountMinor participant{id}}}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}} balances{... on GroupBalances{revision totalExpenseMinor settled positions{netMinor member{id}}}}}}}`
+	q := `query ($id: ID!, $after: String) {
+  group(id: $id) {
+    __typename
+    ... on Group {
+      id
+      viewerMembership {
+        id
+      }
+      members {
+        id
+        canParticipate
+      }
+      expenses(first: 1, after: $after) {
+        revision
+        edges {
+          cursor
+          node {
+            id
+            totalMinor
+            payer {
+              id
+            }
+            creator {
+              id
+            }
+            allocations {
+              amountMinor
+              participant {
+                id
+              }
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+      }
+      balances {
+        ... on GroupBalances {
+          revision
+          totalExpenseMinor
+          settled
+          positions {
+            netMinor
+            member {
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}`
 	response := query(q, map[string]any{"id": input.GroupID})
 	if response["errors"] != nil {
 		t.Fatalf("first page: %+v", response)
@@ -420,7 +479,23 @@ func TestPersistedExpenseGraphqlProjectionNodesAndSignedPagination(t *testing.T)
 	if response["errors"] == nil || response["data"].(map[string]any)["group"].(map[string]any)["expenses"] != nil {
 		t.Fatalf("bad cursor: %+v", response)
 	}
-	response = query(`query($self:ID!,$peer:ID!,$record:ID!){a:node(id:$self){id} b:node(id:$peer){id} c:node(id:$record){id ... on Expense{totalMinor payer{id}}}}`, map[string]any{"self": public("Viewer", 101), "peer": public("Viewer", 102), "record": original.Record.ExpenseID})
+	response = query(`query ($self: ID!, $peer: ID!, $record: ID!) {
+  a: node(id: $self) {
+    id
+  }
+  b: node(id: $peer) {
+    id
+  }
+  c: node(id: $record) {
+    id
+    ... on Expense {
+      totalMinor
+      payer {
+        id
+      }
+    }
+  }
+}`, map[string]any{"self": public("Viewer", 101), "peer": public("Viewer", 102), "record": original.Record.ExpenseID})
 	if response["errors"] != nil || response["data"].(map[string]any)["a"] == nil || response["data"].(map[string]any)["b"] != nil || response["data"].(map[string]any)["c"] == nil {
 		t.Fatalf("nodes: %+v", response)
 	}

@@ -12,7 +12,9 @@ import (
 )
 
 const listGroups = `-- name: ListGroups :many
-SELECT id, name, currency FROM app.groups ORDER BY id
+SELECT id, name, currency
+FROM app.groups
+ORDER BY id
 `
 
 type ListGroupsRow struct {

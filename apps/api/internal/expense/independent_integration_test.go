@@ -251,7 +251,23 @@ func TestIndependentExpenseSimultaneousFirstAttemptsHaveOneAtomicEffect(t *testi
 		}
 	}
 	var expenses, allocations, audits, receipts int
-	if e := admin.QueryRow(ctx, `SELECT (SELECT count(*) FROM app.expenses WHERE group_id=$1),(SELECT count(*) FROM app.allocations WHERE group_id=$1),(SELECT count(*) FROM app.expense_audit WHERE group_id=$1),(SELECT count(*) FROM app.expense_operations WHERE group_id=$1)`, id(201)).Scan(&expenses, &allocations, &audits, &receipts); e != nil {
+	if e := admin.QueryRow(ctx, `SELECT(
+  SELECT count(*)
+  FROM app.expenses
+  WHERE group_id = $1
+), (
+  SELECT count(*)
+  FROM app.allocations
+  WHERE group_id = $1
+), (
+  SELECT count(*)
+  FROM app.expense_audit
+  WHERE group_id = $1
+), (
+  SELECT count(*)
+  FROM app.expense_operations
+  WHERE group_id = $1
+)`, id(201)).Scan(&expenses, &allocations, &audits, &receipts); e != nil {
 		t.Fatal(e)
 	}
 	if expenses != 1 || allocations != 2 || audits != 1 || receipts != 1 {

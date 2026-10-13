@@ -19,7 +19,94 @@ import (
 
 // Exercise the Group and Viewer composition used by the direct ledger route,
 // including the distinct data selections for all five workspace tabs.
-const membershipWorkspaceQuery = `query($id:ID!,$overview:Boolean!,$ledger:Boolean!,$balances:Boolean!,$activity:Boolean!){viewer{__typename ... on Viewer{today canCreateGroups groups{id isHousehold}}} group(id:$id){__typename ... on Group{id isHousehold viewerMembership{id role} members{id status role} expenses(first:5) @include(if:$overview){edges{node{id totalMinor}}} balances @include(if:$balances){__typename ... on GroupBalances{totalExpenseMinor settled positions{member{id} netMinor}}} repayments(first:5) @include(if:$balances){edges{node{id amountMinor}}}}} groupExpenses(groupId:$id,first:20) @include(if:$ledger){__typename ... on ExpenseView{totalExpenseMinor expenseCount edges{node{id groupId}}}} groupActivity(groupId:$id,first:20) @include(if:$activity){__typename ... on ActivityConnection{edges{node{groupId amountMinor}}}}}`
+const membershipWorkspaceQuery = `query (
+  $id: ID!
+  $overview: Boolean!
+  $ledger: Boolean!
+  $balances: Boolean!
+  $activity: Boolean!
+) {
+  viewer {
+    __typename
+    ... on Viewer {
+      today
+      canCreateGroups
+      groups {
+        id
+        isHousehold
+      }
+    }
+  }
+  group(id: $id) {
+    __typename
+    ... on Group {
+      id
+      isHousehold
+      viewerMembership {
+        id
+        role
+      }
+      members {
+        id
+        status
+        role
+      }
+      expenses(first: 5) @include(if: $overview) {
+        edges {
+          node {
+            id
+            totalMinor
+          }
+        }
+      }
+      balances @include(if: $balances) {
+        __typename
+        ... on GroupBalances {
+          totalExpenseMinor
+          settled
+          positions {
+            member {
+              id
+            }
+            netMinor
+          }
+        }
+      }
+      repayments(first: 5) @include(if: $balances) {
+        edges {
+          node {
+            id
+            amountMinor
+          }
+        }
+      }
+    }
+  }
+  groupExpenses(groupId: $id, first: 20) @include(if: $ledger) {
+    __typename
+    ... on ExpenseView {
+      totalExpenseMinor
+      expenseCount
+      edges {
+        node {
+          id
+          groupId
+        }
+      }
+    }
+  }
+  groupActivity(groupId: $id, first: 20) @include(if: $activity) {
+    __typename
+    ... on ActivityConnection {
+      edges {
+        node {
+          groupId
+          amountMinor
+        }
+      }
+    }
+  }
+}`
 
 func membershipWorkspaceTabs(t *testing.T, f *expenseFixture, actor int, membership, role string) {
 	t.Helper()

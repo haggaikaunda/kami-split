@@ -14,7 +14,83 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
-const independentDashboardQuery = `{householdDashboard{__typename ... on Problem{code message} ... on HouseholdDashboard{contextVersion state totals{__typename ... on Problem{code} ... on HouseholdDashboardTotals{viewerShareMinor viewerPaidMinor viewerNetMinor activeSpaceCount openBalanceCount totalSharedExpenseMinor totalSharedExpenseCount}} spaces{viewerNetMinor sharedExpenseCount groupId name kind isHousehold trip{destination startDate endDate} members{id displayName status} balances{__typename ... on Problem{code} ... on GroupBalances{revision totalExpenseMinor settled positions{member{id status} netMinor paidMinor owedMinor sentMinor receivedMinor} obligations{from{id} to{id} amountMinor}}}}}}}`
+const independentDashboardQuery = `{
+  householdDashboard {
+    __typename
+    ... on Problem {
+      code
+      message
+    }
+    ... on HouseholdDashboard {
+      contextVersion
+      state
+      totals {
+        __typename
+        ... on Problem {
+          code
+        }
+        ... on HouseholdDashboardTotals {
+          viewerShareMinor
+          viewerPaidMinor
+          viewerNetMinor
+          activeSpaceCount
+          openBalanceCount
+          totalSharedExpenseMinor
+          totalSharedExpenseCount
+        }
+      }
+      spaces {
+        viewerNetMinor
+        sharedExpenseCount
+        groupId
+        name
+        kind
+        isHousehold
+        trip {
+          destination
+          startDate
+          endDate
+        }
+        members {
+          id
+          displayName
+          status
+        }
+        balances {
+          __typename
+          ... on Problem {
+            code
+          }
+          ... on GroupBalances {
+            revision
+            totalExpenseMinor
+            settled
+            positions {
+              member {
+                id
+                status
+              }
+              netMinor
+              paidMinor
+              owedMinor
+              sentMinor
+              receivedMinor
+            }
+            obligations {
+              from {
+                id
+              }
+              to {
+                id
+              }
+              amountMinor
+            }
+          }
+        }
+      }
+    }
+  }
+}`
 
 func independentDashboardExec(t *testing.T, f *expenseFixture, sql string) {
 	t.Helper()

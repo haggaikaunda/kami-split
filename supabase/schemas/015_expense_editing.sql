@@ -34,12 +34,15 @@ ALTER TABLE app.expense_revision_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.expense_revision_allocations FORCE ROW LEVEL SECURITY;
 CREATE POLICY revision_read ON app.expense_revisions FOR SELECT TO kami_api USING(app.can_read_group(group_id));
 CREATE POLICY revision_owner ON app.expense_revisions TO kami_migrator USING(true) WITH CHECK(true);
-CREATE POLICY revision_allocation_read ON app.expense_revision_allocations FOR SELECT TO kami_api USING(app.can_read_group(group_id));
+CREATE POLICY revision_allocation_read ON app.expense_revision_allocations FOR
+SELECT TO kami_api USING (app.can_read_group(group_id));
 CREATE POLICY revision_allocation_owner ON app.expense_revision_allocations TO kami_migrator USING(true) WITH CHECK(true);
 GRANT SELECT ON app.expense_revisions,app.expense_revision_allocations TO kami_api;
 INSERT INTO app.expense_revisions SELECT e.*,e.id,a.actor_user_id,a.creator_id,e.created_at
  FROM app.expenses e JOIN app.expense_audit a ON a.expense_id=e.id;
-INSERT INTO app.expense_revision_allocations SELECT a.expense_id,1,a.group_id,a.participant_id,a.amount_minor,a.percentage_hundredths FROM app.allocations a;
+INSERT INTO app.expense_revision_allocations
+SELECT a.expense_id, 1, a.group_id, a.participant_id, a.amount_minor, a.percentage_hundredths
+FROM app.allocations a;
 ALTER TABLE app.expense_operations DROP CONSTRAINT expense_operations_expense_id_key;
 CREATE UNIQUE INDEX original_expense_operation ON app.expense_operations(expense_id) WHERE operation_kind='CREATE_EXPENSE';
 ALTER TABLE app.expense_operations DROP CONSTRAINT financial_operation_kind;
@@ -79,7 +82,17 @@ BEGIN
  IF current_setting('transaction_isolation')<>'read committed' THEN RAISE EXCEPTION 'READ COMMITTED required' USING ERRCODE='25000'; END IF;
  SELECT id INTO actor FROM app.users WHERE auth_subject=app.verified_subject() AND live_auth_id=auth_subject AND enabled;
  IF actor IS NULL THEN RAISE EXCEPTION 'access denied' USING ERRCODE='42501'; END IF;
- SELECT array_agg(locked.id) INTO locked_users FROM (SELECT u.id FROM app.users u WHERE u.id=actor OR u.id IN(SELECT m.user_id FROM app.memberships m WHERE m.group_id=target_group OR m.id=ANY(proposed_members))
+ SELECT array_agg(locked.id) INTO locked_users
+ FROM (
+ SELECT u.id
+ FROM app.users u
+ WHERE u.id = actor
+ OR u.id IN(
+   SELECT m.user_id
+   FROM app.memberships m
+   WHERE m.group_id = target_group
+   OR m.id = ANY(proposed_members)
+ )
  ORDER BY u.id FOR SHARE) locked;
  PERFORM id FROM app.groups WHERE id=target_group FOR UPDATE;
  IF EXISTS(SELECT FROM app.memberships m WHERE m.group_id=target_group AND NOT(m.user_id=ANY(locked_users))) THEN
@@ -106,27 +119,78 @@ BEGIN
  (m.id=e.payer_id OR m.id IN(SELECT participant_id FROM app.allocations WHERE expense_id=target)) AND NOT m.active)
  THEN RAISE EXCEPTION 'former member expense lock' USING ERRCODE='55000'; END IF;
  IF EXISTS(SELECT FROM app.memberships m JOIN app.users u ON u.id=m.user_id WHERE m.group_id=e.group_id AND
- (m.id=e.payer_id OR m.id IN(SELECT participant_id FROM app.allocations WHERE expense_id=target)) AND (NOT u.enabled OR u.live_auth_id IS DISTINCT FROM u.auth_subject))
+ (
+   m.id = e.payer_id
+   OR m.id IN(
+     SELECT participant_id
+     FROM app.allocations
+     WHERE expense_id = target
+   )
+ )
+ AND (NOT u.enabled OR u.live_auth_id IS DISTINCT FROM u.auth_subject))
  THEN RAISE EXCEPTION 'access denied' USING ERRCODE='42501'; END IF;
  IF jsonb_typeof(new_shares)<>'array' OR jsonb_array_length(new_shares)=0 THEN RAISE EXCEPTION 'invalid allocation' USING ERRCODE='23514'; END IF;
- IF EXISTS(SELECT FROM (SELECT new_payer AS id UNION SELECT (s->>'participant_id')::uuid FROM jsonb_array_elements(new_shares) s) p
- WHERE NOT EXISTS(SELECT FROM app.memberships m JOIN app.users u ON u.id=m.user_id WHERE m.id=p.id AND m.group_id=e.group_id AND m.active AND u.enabled AND u.live_auth_id=u.auth_subject))
+ IF EXISTS (
+ SELECT
+ FROM(
+   SELECT new_payer AS id
+   UNION
+   SELECT (s ->> 'participant_id')::uuid
+   FROM jsonb_array_elements(new_shares) s
+ ) p
+ WHERE NOT EXISTS(
+   SELECT
+   FROM app.memberships m
+   JOIN app.users u ON u.id = m.user_id
+   WHERE m.id = p.id
+   AND m.group_id = e.group_id
+   AND m.active
+   AND u.enabled
+   AND u.live_auth_id = u.auth_subject
+ ))
  THEN RAISE EXCEPTION 'access denied' USING ERRCODE='42501'; END IF;
  IF (e.payer_id,e.total_minor,e.description,e.effective_date,e.category,e.note,e.split) IS NOT DISTINCT FROM
  (new_payer,new_total,new_description,new_date,new_category,new_note,new_split)
- AND (SELECT jsonb_agg(jsonb_build_array(a.participant_id,a.amount_minor,a.percentage_hundredths) ORDER BY a.participant_id) FROM app.allocations a WHERE a.expense_id=target)
- = (SELECT jsonb_agg(jsonb_build_array((s->>'participant_id')::uuid,(s->>'amount_minor')::bigint,(s->>'percentage_hundredths')::integer) ORDER BY (s->>'participant_id')::uuid) FROM jsonb_array_elements(new_shares) s)
+ AND (
+   SELECT jsonb_agg(
+     jsonb_build_array(a.participant_id, a.amount_minor, a.percentage_hundredths)
+     ORDER BY a.participant_id
+   )
+   FROM app.allocations a
+   WHERE a.expense_id = target
+ )
+ =(
+   SELECT jsonb_agg(
+     jsonb_build_array(
+       (s ->> 'participant_id')::uuid, (s ->> 'amount_minor')::bigint, (s ->> 'percentage_hundredths')::integer
+     )
+     ORDER BY (s ->> 'participant_id')::uuid
+   )
+   FROM jsonb_array_elements(new_shares) s
+ )
  THEN RETURN QUERY SELECT e.version,NULL::uuid,NULL::timestamptz; RETURN; END IF;
- IF new_revision IS NULL OR new_revision<=(SELECT coalesce(max(f.revision),0) FROM app.financial_records f WHERE f.group_id=e.group_id) THEN RAISE EXCEPTION 'invalid financial revision' USING ERRCODE='23514'; END IF;
+ IF new_revision IS NULL
+ OR new_revision <=(
+   SELECT coalesce(max(f.revision), 0)
+   FROM app.financial_records f
+   WHERE f.group_id = e.group_id
+ ) THEN RAISE EXCEPTION 'invalid financial revision' USING ERRCODE = '23514';
+ END IF;
  at_time:=clock_timestamp();
  SELECT id INTO actor FROM app.viewer_identity(); actor_member:=app.viewer_membership(e.group_id);
  UPDATE app.expenses SET payer_id=new_payer,total_minor=new_total,description=new_description,effective_date=new_date,
  category=new_category,note=new_note,split=new_split,revision=new_revision,version=e.version+1 WHERE id=target;
  DELETE FROM app.allocations WHERE expense_id=target;
  INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor,percentage_hundredths)
- SELECT target,e.group_id,(s->>'participant_id')::uuid,(s->>'amount_minor')::bigint,(s->>'percentage_hundredths')::integer FROM jsonb_array_elements(new_shares) s;
+ SELECT target, e.group_id, (s ->> 'participant_id')::uuid, (s ->> 'amount_minor')::bigint,
+ (s ->> 'percentage_hundredths')::integer
+ FROM jsonb_array_elements(new_shares) s;
  INSERT INTO app.expense_revisions SELECT x.*,next_event,actor,actor_member,at_time FROM app.expenses x WHERE x.id=target;
- INSERT INTO app.expense_revision_allocations SELECT a.expense_id,e.version+1,a.group_id,a.participant_id,a.amount_minor,a.percentage_hundredths FROM app.allocations a WHERE a.expense_id=target;
+ INSERT INTO app.expense_revision_allocations
+ SELECT a.expense_id, e.version + 1, a.group_id, a.participant_id, a.amount_minor,
+ a.percentage_hundredths
+ FROM app.allocations a
+ WHERE a.expense_id = target;
  INSERT INTO app.financial_records(group_id,revision,kind,record_id) VALUES(e.group_id,new_revision,'EDIT_EXPENSE',next_event);
  RETURN QUERY SELECT e.version+1,next_event,at_time;
 END $$;
@@ -147,15 +211,55 @@ BEGIN
  SELECT count(*),sum(amount_minor) INTO n,owed FROM app.allocations WHERE expense_id=target;
  IF n=0 OR owed<>e.total_minor THEN RAISE EXCEPTION 'incomplete expense' USING ERRCODE='23514'; END IF;
  IF e.version=1 THEN
-  IF e.creation_tx<>pg_current_xact_id() OR NOT EXISTS(SELECT FROM app.expense_audit a WHERE a.expense_id=e.id AND a.group_id=e.group_id AND a.creator_id=e.creator_id AND a.committed_at=e.created_at)
-  OR NOT EXISTS(SELECT FROM app.expense_operations o JOIN app.expense_audit a ON a.expense_id=o.expense_id WHERE o.expense_id=e.id AND o.group_id=e.group_id AND o.actor_user_id=a.actor_user_id AND o.operation_kind='CREATE_EXPENSE')
+  IF e.creation_tx <> pg_current_xact_id()
+  OR NOT EXISTS(
+    SELECT
+    FROM app.expense_audit a
+    WHERE a.expense_id = e.id
+    AND a.group_id = e.group_id
+    AND a.creator_id = e.creator_id
+    AND a.committed_at = e.created_at
+  )
+  OR NOT EXISTS(
+    SELECT
+    FROM app.expense_operations o
+    JOIN app.expense_audit a ON a.expense_id = o.expense_id
+    WHERE o.expense_id = e.id
+    AND o.group_id = e.group_id
+    AND o.actor_user_id = a.actor_user_id
+    AND o.operation_kind = 'CREATE_EXPENSE'
+  )
   THEN RAISE EXCEPTION 'incomplete expense' USING ERRCODE='23514'; END IF;
-  INSERT INTO app.expense_revisions SELECT x.*,x.id,a.actor_user_id,a.creator_id,x.created_at FROM app.expenses x JOIN app.expense_audit a ON a.expense_id=x.id WHERE x.id=target ON CONFLICT(id,version) DO NOTHING;
-  INSERT INTO app.expense_revision_allocations SELECT a.expense_id,e.version,a.group_id,a.participant_id,a.amount_minor,a.percentage_hundredths FROM app.allocations a WHERE a.expense_id=target ON CONFLICT(expense_id,version,participant_id) DO NOTHING;
+  INSERT INTO app.expense_revisions
+  SELECT x.*, x.id, a.actor_user_id, a.creator_id, x.created_at
+  FROM app.expenses x
+  JOIN app.expense_audit a ON a.expense_id = x.id
+  WHERE x.id = target ON CONFLICT (id, version) DO NOTHING;
+  INSERT INTO app.expense_revision_allocations
+  SELECT a.expense_id, e.version, a.group_id, a.participant_id, a.amount_minor,
+  a.percentage_hundredths
+  FROM app.allocations a
+  WHERE a.expense_id = target ON CONFLICT (expense_id, version, participant_id) DO NOTHING;
  ELSE
   IF NOT EXISTS(SELECT FROM app.expense_revisions r WHERE r.id=e.id AND r.version=e.version AND r.revision=e.revision)
-  OR EXISTS((SELECT participant_id,amount_minor,percentage_hundredths FROM app.allocations WHERE expense_id=target EXCEPT SELECT participant_id,amount_minor,percentage_hundredths FROM app.expense_revision_allocations WHERE expense_id=target AND version=e.version)
-   UNION ALL (SELECT participant_id,amount_minor,percentage_hundredths FROM app.expense_revision_allocations WHERE expense_id=target AND version=e.version EXCEPT SELECT participant_id,amount_minor,percentage_hundredths FROM app.allocations WHERE expense_id=target))
+  OR EXISTS ((
+    SELECT participant_id, amount_minor, percentage_hundredths
+    FROM app.allocations
+    WHERE expense_id = target EXCEPT
+    SELECT participant_id, amount_minor, percentage_hundredths
+    FROM app.expense_revision_allocations
+    WHERE expense_id = target
+    AND version = e.version
+  )
+   UNION ALL(
+     SELECT participant_id, amount_minor, percentage_hundredths
+     FROM app.expense_revision_allocations
+     WHERE expense_id = target
+     AND version = e.version EXCEPT
+     SELECT participant_id, amount_minor, percentage_hundredths
+     FROM app.allocations
+     WHERE expense_id = target
+   ))
   THEN RAISE EXCEPTION 'incomplete expense revision' USING ERRCODE='23514'; END IF;
  END IF;
  RETURN NULL;
@@ -168,19 +272,43 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE n bigint; owed numeric; percentage_count bigint; percentage_sum numeric; intended jsonb; resolved jsonb; snapshot jsonb;
 BEGIN
  SELECT count(*),sum(amount_minor),count(percentage_hundredths),sum(percentage_hundredths),
- jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Amount',amount_minor) ORDER BY participant_id),
- jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Hundredths',percentage_hundredths) ORDER BY participant_id)
+ jsonb_agg(
+   jsonb_build_object('ParticipantID', 'ks1:Membership:' || participant_id::text, 'Amount', amount_minor)
+   ORDER BY participant_id
+ ),
+ jsonb_agg(
+   jsonb_build_object(
+     'ParticipantID', 'ks1:Membership:' || participant_id::text,
+     'Hundredths', percentage_hundredths
+   )
+   ORDER BY participant_id
+ )
  INTO n,owed,percentage_count,percentage_sum,resolved,intended
  FROM app.expense_revision_allocations WHERE expense_id=NEW.id AND version=NEW.version;
  IF n=0 OR owed<>NEW.total_minor OR (NEW.split<>'PERCENTAGE' AND percentage_count<>0)
  OR (NEW.split='PERCENTAGE' AND (percentage_count<>n OR percentage_sum<>10000))
  THEN RAISE EXCEPTION 'incomplete expense revision allocation' USING ERRCODE='23514'; END IF;
- IF NEW.split='EQUAL' AND NEW.version>1 AND EXISTS(SELECT FROM (SELECT amount_minor,row_number() OVER(ORDER BY participant_id) AS rank FROM app.expense_revision_allocations WHERE expense_id=NEW.id AND version=NEW.version) shares WHERE amount_minor<>NEW.total_minor/n+CASE WHEN rank<=mod(NEW.total_minor,n) THEN 1 ELSE 0 END)
+ IF NEW.split = 'EQUAL'
+ AND NEW.version > 1
+ AND EXISTS(
+   SELECT
+   FROM(
+     SELECT amount_minor, row_number() OVER (ORDER BY participant_id) AS rank
+     FROM app.expense_revision_allocations
+     WHERE expense_id = NEW.id
+     AND version = NEW.version
+   ) shares
+   WHERE amount_minor <> NEW.total_minor / n + CASE WHEN rank <= mod(NEW.total_minor, n) THEN 1 ELSE 0 END
+ )
  THEN RAISE EXCEPTION 'incorrect equal allocation' USING ERRCODE='23514'; END IF;
  IF NEW.split='PERCENTAGE' AND EXISTS(WITH shares AS (
  SELECT participant_id,amount_minor,percentage_hundredths,floor(NEW.total_minor::numeric*percentage_hundredths/10000) AS base,
  mod(NEW.total_minor::numeric*percentage_hundredths,10000) AS remainder FROM app.expense_revision_allocations WHERE expense_id=NEW.id AND version=NEW.version
- ), ranked AS (SELECT *,row_number() OVER(ORDER BY remainder DESC,participant_id) AS rank,NEW.total_minor-sum(base) OVER() AS remaining FROM shares)
+ ), ranked AS (
+   SELECT *, row_number() OVER (ORDER BY remainder DESC, participant_id) AS rank,
+   NEW.total_minor - sum(base) OVER () AS remaining
+   FROM shares
+ )
  SELECT FROM ranked WHERE amount_minor<>base+CASE WHEN rank<=remaining AND percentage_hundredths>0 THEN 1 ELSE 0 END)
  THEN RAISE EXCEPTION 'incorrect percentage allocation' USING ERRCODE='23514'; END IF;
  IF NEW.version>1 THEN
@@ -189,9 +317,31 @@ BEGIN
    'TotalMinor',NEW.total_minor,'Currency',NEW.currency,'Description',NEW.description,'EffectiveDate',to_char(NEW.effective_date,'YYYY-MM-DD'),
    'Category',NEW.category,'Note',NEW.note,'Split',NEW.split,'Revision',NEW.revision,'Version',NEW.version,'Allocations',resolved,
    'CommittedAt',to_char(NEW.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
-  IF NOT EXISTS(SELECT FROM app.expense_revisions p WHERE p.id=NEW.id AND p.version=NEW.version-1 AND p.group_id=NEW.group_id AND p.creator_id=NEW.creator_id AND p.created_at=NEW.created_at AND p.currency=NEW.currency AND p.revision<NEW.revision)
-  OR NOT EXISTS(SELECT FROM app.financial_records f WHERE f.group_id=NEW.group_id AND f.revision=NEW.revision AND f.kind='EDIT_EXPENSE' AND f.record_id=NEW.event_id)
-  OR NOT EXISTS(SELECT FROM app.expense_operations o WHERE o.expense_id=NEW.id AND o.group_id=NEW.group_id AND o.operation_kind='EDIT_EXPENSE'
+  IF NOT EXISTS(
+    SELECT
+    FROM app.expense_revisions p
+    WHERE p.id = NEW.id
+    AND p.version = NEW.version - 1
+    AND p.group_id = NEW.group_id
+    AND p.creator_id = NEW.creator_id
+    AND p.created_at = NEW.created_at
+    AND p.currency = NEW.currency
+    AND p.revision < NEW.revision
+  )
+  OR NOT EXISTS(
+    SELECT
+    FROM app.financial_records f
+    WHERE f.group_id = NEW.group_id
+    AND f.revision = NEW.revision
+    AND f.kind = 'EDIT_EXPENSE'
+    AND f.record_id = NEW.event_id
+  )
+  OR NOT EXISTS (
+  SELECT
+  FROM app.expense_operations o
+  WHERE o.expense_id = NEW.id
+  AND o.group_id = NEW.group_id
+  AND o.operation_kind = 'EDIT_EXPENSE'
    AND o.actor_user_id=NEW.actor_user_id AND o.outcome->>'Kind'='COMMITTED' AND o.outcome->>'Changed'='true'
    AND o.outcome->'Record' @> snapshot AND o.outcome->'Record'->'Allocations'=resolved AND (NEW.split<>'PERCENTAGE' OR o.outcome->'Record'->'Percentages'=intended))
   THEN RAISE EXCEPTION 'incomplete expense revision provenance' USING ERRCODE='23514'; END IF;
@@ -213,7 +363,10 @@ BEGIN
  END IF;
  SELECT * INTO STRICT e FROM app.expenses WHERE id=target;
  IF e.version>1 THEN RETURN NULL; END IF;
- SELECT count(*),count(percentage_hundredths),sum(percentage_hundredths) INTO n,percentage_count,percentage_sum FROM app.allocations WHERE expense_id=target;
+ SELECT count(*), count(percentage_hundredths), sum(percentage_hundredths) INTO n,
+ percentage_count, percentage_sum
+ FROM app.allocations
+ WHERE expense_id = target;
  IF e.split<>'PERCENTAGE' THEN
   IF percentage_count<>0 THEN RAISE EXCEPTION 'unexpected percentage intent' USING ERRCODE='23514'; END IF;
   RETURN NULL;
@@ -222,13 +375,30 @@ BEGIN
  IF EXISTS(WITH shares AS (
   SELECT participant_id,amount_minor,percentage_hundredths,floor(e.total_minor::numeric*percentage_hundredths/10000) AS base,
    mod(e.total_minor::numeric*percentage_hundredths,10000) AS remainder FROM app.allocations WHERE expense_id=target
- ), ranked AS (SELECT *,row_number() OVER(ORDER BY remainder DESC,participant_id ASC) AS rank,e.total_minor-sum(base) OVER() AS remaining FROM shares)
+ ), ranked AS (
+   SELECT *, row_number() OVER (ORDER BY remainder DESC, participant_id ASC) AS rank,
+   e.total_minor - sum(base) OVER () AS remaining
+   FROM shares
+ )
  SELECT FROM ranked WHERE amount_minor<>base+CASE WHEN rank<=remaining AND percentage_hundredths>0 THEN 1 ELSE 0 END)
  THEN RAISE EXCEPTION 'incorrect percentage allocation' USING ERRCODE='23514'; END IF;
- SELECT jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Hundredths',percentage_hundredths) ORDER BY participant_id),
- jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Amount',amount_minor) ORDER BY participant_id)
+ SELECT jsonb_agg(
+   jsonb_build_object(
+     'ParticipantID', 'ks1:Membership:' || participant_id::text,
+     'Hundredths', percentage_hundredths
+   )
+   ORDER BY participant_id
+ ),
+ jsonb_agg(
+   jsonb_build_object('ParticipantID', 'ks1:Membership:' || participant_id::text, 'Amount', amount_minor)
+   ORDER BY participant_id
+ )
  INTO intended,resolved FROM app.allocations WHERE expense_id=target;
- IF NOT EXISTS(SELECT FROM app.expense_operations o WHERE o.expense_id=target AND o.canonical_version='create-expense-percentage-v2'
+ IF NOT EXISTS (
+ SELECT
+ FROM app.expense_operations o
+ WHERE o.expense_id = target
+ AND o.canonical_version = 'create-expense-percentage-v2'
   AND o.outcome->'Record'->>'Split'='PERCENTAGE' AND o.outcome->'Record'->'Percentages'=intended AND o.outcome->'Record'->'Allocations'=resolved)
  THEN RAISE EXCEPTION 'incomplete percentage outcome' USING ERRCODE='23514'; END IF;
  RETURN NULL;
@@ -249,7 +419,14 @@ BEGIN
  SELECT coalesce((SELECT sum(total_minor::numeric) FROM app.expenses WHERE group_id=OLD.group_id AND payer_id=OLD.id),0)
   -coalesce((SELECT sum(amount_minor::numeric) FROM app.allocations WHERE group_id=OLD.group_id AND participant_id=OLD.id),0)
   +coalesce((SELECT sum(amount_minor::numeric) FROM app.repayments WHERE group_id=OLD.group_id AND sender_id=OLD.id),0)
-  -coalesce((SELECT sum(amount_minor::numeric) FROM app.repayments WHERE group_id=OLD.group_id AND recipient_id=OLD.id),0) INTO net;
+  - coalesce(
+    (
+      SELECT sum(amount_minor::numeric)
+      FROM app.repayments
+      WHERE group_id = OLD.group_id
+      AND recipient_id = OLD.id
+    ), 0
+  ) INTO net;
  IF net<>0 THEN RAISE EXCEPTION 'membership has a nonzero balance' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;

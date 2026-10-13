@@ -15,7 +15,14 @@ DO $$ BEGIN
  SELECT 'designation',jsonb_agg(to_jsonb(t)) FROM app.household_designation_guard t UNION ALL
  SELECT 'designation_audit',jsonb_agg(to_jsonb(t) ORDER BY id) FROM app.household_designation_audit t
  ) snapshot) THEN RAISE EXCEPTION 'retirement rewrote stable identities, financial history, admission or legacy history'; END IF;
- IF EXISTS(SELECT FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='app' AND p.proname IN ('household_designation','household_invalidate','household_audit')) THEN RAISE EXCEPTION 'obsolete relation operations remain'; END IF;
+ IF EXISTS(
+   SELECT
+   FROM pg_proc p
+   JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'app'
+   AND p.proname IN('household_designation', 'household_invalidate', 'household_audit')
+ ) THEN RAISE EXCEPTION 'obsolete relation operations remain';
+ END IF;
 END $$;
 BEGIN;
 SET LOCAL ROLE kami_api;
@@ -43,8 +50,25 @@ UPDATE app.memberships SET active=true WHERE id='a1970000-0000-4000-8000-0000000
 UPDATE app.groups SET owner_membership_id='a1970000-0000-4000-8000-000000000003' WHERE id='a1100000-0000-4000-8000-000000000002';
 RESET ROLE;
 DO $$ BEGIN
- IF (SELECT rows FROM public.household_retirement_snapshot WHERE name='designation') IS DISTINCT FROM (SELECT jsonb_agg(to_jsonb(t)) FROM app.household_designation_guard t)
- OR (SELECT rows FROM public.household_retirement_snapshot WHERE name='designation_audit') IS DISTINCT FROM (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM app.household_designation_audit t) THEN RAISE EXCEPTION 'lifecycle changed archived pair history'; END IF;
+ IF(
+   SELECT rows
+   FROM public.household_retirement_snapshot
+   WHERE name = 'designation'
+ ) IS DISTINCT
+ FROM(
+   SELECT jsonb_agg(to_jsonb(t))
+   FROM app.household_designation_guard t
+ )
+ OR (
+   SELECT rows
+   FROM public.household_retirement_snapshot
+   WHERE name = 'designation_audit'
+ ) IS DISTINCT
+ FROM(
+   SELECT jsonb_agg(to_jsonb(t) ORDER BY id)
+   FROM app.household_designation_audit t
+ ) THEN RAISE EXCEPTION 'lifecycle changed archived pair history';
+ END IF;
 END $$;
 ROLLBACK;
 DROP TABLE public.household_retirement_snapshot;

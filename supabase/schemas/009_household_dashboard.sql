@@ -11,12 +11,29 @@ BEGIN
  END IF;
  SELECT * INTO d FROM app.household_designation_guard WHERE singleton;
  IF d.state<>'ACTIVE' OR NOT d.first_consented OR NOT d.second_consented OR
-  (SELECT count(*) FROM app.users u JOIN app.memberships m ON m.user_id=u.id WHERE u.id IN(d.first_user_id,d.second_user_id) AND u.enabled AND u.live_auth_id=u.auth_subject AND m.group_id=household AND m.active)<>2 THEN
+  (
+    SELECT count(*)
+    FROM app.users u
+    JOIN app.memberships m ON m.user_id = u.id
+    WHERE u.id IN(d.first_user_id, d.second_user_id)
+    AND u.enabled
+    AND u.live_auth_id = u.auth_subject
+    AND m.group_id = household
+    AND m.active
+  ) <> 2 THEN
   RETURN jsonb_build_object('state','UNAVAILABLE','groups',jsonb_build_array(household));
  END IF;
- IF actor NOT IN(d.first_user_id,d.second_user_id) THEN RETURN jsonb_build_object('state','NOT_FOUND','groups','[]'::jsonb); END IF;
+ IF actor NOT IN(d.first_user_id, d.second_user_id) THEN RETURN jsonb_build_object('state', 'NOT_FOUND', 'groups', '[]'::jsonb);
+ END IF;
  SELECT coalesce(array_agg(g.id ORDER BY g.id),'{}') INTO ids FROM app.groups g
- WHERE app.can_read_group(g.id) AND (SELECT count(*) FROM app.memberships m WHERE m.group_id=g.id AND m.active AND m.user_id IN(d.first_user_id,d.second_user_id))=2;
+ WHERE app.can_read_group(g.id)
+ AND (
+   SELECT count(*)
+   FROM app.memberships m
+   WHERE m.group_id = g.id
+   AND m.active
+   AND m.user_id IN(d.first_user_id, d.second_user_id)
+ ) = 2;
  RETURN jsonb_build_object('state','COMPLETE','groups',to_jsonb(ids));
 END $$;
 CREATE FUNCTION app.household_dashboard_lock() RETURNS jsonb
