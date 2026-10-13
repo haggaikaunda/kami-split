@@ -15,7 +15,7 @@ import { expenseFilterText, expenseFilter } from '@/lib/relay/expense-filter';
 import { useFinancialSession } from '@/components/groups/session';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { Skeleton } from '@/components/primitives';
+import { Skeleton } from '../ui/primitives';
 import { ExpenseLedger } from './ledger';
 import '@/components/groups/journey.css';
 export function HouseholdExpenses() {

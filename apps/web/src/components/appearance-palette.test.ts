@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 
 it('keeps the approved Dark palette behind the explicit appearance selector', () => {
   const css = readFileSync(
-    new URL('../app/styles.css', import.meta.url),
+    new URL('../app/tokens.css', import.meta.url),
     'utf8',
   );
   const dark = css.match(/:root\[data-theme='dark'\]\s*\{([^}]+)\}/)?.[1];
@@ -60,7 +60,7 @@ it.each(['light', 'dark'])(
   'keeps %s semantic text and action pairs readable',
   (theme) => {
     const css = readFileSync(
-      new URL('../app/styles.css', import.meta.url),
+      new URL('../app/tokens.css', import.meta.url),
       'utf8',
     );
     const root = css.match(/:root\s*\{([^}]+)\}/)![1];
@@ -89,26 +89,22 @@ it.each(['light', 'dark'])(
       ['summary-muted', 'summary-net'],
       ['on-summary', 'summary-share'],
       ['summary-muted', 'summary-share'],
-      ['info', 'info-surface'],
-      ['accent', 'accent-surface'],
+      ['blue', 'blue-surface'],
+      ['violet', 'violet-surface'],
     ];
-    const graphicalPairs: string[][] = [];
-    for (const category of [
-      'dining',
-      'groceries',
-      'accommodation',
-      'transport',
-      'activities',
-      'home',
-      'other',
-    ]) {
-      graphicalPairs.push([
-        `category-${category}`,
-        `category-${category}-surface`,
-      ]);
-    }
+    // Test the concrete roles consumed by category styles, including the
+    // chart's cyan/neutral hues; the unused category aliases no longer own them.
+    const graphicalPairs = [
+      ['coral', 'coral-surface'],
+      ['primary', 'green-surface'],
+      ['violet', 'violet-surface'],
+      ['chart-cyan', 'blue-surface'],
+      ['orange', 'orange-surface'],
+      ['blue', 'blue-surface'],
+      ['muted', 'violet-surface'],
+    ];
     // Category hues paint icons/segments, not body text. Exact amounts and
-    // category names use the high-contrast legend. Graphical objects require3:1.
+    // category names use the high-contrast legend. Graphical objects require 3:1.
     for (const [foreground, background, minimum] of [
       ...pairs.map(([f, b]) => [f, b, 4.5] as const),
       ...graphicalPairs.map(([f, b]) => [f, b, 3] as const),

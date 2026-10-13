@@ -20,7 +20,7 @@ import {
 import type { Member } from '@/lib/relay/draft';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { money } from '@/lib/relay/money';
-import { ErrorSummary } from '@/components/primitives';
+import { ErrorSummary } from '../ui/primitives';
 type Outcome =
   | journeyRepaymentMutation['response']['recordRepayment']
   | journeyRepaymentRecoveryQuery['response']['repaymentOperation'];

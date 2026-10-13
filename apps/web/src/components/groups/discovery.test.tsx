@@ -166,8 +166,9 @@ it('keeps general navigation static while limiting source discovery to authorize
   expect(host.textContent).toContain('In progress');
   expect(host.querySelector('a[href="/trips/T"]')).not.toBeNull();
   expect(
-    host.querySelector('.workspace-navigation a[aria-current="page"]')
-      ?.textContent,
+    host.querySelector(
+      '[data-ui~="workspace-navigation"] a[aria-current="page"]',
+    )?.textContent,
   ).toBe('Trips');
   expect(host.textContent).not.toContain('Friends · Group');
 });

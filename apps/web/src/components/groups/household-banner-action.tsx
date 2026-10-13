@@ -1,5 +1,7 @@
 'use client';
 import { useExpenseEntry } from '@/components/expenses/entry';
+import workspaceStyles from '../workspace/patterns.module.css';
+
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -76,7 +78,8 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
     return (
       <span
         id="workspace-add"
-        className="banner-action"
+        data-ui="banner-action"
+        className={workspaceStyles['banner-action']}
         aria-disabled="true"
         title={
           failed
@@ -99,7 +102,8 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
       onClick={(event) => expenseEntry?.activate(event, source)}
       id="workspace-add"
       scroll={false}
-      className="banner-action"
+      data-ui="banner-action"
+      className={workspaceStyles['banner-action']}
       href={`/household/expenses?${next}`}
     >
       <AppIcon name="plus" /> Add expense

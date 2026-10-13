@@ -556,7 +556,7 @@ withAuthFixture(origin, session, async () => {
           .waitFor();
         assert.equal(
           await page
-            .locator('.ui-summary-row .ui-metric-label')
+            .locator('[data-ui~="summary-row"] [data-ui~="metric-label"]')
             .last()
             .innerText(),
           'Your share',
@@ -577,10 +577,13 @@ withAuthFixture(origin, session, async () => {
         1,
         'Household has one frame',
       );
-      assert.equal(await page.locator('.ui-workspace-tabs').count(), 1);
+      assert.equal(
+        await page.locator('[data-ui~="workspace-tabs"]').count(),
+        1,
+      );
       assert.equal(
         await page
-          .locator('.workspace-navigation a[aria-current="page"]')
+          .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
           .getAttribute('href'),
         '/household',
       );
@@ -591,7 +594,7 @@ withAuthFixture(origin, session, async () => {
         .waitFor();
       assert.equal(
         await page
-          .locator('.workspace-navigation a[aria-current="page"]')
+          .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
           .getAttribute('href'),
         '/trips',
       );
@@ -707,7 +710,7 @@ withAuthFixture(origin, session, async () => {
     await page.goto(
       origin + (workspace === 'group' ? '/trips/T?tab=overview' : '/household'),
     );
-    await page.locator('.ui-workspace-tabs').waitFor();
+    await page.locator('[data-ui~="workspace-tabs"]').waitFor();
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
     await page.waitForTimeout(1000);
@@ -717,7 +720,7 @@ withAuthFixture(origin, session, async () => {
         process.env.THEME || 'light',
       );
       const labels = await page
-        .locator('.ui-summary-row .ui-metric-label')
+        .locator('[data-ui~="summary-row"] [data-ui~="metric-label"]')
         .allTextContents();
       assert.equal(
         labels.length,
@@ -753,13 +756,13 @@ withAuthFixture(origin, session, async () => {
       'Members',
     ]) {
       const link = page
-        .locator('.ui-workspace-tabs')
+        .locator('[data-ui~="workspace-tabs"]')
         .getByRole('link', { name: tab, exact: true });
       await link.waitFor();
       log = [];
       documents = 0;
       await page.evaluate(() => {
-        window.__shell = document.querySelector('.ui-workspace-tabs');
+        window.__shell = document.querySelector('[data-ui~="workspace-tabs"]');
         window.__feedback = null;
         window.__click = null;
         document.addEventListener(
@@ -785,9 +788,10 @@ withAuthFixture(origin, session, async () => {
       await link.click();
       await page.waitForTimeout(80);
       const early = await page.evaluate(() => ({
-        shellPresent: !!document.querySelector('.ui-workspace-tabs'),
+        shellPresent: !!document.querySelector('[data-ui~="workspace-tabs"]'),
         sameShell:
-          window.__shell === document.querySelector('.ui-workspace-tabs'),
+          window.__shell ===
+          document.querySelector('[data-ui~="workspace-tabs"]'),
         feedbackMs: window.__feedback,
         clickEpoch: window.__clickEpoch,
         scrollAfter: scrollY,
@@ -843,7 +847,7 @@ withAuthFixture(origin, session, async () => {
     }
 
     await page
-      .locator('.ui-workspace-tabs')
+      .locator('[data-ui~="workspace-tabs"]')
       .getByRole('link', { name: 'Expenses', exact: true })
       .click();
     await page.locator('#ledger-expense-e1').waitFor();
@@ -1150,14 +1154,14 @@ withAuthFixture(origin, session, async () => {
     const beforePopup = page.url();
     const popupReady = page.context().waitForEvent('page');
     await page
-      .locator('.ui-workspace-tabs')
+      .locator('[data-ui~="workspace-tabs"]')
       .getByRole('link', { name: 'Members', exact: true })
       .click({
         modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'],
       });
     const popup = await popupReady;
     await popup.waitForURL((url) => url.searchParams.get('tab') === 'members');
-    await popup.locator('.ui-workspace-tabs').waitFor();
+    await popup.locator('[data-ui~="workspace-tabs"]').waitFor();
     assert.equal(
       page.url(),
       beforePopup,
@@ -1171,7 +1175,7 @@ withAuthFixture(origin, session, async () => {
     });
     if (workspace === 'group') {
       const membersLink = page
-        .locator('.ui-workspace-tabs')
+        .locator('[data-ui~="workspace-tabs"]')
         .getByRole('link', { name: 'Members', exact: true });
       await membersLink.hover();
       await page.waitForTimeout(delay + 80);

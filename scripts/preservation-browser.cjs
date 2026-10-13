@@ -17,7 +17,7 @@ module.exports = async function preservation({
         ? '/household?tab=overview'
         : '/trips/T?tab=overview'),
   );
-  const header = page.locator('.ui-workspace-header');
+  const header = page.locator('[data-ui~="workspace-header"]');
   await header.waitFor();
   const banner = await header.evaluate((el) => {
     const style = getComputedStyle(el);
@@ -58,7 +58,7 @@ module.exports = async function preservation({
   // scrolling. Hide only that chrome for the identical before/after chart crop.
   await page.addStyleTag({
     content:
-      '.workspace-navigation-brand,.workspace-navigation-links{visibility:hidden}',
+      '[data-ui~="workspace-navigation-brand"],[data-ui~="workspace-navigation-links"]{visibility:hidden}',
   });
   await chart.screenshot({
     path: path.join(output, `category-${workspace}-${width}-${scale}.png`),

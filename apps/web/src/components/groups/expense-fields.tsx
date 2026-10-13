@@ -1,4 +1,7 @@
 'use client';
+import uiStyles from '../ui/primitives.module.css';
+import workspaceStyles from '../workspace/patterns.module.css';
+
 import { useState } from 'react';
 import {
   categories,
@@ -9,7 +12,7 @@ import {
   type Draft,
   type Member,
 } from '@/lib/relay/draft';
-import { Member as MemberLabel } from '@/components/primitives';
+import { Member as MemberLabel } from '../ui/primitives';
 import { money } from '@/lib/relay/money';
 /** Shared exact-money and split controls for creation and versioned editing. */
 export function ExpenseFields({
@@ -168,7 +171,12 @@ export function ExpenseFields({
         {...field('participants')}
         tabIndex={-1}
       >
-        <legend className="ui-visually-hidden">Participants and preview</legend>
+        <legend
+          data-ui="visually-hidden"
+          className={uiStyles['visually-hidden']}
+        >
+          Participants and preview
+        </legend>
         <div className="expense-split-heading">
           <label htmlFor="expense-split">Split type</label>{' '}
           <select
@@ -182,7 +190,7 @@ export function ExpenseFields({
             <option value="EXACT">Exact</option>
             <option value="PERCENTAGE">Percentage</option>
           </select>
-          <span className="ui-space-chip">
+          <span data-ui="space-chip" className={workspaceStyles['space-chip']}>
             {draft.participants.length} members
           </span>
         </div>

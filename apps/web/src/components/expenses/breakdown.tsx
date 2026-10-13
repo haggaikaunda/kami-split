@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AppIcon } from '@/components/workspace-identity';
-import { Button, Money } from '@/components/primitives';
+import { Button } from '../ui/primitives';
+import { Money } from '../financial/presentation';
 import { minor, money } from '@/lib/relay/money';
 
 export type CategoryTotal = {

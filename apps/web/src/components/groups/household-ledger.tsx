@@ -10,7 +10,7 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { useFinancialSession } from './session';
 import { GroupJourney } from './journey';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { Skeleton } from '@/components/primitives';
+import { Skeleton } from '../ui/primitives';
 import { useForegroundRefresh } from './foreground';
 /** Resolve the original ledger from fresh authorized metadata, never a supplied ID. */
 export function HouseholdLedger() {

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { containDialogFocus } from '@/components/primitives';
+import { containDialogFocus } from '../ui/primitives';
 import './ledger.css';
 import { AppIcon } from '@/components/workspace-identity';
 

@@ -42,3 +42,9 @@ traversal. The ledger checks source membership; a removed ledger unregisters. No
 link navigation still owns the destination, and modified clicks retain native browser
 behavior. Components must not rediscover this relationship through document-level
 click listeners, DOM IDs or selectors.
+
+## Styling and shared presentation
+
+Use colocated CSS Modules for component-owned presentation. `app/tokens.css` owns global theme values and `app/base.css` owns intentional document defaults; components import their own styles. Neutral UI lives in `components/ui/primitives`, reusable workspace patterns in `components/workspace/patterns`, application chrome in `components/workspace/shell.module.css`, and exact financial presentation in `components/financial/presentation`. Shared presentation accepts ordinary props and does not fetch data.
+
+Prefer a component's public variant or caller-owned root class. Existing compositional layouts use the documented `data-ui` slots; never depend on a generated class name or another component's private child tags. The root layout anchors the shared module imports before route sheets; preserve that order, import shared components before feature customization styles and verify a production build with direct loads and route-order transitions, since Next may retain and merge CSS chunks. See the [UI guide](ui.md) for token roles, the slot contract, responsive thresholds, safe areas and enlarged-text behavior; use the [executable gallery](../primitives-preview/README.md) to inspect shared states.

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Status } from '@/components/primitives';
+import { Button, Status } from '../ui/primitives';
 import { AppIcon } from '@/components/workspace-identity';
 import { useApplyAppearance } from '@/components/appearance';
 import { appearance, type Appearance } from '@/lib/appearance';

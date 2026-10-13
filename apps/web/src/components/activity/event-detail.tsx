@@ -1,7 +1,7 @@
 import { calendarDate } from '@/lib/dates';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { AppIcon } from '@/components/workspace-identity';
-import { Money } from '@/components/primitives';
+import { Money } from '../financial/presentation';
 import { money } from '@/lib/relay/money';
 import { percentageText } from '@/lib/relay/percentage';
 import type { activityDetailQuery } from '@/lib/relay/__generated__/activityDetailQuery.graphql';

@@ -1,8 +1,10 @@
+import uiStyles from '../ui/primitives.module.css';
+import { cx } from '../ui/classnames';
 import Link from 'next/link';
 import { AppIcon } from '@/components/workspace-identity';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button, Field } from '@/components/primitives';
+import { Button, Field } from '../ui/primitives';
 import type { OnboardingController } from './controller';
 
 export function InvitationCard({ state: c }: { state: OnboardingController }) {
@@ -171,7 +173,8 @@ export function InvitationScreens({
         </p>
         <InvitationCard state={c} />
         <Link
-          className="ui-button ui-button--primary"
+          data-ui="button button--primary"
+          className={cx(uiStyles['button'], uiStyles['button--primary'])}
           href={`/groups?group=${encodeURIComponent(c.receipt.groupID)}`}
         >
           Open {name}
@@ -290,7 +293,11 @@ export function InvitationScreens({
         >
           Join {name}
         </Button>
-        <Link className="ui-button ui-button--secondary" href="/account">
+        <Link
+          data-ui="button button--secondary"
+          className={cx(uiStyles['button'], uiStyles['button--secondary'])}
+          href="/account"
+        >
           Not now
         </Link>
       </>

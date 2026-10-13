@@ -1,5 +1,8 @@
 'use client';
 import { useExpenseEntry } from '@/components/expenses/entry';
+import workspaceStyles from '../workspace/patterns.module.css';
+import financialStyles from '../financial/presentation.module.css';
+
 import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
 import {
@@ -20,17 +23,19 @@ import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWor
 import type { FinancialScope } from '@/lib/relay/environment';
 import { tripState } from '@/lib/relay/discovery';
 import { minor, money } from '@/lib/relay/money';
+import { Member } from '../ui/primitives';
 import {
-  Member,
   Money,
   RecommendedRepaymentRow,
   SignedBalanceMetric,
   SummaryMetric,
+} from '../financial/presentation';
+import {
   WorkspaceHeader,
   WorkspaceTabs,
   workspaceSections,
   type WorkspaceSection,
-} from '@/components/primitives';
+} from '../workspace/patterns';
 import { ScopedLink } from './navigation';
 import { ActivityFeed } from '@/components/activity/feed';
 import type { expensesView$key } from '@/lib/relay/__generated__/expensesView.graphql';
@@ -128,7 +133,8 @@ export function GroupWorkspace({
         onClick={(event) => expenseEntry?.activate(event, group.id)}
         id="workspace-add"
         scroll={false}
-        className="banner-action"
+        data-ui="banner-action"
+        className={workspaceStyles['banner-action']}
         href={`${base}?${addParams}`}
       >
         <AppIcon name="plus" /> Add expense
@@ -204,7 +210,11 @@ export function GroupWorkspace({
               <div className="workspace-member-balances">
                 {group.balances?.__typename === 'GroupBalances' ? (
                   group.balances.positions.map((p) => (
-                    <div className="ui-balance-row" key={p.member.id}>
+                    <div
+                      data-ui="balance-row"
+                      className={financialStyles['balance-row']}
+                      key={p.member.id}
+                    >
                       <Member
                         name={p.member.displayName}
                         detail={
@@ -381,7 +391,7 @@ function OverviewMetrics({
         )
       : undefined;
   return (
-    <div className="ui-summary-row">
+    <div data-ui="summary-row" className={financialStyles['summary-row']}>
       <SummaryMetric
         label="Total expenses"
         tone="total"
@@ -465,7 +475,10 @@ function Expenses({
                   <CategoryIcon category={edge.node.category} />
                   <span className="expense-row-copy">
                     <strong>{edge.node.description}</strong>
-                    <span className="ui-row-detail">
+                    <span
+                      data-ui="row-detail"
+                      className={financialStyles['row-detail']}
+                    >
                       {edge.node.payer.displayName} paid ·{' '}
                       <time dateTime={edge.node.effectiveDate}>
                         {overviewDate(
@@ -536,7 +549,10 @@ export function GroupBalances({
       <div className="workspace-member-balances">
         {b.positions.map((p) => (
           <div className="balance-position" key={p.member.id}>
-            <div className="ui-balance-row">
+            <div
+              data-ui="balance-row"
+              className={financialStyles['balance-row']}
+            >
               <Member
                 name={p.member.displayName}
                 detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}

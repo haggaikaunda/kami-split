@@ -1,0 +1,168 @@
+.workspace-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--color-ink);
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: -0.03125rem;
+}
+.workspace-brand [data-ui~='icon'] {
+  fill: var(--color-primary);
+  color: var(--color-primary);
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0.5rem;
+  border-radius: 0.8125rem;
+  background: var(--color-container);
+}
+.shell:has(> .workspace-navigation) {
+  --chrome-header: 4.75rem;
+  --chrome-footer: 0px;
+  position: relative;
+  max-width: none;
+  margin: 0;
+  min-height: 100dvh;
+  --shell-right: max(1.25rem, env(safe-area-inset-right));
+  --shell-left: calc(5.5rem + max(1.25rem, env(safe-area-inset-left)));
+  --shell-gap: 1.25rem;
+  padding: 0 var(--shell-right) calc(var(--chrome-footer) + 1.25rem)
+    var(--shell-left);
+}
+.workspace-navigation {
+  display: contents;
+}
+.workspace-navigation-brand {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  margin-inline: calc(-1 * var(--shell-left)) calc(-1 * var(--shell-right));
+  margin-bottom: var(--shell-gap);
+  min-height: 4.75rem;
+  padding-block: max(0.75rem, env(safe-area-inset-top)) 0.75rem;
+  padding-inline: max(1.25rem, env(safe-area-inset-left))
+    max(1.25rem, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  background: var(--color-chrome);
+}
+.workspace-navigation-links {
+  position: fixed;
+  z-index: 20;
+  top: var(--chrome-header);
+  left: 0;
+  bottom: 0;
+  width: 5.5rem;
+  padding: 1.4375rem 0.5rem max(1.25rem, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 0.9375rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-chrome);
+}
+.workspace-navigation-links a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+  min-height: 3.75rem;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-decoration: none;
+  text-align: center;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.workspace-navigation-icon {
+  width: 3.625rem;
+  height: 2.125rem;
+  border-radius: 1.25rem;
+  display: grid;
+  place-items: center;
+  color: var(--color-violet);
+}
+.workspace-navigation-links a[href='/household'] .workspace-navigation-icon {
+  color: var(--color-orange);
+}
+.workspace-navigation-links a[href='/trips'] .workspace-navigation-icon {
+  color: var(--color-blue);
+}
+.workspace-navigation-links a[aria-current='page'] {
+  color: var(--color-on-container);
+}
+.workspace-navigation-links a[aria-current='page'] .workspace-navigation-icon {
+  background: var(--color-container);
+  color: var(--color-on-container);
+}
+.workspace-crumb {
+  margin: 0 0 0.875rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+@media (max-width: 600px) {
+  .shell:has(> .workspace-navigation) {
+    --chrome-header: 4rem;
+    --chrome-footer: 5.125rem;
+    --shell-left: max(1rem, env(safe-area-inset-left));
+    --shell-right: max(1rem, env(safe-area-inset-right));
+    --shell-gap: 0.75rem;
+    padding-bottom: calc(var(--chrome-footer) + 1rem);
+  }
+  .workspace-navigation-brand {
+    min-height: 4rem;
+  }
+  .workspace-brand {
+    font-size: 1.25rem;
+  }
+  .workspace-navigation-links {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    width: auto;
+    padding: 0.5rem max(0.25rem, env(safe-area-inset-right))
+      max(0.5rem, env(safe-area-inset-bottom))
+      max(0.25rem, env(safe-area-inset-left));
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    overflow: visible;
+  }
+  .workspace-navigation-links a {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.125rem;
+    gap: 0.125rem;
+    min-height: 3.5rem;
+  }
+  .workspace-crumb {
+    display: none;
+  }
+}
+@media (max-width: 340px) {
+  .workspace-brand {
+    font-size: 1.125rem;
+  }
+}
+
+.workspace-crumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.workspace-content {
+  container: workspace / inline-size;
+  width: 100%;
+  max-width: 72rem;
+  min-width: 0;
+  margin-inline: auto;
+}
+.workspace-content[data-content='account'] {
+  max-width: 46rem;
+}
+@media (max-width: 600px) {
+  .workspace-navigation-icon {
+    max-width: 100%;
+  }
+}

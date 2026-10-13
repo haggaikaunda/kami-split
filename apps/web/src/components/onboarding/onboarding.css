@@ -38,7 +38,7 @@
   min-height: var(--target-size);
   text-decoration: none;
 }
-.onboarding-brand > .workspace-brand {
+.onboarding-brand > [data-ui~='workspace-brand'] {
   font-size: 1.25rem;
 }
 .onboarding footer {
@@ -98,25 +98,25 @@
 .onboarding-invitation p {
   color: var(--color-muted);
 }
-.onboarding .ui-field {
+.onboarding [data-ui~='field'] {
   margin-block: 0;
 }
-.onboarding .ui-button {
+.onboarding [data-ui~='button'] {
   width: 100%;
   white-space: normal;
   text-align: center;
   text-decoration: none;
 }
-.onboarding .ui-button--secondary {
+.onboarding [data-ui~='button--secondary'] {
   background: transparent;
   border-color: transparent;
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
-.onboarding .ui-button--secondary:hover:not(:disabled) {
+.onboarding [data-ui~='button--secondary']:hover:not(:disabled) {
   background: var(--color-subtle);
 }
-.onboarding-panel > a:not(.ui-button) {
+.onboarding-panel > a:not([data-ui~='button']) {
   justify-self: center;
   display: inline-flex;
   align-items: center;
@@ -214,7 +214,7 @@
   color: var(--color-muted);
   font-size: 0.875rem;
 }
-.account-management .ui-button--secondary {
+.account-management [data-ui~='button--secondary'] {
   border-color: var(--color-separator);
   background: var(--color-surface);
   color: var(--color-primary);
@@ -241,12 +241,12 @@
 .scoped-invitations h3 {
   margin: 0;
 }
-.scoped-invitations .ui-button {
+.scoped-invitations [data-ui~='button'] {
   justify-self: start;
   width: auto;
   white-space: normal;
 }
-.scoped-invitations .ui-button--secondary {
+.scoped-invitations [data-ui~='button--secondary'] {
   background: var(--color-surface);
   color: var(--color-primary);
 }
@@ -263,7 +263,7 @@
   .scoped-invitations .account-rows > li {
     padding: 16px;
   }
-  .scoped-invitations .ui-button {
+  .scoped-invitations [data-ui~='button'] {
     padding: 10px 22px;
   }
 }
@@ -319,7 +319,7 @@
   .members-panel .account-rows > li {
     padding: 12px;
   }
-  .members-panel .ui-member {
+  .members-panel [data-ui~='member'] {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;

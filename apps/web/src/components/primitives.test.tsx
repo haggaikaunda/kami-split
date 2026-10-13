@@ -4,17 +4,16 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   Button,
-  ChartTable,
   Confirmation,
   Dialog,
   ErrorSummary,
   Field,
   Member,
-  Money,
   SelectField,
   Skeleton,
   Status,
-} from './primitives';
+} from './ui/primitives';
+import { ChartTable, Money } from './financial/presentation';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -258,10 +257,12 @@ describe('accessible UI primitives', () => {
     act(() =>
       container.querySelector('img')!.dispatchEvent(new Event('error')),
     );
-    expect(container.querySelector('.ui-avatar')!.textContent).toBe('AB');
-    expect(container.querySelector('.ui-loading')!.textContent).not.toContain(
-      '0.00',
+    expect(container.querySelector('[data-ui~="avatar"]')!.textContent).toBe(
+      'AB',
     );
+    expect(
+      container.querySelector('[data-ui~="loading"]')!.textContent,
+    ).not.toContain('0.00');
     expect(container.textContent).toContain('Unavailable');
     const zero = container.querySelector(
       '[aria-label="Sep 21: 0.00 USD, 0 expenses"]',

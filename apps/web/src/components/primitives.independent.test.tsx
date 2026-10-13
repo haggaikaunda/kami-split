@@ -2,7 +2,7 @@
 import { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Button, Dialog, Field, Member, SelectField } from './primitives';
+import { Button, Dialog, Field, Member, SelectField } from './ui/primitives';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -137,7 +137,9 @@ describe('independent primitive acceptance probes', () => {
     act(() =>
       container.querySelector('img')!.dispatchEvent(new Event('error')),
     );
-    expect(container.querySelector('.ui-avatar')!.textContent).toBe('AB');
+    expect(container.querySelector('[data-ui~="avatar"]')!.textContent).toBe(
+      'AB',
+    );
     expect(container.textContent).toContain('Alpha Beta');
     act(() =>
       root.render(
@@ -149,7 +151,9 @@ describe('independent primitive acceptance probes', () => {
     );
     expect(container.querySelector('img')!.alt).toBe('');
     expect(
-      container.querySelector('.ui-avatar')!.getAttribute('aria-hidden'),
+      container
+        .querySelector('[data-ui~="avatar"]')!
+        .getAttribute('aria-hidden'),
     ).toBe('true');
   });
 });

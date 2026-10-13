@@ -226,7 +226,7 @@ it('identifies household sources and omits redundant group sources and space fil
   await render();
   await respond(page());
   expect(
-    host.querySelector('.ui-space-chip')?.textContent ??
+    host.querySelector('[data-ui~="space-chip"]')?.textContent ??
       host.querySelector('.ledger-description')?.textContent,
   ).toContain('Home');
   await render('home');
@@ -480,7 +480,7 @@ it('returns from Expenses to canonical Household workspace tabs instead of group
   await respondContext(context('0'));
   await respond(page([]));
   expect(
-    [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+    [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map((a) =>
       a.getAttribute('href'),
     ),
   ).toEqual([
