@@ -452,12 +452,12 @@ function Expenses({
         {(recent ? page.edges.slice(0, 4) : page.edges).map(
           (edge) =>
             edge && (
-              <li key={edge.node.id}>
+              <li key={edge.node.expenseId}>
                 <OverviewExpenseLink
                   scope={scope}
                   group={group.id}
-                  id={edge.node.id}
-                  href={spaceExpenseHref(group, edge.node.id)}
+                  id={edge.node.expenseId}
+                  href={spaceExpenseHref(group, edge.node.expenseId)}
                 >
                   <CategoryIcon category={edge.node.category} />
                   <span className="expense-row-copy">

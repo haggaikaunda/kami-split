@@ -48,6 +48,12 @@ One complete filtered dataset anchored to per-group append-only financial revisi
 """
 type ExpenseView {
   """
+  Opaque identity of this exact financial/context projection and bounded page. Includes
+  scope, canonical filters, financial anchors, current context and page arguments.
+  Not a Node ID, cursor or permission; every refetch rechecks current authorization.
+  """
+  id: ID!
+  """
   Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
   """
   contextVersion: String!
@@ -110,9 +116,17 @@ type ExpenseViewEdge {
   """
   cursor: String!
   """
-  Original expense and minimal currently authorized same-group profiles.
+  Legacy anchored expense with a current Expense ID; unsafe to normalize beside current detail.
   """
   node: Expense!
+    @deprecated(
+      reason: "Use snapshot to isolate anchored financial values from current Expense identity."
+    )
+  """
+  Financial values and allocations from this view anchor; member metadata is current.
+  Normalize by the snapshot id, never by the original expenseId.
+  """
+  snapshot: ExpenseSnapshot!
   """
   Original source Group ID, current label/kind/currency/trip metadata.
   """

@@ -47,7 +47,7 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	if err != nil {
 		return problem(ctx, err), nil
 	}
-	result := &model.ExpenseView{ContextVersion: out.ContextVersion, ViewerShareMinor: ledger.MinorUnits(out.ViewerShare), ViewerPaidMinor: ledger.MinorUnits(out.ViewerPaid), Categories: []*model.ExpenseCategoryTotal{}, TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
+	result := &model.ExpenseView{ID: out.ID, ContextVersion: out.ContextVersion, ViewerShareMinor: ledger.MinorUnits(out.ViewerShare), ViewerPaidMinor: ledger.MinorUnits(out.ViewerPaid), Categories: []*model.ExpenseCategoryTotal{}, TotalExpenseMinor: ledger.MinorUnits(out.Total), ExpenseCount: ledger.MinorUnits(out.Count), Months: []*model.ExpenseMonth{}, Edges: []*model.ExpenseViewEdge{}, PageInfo: &model.PageInfo{HasNextPage: out.HasNext, HasPreviousPage: out.HasPrevious}}
 	for _, c := range out.Categories {
 		result.Categories = append(result.Categories, &model.ExpenseCategoryTotal{Category: model.Category(c.Category), TotalExpenseMinor: ledger.MinorUnits(c.Total), ViewerShareMinor: ledger.MinorUnits(c.ViewerShare), ExpenseCount: ledger.MinorUnits(c.Count)})
 	}
@@ -57,7 +57,7 @@ func (r *Resolver) expenseView(ctx context.Context, scope string, first int, aft
 	for _, e := range out.Edges {
 		kind, trip := mapTrip(e.Source.Trip)
 		source := &model.GroupSummary{ID: e.Source.ID, Name: e.Source.Name, Currency: model.Currency(e.Source.Currency), Kind: kind, Trip: trip, IsHousehold: e.Source.IsHousehold}
-		result.Edges = append(result.Edges, &model.ExpenseViewEdge{Cursor: e.Cursor, Node: mapExpense(e.Record, members(expense.Snapshot{Members: e.Members})), Source: source})
+		result.Edges = append(result.Edges, &model.ExpenseViewEdge{Cursor: e.Cursor, Node: mapExpense(e.Record, members(expense.Snapshot{Members: e.Members})), Snapshot: mapExpenseSnapshot(e.Record, members(expense.Snapshot{Members: e.Members})), Source: source})
 	}
 	if len(result.Edges) > 0 {
 		result.PageInfo.StartCursor = &result.Edges[0].Cursor

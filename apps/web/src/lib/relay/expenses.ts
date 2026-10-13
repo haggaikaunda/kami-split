@@ -29,8 +29,8 @@ export const expensesView = graphql`
           name
           currency
         }
-        node {
-          id
+        node: snapshot {
+          expenseId
           groupId
           description
           effectiveDate

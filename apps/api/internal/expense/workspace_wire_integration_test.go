@@ -234,7 +234,7 @@ func TestWorkspaceRelayWireTripOwnerMemberAndOriginalFinancialRecords(t *testing
 				}
 				if tab == "overview" {
 					edges := group["expenses"].(map[string]any)["edges"].([]any)
-					if len(edges) != 1 || edges[0].(map[string]any)["node"].(map[string]any)["id"] != saved.Record.ExpenseID {
+					if len(edges) != 1 || edges[0].(map[string]any)["node"].(map[string]any)["expenseId"] != saved.Record.ExpenseID {
 						t.Fatal("Trip overview replaced or mixed original expense records")
 					}
 				}
@@ -254,7 +254,7 @@ func TestWorkspaceRelayWireTripOwnerMemberAndOriginalFinancialRecords(t *testing
 						t.Fatal("Trip ledger mixed another space's expenses")
 					}
 					record := edges[0].(map[string]any)["node"].(map[string]any)
-					if record["id"] != saved.Record.ExpenseID || record["groupId"] != tripID {
+					if record["expenseId"] != saved.Record.ExpenseID || record["groupId"] != tripID {
 						t.Fatal("Trip structured ledger lost original expense/group identity")
 					}
 				}

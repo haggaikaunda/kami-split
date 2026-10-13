@@ -66,8 +66,9 @@ export const journeyGroupQuery = graphql`
           revision
           edges {
             cursor
-            node {
-              id
+            node: snapshot {
+              expenseId
+              version
               description
               effectiveDate
               totalMinor
@@ -439,7 +440,6 @@ export const journeyWorkspaceQuery = graphql`
       __typename
       ... on Problem {
         code
-        message
       }
       ... on Group {
         id
@@ -466,8 +466,8 @@ export const journeyWorkspaceQuery = graphql`
         expenses(first: 4) @include(if: $overview) {
           edges {
             cursor
-            node {
-              id
+            node: snapshot {
+              expenseId
               description
               effectiveDate
               totalMinor
@@ -508,10 +508,6 @@ export const journeyWorkspaceQuery = graphql`
         }
         balances @include(if: $summary) {
           __typename
-          ... on Problem {
-            code
-            message
-          }
           ... on GroupBalances {
             groupId
             totalExpenseMinor

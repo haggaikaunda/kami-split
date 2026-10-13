@@ -507,12 +507,12 @@ export function HouseholdContent({
                       </p>
                       <ul className="group-expense-list">
                         {recent.edges.slice(0, 4).map(({ node, source }) => (
-                          <li key={node.id}>
+                          <li key={node.expenseId}>
                             <OverviewExpenseLink
                               scope={scope}
                               group={node.groupId}
-                              id={node.id}
-                              href={spaceExpenseHref(source, node.id)}
+                              id={node.expenseId}
+                              href={spaceExpenseHref(source, node.expenseId)}
                             >
                               <CategoryIcon category={node.category} />
                               <span className="expense-row-copy">

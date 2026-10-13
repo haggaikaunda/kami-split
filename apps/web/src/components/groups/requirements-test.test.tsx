@@ -211,7 +211,8 @@ function groupResult(
               : [
                   {
                     node: {
-                      id: 'pre-trip',
+                      expenseId: 'pre-trip',
+                      version: '1',
                       description: 'Pre-trip booking',
                       effectiveDate: '2025-01-01',
                       totalMinor: '9007199254740993',

@@ -65,8 +65,9 @@ export const householdWorkspaceQuery = graphql`
       }
       ... on ExpenseView {
         edges {
-          node {
-            id
+          node: snapshot {
+            expenseId
+            version
             groupId
             description
             effectiveDate

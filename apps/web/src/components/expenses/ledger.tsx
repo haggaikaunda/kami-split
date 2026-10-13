@@ -237,7 +237,9 @@ function LedgerContent({
             ? [...previous, ...result.edges]
             : result.edges;
           return [
-            ...new Map(combined.map((edge) => [edge.node.id, edge])).values(),
+            ...new Map(
+              combined.map((edge) => [edge.node.expenseId, edge]),
+            ).values(),
           ];
         });
         setPageError('');
@@ -422,7 +424,7 @@ function LedgerContent({
       const target =
         (saved && document.getElementById(saved.id)) ||
         (nearest &&
-          document.getElementById(`ledger-expense-${nearest.node.id}`));
+          document.getElementById(`ledger-expense-${nearest.node.expenseId}`));
       (target || summary.current)?.focus({ preventScroll: true });
       if (saved) {
         const top = target
@@ -456,7 +458,9 @@ function LedgerContent({
       offset: document.getElementById(id)?.getBoundingClientRect().top ?? 0,
       index: Math.max(
         0,
-        rows.findIndex((edge) => `ledger-expense-${edge.node.id}` === id),
+        rows.findIndex(
+          (edge) => `ledger-expense-${edge.node.expenseId}` === id,
+        ),
       ),
       count: rows.length,
       height: container.current?.getBoundingClientRect().height ?? 0,
@@ -765,11 +769,11 @@ function LedgerContent({
                               (a) => a.participant.id === viewer,
                             )?.amountMinor;
                             const next = new URLSearchParams(params);
-                            next.set('expense', node.id);
+                            next.set('expense', node.expenseId);
                             next.set('expenseGroup', node.groupId);
-                            const id = `ledger-expense-${node.id}`;
+                            const id = `ledger-expense-${node.expenseId}`;
                             return (
-                              <li key={node.id}>
+                              <li key={node.expenseId}>
                                 <Link
                                   id={id}
                                   href={`${pathname}?${next}`}

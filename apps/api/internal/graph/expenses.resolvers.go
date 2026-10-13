@@ -7,6 +7,9 @@ package graph
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
@@ -27,7 +30,17 @@ func (r *groupResolver) Expenses(ctx context.Context, obj *model.Group, first in
 	if obj.PageRequest.Anchor != nil {
 		revision = *obj.PageRequest.Anchor
 	}
-	result := &model.ExpenseConnection{Revision: ledger.Revision(revision), Edges: []*model.ExpenseEdge{}, PageInfo: &model.PageInfo{HasNextPage: snapshot.HasNext, HasPreviousPage: snapshot.HasPrevious}}
+	identity, err := json.Marshal(struct {
+		GroupID  string
+		Revision int64
+		Page     expense.PageRequest
+		Filter   ledger.Filter
+	}{obj.ID, revision, obj.PageRequest, obj.Filter})
+	if err != nil {
+		diagnostic.Report(ctx, diagnostic.Wrap(expense.Failure("UNAVAILABLE"), err, "graphql.expense_connection_identity"))
+		return nil, fieldError("UNAVAILABLE")
+	}
+	result := &model.ExpenseConnection{ID: fmt.Sprintf("ExpenseConnection:%x", sha256.Sum256(identity)), Revision: ledger.Revision(revision), Edges: []*model.ExpenseEdge{}, PageInfo: &model.PageInfo{HasNextPage: snapshot.HasNext, HasPreviousPage: snapshot.HasPrevious}}
 	profiles := members(snapshot)
 	for _, record := range snapshot.Records {
 		token, err := r.Cursors.Encode(ledger.Cursor{GroupID: obj.ID, Filter: obj.Filter, Revision: revision, EffectiveDate: record.EffectiveDate, CreatedAt: record.CommittedAt, ExpenseID: record.ExpenseID})
@@ -35,7 +48,7 @@ func (r *groupResolver) Expenses(ctx context.Context, obj *model.Group, first in
 			diagnostic.Report(ctx, diagnostic.Wrap(expense.Failure("UNAVAILABLE"), err, "graphql.cursor"))
 			return nil, fieldError("UNAVAILABLE")
 		}
-		result.Edges = append(result.Edges, &model.ExpenseEdge{Cursor: token, Node: mapExpense(record, profiles)})
+		result.Edges = append(result.Edges, &model.ExpenseEdge{Cursor: token, Node: mapExpense(record, profiles), Snapshot: mapExpenseSnapshot(record, profiles)})
 	}
 	if len(result.Edges) > 0 {
 		result.PageInfo.StartCursor = &result.Edges[0].Cursor

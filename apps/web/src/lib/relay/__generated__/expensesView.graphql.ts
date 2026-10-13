@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7266399214add41cd71aa842cc03e0e7>>
+ * @generated SignedSource<<cff33ee66136f321a85917dfe8994952>>
  * @lightSyntaxTransform
  */
 
@@ -33,8 +33,8 @@ export type expensesView$data = {
       readonly category: Category;
       readonly description: string;
       readonly effectiveDate: string;
+      readonly expenseId: string;
       readonly groupId: string;
-      readonly id: string;
       readonly payer: {
         readonly displayName: string;
         readonly id: string;
@@ -80,6 +80,6 @@ const node: ReaderInlineDataFragment = {
   "name": "expensesView"
 };
 
-(node as any).hash = "301790ed6f354830ec2262996c989f86";
+(node as any).hash = "d6bf539b0de60f5ba947cb3649fac470";
 
 export default node;

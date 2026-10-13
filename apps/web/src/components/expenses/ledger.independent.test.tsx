@@ -88,7 +88,8 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
   cursor: id,
   source: { id: 'home', name: 'Home', currency: 'USD' },
   node: {
-    id,
+    expenseId: id,
+    version: '1',
     groupId: 'home',
     description: `Dinner ${id}`,
     effectiveDate: date,
@@ -292,6 +293,7 @@ it('hides cached selected detail and source during foreground reauthorization an
       node: {
         ...edge('one', '2026-09-02').node,
         __typename: 'Expense',
+        id: 'one',
         currency: 'USD',
         note: 'Private detail note',
         creator: { displayName: 'Alice' },

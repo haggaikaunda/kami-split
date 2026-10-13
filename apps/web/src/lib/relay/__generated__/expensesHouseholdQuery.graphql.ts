@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f4def22dc75a6c06ff7c6b86b6a3da64>>
+ * @generated SignedSource<<830bb6f1d32f9cebdafb1940cfd20b3a>>
  * @lightSyntaxTransform
  */
 
@@ -189,100 +189,94 @@ v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "expenseId",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
-  "concreteType": "Expense",
+  "kind": "ScalarField",
+  "name": "groupId",
+  "storageKey": null
+},
+v17 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v18 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "effectiveDate",
+  "storageKey": null
+},
+v19 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "totalMinor",
+  "storageKey": null
+},
+v20 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v21 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Membership",
   "kind": "LinkedField",
-  "name": "node",
+  "name": "payer",
   "plural": false,
   "selections": [
-    (v15/*:: as any*/),
+    (v20/*:: as any*/),
     {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
-      "name": "groupId",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "description",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "effectiveDate",
-      "storageKey": null
-    },
-    (v8/*:: as any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "totalMinor",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "Membership",
-      "kind": "LinkedField",
-      "name": "payer",
-      "plural": false,
-      "selections": [
-        (v15/*:: as any*/),
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "displayName",
-          "storageKey": null
-        }
-      ],
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "Allocation",
-      "kind": "LinkedField",
-      "name": "allocations",
-      "plural": true,
-      "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "concreteType": "Membership",
-          "kind": "LinkedField",
-          "name": "participant",
-          "plural": false,
-          "selections": [
-            (v15/*:: as any*/)
-          ],
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "amountMinor",
-          "storageKey": null
-        }
-      ],
+      "name": "displayName",
       "storageKey": null
     }
   ],
   "storageKey": null
 },
-v17 = {
+v22 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Allocation",
+  "kind": "LinkedField",
+  "name": "allocations",
+  "plural": true,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Membership",
+      "kind": "LinkedField",
+      "name": "participant",
+      "plural": false,
+      "selections": [
+        (v20/*:: as any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "amountMinor",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v23 = {
   "alias": null,
   "args": null,
   "concreteType": "PageInfo",
@@ -360,11 +354,29 @@ return {
                         ],
                         "storageKey": null
                       },
-                      (v16/*:: as any*/)
+                      {
+                        "alias": "node",
+                        "args": null,
+                        "concreteType": "ExpenseSnapshot",
+                        "kind": "LinkedField",
+                        "name": "snapshot",
+                        "plural": false,
+                        "selections": [
+                          (v15/*:: as any*/),
+                          (v16/*:: as any*/),
+                          (v17/*:: as any*/),
+                          (v18/*:: as any*/),
+                          (v8/*:: as any*/),
+                          (v19/*:: as any*/),
+                          (v21/*:: as any*/),
+                          (v22/*:: as any*/)
+                        ],
+                        "storageKey": null
+                      }
                     ],
                     "storageKey": null
                   },
-                  (v17/*:: as any*/)
+                  (v23/*:: as any*/)
                 ],
                 "type": "ExpenseView",
                 "abstractKey": null
@@ -429,15 +441,35 @@ return {
                     "selections": [
                       (v13/*:: as any*/),
                       (v14/*:: as any*/),
-                      (v15/*:: as any*/)
+                      (v20/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v16/*:: as any*/)
+                  {
+                    "alias": "node",
+                    "args": null,
+                    "concreteType": "ExpenseSnapshot",
+                    "kind": "LinkedField",
+                    "name": "snapshot",
+                    "plural": false,
+                    "selections": [
+                      (v15/*:: as any*/),
+                      (v16/*:: as any*/),
+                      (v17/*:: as any*/),
+                      (v18/*:: as any*/),
+                      (v8/*:: as any*/),
+                      (v19/*:: as any*/),
+                      (v21/*:: as any*/),
+                      (v22/*:: as any*/),
+                      (v20/*:: as any*/)
+                    ],
+                    "storageKey": null
+                  }
                 ],
                 "storageKey": null
               },
-              (v17/*:: as any*/)
+              (v23/*:: as any*/),
+              (v20/*:: as any*/)
             ],
             "type": "ExpenseView",
             "abstractKey": null
@@ -448,12 +480,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "d28a52406d5ee858029a090aef3d20a1",
+    "cacheID": "4fc7ece809e5797a3e2537df844d7a10",
     "id": null,
     "metadata": {},
     "name": "expensesHouseholdQuery",
     "operationKind": "query",
-    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node {\n        id\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query expensesHouseholdQuery(\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  householdExpenses(first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n    ... on ExpenseView {\n      id\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node: snapshot {\n        expenseId\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

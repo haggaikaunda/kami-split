@@ -127,6 +127,7 @@ function group(id) {
     viewerMembership: members[0],
     members,
     expenses: {
+      id: `ExpenseConnection:${id}:1`,
       revision: '1',
       edges: [],
       pageInfo: { hasNextPage: false, hasPreviousPage: false },
@@ -176,7 +177,17 @@ const expense = {
   payer: members[0],
   allocations: [{ participant: members[0], amountMinor: '300' }],
 };
+function expenseSnapshot({ id, ...value }) {
+  return {
+    ...value,
+    __typename: 'ExpenseSnapshot',
+    id: `ExpenseSnapshot:${id}:${value.version || '1'}`,
+    expenseId: id,
+    version: value.version || '1',
+  };
+}
 const view = {
+  id: 'ExpenseView:fixture-initial',
   contextVersion: 'fixture-context-v1',
   __typename: 'ExpenseView',
   __isExpenseViewResult: 'ExpenseView',
@@ -193,17 +204,17 @@ const view = {
   ],
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
-  edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
+  edges: [{ cursor: 'e1', node: expenseSnapshot(expense), source: groups[1] }],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
 if (process.env.LAYOUT_TESTS === '1' || process.env.REFRESH_TESTS === '1') {
   view.edges = Array.from({ length: 40 }, (_, i) => ({
     cursor: `e${i + 1}`,
-    node: {
+    node: expenseSnapshot({
       ...expense,
       id: `e${i + 1}`,
       description: `Fixture lunch ${i + 1}`,
-    },
+    }),
     source: groups[1],
   }));
   view.expenseCount = '40';
@@ -222,7 +233,7 @@ if (process.env.LEDGER_TESTS === '1') {
   members[2].displayName = 'Sasha';
   view.edges = Array.from({ length: 6 }, (_, i) => ({
     cursor: `e${i + 1}`,
-    node: {
+    node: expenseSnapshot({
       ...expense,
       id: `e${i + 1}`,
       ...(i === 1
@@ -231,7 +242,7 @@ if (process.env.LEDGER_TESTS === '1') {
             payer: { ...members[2], displayName: 'Sasha' },
           }
         : {}),
-    },
+    }),
     source: i === 1 ? { ...groups[1], name: 'Maui' } : groups[1],
   }));
   view.expenseCount = '9';
@@ -449,21 +460,26 @@ withAuthFixture(origin, session, async () => {
       if (process.env.LEDGER_TESTS === '1' && variables.after) {
         const next = {
           ...view,
+          id: 'ExpenseView:fixture-after-e6',
           edges: [
             ...[7, 8].map((i) => ({
               cursor: `e${i}`,
-              node: {
+              node: expenseSnapshot({
                 ...expense,
                 id: `e${i}`,
                 ...(ledgerEdited && i === 8
                   ? { description: 'Edited late expense', version: '2' }
                   : {}),
-              },
+              }),
               source: groups[1],
             })),
             {
               cursor: 'e9',
-              node: { ...expense, id: 'e9', effectiveDate: '2026-09-30' },
+              node: expenseSnapshot({
+                ...expense,
+                id: 'e9',
+                effectiveDate: '2026-09-30',
+              }),
               source: groups[1],
             },
           ],
@@ -507,7 +523,7 @@ withAuthFixture(origin, session, async () => {
         data.householdExpenses = {
           ...data.householdExpenses,
           edges: data.householdExpenses.edges.map((edge) =>
-            edge.node.id === 'e2'
+            edge.node.expenseId === 'e2'
               ? {
                   ...edge,
                   node: { ...edge.node, groupId: 'H' },

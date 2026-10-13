@@ -356,6 +356,9 @@ func (ExpenseCommitted) IsOperationResult() {}
 
 // Forward-only append-only traversal, bounded by its initial financial revision; later creates appear after restarting the list.
 type ExpenseConnection struct {
+	// Opaque identity of this exact anchored page, including group, filters and boundary.
+	// Not a Node ID or an authorization capability; refetch through Group.expenses.
+	ID string `json:"id"`
 	// Bounded records ordered by effective date, creation timestamp and UUID, all descending.
 	Edges []*ExpenseEdge `json:"edges"`
 	// Metadata for this filtered anchored traversal, not the complete ledger.
@@ -368,8 +371,11 @@ type ExpenseConnection struct {
 type ExpenseEdge struct {
 	// Signed boundary bound to group, filters, financial anchor and immutable ordering tuple.
 	Cursor string `json:"cursor"`
-	// Currently authorized expense with current minimal membership labels.
+	// Legacy anchored projection with a current Expense ID. Use snapshot for normalized
+	// reads: this field can collide with current node lookup and other anchors.
 	Node *Expense `json:"node"`
+	// Financial values and allocations from this connection anchor; member metadata is current.
+	Snapshot *ExpenseSnapshot `json:"snapshot"`
 }
 
 // Immutable original success; refresh currently authorized records and projections separately.
@@ -460,8 +466,50 @@ type ExpenseOperationRecord struct {
 	Revision ledger.Revision `json:"revision"`
 }
 
+// Financial values selected at the containing traversal anchor, with current authorized
+// member metadata. Its version-qualified identity isolates all nested financial values.
+// It is not a Node; never use expenseId as its store identity. Refetch through the original
+// authorized connection and cursor; node(expenseId) returns current Expense data.
+type ExpenseSnapshot struct {
+	// Opaque version-qualified cache identity, distinct from current Expense and other versions.
+	// Not accepted by node(id); access always comes through a freshly authorized traversal.
+	ID string `json:"id"`
+	// Original current Expense ID for navigation and authorized node lookup. This value is not the snapshot identity.
+	ExpenseID string `json:"expenseId"`
+	// Saved expense version selected at the containing connection or view financial anchor.
+	Version ledger.Revision `json:"version"`
+	// Explicit target group identity; never inferred from another ledger or client session.
+	GroupID string `json:"groupId"`
+	// Exact expense cents in the inclusive range 1 through 999999999.
+	TotalMinor ledger.MinorUnits `json:"totalMinor"`
+	// USD only; no conversion or cross-currency netting.
+	Currency Currency `json:"currency"`
+	// Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+	Description string `json:"description"`
+	// Expense calendar date; valid future dates are permitted.
+	EffectiveDate ledger.Date `json:"effectiveDate"`
+	// Descriptive category without financial or access implications.
+	Category Category `json:"category"`
+	// Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+	Note string `json:"note"`
+	// Single payer; may differ from creator and need not be an owed participant.
+	Payer *Membership `json:"payer"`
+	// Server-derived authenticated membership responsible for creation.
+	Creator *Membership `json:"creator"`
+	// EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+	Split SplitMode `json:"split"`
+	// Explicit shares in ascending canonical membership-ID order, including zero shares.
+	Allocations []*Allocation `json:"allocations"`
+	// Immutable server creation timestamp used with date and UUID for page ordering.
+	CreatedAt ledger.DateTime `json:"createdAt"`
+}
+
 // One complete filtered dataset anchored to per-group append-only financial revisions. Refresh without after to include new expenses; current authorization/metadata is always rechecked.
 type ExpenseView struct {
+	// Opaque identity of this exact financial/context projection and bounded page. Includes
+	// scope, canonical filters, financial anchors, current context and page arguments.
+	// Not a Node ID, cursor or permission; every refetch rechecks current authorization.
+	ID string `json:"id"`
 	// Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
 	ContextVersion string `json:"contextVersion"`
 	// Complete face-value sum at the traversal anchor; repayments excluded, independent of page size.
@@ -488,8 +536,11 @@ func (ExpenseView) IsExpenseViewResult() {}
 type ExpenseViewEdge struct {
 	// Signed boundary with complete anchors; possession grants no access. Over-budget cursor returns UNAVAILABLE.
 	Cursor string `json:"cursor"`
-	// Original expense and minimal currently authorized same-group profiles.
+	// Legacy anchored expense with a current Expense ID; unsafe to normalize beside current detail.
 	Node *Expense `json:"node"`
+	// Financial values and allocations from this view anchor; member metadata is current.
+	// Normalize by the snapshot id, never by the original expenseId.
+	Snapshot *ExpenseSnapshot `json:"snapshot"`
 	// Original source Group ID, current label/kind/currency/trip metadata.
 	Source *GroupSummary `json:"source"`
 }

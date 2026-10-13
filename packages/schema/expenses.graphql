@@ -487,6 +487,11 @@ Forward-only append-only traversal, bounded by its initial financial revision; l
 """
 type ExpenseConnection {
   """
+  Opaque identity of this exact anchored page, including group, filters and boundary.
+  Not a Node ID or an authorization capability; refetch through Group.expenses.
+  """
+  id: ID!
+  """
   Bounded records ordered by effective date, creation timestamp and UUID, all descending.
   """
   edges: [ExpenseEdge!]!
@@ -508,9 +513,17 @@ type ExpenseEdge {
   """
   cursor: String!
   """
-  Currently authorized expense with current minimal membership labels.
+  Legacy anchored projection with a current Expense ID. Use snapshot for normalized
+  reads: this field can collide with current node lookup and other anchors.
   """
   node: Expense!
+    @deprecated(
+      reason: "Use snapshot to isolate anchored financial values from current Expense identity."
+    )
+  """
+  Financial values and allocations from this connection anchor; member metadata is current.
+  """
+  snapshot: ExpenseSnapshot!
 }
 """
 Forward pagination metadata, including whether eligible earlier rows exist at the same anchor.
@@ -541,6 +554,75 @@ type Expense implements Node {
   Stable typed public ID; possession does not authorize access.
   """
   id: ID!
+  """
+  Explicit target group identity; never inferred from another ledger or client session.
+  """
+  groupId: ID!
+  """
+  Exact expense cents in the inclusive range 1 through 999999999.
+  """
+  totalMinor: MinorUnits!
+  """
+  USD only; no conversion or cross-currency netting.
+  """
+  currency: Currency!
+  """
+  Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+  """
+  description: String!
+  """
+  Expense calendar date; valid future dates are permitted.
+  """
+  effectiveDate: Date!
+  """
+  Descriptive category without financial or access implications.
+  """
+  category: Category!
+  """
+  Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+  """
+  note: String!
+  """
+  Single payer; may differ from creator and need not be an owed participant.
+  """
+  payer: Membership!
+  """
+  Server-derived authenticated membership responsible for creation.
+  """
+  creator: Membership!
+  """
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+  """
+  split: SplitMode!
+  """
+  Explicit shares in ascending canonical membership-ID order, including zero shares.
+  """
+  allocations: [Allocation!]!
+  """
+  Immutable server creation timestamp used with date and UUID for page ordering.
+  """
+  createdAt: DateTime!
+}
+"""
+Financial values selected at the containing traversal anchor, with current authorized
+member metadata. Its version-qualified identity isolates all nested financial values.
+It is not a Node; never use expenseId as its store identity. Refetch through the original
+authorized connection and cursor; node(expenseId) returns current Expense data.
+"""
+type ExpenseSnapshot {
+  """
+  Opaque version-qualified cache identity, distinct from current Expense and other versions.
+  Not accepted by node(id); access always comes through a freshly authorized traversal.
+  """
+  id: ID!
+  """
+  Original current Expense ID for navigation and authorized node lookup. This value is not the snapshot identity.
+  """
+  expenseId: ID!
+  """
+  Saved expense version selected at the containing connection or view financial anchor.
+  """
+  version: Revision!
   """
   Explicit target group identity; never inferred from another ledger or client session.
   """

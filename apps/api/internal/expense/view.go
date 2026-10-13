@@ -2,8 +2,10 @@ package expense
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 	"time"
@@ -53,6 +55,8 @@ type ExpenseViewEdge struct {
 // ExpenseView owns newly allocated complete filtered totals/months and one bounded
 // global forward page. It exposes no balances or cross-group financial obligation.
 type ExpenseView struct {
+	// ID isolates one complete anchored page from partial writes for other financial/context projections.
+	ID string
 	// ContextVersion binds current authorized source/member metadata, not financial anchors.
 	ContextVersion          string
 	Total, Count            int64
@@ -278,7 +282,19 @@ func checkedSpending(s string) (int64, error) {
 
 func decodeView(wire viewWire, in ExpenseViewRequest, cursor *ledger.ExpenseViewCursor, anchors []ledger.SpaceRevision, codec *ledger.CursorCodec) (ExpenseView, error) {
 	result := ExpenseView{ContextVersion: wire.ContextVersion, Months: []SpendingMonth{}, Categories: []SpendingCategory{}, Edges: []ExpenseViewEdge{}, HasPrevious: cursor != nil}
-	var err error
+	// Page identity includes the complete financial and current-context bindings,
+	// even for empty pages. The opaque digest is neither a cursor nor permission.
+	identity, err := json.Marshal(struct {
+		Scope, Eligibility, ContextVersion, After string
+		Filter                                    ledger.StructuredFilter
+		Anchors                                   []ledger.SpaceRevision
+		First                                     int
+	}{in.Scope, wire.Eligibility, wire.ContextVersion, in.After, in.Filter, anchors, in.First})
+	if err != nil {
+		return ExpenseView{}, err
+	}
+	result.ID = fmt.Sprintf("ExpenseView:%x", sha256.Sum256(identity))
+
 	result.Total, err = checkedSpending(wire.Total)
 	if err != nil {
 		return ExpenseView{}, err
