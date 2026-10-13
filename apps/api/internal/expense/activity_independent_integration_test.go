@@ -230,8 +230,9 @@ func TestActivityIndependentEqualTimestampTiePagination(t *testing.T) {
 
 func independentHouseholdActivity(t *testing.T, f *expenseFixture, actor int, vars map[string]any) map[string]any {
 	t.Helper()
-	query := strings.ReplaceAll(independentActivityQuery, "$group:ID!,", "")
-	query = strings.ReplaceAll(query, "groupActivity(groupId:$group,", "householdActivity(")
+	query := strings.ReplaceAll(independentActivityQuery, "$group: ID!, ", "")
+	query = strings.ReplaceAll(query, "groupActivity(", "householdActivity(")
+	query = strings.ReplaceAll(query, "    groupId: $group\n", "")
 	return repaymentData(t, repaymentGraphQL(t, f, actor, query, vars), "householdActivity")
 }
 
