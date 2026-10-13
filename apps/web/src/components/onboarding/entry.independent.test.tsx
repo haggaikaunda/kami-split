@@ -19,6 +19,7 @@ const sdk = vi.hoisted(() => ({
     void _event;
     void _session;
   },
+  rejected: false,
   updateUser: vi.fn(),
   verifyOtp: vi.fn(),
   replace: vi.fn(),
@@ -29,6 +30,10 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     auth: {
       getSession: async () => ({ data: { session: sdk.session } }),
+      getUser: async () => ({
+        error: sdk.rejected ? { name: 'AuthApiError', status: 401 } : null,
+        data: { user: (sdk.session as { user: object } | null)?.user ?? null },
+      }),
       onAuthStateChange: (changed: typeof sdk.changed) => {
         sdk.changed = changed;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
@@ -40,12 +45,16 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   }),
 }));
+vi.mock('@supabase/ssr', async () => {
+  const { createClient } = await import('@supabase/supabase-js');
+  return { createBrowserClient: createClient };
+});
 vi.mock('next/link', () => ({
   useLinkStatus: () => ({ pending: false }),
   default: 'a',
 }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: sdk.replace }),
+  useRouter: () => ({ replace: sdk.replace, refresh: vi.fn() }),
   usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
@@ -73,6 +82,7 @@ const key = '12345678-1234-1234-1234-123456789012';
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState(null, '', '/join');
+  sdk.rejected = false;
   sdk.updateUser.mockReset();
   sdk.verifyOtp.mockReset();
   sdk.replace.mockReset();
@@ -378,7 +388,7 @@ it('verifies the email, sets a password and returns to explicit invitation admis
     token_hash: tokenHash,
     type: 'invite',
   });
-  expect(sdk.replace).toHaveBeenCalledWith('/auth/password');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in?flow=password');
   expect(requests.some((item) => item.path.endsWith('/accept'))).toBe(false);
 
   sdk.session = verifiedSession;
@@ -926,7 +936,7 @@ it('restores invitation context in a fresh callback tab before password setup', 
   expect(sessionStorage.getItem('kami-onboarding-link-digest')).toBe(
     'c'.repeat(64),
   );
-  expect(sdk.replace).toHaveBeenCalledWith('/auth/password');
+  expect(sdk.replace).toHaveBeenCalledWith('/sign-in?flow=password');
   expect(requests.some((r) => r.path.endsWith('/accept'))).toBe(false);
 });
 it('rejects mismatched passwords and clears confirmation when the identity changes', async () => {
@@ -1673,4 +1683,13 @@ it('does not sign out a newer account after a prior signout context-clear respon
   expect(
     (container.querySelector('#display-name') as HTMLInputElement).value,
   ).toBe('Bob');
+});
+
+it('keeps a working sign-in form after rejected initial verification and a stale INITIAL_SESSION notification', async () => {
+  sdk.rejected = true;
+  await render('sign-in');
+  expect(container.querySelector('#onboarding-email')).not.toBeNull();
+  await act(async () => sdk.changed('INITIAL_SESSION', sdk.session));
+  expect(container.querySelector('#onboarding-email')).not.toBeNull();
+  expect(container.textContent).not.toContain('Continue to my account');
 });

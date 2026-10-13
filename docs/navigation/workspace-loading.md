@@ -7,9 +7,9 @@ shows route-pending feedback; client query skeletons separately describe data
 loading. Route prefetch only warms Next code/RSC payloads, not client-effect
 Relay queries.
 
-The public Group navigation remains outside the private destination boundary.
-Household's public header/navigation live in a shared layout across Overview,
-Expenses, Balances, Activity and Members. Private Group names/member fields are
+The signed-in Group navigation remains outside the financial destination reader.
+Household's signed-in header/navigation live in a shared layout across Overview,
+Expenses, Balances, Activity and Members. The [shared auth boundary](../application/web-auth-routing.md) verifies every page request before rendering and suppresses the entire shell during browser session resolution or logout; only `/sign-in` is public. Private Group names/member fields are
 removed with the private reader on tab changes or invalidation; they are never
 used as public loading placeholders. Tabs retain the committed route's current
 state while Next is pending. A destination never displays the previous tab's
@@ -41,7 +41,7 @@ No partial page is used to calculate an aggregate. Overview reductions change
 only recent rows; complete money still comes from server projections. Under #227,
 Group/Trip and Household Overview request four recent expenses. Structured
 Expenses operations request six rows initially and on each Load more; their
-complete totals and signed cursor/anchor semantics remain unchanged. The public
+complete totals and signed cursor/anchor semantics remain unchanged. The signed-in
 shell presents Household → Groups → Trips → Account through the shared desktop
 app bar/rail and phone bottom navigation; its layout does not change private read
 ownership. See the [persistent navigation contract](../application/relay-expenses.md#persistent-navigation-and-content-widths-238) and the historical [visual implementation note](../design/issue-227-implementation.md).
@@ -113,7 +113,7 @@ Production-browser evidence and its synthetic-service limitations are recorded
 with the delivery PR; jsdom and synthetic responses do not prove server authorization.
 
 To repeat the production frontend profile, build with the pinned Node/pnpm versions,
-start `pnpm --filter @kami-split/web exec next start -p 3193`, then run the committed
+start `ONBOARDING_PUBLIC_SUPABASE_URL=http://localhost:3196 ONBOARDING_PUBLIC_SUPABASE_KEY=synthetic-public pnpm --filter @kami-split/web exec next start -p 3193`, then run the committed
 harness with an installed Playwright module and Chromium/Chrome executable:
 
 ```sh
@@ -125,7 +125,7 @@ TESTED_COMMIT="$(git rev-parse HEAD)" node scripts/navigation-browser.cjs
 ```
 
 Repeat at 320, 390 and 1280 CSS pixels with `SCALE=1` and `SCALE=2`. The harness
-sets reduced motion and routes synthetic Auth/GraphQL fixtures in the browser;
+sets reduced motion, seeds supported cookie sessions, starts a loopback Auth fixture on port 3196 for both the server and browser, and routes synthetic GraphQL fixtures in the browser;
 no production credentials or financial data are used. It records requests,
 feedback/content timing, exact shell retention and document loads, and asserts
 keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,

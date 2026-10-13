@@ -129,7 +129,13 @@ export function useOnboarding(mode: Mode, fragment?: string) {
         : '';
     const fragment = initialFragment.current;
     if (fragment)
-      window.history.replaceState(null, '', window.location.pathname);
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname === '/sign-in'
+          ? `/sign-in?flow=${mode}`
+          : window.location.pathname,
+      );
     let dispose: (() => void) | undefined;
     void (async () => {
       try {
@@ -137,7 +143,11 @@ export function useOnboarding(mode: Mode, fragment?: string) {
         if (!active) return;
         setClient(sdk);
         const { data } = await sdk.auth.getSession();
+        const verified = await sdk.auth.getUser();
         if (!active) return;
+        // A cookie snapshot is not evidence that an account is still usable.
+        if (verified.error || verified.data.user?.id !== data.session?.user.id)
+          data.session = null;
         sessionRef.current = data.session;
         setSession(data.session);
         const storedUser = sessionStorage.getItem('kami-onboarding-subject');
@@ -150,7 +160,9 @@ export function useOnboarding(mode: Mode, fragment?: string) {
           );
         setAttempt(readAttempt());
         const subscription = sdk.auth.onAuthStateChange((event, current) => {
-          if (!active) return;
+          if (!active || event === 'INITIAL_SESSION') return;
+          // INITIAL_SESSION is a cookie snapshot; the initial read above already
+          // verified it. It must not reinstall a provider-rejected session.
           const previous = sessionRef.current?.user.id;
           if (previous !== current?.user.id || event === 'SIGNED_OUT') {
             requests.reset();
@@ -315,17 +327,19 @@ export function useOnboarding(mode: Mode, fragment?: string) {
     sessionRef.current = result.data.session;
     setSession(result.data.session);
     if (kind === 'login' && mode === 'join') setStep('join');
+    if (kind === 'login' && mode === 'join') return;
     router.replace(
       kind === 'verify'
-        ? '/auth/password'
+        ? '/sign-in?flow=password'
         : mode === 'join'
-          ? '/join'
+          ? '/sign-in?flow=join'
           : mode === 'sign-in'
             ? financialReturn(
                 new URLSearchParams(window.location.search).get('next'),
               )
             : '/account',
     );
+    router.refresh();
   };
   function showReceipt(value: Receipt) {
     if (value.code) {

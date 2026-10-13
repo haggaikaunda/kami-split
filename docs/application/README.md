@@ -22,6 +22,7 @@ The **Kami Grow** web application uses one [authenticated expense journey](relay
 
 [Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Legacy partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented; #197 replaces pair permission with Household membership. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas remain deferred. Household Overview/Balances/Members integration is implemented by #112; the full [Expenses ledger](expenses-ledger.md) is implemented by #170.
 
+- [Web authentication routing](web-auth-routing.md): default-deny page requests, verified cookie sessions, sign-in continuation and history/session transitions.
 - [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
 
 The [administrative bootstrap runbook](bootstrap.md) covers explicit first-account

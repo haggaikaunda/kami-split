@@ -17,11 +17,15 @@ vi.mock('@/components/appearance', () => ({
 vi.mock('@/lib/onboarding/client', () => ({
   loadClient: async () => ({
     auth: {
+      getUser: async () => ({ data: { user: { id: sdk.actor } } }),
       getSession: async () => ({
         data: { session: { user: { id: sdk.actor } } },
       }),
       onAuthStateChange: (fn: typeof sdk.changed) => {
-        sdk.changed = fn;
+        sdk.changed = (event, session) => {
+          sdk.actor = session?.user.id ?? '';
+          fn(event, session);
+        };
         return { data: { subscription: { unsubscribe() {} } } };
       },
     },
@@ -46,12 +50,14 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   sessionStorage.clear();
   sdk.actor = 'alice';
+  vi.useFakeTimers();
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
   act(() => root.unmount());
   host.remove();
 });
@@ -77,12 +83,13 @@ it.each(['SIGNED_OUT', 'SIGNED_IN'])(
         attempt: { operationKey: 'original-key', name: 'Private creation' },
       }),
     );
-    await act(async () =>
+    await act(async () => {
       sdk.changed(
         event,
         event === 'SIGNED_OUT' ? null : { user: { id: 'bob' } },
-      ),
-    );
+      );
+      await vi.runAllTimersAsync();
+    });
     expect(sessionStorage.getItem(groupCreationStorageKey)).toBeNull();
     expect(original.isLive()).toBe(false);
     expect(host.textContent).not.toContain('Private alice');

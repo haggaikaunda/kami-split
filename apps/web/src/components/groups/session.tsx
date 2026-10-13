@@ -22,6 +22,8 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
     let pendingPurge = false;
     let scope: FinancialScope | undefined;
     let unsubscribe: (() => void) | undefined;
+    let stopEvents: (() => void) | undefined;
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     void loadClient()
       .then(async (client) => {
         if (!active) return;
@@ -56,15 +58,78 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
             });
           }
         };
+        const verify = async () => {
+          const before = ++ticket;
+          setAccess((current) => ({ ...current, loading: true }));
+          try {
+            const { data, error } = await client.auth.getUser();
+            if (!active || before !== ticket) return;
+            if (error && error.name !== 'AuthSessionMissingError') {
+              update(undefined);
+              setAccess({
+                loading: false,
+                client,
+                error:
+                  'Account verification failed. Sign in or reload to try again.',
+              });
+              return;
+            }
+            update(data.user?.id);
+            clearTimeout(expiryTimer);
+            if (data.user) {
+              const snapshot = await client.auth.getSession();
+              if (!active || before !== ticket) return;
+              const expires = snapshot.data.session?.expires_at;
+              if (expires)
+                expiryTimer = setTimeout(
+                  () => void verify(),
+                  Math.max(0, expires * 1000 - Date.now()),
+                );
+            }
+          } catch {
+            if (!active || before !== ticket) return;
+            update(undefined);
+            setAccess({
+              loading: false,
+              client,
+              error:
+                'Account verification failed. Sign in or reload to try again.',
+            });
+          }
+        };
         const subscription = client.auth.onAuthStateChange((event, session) => {
           ticket++;
-          update(session?.user.id, event === 'SIGNED_OUT');
+          if (event === 'SIGNED_OUT' || !session) {
+            clearTimeout(expiryTimer);
+            update(undefined, true);
+          } else {
+            setAccess((current) => ({ ...current, loading: true }));
+            // Do not await another SDK call inside its locked auth callback.
+            window.setTimeout(() => {
+              if (active) void verify();
+            }, 0);
+          }
         });
         unsubscribe = () => subscription.data.subscription.unsubscribe();
-        const before = ticket;
-        const { data, error } = await client.auth.getSession();
-        if (error) throw new Error('Account access is unavailable.');
-        if (ticket === before) update(data.session?.user.id);
+        const hide = () => {
+          ticket++;
+          setAccess((current) => ({ ...current, loading: true }));
+        };
+        const foreground = () => {
+          if (document.visibilityState === 'hidden') hide();
+          else void verify();
+        };
+        window.addEventListener('pagehide', hide);
+        window.addEventListener('pageshow', foreground);
+        window.addEventListener('popstate', foreground);
+        document.addEventListener('visibilitychange', foreground);
+        stopEvents = () => {
+          window.removeEventListener('pagehide', hide);
+          window.removeEventListener('pageshow', foreground);
+          window.removeEventListener('popstate', foreground);
+          document.removeEventListener('visibilitychange', foreground);
+        };
+        await verify();
       })
       .catch(() => {
         if (active) {
@@ -78,6 +143,8 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
       unsubscribe?.();
+      stopEvents?.();
+      clearTimeout(expiryTimer);
       scope?.dispose();
     };
   }, []);

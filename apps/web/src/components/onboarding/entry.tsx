@@ -31,7 +31,13 @@ function OnboardingRoute({ mode }: { mode: Mode }) {
       if (!fragment) return;
       // A fragment-only navigation does not remount a Next route. Capture only
       // in memory and scrub synchronously before replacing the private controller.
-      window.history.replaceState(null, '', window.location.pathname);
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname === '/sign-in'
+          ? `/sign-in?flow=${mode}`
+          : window.location.pathname,
+      );
       setVisit((previous) => ({
         generation: previous.generation + 1,
         fragment,
@@ -87,7 +93,7 @@ function OnboardingVisit({
       >
         {!account && (
           <header>
-            <Link href="/account" className="onboarding-brand">
+            <Link href="/sign-in" className="onboarding-brand">
               <Brand />
             </Link>
           </header>
@@ -110,6 +116,9 @@ function OnboardingVisit({
                 <p>
                   Account services cannot be reached. Please try again later.
                 </p>
+                <Button onClick={() => window.location.reload()}>
+                  Retry account access
+                </Button>
               </>
             ) : account ? (
               <>
@@ -193,7 +202,16 @@ function OnboardingVisit({
                     : 'Welcome back'}
                 </h1>
                 {c.session ? (
-                  <Link href="/account">Continue to my account</Link>
+                  <>
+                    <Link href="/account">Continue to my account</Link>
+                    <Button
+                      tone="secondary"
+                      disabled={c.busy}
+                      onClick={() => void c.run(() => c.signOut())}
+                    >
+                      Sign out of this session
+                    </Button>
+                  </>
                 ) : (
                   <SignIn state={c} recovery={c.step === 'recovery'} />
                 )}

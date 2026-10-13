@@ -1,8 +1,5 @@
-import {
-  createClient,
-  type Session,
-  type SupabaseClient,
-} from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import { type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 /** Cancels private requests on unmount or identity change; late results are ignored. */
 export class RequestEpoch {
@@ -98,10 +95,32 @@ export function loadClient(): Promise<SupabaseClient> {
   return browserClient;
 }
 async function initializeClient(): Promise<SupabaseClient> {
-  const response = await fetch('/api/onboarding-config', { cache: 'no-store' });
+  const response = await fetch('/api/onboarding-config', {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(12000),
+  });
   if (!response.ok) throw new Error('UNAVAILABLE');
   const { url, key } = await response.json();
-  return createClient(url, key, {
+  // The previous localStorage-only session cannot authorize a server request.
+  // Require sign-in once on upgrade and remove its stale credential.
+  localStorage.removeItem('kami-auth');
+  return createBrowserClient(url, key, {
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: AbortSignal.any([
+            ...(init?.signal ? [init.signal] : []),
+            AbortSignal.timeout(12000),
+          ]),
+        }),
+    },
+    cookieOptions: {
+      name: 'kami-auth',
+      sameSite: 'lax',
+      path: '/',
+      secure: window.location.protocol === 'https:',
+    },
     auth: {
       persistSession: true,
       autoRefreshToken: true,
