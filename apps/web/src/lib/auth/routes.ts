@@ -19,6 +19,10 @@ export function publicResource(pathname: string) {
     pathname === '/_next/image' ||
     pathname === '/favicon.ico' ||
     pathname === '/icon.svg' ||
+    pathname === '/manifest.json' ||
+    pathname === '/apple-icon.png' ||
+    pathname === '/icons/kami-grow-192.png' ||
+    pathname === '/icons/kami-grow-512.png' ||
     pathname === '/art/household.png' ||
     pathname === '/art/trip.png'
   );

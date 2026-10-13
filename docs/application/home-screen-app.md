@@ -9,7 +9,13 @@ shared root layout, including authentication and nested financial pages.
 - `id: "/"` gives installations from different pages the same declared identity.
 - `display: "standalone"` requests the app presentation without browser controls.
 
-The `/` redirect to `/groups` is intentional. Users can install from Household,
+Verified sessions retain the `/` redirect to `/groups`; signed-out visits go to
+`/sign-in` first under the [authentication boundary](web-auth-routing.md).
+The manifest and the three installation PNGs are explicitly public resources,
+so installation never depends on a session cookie or Auth provider availability.
+Other asset-shaped paths remain protected. Legacy `/join`, `/auth/confirm`, and
+`/auth/password` URLs hand off to fixed sign-in flows that share the metadata.
+Users can install from Household,
 Groups, Trips, or Account without first bookmarking the bare domain. External
 origins remain outside the app's scope; ordinary browser tabs retain browser UI.
 This configuration adds no service worker, offline storage, or financial caching.
@@ -44,7 +50,8 @@ INSTALLATION_TESTS=1 BROWSER_ORIGIN=http://YOUR_LAN_IP:4200 WIDTH=390 SCALE=1 \
   PLAYWRIGHT_MODULE=/path/to/playwright node scripts/navigation-browser.cjs
 ```
 
-It checks shared server-rendered metadata across public app routes, the manifest,
-PNG responses/dimensions, the root redirect, keyboard navigation from both entry
+It checks shared server-rendered metadata across authenticated app routes and
+expected legacy sign-in handoffs, cookie-free manifest/PNG GET and HEAD responses,
+PNG dimensions, signed-out and verified root redirects, keyboard navigation from both entry
 pages, and expense-detail Back navigation. It does not install an iOS web app or
 test real authentication/financial services.

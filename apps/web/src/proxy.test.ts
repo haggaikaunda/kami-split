@@ -44,6 +44,12 @@ it.each([
   '/invitations',
   '/future/page',
   '/future/page.png',
+  '/manifest.json/private',
+  '/apple-icon.png/private',
+  '/icons/private.png',
+  '/icons/kami-grow-192.png/private',
+  '/icons/kami-grow-512.png/private',
+  '/icons/kami-grow-192.png.bak',
   '/sign-in/nested',
 ])(
   'denies signed-out HTML and Flight page %s before rendering',
@@ -157,5 +163,33 @@ it.each([
       'x-middleware-next',
     ),
   ).toBe('1');
+  expect(sdk.getUser).not.toHaveBeenCalled();
+});
+
+it.each([
+  '/manifest.json',
+  '/apple-icon.png?generated-cache-key',
+  '/icons/kami-grow-192.png',
+  '/icons/kami-grow-512.png',
+])('serves installation asset %s independently of Auth', async (path) => {
+  sdk.getUser.mockRejectedValue(new Error('Auth unavailable'));
+  for (const configured of [true, false]) {
+    if (!configured) {
+      vi.stubEnv('ONBOARDING_PUBLIC_SUPABASE_URL', '');
+      vi.stubEnv('ONBOARDING_PUBLIC_SUPABASE_KEY', '');
+    }
+    for (const method of ['GET', 'HEAD']) {
+      for (const headers of [
+        new Headers(),
+        new Headers({ cookie: 'kami-auth=untrusted' }),
+      ]) {
+        const response = await proxy(
+          new NextRequest('https://app.test' + path, { method, headers }),
+        );
+        expect(response.headers.get('x-middleware-next')).toBe('1');
+        expect(response.headers.get('location')).toBeNull();
+      }
+    }
+  }
   expect(sdk.getUser).not.toHaveBeenCalled();
 });

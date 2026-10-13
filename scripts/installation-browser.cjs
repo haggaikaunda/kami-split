@@ -18,19 +18,6 @@ module.exports = async function verifyInstallation({
     .locator('link[rel="manifest"]')
     .getAttribute('href');
   assert.equal(new URL(manifestURL, origin).origin, origin);
-  const response = await page.request.get(new URL(manifestURL, origin).href);
-  assert.equal(response.status(), 200);
-  assert.match(
-    response.headers()['content-type'],
-    /application\/(manifest\+)?json/,
-  );
-  const manifest = await response.json();
-  assert.equal(manifest.display, 'standalone');
-  assert.equal(manifest.id, '/');
-  assert.equal(manifest.name, 'Kami Grow');
-  assert.equal(manifest.scope, '/');
-  assert.equal(manifest.start_url, '/groups');
-
   // Check the server-rendered head, so installing before hydration works too.
   const routes = [
     '/groups',
@@ -60,6 +47,17 @@ module.exports = async function verifyInstallation({
   for (const route of routes) {
     const documentResponse = await page.request.get(origin + route);
     assert.equal(documentResponse.status(), 200, route);
+    const flow = {
+      '/join': 'join',
+      '/auth/confirm': 'confirm',
+      '/auth/password': 'password',
+    }[route];
+    const expectedURL = origin + (flow ? '/sign-in?flow=' + flow : route);
+    assert.equal(
+      documentResponse.url(),
+      expectedURL,
+      'Unexpected page redirect: ' + route,
+    );
     const metadata = await page.evaluate(
       (html) => {
         const document = new DOMParser().parseFromString(html, 'text/html');
@@ -91,22 +89,7 @@ module.exports = async function verifyInstallation({
     assert(metadata.appleIcon, route);
     appleIcon = metadata.appleIcon;
   }
-  for (const icon of [
-    ...manifest.icons,
-    { src: appleIcon, sizes: '180x180', type: 'image/png' },
-  ]) {
-    const iconURL = new URL(icon.src, origin);
-    assert.equal(iconURL.origin, origin);
-    const iconResponse = await page.request.get(iconURL.href);
-    assert.equal(iconResponse.status(), 200);
-    assert.match(iconResponse.headers()['content-type'], /image\/png/);
-    const image = await iconResponse.body();
-    assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-    assert.equal(
-      `${image.readUInt32BE(16)}x${image.readUInt32BE(20)}`,
-      icon.sizes,
-    );
-  }
+  await verifyPublicAssets(page, origin, manifestURL, appleIcon);
   const root = await page.request.get(origin + '/', { maxRedirects: 0 });
   assert.equal(root.status(), 307);
   assert.equal(new URL(root.headers().location, origin).pathname, '/groups');
@@ -150,9 +133,68 @@ module.exports = async function verifyInstallation({
     entry,
     servedRoutes: routes.length,
     manifestURL,
-    icons: 'decoded PNG dimensions',
+    icons: 'anonymous GET/HEAD, PNG signatures and dimensions',
     keyboardNavigation: true,
     expenseBack: true,
     physicalIOS: 'not verified',
   });
 };
+
+async function verifyPublicAssets(page, origin, manifestURL, appleIcon) {
+  const anonymous = await page.context().browser().newContext();
+  try {
+    const response = await anonymous.request.get(
+      new URL(manifestURL, origin).href,
+      { maxRedirects: 0 },
+    );
+    assert.equal(response.status(), 200);
+    assert.match(
+      response.headers()['content-type'],
+      /application\/(manifest\+)?json/,
+    );
+    const manifest = await response.json();
+    assert.equal(manifest.display, 'standalone');
+    assert.equal(manifest.id, '/');
+    assert.equal(manifest.name, 'Kami Grow');
+    assert.equal(manifest.scope, '/');
+    assert.equal(manifest.start_url, '/groups');
+
+    for (const icon of [
+      ...manifest.icons,
+      { src: appleIcon, sizes: '180x180', type: 'image/png' },
+    ]) {
+      const iconURL = new URL(icon.src, origin);
+      assert.equal(iconURL.origin, origin);
+      const iconResponse = await anonymous.request.get(iconURL.href, {
+        maxRedirects: 0,
+      });
+      assert.equal(iconResponse.status(), 200);
+      const head = await anonymous.request.head(iconURL.href, {
+        maxRedirects: 0,
+      });
+      assert.equal(head.status(), 200);
+      assert.match(head.headers()['content-type'], /image\/png/);
+      assert.match(iconResponse.headers()['content-type'], /image\/png/);
+      const image = await iconResponse.body();
+      assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+      assert.equal(
+        `${image.readUInt32BE(16)}x${image.readUInt32BE(20)}`,
+        icon.sizes,
+      );
+    }
+    const manifestHead = await anonymous.request.head(
+      new URL(manifestURL, origin).href,
+      { maxRedirects: 0 },
+    );
+    assert.equal(manifestHead.status(), 200);
+    assert.match(
+      manifestHead.headers()['content-type'],
+      /application\/(manifest\+)?json/,
+    );
+    const root = await anonymous.request.get(origin + '/', { maxRedirects: 0 });
+    assert.equal(root.status(), 307);
+    assert.equal(new URL(root.headers().location, origin).pathname, '/sign-in');
+  } finally {
+    await anonymous.close();
+  }
+}
