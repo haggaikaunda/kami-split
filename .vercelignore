@@ -1,2 +1,4 @@
-# Synthetic verification artifacts remain in GitHub, outside deployment uploads.
-/docs/design/evidence/
+# Local verification output is not a deployment input.
+/test-results/
+/playwright-report/
+/coverage/

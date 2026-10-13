@@ -50,7 +50,7 @@ INSTALLATION_TESTS=1 BROWSER_ORIGIN=http://YOUR_LAN_IP:4200 WIDTH=390 SCALE=1 \
   PLAYWRIGHT_MODULE=/path/to/playwright node scripts/navigation-browser.cjs
 ```
 
-It checks shared server-rendered metadata across authenticated app routes and
+It checks shared server-rendered metadata across app routes with a synthetic verified session and
 expected legacy sign-in handoffs, cookie-free manifest/PNG GET and HEAD responses,
 PNG dimensions, signed-out and verified root redirects, keyboard navigation from both entry
 pages, and expense-detail Back navigation. It does not install an iOS web app or

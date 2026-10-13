@@ -2,7 +2,7 @@
 
 > Seeded-runtime references below are historical evidence. #184 removed the executable preview and simulation-only tests; they must not be retained or restored. Accepted production policy remains authoritative.
 
-- Status: **Accepted design; not implemented.** Final-head verification and merge remain delivery gates.
+- Status: **Accepted design.** Identity and financial consumers are implemented; see current guides below.
 - Recorded: 2026-09-29; P2 finalized by the later owner follow-up.
 - Scope: #75 identity foundation and #76 first expense contract; implementations remain separate.
 - Relationship: Elaborates ADR-001–004 without changing accepted financial/authorization policy.
@@ -29,18 +29,6 @@ UI and attachment-retention policy are deferred outside #73/#76/#82. Future
 account/group deletion, archival and pruning require separately reviewed lifecycle
 policy. No extra browser timed expiry or cross-device recovery promise is added.
 
-## Acceptance and next work
+## Current consumers
 
-The [gate matrix](../proposals/first-expense/gates.md) traces decisions and
-[validation](../proposals/first-expense/validation.md) separates design evidence
-from required runtime tests. O04/O08/O09/O13/O14 and minimal O18 have the concrete
-first-journey design. Unrelated O03/O10/O11/O12 lifecycle/admission work remains.
-
-Finalize PR #95 through required CI, independent testing/review and applicable
-formal approval/protection gates. Close #76 only when design criteria pass and
-this record is merged; keep #75 open for its separate implementation PR. No #82
-financial implementation begins from this task.
-
-The local Auth-reference creation/ownership-transfer procedure is evidence,
-not a universal hosted guarantee: #75 must verify final ownership/ACLs and complete
-migration behavior, and deployment must verify actual hosted credentials.
+The [validation procedure](../proposals/first-expense/validation.md) checks the retained example schema. The implemented [identity foundation](../identity-foundation.md) and [expense service](../persisted-expenses.md) own runtime behavior. Hosted deployment must still verify final role ownership/ACLs and actual credentials. Delivery history is on #76 / PR #95.

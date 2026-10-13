@@ -7,7 +7,7 @@
 
 ## Context and implementation status
 
-The API remains a health-only scaffold. This document records decisions, not implemented Auth, database, email, or deployment functionality. No resources or paid services are provisioned. See the [decision register](open-decisions.md) for remaining choices.
+At the time of this decision, the API was a health-only scaffold. Current implemented behavior is documented in the [application guide](../README.md). This document records decisions, not implemented Auth, database, email, or deployment functionality. No resources or paid services are provisioned. See the [decision register](open-decisions.md) for remaining choices.
 
 ## Follow-up decisions
 

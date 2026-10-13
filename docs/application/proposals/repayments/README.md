@@ -1,10 +1,6 @@
 # Group repayment contract — #110
 
-Status: finalized contract for review; implementation follows adoption of this
-PR. This document does not expose a running API. Prerequisites #82 and #86 are
-complete. [Issue #110](https://github.com/haggaikaunda/kami-split/issues/110) requires
-a reviewed design before persistence/API work. [ADR-007](../../decisions/007-household-dashboard.md)
-supplies the group boundary and D2–D4 probes; dashboard queries are not a dependency.
+This accepted contract explains the persisted repayment model. Current API, authorization, recovery and browser consumers are documented in [persisted repayments](../../persisted-repayments.md). Examples remain separate from the authoritative runtime SDL in `packages/schema`.
 
 ## Approved owner decisions
 
@@ -117,7 +113,7 @@ never proves failure. Retry only the original key/input, including after restart
 or navigation to another group. Successful recovery then refreshes complete
 balances; failed refresh does not turn a committed repayment into a failed save.
 
-## Acceptance evidence required for implementation
+## Behavioral regression scenarios
 
 | Probe                | Expected evidence                                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -132,16 +128,3 @@ balances; failed refresh does not turn a committed repayment into a failed save.
 | Atomicity            | Inject failure at record, audit, revision and outcome stages; no partial effect or orphan success; constraints reject later attachments                                |
 | Arithmetic           | Wide intermediate cancellation, aggregate/net/revision overflow, retained inactive history and conservation; no partial settled result                                 |
 | Migration/regression | Fresh replay, populated upgrade, desired-schema agreement, expense recovery/cursors unchanged, generation and required CI                                              |
-
-## Delivery order
-
-1. Adopt this independently reviewed contract and its technical design after
-   required final-head checks.
-2. Implement the smallest complete internal persistence operation with audit,
-   recovery and complete projections together; independent PostgreSQL testing.
-3. Expose only implemented, tested SDL/resolvers and authorized history/recovery;
-   independent final-diff review and final-head Verify before protected merge.
-
-Keep #110 open until its runtime acceptance criteria are met. #112 owns shared
-form integration. No payment processing, edits/reversals, dashboard engine,
-hosted resources or expansion of #73 is included.

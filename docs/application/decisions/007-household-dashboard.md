@@ -88,10 +88,8 @@ wire int64 bounds, TypeScript branded strings and bigint; no GraphQL Int, Number
 or parseFloat aggregate arithmetic. Per-member net magnitude and nonnegative
 aggregate maxima are 9223372036854775807 cents. Cross-space sums and counts are checked
 against their documented wire bounds before serialization; overflow means AMOUNT_OVERFLOW and
-no totals, not clipping or a wrapped net. Proposed repayment bounds are
-1..999999999 cents, matching the preview record limit; #110 must finalize this
-validation rule in its reviewed settlement contract. #76 defines expense inputs,
-not an implemented or approved repayment endpoint. Display currency and exact cents, including
+no totals, not clipping or a wrapped net. Repayment bounds are
+1..999999999 cents under the [implemented repayment contract](../persisted-repayments.md). Display currency and exact cents, including
 `"9007199254740993"` → `$90,071,992,547,409.93 USD`. Amount inputs use #76's decimal
 text parsing; no rounding or currency conversion.
 
@@ -240,7 +238,7 @@ canonical #85 group routes. The Household workspace at `/household` uses Overvie
 and Members; it does not replace independently authorized Groups access. Overview
 originally specified three horizontal metrics and at most five recent expenses.
 The #227 presentation update now shows at most four recent expenses and uses the
-[approved responsive metric layout](../../design/issue-227-implementation.md);
+[approved responsive metric layout](https://github.com/haggaikaunda/kami-split/issues/227);
 complete dashboard financial semantics remain unchanged. The complete Expenses
 implementation is delivered by #170. Members reads actual `Group.members`, not
 the designated pair, and exposes only existing owner invitation management.
@@ -270,5 +268,5 @@ names/amounts and vertical scroll. This document does not claim a live browser t
 | `components/navigation/provider.tsx`, `links.tsx`, household/recovery docs  | Preserve source visits/focus/generation handling; canonical group routes, no lost-access cache or household fallback. Preview membership guards remain historical.                   |
 
 The executable seeded UI/tests were subsequently retired in #184; preserve only their historical documentation as evidence. Follow-on
-[delivery slices](../proposals/household-dashboard-slices.md) own implementation,
+[delivery slices](https://github.com/haggaikaunda/kami-split/issues/86) own implementation,
 acceptance tests and browser evidence; no migration, SDL, resolver or UI changes here.

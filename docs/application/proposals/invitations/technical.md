@@ -5,9 +5,7 @@ runtime schema, migration or second source of invitation policy.
 
 ## Storage and capability boundaries (#79 targeted; #108 shared)
 
-Implement the TARGETED path in #79. All SHARED-specific storage, operations,
-Auth/UI behavior and tests below describe #108’s follow-on contract, not #79/#80
-critical-path requirements. Do not build unused shared lifecycle or grant machinery.
+Both targeted and reusable shared paths use the implemented invitation service. Keep their distinct eligibility, token and delivery contracts explicit; current API/browser behavior is documented in [targeted invitations](../../targeted-invitations.md) and [onboarding](../../onboarding.md).
 
 Use an explicit TARGETED / SHARED kind, never infer shared authorization from a
 null email. Invitation has UUID, immutable group/kind/creator, created sequence,
@@ -222,7 +220,7 @@ selects and validates clock tolerance, refresh and independent Auth token durati
 The proposed thin contract uses #76 typed public IDs, OperationKey, explicit union
 outcomes, 401 for invalid authentication and 503 for unavailable verification. Add
 Invitation and InvitationAction ID types through reviewed contract extension; these
-IDs never grant permission. Do not publish fields in health-only runtime SDL early.
+IDs never grant permission. The authoritative implemented SDL lives in `packages/schema`; these sketches are explanatory examples.
 
 | Operation sketch                                                    | Authorization and result                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -240,8 +238,7 @@ Preview invalidity is generic publicly; current owners get exact lifecycle state
 WRONG_ACCOUNT/VERIFY_EMAIL never echo the target address. Accepted targeted link
 alone gets no preview; the accepting authenticated actor may recover a safe historic
 outcome, with current access independently checked. Former/disabled users cannot
-read group data through that receipt. #80 must turn these sketches into validated
-SDL/representative operations before publishing adapters; names here are recommendations.
+read group data through that receipt. the current [onboarding guide](../../onboarding.md) and authoritative SDL define adapter operations; names here remain explanatory sketches.
 
 ## Primary-source checks and limits
 

@@ -4,6 +4,8 @@ The current application uses configured Auth and server-authorized Relay/GraphQL
 
 Expense deletion, ownership transfer, imports, free-text search and couple-spending/average/history formulas remain deferred. Collaborative expense editing is implemented with guarded versions and durable recovery; see [expense editing](application/expense-editing.md). The UI does not simulate deferred capabilities. Repayment recording records a financial event; it does not move money.
 
-The seeded application was retired in #184, including embedded Household trips, local role/setup commands, global financial routes and authoritative client snapshots. Its [design archive](design/README.md) and feature evidence are historical only. They are not production policy or instructions to preserve removed runtime code/tests.
+The seeded application was retired in #184, including embedded Household trips, local role/setup commands, global financial routes and authoritative client snapshots. Its history lives on [GitHub #13](https://github.com/haggaikaunda/kami-split/issues/13); retained [design inputs](design/README.md) do not require restoring removed runtime code/tests.
 
 See [current application documentation](application/README.md), [API architecture](application/api-architecture.md), and the accepted [decisions](application/decisions/README.md). Trips remain separate ledgers: trip membership grants no Household access, and neither summaries nor net totals settle obligations across groups.
+
+Personal/Plaid milestones and unresolved product choices remain on [#222](https://github.com/haggaikaunda/kami-split/issues/222) and [#249](https://github.com/haggaikaunda/kami-split/issues/249). They are planning, not implemented banking connectivity.

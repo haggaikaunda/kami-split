@@ -143,13 +143,8 @@ pair B/C (ordinary ledger access for A, dashboard denial for A), owner A choosin
 A/B without self-invitation or duplicate membership, stale/duplicate consent,
 proposal cancellation, ownership transfer, separation with nonzero financial balances,
 account recovery, first-designation races and canonical lock ordering. These are
-requirements for future execution tests, not claims of runtime verification.
+historical pair-policy scenarios, superseded by ADR-010 for current authorization.
 
-## Delivery boundary
+## Supersession
 
-After owner agreement and design adoption, a separate reviewed implementation slice
-must supply designation storage/operations, restricted audit, all lifecycle invalidation
-paths and real-role concurrency/no-disclosure tests. #111 remains blocked on that
-implementation as well as #82 and #104. #112 consumes the reviewed reads. #110 owns
-repayment policy and implementation; #73 is unchanged. No hosted resources, paid
-capabilities, cross-group financial writes or financial-history deletion are authorized.
+ADR-010 replaces this pair-based permission with current Household membership sharing. Keep the original rationale and scenarios to explain the policy change; do not restore designation operations or treat these old pair checks as current acceptance criteria. Current behavior is documented in [Household lifecycle](../household-designation.md).

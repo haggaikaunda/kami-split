@@ -1,7 +1,6 @@
 # Repayment persistence and API design
 
-This is the concrete engineering contract for [#110](README.md), subject to design
-PR adoption. Keep runtime fields absent until implemented and tested.
+This engineering design complements the [repayment contract](README.md). The implemented [repayment guide](../../persisted-repayments.md) owns current API/browser behavior; `packages/schema` owns the runtime contract.
 
 ## Shared storage and revision
 
@@ -142,7 +141,7 @@ IDs below abbreviate canonical typed IDs; transport fixtures use real typed IDs.
 - Another active member can read G's repayment history, but cannot recover C's
   actor-scoped K. After C loses access, C's lookup is denied even with K.
 
-Implement the full [acceptance matrix](README.md#acceptance-evidence-required-for-implementation)
+Implement the full [acceptance matrix](README.md#behavioral-regression-scenarios)
 with restricted PostgreSQL roles and real transactions, including actual commit
 response loss, both serialization orders for membership/account races, rejected
 attempt durability, mixed expense/repayment revisions, old expense cursor anchors,
