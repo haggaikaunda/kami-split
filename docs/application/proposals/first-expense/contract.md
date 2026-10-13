@@ -57,8 +57,7 @@ with valid variant, CSPRNG `crypto.randomUUID()` before first submission.
 Description is trimmed of leading/trailing ASCII space/tab/CR/LF, 1–120 Unicode
 scalar values after trim; note preserves content, 0–2000 scalar values (default
 empty). Reject NUL and unpaired surrogates; do not silently NFC-normalize or alter
-note whitespace. This clarifies the preview's UTF-16 length ambiguity; #83 must
-count code points consistently. Seven category enum values map to existing labels
+note whitespace. Browser validation must count code points consistently with the API. Seven category enum values map to existing labels
 Dining, Groceries, Accommodation, Transport, Activities, Home, Other.
 
 Single payer must be enabled, actively linked and a member of the explicit group;
@@ -305,16 +304,15 @@ Session epochs and actor/group scopes prevent stale responses or drafts entering
 [GraphQL scalars](https://spec.graphql.org/September2025/#sec-Scalars) require
 custom coercion beyond SDL validation; [PostgreSQL aggregates](https://www.postgresql.org/docs/17/functions-aggregate.html)
 define numeric output for bigint sum. Both checked 2026-09-29. SDL validation proves
-schema/operation shape only; #82/#83 must implement and test all scalar and runtime
-semantics above. No generator/runtime schema is altered to obtain validation.
+schema/operation shape only; verify scalar coercion and runtime semantics with the current API/database and browser regression suites. Do not alter generated/runtime schema merely to obtain example validation.
 
 ## A8: Relay connection and pagination errors
 
 `Group.expenses` returns nullable concrete ExpenseConnection with standard edges
 and complete PageInfo, enabling Relay `@connection`/`usePaginationFragment` in
-#83. Proposed operations omit Relay compiler directives so the server-side
-validator can check them without installing Relay. #83 annotates the concrete
-field, keeps filter arguments in the connection identity and resets it after a
+the browser. Example operations omit Relay compiler directives so the server-side
+validator can check them without installing Relay. Production callers annotate the concrete
+field, keep filter arguments in the connection identity and reset it after a
 new create/recovery; cursor/first are pagination arguments, not filter identities.
 On invalid pagination input, cursor, unauthorized filter, aggregate revision
 failure or unavailable infrastructure, return expenses:null plus a safe GraphQL

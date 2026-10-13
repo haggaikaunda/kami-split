@@ -2,7 +2,7 @@
 
 > Seeded-runtime references below are historical evidence. #184 removed the executable preview and simulation-only tests; they must not be retained or restored. Accepted production policy remains authoritative.
 
-- Status: Design for #85; independent review and PR adoption required. No feature implementation.
+- Status: Accepted design; implemented creation/discovery consumers are documented in the [Relay journey](../relay-expenses.md).
 - Recorded: 2026-09-30.
 - Basis: ADR-001–005 and implemented #75 / PR #98, commit b86475f.
 - Scope: Smallest creation, discovery and navigation extension to the first real UI.
@@ -161,37 +161,28 @@ Successful completion after navigation does not redirect the user's current page
 
 ## Discovery, navigation and real UI adaptation
 
-Extend the existing proposed `Viewer.groups` / `Group` projection with derived
+The `Viewer.groups` / `Group` projection exposes derived
 `kind`, nullable trip metadata, and `isHousehold` only on an already authorized
 group. Return `today` in the viewer response. Do not disclose an inaccessible
 household ID or installation row. Retain canonical group-ID ordering, full active-
 membership filtering and safe no-groups result. No global directory or partner ID.
-Cards initially need only name, destination, dates and status; totals/counts are
-omitted until a complete authorized group aggregate is implemented. Never derive
-them from one expense page or display a missing read as zero.
+Cards use authorized names, trip metadata and complete server summaries where available. Never derive totals/counts from one expense page or display a missing read as zero.
 
-Use `/groups` for discovery, `/groups/new` for creation, and `/groups/:groupId`
-for the selected group. Trips is a filtered view of the same authorized list;
-`/trips` may remain that convenience route, linking to canonical group detail.
-Financial routes include their group explicitly, e.g.
-`/groups/:groupId/expenses/:expenseId`. No production redirect maps seeded IDs
-such as `maui` to real groups. Group identity in the URL is authoritative for the
-view, but never sufficient for authorization.
+Use `/groups` and `/trips` for discovery, `/groups/new` and `/trips/new` for creation, and `/groups/:groupId` or `/trips/:groupId` for the selected workspace. The original Household ledger uses `/household/ledger`; aggregate Household views retain original-source authorization. Financial routes include their source explicitly. A URL never grants access, and seeded IDs such as `maui` are not production resource IDs.
 
-| Entry/state                                       | Required presentation                                                                                                                     |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| A or B with active household membership           | Groups and Trips, plus Household shortcut to the authorized designated group; group-local expenses/balances reuse #83                     |
-| Friend C                                          | Groups and Trips containing only joined groups; no Household shortcut/setup prompt, partner inference or household label attached to T/F  |
-| Enabled viewer with no groups                     | True no-groups state; Create only if canCreateGroups, otherwise invitation guidance; no automatic bootstrap                               |
-| Accessible new group                              | Name, USD, creator as sole owner; no expenses; Add expense once #82/#83 are available; invitation entry only when #79/#80 are implemented |
-| Wrong/unknown group or expense from another group | Same safe unavailable/not-found view; no title/member/amount leak and no fallback to a different group's record                           |
-| Membership removed/account disabled               | Hide sensitive cached fields, block commands and refresh access; return to safe group selection/sign-in as appropriate                    |
-| Temporary read failure                            | Explicit unavailable/stale state with retry, never empty/settled; financial commands require fresh authorized context                     |
-| Unknown create                                    | Preserved frozen draft and Check creation action; recover with original actor/key/input; no duplicate optimistic card                     |
+| Entry/state                                       | Required presentation                                                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| A or B with active household membership           | Groups and Trips, plus Household shortcut to the authorized designated group; group-local expenses/balances reuse #83                    |
+| Friend C                                          | Groups and Trips containing only joined groups; no Household shortcut/setup prompt, partner inference or household label attached to T/F |
+| Enabled viewer with no groups                     | True no-groups state; Create only if canCreateGroups, otherwise invitation guidance; no automatic bootstrap                              |
+| Accessible new group                              | Name, USD, creator as sole owner; no expenses; authorized Add expense and scoped owner invitation entry                                  |
+| Wrong/unknown group or expense from another group | Same safe unavailable/not-found view; no title/member/amount leak and no fallback to a different group's record                          |
+| Membership removed/account disabled               | Hide sensitive cached fields, block commands and refresh access; return to safe group selection/sign-in as appropriate                   |
+| Temporary read failure                            | Explicit unavailable/stale state with retry, never empty/settled; financial commands require fresh authorized context                    |
+| Unknown create                                    | Preserved frozen draft and Check creation action; recover with original actor/key/input; no duplicate optimistic card                    |
 
 Default authenticated entry is `/groups`; a valid explicit group deep link is
-preserved through sign-in. A Household shortcut is convenience, not the #86
-consolidated dashboard. Do not introduce “couple/friend” account roles. Group
+preserved through sign-in. The Household summary and original Household ledger are distinct authorized destinations. Do not introduce “couple/friend” account roles. Group
 switches clear visible old-group records immediately and cancel/ignore stale
 responses by actor/session/group/request generation. Scope Relay connection keys,
 filters, pagination, source visits and expense drafts by group. Reset Relay and
@@ -208,33 +199,9 @@ focus and restore it on exit. Verify 320px width, 200% text, keyboard-only flow,
 accessible date labels and no color-only status. Do not silently redirect focus
 or route when a background request finishes.
 
-### Consumer mapping and migration boundaries
+### Source and access boundaries
 
-| Current seeded consumer                                                           | Production adaptation                                                                                                               |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `lib/data/port.ts`: one Household Snapshot, embedded Trip[], householdId envelope | #83 Relay per-group reads; separate viewer discovery/create operation; no all-groups financial snapshot                             |
-| `lib/data/entry.ts`, entry/setup components                                       | #80 real identity and #81 operator bootstrap; remove production first-household setup path                                          |
-| `Member.status = pending`, household controllers                                  | Membership and invitation are distinct #79/#80 projections; invitation grants no access; no fake name-only invite                   |
-| `components/trips/form.tsx`, session-command                                      | Create Group with TRIP, identity-scoped recovery; replace text claiming shared household records                                    |
-| `lib/trips.ts`, trips cards                                                       | Authorized trip groups, metadata status, no household spending aggregation                                                          |
-| `lib/trip-detail.ts`, trips detail                                                | Reuse group detail/expenses; travel dates never constrain expense dates; do not feed household members/expenses into trip positions |
-| `lib/ledger.ts` expense.tripId, draft trip picker                                 | Real expense has one groupId; no trip tag/picker within Household or cross-group move                                               |
-| trip detail household repayment shortcut, spending charts                         | Keep unavailable until separately implemented for explicit source group; no household repayment link or copied balances             |
-| data-provider, navigation/provider, expense links                                 | Actor/group-scoped cache, drafts and source restoration; reject delayed prior-scope responses                                       |
-
-Do not mechanically implement the old DataPort promise of replacing the adapter
-without changing consumers: its household/trip shape is incompatible with accepted
-production access. The seeded preview was subsequently retired in #184; historical documentation remains evidence only. Do not convert demo fixtures into persisted user data.
-
-Persisted #75 groups backfill as ordinary by absence of trip rows, retaining
-installation pointers, UUIDs, membership, currency and history. Additive migration
-introduces only the trip extension and creation attempt/result storage/privileges;
-no rewrite of #75 migrations. Existing #82 ledger initial-state rules must recognize
-new groups as complete empty ledgers without invented zero-valued entries. Migration
-checks cover fresh replay, upgrade from #75 and exact desired-schema reconciliation.
-Compatible app rollback leaves metadata/results intact; no destructive down migration
-or automatic replay/import of the demo. No SDL field ships until its resolver,
-authorization and contract tests ship in its owning follow-up.
+Discovery and creation use explicit authorized group projections, never a whole-Household snapshot or embedded Trip ledger. Memberships and invitations remain separate; a pending invitation grants no access. Expense/repayment navigation always retains original-group provenance, and no cross-group total can substitute for a complete source balance. Current components and canonical routes are documented in the [Relay journey](../relay-expenses.md) and [navigation guide](../../navigation/README.md). The original seeded consumer migration task table is preserved on [#85](https://github.com/haggaikaunda/kami-split/issues/85).
 
 ## Regression scenarios
 

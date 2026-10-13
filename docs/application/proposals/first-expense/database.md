@@ -71,9 +71,7 @@ Temporary grants and creation/transfer/revocation are atomic. Final owner must b
 kami_migrator; its Auth USAGE/REFERENCES remain absent. Revoke all table privileges
 from PUBLIC/browser/service_role/kami_api explicitly on this table after transfer:
 creation used postgres defaults rather than migrator defaults. Then apply only
-D3's intended grants/RLS. No function is created under postgres. #75 must assert
-final ownership and ACLs, and reconcile this exception in desired SQL and migration
-history. No managed Auth table/trigger is created or changed. Hosted deployment credentials must prove the same path before deployment; do not assume every credential is equivalent.
+D3's intended grants/RLS. No function is created under postgres. Assert final ownership/ACLs and desired-schema/migration agreement in the database integration suite. No managed Auth table/trigger is created or changed. Hosted deployment credentials must prove the same path before deployment; do not assume every credential is equivalent.
 
 There is no role column that could disagree with the pointer: OWNER means
 `membership.id = group.owner_membership_id`; everyone else is MEMBER. NOT NULL
@@ -192,19 +190,16 @@ malicious temp objects and direct calls without context.
 ## D4: Admission integration contract (#79/#80)
 
 An unprovisioned verified subject cannot insert itself or read groups through
-ordinary RLS. #79 must introduce `accept_invitation(token_proof, admission_kind)`
-as a single narrowly privileged transaction-bound operation, not a general
+ordinary RLS. Admission uses a single narrowly privileged transaction-bound operation, not a general
 `add_member(group,user)` escape hatch. Go owns token/email/provider/business
 validation; its dedicated admission path binds current verified evidence to the
 request. SQL must also verify the locked persisted invitation's group, lifecycle,
 expiry and proof hash and write the admission receipt/membership atomically.
 The helper derives subject from S3, never an actor argument. Runtime cannot
 manufacture an admission by setting `is_invited=true` or supplying an arbitrary
-group ID. Exact proof/current-email transport is a #79/#80 gate, not a finalized
-helper signature or grant to implement before invitation storage exists.
+group ID. [Targeted invitation operations](../../targeted-invitations.md) document the implemented proof/current-email transport and restricted admission functions; this design sketch is not an alternate runtime signature.
 
-Current verified-email evidence cannot be a stale JWT email claim. #80/#79 must
-verify a supported current Supabase identity response outside database locks,
+Current verified-email evidence cannot be a stale JWT email claim. Verify a supported current Supabase identity response outside database locks,
 bind its subject to #78 identity, and specify freshness/email-change race behavior
 before accepting targeted invitations; no privileged Auth SELECT for kami_api.
 For targeted admission require current normalized matching email, new valid
@@ -214,17 +209,16 @@ comparison and no owner queue; verified status is still mandatory. Under the
 S3 locks it requires no existing membership, inserts ordinary active membership,
 and records actor admission without consuming/renewing the shared link. Duplicate
 admission returns the existing result only while authorized; expired/revoked link
-cannot grant new access. Former-member generic admission remains gated; do not
-encode targeted-only as the solution. Full-history ordinary readmission reuses
+cannot grant new access. Former-member shared-link admission is denied; a fresh targeted invitation is required by the later ADR-006 policy. Full-history ordinary readmission reuses
 UNIQUE(group,user), never creates a second membership or changes the owner pointer.
 
 A separate valid-token preview may project only group name/inviter display name
 before login; ordinary group RLS remains unchanged. #79 owns the narrow preview
 capability and redaction. No financial/member-list grants flow from token possession.
 
-## D5: Required implementation scenarios
+## D5: Regression scenarios
 
-#75 must run fresh replay/upgrade/desired-schema comparison on #74's isolated
+Run fresh replay/upgrade/desired-schema comparison on the isolated
 Supabase stack, using real kami_api/browser roles and synthetic managed Auth users:
 
 1. Two groups, three users, inactive history; duplicate Auth links and permanent
