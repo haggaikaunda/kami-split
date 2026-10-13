@@ -31,7 +31,6 @@ export const expensesView = graphql`
         }
         node: snapshot {
           expenseId
-          version
           groupId
           description
           effectiveDate

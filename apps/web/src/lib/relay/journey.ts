@@ -488,6 +488,7 @@ export const journeyWorkspaceQuery = graphql`
           edges {
             node {
               id
+              groupId
               amountMinor
               effectiveDate
               note
@@ -507,10 +508,8 @@ export const journeyWorkspaceQuery = graphql`
         }
         balances @include(if: $summary) {
           __typename
-          ... on Problem {
-            code
-          }
           ... on GroupBalances {
+            groupId
             totalExpenseMinor
             settled
             positions {

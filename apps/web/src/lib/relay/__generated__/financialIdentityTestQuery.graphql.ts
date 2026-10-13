@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1f3bdee4d18a548e125fc1a38508cc20>>
+ * @generated SignedSource<<e2dc98bb005eca5a213ccfd761fe2900>>
  * @lightSyntaxTransform
  */
 
@@ -737,7 +737,6 @@ return {
                         "plural": false,
                         "selections": [
                           (v33/*:: as any*/),
-                          (v7/*:: as any*/),
                           (v34/*:: as any*/),
                           (v8/*:: as any*/),
                           (v10/*:: as any*/),
@@ -945,7 +944,6 @@ return {
                     "plural": false,
                     "selections": [
                       (v33/*:: as any*/),
-                      (v7/*:: as any*/),
                       (v34/*:: as any*/),
                       (v8/*:: as any*/),
                       (v10/*:: as any*/),
@@ -1058,12 +1056,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "e03bb2145aecc1728c5e35930851017a",
+    "cacheID": "439f717ca71cd3ae1ac161b2156ff39c",
     "id": null,
     "metadata": {},
     "name": "financialIdentityTestQuery",
     "operationKind": "query",
-    "text": "query financialIdentityTestQuery(\n  $expenseId: ID!\n  $groupId: ID!\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  node(id: $expenseId) {\n    __typename\n    ... on Expense {\n      id\n      version\n      description\n      totalMinor\n      effectiveDate\n      category\n      note\n      split\n      payer {\n        id\n        displayName\n      }\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n        percentageHundredths\n      }\n    }\n    id\n  }\n  groupExpenses(groupId: $groupId, first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n    ... on ExpenseView {\n      id\n    }\n  }\n  group(id: $groupId) {\n    __typename\n    ... on Group {\n      id\n      name\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          snapshot {\n            expenseId\n            version\n            description\n            totalMinor\n            effectiveDate\n            category\n            note\n            split\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n              percentageHundredths\n            }\n            id\n          }\n        }\n        id\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  groupActivity(groupId: $groupId, first: 20) {\n    __typename\n    ... on ActivityConnection {\n      edges {\n        node {\n          id\n          payer {\n            id\n            displayName\n          }\n        }\n      }\n    }\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  currentProfile {\n    __typename\n    ... on Profile {\n      id\n      displayName\n      appearance\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node: snapshot {\n        expenseId\n        version\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query financialIdentityTestQuery(\n  $expenseId: ID!\n  $groupId: ID!\n  $after: String\n  $filter: StructuredExpenseFilter\n) {\n  node(id: $expenseId) {\n    __typename\n    ... on Expense {\n      id\n      version\n      description\n      totalMinor\n      effectiveDate\n      category\n      note\n      split\n      payer {\n        id\n        displayName\n      }\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n        percentageHundredths\n      }\n    }\n    id\n  }\n  groupExpenses(groupId: $groupId, first: 6, after: $after, filter: $filter) {\n    __typename\n    ...expensesView\n    ... on ExpenseView {\n      id\n    }\n  }\n  group(id: $groupId) {\n    __typename\n    ... on Group {\n      id\n      name\n      members {\n        id\n        displayName\n        status\n        role\n        canParticipate\n      }\n      expenses(first: 20, after: $after) {\n        revision\n        edges {\n          cursor\n          snapshot {\n            expenseId\n            version\n            description\n            totalMinor\n            effectiveDate\n            category\n            note\n            split\n            payer {\n              id\n              displayName\n            }\n            allocations {\n              participant {\n                id\n                displayName\n              }\n              amountMinor\n              percentageHundredths\n            }\n            id\n          }\n        }\n        id\n      }\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  groupActivity(groupId: $groupId, first: 20) {\n    __typename\n    ... on ActivityConnection {\n      edges {\n        node {\n          id\n          payer {\n            id\n            displayName\n          }\n        }\n      }\n    }\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n  currentProfile {\n    __typename\n    ... on Profile {\n      id\n      displayName\n      appearance\n    }\n  }\n}\n\nfragment expensesView on ExpenseViewResult {\n  __isExpenseViewResult: __typename\n  __typename\n  ... on Problem {\n    code\n  }\n  ... on ExpenseView {\n    contextVersion\n    totalExpenseMinor\n    viewerShareMinor\n    viewerPaidMinor\n    categories {\n      category\n      totalExpenseMinor\n      viewerShareMinor\n      expenseCount\n    }\n    expenseCount\n    months {\n      month\n      totalExpenseMinor\n      expenseCount\n    }\n    edges {\n      cursor\n      source {\n        name\n        currency\n        id\n      }\n      node: snapshot {\n        expenseId\n        groupId\n        description\n        effectiveDate\n        category\n        totalMinor\n        payer {\n          id\n          displayName\n        }\n        allocations {\n          participant {\n            id\n          }\n          amountMinor\n        }\n        id\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

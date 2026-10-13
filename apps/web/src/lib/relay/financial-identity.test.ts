@@ -139,9 +139,11 @@ describe('financial snapshot normalization in the account Relay store', () => {
           expensesView$key
         >;
         const anchored = readView(savedList[field]);
+        expect(
+          environment.getStore().getSource().get(snapshot(1).id)?.totalMinor,
+        ).toBe('10000');
         expect(anchored.edges[0].node).toMatchObject({
           expenseId,
-          version: '1',
           totalMinor: '10000',
           effectiveDate: '2026-09-01',
           category: 'GROCERIES',
@@ -227,13 +229,13 @@ describe('financial snapshot normalization in the account Relay store', () => {
       totalExpenseMinor: '30000',
       months: [{ month: '2026-09' }],
       categories: [{ category: 'GROCERIES' }],
-      edges: [{ node: { version: '1', totalMinor: '10000' } }],
+      edges: [{ node: { totalMinor: '10000' } }],
     });
     expect(read(fresh)).toMatchObject({
       totalExpenseMinor: '35000',
       months: [{ month: '2026-10' }],
       categories: [{ category: 'TRANSPORT' }],
-      edges: [{ node: { version: '2', totalMinor: '15000' } }],
+      edges: [{ node: { totalMinor: '15000' } }],
     });
   });
 
@@ -262,7 +264,7 @@ describe('financial snapshot normalization in the account Relay store', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0]).toMatchObject({
       totalExpenseMinor: '35000',
-      edges: [{ node: { version: '2', totalMinor: '15000' } }],
+      edges: [{ node: { totalMinor: '15000' } }],
     });
     expect(
       readView(
@@ -270,7 +272,7 @@ describe('financial snapshot normalization in the account Relay store', () => {
       ),
     ).toMatchObject({
       totalExpenseMinor: '30000',
-      edges: [{ node: { version: '1' } }],
+      edges: [{ node: { totalMinor: '10000' } }],
     });
     expect(environment.lookup(continuation.fragment).data).toEqual(
       oldPage.data,
