@@ -31,7 +31,7 @@ module.exports = async function verifyFilters({
   const reset = dialog.getByRole('button', { name: 'Reset filters' });
   assert.equal(await dialog.locator('details[open]').count(), 0);
   assert.equal(
-    await dialog.getByLabel('Space', { exact: true }).count(),
+    await dialog.getByRole('combobox', { name: 'Space', exact: true }).count(),
     workspace === 'household' ? 1 : 0,
   );
   assert(
@@ -113,11 +113,15 @@ module.exports = async function verifyFilters({
   await summary('Involving').click();
   await section('Involving').getByRole('checkbox').last().check();
   await summary('Dates').click();
-  await dialog.getByLabel('Date range', { exact: true }).selectOption('last7');
+  await dialog
+    .getByRole('combobox', { name: 'Date range', exact: true })
+    .selectOption('last7');
   const from = await dialog.getByLabel('From', { exact: true }).inputValue();
   const to = await dialog.getByLabel('To', { exact: true }).inputValue();
   assert.equal((Date.parse(to) - Date.parse(from)) / 86400000, 6);
-  await dialog.getByLabel('Sort', { exact: true }).selectOption('AMOUNT_ASC');
+  await dialog
+    .getByRole('combobox', { name: 'Sort', exact: true })
+    .selectOption('AMOUNT_ASC');
   await geometry('expanded-long-content');
   await page.screenshot({
     path: path.join(
