@@ -643,6 +643,17 @@ const activity = {
       await page.close();
       continue;
     }
+    if (process.env.INSTALLATION_TESTS === '1') {
+      await require('./installation-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        results,
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
     if (process.env.LAYOUT_TESTS === '1') {
       await require('./navigation-layout-browser.cjs')({
         page,
