@@ -6,7 +6,6 @@ import (
 	"errors"
 	"math"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
@@ -160,41 +159,4 @@ func dashboardTotals(spaces []DashboardSpace) *DashboardTotals {
 		return nil
 	}
 	return &DashboardTotals{ViewerShareMinor: share.Int64(), ViewerPaidMinor: paid.Int64(), ViewerNetMinor: net.Int64(), OpenBalanceCount: open, ActiveSpaceCount: int64(len(spaces)), TotalSharedExpenseMinor: total.Int64(), TotalSharedExpenseCount: count.Int64()}
-}
-
-func dashboardProjectionSQL() string {
-	projection := projectionSQL
-	// The ordinary projection remains authoritative; its bounded record page is
-	// empty here, while all complete aggregates retain their original semantics.
-	replacements := []string{"$11", "NULL::uuid", "$10", "NULL::uuid", "$9", "NULL::timestamptz", "$8", "NULL::date", "$7", "NULL::bigint", "$6", "NULL::uuid", "$5", "NULL::text", "$4", "NULL::date", "$3", "NULL::date", "$2", "0", "$1", "selected.id"}
-	projection = strings.NewReplacer(replacements...).Replace(projection)
-	return `WITH scope AS MATERIALIZED (
-  SELECT app.household_expense_scope() AS data
-), selected AS (
-  SELECT discovered.group_id::uuid AS id
-  FROM scope, jsonb_array_elements_text(scope.data -> 'groups') AS discovered(group_id)
-)
-SELECT jsonb_build_object(
-  'State', scope.data ->> 'state',
-  'ContextVersion', ` + contextVersionSQL + `,
-  'Groups', scope.data -> 'groups',
-  'Rows', coalesce(
-    (
-      SELECT jsonb_agg(
-        jsonb_build_object(
-          'Snapshot', projection.value,
-          'Count', (
-            SELECT count(*)::text
-            FROM app.expenses e
-            WHERE e.group_id = selected.id
-          )
-        )
-        ORDER BY selected.id
-      )
-      FROM selected
-      CROSS JOIN LATERAL (` + projection + `) projection(value)
-    ), '[]'::jsonb
-  )
-)
-FROM scope`
 }
