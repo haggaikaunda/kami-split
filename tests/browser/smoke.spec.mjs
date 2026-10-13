@@ -67,6 +67,7 @@ test('expense navigation: filtered multi-page detail and creation restore fresh 
   await expect(page.locator('#ledger-expense-e1')).toBeVisible();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const filters = page.getByRole('dialog', { name: 'Expense filters' });
+  await filters.locator('summary').filter({ hasText: 'Categories' }).click();
   await filters.getByLabel('Groceries', { exact: true }).check();
   await filters.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/categories=GROCERIES/);
@@ -138,6 +139,7 @@ test('account lifecycle: a held private response cannot restore rows after sign-
   const pending = app.hold('expensesGroupQuery');
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const filters = page.getByRole('dialog', { name: 'Expense filters' });
+  await filters.locator('summary').filter({ hasText: 'Categories' }).click();
   await filters.getByLabel('Groceries', { exact: true }).check();
   await filters.getByRole('button', { name: 'Apply filters' }).click();
   await pending.started;

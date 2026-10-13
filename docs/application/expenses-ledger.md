@@ -58,6 +58,8 @@ The delivery PR records actual Chrome layout/navigation tests at 320/390/768/128
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
+The filter dialog uses a single column with expandable Categories, Paid by, Involving and Dates sections. Collapsed sections summarize the current draft; member options are grouped under their source-space name. Only the body scrolls, keeping the close control and Reset/Apply footer reachable. Closing or pressing Escape discards unapplied edits; Reset clears the draft, including the date preset and sort.
+
 Presentation follows the [current UI guide](ui.md). Category identity and structured filter behavior remain: Reset changes the draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
 
 The prior [screen adoption evidence](https://github.com/haggaikaunda/kami-split/issues/189) records
