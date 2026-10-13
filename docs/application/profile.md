@@ -43,12 +43,15 @@ the saved value before explicitly applying the retained selection again; rereadi
 never automatically overwrites a concurrent change. Other devices read the account preference at
 startup and when their window regains focus.
 
-A small local presentation cache is bound to the Auth session's account ID and
-applied synchronously in the document head to avoid a wrong-theme paint on reload.
-It is not an identity or authorization source. The authenticated API read replaces
-it at startup; new devices without a cache initially use Light until that read
-completes. Failed background reads retain the last known theme, while sign-out
-and account switching reset presentation to the new account's cache or Light.
+A small local presentation cache is bound to the Auth session's account ID; it is
+not an identity or authorization source. The document-head bootstrap currently
+requires matching legacy `kami-auth` local storage before applying that cache.
+Supported cookie-only sessions therefore begin with Light even when the account
+has a cached Dark or System preference. Once the authenticated account scope
+resolves, the provider applies its matching cache and refreshes the preference
+from the API. A device without a cache remains Light until that read completes.
+Failed background reads retain the last known theme, while sign-out and account
+switching reset presentation to the new account's cache or Light.
 The approved dark palette is defined once in shared semantic tokens; automatic
 OS-wide and Account-only dark palettes have been removed.
 
