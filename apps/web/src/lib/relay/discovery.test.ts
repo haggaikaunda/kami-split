@@ -14,7 +14,10 @@ it('preserves canonical deep links through sign-in and rejects external return t
   for (const value of [
     'https://evil.test',
     '//evil.test',
-    '/account',
+    '/sign-in',
+    '/auth/password',
+    '/\\evil.test',
+    '/groups?token=secret',
     '/groups/G?next=bad',
     null,
   ])
@@ -44,4 +47,10 @@ it('normalizes actual typed path IDs once across direct and client entry', () =>
   expect(financialReturn('/groups/new?kind=trip')).toBe(
     '/groups/new?kind=trip',
   );
+});
+
+it('preserves account and legacy invitation destinations with safe fields only', () => {
+  expect(financialReturn('/account')).toBe('/account');
+  expect(financialReturn('/invitations?group=G')).toBe('/invitations?group=G');
+  expect(financialReturn('/invitations?token=secret')).toBe('/groups');
 });

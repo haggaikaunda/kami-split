@@ -1,6 +1,7 @@
 import { appearanceBootstrap } from '@/lib/appearance';
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { AuthBoundary } from '@/components/groups/auth-boundary';
 import { FinancialSession } from '@/components/groups/session';
 import './styles.css';
 export const viewport: Viewport = {
@@ -23,7 +24,9 @@ export default function RootLayout({
       </head>
       <body>
         <Suspense fallback={<p role="status">Loading navigation…</p>}>
-          <FinancialSession>{children}</FinancialSession>
+          <FinancialSession>
+            <AuthBoundary>{children}</AuthBoundary>
+          </FinancialSession>
         </Suspense>
       </body>
     </html>

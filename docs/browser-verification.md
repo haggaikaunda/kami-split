@@ -2,95 +2,41 @@
 
 Use rendered checks alongside API/database tests. Store outputs in ignored `test-results/` or an external temporary directory and publish relevant results on the delivery PR. Never commit captures or pass/fail reports.
 
-## Evidence boundaries
+## Current authentication and component runners
 
-| Evidence                                                                       | What it can establish                                                                                                        | What it cannot establish                                                         |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Original interactive reference captures                                        | Exact target composition, theme states and source CSS roles                                                                  | Application behavior or acceptance                                               |
-| `visual-parity-browser.cjs` through `visual-parity-fixture.cjs`                | Rendered application layout, fonts, computed styles, matched captures and descriptive overlays/diffs using controlled data   | Real authentication, API authorization, database persistence or final acceptance |
-| `visual-parity-interactions.cjs` through the same fixture                      | Supported client filtering/paging, focus/history, theme, draft/recovery and responsive scenarios against synthetic responses | Provider delivery, real committed financial writes or server isolation           |
-| Existing application/API/database tests and isolated real-service browser runs | Their recorded financial, authorization, persistence and recovery contracts                                                  | Exact visual parity without inspecting the rendered final build                  |
-
-The fixture is a local development server, not an application route or deployment
-mode. It proxies assets from a loopback Next server, terminates all API requests
-itself, and maintains synthetic state. Browser runners check its synthetic health
-marker before application work. Its explicit states exercise client expense/profile/appearance, group/trip creation,
-repayment, invitation and onboarding success/failure flows. `no-workspaces`,
-`write-success`, `owner-invitations`, `member`, `join-targeted`, `join-shared`,
-`single-category` and `tiny-category` provide additional coverage. These are
-controlled synthetic responses, not real persistence, delivery or authorization. Never use these
-runners against production or the owner's account. A successful synthetic result
-must be labeled accordingly.
-
-## Reproducing development evidence
-
-Use the repository's Node 24/pnpm toolchain. Run from the repository root; set
-`NODE_BIN` and `PNPM_BIN` if the executables are not on `PATH`. Playwright and
-Sharp may resolve normally or through `PLAYWRIGHT_MODULE` and `SHARP_MODULE`;
-`CHROME_PATH` optionally selects an installed Chrome executable. These are local
-runtime dependencies, not production application dependencies.
-
-Run required repository checks sequentially. Stop any server using the build
-output before building, then start the resulting production build in its own
-terminal:
+Use Node 24 and pinned pnpm. Playwright resolves normally or through `PLAYWRIGHT_MODULE`; `CHROME_PATH` optionally selects installed Chrome. These are local test dependencies, not application dependencies. Run the normal checks and build sequentially; stop a production preview before rebuilding its output.
 
 ```sh
-export NODE_BIN="${NODE_BIN:-node}"
-export PNPM_BIN="${PNPM_BIN:-pnpm}"
-"$PNPM_BIN" format:check
-"$PNPM_BIN" lint
-"$PNPM_BIN" typecheck
-"$PNPM_BIN" test
-"$PNPM_BIN" relay:check
-"$PNPM_BIN" build
-"$PNPM_BIN" start --hostname 127.0.0.1 --port 3227
+pnpm build
+node scripts/auth-boundary-browser.cjs
 ```
 
-In a second terminal, start the synthetic fixture. A non-loopback asset upstream
-is rejected. Set a reachable host explicitly only for an isolated LAN test:
+The Auth-boundary runner starts its own synthetic Auth and production Next servers on loopback, default ports 3196 and 3195. It checks actual cookie/server routing, cold HTML/Flight denial, safe continuation, sign-out/history and onboarding on desktop/mobile. See [web authentication routing](application/web-auth-routing.md#verification) for setup and limits.
+
+The account, appearance, navigation and percentage synthetic runners use `browser-auth-fixture.cjs`. Start an isolated production preview with `ONBOARDING_PUBLIC_SUPABASE_URL=http://localhost:3196` and `ONBOARDING_PUBLIC_SUPABASE_KEY=synthetic-public`, choose that runner's `PORT`/`ORIGIN`/`BROWSER_ORIGIN` as documented in its source, then run one fixture at a time. A custom `BROWSER_AUTH_ORIGIN` must be loopback and match the Next Auth URL. Never point these fixtures at production or a real account.
+
+The optional `edit-real-browser.cjs` and `percentage-real-browser.cjs` additionally require their disposable Go/database integration setup and verified synthetic bearer. Their local Auth fixture models the web session boundary; actual financial transport still reaches the test API. Component-only synthetic GraphQL responses do not prove persistence, authorization or provider delivery.
+
+## Reference captures and comparisons
+
+The original Material reference pack and checksums are linked from [issue #227](https://github.com/haggaikaunda/kami-split/issues/227). It is an approved design input, not current implementation evidence. [Current UI rules](application/ui.md) supersede its older typography and navigation details.
+
+The legacy `visual-parity-fixture.cjs` application proxy strips upstream cookies and seeds the retired localStorage session. Its application capture and interaction modes therefore do **not** support the current server-verified cookie boundary. Keep the fixture/reference tools for reuse, but do not treat those application modes as a working current acceptance command or weaken authentication to run them. A separate fixture adaptation is needed. Use the cookie-aware runners above for current client/auth checks.
+
+Reference-only capture and comparison-only processing remain independent of application authentication. Extract the checksum-verified pack; `REFERENCE_DIR` must contain `desktop.html`, `mobile.html` and `source/`, and `REFERENCE_LUCIDE_PATH` must identify the exact Lucide UMD dependency from the export. Sharp resolves normally or through `SHARP_MODULE` for comparisons.
 
 ```sh
-NODE_BIN="${NODE_BIN:-node}"
-FIXTURE_HOST=127.0.0.1 FIXTURE_PORT=3228 \
-FIXTURE_UPSTREAM=http://127.0.0.1:3227 \
-  "$NODE_BIN" scripts/visual-parity-fixture.cjs
+REFERENCE_ONLY=1 OUTPUT_DIR=/tmp/kami-reference \
+  node scripts/visual-parity-browser.cjs
+COMPARE_ONLY=1 APP_EVIDENCE_DIR=/tmp/kami-application \
+  REFERENCE_EVIDENCE_DIR=/tmp/kami-reference \
+  OUTPUT_DIR=/tmp/kami-comparison node scripts/visual-parity-browser.cjs
 ```
 
-Extract the checksum-verified reference pack. Set `REFERENCE_DIR` to its directory
-containing `desktop.html`, `mobile.html` and `source/`; set
-`REFERENCE_LUCIDE_PATH` to the exact Lucide UMD dependency identified by that
-export. The runner preserves the original HTML doctype and asserts standards mode,
-and supplies local Roboto and that dependency without rewriting reference visual
-styles. Start with Household Overview in all four primary
-combinations before extending `SURFACES` or removing it for the full supported
-capture inventory:
+Set `REFERENCE_DIR` and `REFERENCE_LUCIDE_PATH` in the environment for the first command. The second requires compatible existing capture directories; it does not produce fresh application screenshots. Comparisons align shared top-left extents without scaling and record excluded dimensions. Numerical differences are descriptive, not an independent pass threshold. Inspect rendered layout and computed styles; fixed dialogs also need viewport captures and internal scrolling.
 
-```sh
-export NODE_BIN="${NODE_BIN:-node}"
-export EVIDENCE_DIR="${EVIDENCE_DIR:-/tmp/kami-visual-checks}"
-export BROWSER_ORIGIN=http://localhost:3228
-export WIDTHS=1440,390 THEMES=light,dark SURFACES=household-overview
-: "${REFERENCE_DIR:?Set the extracted reference directory}"
-: "${REFERENCE_LUCIDE_PATH:?Set the exact reference Lucide UMD file}"
-export REFERENCE_DIR REFERENCE_LUCIDE_PATH
-REFERENCE_ONLY=1 OUTPUT_DIR="$EVIDENCE_DIR/reference" \
-  "$NODE_BIN" scripts/visual-parity-browser.cjs
-OUTPUT_DIR="$EVIDENCE_DIR/application" \
-  "$NODE_BIN" scripts/visual-parity-browser.cjs
-COMPARE_ONLY=1 APP_EVIDENCE_DIR="$EVIDENCE_DIR/application" \
-REFERENCE_EVIDENCE_DIR="$EVIDENCE_DIR/reference" \
-OUTPUT_DIR="$EVIDENCE_DIR/comparison" \
-  "$NODE_BIN" scripts/visual-parity-browser.cjs
-OUTPUT_DIR="$EVIDENCE_DIR/interactions" \
-  "$NODE_BIN" scripts/visual-parity-interactions.cjs
-```
+## Scope and limitations
 
-Record the exact application head/build, fixture state, viewport/content bounds,
-theme, font, reference state and artifact paths with each result. Comparisons use
-unscaled shared extents and record excluded dimensions; numerical differences are
-descriptive, not a pass threshold. Inspect screenshots and component styles;
-viewport captures and internal scrolling are needed for fixed dialogs. Expand
-coverage to 1280/768/320px, 200% text, long names/large amounts, System resolution,
-keyboard/focus, failure/recovery and actual LAN startup as the affected feature requires.
+Check 320/390/768/1280px as relevant, actual 200% root text, long names and large exact amounts, Light/System/Dark, keyboard/focus, reduced motion, failure/recovery and source restoration. Check the actual LAN HTTP origin for phone-preview changes. Record application head/build, fixture state, viewport, theme, font, reference state and limits with each result on the PR.
 
-The original reference pack and its checksums are linked from [issue #227](https://github.com/haggaikaunda/kami-split/issues/227). It is a design input; current typography, navigation and workspace rules are in the [UI guide](application/ui.md).
+Fixture-rendered layouts establish client behavior only. Real API/database tests establish their own financial and access contracts. Neither proves hosted SMTP, real production configuration, physical iOS/Android safe areas/keyboards or spoken assistive technology. Do not infer a commit or authorization success from a toast, screenshot or HTTP 200.

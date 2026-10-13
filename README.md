@@ -19,7 +19,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Configure Auth/API prerequisites in `apps/web/.env.example` and follow [onboarding setup](docs/application/onboarding.md) and [local API/database setup](docs/application/database-development.md). The UI needs a configured authenticated account and authorized membership to load financial data; `pnpm dev` alone does not provision them.
+Configure the Next.js environment variables listed in [onboarding](docs/application/onboarding.md#configuration-and-boundaries) and follow [onboarding setup](docs/application/onboarding.md) and [local API/database setup](docs/application/database-development.md). The UI needs a configured authenticated account and authorized membership to load financial data; `pnpm dev` alone does not provision them.
 
 Open `http://localhost:3000`. For a production-build preview:
 
@@ -43,7 +43,9 @@ If the page fails, verify both the server connection and the rendered applicatio
 
 ## Explore the application
 
-`/` enters `/groups`, which loads authorized Group discovery or offers real sign-in. `/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Ordinary Groups use `/groups/:groupId`, Trips use `/trips/:groupId`, and the original Household ledger uses `/household/ledger`. Expense details and repayment entry retain their original financial source. Retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
+`/` goes directly to `/sign-in` for signed-out visitors; verified sessions retain `/groups` as home. Only sign-in is public. All application routes require a server-verified cookie session before rendering, and protected UI stays hidden during browser session checks. See [web authentication routing](docs/application/web-auth-routing.md).
+
+`/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Ordinary Groups use `/groups/:groupId`, Trips use `/trips/:groupId`, and the original Household ledger uses `/household/ledger`. Expense details and repayment entry retain their original financial source. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
 
 The [frozen prototype](docs/design/README.md) and [primitive gallery](docs/primitives-preview/README.md) remain separate development references.
 

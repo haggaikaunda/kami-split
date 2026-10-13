@@ -193,7 +193,7 @@ export function InvitationScreens({
           onClick={() =>
             c.preview
               ? c.mode === 'password'
-                ? router.replace('/join')
+                ? router.replace('/sign-in?flow=join')
                 : c.setStep('join')
               : router.replace('/account')
           }

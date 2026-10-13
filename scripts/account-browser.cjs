@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Standalone fixture browser runner. */
 // Synthetic browser evidence; persistence/authorization are proved by db-test.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {
+  authOrigin,
+  seedSession,
+  withAuthFixture,
+} = require('./browser-auth-fixture.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const origin = `http://localhost:${process.env.PORT || '3194'}`;
@@ -45,7 +50,7 @@ const spaces = [
       ? { destination: 'Maui', startDate: '2026-10-01', endDate: '2026-10-08' }
       : null,
 }));
-(async () => {
+withAuthFixture(origin, session, async () => {
   const browser = await chromium.launch({
     headless: true,
     ...(process.env.CHROME_PATH
@@ -70,15 +75,10 @@ const spaces = [
         const errors = [],
           requests = [];
         page.on('pageerror', (e) => errors.push(e.message));
-        await page.addInitScript((s) => {
-          if (!localStorage.getItem('fixture-started')) {
-            localStorage.setItem('kami-auth', JSON.stringify(s));
-            localStorage.setItem('fixture-started', 'yes');
-          }
-        }, session);
+        await seedSession(page.context(), origin, session);
         await page.route('**/api/onboarding-config', (r) =>
           r.fulfill({
-            json: { url: origin + '/synthetic-auth', key: 'synthetic-public' },
+            json: { url: authOrigin, key: 'synthetic-public' },
           }),
         );
         await page.route('**/api/onboarding/clear', (r) =>
@@ -88,7 +88,7 @@ const spaces = [
               : { json: { code: 'CLEARED' } },
           ),
         );
-        await page.route('**/synthetic-auth/auth/v1/**', (r) => {
+        await page.route(authOrigin + '/auth/v1/**', (r) => {
           if (r.request().url().includes('/logout')) {
             if (failedLogout)
               return r.fulfill({
@@ -534,7 +534,7 @@ const spaces = [
   } finally {
     await browser.close();
   }
-})().catch((e) => {
+}).catch((e) => {
   console.error(e);
   process.exitCode = 1;
 });

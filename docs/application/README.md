@@ -4,6 +4,8 @@
 
 ## Browser and product contracts
 
+- [Web authentication routing](web-auth-routing.md): only sign-in is public; cookie verification, safe continuation, onboarding handoffs and history/session transitions guard every application page.
+
 - [Expense journey](relay-expenses.md): independent Group and Trip workspaces, Household summaries, source-owned writes and account-scoped recovery.
 - [Canonical navigation](../navigation/README.md) and [authorized loading](../navigation/workspace-loading.md): `/groups/:id`, `/trips/:id` and original Household `/household/ledger` routes.
 - [Expenses ledger](expenses-ledger.md): complete filtered totals, sorting, category Breakdown, paging and restoration.

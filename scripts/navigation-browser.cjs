@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Standalone CommonJS browser runner supports an external Playwright module. */
 // Synthetic frontend acceptance only; never point this fixture at hosted services.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {
+  authOrigin,
+  seedSession,
+  withAuthFixture,
+} = require('./browser-auth-fixture.cjs');
 const assert = require('node:assert/strict');
 const user = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -265,7 +270,7 @@ const activity = {
   ],
   pageInfo: { hasNextPage: false, endCursor: 'a1' },
 };
-(async () => {
+withAuthFixture(origin, session, async () => {
   const browser = await chromium.launch({
     headless: true,
     ...(process.env.CHROME_PATH
@@ -296,16 +301,13 @@ const activity = {
       if (r.isNavigationRequest() && r.resourceType() === 'document')
         documents++;
     });
-    await page.addInitScript(
-      (s) => localStorage.setItem('kami-auth', JSON.stringify(s)),
-      session,
-    );
+    await seedSession(page.context(), origin, session);
     await page.context().route('**/api/onboarding-config', (r) =>
       r.fulfill({
-        json: { url: origin + '/synthetic-auth', key: 'synthetic-public' },
+        json: { url: authOrigin, key: 'synthetic-public' },
       }),
     );
-    await page.context().route('**/synthetic-auth/auth/v1/**', (r) =>
+    await page.context().route(authOrigin + '/auth/v1/**', (r) =>
       r.fulfill({
         json: r.request().url().includes('/user') ? user : session,
       }),
@@ -492,7 +494,10 @@ const activity = {
             : {}),
           ...(data.householdExpenses
             ? {
-                householdExpenses: { __typename: 'Problem', code: 'NOT_FOUND' },
+                householdExpenses: {
+                  __typename: 'Problem',
+                  code: 'NOT_FOUND',
+                },
               }
             : {}),
         };
@@ -834,7 +839,9 @@ const activity = {
       await page.waitForURL(
         (url) => url.searchParams.get('view') === 'breakdown',
       );
-      const chart = page.getByRole('region', { name: 'Spending by category' });
+      const chart = page.getByRole('region', {
+        name: 'Spending by category',
+      });
       await chart.waitFor();
       await page.screenshot({
         path: path.join(output, `chart-${workspace}.png`),
@@ -935,7 +942,9 @@ const activity = {
     await row.focus();
     await page.keyboard.press('Enter');
     await page
-      .getByRole(width <= 650 ? 'region' : 'dialog', { name: 'Expense detail' })
+      .getByRole(width <= 650 ? 'region' : 'dialog', {
+        name: 'Expense detail',
+      })
       .waitFor();
     await page.getByText('Private fixture note').waitFor();
     if (process.env.MATERIAL_TESTS === '1') {
@@ -1151,7 +1160,7 @@ const activity = {
   );
   console.log(JSON.stringify(results, null, 2));
   await browser.close();
-})().catch((e) => {
+}).catch((e) => {
   console.error(e);
   process.exit(1);
 });
