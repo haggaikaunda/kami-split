@@ -23,7 +23,7 @@ import {
 } from '@/lib/relay/group-creation';
 import { createSessionId } from '@/lib/session-id';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { ErrorSummary } from '@/components/primitives';
+import { ErrorSummary } from '../ui/primitives';
 type Outcome =
   | journeyGroupCreationMutation['response']['createGroup']
   | journeyGroupCreationRecoveryQuery['response']['groupCreationOperation'];

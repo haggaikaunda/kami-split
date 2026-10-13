@@ -1,6 +1,30 @@
 # Shared UI behavior
 
-Kami Grow uses shared semantic tokens, system fonts and accessible primitives. Current style ownership is in `apps/web/src/app/styles.css`, component styles and `apps/web/src/components/primitives.tsx`; original visual references are indexed in the [design guide](../design/README.md). Approved sample data and screenshots are not financial authority.
+Kami Grow uses shared semantic tokens, system fonts and accessible primitives. Global tokens/themes live in `apps/web/src/app/tokens.css`; intentional document defaults live in `base.css`. Components own their presentation in colocated styles; original visual references are indexed in the [design guide](../design/README.md). Approved sample data and screenshots are not financial authority.
+
+## Shared ownership and composition
+
+Import neutral controls, fields, members, modal dialogs and feedback from `components/ui/primitives`. These components have no expense or server-data dependency. `components/workspace/patterns` owns workspace headers, route navigation, source chips and privacy copy; `components/workspace/shell.module.css` owns application chrome and content width. `components/financial/presentation` owns exact formatted money, summary metrics, charts and financial rows. Financial components accept ordinary props and never parse formatted amounts or fetch data.
+
+Shared component styles use colocated CSS Modules. Keep base styles, variants, interaction states and responsive rules with the owning component. The root layout anchors the four shared module imports in their existing order; components import those same deduplicated sheets. Import the component before a caller's customization stylesheet, and preserve the root order when moving dependencies so Next's production chunks retain the established cascade. A caller may compose exported layout classes for its own elements, such as `actions` or `summary-row`; component internals remain private.
+
+Existing cross-component customization uses explicit `data-ui` styling slots. The attribute is a whitespace-separated set of slot and variant names, independent of generated CSS Module class names. Use the smallest owning feature selector plus the required slot; do not select private class names or infer internal markup from tags. Current contracts are:
+
+| Owner                  | Public styling slots                                                                                                                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Neutral UI             | `button` and `button--<tone>`; `field`, `field-label`, `field-control`, `hint`, `error`; `member`, `avatar`, `member-copy`, `member-name`, `member-detail`; `status`, `loading`, `skeleton`, `icon`                                                         |
+| Workspace              | `workspace-header` and its appearance/compact variants, `workspace-context`, `banner-action`, `space-chip`; shell `workspace-brand`, `workspace-content` and navigation parts                                                                               |
+| Financial presentation | `money`, `money--long`, `money-value`, `currency`; `summary-row`, `summary-metric` and tone variants, `metric-heading`, `metric-icon`, `metric-label`, `metric-value`, `metric-detail`; `signed-balance` and position variants, `balance-row`, `row-detail` |
+
+For example, Account customizes `field-label` and `field-control` while Field continues to own labeling, errors and descriptions. Member layouts customize `member-copy` and `member-name` instead of depending on a last-child span or a nested `strong`. Prefer an existing component variant or root `className` for new consumers; extend this slot contract only when a real consumer needs a distinct layout. Slots do not transfer behavior or financial ownership to CSS.
+
+## Tokens and responsive rules
+
+`tokens.css` owns Light defaults and the explicit Dark override. Color roles distinguish document canvas, surfaces, separators, interactive borders, text, actions, exact-balance positions, category geometry, banners and summary metrics. Keep positive/negative financial presentation separate from destructive/error colors. The system font stack owns both body and display text; tabular numerals belong to money. Spacing tokens cover repeated gaps; control/card radii, minimum target size, focus ring and panel shadow describe their own roles. A matching literal value alone is not a reason to merge roles. Unused aliases are removed only after checking production styles, dynamic use, palette tests and the executable gallery.
+
+Use viewport queries for application chrome and modal presentation, and container queries for the width available to ledger rows, charts or panel contents. Preserve content-specific thresholds: the shell and expense presentation change at 600 CSS pixels (matching their JavaScript measurements), generic Dialog changes between 759/760px, and ledger rows use the `workspace` container at 48em with a 16em fallback. `rem`/`em` support enlarged text where the existing layout intends it; retain approved fixed pixel values when they encode artwork, geometry or target sizes. Do not normalize every breakpoint to one value.
+
+Safe-area padding remains with the owning shell/dialog. The expense presentation follows the unscaled visual viewport for the keyboard, keeps one mounted form, and releases sticky actions for a short viewport or enlarged text. The document remains the scroll owner for source restoration. Shared CSS does not create a second scroll container or replace that navigation contract.
 
 ## Appearance and navigation
 

@@ -138,7 +138,7 @@
 .activity-detail-header {
   margin-bottom: 1.5rem;
 }
-.activity-detail-header .ui-button {
+.activity-detail-header [data-ui~='button'] {
   margin-left: auto;
 }
 .activity-record-heading {

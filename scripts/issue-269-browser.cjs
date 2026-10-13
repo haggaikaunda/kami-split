@@ -26,7 +26,7 @@ module.exports = async function verifyIssue269({
     'members',
   ]) {
     await page.goto(origin + route(tab));
-    const header = page.locator('.ui-workspace-header');
+    const header = page.locator('[data-ui~="workspace-header"]');
     await header
       .getByRole('link', { name: 'Add expense', exact: true })
       .waitFor();
@@ -36,19 +36,19 @@ module.exports = async function verifyIssue269({
     );
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
-    assert.equal(await page.locator('.banner-action').count(), 1);
+    assert.equal(await page.locator('[data-ui~="banner-action"]').count(), 1);
     assert.equal(await page.locator('.workspace-refresh button').count(), 0);
     assert.equal(
       await page.getByRole('button', { name: /^Refresh/ }).count(),
       0,
     );
     const geometry = await page.evaluate(() => {
-      const header = document.querySelector('.ui-workspace-header');
+      const header = document.querySelector('[data-ui~="workspace-header"]');
       return {
         image: getComputedStyle(header).backgroundImage,
         bottom: header.getBoundingClientRect().bottom,
         tabsTop: document
-          .querySelector('.ui-workspace-tabs')
+          .querySelector('[data-ui~="workspace-tabs"]')
           .getBoundingClientRect().top,
         overflow: document.documentElement.scrollWidth > innerWidth,
       };
@@ -130,7 +130,7 @@ module.exports = async function verifyIssue269({
       );
       if (workspace === 'household')
         assert.match(
-          await page.locator('.ui-signed-balance').first().innerText(),
+          await page.locator('[data-ui~="signed-balance"]').first().innerText(),
           /Payments still to settle/,
         );
       await help.getByRole('button', { name: 'Got it' }).click();

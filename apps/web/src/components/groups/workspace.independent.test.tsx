@@ -104,11 +104,11 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
   for (const trip of [false, true]) {
     await render(fixture('-1000', trip));
     expect(
-      [...host.querySelectorAll('.ui-workspace-tabs a')].map(
+      [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map(
         (a) => a.textContent,
       ),
     ).toEqual(['Overview', 'Expenses', 'Balances', 'Activity', 'Members']);
-    const summaries = host.querySelector('.ui-summary-row')!;
+    const summaries = host.querySelector('[data-ui~="summary-row"]')!;
     expect(summaries.children).toHaveLength(3);
     expect(summaries.textContent).toContain('90,071,992,547,409.93');
     expect(summaries.textContent).toContain('You owe');
@@ -118,12 +118,12 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
         .querySelector('.workspace-overview-balances a')
         ?.getAttribute('href'),
     ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
-    expect(host.querySelector('.banner-action')?.getAttribute('href')).toBe(
-      `${trip ? '/trips' : '/groups'}/G?tab=expenses&create=G`,
-    );
+    expect(
+      host.querySelector('[data-ui~="banner-action"]')?.getAttribute('href'),
+    ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=expenses&create=G`);
     expect(host.querySelector('#recent-expenses-title')).not.toBeNull();
     expect(
-      [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+      [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map((a) =>
         a.getAttribute('href'),
       ),
     ).toEqual(
@@ -149,7 +149,7 @@ it('exposes every one-to-many obligation with exact group, sender, recipient and
 });
 it('states positive means owed and distinguishes zero viewer from unsettled group', async () => {
   await render(fixture('1000'));
-  expect(host.querySelector('.ui-summary-row')!.textContent).toContain(
+  expect(host.querySelector('[data-ui~="summary-row"]')!.textContent).toContain(
     "You're owed",
   );
   await render(fixture('0'));
@@ -182,9 +182,9 @@ it('shows complete viewer expense allocations and payer amount without deriving 
     },
   };
   await render(updated);
-  const summary = host.querySelector('.ui-summary-row')!;
+  const summary = host.querySelector('[data-ui~="summary-row"]')!;
   expect(
-    [...summary.querySelectorAll('.ui-metric-label')].map((n) =>
+    [...summary.querySelectorAll('[data-ui~="metric-label"]')].map((n) =>
       n.textContent?.replace('ⓘ', ''),
     ),
   ).toEqual(['Total expenses', 'Your balance', 'Your share']);

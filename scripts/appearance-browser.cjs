@@ -252,7 +252,7 @@ async function checkContrast(page) {
     ['primary', 'surface', 4.5],
     ['on-primary', 'primary', 4.5],
     ['danger', 'error-surface', 4.5],
-    ['owes', 'owes-surface', 4.5],
+    ['owes', 'orange-surface', 4.5],
     ['border', 'surface', 3],
     ['focus', 'surface', 3],
   ];
@@ -266,6 +266,13 @@ async function checkContrast(page) {
         ),
       [foreground, background],
     );
+    for (const [index, color] of colors.entries()) {
+      assert.match(
+        color,
+        /^#[\da-f]{3}(?:[\da-f]{3})?$/i,
+        `Missing or invalid contrast token: ${[foreground, background][index]}`,
+      );
+    }
     assert(
       contrast(...colors) >= minimum,
       `${foreground}/${background} contrast below ${minimum}: ${colors}`,
@@ -540,12 +547,19 @@ withAuthFixture(origin, session, async () => {
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
+  // The supported fixture authenticates with cookies. The existing synchronous
+  // bootstrap does not trust a cached preference without legacy local identity;
+  // preserve its Light frame, then require the authorized Dark profile below.
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem('kami-auth')),
+    null,
+  );
   await page.reload();
   await theme('dark');
   assert.equal(
     await page.evaluate(() => window.__firstTheme),
-    'dark',
-    'cached preference before first animation frame',
+    'light',
+    'cookie-only startup preserves the existing Light first frame',
   );
   await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
   assert(
@@ -565,7 +579,8 @@ withAuthFixture(origin, session, async () => {
   results.push({
     serverPreferenceWithoutLocalCache: true,
     reloadPersistence: true,
-    cachedFirstPaint: true,
+    cookieBootstrapLight: true,
+    authorizedDarkAfterReload: true,
   });
   await checkContrast(page);
   // Approved #227 palette, also guarded by appearance-palette.test.ts.

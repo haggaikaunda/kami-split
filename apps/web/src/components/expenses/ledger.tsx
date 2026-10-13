@@ -34,12 +34,8 @@ import groupDocument, {
 import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
-import {
-  Button,
-  containDialogFocus,
-  Money,
-  Skeleton,
-} from '@/components/primitives';
+import { Button, containDialogFocus, Skeleton } from '../ui/primitives';
+import { Money } from '../financial/presentation';
 import { ExpenseDetail } from '@/components/groups/expense-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';

@@ -630,8 +630,9 @@ it('keeps an authorized ordinary group named Household in its own Group workspac
   expect(mock.push).not.toHaveBeenCalled();
   expect(host.textContent).toContain('Pre-trip booking');
   expect(
-    host.querySelector('.workspace-navigation a[aria-current="page"]')
-      ?.textContent,
+    host.querySelector(
+      '[data-ui~="workspace-navigation"] a[aria-current="page"]',
+    )?.textContent,
   ).toBe('Groups');
   expect(
     host.querySelector('a[href^="/groups/F/expenses/pre-trip"]'),
@@ -696,11 +697,12 @@ it('resolves the original Household ledger from authorized discovery and keeps o
   expect(mock.push).not.toHaveBeenCalled();
   expect(host.querySelector('h1')?.textContent).toBe('Household');
   expect(
-    host.querySelector('.workspace-navigation a[aria-current="page"]')
-      ?.textContent,
+    host.querySelector(
+      '[data-ui~="workspace-navigation"] a[aria-current="page"]',
+    )?.textContent,
   ).toBe('Household');
   expect(
-    [...host.querySelectorAll('.ui-workspace-tabs a')].map((a) =>
+    [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map((a) =>
       a.getAttribute('href'),
     ),
   ).toEqual(
@@ -709,7 +711,7 @@ it('resolves the original Household ledger from authorized discovery and keeps o
     ),
   );
   expect(host.querySelectorAll('main')).toHaveLength(1);
-  expect(host.querySelectorAll('.ui-workspace-tabs')).toHaveLength(1);
+  expect(host.querySelectorAll('[data-ui~="workspace-tabs"]')).toHaveLength(1);
 });
 
 it.each([
@@ -844,14 +846,16 @@ it('canonical Household expense details retain original IDs and the dedicated fr
   expect(host.textContent).toContain('$10.01');
   expect(host.querySelectorAll('main')).toHaveLength(1);
   expect(
-    host.querySelector('main > h1, .ui-workspace-header h1')?.textContent,
+    host.querySelector('main > h1, [data-ui~="workspace-header"] h1')
+      ?.textContent,
   ).toBe('Household');
   expect(host.querySelector('dialog[open] h1')?.textContent).toBe(
     'Expense detail',
   );
   expect(
-    host.querySelector('.workspace-navigation a[aria-current="page"]')
-      ?.textContent,
+    host.querySelector(
+      '[data-ui~="workspace-navigation"] a[aria-current="page"]',
+    )?.textContent,
   ).toBe('Household');
   expect(mock.push).not.toHaveBeenCalled();
 });

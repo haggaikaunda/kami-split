@@ -29,9 +29,9 @@ it('keeps canonical navigation available and current across source routes withou
       expect(
         container.querySelector('[aria-current="page"]')?.getAttribute('href'),
       ).toBe(current);
-      expect(container.querySelector('.workspace-brand')?.textContent).toBe(
-        'Kami Grow',
-      );
+      expect(
+        container.querySelector('[data-ui~="workspace-brand"]')?.textContent,
+      ).toBe('Kami Grow');
       expect(container.querySelector('button')).toBeNull();
       expect(
         container.querySelectorAll('svg:not([aria-hidden="true"])'),

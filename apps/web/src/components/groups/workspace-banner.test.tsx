@@ -95,17 +95,23 @@ it('retains the artwork banner and one labeled Add expense destination on every 
       );
       const header = host.querySelector('header')!;
       expect(
-        header.classList.contains(
-          `ui-workspace-header--${trip ? 'trip' : 'group'}`,
-        ),
+        header
+          .getAttribute('data-ui')
+          ?.split(/\s+/)
+          .includes(`workspace-header--${trip ? 'trip' : 'group'}`),
       ).toBe(true);
-      expect(header.classList.contains('ui-workspace-header--compact')).toBe(
-        false,
-      );
+      expect(
+        header
+          .getAttribute('data-ui')
+          ?.split(/\s+/)
+          .includes('workspace-header--compact'),
+      ).toBe(false);
       expect(header.querySelector('h1')?.textContent).toBe(fixture.name);
-      expect(host.querySelectorAll('.banner-action')).toHaveLength(1);
+      expect(host.querySelectorAll('[data-ui~="banner-action"]')).toHaveLength(
+        1,
+      );
       const href = header
-        .querySelector('.banner-action')!
+        .querySelector('[data-ui~="banner-action"]')!
         .getAttribute('href')!;
       const url = new URL(href, 'http://localhost');
       expect(url.pathname).toBe(`/${trip ? 'trips' : 'groups'}/g%2Fa`);

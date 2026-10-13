@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.mjs';
 
 const forbidden =
-  '.workspace-navigation,.ui-workspace-header,.ui-workspace-tabs,.account-heading';
+  '[data-ui~="workspace-navigation"],[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],.account-heading';
 async function signedOut(page) {
   await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
   await expect(page.getByLabel('Email address', { exact: true })).toBeVisible();
@@ -23,7 +23,7 @@ test('auth boundary: cold denial, safe continuation and logout history', async (
     expect([303, 307, 308]).toContain(response.status());
     expect(response.headers().location).toContain('/sign-in?');
     expect(await response.text()).not.toMatch(
-      /ui-workspace-header|ui-workspace-tabs|Private synthetic person/,
+      /workspace-header|workspace-tabs|Private synthetic person/,
     );
   }
   await page.goto('/account');

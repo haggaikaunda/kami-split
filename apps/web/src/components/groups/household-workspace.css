@@ -20,10 +20,10 @@
   text-align: right;
   flex: 0 0 auto;
 }
-.household-balance--positive .ui-money {
+.household-balance--positive [data-ui~='money'] {
   color: var(--color-primary);
 }
-.household-balance--negative .ui-money {
+.household-balance--negative [data-ui~='money'] {
   color: var(--color-owes);
 }
 .household-workspace .household-refresh {
@@ -42,7 +42,7 @@
   align-items: center;
   gap: 0.5rem;
 }
-.household-source-name .app-icon {
+.household-source-name [data-ui~='icon'] {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
@@ -62,7 +62,7 @@
   background: var(--color-surface);
   text-align: center;
 }
-.household-empty > .app-icon {
+.household-empty > [data-ui~='icon'] {
   width: 3.5rem;
   height: 3.5rem;
   margin-bottom: 0.5rem;
@@ -75,7 +75,7 @@
   color: var(--color-muted);
 }
 
-.household-source-name--trip .app-icon {
+.household-source-name--trip [data-ui~='icon'] {
   background: var(--color-blue-surface);
   color: var(--color-blue);
 }

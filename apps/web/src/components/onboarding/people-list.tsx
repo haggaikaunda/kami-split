@@ -1,4 +1,4 @@
-import { Member } from '@/components/primitives';
+import { Member } from '../ui/primitives';
 import type { ReactNode } from 'react';
 
 export type Person = {

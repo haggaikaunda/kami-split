@@ -1,33 +1,40 @@
+import financialStyles from '../../apps/web/src/components/financial/presentation.module.css';
+import uiStyles from '../../apps/web/src/components/ui/primitives.module.css';
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   WorkspaceHeader,
   WorkspaceTabs,
+  SpaceChip,
+} from '../../apps/web/src/components/workspace/patterns';
+import {
   SummaryMetric,
   SignedBalanceMetric,
-  SpaceChip,
   ExpenseRow,
   MonthSection,
   FilterBar,
   BalanceSpaceRow,
   MemberBalanceRow,
   RecommendedRepaymentRow,
+  ChartTable,
+  Money,
+} from '../../apps/web/src/components/financial/presentation';
+import {
   Button,
   Card,
-  ChartTable,
   Confirmation,
   Dialog,
   EmptyState,
   ErrorSummary,
   Field,
   Member,
-  Money,
   SelectField,
   Skeleton,
   Status,
   Toast,
-} from '../../apps/web/src/components/primitives';
-import '../../apps/web/src/app/styles.css';
+} from '../../apps/web/src/components/ui/primitives';
+import '../../apps/web/src/app/tokens.css';
+import '../../apps/web/src/app/base.css';
 import './preview.css';
 
 function Examples() {
@@ -81,7 +88,7 @@ function Examples() {
         current="Expenses"
         hrefFor={(section) => `#example-${section.toLowerCase()}`}
       />
-      <div className="ui-summary-row">
+      <div data-ui={'summary-row'} className={financialStyles['summary-row']}>
         <SummaryMetric
           label="Total shared expenses"
           detail="All dates · 3 expenses"
@@ -197,7 +204,7 @@ function Examples() {
               { fieldId: 'amount', message: 'Enter a positive amount.' },
             ]}
           />
-          <div className="ui-actions">
+          <div data-ui={'actions'} className={uiStyles['actions']}>
             <Button onClick={() => setDialog(true)}>Open expense dialog</Button>
             <Button tone="danger" onClick={() => setConfirm(true)}>
               Discard draft
@@ -266,7 +273,7 @@ function Examples() {
       >
         <Field label="Description" defaultValue="Shared groceries" />
         <Field label="Amount (USD)" defaultValue="10.01" />
-        <div className="ui-actions">
+        <div data-ui={'actions'} className={uiStyles['actions']}>
           <Button onClick={() => setDialog(false)}>Save example</Button>
           <Button tone="secondary" onClick={() => setDialog(false)}>
             Cancel

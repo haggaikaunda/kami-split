@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { Status } from '@/components/primitives';
+import { Status } from '../ui/primitives';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { useOnboarding } from './controller';
 import { InvitationPanel } from './invitations';

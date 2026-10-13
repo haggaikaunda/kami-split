@@ -1,4 +1,8 @@
 'use client';
+import uiStyles from './ui/primitives.module.css';
+import shellStyles from './workspace/shell.module.css';
+import { cx } from './ui/classnames';
+
 import Link from 'next/link';
 import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
@@ -255,7 +259,8 @@ export function AppIcon({
 }) {
   return (
     <svg
-      className={`app-icon ${className}`}
+      data-ui={`icon`}
+      className={cx(uiStyles['icon'], className)}
       viewBox="0 0 24 24"
       width="24"
       height="24"
@@ -272,7 +277,7 @@ export function AppIcon({
 }
 export function Brand() {
   return (
-    <span className="workspace-brand">
+    <span data-ui="workspace-brand" className={shellStyles['workspace-brand']}>
       <AppIcon name="leaf" />
       <span>Kami Grow</span>
     </span>
@@ -288,10 +293,10 @@ export function WorkspaceNavigation() {
     if (!nav || !frame) return;
     const root = document.documentElement;
     const brand = nav.querySelector<HTMLElement>(
-      '.workspace-navigation-brand',
+      '[data-ui~="workspace-navigation-brand"]',
     )!;
     const links = nav.querySelector<HTMLElement>(
-      '.workspace-navigation-links',
+      '[data-ui~="workspace-navigation-links"]',
     )!;
     // Measure occupied space only. CSS owns positioning; visual-viewport
     // panning, browser toolbars and pinch zoom must not move global chrome.
@@ -326,13 +331,20 @@ export function WorkspaceNavigation() {
   return (
     <nav
       ref={navigation}
-      className="workspace-navigation"
+      data-ui="workspace-navigation"
+      className={shellStyles['workspace-navigation']}
       aria-label="Financial navigation"
     >
-      <span className="workspace-navigation-brand">
+      <span
+        data-ui="workspace-navigation-brand"
+        className={shellStyles['workspace-navigation-brand']}
+      >
         <Brand />
       </span>
-      <div className="workspace-navigation-links">
+      <div
+        data-ui="workspace-navigation-links"
+        className={shellStyles['workspace-navigation-links']}
+      >
         {items.map(({ href, label, icon }) => (
           <Link
             key={href}
@@ -343,7 +355,10 @@ export function WorkspaceNavigation() {
                 : undefined
             }
           >
-            <span className="workspace-navigation-icon">
+            <span
+              data-ui="workspace-navigation-icon"
+              className={shellStyles['workspace-navigation-icon']}
+            >
               <AppIcon name={icon} />
             </span>
             <span>{label}</span>

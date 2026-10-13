@@ -3,7 +3,15 @@ import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { AuthBoundary } from '@/components/groups/auth-boundary';
 import { FinancialSession } from '@/components/groups/session';
-import './styles.css';
+// Anchor the shared cascade before route styles; Next also deduplicates the
+// same colocated imports in components. Preserve this order when moving owners.
+import '../components/ui/primitives.module.css';
+import '../components/workspace/shell.module.css';
+import '../components/workspace/patterns.module.css';
+import '../components/financial/presentation.module.css';
+import './tokens.css';
+import './base.css';
+import '@/components/groups/overview.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

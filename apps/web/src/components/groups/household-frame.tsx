@@ -1,4 +1,6 @@
 'use client';
+import shellStyles from '../workspace/shell.module.css';
+
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
 import { HouseholdBannerAction } from './household-banner-action';
@@ -17,7 +19,7 @@ import {
   WorkspaceTabs,
   workspaceSections,
   type WorkspaceSection,
-} from '@/components/primitives';
+} from '../workspace/patterns';
 import './journey.css';
 import './household-workspace.css';
 export function householdHref(section: WorkspaceSection) {
@@ -65,12 +67,17 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
             ) ?? 'Overview');
   return (
     <main
-      className="financial-journey group-workspace household-workspace"
+      className={`financial-journey group-workspace household-workspace ${shellStyles.shell}`}
       id="page-content"
     >
       <WorkspaceNavigation />
-      <div className="workspace-content">
-        <p className="workspace-crumb">Your household</p>
+      <div
+        data-ui="workspace-content"
+        className={shellStyles['workspace-content']}
+      >
+        <p data-ui="workspace-crumb" className={shellStyles['workspace-crumb']}>
+          Your household
+        </p>
         <WorkspaceHeader
           title="Household"
           context={

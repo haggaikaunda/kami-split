@@ -122,7 +122,7 @@ afterEach(() => {
 });
 it('keeps the same public tab shell while destination changes cancel old requests without viewer discovery', async () => {
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
-  const shell = host.querySelector('.ui-workspace-tabs');
+  const shell = host.querySelector('[data-ui~="workspace-tabs"]');
   expect(shell).not.toBeNull();
   expect(requests).toHaveLength(1);
   expect(requests[0].name).toBe('journeyWorkspaceQuery');
@@ -130,7 +130,7 @@ it('keeps the same public tab shell while destination changes cancel old request
   expect(host.textContent).toContain('Private member');
   search = 'tab=activity';
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
-  expect(host.querySelector('.ui-workspace-tabs')).toBe(shell);
+  expect(host.querySelector('[data-ui~="workspace-tabs"]')).toBe(shell);
   expect(host.textContent).not.toContain('Private member');
   expect(host.textContent).not.toContain('Private group');
   expect(requests).toHaveLength(2);
@@ -153,7 +153,7 @@ it('keeps the same public tab shell while destination changes cancel old request
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();
   expect(host.textContent).not.toContain('Private group');
-  expect(host.querySelector('.ui-workspace-tabs')).toBe(shell);
+  expect(host.querySelector('[data-ui~="workspace-tabs"]')).toBe(shell);
 });
 it('consumes the composed Activity result without a second dedicated read and coalesces foreground authorization', async () => {
   search = 'tab=activity';
@@ -245,7 +245,7 @@ it.each([
 it('rapid Activity to Members to Activity navigation rejects out-of-order private responses', async () => {
   search = 'tab=activity';
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
-  const shell = host.querySelector('.ui-workspace-tabs');
+  const shell = host.querySelector('[data-ui~="workspace-tabs"]');
   search = 'tab=members';
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
   search = 'tab=activity';
@@ -275,9 +275,9 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
   expect(host.textContent).not.toContain('Private member');
   expect(host.textContent).not.toContain('Private group');
   expect(host.textContent).not.toContain('No activity');
-  expect(host.querySelector('.ui-workspace-tabs')).toBe(shell);
+  expect(host.querySelector('[data-ui~="workspace-tabs"]')).toBe(shell);
   expect(
-    host.querySelector('.ui-workspace-tabs a[aria-current="page"]')
+    host.querySelector('[data-ui~="workspace-tabs"] a[aria-current="page"]')
       ?.textContent,
   ).toBe('Activity');
 });
