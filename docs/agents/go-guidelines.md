@@ -56,3 +56,29 @@ Test observable behavior. Use table-driven tests where cases share a clear struc
 The API pins the Go toolchain and gqlgen tool in `apps/api/go.mod`. `make api-check` runs formatting checks, module integrity, `go vet ./...`, regular and race-enabled tests, `go build ./...`, and reproducible gqlgen generation against committed files. Run `go test -race ./...` on a supported runner with its required toolchain; race detection does not prove database concurrency correctness. Integration tests must actually execute in CI rather than silently skip for missing infrastructure.
 
 Database verification is mandatory: `make db-test` exercises disposable real Supabase/PostgreSQL migrations, permissions, identity, financial and invitation integration scenarios, including race-enabled tests. `make db-generation-check` verifies sqlc generation drift. Current root pnpm checks remain required for repository changes. Independent testers verify issue requirements and reviewers inspect the final diff, including financial, authorization, and failure-path risks.
+
+## Authored queries
+
+Keep small, obvious bound queries next to the operation that executes them. Put
+substantial projections and their fixed construction in adjacent feature files,
+such as expense `read_sql.go`, `dashboard_sql.go`, `view_sql.go`,
+`activity_sql.go` and `repayment_sql.go`. Authorization, request context,
+transaction/lock ownership, execution and decoding stay in the application
+operation. Document each projection's parameter order beside its declaration or
+constructor so it can be compared with the caller's bound arguments.
+
+Shared projections use named internal slots with explicit bindings owned by each
+caller. The ordinary expense read supplies numbered placeholders; the dashboard
+supplies a selected ledger and fixed empty-page/current-revision expressions.
+Never adapt one caller's query by rewriting its numbered placeholders. Insert
+only fixed internal SQL fragments; pass all request values as bound arguments.
+Keep clauses, nested subqueries and JSON fields readable without changing quoted
+contents or intentional parser-boundary fixtures.
+
+Authored sqlc queries live in their feature's `internal/database/*query/query.sql`;
+regenerate their Go consumers with `make db-generate`. Public GraphQL SDL in
+`packages/schema` and feature-owned Relay documents remain authoritative for
+`make api-generate` and `pnpm relay:generate`; generated files are not handwritten
+query sources. Desired database state lives in `supabase/schemas`. Existing
+`supabase/migrations` files are immutable deployment history: formatting desired
+state must not introduce a migration or change schema behavior.

@@ -92,14 +92,51 @@ func (f *fixture) provision() {
 func (f *fixture) absent() {
 	f.t.Helper()
 	var n int
-	if e := f.db.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM app.users WHERE id=$1)+(SELECT count(*) FROM app.groups WHERE id=$2)+(SELECT count(*) FROM app.memberships WHERE id=$3)`, f.target.UserID, f.target.GroupID, f.target.MembershipID).Scan(&n); e != nil || n != 0 {
+	if e := f.db.QueryRow(f.ctx, `SELECT(
+  SELECT count(*)
+  FROM app.users
+  WHERE id = $1
+) +(
+  SELECT count(*)
+  FROM app.groups
+  WHERE id = $2
+) +(
+  SELECT count(*)
+  FROM app.memberships
+  WHERE id = $3
+)`, f.target.UserID, f.target.GroupID, f.target.MembershipID).Scan(&n); e != nil || n != 0 {
 		f.t.Fatalf("partial application setup: count=%d err=%v", n, e)
 	}
 }
 func (f *fixture) exact() {
 	f.t.Helper()
 	var n int
-	e := f.db.QueryRow(f.ctx, `SELECT count(*) FROM app.users u JOIN app.memberships m ON m.user_id=u.id JOIN app.groups g ON g.id=m.group_id JOIN app.installation i ON i.household_group_id=g.id WHERE u.id=$1 AND u.auth_subject=$2 AND u.live_auth_id=$2 AND u.enabled AND m.id=$3 AND m.active AND g.id=$4 AND g.owner_membership_id=m.id AND g.name='Household' AND g.currency='USD' AND i.group_creator_user_id=u.id AND (SELECT count(*) FROM app.memberships WHERE group_id=g.id)=1 AND NOT EXISTS(SELECT FROM app.expenses WHERE group_id=g.id)`, f.target.UserID, f.target.AuthUserID, f.target.MembershipID, f.target.GroupID).Scan(&n)
+	e := f.db.QueryRow(f.ctx, `SELECT count(*)
+FROM app.users u
+JOIN app.memberships m ON m.user_id = u.id
+JOIN app.groups g ON g.id = m.group_id
+JOIN app.installation i ON i.household_group_id = g.id
+WHERE u.id = $1
+AND u.auth_subject = $2
+AND u.live_auth_id = $2
+AND u.enabled
+AND m.id = $3
+AND m.active
+AND g.id = $4
+AND g.owner_membership_id = m.id
+AND g.name = 'Household'
+AND g.currency = 'USD'
+AND i.group_creator_user_id = u.id
+AND (
+  SELECT count(*)
+  FROM app.memberships
+  WHERE group_id = g.id
+) = 1
+AND NOT EXISTS(
+  SELECT
+  FROM app.expenses
+  WHERE group_id = g.id
+)`, f.target.UserID, f.target.AuthUserID, f.target.MembershipID, f.target.GroupID).Scan(&n)
 	if e != nil || n != 1 {
 		f.t.Fatalf("unexpected bootstrap result count=%d err=%v", n, e)
 	}
@@ -299,7 +336,19 @@ func TestIndependentBootstrapConflictingConcurrentPlans(t *testing.T) {
 		t.Fatalf("conflicting plans produced %d successful outcomes", success)
 	}
 	var users, groups, members int
-	e := f.db.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM app.users WHERE id IN ($1,$2)),(SELECT count(*) FROM app.groups WHERE id IN ($3,$4)),(SELECT count(*) FROM app.memberships WHERE id IN ($5,$6))`, f.target.UserID, other.UserID, f.target.GroupID, other.GroupID, f.target.MembershipID, other.MembershipID).Scan(&users, &groups, &members)
+	e := f.db.QueryRow(f.ctx, `SELECT(
+  SELECT count(*)
+  FROM app.users
+  WHERE id IN($1, $2)
+), (
+  SELECT count(*)
+  FROM app.groups
+  WHERE id IN($3, $4)
+), (
+  SELECT count(*)
+  FROM app.memberships
+  WHERE id IN($5, $6)
+)`, f.target.UserID, other.UserID, f.target.GroupID, other.GroupID, f.target.MembershipID, other.MembershipID).Scan(&users, &groups, &members)
 	if e != nil || users != 1 || groups != 1 || members != 1 {
 		t.Fatalf("conflicting plans left partial state: %d/%d/%d err=%v", users, groups, members, e)
 	}

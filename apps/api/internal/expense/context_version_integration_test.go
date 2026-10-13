@@ -10,13 +10,13 @@ import (
 
 func contextDashboard(t *testing.T, f *expenseFixture, actor int) map[string]any {
 	t.Helper()
-	query := strings.Replace(independentDashboardQuery, "... on HouseholdDashboard{state", "... on HouseholdDashboard{contextVersion state", 1)
+	query := strings.Replace(independentDashboardQuery, "... on HouseholdDashboard {", "... on HouseholdDashboard { contextVersion", 1)
 	return groupRequest(t, f, actor, query, nil, "householdDashboard", "HouseholdDashboard")
 }
 
 func contextView(t *testing.T, f *expenseFixture, filter map[string]any) map[string]any {
 	t.Helper()
-	query := strings.Replace(independentHouseholdViewQuery, "... on ExpenseView{", "... on ExpenseView{contextVersion ", 1)
+	query := strings.Replace(independentHouseholdViewQuery, "... on ExpenseView {", "... on ExpenseView { contextVersion ", 1)
 	return groupRequest(t, f, 1, query, map[string]any{"first": 1, "filter": filter}, "householdExpenses", "ExpenseView")
 }
 

@@ -144,7 +144,16 @@ func (s *Service) execute(ctx context.Context, in financialIntent) (Outcome, err
 			}
 			fields := append([]ledger.FieldProblem(nil), in.fields...)
 			var eligible bool
-			if e = tx.QueryRow(ctx, `SELECT NOT EXISTS(SELECT FROM unnest($2::uuid[]) a(id) WHERE NOT EXISTS(SELECT FROM app.group_members($1) m WHERE m.id=a.id AND m.can_participate))`, group, ids).Scan(&eligible); e != nil {
+			if e = tx.QueryRow(ctx, `SELECT NOT EXISTS(
+  SELECT
+  FROM unnest($2::uuid[]) a(id)
+  WHERE NOT EXISTS(
+    SELECT
+    FROM app.group_members($1) m
+    WHERE m.id = a.id
+    AND m.can_participate
+  )
+)`, group, ids).Scan(&eligible); e != nil {
 				return e
 			}
 			if !eligible {

@@ -129,7 +129,8 @@ func independentHTTPOnboardingRoundTrip(t *testing.T, anon, adminKey string) {
 		args []any
 	}{
 		{`SET LOCAL ROLE kami_migrator`, nil},
-		{`INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES($1,$1,$1,'Independent owner'),($2,$3,$3,'Existing member')`, []any{owner, existingUser, existing}},
+		{`INSERT INTO app.users(id, auth_subject, live_auth_id, display_name)
+VALUES($1, $1, $1, 'Independent owner'), ($2, $3, $3, 'Existing member')`, []any{owner, existingUser, existing}},
 		{`INSERT INTO app.groups(id,name,owner_membership_id) VALUES($1,'Independent household',$2)`, []any{group, ownerMembership}},
 		{`INSERT INTO app.memberships(id,group_id,user_id) VALUES($1,$2,$3)`, []any{ownerMembership, group, owner}},
 	} {

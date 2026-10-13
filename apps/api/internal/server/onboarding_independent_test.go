@@ -19,8 +19,35 @@ func TestIndependentOnboardingTransportBoundary(t *testing.T) {
 		{`{ownerInvitations(groupID:"invalid"){... on InvitationProblem{code}}}`, `UNAUTHENTICATED`},
 		{`{a:previewInvitation(token:"invalid"){__typename} b:previewInvitation(token:"invalid"){__typename}}`, `Submit one invitation operation per request`},
 		{`{previewInvitation(token:"invalid"){__typename} health{status}}`, `Submit one invitation operation per request`},
-		{`mutation{a:createSharedInvitation(groupID:"x",key:"12345678-1234-4234-8234-123456789012"){__typename} b:createSharedInvitation(groupID:"x",key:"12345678-1234-4234-8234-123456789012"){__typename}}`, `Submit one invitation operation per request`},
-		{`mutation{a:renewSharedInvitation(groupID:"x",id:"x",key:"12345678-1234-4234-8234-123456789012"){__typename} b:createSharedInvitation(groupID:"x",key:"12345678-1234-4234-8234-123456789012"){__typename}}`, `Submit one invitation operation per request`},
+		{`mutation {
+  a: createSharedInvitation(
+    groupID: "x"
+    key: "12345678-1234-4234-8234-123456789012"
+  ) {
+    __typename
+  }
+  b: createSharedInvitation(
+    groupID: "x"
+    key: "12345678-1234-4234-8234-123456789012"
+  ) {
+    __typename
+  }
+}`, `Submit one invitation operation per request`},
+		{`mutation {
+  a: renewSharedInvitation(
+    groupID: "x"
+    id: "x"
+    key: "12345678-1234-4234-8234-123456789012"
+  ) {
+    __typename
+  }
+  b: createSharedInvitation(
+    groupID: "x"
+    key: "12345678-1234-4234-8234-123456789012"
+  ) {
+    __typename
+  }
+}`, `Submit one invitation operation per request`},
 	} {
 		body, _ := json.Marshal(map[string]string{"query": tc.query})
 		req := httptest.NewRequest("POST", "/graphql", bytes.NewReader(body))

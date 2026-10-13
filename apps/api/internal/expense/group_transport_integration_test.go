@@ -21,8 +21,50 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
-const groupCreationFields = `__typename ... on GroupCreationCompleted { operationKey groupId creatorMembershipId createdAt } ... on GroupCreationRejected { operationKey fields { path code message } } ... on GroupCreationConflict { operationKey } ... on Problem { code message }`
-const groupRecoveryFields = `__typename ... on GroupCreationCompleted { operationKey groupId creatorMembershipId createdAt } ... on GroupCreationRejected { operationKey fields { path code message } } ... on GroupCreationNotStarted { operationKey } ... on Problem { code message }`
+const groupCreationFields = `__typename
+... on GroupCreationCompleted {
+  operationKey
+  groupId
+  creatorMembershipId
+  createdAt
+}
+... on GroupCreationRejected {
+  operationKey
+  fields {
+    path
+    code
+    message
+  }
+}
+... on GroupCreationConflict {
+  operationKey
+}
+... on Problem {
+  code
+  message
+}`
+const groupRecoveryFields = `__typename
+... on GroupCreationCompleted {
+  operationKey
+  groupId
+  creatorMembershipId
+  createdAt
+}
+... on GroupCreationRejected {
+  operationKey
+  fields {
+    path
+    code
+    message
+  }
+}
+... on GroupCreationNotStarted {
+  operationKey
+}
+... on Problem {
+  code
+  message
+}`
 const createGroupQuery = `mutation($input:CreateGroupInput!){createGroup(input:$input){` + groupCreationFields + `}}`
 const recoverGroupQuery = `query($key:OperationKey!){groupCreationOperation(operationKey:$key){` + groupRecoveryFields + `}}`
 
@@ -122,7 +164,28 @@ func TestGroupHTTPDiscoveryCanonicalRecoveryAndCurrentAccess(t *testing.T) {
 		t.Fatal("null ordinary trip changed canonical input")
 	}
 	recoverGroup(t, f, 1, uuid.NewString(), "GroupCreationNotStarted")
-	query := `{viewer{__typename ... on Viewer{id today canCreateGroups groups{id name currency kind isHousehold trip{destination startDate endDate}}}}}`
+	query := `{
+  viewer {
+    __typename
+    ... on Viewer {
+      id
+      today
+      canCreateGroups
+      groups {
+        id
+        name
+        currency
+        kind
+        isHousehold
+        trip {
+          destination
+          startDate
+          endDate
+        }
+      }
+    }
+  }
+}`
 	v := groupRequest(t, f, 1, query, nil, "viewer", "Viewer")
 	if v["today"] != time.Now().UTC().Format("2006-01-02") || v["canCreateGroups"] != true {
 		t.Fatalf("viewer=%v", v)
@@ -152,7 +215,31 @@ func TestGroupHTTPDiscoveryCanonicalRecoveryAndCurrentAccess(t *testing.T) {
 	}
 	raw, _ := ledger.ParseID(first["groupId"].(string), "Group")
 	f.exec(fmt.Sprintf(`SET ROLE kami_migrator; UPDATE app.groups SET name='Current name' WHERE id='%s'; RESET ROLE`, raw))
-	current := groupRequest(t, f, 1, `query($id:ID!){group(id:$id){__typename ... on Group{id name kind isHousehold trip{destination startDate endDate} members{id} balances{__typename}} ... on Problem{code}}}`, map[string]any{"id": first["groupId"]}, "group", "Group")
+	current := groupRequest(t, f, 1, `query ($id: ID!) {
+  group(id: $id) {
+    __typename
+    ... on Group {
+      id
+      name
+      kind
+      isHousehold
+      trip {
+        destination
+        startDate
+        endDate
+      }
+      members {
+        id
+      }
+      balances {
+        __typename
+      }
+    }
+    ... on Problem {
+      code
+    }
+  }
+}`, map[string]any{"id": first["groupId"]}, "group", "Group")
 	if current["name"] != "Current name" || current["kind"] != "TRIP" || len(current["members"].([]any)) != 1 {
 		t.Fatalf("fresh group=%v", current)
 	}
@@ -261,7 +348,23 @@ func TestGroupHTTPValidationAndUnicode(t *testing.T) {
 	}
 	// A malformed later field must prevent the valid earlier creation too.
 	key := uuid.NewString()
-	query := fmt.Sprintf(`mutation{first:createGroup(input:{operationKey:"%s",name:"first",kind:ORDINARY}){__typename} second:createGroup(input:{operationKey:"%s",name:"second",kind:TRIP,trip:{startDate:"2023-02-29",endDate:"2024-02-29"}}){__typename}}`, key, uuid.NewString())
+	query := fmt.Sprintf(`mutation {
+  first: createGroup(
+    input: { operationKey: "%s", name: "first", kind: ORDINARY }
+  ) {
+    __typename
+  }
+  second: createGroup(
+    input: {
+      operationKey: "%s"
+      name: "second"
+      kind: TRIP
+      trip: { startDate: "2023-02-29", endDate: "2024-02-29" }
+    }
+  ) {
+    __typename
+  }
+}`, key, uuid.NewString())
 	status, body, err := groupHTTP(f, 1, query, nil)
 	if err != nil || status != 400 {
 		t.Fatalf("partial mutation: %d %s %v", status, body, err)

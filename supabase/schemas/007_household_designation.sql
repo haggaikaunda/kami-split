@@ -106,7 +106,7 @@ BEGIN
  PERFORM set_config('app.household_account_transaction',txid_current()::text,true);
  RETURN NULL;
 END $$;
-CREATE TRIGGER household_account_lock BEFORE UPDATE OF enabled,live_auth_id ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.household_account_lock();
+CREATE TRIGGER household_account_lock BEFORE UPDATE OF enabled, live_auth_id ON app.users FOR EACH STATEMENT EXECUTE FUNCTION app.household_account_lock();
 -- UPDATE has already locked the affected user. FK-driven managed Auth unlink
 -- takes this same path; enabled users still cannot lose their required Auth link.
 CREATE FUNCTION app.household_account_transition() RETURNS trigger

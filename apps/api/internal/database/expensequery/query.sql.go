@@ -12,8 +12,11 @@ import (
 )
 
 const financialOperation = `-- name: FinancialOperation :one
-SELECT canonical, canonical_hash, outcome FROM app.expense_operations
-WHERE group_id=$1 AND key=$2 AND operation_kind=$3
+SELECT canonical, canonical_hash, outcome
+FROM app.expense_operations
+WHERE group_id = $1
+AND key = $2
+AND operation_kind = $3
 `
 
 type FinancialOperationParams struct {
@@ -36,7 +39,8 @@ func (q *Queries) FinancialOperation(ctx context.Context, arg FinancialOperation
 }
 
 const insertAllocation = `-- name: InsertAllocation :exec
-INSERT INTO app.allocations(expense_id,group_id,participant_id,amount_minor,percentage_hundredths) VALUES($1,$2,$3,$4,$5)
+INSERT INTO app.allocations(expense_id, group_id, participant_id, amount_minor, percentage_hundredths)
+VALUES($1, $2, $3, $4, $5)
 `
 
 type InsertAllocationParams struct {
@@ -59,7 +63,8 @@ func (q *Queries) InsertAllocation(ctx context.Context, arg InsertAllocationPara
 }
 
 const insertAudit = `-- name: InsertAudit :exec
-INSERT INTO app.expense_audit(expense_id,group_id,actor_user_id,creator_id,event,committed_at) VALUES($1,$2,$3,$4,'CREATE_EXPENSE',$5)
+INSERT INTO app.expense_audit(expense_id, group_id, actor_user_id, creator_id, event, committed_at)
+VALUES($1, $2, $3, $4, 'CREATE_EXPENSE', $5)
 `
 
 type InsertAuditParams struct {
@@ -82,8 +87,12 @@ func (q *Queries) InsertAudit(ctx context.Context, arg InsertAuditParams) error 
 }
 
 const insertExpense = `-- name: InsertExpense :one
-INSERT INTO app.expenses(id,group_id,creator_id,payer_id,total_minor,currency,description,effective_date,category,note,split,revision)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING created_at
+INSERT INTO app.expenses(
+  id, group_id, creator_id, payer_id, total_minor, currency, description, effective_date,
+  category, note, split, revision
+)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING created_at
 `
 
 type InsertExpenseParams struct {
@@ -122,8 +131,12 @@ func (q *Queries) InsertExpense(ctx context.Context, arg InsertExpenseParams) (p
 }
 
 const insertRepayment = `-- name: InsertRepayment :one
-INSERT INTO app.repayments(id,group_id,creator_id,sender_id,recipient_id,amount_minor,currency,effective_date,note,revision)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at
+INSERT INTO app.repayments(
+  id, group_id, creator_id, sender_id, recipient_id, amount_minor, currency, effective_date,
+  note, revision
+)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING created_at
 `
 
 type InsertRepaymentParams struct {
@@ -158,8 +171,8 @@ func (q *Queries) InsertRepayment(ctx context.Context, arg InsertRepaymentParams
 }
 
 const insertRepaymentAudit = `-- name: InsertRepaymentAudit :exec
-INSERT INTO app.repayment_audit(repayment_id,group_id,actor_user_id,creator_id,event,committed_at)
-VALUES($1,$2,$3,$4,'RECORD_REPAYMENT',$5)
+INSERT INTO app.repayment_audit(repayment_id, group_id, actor_user_id, creator_id, event, committed_at)
+VALUES($1, $2, $3, $4, 'RECORD_REPAYMENT', $5)
 `
 
 type InsertRepaymentAuditParams struct {
@@ -182,8 +195,11 @@ func (q *Queries) InsertRepaymentAudit(ctx context.Context, arg InsertRepaymentA
 }
 
 const storeFinancialOperation = `-- name: StoreFinancialOperation :exec
-INSERT INTO app.expense_operations(actor_user_id,group_id,operation_kind,key,canonical_version,canonical,canonical_hash,expense_id,repayment_id,outcome)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+INSERT INTO app.expense_operations(
+  actor_user_id, group_id, operation_kind, key, canonical_version, canonical, canonical_hash,
+  expense_id, repayment_id, outcome
+)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type StoreFinancialOperationParams struct {

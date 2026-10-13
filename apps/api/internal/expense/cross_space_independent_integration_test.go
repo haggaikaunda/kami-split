@@ -18,9 +18,90 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
-const independentViewFields = `__typename ... on Problem{code message} ... on ExpenseView{viewerShareMinor viewerPaidMinor categories{category totalExpenseMinor viewerShareMinor expenseCount} totalExpenseMinor expenseCount months{month totalExpenseMinor expenseCount} edges{cursor source{id name kind currency isHousehold trip{destination startDate endDate}} node{id groupId totalMinor effectiveDate createdAt category payer{id displayName} creator{id} allocations{participant{id} amountMinor}}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}}`
-const independentHouseholdViewQuery = `query($first:Int!,$after:String,$filter:StructuredExpenseFilter){householdExpenses(first:$first,after:$after,filter:$filter){` + independentViewFields + `}}`
-const independentGroupViewQuery = `query($group:ID!,$first:Int!,$after:String,$filter:StructuredExpenseFilter){groupExpenses(groupId:$group,first:$first,after:$after,filter:$filter){` + independentViewFields + `}}`
+const independentViewFields = `__typename
+... on Problem {
+  code
+  message
+}
+... on ExpenseView {
+  viewerShareMinor
+  viewerPaidMinor
+  categories {
+    category
+    totalExpenseMinor
+    viewerShareMinor
+    expenseCount
+  }
+  totalExpenseMinor
+  expenseCount
+  months {
+    month
+    totalExpenseMinor
+    expenseCount
+  }
+  edges {
+    cursor
+    source {
+      id
+      name
+      kind
+      currency
+      isHousehold
+      trip {
+        destination
+        startDate
+        endDate
+      }
+    }
+    node {
+      id
+      groupId
+      totalMinor
+      effectiveDate
+      createdAt
+      category
+      payer {
+        id
+        displayName
+      }
+      creator {
+        id
+      }
+      allocations {
+        participant {
+          id
+        }
+        amountMinor
+      }
+    }
+  }
+  pageInfo {
+    hasNextPage
+    hasPreviousPage
+    startCursor
+    endCursor
+  }
+}`
+const independentHouseholdViewQuery = `query ($first: Int!, $after: String, $filter: StructuredExpenseFilter) {
+  householdExpenses(first: $first, after: $after, filter: $filter) {
+    ` + independentViewFields + `
+  }
+}`
+const independentGroupViewQuery = `query (
+  $group: ID!
+  $first: Int!
+  $after: String
+  $filter: StructuredExpenseFilter
+) {
+  groupExpenses(
+    groupId: $group
+    first: $first
+    after: $after
+    filter: $filter
+  ) {
+    ` + independentViewFields + `
+  }
+}`
 
 func independentViewRead(t *testing.T, f *expenseFixture, actor, first int, after string, filter map[string]any, group, kind string) map[string]any {
 	t.Helper()
@@ -135,7 +216,26 @@ func TestIndependentExpenseViewStructuredTotalsMemberParityAndNoDisclosure(t *te
 	}
 	// The old filter continues to mean explicit participant only: A's payer-only
 	// expense does not match, but the zero allocation still does.
-	old := groupRequest(t, f, 1, `query($id:ID!,$filter:ExpenseFilter){group(id:$id){__typename ... on Group{expenses(first:100,filter:$filter){edges{node{totalMinor}}} balances{__typename ... on GroupBalances{totalExpenseMinor}}}}}`, map[string]any{"id": f.public("Group", 201), "filter": map[string]any{"participantId": f.public("Membership", 301)}}, "group", "Group")
+	old := groupRequest(t, f, 1, `query ($id: ID!, $filter: ExpenseFilter) {
+  group(id: $id) {
+    __typename
+    ... on Group {
+      expenses(first: 100, filter: $filter) {
+        edges {
+          node {
+            totalMinor
+          }
+        }
+      }
+      balances {
+        __typename
+        ... on GroupBalances {
+          totalExpenseMinor
+        }
+      }
+    }
+  }
+}`, map[string]any{"id": f.public("Group", 201), "filter": map[string]any{"participantId": f.public("Membership", 301)}}, "group", "Group")
 	oldEdges := old["expenses"].(map[string]any)["edges"].([]any)
 	if len(oldEdges) != 2 || old["balances"].(map[string]any)["totalExpenseMinor"] != "600" {
 		t.Fatal("legacy filter or unfiltered balance regressed", old)

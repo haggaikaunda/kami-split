@@ -103,7 +103,9 @@ func injectHistoricalDeparture(t *testing.T, f *expenseFixture, membership strin
 	if _, err = tx.Exec(f.ctx, `SET LOCAL session_replication_role=replica; SET LOCAL ROLE kami_migrator`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = tx.Exec(f.ctx, `UPDATE app.memberships SET active=false,departed_order=nextval('app.invitation_order'),eligibility_revision=eligibility_revision+1 WHERE id=$1`, membership); err != nil {
+	if _, err = tx.Exec(f.ctx, `UPDATE app.memberships
+SET active = false, departed_order = nextval('app.invitation_order'), eligibility_revision = eligibility_revision + 1
+WHERE id = $1`, membership); err != nil {
 		t.Fatal(err)
 	}
 	if err = tx.Commit(f.ctx); err != nil {

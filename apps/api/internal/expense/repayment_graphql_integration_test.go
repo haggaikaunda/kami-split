@@ -11,10 +11,90 @@ import (
 	"testing"
 )
 
-const repaymentSelection = `__typename ... on RepaymentCommitted{key record{repaymentId groupId creatorMembershipId senderMembershipId recipientMembershipId amountMinor currency effectiveDate note committedAt revision}} ... on ValidationProblem{fields{path code}} ... on OperationProgress{state} ... on Problem{code}`
+const repaymentSelection = `__typename
+... on RepaymentCommitted {
+  key
+  record {
+    repaymentId
+    groupId
+    creatorMembershipId
+    senderMembershipId
+    recipientMembershipId
+    amountMinor
+    currency
+    effectiveDate
+    note
+    committedAt
+    revision
+  }
+}
+... on ValidationProblem {
+  fields {
+    path
+    code
+  }
+}
+... on OperationProgress {
+  state
+}
+... on Problem {
+  code
+}`
 const repaymentMutation = `mutation($input:RecordRepaymentInput!){recordRepayment(input:$input){` + repaymentSelection + ` ... on OperationMismatch{key}}}`
 const repaymentRecovery = `query($group:ID!,$key:OperationKey!){repaymentOperation(groupId:$group,key:$key){` + repaymentSelection + `}}`
-const repaymentHistory = `query($group:ID!,$first:Int!,$after:String){group(id:$group){__typename ... on Group{id repayments(first:$first,after:$after){revision edges{cursor node{id effectiveDate note revision creator{id} sender{id canParticipate} recipient{id canParticipate}}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}} balances{... on GroupBalances{revision totalExpenseMinor positions{member{id} paidMinor owedMinor sentMinor receivedMinor netMinor}}}}}}`
+const repaymentHistory = `query ($group: ID!, $first: Int!, $after: String) {
+  group(id: $group) {
+    __typename
+    ... on Group {
+      id
+      repayments(first: $first, after: $after) {
+        revision
+        edges {
+          cursor
+          node {
+            id
+            effectiveDate
+            note
+            revision
+            creator {
+              id
+            }
+            sender {
+              id
+              canParticipate
+            }
+            recipient {
+              id
+              canParticipate
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+      }
+      balances {
+        ... on GroupBalances {
+          revision
+          totalExpenseMinor
+          positions {
+            member {
+              id
+            }
+            paidMinor
+            owedMinor
+            sentMinor
+            receivedMinor
+            netMinor
+          }
+        }
+      }
+    }
+  }
+}`
 
 func repaymentGraphQL(t *testing.T, f *expenseFixture, actor int, q string, v map[string]any) map[string]any {
 	t.Helper()
@@ -154,7 +234,31 @@ func TestRepaymentGraphQLHistoryAnchorAliasesAndCursorScopes(t *testing.T) {
 			t.Fatal(edges)
 		}
 	}
-	aliases := `query($group:ID!){group(id:$group){... on Group{a:repayments(first:1){edges{node{id}}} b:repayments(first:100){edges{node{id}}} expenses(first:1){pageInfo{endCursor}}}}}`
+	aliases := `query ($group: ID!) {
+  group(id: $group) {
+    ... on Group {
+      a: repayments(first: 1) {
+        edges {
+          node {
+            id
+          }
+        }
+      }
+      b: repayments(first: 100) {
+        edges {
+          node {
+            id
+          }
+        }
+      }
+      expenses(first: 1) {
+        pageInfo {
+          endCursor
+        }
+      }
+    }
+  }
+}`
 	aliasResponse := repaymentGraphQL(t, f, 1, aliases, vars)
 	aliasErrors, ok := aliasResponse["errors"].([]any)
 	if !ok || len(aliasErrors) != 2 {

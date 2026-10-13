@@ -39,7 +39,9 @@ CREATE POLICY revision_allocation_owner ON app.expense_revision_allocations TO k
 GRANT SELECT ON app.expense_revisions,app.expense_revision_allocations TO kami_api;
 INSERT INTO app.expense_revisions SELECT e.*,e.id,a.actor_user_id,a.creator_id,e.created_at
  FROM app.expenses e JOIN app.expense_audit a ON a.expense_id=e.id;
-INSERT INTO app.expense_revision_allocations SELECT a.expense_id,1,a.group_id,a.participant_id,a.amount_minor,a.percentage_hundredths FROM app.allocations a;
+INSERT INTO app.expense_revision_allocations
+SELECT a.expense_id, 1, a.group_id, a.participant_id, a.amount_minor, a.percentage_hundredths
+FROM app.allocations a;
 ALTER TABLE app.expense_operations DROP CONSTRAINT expense_operations_expense_id_key;
 CREATE UNIQUE INDEX original_expense_operation ON app.expense_operations(expense_id) WHERE operation_kind='CREATE_EXPENSE';
 ALTER TABLE app.expense_operations DROP CONSTRAINT financial_operation_kind;
