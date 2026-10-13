@@ -95,7 +95,8 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
   cursor: id,
   source: { id: 'home', name: 'Home', currency: 'USD' },
   node: {
-    id,
+    expenseId: id,
+    version: '1',
     groupId: 'home',
     description: `Dinner ${id}`,
     effectiveDate: date,

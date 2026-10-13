@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 
@@ -197,4 +198,17 @@ func percentageValue(r expense.Record, id string) *int {
 		}
 	}
 	return nil
+}
+
+// mapExpenseSnapshot preserves the selected financial version without exporting
+// current Expense identity or edit capability into the anchored value object.
+func mapExpenseSnapshot(r expense.Record, m map[string]*model.Membership) *model.ExpenseSnapshot {
+	e := mapExpense(r, m)
+	return &model.ExpenseSnapshot{
+		ID: fmt.Sprintf("ExpenseSnapshot:%s:%d", e.ID, r.Version), ExpenseID: e.ID, Version: e.Version, GroupID: e.GroupID,
+		TotalMinor: e.TotalMinor, Currency: e.Currency, Description: e.Description,
+		EffectiveDate: e.EffectiveDate, Category: e.Category, Note: e.Note,
+		Payer: e.Payer, Creator: e.Creator, Split: e.Split,
+		Allocations: e.Allocations, CreatedAt: e.CreatedAt,
+	}
 }

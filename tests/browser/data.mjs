@@ -43,6 +43,7 @@ function group(id) {
     viewerMembership: members[0],
     members,
     expenses: {
+      id: `ExpenseConnection:${id}:1`,
       revision: '1',
       edges: [],
       pageInfo: { hasNextPage: false, hasPreviousPage: false },
@@ -83,7 +84,17 @@ const expense = {
   payer: members[0],
   allocations: [{ participant: members[0], amountMinor: '300' }],
 };
+function expenseSnapshot({ id, ...value }) {
+  return {
+    ...value,
+    __typename: 'ExpenseSnapshot',
+    id: `ExpenseSnapshot:${id}:${value.version || '1'}`,
+    expenseId: id,
+    version: value.version || '1',
+  };
+}
 const view = {
+  id: 'ExpenseView:fixture-initial',
   contextVersion: 'fixture-context-v1',
   __typename: 'ExpenseView',
   __isExpenseViewResult: 'ExpenseView',
@@ -100,7 +111,7 @@ const view = {
   ],
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
-  edges: [{ cursor: 'e1', node: expense, source: groups[1] }],
+  edges: [{ cursor: 'e1', node: expenseSnapshot(expense), source: groups[1] }],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
 
@@ -108,6 +119,7 @@ export function expensePage(after) {
   const ids = after ? [7, 8, 9] : [1, 2, 3, 4, 5, 6];
   return {
     ...view,
+    id: after ? 'ExpenseView:fixture-after-e6' : view.id,
     expenseCount: '9',
     totalExpenseMinor: '2700',
     viewerShareMinor: '2700',
@@ -117,7 +129,11 @@ export function expensePage(after) {
     ],
     edges: ids.map((i) => ({
       cursor: `e${i}`,
-      node: { ...expense, id: `e${i}`, description: `Private lunch ${i}` },
+      node: expenseSnapshot({
+        ...expense,
+        id: `e${i}`,
+        description: `Private lunch ${i}`,
+      }),
       source: groups[1],
     })),
     pageInfo: { hasNextPage: !after, endCursor: after ? 'e9' : 'e6' },

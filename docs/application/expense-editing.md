@@ -89,3 +89,44 @@ preparation. An unprepared raw membership update under conflicting locks fails
 without waiting, requiring a full transaction retry; it cannot invert member
 foreign-key and financial locks. This adds neither a membership write grant nor a
 departure UI.
+
+## Client financial identity
+
+Current `Expense` remains a stable public `Node`; `node(expenseId)` always reads
+current authorized values and edit capability. Anchored `Group.expenses`,
+`groupExpenses` and `householdExpenses` expose `edge.snapshot: ExpenseSnapshot`.
+Its distinct opaque `id` identifies one expense version, while `expenseId` is the
+original current entity ID for navigation. Financial fields and allocations share
+that saved version. Membership labels and eligibility remain current metadata.
+
+`ExpenseView.id` identifies one complete financial/context projection and exact
+bounded page: scope, canonical filters, source revision vector, current
+eligibility/context, size and boundary. `ExpenseConnection.id` identifies its
+original-group financial anchor, filters and page arguments. These separate
+identities prevent a partial refresh from retaining older unselected rows, totals
+or nested financial fields. Neither type implements Node; refetch through the
+original authorized query and signed cursor. Cache IDs and `contextVersion` grant
+no access, and contextVersion remains independent of financial revisions.
+
+The account Relay environment also separates `GroupSummary` and
+`ActivityIdentity` records from the Group/Membership Nodes whose public IDs they
+carry. Current Profile IDs already use their distinct public namespace. Activity
+before/after values and operation receipts remain historical values under their
+own owners; neither substitutes for current expense detail.
+
+Deploy the additive schema/API before clients select `snapshot`. The existing
+deployment workflow orders affected web deployment after successful API deployment;
+client rollback may retain the additive API so deployed old clients remain compatible. Deprecated
+`edge.node` fields retain old anchored response semantics for deployed clients;
+those fields must not back reactive normalized reads because their current
+Expense IDs overlap across financial versions. Current production operations use
+`snapshot`, with the response alias `node` and explicit `expenseId` navigation.
+
+The financial ledger currently retains a request snapshot for each signed
+traversal. A refresh clears all rows, complete aggregates and cursor state before
+starting a new traversal; a continuation appends only within that same owner and
+account/visit generation. Keep this explicit transition until component Relay
+reads preserve equivalent reset and continuation ownership. Cache identity alone
+does not authorize combining separate traversals, infer complete aggregates from
+loaded pages, replace Household context matching, or turn a failed post-mutation
+refresh into a failed write.

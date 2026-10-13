@@ -36,6 +36,14 @@ export function createScope(client: SupabaseClient, actor: string) {
   if (typeof window !== 'undefined')
     window.addEventListener('popstate', restoreHistory);
   const environment = new Environment({
+    // These non-Node projections carry another type's public ID for navigation.
+    // Keep their concrete records separate from the corresponding Group/Member.
+    getDataID: (record, typeName) => {
+      if (typeof record.id !== 'string') return null;
+      return typeName === 'GroupSummary' || typeName === 'ActivityIdentity'
+        ? `${typeName}:${record.id}`
+        : record.id;
+    },
     network: Network.create((operation, variables) =>
       Observable.create<GraphQLResponse>((sink) => {
         let subscribed = true;

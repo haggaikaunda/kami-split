@@ -131,13 +131,15 @@ type ComplexityRoot struct {
 
 	ExpenseConnection struct {
 		Edges    func(childComplexity int) int
+		ID       func(childComplexity int) int
 		PageInfo func(childComplexity int) int
 		Revision func(childComplexity int) int
 	}
 
 	ExpenseEdge struct {
-		Cursor func(childComplexity int) int
-		Node   func(childComplexity int) int
+		Cursor   func(childComplexity int) int
+		Node     func(childComplexity int) int
+		Snapshot func(childComplexity int) int
 	}
 
 	ExpenseEditCommitted struct {
@@ -180,11 +182,30 @@ type ComplexityRoot struct {
 		TotalMinor          func(childComplexity int) int
 	}
 
+	ExpenseSnapshot struct {
+		Allocations   func(childComplexity int) int
+		Category      func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		Creator       func(childComplexity int) int
+		Currency      func(childComplexity int) int
+		Description   func(childComplexity int) int
+		EffectiveDate func(childComplexity int) int
+		ExpenseID     func(childComplexity int) int
+		GroupID       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Note          func(childComplexity int) int
+		Payer         func(childComplexity int) int
+		Split         func(childComplexity int) int
+		TotalMinor    func(childComplexity int) int
+		Version       func(childComplexity int) int
+	}
+
 	ExpenseView struct {
 		Categories        func(childComplexity int) int
 		ContextVersion    func(childComplexity int) int
 		Edges             func(childComplexity int) int
 		ExpenseCount      func(childComplexity int) int
+		ID                func(childComplexity int) int
 		Months            func(childComplexity int) int
 		PageInfo          func(childComplexity int) int
 		TotalExpenseMinor func(childComplexity int) int
@@ -193,9 +214,10 @@ type ComplexityRoot struct {
 	}
 
 	ExpenseViewEdge struct {
-		Cursor func(childComplexity int) int
-		Node   func(childComplexity int) int
-		Source func(childComplexity int) int
+		Cursor   func(childComplexity int) int
+		Node     func(childComplexity int) int
+		Snapshot func(childComplexity int) int
+		Source   func(childComplexity int) int
 	}
 
 	FieldProblem struct {
@@ -943,6 +965,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseConnection.Edges(childComplexity), true
+	case "ExpenseConnection.id":
+		if e.ComplexityRoot.ExpenseConnection.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseConnection.ID(childComplexity), true
 	case "ExpenseConnection.pageInfo":
 		if e.ComplexityRoot.ExpenseConnection.PageInfo == nil {
 			break
@@ -968,6 +996,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseEdge.Node(childComplexity), true
+	case "ExpenseEdge.snapshot":
+		if e.ComplexityRoot.ExpenseEdge.Snapshot == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseEdge.Snapshot(childComplexity), true
 
 	case "ExpenseEditCommitted.changed":
 		if e.ComplexityRoot.ExpenseEditCommitted.Changed == nil {
@@ -1124,6 +1158,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ExpenseOperationRecord.TotalMinor(childComplexity), true
 
+	case "ExpenseSnapshot.allocations":
+		if e.ComplexityRoot.ExpenseSnapshot.Allocations == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Allocations(childComplexity), true
+	case "ExpenseSnapshot.category":
+		if e.ComplexityRoot.ExpenseSnapshot.Category == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Category(childComplexity), true
+	case "ExpenseSnapshot.createdAt":
+		if e.ComplexityRoot.ExpenseSnapshot.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.CreatedAt(childComplexity), true
+	case "ExpenseSnapshot.creator":
+		if e.ComplexityRoot.ExpenseSnapshot.Creator == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Creator(childComplexity), true
+	case "ExpenseSnapshot.currency":
+		if e.ComplexityRoot.ExpenseSnapshot.Currency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Currency(childComplexity), true
+	case "ExpenseSnapshot.description":
+		if e.ComplexityRoot.ExpenseSnapshot.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Description(childComplexity), true
+	case "ExpenseSnapshot.effectiveDate":
+		if e.ComplexityRoot.ExpenseSnapshot.EffectiveDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.EffectiveDate(childComplexity), true
+	case "ExpenseSnapshot.expenseId":
+		if e.ComplexityRoot.ExpenseSnapshot.ExpenseID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.ExpenseID(childComplexity), true
+	case "ExpenseSnapshot.groupId":
+		if e.ComplexityRoot.ExpenseSnapshot.GroupID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.GroupID(childComplexity), true
+	case "ExpenseSnapshot.id":
+		if e.ComplexityRoot.ExpenseSnapshot.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.ID(childComplexity), true
+	case "ExpenseSnapshot.note":
+		if e.ComplexityRoot.ExpenseSnapshot.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Note(childComplexity), true
+	case "ExpenseSnapshot.payer":
+		if e.ComplexityRoot.ExpenseSnapshot.Payer == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Payer(childComplexity), true
+	case "ExpenseSnapshot.split":
+		if e.ComplexityRoot.ExpenseSnapshot.Split == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Split(childComplexity), true
+	case "ExpenseSnapshot.totalMinor":
+		if e.ComplexityRoot.ExpenseSnapshot.TotalMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.TotalMinor(childComplexity), true
+	case "ExpenseSnapshot.version":
+		if e.ComplexityRoot.ExpenseSnapshot.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseSnapshot.Version(childComplexity), true
+
 	case "ExpenseView.categories":
 		if e.ComplexityRoot.ExpenseView.Categories == nil {
 			break
@@ -1148,6 +1273,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseView.ExpenseCount(childComplexity), true
+	case "ExpenseView.id":
+		if e.ComplexityRoot.ExpenseView.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseView.ID(childComplexity), true
 	case "ExpenseView.months":
 		if e.ComplexityRoot.ExpenseView.Months == nil {
 			break
@@ -1191,6 +1322,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExpenseViewEdge.Node(childComplexity), true
+	case "ExpenseViewEdge.snapshot":
+		if e.ComplexityRoot.ExpenseViewEdge.Snapshot == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ExpenseViewEdge.Snapshot(childComplexity), true
 	case "ExpenseViewEdge.source":
 		if e.ComplexityRoot.ExpenseViewEdge.Source == nil {
 			break
@@ -3243,6 +3380,11 @@ Forward-only append-only traversal, bounded by its initial financial revision; l
 """
 type ExpenseConnection {
   """
+  Opaque identity of this exact anchored page, including group, filters and boundary.
+  Not a Node ID or an authorization capability; refetch through Group.expenses.
+  """
+  id: ID!
+  """
   Bounded records ordered by effective date, creation timestamp and UUID, all descending.
   """
   edges: [ExpenseEdge!]!
@@ -3264,9 +3406,17 @@ type ExpenseEdge {
   """
   cursor: String!
   """
-  Currently authorized expense with current minimal membership labels.
+  Legacy anchored projection with a current Expense ID. Use snapshot for normalized
+  reads: this field can collide with current node lookup and other anchors.
   """
   node: Expense!
+    @deprecated(
+      reason: "Use snapshot to isolate anchored financial values from current Expense identity."
+    )
+  """
+  Financial values and allocations from this connection anchor; member metadata is current.
+  """
+  snapshot: ExpenseSnapshot!
 }
 """
 Forward pagination metadata, including whether eligible earlier rows exist at the same anchor.
@@ -3297,6 +3447,75 @@ type Expense implements Node {
   Stable typed public ID; possession does not authorize access.
   """
   id: ID!
+  """
+  Explicit target group identity; never inferred from another ledger or client session.
+  """
+  groupId: ID!
+  """
+  Exact expense cents in the inclusive range 1 through 999999999.
+  """
+  totalMinor: MinorUnits!
+  """
+  USD only; no conversion or cross-currency netting.
+  """
+  currency: Currency!
+  """
+  Expense description trimmed of ASCII space, tab, CR and LF; 1 to 120 Unicode scalar values.
+  """
+  description: String!
+  """
+  Expense calendar date; valid future dates are permitted.
+  """
+  effectiveDate: Date!
+  """
+  Descriptive category without financial or access implications.
+  """
+  category: Category!
+  """
+  Exact note content, preserving whitespace; at most 2000 Unicode scalar values and no NUL.
+  """
+  note: String!
+  """
+  Single payer; may differ from creator and need not be an owed participant.
+  """
+  payer: Membership!
+  """
+  Server-derived authenticated membership responsible for creation.
+  """
+  creator: Membership!
+  """
+  EQUAL, EXACT or PERCENTAGE intent; modes remain distinct even when resolved shares match.
+  """
+  split: SplitMode!
+  """
+  Explicit shares in ascending canonical membership-ID order, including zero shares.
+  """
+  allocations: [Allocation!]!
+  """
+  Immutable server creation timestamp used with date and UUID for page ordering.
+  """
+  createdAt: DateTime!
+}
+"""
+Financial values selected at the containing traversal anchor, with current authorized
+member metadata. Its version-qualified identity isolates all nested financial values.
+It is not a Node; never use expenseId as its store identity. Refetch through the original
+authorized connection and cursor; node(expenseId) returns current Expense data.
+"""
+type ExpenseSnapshot {
+  """
+  Opaque version-qualified cache identity, distinct from current Expense and other versions.
+  Not accepted by node(id); access always comes through a freshly authorized traversal.
+  """
+  id: ID!
+  """
+  Original current Expense ID for navigation and authorized node lookup. This value is not the snapshot identity.
+  """
+  expenseId: ID!
+  """
+  Saved expense version selected at the containing connection or view financial anchor.
+  """
+  version: Revision!
   """
   Explicit target group identity; never inferred from another ledger or client session.
   """
@@ -5017,6 +5236,12 @@ One complete filtered dataset anchored to per-group append-only financial revisi
 """
 type ExpenseView {
   """
+  Opaque identity of this exact financial/context projection and bounded page. Includes
+  scope, canonical filters, financial anchors, current context and page arguments.
+  Not a Node ID, cursor or permission; every refetch rechecks current authorization.
+  """
+  id: ID!
+  """
   Opaque equality token for the complete authorized source set and current group/member metadata, independent of filters and pagination. Compare Household reads with HouseholdDashboard.contextVersion before combining concurrent results. Never grants access or identifies a financial revision.
   """
   contextVersion: String!
@@ -5079,9 +5304,17 @@ type ExpenseViewEdge {
   """
   cursor: String!
   """
-  Original expense and minimal currently authorized same-group profiles.
+  Legacy anchored expense with a current Expense ID; unsafe to normalize beside current detail.
   """
   node: Expense!
+    @deprecated(
+      reason: "Use snapshot to isolate anchored financial values from current Expense identity."
+    )
+  """
+  Financial values and allocations from this view anchor; member metadata is current.
+  Normalize by the snapshot id, never by the original expenseId.
+  """
+  snapshot: ExpenseSnapshot!
   """
   Original source Group ID, current label/kind/currency/trip metadata.
   """
@@ -5303,6 +5536,8 @@ func (ec *executionContext) childFields_ExpenseCategoryTotal(ctx context.Context
 
 func (ec *executionContext) childFields_ExpenseConnection(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "id":
+		return ec.fieldContext_ExpenseConnection_id(ctx, field)
 	case "edges":
 		return ec.fieldContext_ExpenseConnection_edges(ctx, field)
 	case "pageInfo":
@@ -5319,6 +5554,8 @@ func (ec *executionContext) childFields_ExpenseEdge(ctx context.Context, field g
 		return ec.fieldContext_ExpenseEdge_cursor(ctx, field)
 	case "node":
 		return ec.fieldContext_ExpenseEdge_node(ctx, field)
+	case "snapshot":
+		return ec.fieldContext_ExpenseEdge_snapshot(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ExpenseEdge", field.Name)
 }
@@ -5369,12 +5606,50 @@ func (ec *executionContext) childFields_ExpenseOperationRecord(ctx context.Conte
 	return nil, fmt.Errorf("no field named %q was found under type ExpenseOperationRecord", field.Name)
 }
 
+func (ec *executionContext) childFields_ExpenseSnapshot(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_ExpenseSnapshot_id(ctx, field)
+	case "expenseId":
+		return ec.fieldContext_ExpenseSnapshot_expenseId(ctx, field)
+	case "version":
+		return ec.fieldContext_ExpenseSnapshot_version(ctx, field)
+	case "groupId":
+		return ec.fieldContext_ExpenseSnapshot_groupId(ctx, field)
+	case "totalMinor":
+		return ec.fieldContext_ExpenseSnapshot_totalMinor(ctx, field)
+	case "currency":
+		return ec.fieldContext_ExpenseSnapshot_currency(ctx, field)
+	case "description":
+		return ec.fieldContext_ExpenseSnapshot_description(ctx, field)
+	case "effectiveDate":
+		return ec.fieldContext_ExpenseSnapshot_effectiveDate(ctx, field)
+	case "category":
+		return ec.fieldContext_ExpenseSnapshot_category(ctx, field)
+	case "note":
+		return ec.fieldContext_ExpenseSnapshot_note(ctx, field)
+	case "payer":
+		return ec.fieldContext_ExpenseSnapshot_payer(ctx, field)
+	case "creator":
+		return ec.fieldContext_ExpenseSnapshot_creator(ctx, field)
+	case "split":
+		return ec.fieldContext_ExpenseSnapshot_split(ctx, field)
+	case "allocations":
+		return ec.fieldContext_ExpenseSnapshot_allocations(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_ExpenseSnapshot_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ExpenseSnapshot", field.Name)
+}
+
 func (ec *executionContext) childFields_ExpenseViewEdge(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "cursor":
 		return ec.fieldContext_ExpenseViewEdge_cursor(ctx, field)
 	case "node":
 		return ec.fieldContext_ExpenseViewEdge_node(ctx, field)
+	case "snapshot":
+		return ec.fieldContext_ExpenseViewEdge_snapshot(ctx, field)
 	case "source":
 		return ec.fieldContext_ExpenseViewEdge_source(ctx, field)
 	}
@@ -8037,6 +8312,29 @@ func (ec *executionContext) fieldContext_ExpenseCommitted_record(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ExpenseConnection_id(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseConnection_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseConnection_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseConnection", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
 func (ec *executionContext) _ExpenseConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8174,6 +8472,38 @@ func (ec *executionContext) fieldContext_ExpenseEdge_node(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Expense(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseEdge_snapshot(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseEdge_snapshot(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Snapshot, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ExpenseSnapshot) graphql.Marshaler {
+			return ec.marshalNExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSnapshot(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseEdge_snapshot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ExpenseSnapshot(ctx, field)
 		},
 	}
 	return fc, nil
@@ -8772,6 +9102,401 @@ func (ec *executionContext) fieldContext_ExpenseOperationRecord_revision(_ conte
 	return graphql.NewScalarFieldContext("ExpenseOperationRecord", field, false, false, errors.New("field of type Revision does not have child fields"))
 }
 
+func (ec *executionContext) _ExpenseSnapshot_id(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_expenseId(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_expenseId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpenseID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_expenseId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_version(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_version(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Revision) graphql.Marshaler {
+			return ec.marshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_groupId(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_groupId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_groupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_totalMinor(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_totalMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_totalMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_currency(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_currency(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Currency, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Currency) graphql.Marshaler {
+			return ec.marshalNCurrency2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCurrency(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_currency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type Currency does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_description(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_effectiveDate(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_effectiveDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.Date) graphql.Marshaler {
+			return ec.marshalNDate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_effectiveDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type Date does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_category(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_category(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Category) graphql.Marshaler {
+			return ec.marshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type Category does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_note(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_payer(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_payer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Payer, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_payer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseSnapshot_creator(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_creator(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Creator, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Membership) graphql.Marshaler {
+			return ec.marshalNMembership2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐMembership(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_creator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Membership(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseSnapshot_split(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_split(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Split, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.SplitMode) graphql.Marshaler {
+			return ec.marshalNSplitMode2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐSplitMode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_split(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type SplitMode does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseSnapshot_allocations(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_allocations(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Allocations, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Allocation) graphql.Marshaler {
+			return ec.marshalNAllocation2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐAllocationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_allocations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Allocation(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseSnapshot_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseSnapshot_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.DateTime) graphql.Marshaler {
+			return ec.marshalNDateTime2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐDateTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseSnapshot_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseSnapshot", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _ExpenseView_id(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseView_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseView_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ExpenseView", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
 func (ec *executionContext) _ExpenseView_contextVersion(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseView) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9065,6 +9790,38 @@ func (ec *executionContext) fieldContext_ExpenseViewEdge_node(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Expense(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExpenseViewEdge_snapshot(ctx context.Context, field graphql.CollectedField, obj *model.ExpenseViewEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ExpenseViewEdge_snapshot(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Snapshot, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ExpenseSnapshot) graphql.Marshaler {
+			return ec.marshalNExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSnapshot(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ExpenseViewEdge_snapshot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExpenseViewEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ExpenseSnapshot(ctx, field)
 		},
 	}
 	return fc, nil
@@ -17316,6 +18073,11 @@ func (ec *executionContext) _ExpenseConnection(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExpenseConnection")
+		case "id":
+			out.Values[i] = ec._ExpenseConnection_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "edges":
 			out.Values[i] = ec._ExpenseConnection_edges(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -17371,6 +18133,11 @@ func (ec *executionContext) _ExpenseEdge(ctx context.Context, sel ast.SelectionS
 			}
 		case "node":
 			out.Values[i] = ec._ExpenseEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "snapshot":
+			out.Values[i] = ec._ExpenseEdge_snapshot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -17685,6 +18452,114 @@ func (ec *executionContext) _ExpenseOperationRecord(ctx context.Context, sel ast
 	return out
 }
 
+var expenseSnapshotImplementors = []string{"ExpenseSnapshot"}
+
+func (ec *executionContext) _ExpenseSnapshot(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, expenseSnapshotImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExpenseSnapshot")
+		case "id":
+			out.Values[i] = ec._ExpenseSnapshot_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expenseId":
+			out.Values[i] = ec._ExpenseSnapshot_expenseId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ExpenseSnapshot_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupId":
+			out.Values[i] = ec._ExpenseSnapshot_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalMinor":
+			out.Values[i] = ec._ExpenseSnapshot_totalMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currency":
+			out.Values[i] = ec._ExpenseSnapshot_currency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._ExpenseSnapshot_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveDate":
+			out.Values[i] = ec._ExpenseSnapshot_effectiveDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "category":
+			out.Values[i] = ec._ExpenseSnapshot_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._ExpenseSnapshot_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "payer":
+			out.Values[i] = ec._ExpenseSnapshot_payer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "creator":
+			out.Values[i] = ec._ExpenseSnapshot_creator(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "split":
+			out.Values[i] = ec._ExpenseSnapshot_split(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allocations":
+			out.Values[i] = ec._ExpenseSnapshot_allocations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._ExpenseSnapshot_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var expenseViewImplementors = []string{"ExpenseView", "ExpenseViewResult"}
 
 func (ec *executionContext) _ExpenseView(ctx context.Context, sel ast.SelectionSet, obj *model.ExpenseView) graphql.Marshaler {
@@ -17697,6 +18572,11 @@ func (ec *executionContext) _ExpenseView(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExpenseView")
+		case "id":
+			out.Values[i] = ec._ExpenseView_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "contextVersion":
 			out.Values[i] = ec._ExpenseView_contextVersion(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -17782,6 +18662,11 @@ func (ec *executionContext) _ExpenseViewEdge(ctx context.Context, sel ast.Select
 			}
 		case "node":
 			out.Values[i] = ec._ExpenseViewEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "snapshot":
+			out.Values[i] = ec._ExpenseViewEdge_snapshot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -21193,6 +22078,16 @@ func (ec *executionContext) marshalNExpenseOperationRecord2ᚖgithubᚗcomᚋhag
 		return graphql.Null
 	}
 	return ec._ExpenseOperationRecord(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExpenseSnapshot2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseSnapshot(ctx context.Context, sel ast.SelectionSet, v *model.ExpenseSnapshot) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExpenseSnapshot(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExpenseViewEdge2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐExpenseViewEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExpenseViewEdge) graphql.Marshaler {
