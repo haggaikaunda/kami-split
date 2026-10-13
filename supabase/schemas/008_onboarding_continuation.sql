@@ -22,14 +22,7 @@ DECLARE i app.invitations; claimed uuid;
 BEGIN
  SELECT * INTO i FROM app.invitations WHERE token_hash=hash FOR UPDATE;
  IF NOT FOUND OR i.kind<>'TARGETED' OR i.accepted_at IS NOT NULL OR i.revoked_at IS NOT NULL OR clock_timestamp()>=i.expires_at THEN RETURN NULL; END IF;
- IF NOT EXISTS(
-   SELECT
-   FROM app.invitation_actions a
-   JOIN app.invitation_delivery d ON d.action_id = a.id
-   WHERE a.invitation_id = i.id
-   AND d.state IN('PROVIDER_ACCEPTED', 'UNKNOWN')
- ) THEN RETURN NULL;
- END IF;
+ IF NOT EXISTS(SELECT FROM app.invitation_actions a JOIN app.invitation_delivery d ON d.action_id=a.id WHERE a.invitation_id=i.id AND d.state IN ('PROVIDER_ACCEPTED','UNKNOWN')) THEN RETURN NULL; END IF;
  IF consume THEN
   INSERT INTO app.invitation_auth_claims(invitation_id) VALUES(i.id) ON CONFLICT DO NOTHING RETURNING invitation_id INTO claimed;
   IF claimed IS NULL THEN RETURN NULL; END IF;

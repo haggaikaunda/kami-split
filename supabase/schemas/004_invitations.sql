@@ -65,11 +65,7 @@ BEGIN
  IF current_setting('transaction_isolation') <> 'read committed' THEN
   RAISE EXCEPTION 'READ COMMITTED required' USING ERRCODE='25000';
  END IF;
- SELECT id INTO actor_id
- FROM app.users
- WHERE auth_subject = app.verified_subject()
- AND enabled
- AND live_auth_id = auth_subject FOR SHARE;
+ SELECT id INTO actor_id FROM app.users WHERE auth_subject=app.verified_subject() AND enabled AND live_auth_id=auth_subject FOR SHARE;
  IF actor_id IS NULL THEN
   RAISE EXCEPTION 'access denied' USING ERRCODE='42501';
  END IF;
@@ -82,8 +78,7 @@ BEGIN
 END $$;
 CREATE FUNCTION app.invitation_result(action app.invitation_actions) RETURNS jsonb
 LANGUAGE sql STABLE SET search_path=pg_catalog,pg_temp AS $$
- SELECT jsonb_build_object ('actionId', action.id, 'invitationId', action.invitation_id,
- 'groupId', action.group_id, 'outcome', action.outcome,
+ SELECT jsonb_build_object('actionId',action.id,'invitationId',action.invitation_id,'groupId',action.group_id,'outcome',action.outcome,
  'expiresAt',action.committed_expiry, 'currentExpiresAt',i.expires_at,
  'lifecycle',CASE
    WHEN i.accepted_at IS NOT NULL THEN 'ACCEPTED'
@@ -127,12 +122,7 @@ BEGIN
   RETURN app.invitation_result(a);
  END IF;
  IF op='CREATE' THEN
-  SELECT * INTO i
-  FROM app.invitations
-  WHERE group_id = target
-  AND recipient = email
-  AND accepted_at IS NULL
-  AND revoked_at IS NULL FOR UPDATE;
+  SELECT * INTO i FROM app.invitations WHERE group_id=target AND recipient=email AND accepted_at IS NULL AND revoked_at IS NULL FOR UPDATE;
   IF FOUND THEN
    result_code:='EXISTING'; ELSE send:=true; result_code:='SAVED';
  END IF;
@@ -169,10 +159,7 @@ BEGIN
     payload=NULL,payload_key=NULL,lease_id=NULL,lease_until=NULL
    FROM app.invitation_actions x WHERE d.action_id=x.id AND x.invitation_id=i.id;
  END IF;
- INSERT INTO app.invitation_actions(
-   id, actor, operation, action_key, digest, digest_key, group_id, invitation_id,
-   outcome, committed_at, committed_expiry
- )
+ INSERT INTO app.invitation_actions(id,actor,operation,action_key,digest,digest_key,group_id,invitation_id,outcome,committed_at,committed_expiry)
  VALUES(gen_random_uuid(),app.verified_subject(),op,key,input_digest,input_digest_key,target,i.id,result_code,decision,i.expires_at) RETURNING * INTO a;
  IF send THEN
   INSERT INTO app.invitation_delivery(action_id,state,created_at) VALUES(a.id,'PENDING',decision);
@@ -212,15 +199,7 @@ $$;
 -- Eligibility is capability-only, and reveals neither recipient nor account existence.
 CREATE FUNCTION app.invitation_eligible(hash bytea,email text) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
- SELECT EXISTS(
-   SELECT
-   FROM app.invitations i
-   WHERE i.token_hash = hash
-   AND i.recipient = email
-   AND i.accepted_at IS NULL
-   AND i.revoked_at IS NULL
-   AND clock_timestamp() < i.expires_at
- );
+ SELECT EXISTS(SELECT FROM app.invitations i WHERE i.token_hash=hash AND i.recipient=email AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND clock_timestamp()<i.expires_at);
 $$;
 -- Prepare holds locks; the Go service checks monotonic evidence freshness after
 -- this call, then commits acceptance on the same transaction/connection.
@@ -238,9 +217,7 @@ BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended(subject::text,79));
  SELECT id INTO actor_id FROM app.users WHERE auth_subject=subject FOR SHARE;
  IF actor_id IS NULL THEN
-  INSERT INTO app.users(id, auth_subject, live_auth_id, display_name)
-  VALUES(gen_random_uuid(), subject, subject, 'Member')
-  RETURNING id INTO actor_id;
+  INSERT INTO app.users(id,auth_subject,live_auth_id,display_name) VALUES(gen_random_uuid(),subject,subject,'Member') RETURNING id INTO actor_id;
  END IF;
  IF NOT EXISTS(SELECT FROM app.users WHERE id=actor_id AND enabled AND live_auth_id=subject) THEN
   RAISE EXCEPTION 'access disabled' USING ERRCODE='42501';
@@ -292,27 +269,18 @@ BEGIN
   RETURN jsonb_build_object('outcome','NEW_TARGETED_INVITATION_REQUIRED');
  END IF;
  IF m.id IS NULL THEN
-  INSERT INTO app.memberships(id, group_id, user_id)
-  VALUES(gen_random_uuid(), target, actor_id)
-  RETURNING * INTO m;
-  result_code : = 'ADMITTED';
+  INSERT INTO app.memberships(id,group_id,user_id) VALUES(gen_random_uuid(),target,actor_id) RETURNING * INTO m; result_code:='ADMITTED';
  ELSIF m.active THEN
    result_code:='ALREADY_MEMBER';
  ELSE UPDATE app.memberships SET active=true WHERE id=m.id RETURNING * INTO m; result_code:='ADMITTED';
  END IF;
- UPDATE app.invitations
- SET accepted_subject = app.verified_subject(), membership_id = m.id, accepted_at = decision,
- token_cipher = NULL, token_key = NULL, recipient = NULL
- WHERE id = i.id;
+ UPDATE app.invitations SET accepted_subject=app.verified_subject(),membership_id=m.id,accepted_at=decision,token_cipher=NULL,token_key=NULL,recipient=NULL WHERE id=i.id;
  UPDATE app.invitation_delivery d SET state=CASE
     WHEN d.state IN ('PENDING','UNKNOWN','FAILED_DEFINITE') THEN 'SUPPRESSED_TERMINAL'
     ELSE d.state END,
     payload=NULL,payload_key=NULL,lease_id=NULL,lease_until=NULL
  FROM app.invitation_actions x WHERE d.action_id=x.id AND x.invitation_id=i.id;
- INSERT INTO app.invitation_actions(
-   id, actor, operation, action_key, digest, digest_key, group_id, invitation_id,
-   outcome, committed_at, committed_expiry
- )
+ INSERT INTO app.invitation_actions(id,actor,operation,action_key,digest,digest_key,group_id,invitation_id,outcome,committed_at,committed_expiry)
  VALUES(gen_random_uuid(),app.verified_subject(),'ACCEPT',key,input_digest,input_digest_key,target,i.id,result_code,decision,i.expires_at) RETURNING * INTO a;
  RETURN app.invitation_result(a);
 END $$;
@@ -327,10 +295,7 @@ BEGIN
   RAISE EXCEPTION 'access denied' USING ERRCODE='42501';
  END IF;
  PERFORM app.invitation_owner_lock(a.group_id);
- RETURN QUERY
- SELECT i.recipient, i.token_cipher, i.token_key, i.id, i.expires_at
- FROM app.invitations i
- JOIN app.invitation_delivery d ON d.action_id = a.id
+ RETURN QUERY SELECT i.recipient,i.token_cipher,i.token_key,i.id,i.expires_at FROM app.invitations i JOIN app.invitation_delivery d ON d.action_id=a.id
  WHERE i.id=a.invitation_id AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND clock_timestamp()<i.expires_at
  AND d.payload IS NULL AND d.state='PENDING' AND d.first_submission IS NULL;
 END $$;
@@ -343,12 +308,7 @@ BEGIN
   RAISE EXCEPTION 'access denied' USING ERRCODE='42501';
  END IF;
  PERFORM app.invitation_owner_lock(a.group_id);
- UPDATE app.invitation_delivery
- SET payload = cipher, payload_key = key
- WHERE action_id = target
- AND state = 'PENDING'
- AND payload IS NULL
- AND first_submission IS NULL;
+ UPDATE app.invitation_delivery SET payload=cipher,payload_key=key WHERE action_id=target AND state='PENDING' AND payload IS NULL AND first_submission IS NULL;
 END $$;
 CREATE FUNCTION app.invitation_purge() RETURNS void
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
@@ -371,9 +331,7 @@ BEGIN
  decision:=clock_timestamp();
  IF i.accepted_at IS NOT NULL OR i.revoked_at IS NOT NULL OR decision>=i.expires_at THEN RETURN;
  END IF;
- RETURN QUERY UPDATE app.invitation_delivery d
- SET state = 'UNKNOWN', lease_id = lease, lease_until = decision + interval '30 seconds',
- first_submission = coalesce(d.first_submission, decision)
+ RETURN QUERY UPDATE app.invitation_delivery d SET state='UNKNOWN',lease_id=lease,lease_until=decision+interval '30 seconds',first_submission=coalesce(d.first_submission,decision)
  WHERE d.action_id=target AND d.payload IS NOT NULL AND d.state IN ('PENDING','UNKNOWN','FAILED_DEFINITE') AND (d.lease_until IS NULL OR d.lease_until<=decision)
  AND decision<coalesce(d.first_submission,d.created_at)+interval '23 hours' RETURNING d.payload,d.payload_key,d.action_id;
 END $$;

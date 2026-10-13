@@ -38,17 +38,8 @@ BEGIN
    e.total_minor-sum(base) OVER() AS remaining FROM shares
  ) SELECT FROM ranked WHERE amount_minor<>base+CASE WHEN rank<=remaining AND percentage_hundredths>0 THEN 1 ELSE 0 END)
  THEN RAISE EXCEPTION 'incorrect percentage allocation' USING ERRCODE='23514'; END IF;
- SELECT jsonb_agg(
-   jsonb_build_object(
-     'ParticipantID', 'ks1:Membership:' || participant_id::text,
-     'Hundredths', percentage_hundredths
-   )
-   ORDER BY participant_id
- ),
- jsonb_agg(
-   jsonb_build_object('ParticipantID', 'ks1:Membership:' || participant_id::text, 'Amount', amount_minor)
-   ORDER BY participant_id
- )
+ SELECT jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Hundredths',percentage_hundredths) ORDER BY participant_id),
+ jsonb_agg(jsonb_build_object('ParticipantID','ks1:Membership:'||participant_id::text,'Amount',amount_minor) ORDER BY participant_id)
  INTO intended,resolved FROM app.allocations WHERE expense_id=target;
  IF NOT EXISTS(SELECT FROM app.expense_operations o WHERE o.expense_id=target
   AND o.canonical_version='create-expense-percentage-v2'

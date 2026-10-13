@@ -71,33 +71,13 @@ ALTER TABLE app.expense_audit FORCE ROW LEVEL SECURITY;
 ALTER TABLE app.expense_operations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.expense_operations FORCE ROW LEVEL SECURITY;
 CREATE POLICY expense_read ON app.expenses FOR SELECT TO kami_api USING(app.can_read_group(group_id));
-CREATE POLICY expense_insert ON app.expenses FOR INSERT TO kami_api WITH CHECK (app.can_read_group(group_id) AND creator_id = app.viewer_membership(group_id));
+CREATE POLICY expense_insert ON app.expenses FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id) AND creator_id=app.viewer_membership(group_id));
 CREATE POLICY allocation_read ON app.allocations FOR SELECT TO kami_api USING(app.can_read_group(group_id));
 CREATE POLICY allocation_insert ON app.allocations FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id));
 CREATE POLICY audit_read ON app.expense_audit FOR SELECT TO kami_api USING(app.can_read_group(group_id));
-CREATE POLICY audit_insert ON app.expense_audit FOR INSERT TO kami_api WITH CHECK(
-  app.can_read_group(group_id)
-  AND creator_id = app.viewer_membership(group_id)
-  AND actor_user_id =(
-    SELECT id
-    FROM app.viewer_identity()
-  )
-);
-CREATE POLICY operation_read ON app.expense_operations FOR
-SELECT TO kami_api USING(
-  app.can_read_group(group_id)
-  AND actor_user_id =(
-    SELECT id
-    FROM app.viewer_identity()
-  )
-);
-CREATE POLICY operation_insert ON app.expense_operations FOR INSERT TO kami_api WITH CHECK(
-  app.can_read_group(group_id)
-  AND actor_user_id =(
-    SELECT id
-    FROM app.viewer_identity()
-  )
-);
+CREATE POLICY audit_insert ON app.expense_audit FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id) AND creator_id=app.viewer_membership(group_id) AND actor_user_id=(SELECT id FROM app.viewer_identity()));
+CREATE POLICY operation_read ON app.expense_operations FOR SELECT TO kami_api USING(app.can_read_group(group_id) AND actor_user_id=(SELECT id FROM app.viewer_identity()));
+CREATE POLICY operation_insert ON app.expense_operations FOR INSERT TO kami_api WITH CHECK(app.can_read_group(group_id) AND actor_user_id=(SELECT id FROM app.viewer_identity()));
 GRANT SELECT, INSERT ON app.expenses,app.allocations,app.expense_audit,app.expense_operations TO kami_api;
 -- Deferred validation sees the entire transaction. Runtime has no UPDATE/DELETE
 -- permissions: a later transaction cannot alter financial or recovery history.

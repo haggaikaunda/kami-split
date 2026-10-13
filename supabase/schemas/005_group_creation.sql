@@ -92,12 +92,7 @@ BEGIN
  group_name:=btrim(group_name,E' \t\r\n');
  IF trip='null'::jsonb THEN trip:=NULL; END IF;
  IF trip IS NOT NULL THEN
-  IF jsonb_typeof(trip) <> 'object'
-  OR EXISTS(
-    SELECT
-    FROM jsonb_object_keys(trip) k
-    WHERE k NOT IN('destination', 'startDate', 'endDate')
-  )
+  IF jsonb_typeof(trip)<>'object' OR EXISTS(SELECT FROM jsonb_object_keys(trip) k WHERE k NOT IN ('destination','startDate','endDate'))
    OR NOT (trip ? 'startDate' AND trip ? 'endDate')
    OR jsonb_typeof(trip->'startDate')<>'string' OR jsonb_typeof(trip->'endDate')<>'string'
    OR (trip ? 'destination' AND jsonb_typeof(trip->'destination') NOT IN ('string','null')) THEN
@@ -118,38 +113,24 @@ BEGIN
   trip:=jsonb_build_object('destination',destination,'startDate',trip->>'startDate','endDate',trip->>'endDate');
  END IF;
  canonical:=jsonb_build_object('operation','CREATE_GROUP','name',group_name,'kind',kind,'trip',trip);
- IF char_length(group_name) NOT BETWEEN 1
- AND 120 THEN errors : = errors || jsonb_build_array(jsonb_build_object('field', 'name', 'code', 'LENGTH'));
- END IF;
- IF (kind = 'ORDINARY' AND trip IS NOT NULL)
- OR (kind = 'TRIP' AND trip IS NULL) THEN errors : = errors || jsonb_build_array(jsonb_build_object('field', 'trip', 'code', 'KIND'));
- END IF;
- IF char_length(destination) > 200 THEN errors : = errors || jsonb_build_array(jsonb_build_object('field', 'trip.destination', 'code', 'LENGTH'));
- END IF;
+ IF char_length(group_name) NOT BETWEEN 1 AND 120 THEN errors:=errors||jsonb_build_array(jsonb_build_object('field','name','code','LENGTH')); END IF;
+ IF (kind='ORDINARY' AND trip IS NOT NULL) OR (kind='TRIP' AND trip IS NULL) THEN errors:=errors||jsonb_build_array(jsonb_build_object('field','trip','code','KIND')); END IF;
+ IF char_length(destination)>200 THEN errors:=errors||jsonb_build_array(jsonb_build_object('field','trip.destination','code','LENGTH')); END IF;
  IF ends<starts THEN errors:=errors||jsonb_build_array(jsonb_build_object('field','trip.endDate','code','ORDER')); END IF;
  IF errors='[]'::jsonb THEN new_group:=gen_random_uuid(); new_owner:=gen_random_uuid(); END IF;
  -- Unique insertion waits for a concurrent same-key transaction. The result
  -- points forward through deferred FKs; any later statement failure rolls back
  -- this entire function, including its receipt. No PENDING row can commit.
- INSERT INTO app.group_creation_attempts(
-   creator_user_id, operation_key, canonical_input, outcome, field_errors, group_id,
-   owner_membership_id
- )
+ INSERT INTO app.group_creation_attempts(creator_user_id,operation_key,canonical_input,outcome,field_errors,group_id,owner_membership_id)
  VALUES(actor,key,canonical,CASE WHEN errors='[]'::jsonb THEN 'COMPLETED' ELSE 'REJECTED' END,errors,new_group,new_owner)
  ON CONFLICT DO NOTHING;
  GET DIAGNOSTICS inserted=ROW_COUNT;
- SELECT * INTO a
- FROM app.group_creation_attempts
- WHERE creator_user_id = actor
- AND operation = 'CREATE_GROUP'
- AND operation_key = key FOR UPDATE;
+ SELECT * INTO a FROM app.group_creation_attempts WHERE creator_user_id=actor AND operation='CREATE_GROUP' AND operation_key=key FOR UPDATE;
  IF a.canonical_input<>canonical THEN RETURN jsonb_build_object('state','OPERATION_CONFLICT'); END IF;
  IF inserted=1 AND a.outcome='COMPLETED' THEN
   INSERT INTO app.groups(id,name,owner_membership_id) VALUES(new_group,group_name,new_owner);
   INSERT INTO app.memberships(id,group_id,user_id) VALUES(new_owner,new_group,actor);
-  IF kind = 'TRIP' THEN INSERT INTO app.group_trip(group_id, destination, start_date, end_date)
-  VALUES(new_group, destination, starts, ends);
-  END IF;
+  IF kind='TRIP' THEN INSERT INTO app.group_trip(group_id,destination,start_date,end_date) VALUES(new_group,destination,starts,ends); END IF;
  END IF;
  RETURN app.group_creation_result(a);
 END $$;

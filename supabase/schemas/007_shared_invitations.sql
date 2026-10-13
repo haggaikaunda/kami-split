@@ -35,12 +35,7 @@ BEGIN
   SELECT * INTO i FROM app.invitations WHERE group_id=target AND kind='SHARED' AND revoked_at IS NULL FOR UPDATE;
   IF FOUND THEN result_code:='EXISTING'; ELSE result_code:='SAVED'; END IF;
  ELSIF op='CREATE' THEN
-  SELECT * INTO i
-  FROM app.invitations
-  WHERE group_id = target
-  AND recipient = email
-  AND accepted_at IS NULL
-  AND revoked_at IS NULL FOR UPDATE;
+  SELECT * INTO i FROM app.invitations WHERE group_id=target AND recipient=email AND accepted_at IS NULL AND revoked_at IS NULL FOR UPDATE;
   IF FOUND THEN
    result_code:='EXISTING'; ELSE send:=true; result_code:='SAVED';
  END IF;
@@ -85,10 +80,7 @@ BEGIN
     payload=NULL,payload_key=NULL,lease_id=NULL,lease_until=NULL
    FROM app.invitation_actions x WHERE d.action_id=x.id AND x.invitation_id=i.id;
  END IF;
- INSERT INTO app.invitation_actions(
-   id, actor, operation, action_key, digest, digest_key, group_id, invitation_id,
-   outcome, committed_at, committed_expiry
- )
+ INSERT INTO app.invitation_actions(id,actor,operation,action_key,digest,digest_key,group_id,invitation_id,outcome,committed_at,committed_expiry)
  VALUES(gen_random_uuid(),app.verified_subject(),op,key,input_digest,input_digest_key,target,i.id,result_code,decision,i.expires_at) RETURNING * INTO a;
  IF send THEN
   INSERT INTO app.invitation_delivery(action_id,state,created_at) VALUES(a.id,'PENDING',decision);
@@ -138,49 +130,33 @@ BEGIN
   RETURN jsonb_build_object('outcome','NEW_TARGETED_INVITATION_REQUIRED');
  END IF;
  IF m.id IS NULL THEN
-  INSERT INTO app.memberships(id, group_id, user_id)
-  VALUES(gen_random_uuid(), target, actor_id)
-  RETURNING * INTO m;
-  result_code : = 'ADMITTED';
+  INSERT INTO app.memberships(id,group_id,user_id) VALUES(gen_random_uuid(),target,actor_id) RETURNING * INTO m; result_code:='ADMITTED';
  ELSIF m.active THEN
    result_code:='ALREADY_MEMBER';
  ELSE UPDATE app.memberships SET active=true WHERE id=m.id RETURNING * INTO m; result_code:='ADMITTED';
  END IF;
  IF i.kind='TARGETED' THEN
- UPDATE app.invitations
- SET accepted_subject = app.verified_subject(), membership_id = m.id, accepted_at = decision,
- token_cipher = NULL, token_key = NULL, recipient = NULL
- WHERE id = i.id;
+ UPDATE app.invitations SET accepted_subject=app.verified_subject(),membership_id=m.id,accepted_at=decision,token_cipher=NULL,token_key=NULL,recipient=NULL WHERE id=i.id;
  UPDATE app.invitation_delivery d SET state=CASE
     WHEN d.state IN ('PENDING','UNKNOWN','FAILED_DEFINITE') THEN 'SUPPRESSED_TERMINAL'
     ELSE d.state END,
     payload=NULL,payload_key=NULL,lease_id=NULL,lease_until=NULL
  FROM app.invitation_actions x WHERE d.action_id=x.id AND x.invitation_id=i.id;
  END IF;
- INSERT INTO app.invitation_actions(
-   id, actor, operation, action_key, digest, digest_key, group_id, invitation_id,
-   outcome, committed_at, committed_expiry
- )
+ INSERT INTO app.invitation_actions(id,actor,operation,action_key,digest,digest_key,group_id,invitation_id,outcome,committed_at,committed_expiry)
  VALUES(gen_random_uuid(),app.verified_subject(),'ACCEPT',key,input_digest,input_digest_key,target,i.id,result_code,decision,i.expires_at) RETURNING * INTO a;
  RETURN app.invitation_result(a);
 END $$;
 CREATE OR REPLACE FUNCTION app.invitation_result(action app.invitation_actions) RETURNS jsonb
 LANGUAGE sql STABLE SET search_path=pg_catalog,pg_temp AS $$
- SELECT jsonb_build_object ('actionId', action.id, 'invitationId', action.invitation_id,
- 'groupId', action.group_id, 'outcome', action.outcome,
+ SELECT jsonb_build_object('actionId',action.id,'invitationId',action.invitation_id,'groupId',action.group_id,'outcome',action.outcome,
  'expiresAt',action.committed_expiry, 'currentExpiresAt',i.expires_at,
  'lifecycle',CASE
    WHEN i.accepted_at IS NOT NULL THEN 'ACCEPTED'
    WHEN i.revoked_at IS NOT NULL THEN 'REVOKED'
    WHEN clock_timestamp()>=i.expires_at THEN 'EXPIRED'
    ELSE 'OUTSTANDING' END,
- 'delivery', coalesce(d.state, 'NOT_REQUESTED'), 'membershipId', CASE WHEN action.operation = 'ACCEPT' THEN(
-   SELECT m.id
-   FROM app.memberships m
-   JOIN app.users u ON u.id = m.user_id
-   WHERE m.group_id = i.group_id
-   AND u.auth_subject = action.actor
- ) END,
+ 'delivery',coalesce(d.state,'NOT_REQUESTED'),'membershipId',CASE WHEN action.operation='ACCEPT' THEN (SELECT m.id FROM app.memberships m JOIN app.users u ON u.id=m.user_id WHERE m.group_id=i.group_id AND u.auth_subject=action.actor) END,
  'hasAccess',CASE WHEN action.operation='ACCEPT' THEN app.can_read_group(i.group_id) ELSE false END)
  FROM app.invitations i LEFT JOIN app.invitation_delivery d ON d.action_id=action.id WHERE i.id=action.invitation_id;
 $$;
