@@ -11,7 +11,35 @@ import (
 	"testing"
 )
 
-const repaymentSelection = `__typename ... on RepaymentCommitted{key record{repaymentId groupId creatorMembershipId senderMembershipId recipientMembershipId amountMinor currency effectiveDate note committedAt revision}} ... on ValidationProblem{fields{path code}} ... on OperationProgress{state} ... on Problem{code}`
+const repaymentSelection = `__typename
+... on RepaymentCommitted {
+  key
+  record {
+    repaymentId
+    groupId
+    creatorMembershipId
+    senderMembershipId
+    recipientMembershipId
+    amountMinor
+    currency
+    effectiveDate
+    note
+    committedAt
+    revision
+  }
+}
+... on ValidationProblem {
+  fields {
+    path
+    code
+  }
+}
+... on OperationProgress {
+  state
+}
+... on Problem {
+  code
+}`
 const repaymentMutation = `mutation($input:RecordRepaymentInput!){recordRepayment(input:$input){` + repaymentSelection + ` ... on OperationMismatch{key}}}`
 const repaymentRecovery = `query($group:ID!,$key:OperationKey!){repaymentOperation(groupId:$group,key:$key){` + repaymentSelection + `}}`
 const repaymentHistory = `query ($group: ID!, $first: Int!, $after: String) {

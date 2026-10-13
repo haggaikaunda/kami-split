@@ -21,8 +21,50 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 )
 
-const groupCreationFields = `__typename ... on GroupCreationCompleted { operationKey groupId creatorMembershipId createdAt } ... on GroupCreationRejected { operationKey fields { path code message } } ... on GroupCreationConflict { operationKey } ... on Problem { code message }`
-const groupRecoveryFields = `__typename ... on GroupCreationCompleted { operationKey groupId creatorMembershipId createdAt } ... on GroupCreationRejected { operationKey fields { path code message } } ... on GroupCreationNotStarted { operationKey } ... on Problem { code message }`
+const groupCreationFields = `__typename
+... on GroupCreationCompleted {
+  operationKey
+  groupId
+  creatorMembershipId
+  createdAt
+}
+... on GroupCreationRejected {
+  operationKey
+  fields {
+    path
+    code
+    message
+  }
+}
+... on GroupCreationConflict {
+  operationKey
+}
+... on Problem {
+  code
+  message
+}`
+const groupRecoveryFields = `__typename
+... on GroupCreationCompleted {
+  operationKey
+  groupId
+  creatorMembershipId
+  createdAt
+}
+... on GroupCreationRejected {
+  operationKey
+  fields {
+    path
+    code
+    message
+  }
+}
+... on GroupCreationNotStarted {
+  operationKey
+}
+... on Problem {
+  code
+  message
+}`
 const createGroupQuery = `mutation($input:CreateGroupInput!){createGroup(input:$input){` + groupCreationFields + `}}`
 const recoverGroupQuery = `query($key:OperationKey!){groupCreationOperation(operationKey:$key){` + groupRecoveryFields + `}}`
 

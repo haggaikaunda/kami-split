@@ -202,6 +202,10 @@ SELECT jsonb_build_object(
 )
 FROM scope`
 
+// viewProjectionSQL binds readViewWire's arguments: source group, involved members,
+// from/to dates, categories, revision anchors, cursor date/time/group/expense,
+// limit, payers and cursor amount ($1–$13). Group scope also binds its authorized
+// group as $14. Scope, sort direction and cursor columns are fixed internal SQL.
 func viewProjectionSQL(group bool, sort string) string {
 	scope := `SELECT app.household_expense_scope() AS data`
 	if group {
