@@ -1,9 +1,0 @@
-{
-  "applicationCommit": "37f4f3dc5fbf07b0d61c81330a6c651b26d32f54",
-  "buildId": "oQjqwVCa1XwhfqDd4WnhN",
-  "trees": {
-    "apps/web": "26467922cae646f2ec473b7ae96982004263fbef",
-    "apps/api": "804b68e0f907b37b6dbe85afad59191ff0f005c7",
-    "packages": "fc0c8dbe053057c41d3ba4d91317b0c5a3122cd1"
-  }
-}
