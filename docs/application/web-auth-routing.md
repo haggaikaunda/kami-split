@@ -4,8 +4,9 @@ Only `/sign-in` is a public application page. `apps/web/src/proxy.ts` verifies a
 Supabase cookie session with `auth.getUser()` before Next renders any other page,
 including `/`, deep links, prefetch/Flight requests and future routes. A signed-out
 home request goes directly to sign-in; verified users retain `/groups` as home.
-Static framework resources and the two current illustration assets are explicitly
-exempt. API handlers remain accessible at their existing paths and retain their
+Static framework resources, the two current illustration assets, the root manifest
+and the three installation PNGs are explicitly exempt by exact asset path. Other
+image-shaped paths remain protected. API handlers remain accessible at their existing paths and retain their
 own authentication, authorization and origin checks; this boundary does not grant
 financial access or change the Go/database permissions.
 

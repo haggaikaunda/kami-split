@@ -44,6 +44,9 @@ it.each([
   '/invitations',
   '/future/page',
   '/future/page.png',
+  '/icons/private.png',
+  '/manifest.json/private',
+  '/apple-icon.png/private',
   '/sign-in/nested',
 ])(
   'denies signed-out HTML and Flight page %s before rendering',
@@ -151,6 +154,10 @@ it.each([
   '/_next/static/chunk.js',
   '/_next/image',
   '/art/household.png',
+  '/manifest.json',
+  '/apple-icon.png',
+  '/icons/kami-grow-192.png',
+  '/icons/kami-grow-512.png',
 ])('leaves %s accessible to its existing handler', async (path) => {
   expect(
     (await proxy(new NextRequest('https://app.test' + path))).headers.get(
