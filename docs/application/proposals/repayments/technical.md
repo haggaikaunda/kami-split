@@ -1,7 +1,6 @@
 # Repayment persistence and API design
 
-This is the concrete engineering contract for [#110](README.md), subject to design
-PR adoption. Keep runtime fields absent until implemented and tested.
+This engineering design complements the [repayment contract](README.md). The implemented [repayment guide](../../persisted-repayments.md) owns current API/browser behavior; `packages/schema` owns the runtime contract.
 
 ## Shared storage and revision
 

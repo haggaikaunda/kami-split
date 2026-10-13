@@ -5,7 +5,7 @@ This package retains accepted invitation policy and engineering rationale. Curre
 ## Authority and ownership
 
 The [owner I1–I5 decisions](https://github.com/haggaikaunda/kami-split/pull/101#issuecomment-5904210048)
-are authoritative and supersede earlier proposals below. Targeted and reusable shared onboarding are implemented; the current guide documents their distinct admission rules.
+are authoritative and supersede earlier proposals below. I5’s delivery sequencing lives in GitHub history; the enduring I1–I4 policies remain here. Targeted and reusable shared onboarding are implemented; the current guide documents their distinct admission rules.
 
 - [#79 email/delivery approval](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886277636)
   and [#80 counterpart](https://github.com/haggaikaunda/kami-split/issues/80#issuecomment-5886282411).
@@ -65,7 +65,7 @@ first-time members in the initial shared-link feature; renewal cannot undo remov
 No departure-generation/owner-tenure-bound readmission grant system is required.
 A different Auth subject never merges into an existing identity by email.
 
-## Accepted owner decisions I1–I5
+## Accepted owner policy I1–I4
 
 - **I1:** Targeted-only former-member return, preserving stable membership, ordinary
   role and full history; no restored ownership or group-creation permission.
@@ -86,9 +86,6 @@ A different Auth subject never merges into an existing identity by email.
   is later work. Clock tolerance, refresh and stable provider configuration are
   engineering choices. Auth verification/recovery expiry is independently selected
   and validated, not coupled to seven-day application invitations.
-- **I5:** Targeted invitations (#79) plus onboarding (#80) are on #73’s critical
-  path. Shared lifecycle/forwarding/renewal/UI remain designed here but delivery
-  belongs to #108, without blocking the first persisted expense journey.
 
 ## Current consumers
 

@@ -21,16 +21,11 @@ fixed. I2 approves one outstanding shared link/no use cap/current-owner manageme
 I3 requires terminal recipient/token cleanup and bounded delivery-material recovery;
 I4 approves 15-minute access tokens and current-session logout.
 
-Targeted invitations (#79) and onboarding (#80) are on #73’s critical path.
-Reusable shared-link implementation is separately tracked in
-[#108](https://github.com/haggaikaunda/kami-split/issues/108), without blocking it.
-#78 is complete. After this design is reviewed/merged, #79 proceeds through normal
-implementation gates; its issue stays open until implementation criteria pass.
-This record does not itself ship features, publish SDL or provision resources.
+Current [targeted operations](../targeted-invitations.md) and [onboarding](../onboarding.md) implement both targeted and reusable shared flows. ADR-009 supersedes the original Auth continuation restrictions; the current browser/server guides own implementation details.
 
 [Technical recommendations](../proposals/invitations/technical.md) specify kind-based
 storage, lifecycle/lock/clock protocol, bounded external current-email evidence,
 transactional action/delivery intent, provider-window retry, invite-eligible Auth,
 callbacks, privacy and representative thin operations.
 [Validation requirements](../proposals/invitations/validation.md) map acceptance
-criteria to future runtime tests; writing them does not claim those tests passed.
+reusable regression scenarios; writing a scenario does not establish that a test ran.

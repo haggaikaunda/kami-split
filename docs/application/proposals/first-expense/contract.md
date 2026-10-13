@@ -294,26 +294,11 @@ A revoked member receives NOT_FOUND, even possessing K. Missing lookup is
 NOT_OBSERVED and allows only same-key retry. After 90 days or later, the original
 record still recovers under current authorization while financial history remains.
 
-## A7: Field-to-UI trace and deliberate migration boundary
+## A7: Client projection boundary
 
-| Actual consumer                                                                                                                     | Contract projection/operation                                         | #83 adaptation                                                                   |
-| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `lib/data/port.ts` read Snapshot / household/actor                                                                                  | Viewer, groups, Group.viewerMembership                                | Replace whole-snapshot assumption with explicit authorized group state           |
-| `components/data-provider.tsx` refresh/scope invalidation                                                                           | Entry, FirstPage, RefreshAfterRecovery                                | Preserve session epoch, scope and stale-response checks; no mixed real/demo data |
-| `lib/expense-draft.ts` default payer/participants                                                                                   | viewerMembership, members.canParticipate                              | IDs are Membership IDs; eligibility is advisory, checked again on server         |
-| `components/expense-create/form.tsx` amount/date/description/category/note                                                          | all corresponding CreateExpenseInput and Expense fields               | Exact bigint previews; code-point limits; local date default                     |
-| form equal/exact/payer/zero participants                                                                                            | split, explicit participantIds, exactAllocations; Expense.allocations | Do not infer participation from nonzero shares; server computes equal remainder  |
-| `lib/overview.ts`, `components/overview.tsx` net/obligations/spending                                                               | GroupBalances positions, obligations, totalExpenseMinor, settled      | Remove direct-debt inference; include inactive history; never compute from page  |
-| expense cards/creator attribution                                                                                                   | Expense.payer/creator/allocations and description/date/category       | Current minimal labels, durable IDs                                              |
-| create controller/session drafts and the [current recovery contract](../../persisted-expenses.md#transaction-and-recovery-boundary) | key before Save, Recover, operation record then refresh               | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
-| `lib/ledger.ts` exact/remainder                                                                                                     | MinorUnits bounds, S1 ordering                                        | Existing safe-number code cannot be reused for arbitrary aggregates              |
+Use explicit authorized Viewer/group projections rather than a whole-household snapshot. Default payer/participant choices use stable Membership IDs and advisory eligibility that the server rechecks. Parse minor-unit strings exactly with BigInt; never reuse bounded JavaScript-number arithmetic for arbitrary aggregates. Included zero shares still represent participants.
 
-First real route slice is group selection, expense list/create and complete balance
-panel with explicit recovery. Hide/label demo-only activity/revision history,
-monthly reporting, trip controls, pending-member simulation, settlements,
-edit/delete, setup and ownership controls; do not fabricate data for them.
-This is owner-approved O14 scope decision P4 (2026-09-29), not a claim of full
-preview parity.
+Session epochs and actor/group scopes prevent stale responses or drafts entering another account. Generate the operation key before Save, retain frozen input through uncertainty, recover the original outcome, then refresh authorized current projections. Complete balances include inactive history and are never derived from one expense page. Current production consumers and supported capabilities are documented in the [Relay journey](../../relay-expenses.md); the old seeded migration task trace lives on [#83](https://github.com/haggaikaunda/kami-split/issues/83).
 
 ## Technical references
 

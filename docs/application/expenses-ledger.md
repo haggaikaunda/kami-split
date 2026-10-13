@@ -1,8 +1,8 @@
 # Production Expenses workspaces
 
-Issue #170 connects `/household/expenses` and the Group/Trip **Expenses** tab
-(`/groups/{groupId}?tab=expenses`) to the structured expense views implemented
-in #169. Both render the same `ExpenseLedger`; the authenticated Household Overview/Balances/Members tabs remain at `/household`
+The Household ledger at `/household/expenses`, ordinary Group Expenses at
+`/groups/{groupId}?tab=expenses` and Trip Expenses at
+`/trips/{groupId}?tab=expenses` use structured expense views. All render the same `ExpenseLedger`; the authenticated Household Overview/Balances/Members tabs remain at `/household`
 and the retired preview financial routes return not-found responses.
 
 Household initial context and first-page work run in one composed operation. The independent results require `COMPLETE` eligibility and matching nonempty server `contextVersion` values before any private content is revealed. Later pages/filters must match that owning context or fail closed. See [workspace loading](../navigation/workspace-loading.md).

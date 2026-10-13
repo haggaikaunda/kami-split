@@ -7,11 +7,9 @@
 - Authority: Owner-approved decisions and documentation-only authorization in [#93](https://github.com/haggaikaunda/kami-split/issues/93).
 - Relationship: Partially supersedes the original-direct-obligation departure restriction in [ADR-001 D4](001-backend-foundation.md#d4-identity-and-membership) and its reaffirmation in [ADR-003 B3/B4](003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment). It resolves subsets of O09/O10/O13/O14, without superseding either ADR as a whole or changing ADR-002 authentication/security policy.
 
-## Context, authority, and delivery
+## Context and authority
 
-[#77](https://github.com/haggaikaunda/kami-split/issues/77) is the completed baseline, delivered by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92) and ADR-003. It stays closed. The later approval of automatic simplification within a group reverses the earlier requirement to clear original pairwise obligations even when a member's net is zero. New repayment counterparties must be understood as the current plan, while original expense attribution remains auditable history.
-
-This ADR supplies policy for #75/#76/#79 and downstream work, not automatic readiness of those issues. The API is still health-only and the web app uses a session mock. No algorithm, migration, business SDL, authentication, admission, departure, transfer, repayment or client persistence feature is delivered here. Local database work #74 is unchanged. Transfer #84, group/trip creation #85, reporting #86 and departure/settlement features remain outside #73's first expense milestone.
+The approval of automatic simplification within a group reverses the earlier requirement to clear original pairwise obligations even when a member’s net is zero. New repayment counterparties are the current plan, while original expense attribution remains auditable history. The implemented [expense service](../persisted-expenses.md), [repayments](../persisted-repayments.md) and [browser journey](../relay-expenses.md) apply these contracts. Broader departure and transfer mutations remain deferred.
 
 ## C1: Automatic simplification within one group and currency
 
@@ -74,8 +72,6 @@ Persist expense, allocations, audit and recoverable idempotency result atomicall
 
 Rationale: network uncertainty must not become duplicate financial history. Consequences: #76's reviewed contract and #82/#83 implementation/integration need concurrency, restart, input-mismatch, authorization and uncertain-state tests. These requirements are future behavior, not claims about the mock's in-memory receipt map.
 
-## C4: Engineering handoff and remaining decisions
+## C4: Subsequent decisions
 
-The owner delegated ID encoding, cursor format, scalar parsing, database/aggregate bounds and related engineering choices to a coherent reviewed proposal. Owner review focuses on observable behavior and tradeoffs. Delegation does not waive contract review or decide unchosen product, privacy or retention policies. O08 money details remain open; O13/O14 protocol, transport and client-state choices remain open within C3's accepted requirements. O09/O10 retain schema, admission and profile-field design within C2's policy. See the [decision register](open-decisions.md).
-
-Financial idempotency does not settle email-delivery failure semantics, invitation-token/receipt lifetimes or database/email atomicity. #79/#80 retain those decisions. #93 synchronizes affected issue bodies (#73/#75/#76/#79/#82/#83/#84/#86) with this policy; issue synchronization and documentation merge complete this follow-up, not completion of their later features.
+ADR-005 resolved the initial identity, exact-money, pagination and recovery protocol, including lifetime-of-financial-history operation records and tab-scoped browser state. Invitation email comparison, delivery and lifecycle are specified by ADR-006 and refined by ADR-009. The [decision register](open-decisions.md) identifies implemented subsets and still-open lifecycle/reporting choices. These later decisions preserve C1–C3 conservation, source boundaries, authorization and uncertain-write safety.

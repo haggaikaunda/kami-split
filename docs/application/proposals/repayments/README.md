@@ -1,10 +1,6 @@
 # Group repayment contract — #110
 
-Status: finalized contract for review; implementation follows adoption of this
-PR. This document does not expose a running API. Prerequisites #82 and #86 are
-complete. [Issue #110](https://github.com/haggaikaunda/kami-split/issues/110) requires
-a reviewed design before persistence/API work. [ADR-007](../../decisions/007-household-dashboard.md)
-supplies the group boundary and D2–D4 probes; dashboard queries are not a dependency.
+This accepted contract explains the persisted repayment model. Current API, authorization, recovery and browser consumers are documented in [persisted repayments](../../persisted-repayments.md). Examples remain separate from the authoritative runtime SDL in `packages/schema`.
 
 ## Approved owner decisions
 
