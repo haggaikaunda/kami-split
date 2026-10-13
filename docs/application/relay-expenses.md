@@ -18,7 +18,7 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
+[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/signin`) and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
