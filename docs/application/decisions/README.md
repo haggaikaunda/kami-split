@@ -13,14 +13,13 @@ deferred. Design acceptance does not claim implementation; delivery gates still 
 
 [ADR-006: Coordinated invitation and onboarding design](006-invitation-onboarding-design.md)
 records #79/#80 owner-approved follow-ups including I1–I5 and engineering protocols.
-#78 is complete; targeted #79/#80 delivery is on #73’s critical path, while reusable
-shared-link implementation is tracked separately in #108. Runtime proof remains required.
+Targeted and reusable shared onboarding are implemented; current behavior is in the [onboarding guide](../onboarding.md).
 
 [ADR-006: Ordinary and trip-group creation](006-group-creation.md) defines the #85 design-only extension, its contract, UI adaptation and ordered follow-up work. Adoption and implementation are separate.
 
-[ADR-007: Household dashboard](007-household-dashboard.md) specifies #86’s consolidated overview and shared group repayment entry, with explicit policy deferrals and [implementation slices](../proposals/household-dashboard-slices.md). The #111 server summary implements its refined signed-net, space-count and simple expense-total contract; #112 implements Household Overview, Balances, Members and workspace integration; the full [Expenses ledger](../expenses-ledger.md) is implemented by #170.
+[ADR-007: Household dashboard](007-household-dashboard.md) specifies #86’s consolidated overview and shared group repayment entry, with explicit policy deferrals. The #111 server summary implements its refined signed-net, space-count and simple expense-total contract; #112 implements Household Overview, Balances, Members and workspace integration; the full [Expenses ledger](../expenses-ledger.md) is implemented by #170.
 
-[ADR-008: Household partner policy](008-household-partner-policy.md) records owner-approved #109 designation, consent, lifecycle and dashboard eligibility policy, including larger Households and no owner self-invitation. The #130 internal designation foundation implements that adopted policy; the decision record itself remains design authority.
+[ADR-008: Household partner policy](008-household-partner-policy.md) records owner-approved #109 designation, consent, lifecycle and dashboard eligibility policy, including larger Households and no owner self-invitation. ADR-010 supersedes its pair-based permission; the historical records remain retained, and retired designation operations must not be restored.
 
 [ADR-009: Invitation-scoped Auth continuation](009-invitation-auth-continuation.md) records #164's one-email targeted setup, independently verified shared-link signup, durable one-use proof and explicit interruption/replacement recovery trade-off. It supersedes the earlier two-email/shared-provisioning restrictions while preserving explicit admission and disabled public signup.
 

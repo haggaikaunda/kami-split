@@ -73,9 +73,7 @@ from PUBLIC/browser/service_role/kami_api explicitly on this table after transfe
 creation used postgres defaults rather than migrator defaults. Then apply only
 D3's intended grants/RLS. No function is created under postgres. #75 must assert
 final ownership and ACLs, and reconcile this exception in desired SQL and migration
-history. No managed Auth table/trigger is created or changed. Local experiment
-passed on Supabase PostgreSQL 17.6.1.171; hosted deployment credentials must prove
-the same path before deployment, not assume every credential is equivalent.
+history. No managed Auth table/trigger is created or changed. Hosted deployment credentials must prove the same path before deployment; do not assume every credential is equivalent.
 
 There is no role column that could disagree with the pointer: OWNER means
 `membership.id = group.owner_membership_id`; everyone else is MEMBER. NOT NULL
@@ -258,7 +256,7 @@ explains owner bypass, default denial and policy recursion/race concerns.
 transaction-local settings. [Supabase user data](https://supabase.com/docs/guides/auth/managing-user-data)
 recommends referencing only the managed Auth primary key and notes deletion does
 not itself invalidate issued JWTs. We deliberately reject cascading history.
-Checked 2026-09-29; actual provider-role and concurrency proof remains #75 tests.
+Validate provider-role and concurrency behavior with the current database integration suite.
 
 Review regression scenario: removal locks group UPDATE; reader locks actor SHARE
 and waits on group SHARE; removal updates only membership then commits. Reader

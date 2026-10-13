@@ -1,17 +1,11 @@
 # Coordinated invitation and onboarding design (#79 / #80)
 
-Status: owner decisions accepted; engineering protocols require implementation validation.
-Owner-approved policies below stay approved; proposals are explicitly labeled.
-This package reconciles the older issue bodies with their newer comments without
-reopening #77/#93 or absorbing invitation work into #75/#76. #78 is complete and
-no longer blocks implementation. Merge and final-head workflow gates still apply.
+This package retains accepted invitation policy and engineering rationale. Current provider/browser behavior follows [onboarding](../../onboarding.md), including ADR-009 continuation.
 
 ## Authority and ownership
 
 The [owner I1–I5 decisions](https://github.com/haggaikaunda/kami-split/pull/101#issuecomment-5904210048)
-are authoritative and supersede earlier proposals below. Targeted invitations and
-onboarding are on #73’s critical path; reusable shared-link implementation is
-tracked separately in [#108](https://github.com/haggaikaunda/kami-split/issues/108).
+are authoritative and supersede earlier proposals below. Targeted and reusable shared onboarding are implemented; the current guide documents their distinct admission rules.
 
 - [#79 email/delivery approval](https://github.com/haggaikaunda/kami-split/issues/79#issuecomment-5886277636)
   and [#80 counterpart](https://github.com/haggaikaunda/kami-split/issues/80#issuecomment-5886282411).
@@ -96,42 +90,6 @@ A different Auth subject never merges into an existing identity by email.
   path. Shared lifecycle/forwarding/renewal/UI remain designed here but delivery
   belongs to #108, without blocking the first persisted expense journey.
 
-## Reconciled gates
+## Current consumers
 
-| Existing gate               | Correct remaining work                                                                                                                                                             |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #79.1 email policy          | Policy resolved. Implement/test one canonicalizer and supported provider syntax; no alias debate.                                                                                  |
-| #79.2 verified evidence     | Implement request-bound current Auth response and bounded freshness protocol in technical design; prove email-change/error handling.                                               |
-| #79.3 transaction/admission | Review and implement the technical protocol; real restricted-role concurrency proof required.                                                                                      |
-| #79.4 returning members     | I1 resolved: new targeted invitation only; stable ordinary membership/full history; no old-link or disabled revival.                                                               |
-| #79.5 / #80.2 delivery      | Commit-versus-send policy resolved. Implement durable action/intent handoff and explicit retry; I3 terminal privacy cleanup is approved.                                           |
-| #80.1 admission             | Reuse #79; do not re-open comparison/delivery/first-time-join policy. Auth interruption and current evidence are engineering tests.                                                |
-| #80.3 preview/privacy       | Two-field valid-link preview approved. Generic enumeration-safe responses and callback/provisioning protocol below are engineering recommendations; I2/I3 boundaries are approved. |
-| #80.4 sessions              | I4 session experience is approved. Pin stable SDK/provider configuration and verify local behavior in implementation.                                                              |
-| #80.5 contract              | Review proposed operations/results below using merged #76 conventions. No financial contract dependency needs reopening.                                                           |
-
-## Readiness and smallest dependency order
-
-The product decisions are resolved. Once PR #101 is reviewed and merged, #79 can
-proceed through the normal implementation workflow. #75 and #78 are complete;
-reuse their restricted identity/membership and verified-request foundations.
-Engineering must validate the current-email, provider, locking and recovery
-protocols; design acceptance does not claim runtime proof.
-
-1. Merge the coordinated design after independent review and required checks.
-   Keep #79/#80 open until their implementation acceptance criteria are satisfied.
-2. Implement #79 targeted storage/token lifecycle, owner create/list/resend/revoke,
-   durable action/delivery intents and recovery, then atomic targeted admission and
-   same-membership readmission. Require real restricted-role and race coverage.
-   No unfinished SDL or shared-link implementation is part of this critical path.
-3. Hand #80 concrete internal interfaces for current-email evidence, preview,
-   owner operations, action recovery, delivery claim/completion and admission.
-   #80 owns synthetic invite-only Auth/verification/recovery proof, Resend transport,
-   reviewed thin SDL and owner/invitee browser flows. No hosted resources or real
-   email. #79 does not implement #80’s provider/browser adapters.
-4. Deliver reusable shared lifecycle, forwarding, renewal and shared-link UI under
-   #108 as a separate follow-on. Shared links remain first-time-only; no readmission
-   grants are part of either initial feature.
-
-[Technical design](technical.md) defines protocols and representative operations.
-[Validation](validation.md) distinguishes design review from implementation tests.
+[Technical design](technical.md) retains protocol rationale; [validation](validation.md) supplies repeatable scenarios. Current implementations are described by [targeted invitations](../../targeted-invitations.md) and [onboarding](../../onboarding.md). ADR-009 supersedes the original two-email/setup restrictions. Delivery sequencing and historical acceptance live on #79/#80 and their PRs.

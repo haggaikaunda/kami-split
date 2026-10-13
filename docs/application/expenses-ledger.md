@@ -58,9 +58,9 @@ The delivery PR records actual Chrome layout/navigation tests at 320/390/768/128
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
-The [#227 corrective migration](../design/issue-227-implementation.md) applies the commit-pinned reference's exact typography, palette, shared shell and compact ledger presentation. The earlier [Board A/B visual foundation](../design/references/approved-ui/foundation.md) and #223 visual evidence are historical. Category identity and structured filter behavior remain: Reset changes the draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent. The [parity matrix](../design/issue-227-parity-matrix.md) and [sealed independent report](../design/evidence/issue-227/reports/independent-testing.md) record passing visual/requirements acceptance; publication-head CI, final review and closeout are separately recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228).
+Presentation follows the [current UI guide](ui.md). Category identity and structured filter behavior remain: Reset changes the draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
 
-The prior [screen adoption evidence](../design/references/approved-ui/adoption.md) records
+The prior [screen adoption evidence](https://github.com/haggaikaunda/kami-split/issues/189) records
 contract-preserving changes to expense detail and creation: category identity, exact total,
 payer and allocation rows, retained note/audit fields, and the existing explicit
 payer/split/participant controls. The boards do not remove required contract fields.

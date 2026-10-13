@@ -2,6 +2,12 @@
 
 This is the canonical process for all repository changes: web, API, schema, infrastructure, and documentation. The root [AGENTS.md](../../AGENTS.md) summarizes mandatory policy. Area instructions add verification requirements; they do not replace this loop.
 
+## Repository content and run outputs
+
+Commit code, meaningful tests, required generated source, approved design inputs and maintained technical documentation. Put issue-specific verification results, screenshots, logs, review reports, acceptance status, work plans and task-start/merge/checkout closeout evidence on the tracking issue or PR, not in repository files. Documentation updates must explain lasting behavior or procedures, not record that a particular run passed. A historical label does not make work-tracking material appropriate for the repository.
+
+Write run outputs to ignored `test-results/` or an external temporary directory. Preserve useful fixtures, test baselines and approved design inputs; classify by purpose and consumers. Before committing and during final review, inspect staged/final files for accidental evidence, task plans and copied issue specifications. Check documented behavior against the actual code. Publish unique history on its owning issue/PR before removing it; preserve original provenance and privacy. This changes evidence placement, not independent testing, whole-final-diff review, final-head CI or post-merge closeout obligations.
+
 ## Pull request lifecycle
 
 1. **Ready issue:** scope, acceptance criteria, exclusions, and test notes are clear. Perform the task-start synchronization below and record the observed SHA or blocker.
@@ -188,13 +194,3 @@ while real-checkout cleanup or the delivery's own closeout remains outstanding.
 
 Synchronization is to remote state observed at task start and completion, with
 SHAs recorded; an idle clone does not continuously follow future remote commits.
-
-## Historical pilot track
-
-The original greeting pilots established the workflow. Issues #6–9 remain separate from the completed seeded UX tracker #13 and are not its prerequisites or a current production roadmap.
-
-1. Repository foundation and Hello World.
-2. Validated personalized greeting.
-3. Persisted greeting history and migration workflow.
-4. Authentication and ownership boundaries.
-5. Safe editing, soft deletion, concurrency protection, and end-to-end coverage.

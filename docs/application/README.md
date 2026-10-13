@@ -1,43 +1,23 @@
 # Application documentation
 
-## Current application
+**Kami Grow** is the frontend product name; repository/package/infrastructure identifiers remain `kami-split`. The application uses configured Supabase Auth and a Go GraphQL API with server authorization. See [local setup](../../README.md#run-locally), [product scope](../product-scope.md) and [repository layout](../repository-layout.md).
 
-The **Kami Grow** web application uses one [authenticated expense journey](relay-expenses.md) with independent Group/Trip workspaces and a real Household workspace. The seeded preview runtime and routes were removed in #184. Start with [product scope](../product-scope.md), [repository layout](../repository-layout.md), and the [implementation guide index](../README.md#historical-seeded-implementation-guides). Existing feature documentation stays at its original paths to preserve links.
+## Browser and product contracts
 
-## Backend and planned features
+- [Expense journey](relay-expenses.md): independent Group and Trip workspaces, Household summaries, source-owned writes and account-scoped recovery.
+- [Canonical navigation](../navigation/README.md) and [authorized loading](../navigation/workspace-loading.md): `/groups/:id`, `/trips/:id` and original Household `/household/ledger` routes.
+- [Expenses ledger](expenses-ledger.md): complete filtered totals, sorting, category Breakdown, paging and restoration.
+- [Collaborative editing](expense-editing.md), [Percentage splits](percentage-splits.md), [Activity](activity.md), and [repayments](persisted-repayments.md): exact financial changes and immutable history.
+- [Profile and appearance](profile.md), [current UI rules](ui.md) and [date presentation](dates.md).
+- [Onboarding](onboarding.md): invitation, confirmation, sessions, recovery and delivery configuration.
 
-[API architecture](api-architecture.md) records the agreed Go + gqlgen direction and ownership boundaries. The [local database foundation](database-development.md), [identity/membership boundary](identity-foundation.md), [verified API identity](authentication-boundary.md), and [persisted expense operations](persisted-expenses.md) are implemented. The first expense API includes atomic audit/recovery, signed pagination and complete balances; internal [targeted invitation operations](targeted-invitations.md) add lifecycle, durable delivery recovery and admission. The [onboarding integration](onboarding.md) connects Auth, email, sessions and real entry pages. [Household membership sharing](decisions/010-household-membership-sharing.md) replaces the internal pair gate; [historical designation and lifecycle](household-designation.md) retain restricted evidence while obsolete operations are retired; the separate #111 `householdDashboard` implements coherent authorized summary reads. The [Relay expense journey](relay-expenses.md) connects real financial browser reads, creation and recovery. [Agent documentation](../agents/README.md) covers engineering and delivery expectations.
+## Backend and operations
 
-## Architecture decisions
+- [API architecture](api-architecture.md), [verified API identity](authentication-boundary.md), and [identity/membership](identity-foundation.md).
+- [Persisted expenses](persisted-expenses.md), [targeted invitations](targeted-invitations.md), and [Household lifecycle](household-designation.md).
+- [Local database](database-development.md), [administrative bootstrap](bootstrap.md), and [deployment/rollback](production-deployment.md).
+- [Architecture decisions](decisions/README.md) and [open decisions](decisions/open-decisions.md).
 
-[Accepted foundation decisions](decisions/001-backend-foundation.md) cover Supabase, persistence tooling, money, and membership. The [open-decision register](decisions/open-decisions.md) tracks unresolved choices and when they must be settled. See [decision maintenance](decisions/README.md) for updating them.
+Production configuration in the runbook is an approved operating contract, not a fresh provider audit. Vercel-native deployment migration remains [#161](https://github.com/haggaikaunda/kami-split/issues/161). Production operations require separate authorization.
 
-[Authentication and database operations](decisions/002-authentication-and-database-operations.md) records O01–O07 outcomes and remaining implementation choices.
-
-[Bootstrap, group boundaries and invitation lifecycle](decisions/003-bootstrap-groups-and-invitations.md) records the #77 baseline, preview differences and separately owned follow-up decisions. Transfer and consolidated reporting remain deferred. Independent trip metadata and authenticated discovery are implemented under #104/#105.
-
-[Group balances, membership lifecycle and financial recovery](decisions/004-group-balances-membership-and-recovery.md) records #93’s accepted policy, partially superseding the earlier direct-obligation departure restriction. #77 was completed by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92). The reviewed first-expense contract and its server implementation now provide deterministic simplification; the seeded preview is retired.
-
-[Ordinary and trip-group creation design](decisions/006-group-creation.md) records #85’s minimal extension of the implemented identity foundation. The design document itself implements no features; #104 implements the creation/metadata API and #105 implements authenticated discovery. Actor-scoped [creation forms and same-attempt recovery](relay-expenses.md#group-creation-106) are implemented under #106.
-
-[Household dashboard and group repayment design](decisions/007-household-dashboard.md) records #86’s complete-read, individual-balance and original-group recovery requirements. Legacy partner designation (#130), append-only repayment API (#110) and summary reads (#111) are implemented; #197 replaces pair permission with Household membership. The summary uses one signed informational viewer net, eligible/open-space counts and simple expense face-value totals. #169 adds cross-space/group expense feeds with structured filters and complete filtered/month totals; free-text search remains #177. Couple-spending/average/history formulas remain deferred. Household Overview/Balances/Members integration is implemented by #112; the full [Expenses ledger](expenses-ledger.md) is implemented by #170.
-
-- [Targeted onboarding](onboarding.md): actual invitation, verification, sessions, recovery and provider delivery configuration.
-
-The [administrative bootstrap runbook](bootstrap.md) covers explicit first-account
-and Household creation, safe retries, and the ordinary verified-email recovery
-flow. Hosted execution requires separate authorization.
-
-The [production deployment configuration](production-deployment.md) records the
-approved #140 Vercel, Cloud Run, Supabase, and GitHub environment contract. It
-records the provisioned provider foundation, completed production configuration,
-gated API and web deployment workflow, successful hosted releases, and operating
-procedures. Recorded provisioning and hosted verification are distinguished from
-fresh provider-settings inspection.
-
-## Authenticated financial browser
-
-The [Relay expense journey](relay-expenses.md) connects admitted groups, structured Expenses ledgers, creation, [collaborative editing](expense-editing.md), complete balances and original-attempt recovery at `/groups`. [Authenticated Activity](activity.md) adds complete group and Household event feeds with source-aware historical details. The old seeded routes return normal not-found responses.
-
-[Date presentation](dates.md) documents local new-expense defaults, stable
-calendar-date labels, and the common UTC policy for recorded instants.
+Deletion, imports, ownership transfer, free-text search and broader Personal/Plaid features remain deferred; their requirements and choices live on GitHub. The retired seeded runtime must not be restored from old design examples.

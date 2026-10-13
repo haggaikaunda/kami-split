@@ -99,16 +99,3 @@ production callers of the removed internal designation operation. Rolling back
 a private caller of that operation would require a reviewed forward restoration;
 retired pair authority must not be silently restored. Record shipped commits and
 applied migrations independently of local upgrade verification.
-
-The Group failure is investigated independently. A successful Group plus a failed
-Viewer used to collapse into “Group unavailable”; the updated workspace attributes
-safe errors to the owning read and retains retry. The pre-change disposable database
-suite passes, so this finding is not proof of the original production root cause.
-The [owner confirmed the originally invited partner’s existing account works across
-all tabs](https://github.com/haggaikaunda/kami-split/issues/197#issuecomment-6009045941)
-after the normal `641b578` web/API release and migration 011. The original failed
-response was not captured, so its historical root cause is not asserted. No
-admission inconsistency or production data repair was established. Cleanup migration
-012 must also ship through the normal verified release; applied-migration and
-shipped-commit evidence belongs on #197. No synthetic expense is created in the
-real Household, and fixture results alone do not establish rollout acceptance.

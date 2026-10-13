@@ -61,4 +61,4 @@ At <=760px detail is full-page; financial forms fill the viewport. At desktop wi
 
 ## Verification matrix
 
-For N01–N07 exercise 390px phone and 1280px desktop, keyboard-only entry, Back/Forward, direct navigation and repeat visits to the same ID from different sources. At least one 320px/200% text check and one resize during dirty editing are required. Test source restoration after data changes, not only read-only round trips. Record deterministic expectations and browser evidence in the implementation PR; see [prototype-verification.md](prototype-verification.md).
+For N01–N07 exercise 390px phone and 1280px desktop, keyboard-only entry, Back/Forward, direct navigation and repeat visits to the same ID from different sources. At least one 320px/200% text check and one resize during dirty editing are required. Test source restoration after data changes, not only read-only round trips. Record deterministic expectations and browser evidence in the implementation PR; see [browser verification](../browser-verification.md).

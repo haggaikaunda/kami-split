@@ -25,17 +25,7 @@ and persisted group-local repayment entry. #170 adds the shared
 Household ledger; Activity consumes the authenticated feed from #172.
 Trip dates affect status only; financial history remains complete and group-local.
 
-The [#227 corrective migration](../design/issue-227-implementation.md) established the
-reference Light/Dark semantic palette, desktop app bar and rail, phone navigation
-and Trip/Household artwork. Typography is superseded by #237 below; persistent
-chrome, centered widths and compact working-tab headings are superseded by #238.
-The application retains the artwork and
-source-scoped financial behavior. Earlier [Board A/B adoption](../design/references/approved-ui/adoption.md)
-and #223 evidence are historical. Repayment entry keeps its recovery navigation;
-refresh continuity now follows #269 below, using pull/foreground boundaries and native browser reload. The [parity matrix](../design/issue-227-parity-matrix.md) and
-[sealed independent report](../design/evidence/issue-227/reports/independent-testing.md)
-record passing visual/requirements acceptance. Publication-head CI, final review
-and closeout are separate gates recorded on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228).
+Current system typography, Light/System/Dark, persistent navigation, workspace banners and compact expense rows follow the [shared UI guide](ui.md). Source-scoped financial behavior remains unchanged; historical visual acceptance belongs on the owning GitHub PR.
 
 Overview recent expenses request at most four rows from the bounded connection.
 The Expenses tab uses the [structured view](expenses-ledger.md), requesting an
@@ -298,6 +288,6 @@ existing pull/foreground boundaries and native browser reload remain. The Expens
 list is compact at ordinary phone widths; Spending by category and Recent expenses
 retain their existing content and presentation.
 
-[The #269 verification report](../design/evidence/issue-269/README.md) records the
+[The #269 verification report](https://github.com/haggaikaunda/kami-split/issues/269) records the
 LAN browser matrix, exact baseline preservation comparison, screenshots and
 physical-device/server limitations.

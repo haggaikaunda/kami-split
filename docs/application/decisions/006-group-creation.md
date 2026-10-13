@@ -236,7 +236,7 @@ Compatible app rollback leaves metadata/results intact; no destructive down migr
 or automatic replay/import of the demo. No SDL field ships until its resolver,
 authorization and contract tests ship in its owning follow-up.
 
-## Verification and implementation order
+## Regression scenarios
 
 Design validation compares this contract to #85, #75 implementation, ADR-001–005
 and actual consumers above. Independent tester and final-diff reviewer record the
@@ -266,10 +266,7 @@ Implementation slices must exercise these observable scenarios:
    No copied expenses, financial revisions or settlement writes from creation.
 8. Browser keyboard/responsive/focus/source-return checks cover every state above.
 
-Follow-up issue links and their exact dependency order are recorded in
-[the delivery slices](../proposals/group-creation-slices.md). #85 adoption is a
-prerequisite for these new implementations. #75 is complete; #78/#82/#83 and
-#79/#80/#81 keep their own scope and readiness gates. #86 is not a dependency.
+Current creation, discovery and recovery behavior is documented in the [Relay journey](../relay-expenses.md). Historical delivery sequencing lives on [#85](https://github.com/haggaikaunda/kami-split/issues/85).
 
 No additional blocking owner choice was found for this minimal creation scope:
 household/creator representation and access policy are settled; metadata mirrors

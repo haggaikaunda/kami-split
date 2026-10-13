@@ -5,7 +5,7 @@
 Status: finalized design, not runtime implementation; [SDL](schema.graphql) and [operations](operations.graphql) are
 not imported by running schema generation. #82 promotes only approved implemented
 fields. [Shared S1–S4](shared.md) defines identities, disclosure, locks and complete
-balances. [Owner decisions](gates.md) are recorded; final-head delivery verification remains required.
+balances. [Owner decisions](https://github.com/haggaikaunda/kami-split/issues/76) are recorded; final-head delivery verification remains required.
 
 ## A1: Exact scalar and field rules
 
@@ -296,17 +296,17 @@ record still recovers under current authorization while financial history remain
 
 ## A7: Field-to-UI trace and deliberate migration boundary
 
-| Actual consumer                                                            | Contract projection/operation                                         | #83 adaptation                                                                   |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `lib/data/port.ts` read Snapshot / household/actor                         | Viewer, groups, Group.viewerMembership                                | Replace whole-snapshot assumption with explicit authorized group state           |
-| `components/data-provider.tsx` refresh/scope invalidation                  | Entry, FirstPage, RefreshAfterRecovery                                | Preserve session epoch, scope and stale-response checks; no mixed real/demo data |
-| `lib/expense-draft.ts` default payer/participants                          | viewerMembership, members.canParticipate                              | IDs are Membership IDs; eligibility is advisory, checked again on server         |
-| `components/expense-create/form.tsx` amount/date/description/category/note | all corresponding CreateExpenseInput and Expense fields               | Exact bigint previews; code-point limits; local date default                     |
-| form equal/exact/payer/zero participants                                   | split, explicit participantIds, exactAllocations; Expense.allocations | Do not infer participation from nonzero shares; server computes equal remainder  |
-| `lib/overview.ts`, `components/overview.tsx` net/obligations/spending      | GroupBalances positions, obligations, totalExpenseMinor, settled      | Remove direct-debt inference; include inactive history; never compute from page  |
-| expense cards/creator attribution                                          | Expense.payer/creator/allocations and description/date/category       | Current minimal labels, durable IDs                                              |
-| create controller/session drafts and `docs/recovery/README.md`             | key before Save, Recover, operation record then refresh               | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
-| `lib/ledger.ts` exact/remainder                                            | MinorUnits bounds, S1 ordering                                        | Existing safe-number code cannot be reused for arbitrary aggregates              |
+| Actual consumer                                                                                                                     | Contract projection/operation                                         | #83 adaptation                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `lib/data/port.ts` read Snapshot / household/actor                                                                                  | Viewer, groups, Group.viewerMembership                                | Replace whole-snapshot assumption with explicit authorized group state           |
+| `components/data-provider.tsx` refresh/scope invalidation                                                                           | Entry, FirstPage, RefreshAfterRecovery                                | Preserve session epoch, scope and stale-response checks; no mixed real/demo data |
+| `lib/expense-draft.ts` default payer/participants                                                                                   | viewerMembership, members.canParticipate                              | IDs are Membership IDs; eligibility is advisory, checked again on server         |
+| `components/expense-create/form.tsx` amount/date/description/category/note                                                          | all corresponding CreateExpenseInput and Expense fields               | Exact bigint previews; code-point limits; local date default                     |
+| form equal/exact/payer/zero participants                                                                                            | split, explicit participantIds, exactAllocations; Expense.allocations | Do not infer participation from nonzero shares; server computes equal remainder  |
+| `lib/overview.ts`, `components/overview.tsx` net/obligations/spending                                                               | GroupBalances positions, obligations, totalExpenseMinor, settled      | Remove direct-debt inference; include inactive history; never compute from page  |
+| expense cards/creator attribution                                                                                                   | Expense.payer/creator/allocations and description/date/category       | Current minimal labels, durable IDs                                              |
+| create controller/session drafts and the [current recovery contract](../../persisted-expenses.md#transaction-and-recovery-boundary) | key before Save, Recover, operation record then refresh               | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
+| `lib/ledger.ts` exact/remainder                                                                                                     | MinorUnits bounds, S1 ordering                                        | Existing safe-number code cannot be reused for arbitrary aggregates              |
 
 First real route slice is group selection, expense list/create and complete balance
 panel with explicit recovery. Hide/label demo-only activity/revision history,

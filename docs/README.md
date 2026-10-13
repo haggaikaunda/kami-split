@@ -1,54 +1,16 @@
 # Documentation
 
-The application has one authenticated runtime: real onboarding, Relay/GraphQL-backed independent Group/Trip workspaces and the Household five-tab workspace. The seeded application, data model, providers and routes were retired in #184. Historical feature guides below describe the removed implementation and must not be used to restore it. Start with [current application documentation](application/README.md) and the [project README](../README.md).
+Kami Grow uses real Auth and server-authorized Relay/GraphQL workspaces. Repository documentation explains the system and how to maintain it. GitHub issues and PRs record requirements, plans, verification, review and delivery history.
 
-See [repository layout and deployment](repository-layout.md) for workspace commands, configuration ownership and external hosting settings.
-The [production deployment configuration](application/production-deployment.md)
-records the approved #140 hosting and environment contract; provisioning and
-successful hosted release evidence is linked there alongside operating procedures.
+- [Application guide](application/README.md): current features and financial/security contracts.
+- [Product scope](product-scope.md): supported behavior and deferred work.
+- [Repository layout](repository-layout.md): commands and configuration ownership.
+- [Navigation](navigation/README.md): canonical routes and authorized restoration.
+- [UI guide](application/ui.md): current shared presentation rules.
+- [Design inputs](design/README.md): original approved references and their limits.
+- [Architecture decisions](application/decisions/README.md): accepted rationale and unresolved policy.
+- [Testing strategy](testing-strategy.md) and [browser verification](browser-verification.md): repeatable checks and limitations.
+- [Production runbook](application/production-deployment.md): deployment, rollback and recovery; provider state requires explicit inspection.
+- [Agent workflow](agents/README.md) and [contributing](../CONTRIBUTING.md): issue, independent testing/review, CI and closeout requirements.
 
-## Documentation sections
-
-- [Agent documentation](agents/README.md): delivery instructions and Go engineering conventions.
-- [Application documentation](application/README.md): current web/API implementation references and deferred features.
-
-- [Architecture decisions](application/decisions/README.md): accepted production design, including [bootstrap, groups and invitations](application/decisions/003-bootstrap-groups-and-invitations.md) and [group balances, membership and recovery](application/decisions/004-group-balances-membership-and-recovery.md), distinct from the seeded preview.
-
-## Historical seeded implementation guides
-
-| Area                                                | Guide                                                    |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| Exact money, allocations and balances               | [Ledger](ledger.md)                                      |
-| Async data port, fixtures and fault scenarios       | [Mock data](mock-data.md)                                |
-| Shell, visits, drafts and source restoration        | [Navigation](navigation/README.md)                       |
-| Overview and balance explanation                    | [Overview](overview/README.md)                           |
-| Expense creation                                    | [Add expense](add-expense.md)                            |
-| Record details and revision history                 | [Expense detail](expense-detail/README.md)               |
-| Conflict-aware editing                              | [Expense editing](expense-editing.md)                    |
-| Soft deletion and retained audit                    | [Expense deletion](expense-deletion/README.md)           |
-| Repayments                                          | [Repayment](repayment/README.md)                         |
-| Financial activity and filters                      | [History](history/README.md)                             |
-| Trip creation and browsing                          | [Trips](trips/README.md), [trip detail](trips/detail.md) |
-| Charts and exact data tables                        | [Spending](spending/README.md)                           |
-| Simulated account entry                             | [Entry preview](entry-preview/README.md)                 |
-| Setup, invitations and membership                   | [Household](household/README.md)                         |
-| Cross-journey retry/access safety                   | [Recovery](recovery/README.md)                           |
-| Accessible shared components and standalone gallery | [Primitives](primitives-preview/README.md)               |
-
-## Verification and delivery
-
-[Testing strategy](testing-strategy.md) explains what the automated suite and manual browser checks cover. The [final UX report](accessibility/README.md) includes screenshots and explicit hardware/assistive-technology limitations; its [criterion matrix](accessibility/criterion-matrix.md) traces every approved journey. Feature guides retain their dated PR-specific evidence. Their historical test counts and local ports are not current runtime configuration.
-
-The [delivery workflow](agents/delivery-workflow.md), [contributing guide](../CONTRIBUTING.md), and [agent instructions](../AGENTS.md) define issue, test, review and merge gates. GitHub is the source of truth for work status. The [completed implementation record](design/implementation-plan.md) links each UX issue to its merged PR.
-
-## Approved production visual references
-
-[Issue #227](https://github.com/haggaikaunda/kami-split/issues/227) requires exact parity with the commit-pinned Kami Grow interactive reference pack, including the original Roboto baseline, exact Light/Dark tokens, the shared app bar/rail and phone navigation, while retaining all production behavior. The [implementation note](design/issue-227-implementation.md) records the corrective changes and evidence boundaries; the [parity matrix](design/issue-227-parity-matrix.md) records independent acceptance of all 46 rows, with the [sealed visual/requirements report](design/evidence/issue-227/reports/independent-testing.md). Publication-head CI, review and post-merge closeout are recorded separately on [PR #228](https://github.com/haggaikaunda/kami-split/pull/228). The [#223 workspace inventory](design/material-parity-workspaces.md) and [#189 Board A/B evidence](design/references/approved-ui/README.md) are preserved historical records, not current visual acceptance.
-
-Current system-font typography and mobile expense-sheet behavior supersede the #227 typography baseline under #237; see [the current expense journey](application/relay-expenses.md#mobile-typography-and-expense-sheets-237).
-
-Persistent navigation, compact working headings and constrained content widths now follow #238; see [the current expense journey](application/relay-expenses.md#persistent-navigation-and-content-widths-238).
-
-## Approved design archive
-
-The [design index](design/README.md) archives the former seeded UX specification, navigation contracts and data-access design. The prototype and numbered issue specifications preserve the original approved scope. Historical readiness instructions and unchecked specification checkboxes are not an active backlog; completion and subsequent changes are recorded in GitHub and linked implementation guides.
+Keep run outputs in ignored `test-results/` or an external temporary directory. Publish results, screenshots and unique historical material on the owning issue/PR. Do not add checked-in task plans, acceptance ledgers, review reports or documentation archives. The retired seeded application is described in [its GitHub tracker](https://github.com/haggaikaunda/kami-split/issues/13), not as current runtime guidance.

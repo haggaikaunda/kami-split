@@ -13,8 +13,7 @@ separate feed/detail states, not three phone frames in the application. Desktop
 uses a contextual detail panel; mobile retains a reachable Back action and focus
 restoration. These #212 behavioral and historical-detail requirements remain
 applicable. Current typography, palette, shared navigation and component roles
-follow [#227 and its exact reference](../../issue-227-implementation.md), with typography superseded by the system-font hierarchy in #237. The earlier [A/B system](../approved-ui/README.md) and
-[foundation](../approved-ui/foundation.md) preserve the visual history only.
+follow the [current UI guide](../../../application/ui.md). The earlier [A/B boards](../approved-ui/README.md) preserve original design provenance.
 
 Names, dates and amounts are illustrative. Use supported categories and EQUAL,
 EXACT and PERCENTAGE labels. Do not introduce the board's Home hierarchy, global
@@ -28,11 +27,6 @@ Original creation/update/repayment event details must remain historical facts
 following later expense edits; a separately labeled current-expense action may
 request a fresh authorized record.
 
-Delivery acceptance requires final-head screenshots at 320, 390, 768 and 1280px,
+Rendered verification should cover final-head screenshots at 320, 390, 768 and 1280px,
 light/dark themes, 200% text, long content, keyboard/focus and an actual persisted
 edit followed by its Activity detail. The image itself is not acceptance evidence.
-
-## Verified implementation
-
-The [captured production components](evidence/README.md) show the real API-backed
-edit and all three historical event types beside the approved reference above.
