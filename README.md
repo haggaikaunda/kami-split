@@ -2,9 +2,9 @@
 
 Kami Grow shares expenses through real authenticated Group, Trip and Household workspaces. Relay/GraphQL reads and writes use the Go API for authorization, exact balances, persisted expenses, group repayments and recovery. Trips are independent groups; Household summaries retain each original financial boundary.
 
-The frontend product name is **Kami Grow**. Repository, package, API module, storage and infrastructure identifiers remain `kami-split` for compatibility. Historical design records and dated delivery evidence retain the original Kami Split name.
+The frontend product name is **Kami Grow**. Repository, package, API module, storage and infrastructure identifiers remain `kami-split` for compatibility. Original design inputs may retain the earlier Kami Split name.
 
-The seeded application was retired in #184. Its design and delivery reports remain historical evidence, not executable runtime guidance. See the [documentation index](docs/README.md) for current behavior and verification.
+The seeded application was retired in #184. Its requirements and delivery history live on GitHub. See the [documentation index](docs/README.md) for current behavior and verification.
 
 ## Repository layout
 
@@ -18,6 +18,8 @@ Run commands from the repository root. Requirements: Node.js **24** and pnpm **1
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+Configure the Next.js environment variables listed in [onboarding](docs/application/onboarding.md#configuration-and-boundaries) and follow [onboarding setup](docs/application/onboarding.md) and [local API/database setup](docs/application/database-development.md). The UI needs a configured authenticated account and authorized membership to load financial data; `pnpm dev` alone does not provision them.
 
 Open `http://localhost:3000`. For a production-build preview:
 
@@ -41,7 +43,9 @@ If the page fails, verify both the server connection and the rendered applicatio
 
 ## Explore the application
 
-`/` goes directly to `/sign-in` for signed-out visitors; verified sessions retain `/groups` as their home. Only sign-in is public. All application routes require a server-verified cookie session before rendering, and protected UI stays hidden during browser session checks. See [web authentication routing](docs/application/web-auth-routing.md). `/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Group and Trip workspaces use `/groups/:groupId`; expense details and repayment entry remain group-scoped. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
+`/` goes directly to `/sign-in` for signed-out visitors; verified sessions retain `/groups` as home. Only sign-in is public. All application routes require a server-verified cookie session before rendering, and protected UI stays hidden during browser session checks. See [web authentication routing](docs/application/web-auth-routing.md).
+
+`/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Ordinary Groups use `/groups/:groupId`, Trips use `/trips/:groupId`, and the original Household ledger uses `/household/ledger`. Expense details and repayment entry retain their original financial source. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
 
 The [frozen prototype](docs/design/README.md) and [primitive gallery](docs/primitives-preview/README.md) remain separate development references.
 

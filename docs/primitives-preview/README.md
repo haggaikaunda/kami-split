@@ -14,22 +14,9 @@ Run `pnpm --package=vite@8.3.0 dlx vite docs/primitives-preview --host 127.0.0.1
 - `Member` uses initials on missing or failed photos. Production #237 uses system fonts; the historical #227 baseline bundled Roboto through `next/font/local`. The standalone gallery retains legacy Manrope/DM Sans `@font-face` declarations; it does not run the Next font loader or establish production typography parity. No visitor request goes to a font provider.
 - Status labels explicitly distinguish pending, error, stale and unavailable states; color is supplementary. Skeletons announce loading without fabricated financial values. Toasts announce feedback, but are not proof of a mutation.
 
-## Verification recorded September 20, 2026
+## Verification
 
-Component interaction tests cover field/error associations, summary focus, duplicate pending clicks, dialog naming/Escape/Tab wrapping, safe confirmation focus, trigger removal and focus restoration, failed photos, zero-period selection, and exact chart/table text.
-
-Headless installed Chrome rendered 320px, 390px and 1280px at both 100% and 200% root text size. All six combinations had document width equal to viewport width; visible buttons/fields were at least 44px and had no internal content overflow. Exact tables use a labeled, keyboard-focusable scrolling region at narrow sizes. Screenshots were inspected for readable content, wrapping, and usable fallback typography/photos:
-
-- [320px at 200% text](screenshots/320-200-percent.png)
-- [390px](screenshots/390.png)
-- [1280px](screenshots/1280.png)
-- [390px dialog / keyboard focus](screenshots/dialog-390.png)
-
-In Chrome, twelve successive Tab and Shift+Tab presses each remained inside the dialog; Escape closed it and restored the opening button. Confirmation focused Keep editing. The intentionally missing photo showed AM initials.
-
-Manual token review with WCAG relative-luminance calculations: ink/white 13.42:1, muted/white 6.29:1, white/primary 7.92:1, white/destructive 7.52:1, error/error-surface 6.78:1, focus/white 6.41:1, control-border/white 3.10:1. Disabled controls remain semantically disabled. Screenshots exercise the system-font fallback without a font service and a failed photo request.
-
-The gallery does not cover authentication, transport, concurrency, persistence, or complete journeys. The implemented application journeys have separate feature tests and the [integrated accessibility report](../accessibility/README.md); this gallery remains a standalone primitive demonstration.
+Run the component suite and inspect the gallery at narrow widths, doubled text and keyboard focus. The gallery does not prove authentication, transport, persistence or complete journeys. Publish screenshots and results on the delivery PR, using ignored `test-results/` or temporary output directories.
 
 ## Quietly Warm workspace patterns (#167)
 
@@ -39,10 +26,4 @@ The gallery demonstrates the shared patterns for the [redesign tracker #166](htt
 
 `ExpenseRow`, `MonthSection`, `FilterBar`, and `SpaceChip` provide ledger structure without enclosing every record in a card. `BalanceSpaceRow` and `MemberBalanceRow` explain source/member positions. `RecommendedRepaymentRow` requires group, sender, recipient and exact amount context; callers own authorized settlement entry. Summary components expose no settlement action. Existing `Dialog panel` provides a desktop side panel and mobile full-page detail with the same focus and safe-area behavior.
 
-These components do not introduce production reads, routes, categories, or mutations. Integration belongs to the child workspace issues. Existing loading, empty, unavailable, pending, error, focus/hover, exact large money, long names, and 200% text examples remain available.
-
-### Verification for #167
-
-Builder browser pass on October 4, 2026, in the Codex in-app browser at `http://127.0.0.1:4210`: 320/390/768/1280px had viewport-width document reflow and two summary cells with identical vertical origins. At 320px and 200% root text with the long Trip name, the metrics remained horizontal and document width remained 320px. Navigation uses contained horizontal scrolling. Rendered buttons, fields, and workspace links met 44px minimum height. The 320px detail occupied the full 320×900 viewport; at 1280px it occupied the rightmost 608px. Tab/Shift+Tab wrapped, Escape closed the detail, and Add expense regained focus. Keyboard focus was visibly blue. Reduced-motion and safe-area CSS were inspected; physical mobile keyboards, spoken assistive technology, and OS motion emulation were not exercised.
-
-The historical gallery font declarations reference [Manrope](https://github.com/google/fonts/tree/main/ofl/manrope) and [DM Sans](https://github.com/google/fonts/tree/main/ofl/dmsans), retained with their upstream OFL licenses in `apps/web/src/app/fonts`. The historical #227 implementation packaged `Roboto.ttf` with `Roboto-OFL.txt`; #237 now uses system fonts. Historical evidence is recorded in the [#227 implementation note](../design/issue-227-implementation.md). The historical gallery captures above are not #227 acceptance evidence.
+These components do not introduce production reads, routes, categories, or mutations. Production integration lives in the current Group/Trip/Household workspaces. Existing loading, empty, unavailable, pending, error, focus/hover, exact large money, long names, and 200% text examples remain available.

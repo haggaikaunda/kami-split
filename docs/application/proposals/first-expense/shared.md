@@ -54,7 +54,7 @@ active enabled members; readmission restores full history. Financial records
 refer to retained membership IDs, never a name as identity. Display names are
 current minimal labels; an audit actor ID remains stable when a label changes.
 No implied retention/anonymization decision or immutable name-snapshot promise.
-The exact field set is owner-approved privacy decision P1 in [gates](gates.md).
+The exact field set is owner-approved privacy decision P1 in [gates](https://github.com/haggaikaunda/kami-split/issues/76).
 
 ## S3: Verified transaction and authorization ordering
 
@@ -106,7 +106,7 @@ ownerless group. No departure or transfer service is authorized here.
 ## S4: Complete money projections
 
 For each retained membership: net = paid − owed + actual repayments sent −
-received. #82's initial data has expenses only; it must not invent repayments.
+received. Include only actual persisted repayment records; never invent transfers.
 Compute across the entire single group, including inactive contributions, with
 no expense-list filters. Settled means every individual net is zero; net sum
 zero is merely conservation. A failed/incomplete aggregate returns an error,

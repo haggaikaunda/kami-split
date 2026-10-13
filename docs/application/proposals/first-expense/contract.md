@@ -5,7 +5,7 @@
 Status: finalized design, not runtime implementation; [SDL](schema.graphql) and [operations](operations.graphql) are
 not imported by running schema generation. #82 promotes only approved implemented
 fields. [Shared S1–S4](shared.md) defines identities, disclosure, locks and complete
-balances. [Owner decisions](gates.md) are recorded; final-head delivery verification remains required.
+balances. [Owner decisions](https://github.com/haggaikaunda/kami-split/issues/76) are recorded; final-head delivery verification remains required.
 
 ## A1: Exact scalar and field rules
 
@@ -57,8 +57,7 @@ with valid variant, CSPRNG `crypto.randomUUID()` before first submission.
 Description is trimmed of leading/trailing ASCII space/tab/CR/LF, 1–120 Unicode
 scalar values after trim; note preserves content, 0–2000 scalar values (default
 empty). Reject NUL and unpaired surrogates; do not silently NFC-normalize or alter
-note whitespace. This clarifies the preview's UTF-16 length ambiguity; #83 must
-count code points consistently. Seven category enum values map to existing labels
+note whitespace. Browser validation must count code points consistently with the API. Seven category enum values map to existing labels
 Dining, Groceries, Accommodation, Transport, Activities, Home, Other.
 
 Single payer must be enabled, actively linked and a member of the explicit group;
@@ -294,42 +293,26 @@ A revoked member receives NOT_FOUND, even possessing K. Missing lookup is
 NOT_OBSERVED and allows only same-key retry. After 90 days or later, the original
 record still recovers under current authorization while financial history remains.
 
-## A7: Field-to-UI trace and deliberate migration boundary
+## A7: Client projection boundary
 
-| Actual consumer                                                            | Contract projection/operation                                         | #83 adaptation                                                                   |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `lib/data/port.ts` read Snapshot / household/actor                         | Viewer, groups, Group.viewerMembership                                | Replace whole-snapshot assumption with explicit authorized group state           |
-| `components/data-provider.tsx` refresh/scope invalidation                  | Entry, FirstPage, RefreshAfterRecovery                                | Preserve session epoch, scope and stale-response checks; no mixed real/demo data |
-| `lib/expense-draft.ts` default payer/participants                          | viewerMembership, members.canParticipate                              | IDs are Membership IDs; eligibility is advisory, checked again on server         |
-| `components/expense-create/form.tsx` amount/date/description/category/note | all corresponding CreateExpenseInput and Expense fields               | Exact bigint previews; code-point limits; local date default                     |
-| form equal/exact/payer/zero participants                                   | split, explicit participantIds, exactAllocations; Expense.allocations | Do not infer participation from nonzero shares; server computes equal remainder  |
-| `lib/overview.ts`, `components/overview.tsx` net/obligations/spending      | GroupBalances positions, obligations, totalExpenseMinor, settled      | Remove direct-debt inference; include inactive history; never compute from page  |
-| expense cards/creator attribution                                          | Expense.payer/creator/allocations and description/date/category       | Current minimal labels, durable IDs                                              |
-| create controller/session drafts and `docs/recovery/README.md`             | key before Save, Recover, operation record then refresh               | Replace mock not-started with NOT_OBSERVED; frozen attempt/provenance            |
-| `lib/ledger.ts` exact/remainder                                            | MinorUnits bounds, S1 ordering                                        | Existing safe-number code cannot be reused for arbitrary aggregates              |
+Use explicit authorized Viewer/group projections rather than a whole-household snapshot. Default payer/participant choices use stable Membership IDs and advisory eligibility that the server rechecks. Parse minor-unit strings exactly with BigInt; never reuse bounded JavaScript-number arithmetic for arbitrary aggregates. Included zero shares still represent participants.
 
-First real route slice is group selection, expense list/create and complete balance
-panel with explicit recovery. Hide/label demo-only activity/revision history,
-monthly reporting, trip controls, pending-member simulation, settlements,
-edit/delete, setup and ownership controls; do not fabricate data for them.
-This is owner-approved O14 scope decision P4 (2026-09-29), not a claim of full
-preview parity.
+Session epochs and actor/group scopes prevent stale responses or drafts entering another account. Generate the operation key before Save, retain frozen input through uncertainty, recover the original outcome, then refresh authorized current projections. Complete balances include inactive history and are never derived from one expense page. Current production consumers and supported capabilities are documented in the [Relay journey](../../relay-expenses.md); the old seeded migration task trace lives on [#83](https://github.com/haggaikaunda/kami-split/issues/83).
 
 ## Technical references
 
 [GraphQL scalars](https://spec.graphql.org/September2025/#sec-Scalars) require
 custom coercion beyond SDL validation; [PostgreSQL aggregates](https://www.postgresql.org/docs/17/functions-aggregate.html)
 define numeric output for bigint sum. Both checked 2026-09-29. SDL validation proves
-schema/operation shape only; #82/#83 must implement and test all scalar and runtime
-semantics above. No generator/runtime schema is altered to obtain validation.
+schema/operation shape only; verify scalar coercion and runtime semantics with the current API/database and browser regression suites. Do not alter generated/runtime schema merely to obtain example validation.
 
 ## A8: Relay connection and pagination errors
 
 `Group.expenses` returns nullable concrete ExpenseConnection with standard edges
 and complete PageInfo, enabling Relay `@connection`/`usePaginationFragment` in
-#83. Proposed operations omit Relay compiler directives so the server-side
-validator can check them without installing Relay. #83 annotates the concrete
-field, keeps filter arguments in the connection identity and resets it after a
+the browser. Example operations omit Relay compiler directives so the server-side
+validator can check them without installing Relay. Production callers annotate the concrete
+field, keep filter arguments in the connection identity and reset it after a
 new create/recovery; cursor/first are pagination arguments, not filter identities.
 On invalid pagination input, cursor, unauthorized filter, aggregate revision
 failure or unavailable infrastructure, return expenses:null plus a safe GraphQL

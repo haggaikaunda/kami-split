@@ -1,2 +1,0 @@
-$ pnpm --filter @kami-split/web typecheck && tsc --project tsconfig.docs.json --noEmit
-$ tsc --noEmit

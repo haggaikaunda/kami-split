@@ -7,11 +7,9 @@
 - Authority: Owner-approved decisions and documentation-only authorization in [#93](https://github.com/haggaikaunda/kami-split/issues/93).
 - Relationship: Partially supersedes the original-direct-obligation departure restriction in [ADR-001 D4](001-backend-foundation.md#d4-identity-and-membership) and its reaffirmation in [ADR-003 B3/B4](003-bootstrap-groups-and-invitations.md#b3-household-dashboard-and-group-specific-repayment). It resolves subsets of O09/O10/O13/O14, without superseding either ADR as a whole or changing ADR-002 authentication/security policy.
 
-## Context, authority, and delivery
+## Context and authority
 
-[#77](https://github.com/haggaikaunda/kami-split/issues/77) is the completed baseline, delivered by merged [PR #92](https://github.com/haggaikaunda/kami-split/pull/92) and ADR-003. It stays closed. The later approval of automatic simplification within a group reverses the earlier requirement to clear original pairwise obligations even when a member's net is zero. New repayment counterparties must be understood as the current plan, while original expense attribution remains auditable history.
-
-This ADR supplies policy for #75/#76/#79 and downstream work, not automatic readiness of those issues. The API is still health-only and the web app uses a session mock. No algorithm, migration, business SDL, authentication, admission, departure, transfer, repayment or client persistence feature is delivered here. Local database work #74 is unchanged. Transfer #84, group/trip creation #85, reporting #86 and departure/settlement features remain outside #73's first expense milestone.
+The approval of automatic simplification within a group reverses the earlier requirement to clear original pairwise obligations even when a member’s net is zero. New repayment counterparties are the current plan, while original expense attribution remains auditable history. The implemented [expense service](../persisted-expenses.md), [repayments](../persisted-repayments.md) and [browser journey](../relay-expenses.md) apply these contracts. Broader departure and transfer mutations remain deferred.
 
 ## C1: Automatic simplification within one group and currency
 
@@ -56,32 +54,24 @@ Rationale: access lifecycle changes must preserve financial continuity without r
 
 A lost expense-create response is recovered by continuing the **same attempt with the same idempotency key and original input**. The frontend must possess the key before sending the first write; a key returned only in a lost response cannot support recovery. Key generation, storage, reload/session-change behavior and retention duration remain design choices. This does not approve browser storage or unlimited retention.
 
-Bind recovery to the verified actor, explicit group and operation under the reviewed key scope. The server derives the actor; key possession grants no access. Current authorization governs both retries and receipt reads. Same-key/same-canonical-input retries must have one financial effect, including concurrent requests and restart recovery. Changed-input reuse must neither create nor overwrite the original expense; #76 must define mismatch outcomes and when a corrected/new attempt receives a new key.
+Bind recovery to the verified actor, explicit group and operation under the reviewed key scope. The server derives the actor; key possession grants no access. Current authorization governs both retries and receipt reads. Same-key/same-canonical-input retries must have one financial effect, including concurrent requests and restart recovery. Changed-input reuse must neither create nor overwrite the original expense; the [persisted expense contract](../persisted-expenses.md) defines mismatch outcomes and deliberate new-attempt behavior.
 
 Persist expense, allocations, audit and recoverable idempotency result atomically and durably. A process-local response cache is insufficient. An authorized retry after successful commit recovers the original successful financial outcome/expense identity. Recover that immutable operation outcome, then fetch current authorized group balances as needed. An old cached balance is not current, and different GraphQL selections, later state or changed permissions preclude any promise of byte-identical response envelopes.
 
 ### Recovery examples and contract obligations
 
-| Scenario                                                                     | Required behavior                                                                                                                                      |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Before submission                                                            | Client already possesses key K and binds the original input to that attempt before sending.                                                            |
-| Expense E commits; response is lost                                          | Authorized retry with K and the original input recovers E's original successful outcome; no second expense or audit effect.                            |
-| Two concurrent requests with K and the same canonical input; server restarts | Durable atomic recovery yields one financial effect and the same original identity, rather than relying on process memory.                             |
-| K is reused with changed amount/participants                                 | Do not create another expense or overwrite E. Exact mismatch response and new-attempt rules await #76.                                                 |
-| Actor loses membership or application access before retry/lookup             | Deny under current authorization; possession of K is insufficient.                                                                                     |
-| Another expense changes balances after E                                     | Recover E's immutable outcome, then read current authorized balances as needed; do not label E's old summary current.                                  |
-| Lookup missing, pending, unknown, not observed, or beyond retention boundary | Later contract must distinguish these safely. Missing is not automatically proof of no commit; never silently generate a new key and risk duplication. |
+| Scenario                                                                     | Required behavior                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Before submission                                                            | Client already possesses key K and binds the original input to that attempt before sending.                                                                        |
+| Expense E commits; response is lost                                          | Authorized retry with K and the original input recovers E's original successful outcome; no second expense or audit effect.                                        |
+| Two concurrent requests with K and the same canonical input; server restarts | Durable atomic recovery yields one financial effect and the same original identity, rather than relying on process memory.                                         |
+| K is reused with changed amount/participants                                 | Do not create another expense or overwrite E. Use the current mismatch response and deliberate new-attempt rules.                                                  |
+| Actor loses membership or application access before retry/lookup             | Deny under current authorization; possession of K is insufficient.                                                                                                 |
+| Another expense changes balances after E                                     | Recover E's immutable outcome, then read current authorized balances as needed; do not label E's old summary current.                                              |
+| Lookup missing, pending, unknown, not observed, or permission denied         | The current recovery contract distinguishes these safely. Missing is not automatically proof of no commit; never silently generate a new key and risk duplication. |
 
-Rationale: network uncertainty must not become duplicate financial history. Consequences: #76's reviewed contract and #82/#83 implementation/integration need concurrency, restart, input-mismatch, authorization and uncertain-state tests. These requirements are future behavior, not claims about the mock's in-memory receipt map.
+Rationale: network uncertainty must not become duplicate financial history. Maintain concurrency, restart, input-mismatch, authorization and uncertain-state regression tests against persisted operations. Synthetic client responses alone cannot prove these server guarantees.
 
-## C4: Engineering handoff and remaining decisions
+## C4: Subsequent decisions
 
-The owner delegated ID encoding, cursor format, scalar parsing, database/aggregate bounds and related engineering choices to a coherent reviewed proposal. Owner review focuses on observable behavior and tradeoffs. Delegation does not waive contract review or decide unchosen product, privacy or retention policies. O08 money details remain open; O13/O14 protocol, transport and client-state choices remain open within C3's accepted requirements. O09/O10 retain schema, admission and profile-field design within C2's policy. See the [decision register](open-decisions.md).
-
-Financial idempotency does not settle email-delivery failure semantics, invitation-token/receipt lifetimes or database/email atomicity. #79/#80 retain those decisions. #93 synchronizes affected issue bodies (#73/#75/#76/#79/#82/#83/#84/#86) with this policy; issue synchronization and documentation merge complete this follow-up, not completion of their later features.
-
-## Delivered preview evidence
-
-[Overview selectors](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/overview.ts) derive original direct obligations, and the [mock adapter](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/data/mock.ts) blocks departure for a zero-net intermediary with remaining direct edges. Its correction guard also rejects reopened inactive-member direct obligations. Those are existing seeded-preview/production-policy differences. [DataPort](https://github.com/haggaikaunda/kami-split/blob/225780b/apps/web/src/lib/data/port.ts) and recovery consumers use session-only operation receipts; reload/restart durability is not implemented.
-
-The [overview](../../overview/README.md), [household](../../household/README.md), [repayment](../../repayment/README.md) and [recovery](../../recovery/README.md) guides retain their historical screenshots, test counts and acceptance evidence. This documentation changes no code or tests to make the preview appear to implement the new policy.
+ADR-005 resolved the initial identity, exact-money, pagination and recovery protocol, including lifetime-of-financial-history operation records and tab-scoped browser state. Invitation email comparison, delivery and lifecycle are specified by ADR-006 and refined by ADR-009. The [decision register](open-decisions.md) identifies implemented subsets and still-open lifecycle/reporting choices. These later decisions preserve C1–C3 conservation, source boundaries, authorization and uncertain-write safety.

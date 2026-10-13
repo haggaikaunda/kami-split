@@ -1,10 +1,6 @@
-# Design validation and implementation acceptance map
+# Invitation regression scenarios
 
-This package changes documentation only. No Auth, PostgreSQL concurrency, delivery
-or browser test is claimed executed by writing these scenarios. Independent design
-reviews and repository check outcomes are recorded on the PR. Shared-link scenarios
-belong to #108; Auth/browser/transport scenarios belong to #80. #79 must complete
-targeted lifecycle, durable recovery, admission and restricted-role/race evidence.
+These reusable scenarios describe invitation security, durability and browser contracts. Run current API/database and browser tests for affected behavior; record actual outcomes and limits on the PR. Current Auth continuation follows ADR-009 and [onboarding](../../onboarding.md).
 
 | Requirement                   | Required implementation evidence                                                                                                                                                                                                                                                        |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,4 +19,4 @@ targeted lifecycle, durable recovery, admission and restricted-role/race evidenc
 
 Design checks: verify local links, formatting and accurate source reconciliation.
 Repository required checks remain mandatory; documentation-only scope does not waive
-CI Verify. Runtime health-only SDL and generated code must remain unchanged.
+CI Verify. `packages/schema` owns the runtime SDL; regenerate consumers when the authoritative contract changes, never hand-edit generated output.

@@ -11,7 +11,7 @@
 
 ## Context and current state
 
-Kami Split has a seeded Next.js UI and a Go + gqlgen health-only server with Docker support. Business GraphQL operations, Supabase integration, authentication, persistence, Relay, and imports are not implemented by this ADR. The design must preserve exact financial calculations and auditability while supporting future clients and imports. See [API architecture](../api-architecture.md) and [open decisions](open-decisions.md).
+At the time of this decision, Kami Split had a seeded Next.js UI and a Go + gqlgen health-only server with Docker support. Business GraphQL operations, Supabase integration, authentication, persistence, Relay, and imports are not implemented by this ADR. The design must preserve exact financial calculations and auditability while supporting future clients and imports. See [API architecture](../api-architecture.md) and [open decisions](open-decisions.md).
 
 ## D1: Application and platform boundaries
 
@@ -45,7 +45,7 @@ Rationale: explicit, reviewable SQL and generated plumbing make transactions und
 - Amounts paid and owed each reconcile to the expense total. Net positions sum to zero per currency. Settlements change sender and recipient positions equally and oppositely.
 - Preserve deterministic equal-split remainders: distribute leftover cents by participant ID in ascending code-unit order, independent of UI selection order. USD 10 split three ways is 3.34, 3.33, 3.33. Specify a cross-language stable ID ordering before server implementation.
 
-Rationale: minor units preserve exactness, and string transport avoids GraphQL Int's 32-bit limit and JSON client precision loss. Consequences: custom scalar validation and Relay mapping are required; string transport alone does not guarantee safe client arithmetic. See the existing [ledger contract](../../ledger.md).
+Rationale: minor units preserve exactness, and string transport avoids GraphQL Int's 32-bit limit and JSON client precision loss. Consequences: custom scalar validation and Relay mapping are required; string transport alone does not guarantee safe client arithmetic. See the existing [ledger contract](https://github.com/haggaikaunda/kami-split/issues/14).
 
 ## D4: Identity and membership
 

@@ -74,7 +74,6 @@ workspace and cannot be relabeled or retried as a current-space action. Legacy
 untargeted `/invitations` explains the new home; an explicit authorized owner
 target resolves to the canonical Members route without choosing a first group.
 
-See [rendered browser evidence](account-browser-evidence.md) for before/after
-images and acceptance coverage. Successful explicit local sign-out replaces the
+Successful explicit local sign-out replaces the
 route with `/sign-in` after private state cleanup; invitation Switch account
 retains its separate continuation.

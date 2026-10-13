@@ -6,20 +6,11 @@ Issue [#140](https://github.com/haggaikaunda/kami-split/issues/140) approves
 the first production deployment: Vercel for the web application, Google Cloud
 Run for the Go API, hosted Supabase for Auth/PostgreSQL, and GitHub Actions as
 the only deployment orchestrator. This document defines names, configuration
-ownership, the provisioned production foundation, and operating procedures. It
+ownership, the approved production foundation, and operating procedures. It
 does not store a credential. Explicitly authorized API rehearsals use the production
 resources under the boundaries described below.
 
-Production is serving through the normal GitHub Actions release path. On
-2026-10-06, [run 37565115466](https://github.com/haggaikaunda/kami-split/actions/runs/37565115466)
-succeeded for `f55f131bd604d172dd6bf2fa540db3149f1db984`: explicit migrations,
-API candidate checks and promotion, staged web checks and promotion, and hosted
-verification all passed. API `/ready` checks database connectivity and warmed
-Auth trust; GraphQL health alone does not establish that readiness. The #140
-incident record identifies the initial startup failure as a runtime-role password
-mismatch; temporary raw driver logging is no longer required. This dated run is
-hosted execution evidence, not a fresh inspection of every provider setting or
-proof of later commits.
+Hosted releases and incidents are recorded on [#140](https://github.com/haggaikaunda/kami-split/issues/140). This guide describes checked-in release behavior and approved configuration, not a fresh provider-settings inspection or proof that a particular head is deployed. API `/ready` checks database connectivity and warmed Auth trust; GraphQL health alone does not establish readiness.
 
 There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
@@ -78,12 +69,9 @@ is `us-west1`, Google Cloud's Oregon region, for Cloud Run and Artifact
 Registry. Do not default locality from a developer workstation or GitHub runner
 location.
 
-## Provisioned production foundation
+## Production foundation contract
 
-The following production foundation was recorded as provisioned on 2026-10-01.
-Cloud Run now serves production releases; the deployment configuration retains a
-minimum instance count of zero and a maximum of one. These provisioning records
-are distinct from a fresh provider-settings inspection.
+Configure and verify the following foundation before deployment. Provider settings can change independently of source; inspect them under an authorized operations task. Keep Cloud Run minimum instances at zero and maximum at one unless a reviewed scaling change updates the process-local onboarding context contract.
 
 - Enabled APIs: Cloud Run Admin, Artifact Registry, Secret Manager, IAM Service
   Account Credentials, Security Token Service, and Cloud Resource Manager.
@@ -114,11 +102,11 @@ are distinct from a fresh provider-settings inspection.
   identity to the `kami-split-api` service in `us-west1`, allowing the workflow
   to maintain that service's unauthenticated invoker policy without granting
   general Cloud Run administration.
-- Regional Secret Manager containers were created in `us-west1` for
+- Regional Secret Manager containers belong in `us-west1` for
   `kami-split-database-url`, `kami-split-cursor-signing-keys`,
   `kami-split-invitation-keys`, `kami-split-onboarding-auth-admin-key`, and
   `kami-split-resend-api-key`. The runtime identity has Secret Accessor on only
-  these five containers. Each container has an enabled initial version; payloads
+  these five containers. Each referenced version must be enabled; payloads
   are not stored in GitHub or the repository.
 - `kami-split-supabase-ca` is a separate global Secret Manager container because
   Cloud Run does not support regional secrets for file-volume mounts. The runtime
@@ -305,10 +293,7 @@ in `z`. Local development uses the same canonical endpoints.
 
 ## Vercel production configuration
 
-The root [`.vercelignore`](../../.vercelignore) excludes synthetic design-verification
-archives under `docs/design/evidence/` from deployment uploads. They remain
-versioned in GitHub; application sources and build inputs are unaffected. This
-uses Vercel’s documented [root ignore-file fallback for monorepos](https://vercel.com/docs/deployments/vercel-ignore#monorepos).
+The root [`.vercelignore`](../../.vercelignore) excludes local verification output from deployment uploads. Application sources, required generated code and approved design inputs remain tracked; run outputs belong in ignored `test-results/` or external temporary directories.
 
 Vercel uses Node 24, pnpm 11.25.0, the repository lockfile, and the existing
 monorepo build commands described in [repository layout](../repository-layout.md).
@@ -340,15 +325,14 @@ callback paths required by the onboarding guide. Production migration execution
 uses the pinned Supabase CLI and committed `supabase/migrations`; the API never
 migrates on startup and the deployment workflow never resets production.
 
-The following operator selections have been recorded and verified:
+Before release, verify these required selections:
 
-- `us-west1` was selected from the actual Supabase region for the
-  confirmed `kami-finances-production` Google Cloud project.
+- `us-west1` matches the selected Supabase region for the `kami-finances-production` Google Cloud project.
 - Hosted Supabase Auth/JWKS endpoints, publishable key, restricted runtime
-  database URL, and migration credential are configured.
+  database URL, and migration credential must be configured.
 - The canonical Vercel production origin, organization ID, and project ID are in
   the GitHub `Production` environment.
-- The invitation sender domain and address are verified.
+- The invitation sender domain and address must be verified.
 - The Cloud Run service URL is discovered during deployment and must be recorded
   as `PRODUCTION_API_ORIGIN` after the first successful run.
 
@@ -453,10 +437,7 @@ inspect the provider state before rerunning; the script does not attempt rollbac
 
 `node --test scripts/vercel-promote.test.mjs` runs credential-free transport and
 clock simulations plus workflow boundary assertions in web CI. These checks do
-not prove live provider integration. [#151 completion evidence](https://github.com/haggaikaunda/kami-split/issues/151#issuecomment-5963098460)
-records the successful post-merge candidate deployment, protected staged
-verification, confirmed REST promotion and anonymous production verification on
-2026-10-02. Later releases must still pass those steps in that order.
+not prove live provider integration. Publish candidate, promotion and anonymous hosted verification results on the deployment issue/PR. Later releases must pass all three checks independently.
 
 ## Pre-merge API deployment rehearsal
 
@@ -522,14 +503,7 @@ revoke credentials, or undo in-flight work. Inactive revisions remain available
 for provenance under normal Cloud Run lifecycle management. Images are retained
 independently; there is no ad hoc Artifact Registry deletion.
 
-Bootstrap required the reviewed workflow to land on `main` before GitHub accepted
-its first manual dispatch. [#156 live rehearsal evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963681466)
-and [PR-close cleanup evidence](https://github.com/haggaikaunda/kami-split/issues/156#issuecomment-5963711172)
-record completed validation on 2026-10-02: exact SHA/image digests/revisions,
-unchanged serving allocation, stable tag movement and subsequent tag removal.
-For future rehearsals, select an open passing PR and retain equivalent provenance
-and traffic evidence. Do not relax WIF or environment controls to run the workflow
-from a feature branch.
+Dispatch the reviewed workflow from `main` for an open passing PR and retain exact SHA/image/revision, traffic and cleanup evidence on that PR. Do not relax WIF or environment controls to run it from a feature branch.
 
 ### Operator commands
 
