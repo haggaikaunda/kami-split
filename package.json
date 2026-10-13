@@ -18,9 +18,11 @@
     "test": "pnpm --filter @kami-split/web test",
     "test:watch": "pnpm --filter @kami-split/web test:watch",
     "relay:generate": "node scripts/relay/generate.mjs",
-    "relay:check": "node scripts/relay/generate.mjs --validate"
+    "relay:check": "node scripts/relay/generate.mjs --validate",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@types/node": "^24.19.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

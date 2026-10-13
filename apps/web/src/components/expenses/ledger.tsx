@@ -430,7 +430,9 @@ function LedgerContent({
           : saved.scroll;
         window.scrollTo(0, Math.max(0, top));
       }
-      positions.delete(visitKey);
+      // Keep the source anchor for a Forward entry that remounts the ledger.
+      // Explicit refresh and account disposal still invalidate these positions.
+      if (saved) positions.set(visitKey, saved);
       setRestoring(false);
     });
     return () => cancelAnimationFrame(frame);

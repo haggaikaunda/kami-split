@@ -48,6 +48,9 @@ for (const [paths, web, api] of [
     true,
   ],
   [['docs/example.tsx'], true, true],
+  [['playwright.config.mjs'], true, true],
+  [['tests/browser/smoke.spec.mjs'], true, true],
+  [['scripts/browser/auth-server.mjs'], true, true],
   [['new-unknown-package/input.txt'], true, true],
   [
     [

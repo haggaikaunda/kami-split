@@ -513,3 +513,31 @@ it('does not finish a saved-overlay return from the old page while fresh authori
     cancelSpy.mockRestore();
   }
 });
+
+it('replays fresh pages and the late-row anchor after repeated history remounts', async () => {
+  state.params = 'category=DINING';
+  await render();
+  await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], 'first'));
+  await click('Load more expenses');
+  await respond(result(['two', 'late'], null));
+  await act(async () =>
+    host.querySelector<HTMLAnchorElement>('#ledger-expense-late')!.click(),
+  );
+  // Back, then Forward/close can each remount the source without a new row click.
+  for (const suffix of ['back', 'forward-close']) {
+    await act(async () => root.render(null));
+    await render();
+    expect(host.textContent).not.toContain('Dinner late');
+    await respond(result(['one', 'a', 'b', 'c', 'd', 'e'], suffix));
+    expect(state.requests.at(-1)?.variables).toMatchObject({
+      after: suffix,
+      filter: { categories: ['DINING'] },
+    });
+    await respond(result(['two', 'late'], null));
+    await act(
+      async () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    expect(document.activeElement?.id).toBe('ledger-expense-late');
+  }
+});

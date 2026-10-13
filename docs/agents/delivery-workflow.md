@@ -45,7 +45,7 @@ check. It runs repository validation and the centralized change classifier, then
 fallbacks, and selective release semantics. Both reusable workflows use only
 `workflow_call`; their caller owns selection and concurrency.
 
-`web.yml` owns pnpm/Node setup, the root-lockfile cache, lint, type checking, web tests, and the Next.js build, in order.
+`web.yml` owns pnpm/Node setup, the root-lockfile cache, lint, type checking, web tests, the Next.js build, and the required Playwright Chromium smoke suite, in order. The browser suite reuses that build with one worker on the same runner and uploads failure artifacts for seven days.
 Repository-wide formatting runs exactly once in the repository validation job,
 alongside classifier/gate tests, even for documentation-only changes.
 `api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted

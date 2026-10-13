@@ -27,4 +27,15 @@ jobs:
       - run: pnpm typecheck
       - run: node --test scripts/vercel-promote.test.mjs
       - run: pnpm test
+      - run: node --test scripts/browser/*.test.mjs
       - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:browser
+        env:
+          BROWSER_SKIP_BUILD: '1'
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: browser-failure
+          path: test-results/browser/
+          retention-days: 7

@@ -11,6 +11,7 @@ export default defineConfig([
     '**/relay/__generated__/**',
     '**/coverage/**',
     '**/playwright-report/**',
+    '**/test-results/**',
     'docs/design/prototype/**',
   ]),
 ]);
