@@ -80,3 +80,14 @@ provider failure, sign-out/multi-tab/history/reload, invitations, confirmation a
 password setup. Synthetic fixtures prove web behavior, not hosted delivery,
 provider revocation semantics or real database authorization. Existing Auth/API
 and restricted database integration suites remain the provider/security evidence.
+
+The navigation/account/appearance/percentage synthetic runners and the optional
+`edit-real-browser.cjs` / `percentage-real-browser.cjs` runners also use the shared
+`browser-auth-fixture.cjs` cookie setup. Start their externally supplied Next
+preview with `ONBOARDING_PUBLIC_SUPABASE_URL=http://localhost:3196` and
+`ONBOARDING_PUBLIC_SUPABASE_KEY=synthetic-public`; run one fixture at a time. A
+custom `BROWSER_AUTH_ORIGIN` must be loopback and match that Next Auth URL. The real
+financial runners retain the Go fixture's actual verified bearer and real
+GraphQL endpoint; their local Auth fixture models only the web session boundary,
+not production identity or financial authorization. Their optional real-database
+journeys require the existing disposable integration setup and environment flags.

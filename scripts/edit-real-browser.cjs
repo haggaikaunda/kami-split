@@ -1,27 +1,32 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Optional integration runner loads externally installed Playwright. */
 // Invoked only by a disposable real API/database fixture. Auth transport is fixture-local.
 const { chromium } = require(process.env.EDIT_PLAYWRIGHT_MODULE);
+const {
+  authOrigin,
+  seedSession,
+  withAuthFixture,
+} = require('./browser-auth-fixture.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-(async () => {
-  const origin = process.env.EDIT_BROWSER_ORIGIN;
-  const user = {
-    id: process.env.EDIT_BROWSER_SUBJECT,
-    email: 'edit-browser@example.invalid',
-    aud: 'authenticated',
-    app_metadata: {},
-    user_metadata: {},
-    created_at: '2026-10-06T00:00:00Z',
-  };
-  const session = {
-    access_token: process.env.EDIT_BROWSER_TOKEN,
-    refresh_token: 'unused-fixture',
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: 'bearer',
-    user,
-  };
+const origin = process.env.EDIT_BROWSER_ORIGIN;
+const user = {
+  id: process.env.EDIT_BROWSER_SUBJECT,
+  email: 'edit-browser@example.invalid',
+  aud: 'authenticated',
+  app_metadata: {},
+  user_metadata: {},
+  created_at: '2026-10-06T00:00:00Z',
+};
+const session = {
+  access_token: process.env.EDIT_BROWSER_TOKEN,
+  refresh_token: 'unused-fixture',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  token_type: 'bearer',
+  user,
+};
+withAuthFixture(origin, session, async () => {
   // Theme regression checks intentionally follow OS changes through the real
   // persisted System preference; the product default remains Light.
   const preference = await fetch(
@@ -81,16 +86,13 @@ const path = require('node:path');
     const errors = [];
     let created, edited;
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.addInitScript(
-      (s) => localStorage.setItem('kami-auth', JSON.stringify(s)),
-      session,
-    );
+    await seedSession(page.context(), origin, session);
     await page.route('**/api/onboarding-config', (r) =>
       r.fulfill({
-        json: { url: origin + '/fixture-auth', key: 'fixture-public' },
+        json: { url: authOrigin, key: 'synthetic-public' },
       }),
     );
-    await page.route('**/fixture-auth/auth/v1/**', (r) =>
+    await page.route(authOrigin + '/auth/v1/**', (r) =>
       r.fulfill({ json: r.request().url().includes('/user') ? user : session }),
     );
     await page.route('**/api/graphql', async (r) => {
@@ -408,7 +410,7 @@ const path = require('node:path');
   }
   await browser.close();
   console.log('Edit browser evidence: ' + evidence);
-})().catch((error) => {
+}).catch((error) => {
   console.error(error);
   process.exit(1);
 });
