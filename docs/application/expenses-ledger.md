@@ -132,7 +132,9 @@ cannot leave an old selected row in the visible list. Replay is bounded by the
 previous loaded page count, stops on failure/exhaustion, and never scans indefinitely
 for a moved record. Only row identity, ordinal, loaded count and geometry live in
 the financial session; no private row payload is cached for restoration. Scope,
-URL filters and ordering identify each visit. Account disposal clears this metadata,
+URL filters and ordering identify each visit. A completed return retains its anchor
+for a later browser Forward entry that remounts the ledger; each return still
+replays freshly authorized pages. Account disposal clears this metadata,
 and explicit Refresh discards it and all incompatible cursors. Restoring reserves
 the prior list height while reauthorization is pending and focuses only after the
 fresh extent is available; ordinary page insertion does not move focus.

@@ -2,13 +2,48 @@
 
 Use rendered checks alongside API/database tests. Store outputs in ignored `test-results/` or an external temporary directory and publish relevant results on the delivery PR. Never commit captures or pass/fail reports.
 
-## Current authentication and component runners
+## Required Chromium smoke suite
 
-Use Node 24 and pinned pnpm. Playwright resolves normally or through `PLAYWRIGHT_MODULE`; `CHROME_PATH` optionally selects installed Chrome. These are local test dependencies, not application dependencies. Run the normal checks and build sequentially; stop a production preview before rebuilding its output.
+Use Node 24 and pnpm 11.25.0 from `package.json`. Install the frozen workspace dependencies and the Chromium version paired with pinned `@playwright/test`:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+# Linux, including CI: install Chromium and required system libraries together.
+pnpm exec playwright install --with-deps chromium
+pnpm test:browser
+```
+
+The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
+
+The suite covers cold HTML/Flight denial, sign-in continuation and logout/history, filtered multi-page expense detail/create restoration with fresh reads and focus, and a held private response across sign-out. Each test owns a fresh browser context, cookies, request log and GraphQL fixture state. Auth requests from both Next and the browser reach the same synthetic service; there is no production bypass. Test tokens, profiles, groups and money are synthetic. This proves frontend/Next behavior, not provider authentication, API authorization or persistence.
+
+Ports default to 3295 (Next) and 3296 (Auth). Existing servers are never reused. For simultaneous runs in **separate worktrees**, choose a distinct pair of ports and output location in each:
+
+```sh
+BROWSER_PORT=3395 BROWSER_AUTH_PORT=3396 \
+  BROWSER_OUTPUT_DIR=/tmp/kami-browser-other pnpm test:browser
+```
+
+The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. The affected-web job runs one browser worker on its existing runner, behind the unchanged required `Verify` gate. New root browser tooling is conservatively classified as shared input.
+
+```sh
+pnpm test:browser --project=chromium-390 --grep 'expense navigation'
+pnpm test:browser --project=chromium-390 --debug
+pnpm exec playwright show-report test-results/browser/report
+pnpm exec playwright show-trace test-results/browser/artifacts/<failed-test>/trace.zip
+```
+
+Focused/debug commands still start their own services and build unless explicitly reusing a fresh build with `BROWSER_SKIP_BUILD=1`. Missing dependencies/browser executables or occupied ports fail with setup diagnostics; install the pinned browser or choose unused ports, rather than pointing the suite at workstation Chrome.
+
+## Broader opt-in authentication and component runners
+
+The original broader scripts remain available. They resolve `playwright` through `PLAYWRIGHT_MODULE` or normal module resolution; use the repository-owned package after installation. `CHROME_PATH` remains an optional override only for these legacy runners.
 
 ```sh
 pnpm build
-node scripts/auth-boundary-browser.cjs
+PLAYWRIGHT_MODULE="$(node -p "require.resolve('@playwright/test')")" \
+  node scripts/auth-boundary-browser.cjs
 ```
 
 The Auth-boundary runner starts its own synthetic Auth and production Next servers on loopback, default ports 3196 and 3195. It checks actual cookie/server routing, cold HTML/Flight denial, safe continuation, sign-out/history and onboarding on desktop/mobile. See [web authentication routing](application/web-auth-routing.md#verification) for setup and limits.
