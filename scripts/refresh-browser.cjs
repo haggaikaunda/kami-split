@@ -41,7 +41,7 @@ module.exports = async function verifyRefresh({
   assert.equal(
     await page
       .locator(
-        '.workspace-navigation button, .ui-workspace-header .workspace-refresh',
+        '[data-ui~="workspace-navigation"] button, [data-ui~="workspace-header"] .workspace-refresh',
       )
       .count(),
     0,

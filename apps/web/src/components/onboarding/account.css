@@ -71,7 +71,7 @@
   gap: 11px;
   margin-bottom: 24px;
 }
-.account-section-title > .app-icon {
+.account-section-title > [data-ui~='icon'] {
   margin-top: 3px;
   color: var(--color-primary);
 }
@@ -86,12 +86,12 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: 16px;
 }
-.account-profile-fields .ui-field {
+.account-profile-fields [data-ui~='field'] {
   position: relative;
   margin: 0;
   align-content: start;
 }
-.account-profile-fields .ui-field label {
+.account-profile-fields [data-ui~='field'] [data-ui='field-label'] {
   position: absolute;
   margin: 0;
   top: -0.75em;
@@ -102,7 +102,7 @@
   font-size: 0.75rem;
   font-weight: 400;
 }
-.account-profile-fields .ui-field input {
+.account-profile-fields [data-ui~='field'] [data-ui='field-control'] {
   min-height: 56px;
   padding: 16px;
   border-radius: 5px;
@@ -110,7 +110,7 @@
   font-size: 0.875rem;
 }
 .account-control-context,
-.account-profile-fields .ui-hint,
+.account-profile-fields [data-ui~='hint'],
 .appearance-options legend,
 .appearance-choice input {
   position: absolute;
@@ -130,18 +130,18 @@
   gap: 8px;
   margin-top: 20px;
 }
-.account-content .ui-button {
+.account-content [data-ui~='button'] {
   padding: 0 22px;
 }
-.account-content .ui-button--text {
+.account-content [data-ui~='button--text'] {
   padding-inline: 12px;
 }
-.account-actions .ui-button {
+.account-actions [data-ui~='button'] {
   width: fit-content;
   max-width: 100%;
   white-space: normal;
 }
-.account-card > .ui-status,
+.account-card > [data-ui~='status'],
 .account-card > #profile-feedback {
   margin-bottom: 16px;
 }
@@ -186,7 +186,7 @@
   margin-top: 10px;
   font-size: 0.8125rem;
 }
-.appearance-choice-label .app-icon {
+.appearance-choice-label [data-ui~='icon'] {
   width: 16px;
   height: 16px;
 }
@@ -265,7 +265,7 @@
   line-height: 1.5;
   font-weight: 500;
 }
-.account-session .ui-button {
+.account-session [data-ui~='button'] {
   flex-shrink: 0;
 }
 .account-session-notice {
@@ -290,7 +290,7 @@
   .account-card {
     padding: 20px 17px;
   }
-  .account-profile-fields .ui-field input {
+  .account-profile-fields [data-ui~='field'] [data-ui='field-control'] {
     font-size: 1rem;
   }
   .appearance-options {
@@ -321,7 +321,7 @@
   .account-section-title {
     display: block;
   }
-  .account-section-title > .app-icon {
+  .account-section-title > [data-ui~='icon'] {
     margin: 0 0 8px;
   }
 }

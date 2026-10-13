@@ -1,4 +1,7 @@
 'use client';
+import shellStyles from '../workspace/shell.module.css';
+import { cx } from '../ui/classnames';
+
 import {
   AppIcon,
   Brand,
@@ -6,7 +9,7 @@ import {
 } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Status } from '@/components/primitives';
+import { Button, Status } from '../ui/primitives';
 import { useOnboarding, type Mode } from './controller';
 import { HouseIllustration, InvitationScreens, SignIn } from './screens';
 import { AppearanceEditor } from './appearance';
@@ -79,15 +82,24 @@ function OnboardingVisit({
     <main
       className={
         account
-          ? 'financial-journey group-workspace account-workspace'
+          ? cx(
+              'financial-journey group-workspace account-workspace',
+              shellStyles.shell,
+            )
           : 'onboarding'
       }
       id="page-content"
     >
       {account && <WorkspaceNavigation />}
       <div
-        className={
+        data-content={account ? 'account' : undefined}
+        data-ui={
           account ? 'workspace-content account-content' : 'onboarding-panel'
+        }
+        className={
+          account
+            ? cx(shellStyles['workspace-content'], 'account-content')
+            : 'onboarding-panel'
         }
         ref={panel}
       >
@@ -122,7 +134,12 @@ function OnboardingVisit({
               </>
             ) : account ? (
               <>
-                <div className="workspace-crumb">Account</div>
+                <div
+                  data-ui="workspace-crumb"
+                  className={shellStyles['workspace-crumb']}
+                >
+                  Account
+                </div>
                 <header className="account-heading">
                   <h1>
                     {mode === 'account' ? 'Your account' : 'Manage invitations'}

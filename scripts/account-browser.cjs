@@ -460,8 +460,9 @@ withAuthFixture(origin, session, async () => {
           return {
             canvas: getComputedStyle(document.documentElement).backgroundColor,
             brand: ratio(
-              getComputedStyle(document.querySelector('.workspace-brand'))
-                .color,
+              getComputedStyle(
+                document.querySelector('[data-ui~="workspace-brand"]'),
+              ).color,
               background,
             ),
             heading: ratio(

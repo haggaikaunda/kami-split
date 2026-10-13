@@ -1,6 +1,6 @@
 'use client';
 import { localCalendarDate } from '@/lib/dates';
-import { Button } from '@/components/primitives';
+import { Button } from '../ui/primitives';
 import { ExpenseFields } from './expense-fields';
 import { createSessionId } from '@/lib/session-id';
 import { useEffect, useRef, useState } from 'react';

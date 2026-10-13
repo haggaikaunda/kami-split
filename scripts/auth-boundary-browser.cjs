@@ -90,7 +90,7 @@ const protectedRoutes = [
   '/future-private-route/nested',
 ];
 const forbidden =
-  '.workspace-navigation,.workspace-nav,.ui-workspace-header,.ui-workspace-tabs,.account-heading,.financial-navigation';
+  '[data-ui~="workspace-navigation"],.workspace-nav,[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],.account-heading,.financial-navigation';
 async function noPrivate(page) {
   assert.equal(await page.locator(forbidden).count(), 0, page.url());
   assert.equal(
@@ -226,7 +226,7 @@ const onboardingCalls = [];
         assert.equal(new URL(location, origin).pathname, '/sign-in');
         const body = await response.text();
         assert(
-          !/ui-workspace-header|ui-workspace-tabs|Private synthetic person/.test(
+          !/workspace-header|workspace-tabs|Private synthetic person/.test(
             body,
           ),
         );

@@ -1,5 +1,5 @@
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
-import { Button, Field } from '@/components/primitives';
+import { Button, Field } from '../ui/primitives';
 import type { OnboardingController } from './controller';
 export function ActionRecovery({ state: c }: { state: OnboardingController }) {
   const {

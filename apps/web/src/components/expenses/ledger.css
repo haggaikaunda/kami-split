@@ -37,7 +37,7 @@
   background: var(--color-container);
   color: var(--color-on-container);
 }
-.ledger-view-switch .app-icon {
+.ledger-view-switch [data-ui~='icon'] {
   width: 1.0625rem;
   height: 1.0625rem;
 }
@@ -79,7 +79,7 @@
   min-height: 2.25rem;
   font-size: inherit;
 }
-.ledger-filter-chip .app-icon {
+.ledger-filter-chip [data-ui~='icon'] {
   width: 0.8125rem;
   height: 0.8125rem;
 }
@@ -157,7 +157,7 @@
   text-align: end;
   flex-shrink: 0;
 }
-.ledger-money > .ui-money {
+.ledger-money > [data-ui~='money'] {
   font-weight: 500;
 }
 .ledger-money > span:last-child {
@@ -344,7 +344,7 @@
   font-size: 0.875rem;
   color: var(--color-muted);
 }
-.breakdown-center .ui-money {
+.breakdown-center [data-ui~='money'] {
   font-size: 1.6875rem;
   line-height: 2.25rem;
   font-weight: 500;
@@ -484,7 +484,7 @@
     gap: 0.625rem;
   }
   .ledger-description strong,
-  .ledger-money > .ui-money {
+  .ledger-money > [data-ui~='money'] {
     font-size: 0.875rem;
   }
   .ledger-description > span {
@@ -530,7 +530,7 @@
   .breakdown-content {
     margin-top: 1.0625rem;
   }
-  .breakdown-center .ui-money {
+  .breakdown-center [data-ui~='money'] {
     font-size: 1.5625rem;
     line-height: 2rem;
   }
@@ -546,10 +546,10 @@
     gap: 0.3125rem;
     padding-inline: 0.625rem;
   }
-  .breakdown-center .ui-money {
+  .breakdown-center [data-ui~='money'] {
     font-size: 1.375rem;
   }
-  .ledger-view-switch .app-icon {
+  .ledger-view-switch [data-ui~='icon'] {
     display: none;
   }
   .ledger-description {
@@ -797,7 +797,7 @@
   min-height: 44px;
   border-radius: 50%;
 }
-.ledger-dialog--filters .ledger-dialog-close .app-icon {
+.ledger-dialog--filters .ledger-dialog-close [data-ui~='icon'] {
   width: 24px;
   height: 24px;
 }
@@ -950,13 +950,13 @@
   padding: 12px 20px 16px;
   border-top: 1px solid var(--color-border);
 }
-.ledger-filter-actions .ui-button {
+.ledger-filter-actions [data-ui~='button'] {
   min-width: 0;
   padding-inline: min(0.75rem, 12px);
   white-space: normal;
   overflow-wrap: normal;
 }
-.ledger-filter-actions .ui-button:first-child {
+.ledger-filter-actions [data-ui~='button']:first-child {
   white-space: nowrap;
 }
 

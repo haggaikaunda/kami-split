@@ -1,4 +1,7 @@
 'use client';
+import uiStyles from '../ui/primitives.module.css';
+import { cx } from '../ui/classnames';
+
 import { calendarDate } from '@/lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import { commitMutation, fetchQuery } from 'relay-runtime';
@@ -29,7 +32,7 @@ import {
 import { createSessionId } from '@/lib/session-id';
 import { ExpenseFields } from './expense-fields';
 import { CategoryIcon } from '@/components/workspace-identity';
-import { Money } from '@/components/primitives';
+import { Money } from '../financial/presentation';
 import { overviewDate } from './overview-date';
 import { money } from '@/lib/relay/money';
 type Outcome =
@@ -461,7 +464,8 @@ export function ExpenseEdit({
           {!attempt && (
             <button
               type="button"
-              className="ui-button ui-button--text"
+              data-ui="button button--text"
+              className={cx(uiStyles['button'], uiStyles['button--text'])}
               disabled={busy}
               onClick={() => {
                 if (unchanged) discard();
@@ -473,7 +477,8 @@ export function ExpenseEdit({
           )}
           <button
             type="submit"
-            className="ui-button ui-button--primary"
+            data-ui="button button--primary"
+            className={cx(uiStyles['button'], uiStyles['button--primary'])}
             disabled={
               busy ||
               !!attempt ||

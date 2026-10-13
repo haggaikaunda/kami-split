@@ -23,10 +23,10 @@ module.exports = async function verifyLayout({
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
   const bannerHeight = (
-    await page.locator('.ui-workspace-header').boundingBox()
+    await page.locator('[data-ui~="workspace-header"]').boundingBox()
   ).height;
   await page
-    .locator('.ui-workspace-tabs')
+    .locator('[data-ui~="workspace-tabs"]')
     .getByRole('link', { name: 'Expenses', exact: true })
     .click();
   await page.locator('#ledger-expense-e40').waitFor();
@@ -35,7 +35,7 @@ module.exports = async function verifyLayout({
     expenses,
   );
   const compactHeight = (
-    await page.locator('.ui-workspace-header').boundingBox()
+    await page.locator('[data-ui~="workspace-header"]').boundingBox()
   ).height;
   assert(
     compactHeight < bannerHeight,
@@ -56,10 +56,10 @@ module.exports = async function verifyLayout({
         };
       };
       return {
-        header: box('.workspace-navigation-brand'),
-        nav: box('.workspace-navigation-links'),
+        header: box('[data-ui~="workspace-navigation-brand"]'),
+        nav: box('[data-ui~="workspace-navigation-links"]'),
         last: box('#ledger-expense-e40'),
-        content: box('.workspace-content'),
+        content: box('[data-ui~="workspace-content"]'),
         width: innerWidth,
         height: innerHeight,
         scrollY,
@@ -136,10 +136,10 @@ module.exports = async function verifyLayout({
   const focus = await page.evaluate(() => {
     const r = document.activeElement.getBoundingClientRect();
     const header = document
-      .querySelector('.workspace-navigation-brand')
+      .querySelector('[data-ui~="workspace-navigation-brand"]')
       .getBoundingClientRect();
     const nav = document
-      .querySelector('.workspace-navigation-links')
+      .querySelector('[data-ui~="workspace-navigation-links"]')
       .getBoundingClientRect();
     return {
       top: r.top,
@@ -203,13 +203,13 @@ module.exports = async function verifyLayout({
   await page.keyboard.press('Escape');
 
   await page
-    .locator('.workspace-navigation')
+    .locator('[data-ui~="workspace-navigation"]')
     .getByRole('link', { name: 'Account', exact: true })
     .click();
   await page.locator('.account-heading').waitFor();
   assert.equal(
     await page
-      .locator('.workspace-navigation a[aria-current="page"]')
+      .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
       .getAttribute('href'),
     '/account',
   );
@@ -220,7 +220,7 @@ module.exports = async function verifyLayout({
       .querySelector('.account-content')
       .getBoundingClientRect().top,
     headerBottom: document
-      .querySelector('.workspace-navigation-brand')
+      .querySelector('[data-ui~="workspace-navigation-brand"]')
       .getBoundingClientRect().bottom,
   }));
   assert(!shortPage.overflow, 'Account no horizontal overflow');
@@ -234,7 +234,7 @@ module.exports = async function verifyLayout({
   await page.locator('#ledger-expense-e40').waitFor();
   assert.equal(
     await page
-      .locator('.workspace-navigation a[aria-current="page"]')
+      .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
       .getAttribute('href'),
     workspace === 'group' ? '/trips' : '/household',
   );

@@ -1,4 +1,6 @@
 'use client';
+
+import shellStyles from '../workspace/shell.module.css';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { Timestamp } from '@/components/date-time';
@@ -12,13 +14,9 @@ import Link from 'next/link';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
-import {
-  Button,
-  Skeleton,
-  Money,
-  WorkspaceHeader,
-  WorkspaceTabs,
-} from '@/components/primitives';
+import { Button, Skeleton } from '../ui/primitives';
+import { Money } from '../financial/presentation';
+import { WorkspaceHeader, WorkspaceTabs } from '../workspace/patterns';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { money } from '@/lib/relay/money';
 import groupDocument, {
@@ -50,7 +48,10 @@ type Detail = Extract<
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
-    <main className="financial-journey activity-workspace" id="page-content">
+    <main
+      className={`financial-journey activity-workspace ${shellStyles.shell}`}
+      id="page-content"
+    >
       <WorkspaceNavigation />
       <WorkspaceHeader
         title="Activity"

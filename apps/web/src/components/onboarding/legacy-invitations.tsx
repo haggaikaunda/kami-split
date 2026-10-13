@@ -1,4 +1,6 @@
 'use client';
+import shellStyles from '../workspace/shell.module.css';
+
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -38,9 +40,15 @@ export function LegacyInvitations() {
     });
   }, [c, id, router]);
   return (
-    <main className="financial-journey group-workspace" id="page-content">
+    <main
+      className={`financial-journey group-workspace ${shellStyles.shell}`}
+      id="page-content"
+    >
       <WorkspaceNavigation />
-      <div className="workspace-content">
+      <div
+        data-ui="workspace-content"
+        className={shellStyles['workspace-content']}
+      >
         <h1>Invitations have moved</h1>
         <p>
           Open Household, a group or a trip, then choose Members → Invitations.

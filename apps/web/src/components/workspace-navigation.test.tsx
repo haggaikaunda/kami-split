@@ -36,7 +36,9 @@ it('measures chrome without repositioning it during viewport, focus or zoom chan
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: HTMLElement) {
       return {
-        height: this.classList.contains('workspace-navigation-brand')
+        height: this.getAttribute('data-ui')
+          ?.split(/\s+/)
+          .includes('workspace-navigation-brand')
           ? 70
           : barHeight,
       } as DOMRect;

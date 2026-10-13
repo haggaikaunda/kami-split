@@ -1,4 +1,8 @@
 'use client';
+import shellStyles from '../workspace/shell.module.css';
+import uiStyles from '../ui/primitives.module.css';
+import { cx } from '../ui/classnames';
+
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { calendarDate } from '@/lib/dates';
@@ -9,8 +13,8 @@ import {
   WorkspaceTabs,
   WorkspacePrivacy,
   workspaceSections,
-  Skeleton,
-} from '@/components/primitives';
+} from '../workspace/patterns';
+import { Skeleton } from '../ui/primitives';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fetchQuery, readInlineData } from 'relay-runtime';
@@ -166,11 +170,18 @@ export function GroupJourney({
   if (household) return body;
   return (
     <main
-      className={`financial-journey ${initialGroup ? 'group-workspace' : ''}`}
+      className={cx(
+        'financial-journey',
+        shellStyles.shell,
+        initialGroup && 'group-workspace',
+      )}
       id="page-content"
     >
       <WorkspaceNavigation />
-      <div className="workspace-content">
+      <div
+        data-ui="workspace-content"
+        className={shellStyles['workspace-content']}
+      >
         <header className="journey-page-heading">
           {!initialGroup && (
             <h1 data-page-heading tabIndex={-1}>
@@ -189,7 +200,10 @@ export function GroupJourney({
         {initialGroup && (
           <>
             {access.scope && (
-              <div className="workspace-crumb">
+              <div
+                data-ui="workspace-crumb"
+                className={shellStyles['workspace-crumb']}
+              >
                 <SourceReturn scope={access.scope} />
               </div>
             )}
@@ -347,7 +361,12 @@ function ViewerJourney({
         <>
           {viewer.canCreateGroups && (
             <Link
-              className="ui-button ui-button--primary discovery-create"
+              data-ui="button button--primary"
+              className={cx(
+                uiStyles['button'],
+                uiStyles['button--primary'],
+                'discovery-create',
+              )}
               href={trips ? '/trips/new' : '/groups/new'}
             >
               {trips ? 'Create trip' : 'Create group'}

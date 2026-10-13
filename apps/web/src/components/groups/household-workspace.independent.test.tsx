@@ -165,7 +165,7 @@ async function content(
 }
 it('renders exact server aggregates and zero net with open source balances without settlement controls', async () => {
   await content('Overview');
-  const row = host.querySelector('.ui-summary-row')!;
+  const row = host.querySelector('[data-ui~="summary-row"]')!;
   expect(row.children).toHaveLength(3);
   expect(row.textContent).toContain('$90,071,992,547,409.93');
   expect(host.querySelector('.overview-count')?.textContent).toContain(
@@ -209,7 +209,7 @@ it.each(['INCOMPLETE', 'UNAVAILABLE'] as const)(
   'does not present complete totals for %s',
   async (state) => {
     await content('Overview', { ...fixture(), state } as Dashboard);
-    expect(host.querySelector('.ui-summary-row')).toBeNull();
+    expect(host.querySelector('[data-ui~="summary-row"]')).toBeNull();
     expect(host.textContent).not.toContain('$0.00');
     if (state === 'UNAVAILABLE') {
       expect(host.textContent).toContain('Refresh to check current access');
@@ -456,7 +456,7 @@ it('shows one concise settled status without a duplicate open balance count', as
     ...dashboard,
     totals: { ...totals, openBalanceCount: '0' },
   } as Dashboard);
-  const net = host.querySelector('.ui-signed-balance')!;
+  const net = host.querySelector('[data-ui~="signed-balance"]')!;
   expect(net.textContent).toContain('Nothing to pay or collect');
   expect(net.textContent).not.toContain('0 open balances');
   expect(net.querySelector('a')).toBeNull();
@@ -548,9 +548,9 @@ it('replaces eligible sources after revalidation rather than retaining a removed
   expect(host.textContent).not.toContain('Maui');
   expect(host.querySelector('a[href="/trips/trip-b?tab=balances"]')).toBeNull();
   expect(host.querySelectorAll('.household-balances li')).toHaveLength(2);
-  expect(host.querySelector('.ui-signed-balance')?.textContent).toContain(
-    '$84.20',
-  );
+  expect(
+    host.querySelector('[data-ui~="signed-balance"]')?.textContent,
+  ).toContain('$84.20');
 });
 
 it.each(['INCOMPLETE', 'UNAVAILABLE', 'FORBIDDEN', 'NETWORK'])(
@@ -575,7 +575,7 @@ it.each(['INCOMPLETE', 'UNAVAILABLE', 'FORBIDDEN', 'NETWORK'])(
     await foregroundRefresh();
     expect(host.textContent).not.toContain('Maui');
     expect(host.querySelector('.household-balances')).toBeNull();
-    expect(host.querySelector('.ui-signed-balance')).toBeNull();
+    expect(host.querySelector('[data-ui~="signed-balance"]')).toBeNull();
     expect(host.textContent).not.toContain('$0.00');
     expect(host.textContent).not.toContain('Everyone in this space is settled');
     expect(host.textContent).not.toContain(

@@ -1,4 +1,7 @@
 'use client';
+import financialStyles from '../financial/presentation.module.css';
+import { cx } from '../ui/classnames';
+
 import {
   RichHelp,
   BalanceExplanation,
@@ -24,17 +27,16 @@ import { fetchQuery } from 'relay-runtime';
 import document, {
   type householdWorkspaceQuery,
 } from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
-import { Skeleton } from '@/components/primitives';
+import { Skeleton } from '../ui/primitives';
 import type { householdMembersQuery } from '@/lib/relay/__generated__/householdMembersQuery.graphql';
 import { useHouseholdMembers } from './household-members';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
+import { SummaryMetric, Money } from '../financial/presentation';
 import {
-  SummaryMetric,
-  Money,
   workspaceSections,
   type WorkspaceSection,
-} from '@/components/primitives';
+} from '../workspace/patterns';
 import { ActivityFeed } from '@/components/activity/feed';
 import { useFinancialSession } from './session';
 import { ScopedLink, RestoreSource } from './navigation';
@@ -438,7 +440,12 @@ export function HouseholdContent({
                               ? 'Trip'
                               : 'Group'}
                         </strong>
-                        <span className="ui-row-detail">{detail}</span>
+                        <span
+                          data-ui="row-detail"
+                          className={financialStyles['row-detail']}
+                        >
+                          {detail}
+                        </span>
                       </span>
                       <span>
                         {net === undefined ? (
@@ -461,7 +468,13 @@ export function HouseholdContent({
       ) : (
         <>
           {totals && (
-            <div className="ui-summary-row household-summary">
+            <div
+              data-ui="summary-row"
+              className={cx(
+                financialStyles['summary-row'],
+                'household-summary',
+              )}
+            >
               <SummaryMetric
                 label="Total shared expenses"
                 tone="total"
@@ -517,7 +530,10 @@ export function HouseholdContent({
                               <CategoryIcon category={node.category} />
                               <span className="expense-row-copy">
                                 <strong>{node.description}</strong>
-                                <span className="ui-row-detail">
+                                <span
+                                  data-ui="row-detail"
+                                  className={financialStyles['row-detail']}
+                                >
                                   {source.name} ·{' '}
                                   <time dateTime={node.effectiveDate}>
                                     {overviewDate(
@@ -595,7 +611,10 @@ export function HouseholdContent({
                                 ? 'Trip'
                                 : 'Group'}
                           </strong>
-                          <span className="ui-row-detail">
+                          <span
+                            data-ui="row-detail"
+                            className={financialStyles['row-detail']}
+                          >
                             {space.viewerNetMinor == null
                               ? 'Unavailable'
                               : minor(space.viewerNetMinor) > 0n
@@ -645,7 +664,13 @@ function HouseholdNet({ totals }: { totals: Totals }) {
   const net = minor(totals.viewerNetMinor);
   return (
     <div
-      className={`ui-signed-balance ui-signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`}
+      data-ui={`signed-balance signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`}
+      className={cx(
+        financialStyles['signed-balance'],
+        financialStyles[
+          `signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`
+        ],
+      )}
     >
       <SummaryMetric
         label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
@@ -653,7 +678,10 @@ function HouseholdNet({ totals }: { totals: Totals }) {
         icon={<AppIcon name="arrow-up-right" />}
         detail={
           <>
-            <span className="ui-row-detail">
+            <span
+              data-ui="row-detail"
+              className={financialStyles['row-detail']}
+            >
               {net > 0n
                 ? "You're owed overall"
                 : net < 0n

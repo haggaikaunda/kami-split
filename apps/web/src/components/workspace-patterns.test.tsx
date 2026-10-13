@@ -6,8 +6,8 @@ import {
   ExpenseRow,
   RecommendedRepaymentRow,
   SignedBalanceMetric,
-  WorkspaceTabs,
-} from './primitives';
+} from './financial/presentation';
+import { WorkspaceTabs } from './workspace/patterns';
 
 it('preserves exact financial text and explicit balance meaning without summary actions', () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -30,7 +30,7 @@ it('preserves exact financial text and explicit balance meaning without summary 
     );
     for (const label of ["You're owed", 'You owe', 'Settled'])
       expect(container.textContent).toContain(label);
-    expect(container.querySelectorAll('.ui-money')).toHaveLength(3);
+    expect(container.querySelectorAll('[data-ui~="money"]')).toHaveLength(3);
     expect(container.textContent).toContain('9,999,999,999,999.99 USD');
     expect(container.querySelector('button, a')).toBeNull();
   } finally {

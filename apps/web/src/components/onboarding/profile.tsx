@@ -1,7 +1,7 @@
 'use client';
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Field, Status } from '@/components/primitives';
+import { Button, Field, Status } from '../ui/primitives';
 import { AppIcon } from '@/components/workspace-identity';
 import { useFinancialSession } from '@/components/groups/session';
 import query from '@/lib/relay/__generated__/profileQuery.graphql';

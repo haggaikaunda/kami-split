@@ -1,7 +1,8 @@
 'use client';
+import uiStyles from '../ui/primitives.module.css';
 
 import { useId, useState, type ReactNode } from 'react';
-import { Button } from '@/components/primitives';
+import { Button } from '../ui/primitives';
 import { categories } from '@/lib/relay/draft';
 import { datePreset, expenseFilterText } from '@/lib/relay/expense-filter';
 import { overviewDate } from '@/components/groups/overview-date';
@@ -118,7 +119,12 @@ export function ExpenseFilterForm({
           }
         >
           <fieldset className="ledger-filter-options ledger-filter-categories">
-            <legend className="ui-visually-hidden">Categories</legend>
+            <legend
+              data-ui="visually-hidden"
+              className={uiStyles['visually-hidden']}
+            >
+              Categories
+            </legend>
             {categories.map((category) => (
               <label key={category}>
                 <input
