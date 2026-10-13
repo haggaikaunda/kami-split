@@ -15,7 +15,12 @@ export function groupHref(id: string) {
 
 /** Only internal financial routes may survive sign-in; never an external redirect. */
 export function financialReturn(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//'))
+  if (
+    !value ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    /[\\\u0000-\u0020\u007f]/.test(value)
+  )
     return '/groups';
   const url = new URL(value, 'https://kami.invalid');
   const household = [
@@ -33,6 +38,8 @@ export function financialReturn(value: string | null) {
     url.hash ||
     !(
       household ||
+      url.pathname === '/account' ||
+      url.pathname === '/invitations' ||
       url.pathname === '/groups' ||
       url.pathname === '/trips' ||
       repayment ||
@@ -41,27 +48,32 @@ export function financialReturn(value: string | null) {
     )
   )
     return '/groups';
-  const allowed = household
-    ? [
-        'tab',
-        'expense',
-        'repayment',
-        'sender',
-        'recipient',
-        'amount',
-        'category',
-        'memberId',
-        'from',
-        'to',
-        'after',
-        'groupId',
-        'kind',
-      ]
-    : creation
-      ? ['kind']
-      : repayment
-        ? ['sender', 'recipient', 'amount']
-        : ['tab'];
+  const allowed =
+    url.pathname === '/account'
+      ? []
+      : url.pathname === '/invitations'
+        ? ['group']
+        : household
+          ? [
+              'tab',
+              'expense',
+              'repayment',
+              'sender',
+              'recipient',
+              'amount',
+              'category',
+              'memberId',
+              'from',
+              'to',
+              'after',
+              'groupId',
+              'kind',
+            ]
+          : creation
+            ? ['kind']
+            : repayment
+              ? ['sender', 'recipient', 'amount']
+              : ['tab'];
   if ([...url.searchParams.keys()].some((k) => !allowed.includes(k)))
     return '/groups';
   return url.pathname + url.search;

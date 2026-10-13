@@ -110,8 +110,8 @@ go build -o /private/tmp/kami-bootstrap ./cmd/bootstrap
 
 4. The designated user opens the normal `/sign-in` **Forgot password** flow in the
    configured browser. Follow the delivered recovery email in the same browser,
-   explicitly verify on `/auth/confirm`, set the actual password on
-   `/auth/password`, then sign in and inspect `/account` and authorized household
+   explicitly verify after `/auth/confirm` hands off to `/sign-in?flow=confirm`,
+   set the actual password on `/sign-in?flow=password`, then sign in and inspect `/account` and authorized household
    reads. This is #80's existing flow, not an operator-only password page.
    Recovery must establish a confirmed current email; the API rejects unverified
    identity. Password recovery never creates memberships or enables disabled

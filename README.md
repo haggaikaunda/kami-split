@@ -41,7 +41,7 @@ If the page fails, verify both the server connection and the rendered applicatio
 
 ## Explore the application
 
-`/` enters `/groups`, which loads authorized Group discovery or offers real sign-in. `/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Group and Trip workspaces use `/groups/:groupId`; expense details and repayment entry remain group-scoped. Retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
+`/` goes directly to `/sign-in` for signed-out visitors; verified sessions retain `/groups` as their home. Only sign-in is public. All application routes require a server-verified cookie session before rendering, and protected UI stays hidden during browser session checks. See [web authentication routing](docs/application/web-auth-routing.md). `/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Group and Trip workspaces use `/groups/:groupId`; expense details and repayment entry remain group-scoped. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
 
 The [frozen prototype](docs/design/README.md) and [primitive gallery](docs/primitives-preview/README.md) remain separate development references.
 

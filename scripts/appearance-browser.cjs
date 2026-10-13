@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Standalone CommonJS browser runner supports an external Playwright module. */
 // Synthetic frontend acceptance only; never point this fixture at hosted services.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {
+  authOrigin,
+  seedSession,
+  withAuthFixture,
+} = require('./browser-auth-fixture.cjs');
 const assert = require('node:assert/strict');
 const user = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -256,7 +261,7 @@ async function checkContrast(page) {
     );
   }
 }
-(async () => {
+withAuthFixture(origin, session, async () => {
   const browser = await chromium.launch({
     headless: true,
     ...(process.env.CHROME_PATH
@@ -280,16 +285,13 @@ async function checkContrast(page) {
   const errors = [],
     results = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.addInitScript(
-    (s) => localStorage.setItem('kami-auth', JSON.stringify(s)),
-    session,
-  );
+  await seedSession(page.context(), origin, session);
   await page.context().route('**/api/onboarding-config', (r) =>
     r.fulfill({
-      json: { url: origin + '/synthetic-auth', key: 'synthetic-public' },
+      json: { url: authOrigin, key: 'synthetic-public' },
     }),
   );
-  await page.context().route('**/synthetic-auth/auth/v1/**', (r) =>
+  await page.context().route(authOrigin + '/auth/v1/**', (r) =>
     r.fulfill({
       json: r.request().url().includes('/user') ? user : session,
     }),
@@ -741,7 +743,7 @@ async function checkContrast(page) {
   );
   console.log(JSON.stringify(results));
   await browser.close();
-})().catch((error) => {
+}).catch((error) => {
   console.error(error);
   process.exit(1);
 });
