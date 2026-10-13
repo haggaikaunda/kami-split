@@ -624,6 +624,20 @@ withAuthFixture(origin, session, async () => {
       await page.close();
       continue;
     }
+    if (process.env.FILTER_TESTS === '1') {
+      await require('./filter-browser.cjs')({
+        page,
+        origin,
+        workspace,
+        width,
+        scale,
+        output,
+        results,
+      });
+      assert.deepEqual(errors, []);
+      await page.close();
+      continue;
+    }
     if (process.env.LEDGER_TESTS === '1') {
       await require('./ledger-browser.cjs')({
         page,
@@ -831,6 +845,10 @@ withAuthFixture(origin, session, async () => {
     const filterControls = page.getByRole('dialog', {
       name: 'Expense filters',
     });
+    await filterControls
+      .locator('summary')
+      .filter({ hasText: 'Categories' })
+      .click();
     await filterControls.getByLabel('Groceries', { exact: true }).check();
     await filterControls.getByRole('button', { name: 'Apply filters' }).click();
     await page.waitForURL(

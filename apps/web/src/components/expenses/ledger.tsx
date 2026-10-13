@@ -20,10 +20,9 @@ import {
   expenseFilterText,
   expenseFilter,
   filterValues,
-  datePreset,
 } from '@/lib/relay/expense-filter';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { categories, type Member } from '@/lib/relay/draft';
+import type { Member } from '@/lib/relay/draft';
 import { money } from '@/lib/relay/money';
 import viewDocument, {
   type expensesView$data,
@@ -46,6 +45,7 @@ import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
 import { ExpenseBreakdown } from './breakdown';
 import './ledger.css';
+import { ExpenseFilterForm } from './filter-form';
 import { overviewDate } from '../groups/overview-date';
 
 type View = Extract<expensesView$data, { readonly __typename: 'ExpenseView' }>;
@@ -498,162 +498,6 @@ function LedgerContent({
     if (origin.current) router.back();
     else change({ expense: null, expenseGroup: null, create: null }, true);
   };
-  const filterForm = (
-    <form
-      className="ledger-filters"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        const patch = Object.fromEntries(
-          filterKeys.map((key) => [
-            key,
-            data.getAll(key).map(String).filter(Boolean),
-          ]),
-        );
-        if (groupId) patch.groupId = [];
-        if (patch.sort[0] === 'DATE_DESC') patch.sort = [];
-        const applied = new URLSearchParams();
-        for (const [key, values] of Object.entries(patch))
-          for (const value of values) applied.append(key, value);
-        onFilterApply(expenseFilterText(applied));
-        reset();
-        change({ ...patch, expense: null, expenseGroup: null, create: null });
-        setFiltersOpen(false);
-      }}
-    >
-      {!groupId && (
-        <label>
-          <span>Space</span>
-          <select name="groupId" defaultValue={params.get('groupId') ?? ''}>
-            <option value="">All spaces</option>
-            {spaces.map((s) => (
-              <option value={s.groupId} key={s.groupId}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <fieldset className="ledger-filter-options">
-        <legend>Categories</legend>
-        {categories.map((c) => (
-          <label key={c}>
-            <input
-              type="checkbox"
-              name="categories"
-              value={c}
-              defaultChecked={filterValues(params, 'categories').includes(c)}
-            />
-            <span>{c[0] + c.slice(1).toLowerCase()}</span>
-          </label>
-        ))}
-      </fieldset>
-      {(['paidByIds', 'memberIds'] as const).map((key) => (
-        <fieldset className="ledger-filter-options" key={key}>
-          <legend>{key === 'paidByIds' ? 'Paid by' : 'Involving'}</legend>
-          {key === 'memberIds' && (
-            <p>Payer or included participant, including a zero share.</p>
-          )}
-          {spaces.map((space) => (
-            <div key={space.groupId}>
-              <strong>{space.name}</strong>
-              {space.members.map((member) => (
-                <label key={member.id}>
-                  <input
-                    type="checkbox"
-                    name={key}
-                    value={member.id}
-                    defaultChecked={filterValues(params, key).includes(
-                      member.id,
-                    )}
-                  />
-                  <span>
-                    {member.displayName} · {space.name}
-                  </span>
-                </label>
-              ))}
-            </div>
-          ))}
-        </fieldset>
-      ))}
-      <label>
-        <span>Date preset</span>
-        <select
-          defaultValue="custom"
-          onChange={(event) => {
-            if (event.target.value === 'custom') return;
-            const range = datePreset(today, event.target.value);
-            for (const key of ['from', 'to'] as const) {
-              const input = event.currentTarget.form?.elements.namedItem(key);
-              if (input instanceof HTMLInputElement) input.value = range[key];
-            }
-          }}
-        >
-          <option value="custom">Custom dates</option>
-          <option value="all">All dates</option>
-          <option value="today">Today</option>
-          <option value="last7">Last 7 days</option>
-          <option value="month">This month to date</option>
-          <option value="previousMonth">Previous month</option>
-        </select>
-      </label>
-      <p>
-        Dates include both endpoints. Presets use the server calendar date (
-        {today}); last 7 days includes today and the six preceding dates.
-      </p>
-      <label>
-        <span>Sort</span>
-        <select name="sort" defaultValue={params.get('sort') || 'DATE_DESC'}>
-          <option value="DATE_DESC">Date: newest first</option>
-          <option value="DATE_ASC">Date: oldest first</option>
-          <option value="AMOUNT_DESC">Amount: highest first</option>
-          <option value="AMOUNT_ASC">Amount: lowest first</option>
-        </select>
-      </label>
-      <label>
-        <span>From</span>
-        <input
-          name="from"
-          type="date"
-          defaultValue={params.get('from') ?? ''}
-        />
-      </label>
-      <label>
-        <span>To</span>
-        <input name="to" type="date" defaultValue={params.get('to') ?? ''} />
-      </label>
-      <div className="ledger-filter-actions">
-        <Button
-          tone="text"
-          type="button"
-          onClick={(event) => {
-            const form = event.currentTarget.form;
-            if (form)
-              for (const field of Array.from(form.elements)) {
-                if (
-                  field instanceof HTMLInputElement ||
-                  field instanceof HTMLSelectElement
-                )
-                  if (
-                    field instanceof HTMLInputElement &&
-                    field.type === 'checkbox'
-                  )
-                    field.checked = false;
-                  else
-                    field.value =
-                      field.getAttribute('name') === 'sort' ? 'DATE_DESC' : '';
-              }
-          }}
-        >
-          Reset filters
-        </Button>
-        <Button tone="text" type="button" onClick={() => setFiltersOpen(false)}>
-          Cancel
-        </Button>
-        <Button type="submit">Apply filters</Button>
-      </div>
-    </form>
-  );
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
     <section
@@ -1023,7 +867,35 @@ function LedgerContent({
           title="Expense filters"
           onClose={() => setFiltersOpen(false)}
         >
-          <div key={filterText}>{filterForm}</div>
+          <ExpenseFilterForm
+            key={filterText}
+            filterText={filterText}
+            groupId={groupId}
+            spaces={spaces}
+            today={today}
+            onApply={(data) => {
+              const patch = Object.fromEntries(
+                filterKeys.map((key) => [
+                  key,
+                  data.getAll(key).map(String).filter(Boolean),
+                ]),
+              );
+              if (groupId) patch.groupId = [];
+              if (patch.sort[0] === 'DATE_DESC') patch.sort = [];
+              const applied = new URLSearchParams();
+              for (const [key, values] of Object.entries(patch))
+                for (const value of values) applied.append(key, value);
+              onFilterApply(expenseFilterText(applied));
+              reset();
+              change({
+                ...patch,
+                expense: null,
+                expenseGroup: null,
+                create: null,
+              });
+              setFiltersOpen(false);
+            }}
+          />
         </LedgerDialog>
       )}
       {(selected || create) && (
@@ -1202,7 +1074,7 @@ export function LedgerDialog({
   }, []);
   return (
     <dialog
-      className="ledger-dialog"
+      className="ledger-dialog ledger-dialog--filters"
       ref={ref}
       aria-label={title}
       tabIndex={-1}
@@ -1223,9 +1095,6 @@ export function LedgerDialog({
           <AppIcon name="close" />
         </button>
       </header>
-      <p className="ledger-filter-description">
-        Show expenses matching all selected filters.
-      </p>
       {children}
     </dialog>
   );
