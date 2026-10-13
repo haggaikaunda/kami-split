@@ -90,9 +90,6 @@ module.exports = async function verifyInstallation({
     appleIcon = metadata.appleIcon;
   }
   await verifyPublicAssets(page, origin, manifestURL, appleIcon);
-  const root = await page.request.get(origin + '/', { maxRedirects: 0 });
-  assert.equal(root.status(), 307);
-  assert.equal(new URL(root.headers().location, origin).pathname, '/groups');
 
   // Exercise the same links after entry from each reported installation page.
   for (const [label, route] of [
@@ -118,6 +115,9 @@ module.exports = async function verifyInstallation({
     );
     assert.equal(page.context().pages().length, 1);
   }
+  // Next can stream the page redirect after the authenticated layout starts.
+  await page.goto(origin + '/');
+  await page.waitForURL(origin + '/groups');
   const expensesURL = origin + '/trips/T?tab=expenses';
   await page.goto(expensesURL);
   await page.locator('#ledger-expense-e1').click();
