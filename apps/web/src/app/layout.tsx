@@ -13,6 +13,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Kami Grow',
   description: 'Shared expenses, simply settled.',
+  appleWebApp: {
+    capable: true,
+    title: 'Kami Grow',
+    statusBarStyle: 'default',
+  },
+  // Next.js emits mobile-web-app-capable; retain Apple's legacy capability too.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 export default function RootLayout({
   children,
