@@ -1,5 +1,4 @@
 'use client';
-import accountStyles from './account.module.css';
 
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
@@ -10,6 +9,7 @@ import query from '@/lib/relay/__generated__/profileQuery.graphql';
 import mutation from '@/lib/relay/__generated__/profileMutation.graphql';
 import { normalizedName } from '@/lib/relay/profile-name';
 import type { OnboardingController } from './controller';
+import accountStyles from './account.module.css';
 type Profile = { id: string; displayName: string };
 /** A compare-and-set setter, not a durable financial operation. An uncertain
  * response must be reconciled by reading before another explicit save. */
@@ -163,7 +163,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
         </div>
       )}
       <section
-        data-ui="account-card"
+        data-ui="account-card form-region"
         className={accountStyles['account-card']}
         aria-labelledby="profile-heading"
       >

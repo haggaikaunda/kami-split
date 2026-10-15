@@ -1,5 +1,5 @@
 'use client';
-import accountStyles from './account.module.css';
+
 import { cx } from '../ui/classnames';
 
 import { useEffect, useRef, useState } from 'react';
@@ -10,6 +10,7 @@ import { appearance, type Appearance } from '@/lib/appearance';
 import query from '@/lib/relay/__generated__/appearanceQuery.graphql';
 import mutation from '@/lib/relay/__generated__/appearanceMutation.graphql';
 import type { OnboardingController } from './controller';
+import accountStyles from './account.module.css';
 /** Keyed by actor at the account boundary, with epoch-checked requests. */
 export function AppearanceEditor({
   state: c,
@@ -126,7 +127,7 @@ export function AppearanceEditor({
   }, []);
   return (
     <section
-      data-ui="account-card"
+      data-ui="account-card form-region"
       className={accountStyles['account-card']}
       aria-labelledby="appearance-heading"
     >
@@ -158,14 +159,17 @@ export function AppearanceEditor({
       {saved ? (
         <div>
           <fieldset
-            data-ui="appearance-options"
+            data-ui="appearance-options form-fieldset"
             className={accountStyles['appearance-options']}
             disabled={uncertain}
           >
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
               <label
-                data-ui={`appearance-choice appearance-choice--${value.toLowerCase()}`}
+                data-ui={
+                  `appearance-choice appearance-choice--${value.toLowerCase()}` +
+                  ' form-label'
+                }
                 className={cx(
                   accountStyles['appearance-choice'],
                   accountStyles[`appearance-choice--${value.toLowerCase()}`],
@@ -187,6 +191,7 @@ export function AppearanceEditor({
                   value={value}
                   checked={selected === value}
                   onChange={() => choose(value)}
+                  data-ui="form-radio"
                 />
                 <span
                   data-ui="appearance-choice-label"

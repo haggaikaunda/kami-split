@@ -1,6 +1,4 @@
 'use client';
-import uiStyles from '../ui/primitives.module.css';
-import workspaceStyles from '../workspace/patterns.module.css';
 
 import { useState } from 'react';
 import {
@@ -14,6 +12,12 @@ import {
 } from '@/lib/relay/draft';
 import { Member as MemberLabel } from '../ui/primitives';
 import { money } from '@/lib/relay/money';
+import { cx } from '../ui/classnames';
+
+import uiStyles from '../ui/primitives.module.css';
+import workspaceStyles from '../workspace/patterns.module.css';
+import formsFeatureStyles from './forms.module.css';
+
 /** Shared exact-money and split controls for creation and versioned editing. */
 export function ExpenseFields({
   draft,
@@ -41,10 +45,19 @@ export function ExpenseFields({
   return (
     <>
       <legend>Expense details</legend>
-      <div className="expense-fields-grid">
-        <div className="expense-field expense-field--full">
+      <div
+        data-ui="expense-fields-grid"
+        className={formsFeatureStyles['expense-fields-grid']}
+      >
+        <div
+          data-ui="expense-field expense-field--full"
+          className={cx(
+            formsFeatureStyles['expense-field'],
+            formsFeatureStyles['expense-field--full'],
+          )}
+        >
           {' '}
-          <label htmlFor="expense-description">
+          <label htmlFor="expense-description" data-ui="form-label">
             <span>Description</span>
           </label>
           <input
@@ -52,11 +65,15 @@ export function ExpenseFields({
             value={draft.description}
             onChange={(e) => change({ description: e.target.value })}
             {...field('description')}
+            data-ui="form-control"
           />
         </div>
-        <div className="expense-field">
+        <div
+          data-ui="expense-field"
+          className={formsFeatureStyles['expense-field']}
+        >
           {' '}
-          <label htmlFor="expense-amount">
+          <label htmlFor="expense-amount" data-ui="form-label">
             <span>Amount (USD)</span>
           </label>
           <input
@@ -65,11 +82,15 @@ export function ExpenseFields({
             value={draft.amount}
             onChange={(e) => change({ amount: e.target.value })}
             {...field('amount')}
+            data-ui="form-control"
           />
         </div>
-        <div className="expense-field">
+        <div
+          data-ui="expense-field"
+          className={formsFeatureStyles['expense-field']}
+        >
           {' '}
-          <label htmlFor="expense-date">
+          <label htmlFor="expense-date" data-ui="form-label">
             <span>Date</span>
           </label>
           <input
@@ -78,11 +99,15 @@ export function ExpenseFields({
             value={draft.date}
             onChange={(e) => change({ date: e.target.value })}
             {...field('date')}
+            data-ui="form-control"
           />
         </div>
-        <div className="expense-field">
+        <div
+          data-ui="expense-field"
+          className={formsFeatureStyles['expense-field']}
+        >
           {' '}
-          <label htmlFor="expense-category">
+          <label htmlFor="expense-category" data-ui="form-label">
             <span>Category</span>
           </label>
           <select
@@ -92,6 +117,7 @@ export function ExpenseFields({
               change({ category: e.target.value as Draft['category'] })
             }
             {...field('category')}
+            data-ui="form-control"
           >
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -100,9 +126,12 @@ export function ExpenseFields({
             ))}
           </select>
         </div>
-        <div className="expense-field">
+        <div
+          data-ui="expense-field"
+          className={formsFeatureStyles['expense-field']}
+        >
           {' '}
-          <label htmlFor="expense-payer">
+          <label htmlFor="expense-payer" data-ui="form-label">
             <span>Paid by</span>
           </label>
           <select
@@ -110,6 +139,7 @@ export function ExpenseFields({
             value={draft.payer}
             onChange={(e) => change({ payer: e.target.value })}
             {...field('payer')}
+            data-ui="form-control"
           >
             <option value="">Select payer</option>
             {members
@@ -121,7 +151,13 @@ export function ExpenseFields({
               ))}
           </select>
         </div>
-        <div className="expense-field expense-field--full">
+        <div
+          data-ui="expense-field expense-field--full"
+          className={cx(
+            formsFeatureStyles['expense-field'],
+            formsFeatureStyles['expense-field--full'],
+          )}
+        >
           {' '}
           <button
             type="button"
@@ -129,11 +165,16 @@ export function ExpenseFields({
             aria-controls="expense-notes"
             onClick={() => setNotesExpanded(!notesExpanded)}
             hidden={!!draft.note || (submitted && !!checked.errors.note)}
+            data-ui="form-button"
           >
             {notesExpanded ? 'Hide optional note' : 'Add optional note'}
           </button>
-          <div id="expense-notes" hidden={!showNotes}>
-            <label htmlFor="expense-note">
+          <div
+            className={formsFeatureStyles['expense-notes']}
+            id="expense-notes"
+            hidden={!showNotes}
+          >
+            <label htmlFor="expense-note" data-ui="form-label">
               <span>Note</span>
             </label>
             <textarea
@@ -141,24 +182,33 @@ export function ExpenseFields({
               value={draft.note}
               onChange={(e) => change({ note: e.target.value })}
               {...field('note')}
+              data-ui="form-control"
             />
           </div>
         </div>
       </div>
       {draft.split === 'PERCENTAGE' && (
         <>
-          <p id="percentage-rounding" className="percentage-help">
+          <p
+            id="percentage-rounding"
+            data-ui="percentage-help"
+            className={formsFeatureStyles['percentage-help']}
+          >
             Percentages describe responsibility, not payment. Fractional cents
             go to the largest remainder, then ascending participant identity.
           </p>
           {draft.participants.length === 2 && (
-            <label className="percentage-link">
+            <label
+              data-ui="percentage-link form-label"
+              className={formsFeatureStyles['percentage-link']}
+            >
               <input
                 type="checkbox"
                 checked={!!draft.linkedPercentages}
                 onChange={(e) =>
                   change({ linkedPercentages: e.target.checked })
                 }
+                data-ui="form-checkbox"
               />
               Link percentages (two people)
             </label>
@@ -166,7 +216,8 @@ export function ExpenseFields({
         </>
       )}
       <fieldset
-        className="financial-participants"
+        data-ui="financial-participants form-fieldset"
+        className={formsFeatureStyles['financial-participants']}
         data-split={draft.split}
         {...field('participants')}
         tabIndex={-1}
@@ -177,14 +228,20 @@ export function ExpenseFields({
         >
           Participants and preview
         </legend>
-        <div className="expense-split-heading">
-          <label htmlFor="expense-split">Split type</label>{' '}
+        <div
+          data-ui="expense-split-heading"
+          className={formsFeatureStyles['expense-split-heading']}
+        >
+          <label htmlFor="expense-split" data-ui="form-label">
+            Split type
+          </label>{' '}
           <select
             id="expense-split"
             value={draft.split}
             onChange={(e) =>
               change(selectSplit(draft, e.target.value as Draft['split']))
             }
+            data-ui="form-control"
           >
             <option value="EQUAL">Equal</option>
             <option value="EXACT">Exact</option>
@@ -194,12 +251,19 @@ export function ExpenseFields({
             {draft.participants.length} members
           </span>
         </div>
-        <div className="financial-participant-grid">
+        <div
+          data-ui="financial-participant-grid"
+          className={formsFeatureStyles['financial-participant-grid']}
+        >
           {members
             .filter((m) => m.canParticipate)
             .map((member) => (
-              <div key={member.id} className="financial-participant">
-                <label>
+              <div
+                key={member.id}
+                data-ui="financial-participant"
+                className={formsFeatureStyles['financial-participant']}
+              >
+                <label data-ui="form-label">
                   <input
                     type="checkbox"
                     checked={draft.participants.includes(member.id)}
@@ -211,17 +275,30 @@ export function ExpenseFields({
                           : draft.participants.filter((id) => id !== member.id),
                       })
                     }
+                    data-ui="form-checkbox"
                   />
                   <MemberLabel name={member.displayName} />
                 </label>
                 {draft.split === 'PERCENTAGE' &&
                 draft.participants.includes(member.id) ? (
-                  <div className="percentage-share">
-                    <label htmlFor={`percentage-${member.id}`}>
+                  <div
+                    data-ui="percentage-share"
+                    className={formsFeatureStyles['percentage-share']}
+                  >
+                    <label
+                      htmlFor={`percentage-${member.id}`}
+                      data-ui="form-label"
+                    >
                       Percentage for {member.displayName}
                     </label>
-                    <div className="percentage-value">
-                      <span className="percentage-input">
+                    <div
+                      data-ui="percentage-value"
+                      className={formsFeatureStyles['percentage-value']}
+                    >
+                      <span
+                        data-ui="percentage-input"
+                        className={formsFeatureStyles['percentage-input']}
+                      >
                         <input
                           id={`percentage-${member.id}`}
                           inputMode="decimal"
@@ -243,11 +320,15 @@ export function ExpenseFields({
                               ? `expense-percentage-${member.id}-error`
                               : 'percentage-rounding'
                           }
+                          data-ui="form-control"
                         />
                         <span aria-hidden="true">%</span>
                       </span>
                       {Object.keys(checked.errors).length === 0 && (
-                        <strong className="percentage-money">
+                        <strong
+                          data-ui="percentage-money"
+                          className={formsFeatureStyles['percentage-money']}
+                        >
                           {money(
                             checked.allocations.find(
                               (a) => a.participantId === member.id,
@@ -273,13 +354,15 @@ export function ExpenseFields({
                             },
                           })
                         }
+                        data-ui="form-button"
                       >
                         Assign remaining to {member.displayName}
                       </button>
                     )}
                     {checked.errors[`percentage-${member.id}`] && (
                       <p
-                        className="financial-error"
+                        data-ui="financial-error"
+                        className={formsFeatureStyles['financial-error']}
                         id={`expense-percentage-${member.id}-error`}
                       >
                         {checked.errors[`percentage-${member.id}`]}
@@ -288,7 +371,7 @@ export function ExpenseFields({
                   </div>
                 ) : draft.split === 'EXACT' &&
                   draft.participants.includes(member.id) ? (
-                  <label>
+                  <label data-ui="form-label">
                     Exact USD for {member.displayName}
                     <input
                       inputMode="decimal"
@@ -301,6 +384,7 @@ export function ExpenseFields({
                           },
                         })
                       }
+                      data-ui="form-control"
                     />
                   </label>
                 ) : (
@@ -323,7 +407,13 @@ export function ExpenseFields({
       {draft.split === 'PERCENTAGE' && (
         <p
           role="status"
-          className={`percentage-status ${checked.errors.participants ? 'percentage-incomplete' : ''}`}
+          data-ui={`percentage-status ${checked.errors.participants ? 'percentage-incomplete' : ''}`}
+          className={cx(
+            formsFeatureStyles['percentage-status'],
+            checked.errors.participants
+              ? formsFeatureStyles['percentage-incomplete']
+              : '',
+          )}
         >
           {checked.errors.participants ??
             (Object.keys(checked.errors).some((key) =>
@@ -340,7 +430,8 @@ export function ExpenseFields({
           .filter(([key]) => !key.startsWith('percentage-'))
           .map(([key, error]) => (
             <p
-              className="financial-error"
+              data-ui="financial-error"
+              className={formsFeatureStyles['financial-error']}
               id={`expense-${key}-error`}
               key={key}
             >

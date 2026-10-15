@@ -54,20 +54,25 @@ module.exports = async function verifyLedger({
   };
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
-  const header = page.locator('.ledger-month > header').first();
+  const header = page.locator('[data-ui~="ledger-month"] > header').first();
   assert.match(await header.innerText(), /October 2026/);
   assert.match(await header.innerText(), /8 expenses\s*\$24.00\s+USD/);
-  assert.equal(await page.locator('.ledger-month details').count(), 0);
   assert.equal(
-    await header.locator('.ledger-month-count').innerText(),
+    await page.locator('[data-ui~="ledger-month"] details').count(),
+    0,
+  );
+  assert.equal(
+    await header.locator('[data-ui~="ledger-month-count"]').innerText(),
     '8 expenses',
   );
   assert(
-    !/expenses/.test(await header.locator('.ledger-month-total').innerText()),
+    !/expenses/.test(
+      await header.locator('[data-ui~="ledger-month-total"]').innerText(),
+    ),
   );
-  assert.equal(await page.locator('.ledger-month li').count(), 6);
+  assert.equal(await page.locator('[data-ui~="ledger-month"] li').count(), 6);
   assert.match(
-    await page.locator('.ledger-payer').first().innerText(),
+    await page.locator('[data-ui~="ledger-payer"]').first().innerText(),
     /Long payer name/,
   );
   const metrics = await page.evaluate(() => {
@@ -78,10 +83,11 @@ module.exports = async function verifyLedger({
     return {
       overflow: document.documentElement.scrollWidth > innerWidth,
       row: box('#ledger-expense-e1'),
-      payer: box('.ledger-payer'),
-      amount: box('.ledger-money'),
-      columns: getComputedStyle(document.querySelector('.ledger-columns'))
-        .display,
+      payer: box('[data-ui~="ledger-payer"]'),
+      amount: box('[data-ui~="ledger-money"]'),
+      columns: getComputedStyle(
+        document.querySelector('[data-ui~="ledger-columns"]'),
+      ).display,
     };
   });
   assert(!metrics.overflow, 'Long labels must not overflow the page');
@@ -96,8 +102,12 @@ module.exports = async function verifyLedger({
     0,
   );
   if (width <= 440 && scale === 1) {
-    const toggle = await page.locator('.ledger-view-switch').boundingBox();
-    const filter = await page.locator('.ledger-filter-button').boundingBox();
+    const toggle = await page
+      .locator('[data-ui~="ledger-view-switch"]')
+      .boundingBox();
+    const filter = await page
+      .locator('[data-ui~="ledger-filter-button"]')
+      .boundingBox();
     assert(
       Math.abs(toggle.y + toggle.height / 2 - filter.y - filter.height / 2) < 2,
       'Filters aligns with view toggle',
@@ -109,8 +119,8 @@ module.exports = async function verifyLedger({
     const compact = await page.locator('#ledger-expense-e2').evaluate((row) => {
       const box = (selector) =>
         row.querySelector(selector).getBoundingClientRect();
-      const payer = box('.ledger-payer');
-      const amount = box('.ledger-money');
+      const payer = box('[data-ui~="ledger-payer"]');
+      const amount = box('[data-ui~="ledger-money"]');
       return {
         height: row.getBoundingClientRect().height,
         payerRight: payer.right,
@@ -118,7 +128,7 @@ module.exports = async function verifyLedger({
         amountLeft: amount.left,
         amountTop: amount.top,
         categoryDisplay: getComputedStyle(
-          row.querySelector('.ledger-category-text'),
+          row.querySelector('[data-ui~="ledger-category-text"]'),
         ).display,
       };
     });
@@ -140,12 +150,14 @@ module.exports = async function verifyLedger({
     );
     assert.equal(compact.categoryDisplay, 'none');
     assert.match(
-      await page.locator('#ledger-expense-e2 .ledger-payer').innerText(),
+      await page
+        .locator('#ledger-expense-e2 [data-ui~="ledger-payer"]')
+        .innerText(),
       /Paid by Sasha/,
     );
     results.push({ workspace, width, scale, compact });
   }
-  await page.locator('.ledger-pagination').scrollIntoViewIfNeeded();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: 'Retry loading expenses' }).waitFor();
   assert.equal(
     pageRequests,
@@ -153,7 +165,7 @@ module.exports = async function verifyLedger({
     'Failed automatic page is not retried automatically',
   );
   assert.equal(
-    await page.locator('.ledger-month li').count(),
+    await page.locator('[data-ui~="ledger-month"] li').count(),
     6,
     'Authorized loaded rows survive transport failure',
   );
@@ -166,7 +178,7 @@ module.exports = async function verifyLedger({
     .waitFor();
   await page.locator('#ledger-expense-e1').focus();
   await page.keyboard.press('Enter');
-  await page.locator('.expense-presentation').waitFor();
+  await page.locator('[data-ui~="expense-presentation"]').waitFor();
   await freshReturn(() => page.keyboard.press('Escape'));
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e1',
@@ -178,13 +190,13 @@ module.exports = async function verifyLedger({
     (el) => el.getBoundingClientRect().top,
   );
   await page.keyboard.press('Enter');
-  await page.locator('.expense-presentation').waitFor();
+  await page.locator('[data-ui~="expense-presentation"]').waitFor();
   await freshReturn(() => page.goBack());
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e8',
   );
   assert.equal(
-    await page.locator('.ledger-month li').count(),
+    await page.locator('[data-ui~="ledger-month"] li').count(),
     9,
     'Back replays enough freshly authorized pages',
   );
@@ -196,7 +208,7 @@ module.exports = async function verifyLedger({
     'Back restores row viewport position',
   );
   await page.goForward();
-  await page.locator('.expense-presentation').waitFor();
+  await page.locator('[data-ui~="expense-presentation"]').waitFor();
   await freshReturn(() => page.keyboard.press('Escape'));
   await page.waitForFunction(
     () => document.activeElement?.id === 'ledger-expense-e8',
@@ -210,7 +222,7 @@ module.exports = async function verifyLedger({
   await page.locator('#expense-description').fill('Edited late expense');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page
-    .locator('.expense-presentation')
+    .locator('[data-ui~="expense-presentation"]')
     .getByText('Edited late expense', { exact: true })
     .waitFor();
   await freshReturn(() => page.keyboard.press('Escape'));
@@ -231,10 +243,10 @@ module.exports = async function verifyLedger({
     ) < 3,
     'Saved edit remount restores the authorized late row offset',
   );
-  assert.equal(await page.locator('.ledger-month li').count(), 9);
+  assert.equal(await page.locator('[data-ui~="ledger-month"] li').count(), 9);
   assert.match(await header.innerText(), /8 expenses\s*\$24.00\s+USD/);
   assert.match(
-    await page.locator('.ledger-month > header').nth(1).innerText(),
+    await page.locator('[data-ui~="ledger-month"] > header').nth(1).innerText(),
     /September 2026.*1 expense\s*\$3.00\s+USD/s,
   );
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
@@ -263,7 +275,7 @@ module.exports = async function verifyLedger({
     ['DINING', 'GROCERIES'],
   );
   assert.equal(
-    await page.locator('.ledger-month li').count(),
+    await page.locator('[data-ui~="ledger-month"] li').count(),
     6,
     'Filter resets loaded traversal',
   );
@@ -274,7 +286,7 @@ module.exports = async function verifyLedger({
   );
   assert(
     await page
-      .locator('.ledger-filter-button')
+      .locator('[data-ui~="ledger-filter-button"]')
       .evaluate((el) => el === document.activeElement),
     'Apply restores filter trigger focus',
   );

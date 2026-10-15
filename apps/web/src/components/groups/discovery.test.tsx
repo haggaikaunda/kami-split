@@ -242,9 +242,9 @@ it.each([
     await render(<GroupJourney />);
     await act(async () => mock.requests.at(-1)!.error(new Error(code)));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(copy);
-    expect(host.querySelector('.workspace-refresh')?.textContent).toContain(
-      'Couldn’t refresh. Try again.',
-    );
+    expect(
+      host.querySelector('[data-ui~="workspace-refresh"]')?.textContent,
+    ).toContain('Couldn’t refresh. Try again.');
   },
 );
 it.each([
@@ -260,9 +260,9 @@ it.each([
     await render(<GroupJourney />);
     await respond({ viewer: result });
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
-    expect(host.querySelector('.workspace-refresh')?.textContent).toContain(
-      'Couldn’t refresh. Try again.',
-    );
+    expect(
+      host.querySelector('[data-ui~="workspace-refresh"]')?.textContent,
+    ).toContain('Couldn’t refresh. Try again.');
     expect(host.textContent).not.toContain('Up to date');
   },
 );

@@ -1,5 +1,4 @@
 'use client';
-import helpStyles from './rich-help.module.css';
 
 import {
   useEffect,
@@ -10,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import helpStyles from './rich-help.module.css';
 
 /** Optional rich help opens on activation, with a dismiss action and no modal trap. */
 export function RichHelp({
@@ -114,7 +114,7 @@ export function RichHelp({
       <button
         ref={trigger}
         type="button"
-        data-ui="rich-help-trigger"
+        data-ui="rich-help-trigger form-button"
         className={helpStyles['rich-help-trigger']}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
@@ -181,6 +181,7 @@ export function RichHelp({
                 setOpen(false);
                 trigger.current?.focus();
               }}
+              data-ui="form-button"
             >
               Got it
             </button>

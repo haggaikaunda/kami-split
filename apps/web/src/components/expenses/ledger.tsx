@@ -2,7 +2,8 @@
 import { useExpenseEntry } from './entry';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
+import { AppIcon } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import {
   useEffect,
   useCallback,
@@ -41,9 +42,15 @@ import { AuthorizedDetail } from './authorized-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
 import { ExpenseBreakdown } from './breakdown';
-import './ledger.css';
+
 import { ExpenseFilterForm } from './filter-form';
 import { overviewDate } from '../groups/overview-date';
+import { cx } from '../ui/classnames';
+
+import ledgerFeatureStyles from './ledger.module.css';
+import formsFeatureStyles from '../groups/forms.module.css';
+import dialogFeatureStyles from './dialog.module.css';
+import filterFeatureStyles from './filter-form.module.css';
 
 type View = Extract<expensesView$data, { readonly __typename: 'ExpenseView' }>;
 export type LedgerSpace = {
@@ -88,6 +95,7 @@ export function ExpenseLedger(
 function LedgerContent({
   scope,
   groupId = '',
+  filterLayout = groupId ? 'group' : 'household',
   spaces,
   today,
   onDenied,
@@ -108,6 +116,7 @@ function LedgerContent({
   onFilterApply: (filters: string) => void;
   scope: FinancialScope;
   groupId?: string;
+  filterLayout?: 'group' | 'household';
   spaces: readonly LedgerSpace[];
   today: string;
   activeSpaces?: string;
@@ -481,7 +490,8 @@ function LedgerContent({
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
     <section
-      className="expense-ledger"
+      data-ui="expense-ledger form-region"
+      className={ledgerFeatureStyles['expense-ledger']}
       aria-label="Expenses"
       ref={container}
       style={restoring ? { minHeight: reservedHeight } : undefined}
@@ -490,12 +500,20 @@ function LedgerContent({
         <WorkspaceRefresh busy={loading} error={error} onRefresh={refresh} />
       )}
       {navigationPending && <p role="status">Opening expense view…</p>}
-      <div className="ledger-toolbar">
-        <nav className="ledger-view-switch" aria-label="Expense view">
+      <div
+        data-ui="ledger-toolbar"
+        className={ledgerFeatureStyles['ledger-toolbar']}
+      >
+        <nav
+          data-ui="ledger-view-switch"
+          className={ledgerFeatureStyles['ledger-view-switch']}
+          aria-label="Expense view"
+        >
           <button
             aria-label="List"
             aria-pressed={!breakdown}
             onClick={() => change({ view: null })}
+            data-ui="form-button"
           >
             <AppIcon name="list" /> List
           </button>
@@ -503,6 +521,7 @@ function LedgerContent({
             aria-label="Breakdown"
             aria-pressed={breakdown}
             onClick={() => change({ view: 'breakdown' })}
+            data-ui="form-button"
           >
             <AppIcon name="pie" /> Breakdown
           </button>
@@ -510,7 +529,8 @@ function LedgerContent({
         <button
           aria-label={`Filters${activeFilters.length ? ` · ${activeFilters.length}` : ''}`}
           ref={filterTrigger}
-          className="ledger-filter-button"
+          data-ui="ledger-filter-button form-button"
+          className={ledgerFeatureStyles['ledger-filter-button']}
           onClick={() => setFiltersOpen(true)}
         >
           <AppIcon name="sliders" /> Filters
@@ -518,7 +538,11 @@ function LedgerContent({
         </button>
       </div>
       {activeFilters.length > 0 && (
-        <div className="ledger-active-filters" aria-label="Active filters">
+        <div
+          data-ui="ledger-active-filters"
+          className={ledgerFeatureStyles['ledger-active-filters']}
+          aria-label="Active filters"
+        >
           {activeFilters.map(([key, value]) => {
             const memberSpaces =
               key === 'memberIds' || key === 'paidByIds'
@@ -551,7 +575,8 @@ function LedgerContent({
             return (
               <button
                 key={`${key}:${value}`}
-                className="ledger-filter-chip"
+                data-ui="ledger-filter-chip form-button"
+                className={ledgerFeatureStyles['ledger-filter-chip']}
                 aria-label={`Remove ${label}`}
                 onClick={() => {
                   reset();
@@ -574,7 +599,6 @@ function LedgerContent({
           })}
           <Button
             tone="text"
-            className="ledger-clear-filters"
             onClick={() => {
               reset();
               change(Object.fromEntries(filterKeys.map((key) => [key, null])));
@@ -584,7 +608,12 @@ function LedgerContent({
           </Button>
         </div>
       )}
-      <div className="ledger-summary" ref={summary} tabIndex={-1}>
+      <div
+        data-ui="ledger-summary"
+        className={ledgerFeatureStyles['ledger-summary']}
+        ref={summary}
+        tabIndex={-1}
+      >
         {page && !error ? (
           <span>
             {page.expenseCount}{' '}
@@ -602,7 +631,9 @@ function LedgerContent({
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
-      {loading && !page && <Skeleton label="Loading expenses" />}
+      {loading && !page && (
+        <Skeleton size="workspace" label="Loading expenses" />
+      )}
       {error ? (
         <p role="alert">{error}</p>
       ) : (
@@ -657,7 +688,8 @@ function LedgerContent({
                 )}
                 {params.get('sort')?.startsWith('AMOUNT_') && (
                   <section
-                    className="ledger-month-summaries"
+                    data-ui="ledger-month-summaries form-region"
+                    className={ledgerFeatureStyles['ledger-month-summaries']}
                     aria-label="Monthly totals"
                   >
                     <h2>Monthly totals for all matching expenses</h2>
@@ -696,12 +728,18 @@ function LedgerContent({
                   )
                   .map((month) => (
                     <section
-                      className="ledger-month"
+                      data-ui="ledger-month form-region"
+                      className={ledgerFeatureStyles['ledger-month']}
                       key={month.month}
                       aria-label={month.month}
                     >
-                      <header>
-                        <div className="ledger-month-heading">
+                      <header data-ui="form-region">
+                        <div
+                          data-ui="ledger-month-heading"
+                          className={
+                            ledgerFeatureStyles['ledger-month-heading']
+                          }
+                        >
                           <h2>
                             {month.month
                               ? new Intl.DateTimeFormat('en', {
@@ -713,21 +751,33 @@ function LedgerContent({
                                 )
                               : 'Expenses in amount order'}
                           </h2>
-                          <span className="ledger-month-count">
+                          <span
+                            data-ui="ledger-month-count"
+                            className={
+                              ledgerFeatureStyles['ledger-month-count']
+                            }
+                          >
                             {month.expenseCount}{' '}
                             {month.expenseCount === '1'
                               ? 'expense'
                               : 'expenses'}
                           </span>
                         </div>
-                        <span className="ledger-month-total">
+                        <span
+                          data-ui="ledger-month-total"
+                          className={ledgerFeatureStyles['ledger-month-total']}
+                        >
                           <Money
                             value={money(month.totalExpenseMinor)}
                             currency="USD"
                           />
                         </span>
                       </header>
-                      <div className="ledger-columns" aria-hidden="true">
+                      <div
+                        data-ui="ledger-columns"
+                        className={ledgerFeatureStyles['ledger-columns']}
+                        aria-hidden="true"
+                      >
                         <span>Expense / source / date</span>
                         <span>Paid by</span>
                         <span>Amount</span>
@@ -759,10 +809,22 @@ function LedgerContent({
                                   }}
                                 >
                                   <CategoryIcon category={node.category} />
-                                  <span className="ledger-description">
+                                  <span
+                                    data-ui="ledger-description"
+                                    className={
+                                      ledgerFeatureStyles['ledger-description']
+                                    }
+                                  >
                                     <strong>{node.description}</strong>
                                     <span>
-                                      <span className="ledger-category-text">
+                                      <span
+                                        data-ui="ledger-category-text"
+                                        className={
+                                          ledgerFeatureStyles[
+                                            'ledger-category-text'
+                                          ]
+                                        }
+                                      >
                                         {node.category[0] +
                                           node.category.slice(1).toLowerCase()}
                                         {' · '}
@@ -773,13 +835,30 @@ function LedgerContent({
                                       </time>
                                     </span>
                                   </span>
-                                  <span className="ledger-payer">
-                                    <span className="ledger-payer-label">
+                                  <span
+                                    data-ui="ledger-payer"
+                                    className={
+                                      ledgerFeatureStyles['ledger-payer']
+                                    }
+                                  >
+                                    <span
+                                      data-ui="ledger-payer-label"
+                                      className={
+                                        ledgerFeatureStyles[
+                                          'ledger-payer-label'
+                                        ]
+                                      }
+                                    >
                                       Paid by{' '}
                                     </span>
                                     {node.payer.displayName}
                                   </span>
-                                  <span className="ledger-money">
+                                  <span
+                                    data-ui="ledger-money"
+                                    className={
+                                      ledgerFeatureStyles['ledger-money']
+                                    }
+                                  >
                                     <Money
                                       value={money(node.totalMinor)}
                                       currency={source.currency}
@@ -800,7 +879,8 @@ function LedgerContent({
                   ))}
                 <div
                   ref={sentinel}
-                  className="ledger-pagination"
+                  data-ui="ledger-pagination"
+                  className={ledgerFeatureStyles['ledger-pagination']}
                   aria-live="polite"
                 >
                   {loading ? (
@@ -817,6 +897,7 @@ function LedgerContent({
                           setLoading(true);
                           setRetry((value) => value + 1);
                         }}
+                        data-ui="form-button"
                       >
                         Retry loading expenses
                       </button>
@@ -832,6 +913,7 @@ function LedgerContent({
                         !page.pageInfo.endCursor
                       }
                       onClick={loadMore}
+                      data-ui="form-button"
                     >
                       Load more expenses
                     </button>
@@ -848,6 +930,7 @@ function LedgerContent({
           onClose={() => setFiltersOpen(false)}
         >
           <ExpenseFilterForm
+            layout={filterLayout}
             key={filterText}
             filterText={filterText}
             groupId={groupId}
@@ -881,6 +964,7 @@ function LedgerContent({
       {(selected || create) && (
         <ExpensePresentation
           kind={selected ? 'detail' : 'create'}
+          layout={filterLayout}
           title={selected ? 'Expense detail' : 'Add expense'}
           onClose={close}
         >
@@ -912,11 +996,12 @@ function LedgerContent({
           ) : createSpace ? (
             <>
               {!groupId && (
-                <label>
+                <label data-ui="form-label">
                   Source space
                   <select
                     value={create}
                     onChange={(e) => change({ create: e.target.value }, true)}
+                    data-ui="form-control"
                   >
                     {spaces.map((s) => (
                       <option key={s.groupId} value={s.groupId}>
@@ -926,7 +1011,10 @@ function LedgerContent({
                   </select>
                 </label>
               )}
-              <p className="expense-create-context">
+              <p
+                data-ui="expense-create-context"
+                className={formsFeatureStyles['expense-create-context']}
+              >
                 {createSpace.name} · No money is moved.
               </p>
               <ExpenseForm
@@ -984,7 +1072,11 @@ export function LedgerDialog({
   }, []);
   return (
     <dialog
-      className="ledger-dialog ledger-dialog--filters"
+      data-ui="ledger-dialog ledger-dialog--filters"
+      className={cx(
+        dialogFeatureStyles['ledger-dialog'],
+        filterFeatureStyles['ledger-dialog--filters'],
+      )}
       ref={ref}
       aria-label={title}
       tabIndex={-1}
@@ -994,10 +1086,11 @@ export function LedgerDialog({
         onClose();
       }}
     >
-      <header>
+      <header data-ui="form-region">
         <h2>Filter expenses</h2>
         <button
-          className="ledger-dialog-close"
+          data-ui="ledger-dialog-close form-button"
+          className={filterFeatureStyles['ledger-dialog-close']}
           aria-label="Back to expenses"
           autoFocus
           onClick={onClose}

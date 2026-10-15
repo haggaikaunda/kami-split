@@ -42,10 +42,10 @@ it('retains zero-share category counts and an accessible amount instead of divid
     ),
   );
   expect(host.textContent).toContain('Your share is zero');
-  expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
-    '0.0% · 4 expenses',
-  );
-  expect(host.querySelector('.breakdown-sector')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="breakdown-legend"]')?.textContent,
+  ).toContain('0.0% · 4 expenses');
+  expect(host.querySelector('[data-ui~="breakdown-sector"]')).toBeNull();
   expect(host.textContent).toContain(
     'Counts include all matching expenses, including any with zero viewer share.',
   );
@@ -99,30 +99,36 @@ it('selects and clears a legend category with exact totals and matching drilldow
     ),
   );
   const home = [
-    ...host.querySelectorAll<HTMLButtonElement>('.breakdown-legend button'),
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '[data-ui~="breakdown-legend"] button',
+    ),
   ].find((button) => button.textContent?.includes('Home'))!;
   await act(async () => home.click());
   expect(home.getAttribute('aria-pressed')).toBe('true');
-  expect(host.querySelector('.breakdown-center')?.textContent).toContain(
-    '$90,071,992,547,409.93',
-  );
-  expect(host.querySelector('.breakdown-center')?.textContent).toContain(
-    '3 expenses',
-  );
+  expect(
+    host.querySelector('[data-ui~="breakdown-center"]')?.textContent,
+  ).toContain('$90,071,992,547,409.93');
+  expect(
+    host.querySelector('[data-ui~="breakdown-center"]')?.textContent,
+  ).toContain('3 expenses');
   await act(async () =>
     host
-      .querySelector<HTMLButtonElement>('.breakdown-drilldown button')!
+      .querySelector<HTMLButtonElement>(
+        '[data-ui~="breakdown-drilldown"] button',
+      )!
       .click(),
   );
   expect(drill).toHaveBeenLastCalledWith('HOME');
   await act(async () => home.click());
   expect(home.getAttribute('aria-pressed')).toBe('false');
-  expect(host.querySelector('.breakdown-center')?.textContent).toContain(
-    '$90,071,992,547,410.00',
-  );
+  expect(
+    host.querySelector('[data-ui~="breakdown-center"]')?.textContent,
+  ).toContain('$90,071,992,547,410.00');
   await act(async () =>
     host
-      .querySelector<HTMLButtonElement>('.breakdown-drilldown button')!
+      .querySelector<HTMLButtonElement>(
+        '[data-ui~="breakdown-drilldown"] button',
+      )!
       .click(),
   );
   expect(drill).toHaveBeenLastCalledWith(null);
@@ -196,9 +202,9 @@ it('explains share counts even when a positive aggregate can include zero-share 
       />,
     ),
   );
-  expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
-    '100.0% · 2 expenses',
-  );
+  expect(
+    host.querySelector('[data-ui~="breakdown-legend"]')?.textContent,
+  ).toContain('100.0% · 2 expenses');
   expect(host.textContent).toContain(
     'Counts include all matching expenses, including any with zero viewer share.',
   );

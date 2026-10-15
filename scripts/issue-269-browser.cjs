@@ -32,12 +32,17 @@ module.exports = async function verifyIssue269({
       .waitFor();
     await page.waitForFunction(
       () =>
-        !document.querySelector('.workspace-loading-surface[aria-busy=true]'),
+        !document.querySelector(
+          '[data-ui~="workspace-loading-surface"][aria-busy=true]',
+        ),
     );
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
     assert.equal(await page.locator('[data-ui~="banner-action"]').count(), 1);
-    assert.equal(await page.locator('.workspace-refresh button').count(), 0);
+    assert.equal(
+      await page.locator('[data-ui~="workspace-refresh"] button').count(),
+      0,
+    );
     assert.equal(
       await page.getByRole('button', { name: /^Refresh/ }).count(),
       0,
@@ -184,7 +189,7 @@ module.exports = async function verifyIssue269({
   // Check banner creation against a paginated list, then return to fresh pages and banner focus.
   await page.goto(origin + route('expenses'));
   await page.locator('#ledger-expense-e1').waitFor();
-  await page.locator('.ledger-pagination').scrollIntoViewIfNeeded();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
   const retry = page.getByRole('button', { name: 'Retry loading expenses' });
   if (await retry.count()) await retry.click();
   await page.locator('#ledger-expense-e9').waitFor();
@@ -203,7 +208,7 @@ module.exports = async function verifyIssue269({
   await freshResponse;
   await page.waitForFunction(
     () =>
-      document.querySelectorAll('.ledger-month li').length === 9 &&
+      document.querySelectorAll('[data-ui~="ledger-month"] li').length === 9 &&
       document.activeElement?.id === 'workspace-add',
   );
   assert(
@@ -211,7 +216,7 @@ module.exports = async function verifyIssue269({
     'Creation returns focus to banner trigger',
   );
   assert.equal(
-    await page.locator('.ledger-month li').count(),
+    await page.locator('[data-ui~="ledger-month"] li').count(),
     9,
     'Creation return replays loaded pages',
   );

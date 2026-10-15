@@ -72,7 +72,7 @@ test('expense navigation: filtered multi-page detail and creation restore fresh 
   await filters.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/categories=GROCERIES/);
   const source = page.url();
-  await page.locator('.ledger-pagination').scrollIntoViewIfNeeded();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
   const row = page.locator('#ledger-expense-e8');
   await expect(row).toBeVisible();
   expect(app.requests.some((r) => r.variables.after)).toBe(true);

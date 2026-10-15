@@ -70,7 +70,7 @@ export function ChartTable({
   return (
     <section
       aria-labelledby={titleId}
-      data-ui="chart"
+      data-ui="chart form-region"
       className={financialStyles['chart']}
     >
       <h3 id={titleId}>{title}</h3>
@@ -174,12 +174,7 @@ export function SummaryMetric({
             {icon}
           </span>
         )}
-        <span
-          data-ui="metric-label"
-          className={financialStyles['metric-label']}
-        >
-          {label}
-        </span>
+        <span data-ui="metric-label">{label}</span>
       </div>
       <strong
         data-ui="metric-value"
@@ -288,7 +283,7 @@ export function MonthSection({
   const id = useId();
   return (
     <section
-      data-ui="month-section"
+      data-ui="month-section form-region"
       className={financialStyles['month-section']}
       aria-labelledby={id}
     >

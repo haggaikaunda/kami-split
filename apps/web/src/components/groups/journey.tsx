@@ -1,6 +1,6 @@
 'use client';
 import { ExpenseEntryProvider } from '@/components/expenses/entry';
-import shellStyles from '../workspace/shell.module.css';
+
 import { cx } from '../ui/classnames';
 import { financialReadMessage as message } from '@/lib/relay/read-error';
 import { NetworkQuery } from '@/lib/relay/query';
@@ -36,10 +36,15 @@ import { ExpenseDetail } from './expense-detail';
 import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
 import { ViewerJourney } from './discovery';
-import './journey.css';
+
 import { createWorkspaceIntent } from '@/lib/relay/intent';
 import { workspaceRequest } from '@/lib/relay/workspace-request';
 import { useForegroundRefresh } from './foreground';
+
+import shellStyles from '../workspace/shell.module.css';
+import formLayoutStyles from '../ui/form-layout.module.css';
+import workspaceFeatureStyles from './workspace.module.css';
+
 export function GroupJourney({
   initialGroup: pathGroup = '',
   expense: pathExpense = '',
@@ -154,11 +159,8 @@ export function GroupJourney({
       visit={`${pathname}:${currentTab}`}
     >
       <main
-        className={cx(
-          'financial-journey',
-          shellStyles.shell,
-          initialGroup && 'group-workspace',
-        )}
+        data-ui="form-scope"
+        className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
         id="page-content"
       >
         <WorkspaceNavigation />
@@ -166,7 +168,10 @@ export function GroupJourney({
           data-ui="workspace-content"
           className={shellStyles['workspace-content']}
         >
-          <header className="journey-page-heading">
+          <header
+            data-ui="journey-page-heading form-region"
+            className={workspaceFeatureStyles['journey-page-heading']}
+          >
             {!initialGroup && (
               <h1 data-page-heading tabIndex={-1}>
                 {creation
@@ -284,7 +289,7 @@ function GroupDetails({
     return () => cancelAnimationFrame(frame);
   }, [saved, state.busy, scope]);
   const error = domainError || (state.error ? message('UNAVAILABLE') : '');
-  const loading = <Skeleton label="Loading workspace" />;
+  const loading = <Skeleton size="workspace" label="Loading workspace" />;
   const failure = (
     <GroupFailure
       household={household}
@@ -524,7 +529,7 @@ function GroupDestination({
     else next.delete('activityKind');
     router.replace(`${pathname}?${next}`, { scroll: false });
   };
-  if (redirect) return <Skeleton label="Loading workspace" />;
+  if (redirect) return <Skeleton size="workspace" label="Loading workspace" />;
   if (code || !group)
     return (
       <GroupFailure

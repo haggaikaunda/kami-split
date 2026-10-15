@@ -1,6 +1,5 @@
 'use client';
-import invitationStyles from '../onboarding/invitations.module.css';
-import financialStyles from '../financial/presentation.module.css';
+
 import { cx } from '../ui/classnames';
 
 import {
@@ -21,7 +20,8 @@ import Link from 'next/link';
 import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
-import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
+import { AppIcon } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { useFragment } from 'react-relay';
@@ -47,9 +47,9 @@ import {
 import { ActivityFeed } from '@/components/activity/feed';
 import { useFinancialSession } from './session';
 import { ScopedLink, RestoreSource } from './navigation';
-import './journey.css';
+
 import { useForegroundRefresh } from './foreground';
-import './household-workspace.css';
+
 export type Dashboard = householdContentDashboard$data;
 type Totals = Extract<
   Dashboard['totals'],
@@ -62,6 +62,14 @@ type Members = Extract<
 type Recent = householdWorkspaceQuery['response']['householdExpenses'];
 export { householdHref } from './household-frame';
 import { householdHref } from './household-frame';
+
+import invitationStyles from '../onboarding/invitations.module.css';
+import financialStyles from '../financial/presentation.module.css';
+import workspaceFeatureStyles from './workspace.module.css';
+import householdFeatureStyles from './household-workspace.module.css';
+import overviewFeatureStyles from './overview.module.css';
+import categoryFeatureStyles from '../financial/category.module.css';
+
 export function HouseholdWorkspace({
   activity = false,
 }: {
@@ -160,7 +168,9 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       ? 'Household membership is unavailable. Refresh to check current access.'
       : '';
   const busy = !error && (accessState.busy || memberState.busy);
-  const loading = <Skeleton label="Loading Household membership" />;
+  const loading = (
+    <Skeleton size="workspace" label="Loading Household membership" />
+  );
   const failure = (
     <HouseholdMembershipFailure onDenied={() => setDenied(true)} />
   );
@@ -228,9 +238,9 @@ function HouseholdMembers({
 }) {
   return (
     <section
-      data-ui="workspace-panel household-members members-panel"
+      data-ui="workspace-panel household-members members-panel form-region"
       className={cx(
-        'workspace-panel household-members',
+        cx(workspaceFeatureStyles['workspace-panel'], 'household-members'),
         invitationStyles['members-panel'],
       )}
     >
@@ -284,7 +294,7 @@ function HouseholdSummaryRead({
     (state.error
       ? 'Household data is unavailable. No zero balance or settled status can be established.'
       : '');
-  const loading = <Skeleton label="Loading Household" />;
+  const loading = <Skeleton size="workspace" label="Loading Household" />;
   return (
     <WorkspaceLoading busy={state.busy}>
       {saved && (
@@ -429,7 +439,7 @@ export function HouseholdContent({
       ) : current === 'Activity' ? (
         <ActivityFeed scope={scope} groupId="" />
       ) : current === 'Expenses' ? (
-        <section>
+        <section data-ui="form-region">
           <h2>Expenses</h2>
           <p>Read your shared expenses.</p>
           {home && (
@@ -437,13 +447,19 @@ export function HouseholdContent({
           )}
         </section>
       ) : current === 'Balances' ? (
-        <section className="workspace-panel">
+        <section
+          data-ui="workspace-panel form-region"
+          className={workspaceFeatureStyles['workspace-panel']}
+        >
           <h2>Your balance</h2>
           {totals && <HouseholdNet totals={totals} />}
           <BalanceExplanation household />
           <h3>By group or trip</h3>
           {totals && (
-            <ul className="household-balances">
+            <ul
+              data-ui="household-balances"
+              className={householdFeatureStyles['household-balances']}
+            >
               {dashboard.spaces.map((space) => {
                 const net =
                   space.viewerNetMinor == null ||
@@ -494,7 +510,9 @@ export function HouseholdContent({
                 return (
                   <li
                     key={space.groupId}
-                    className={`household-balance--${state}`}
+                    data-ui="household-balance"
+                    data-position={state}
+                    className={householdFeatureStyles['household-balance']}
                   >
                     <ScopedLink
                       scope={scope}
@@ -503,7 +521,13 @@ export function HouseholdContent({
                     >
                       <span>
                         <strong
-                          className={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
+                          data-ui={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
+                          className={cx(
+                            householdFeatureStyles['household-source-name'],
+                            householdFeatureStyles[
+                              `household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`
+                            ],
+                          )}
                         >
                           <AppIcon
                             name={
@@ -579,15 +603,24 @@ export function HouseholdContent({
             </div>
           )}
           {totals && (
-            <div className="workspace-overview-columns">
-              <section>
-                <div className="group-section-heading">
+            <div
+              data-ui="workspace-overview-columns"
+              className={overviewFeatureStyles['workspace-overview-columns']}
+            >
+              <section data-ui="form-region">
+                <div
+                  data-ui="group-section-heading"
+                  className={overviewFeatureStyles['group-section-heading']}
+                >
                   <h2>Recent expenses</h2>
                   <Link href={householdHref('Expenses')}>View all</Link>
                 </div>
                 {recent?.__typename === 'ExpenseView' ? (
                   !recent.edges.length ? (
-                    <div className="household-empty">
+                    <div
+                      data-ui="household-empty"
+                      className={householdFeatureStyles['household-empty']}
+                    >
                       <AppIcon name="expense" />
                       <p>
                         <strong>No shared expenses yet.</strong>
@@ -596,10 +629,16 @@ export function HouseholdContent({
                     </div>
                   ) : (
                     <>
-                      <p className="overview-month">
+                      <p
+                        data-ui="overview-month"
+                        className={overviewFeatureStyles['overview-month']}
+                      >
                         {overviewPeriod(recentDates)}
                       </p>
-                      <ul className="group-expense-list">
+                      <ul
+                        data-ui="group-expense-list"
+                        className={overviewFeatureStyles['group-expense-list']}
+                      >
                         {recent.edges.slice(0, 4).map(({ node, source }) => (
                           <li key={node.expenseId}>
                             <OverviewExpenseLink
@@ -609,7 +648,12 @@ export function HouseholdContent({
                               href={spaceExpenseHref(source, node.expenseId)}
                             >
                               <CategoryIcon category={node.category} />
-                              <span className="expense-row-copy">
+                              <span
+                                data-ui="expense-row-copy"
+                                className={
+                                  overviewFeatureStyles['expense-row-copy']
+                                }
+                              >
                                 <strong>{node.description}</strong>
                                 <span
                                   data-ui="row-detail"
@@ -625,7 +669,14 @@ export function HouseholdContent({
                                   </time>
                                 </span>
                               </span>
-                              <span className="overview-expense-price">
+                              <span
+                                data-ui="overview-expense-price"
+                                className={
+                                  overviewFeatureStyles[
+                                    'overview-expense-price'
+                                  ]
+                                }
+                              >
                                 <Money
                                   value={money(node.totalMinor)}
                                   currency={source.currency}
@@ -658,11 +709,15 @@ export function HouseholdContent({
                 )}
               </section>
               <aside
-                className="workspace-overview-balances"
+                data-ui="workspace-overview-balances"
+                className={overviewFeatureStyles['workspace-overview-balances']}
                 aria-label="Overview balances by space"
               >
                 <h2>By group or trip</h2>
-                <ul className="household-balances">
+                <ul
+                  data-ui="household-balances"
+                  className={householdFeatureStyles['household-balances']}
+                >
                   {dashboard.spaces.map((space) => (
                     <li key={space.groupId}>
                       <ScopedLink
@@ -671,7 +726,13 @@ export function HouseholdContent({
                         href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
                       >
                         <span
-                          className={`category-icon category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`}
+                          data-ui={`category-icon category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`}
+                          className={cx(
+                            categoryFeatureStyles['category-icon'],
+                            categoryFeatureStyles[
+                              `category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`
+                            ],
+                          )}
                         >
                           <AppIcon
                             name={
@@ -683,7 +744,12 @@ export function HouseholdContent({
                             }
                           />
                         </span>
-                        <span className="household-space-copy">
+                        <span
+                          data-ui="household-space-copy"
+                          className={
+                            householdFeatureStyles['household-space-copy']
+                          }
+                        >
                           <strong>
                             {space.name} ·{' '}
                             {space.isHousehold
@@ -720,7 +786,10 @@ export function HouseholdContent({
             </div>
           )}
           {totals && (
-            <p className="overview-count">
+            <p
+              data-ui="overview-count"
+              className={overviewFeatureStyles['overview-count']}
+            >
               <span>
                 {totals.totalSharedExpenseCount} expenses across{' '}
                 {totals.activeSpaceCount} spaces

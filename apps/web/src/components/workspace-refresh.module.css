@@ -1,0 +1,12 @@
+.workspace-refresh {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  min-height: 3rem;
+  margin-block: 0.25rem 0.75rem;
+}
+.workspace-refresh [role='status'] {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}

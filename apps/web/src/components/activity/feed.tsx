@@ -1,17 +1,13 @@
 'use client';
-import activityStyles from './feed.module.css';
+
 import { cx } from '../ui/classnames';
 
-import shellStyles from '../workspace/shell.module.css';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { Timestamp } from '@/components/date-time';
 import { spaceHref } from '@/lib/relay/space-routes';
-import {
-  AppIcon,
-  CategoryIcon,
-  WorkspaceNavigation,
-} from '@/components/workspace-identity';
+import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { NetworkQuery } from '@/lib/relay/query';
@@ -38,6 +34,11 @@ import detailDocument, {
 
 import { HistoricalDetail, eventAction } from './event-detail';
 import { useForegroundRefresh } from '@/components/groups/foreground';
+
+import activityStyles from './feed.module.css';
+import shellStyles from '../workspace/shell.module.css';
+import formLayoutStyles from '../ui/form-layout.module.css';
+
 type Connection = Extract<
   activityFeed$data,
   { readonly __typename: 'ActivityConnection' }
@@ -47,7 +48,8 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
     <main
-      className={`financial-journey activity-workspace ${shellStyles.shell}`}
+      data-ui="form-scope activity-workspace"
+      className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
       id="page-content"
     >
       <WorkspaceNavigation />
@@ -238,7 +240,6 @@ export function ActivityFeed({
   return (
     <WorkspaceLoading
       busy={loading}
-      data-ui={`activity-view ${selected ? 'activity-view-selected' : ''}`}
       className={cx(
         activityStyles['activity-view'],
         selected && activityStyles['activity-view-selected'],
@@ -248,12 +249,12 @@ export function ActivityFeed({
         <WorkspaceRefresh busy={loading} error={error} onRefresh={reset} />
       )}
       <section
-        data-ui="activity-feed-panel"
+        data-ui="activity-feed-panel form-region"
         className={activityStyles['activity-feed-panel']}
         aria-labelledby={headingId}
       >
         <header
-          data-ui="activity-feed-header"
+          data-ui="activity-feed-header form-region"
           className={activityStyles['activity-feed-header']}
         >
           <h2 id={headingId}>Recent activity</h2>
@@ -261,7 +262,7 @@ export function ActivityFeed({
             data-ui="activity-controls"
             className={activityStyles['activity-controls']}
           >
-            <label>
+            <label data-ui="form-label">
               Event type
               <select
                 value={kind}
@@ -269,6 +270,7 @@ export function ActivityFeed({
                   setKind(event.target.value);
                   reset();
                 }}
+                data-ui="form-control"
               >
                 <option value="">All events</option>
                 <option value="EXPENSE_CREATED">Expenses created</option>
@@ -279,7 +281,7 @@ export function ActivityFeed({
           </div>
         </header>
         {loading ? (
-          <Skeleton label="Loading activity" />
+          <Skeleton size="workspace" label="Loading activity" />
         ) : error ? (
           <p role="alert">{error}</p>
         ) : page && page.edges.length === 0 ? (
@@ -309,6 +311,7 @@ export function ActivityFeed({
                           recordId: node.recordId,
                         });
                       }}
+                      data-ui="form-button"
                     >
                       {node.kind === 'EXPENSE_CREATED' && node.after ? (
                         <CategoryIcon category={node.after.category} />
@@ -417,14 +420,14 @@ export function ActivityFeed({
       </section>
       {selected && (
         <section
-          data-ui="activity-detail"
+          data-ui="activity-detail form-region"
           className={activityStyles['activity-detail']}
           aria-label="Historical event detail"
           tabIndex={-1}
           ref={detailRef}
         >
           <header
-            data-ui="activity-detail-header"
+            data-ui="activity-detail-header form-region"
             className={activityStyles['activity-detail-header']}
           >
             <h2>Activity detail</h2>

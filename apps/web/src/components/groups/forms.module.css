@@ -1,0 +1,419 @@
+.financial-error {
+  color: var(--color-danger);
+}
+.financial-notice:empty {
+  display: none;
+}
+.financial-recovery {
+  padding: 1.5rem;
+  background: var(--color-subtle);
+  border-radius: var(--radius-card);
+}
+[data-ui~='form-scope'] .financial-form-card {
+  max-width: 42rem;
+  margin: 1.5rem auto;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+}
+.financial-form-card > :where(p:not([data-ui~='expense-detail-total'])) {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.financial-form-card > form > fieldset {
+  border: 0;
+  padding: 0;
+}
+.financial-form-card legend {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.financial-form-card .financial-participants {
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+  margin: 0;
+}
+.financial-form-card button[type='submit'] {
+  border: 0;
+  background: var(--color-primary);
+  color: var(--color-on-primary, white);
+  width: 100%;
+  margin: 1rem 0 0;
+}
+.financial-participant {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-separator);
+}
+.financial-participant > label {
+  flex: 1 1 12rem;
+}
+[data-ui~='expense-presentation'] .financial-form-card {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.expense-fields-grid {
+  display: grid;
+  gap: 1.0625rem 1rem;
+  margin: 1.25rem 0;
+}
+.expense-field,
+.financial-field {
+  position: relative;
+  min-width: 0;
+}
+.expense-field--full {
+  grid-column: 1/-1;
+}
+.expense-field label,
+.financial-field label {
+  position: absolute;
+  top: -0.5625rem;
+  left: 0.8125rem;
+  padding: 0 0.3125rem;
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.expense-field :is(input, select, textarea),
+.financial-field :is(input, select, textarea) {
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 3.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.3125rem;
+  padding: 0.875rem 0.75rem;
+  font: inherit;
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+.expense-field input[type='date'] {
+  appearance: none;
+}
+.expense-field textarea {
+  display: inline-block;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+.financial-form-card > form > .expense-edit-fields {
+  margin: 0;
+}
+.expense-edit-fields > .expense-fields-grid {
+  margin-top: 0;
+  margin-bottom: 17px;
+}
+.expense-edit-fields .expense-field:has(textarea) {
+  margin-top: 20px;
+}
+[data-ui~='expense-presentation']
+  .financial-form-card
+  > form
+  > fieldset
+  > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 600px) {
+  .expense-field label,
+  .expense-field :is(input, select, textarea),
+  .financial-field :is(input, select, textarea) {
+    background: var(--color-canvas);
+  }
+  .expense-fields-grid {
+    column-gap: 0.625rem;
+  }
+  .expense-field :is(input, select) {
+    padding: 0.8125rem 0.5625rem;
+  }
+}
+
+.percentage-help {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.percentage-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+[data-ui~='form-scope'] .percentage-link input {
+  width: auto;
+}
+.percentage-share {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding-block: 0.5rem;
+}
+.percentage-share > label {
+  font-size: 0.875rem;
+}
+.percentage-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.percentage-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+[data-ui~='form-scope'] .percentage-input input {
+  width: 5rem;
+  border: 0;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.percentage-input > span {
+  padding: 0.5rem;
+  color: var(--color-muted);
+}
+.percentage-money {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.percentage-status {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-control);
+  padding: 0.75rem;
+}
+.percentage-incomplete {
+  border-color: var(--color-separator);
+}
+.percentage-share .financial-error {
+  font-size: 0.875rem;
+}
+.financial-participant > label:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+[data-ui~='form-scope']
+  .financial-participant
+  > label:first-child
+  input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}
+.expense-edit-help {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+}
+.expense-edit-help summary {
+  cursor: pointer;
+}
+.financial-participants[data-split='EQUAL'] {
+  background: var(--color-subtle);
+  border: 0;
+  border-radius: 1.125rem;
+  padding: 1rem;
+}
+.financial-participants[data-split='EQUAL'] .financial-participant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4rem), 1fr));
+  gap: 0.375rem;
+}
+.financial-participants[data-split='EQUAL'] .financial-participant {
+  border: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: start;
+  gap: 0.1875rem;
+  font-size: 0.875rem;
+}
+.financial-participants[data-split='EQUAL'] .financial-participant > label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+.financial-participants[data-split='EQUAL'] [data-ui~='member'] {
+  flex-direction: column;
+  gap: 0.3125rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+.financial-participants[data-split='EQUAL']
+  [data-ui~='member']
+  [data-ui='member-name'] {
+  font-weight: 400;
+}
+.financial-participants[data-split='EQUAL'] input[type='checkbox'] {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+}
+.financial-participants[data-split='EQUAL'] .financial-participant > span {
+  color: var(--color-muted);
+}
+
+.financial-form-card .financial-entry-fields {
+  display: grid;
+  gap: 1.5rem;
+  padding: 0;
+  border: 0;
+  margin-top: 1.5rem;
+}
+.financial-entry-fields > legend {
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+.financial-entry-fields button[type='submit'] {
+  width: auto;
+  justify-self: end;
+}
+
+.expense-split-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 0.8125rem;
+}
+.expense-split-heading label {
+  margin: 0;
+}
+.financial-form-card .expense-split-heading select {
+  width: auto;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background: var(--expense-split-control-background, transparent);
+  border: 0;
+}
+.expense-split-heading [data-ui~='space-chip'] {
+  margin-left: auto;
+  font-size: 0.875rem;
+}
+.financial-participant-grid
+  .financial-participant:nth-child(4n + 1)
+  [data-ui~='avatar'] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.financial-participant-grid
+  .financial-participant:nth-child(4n + 2)
+  [data-ui~='avatar'] {
+  background: var(--color-avatar-violet);
+  color: var(--color-violet);
+}
+.financial-participant-grid
+  .financial-participant:nth-child(4n + 3)
+  [data-ui~='avatar'] {
+  background: var(--color-avatar-orange);
+  color: var(--color-orange);
+}
+.financial-participant-grid
+  .financial-participant:nth-child(4n + 4)
+  [data-ui~='avatar'] {
+  background: var(--color-avatar-blue);
+  color: var(--color-blue);
+}
+
+.expense-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  margin: 1.25rem 0 0;
+}
+.financial-form-card .expense-edit-actions [data-ui~='button'] {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+.expense-edit-hint {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+[data-ui~='expense-presentation--create'] .financial-form-card,
+[data-ui~='expense-presentation--create'] .expense-field label,
+[data-ui~='expense-presentation--create']
+  .expense-field
+  :is(input, select, textarea) {
+  background: var(--color-canvas);
+}
+[data-ui~='expense-presentation--create']
+  .expense-field
+  :is(input, select, textarea) {
+  font-size: 1rem;
+  padding: 1rem;
+}
+[data-ui~='expense-presentation--create']
+  .financial-form-card
+  > form
+  > fieldset {
+  margin: 0;
+}
+[data-ui~='expense-presentation--create'] .expense-fields-grid {
+  margin: 22px 0 17px;
+}
+.expense-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 24px;
+}
+.financial-form-card .expense-create-actions button {
+  width: auto;
+  margin: 0;
+}
+.expense-fields-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+.expense-notes {
+  position: relative;
+  margin-top: 1rem;
+}
+[data-ui~='expense-presentation']
+  :is(.expense-create-actions, .expense-edit-actions) {
+  position: sticky;
+  bottom: -1rem;
+  z-index: 1;
+  padding: 0.75rem 0 max(0.75rem, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-separator);
+}
+[data-ui~='expense-presentation--create'] .expense-create-actions {
+  background: var(--color-canvas);
+}
+[data-ui~='expense-presentation'][data-compact='true']
+  :is(.expense-create-actions, .expense-edit-actions) {
+  position: static;
+}
+@media (max-height: 30rem) {
+  [data-ui~='expense-presentation']
+    :is(.expense-create-actions, .expense-edit-actions) {
+    position: static;
+  }
+}
+.expense-create-context {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}

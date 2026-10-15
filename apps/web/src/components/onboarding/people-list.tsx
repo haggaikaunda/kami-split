@@ -1,7 +1,9 @@
-import invitationStyles from './invitations.module.css';
 import { cx } from '../ui/classnames';
 import { Member } from '../ui/primitives';
 import type { ReactNode } from 'react';
+
+import financialPaletteStyles from '../financial/presentation.module.css';
+import invitationStyles from './invitations.module.css';
 
 export type Person = {
   id: string;
@@ -21,7 +23,11 @@ export function PeopleList({
   return (
     <ul
       data-ui="group-members-list account-rows"
-      className={cx('group-members-list', invitationStyles['account-rows'])}
+      className={cx(
+        invitationStyles['group-members-list'],
+        invitationStyles['account-rows'],
+        financialPaletteStyles['member-palette'],
+      )}
       aria-label="People"
     >
       {members.map((member) => (

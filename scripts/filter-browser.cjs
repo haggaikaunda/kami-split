@@ -24,7 +24,7 @@ module.exports = async function verifyFilters({
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });
   const section = (title) =>
     dialog.locator('details').filter({
-      has: page.locator('.ledger-filter-title', { hasText: title }),
+      has: page.locator('[data-ui~="ledger-filter-title"]', { hasText: title }),
     });
   const summary = (title) => section(title).locator('summary');
   const apply = dialog.getByRole('button', { name: 'Apply filters' });
@@ -46,15 +46,15 @@ module.exports = async function verifyFilters({
         const r = node.getBoundingClientRect();
         return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
       };
-      const body = el.querySelector('.ledger-filter-scroll');
+      const body = el.querySelector('[data-ui~="ledger-filter-scroll"]');
       return {
         dialog: rect(el),
         header: rect(el.querySelector('header')),
         body: rect(body),
-        footer: rect(el.querySelector('.ledger-filter-actions')),
-        buttons: [...el.querySelectorAll('.ledger-filter-actions button')].map(
-          rect,
-        ),
+        footer: rect(el.querySelector('[data-ui~="ledger-filter-actions"]')),
+        buttons: [
+          ...el.querySelectorAll('[data-ui~="ledger-filter-actions"] button'),
+        ].map(rect),
         bodyOverflow: body.scrollWidth - body.clientWidth,
         pageOverflow: document.documentElement.scrollWidth - innerWidth,
         height: innerHeight,
@@ -68,6 +68,13 @@ module.exports = async function verifyFilters({
     assert(
       metrics.dialog.y >= -1 && metrics.dialog.bottom <= metrics.height + 1,
       'dialog vertical bounds',
+    );
+    assert(
+      Math.abs(
+        metrics.dialog.y -
+          (metrics.height - (metrics.dialog.bottom - metrics.dialog.y)) / 2,
+      ) <= 1,
+      'compact filter dialog stays vertically centered within the viewport',
     );
     assert(
       metrics.bodyOverflow <= 1 && metrics.pageOverflow <= 1,
@@ -106,9 +113,52 @@ module.exports = async function verifyFilters({
     ),
   });
 
+  async function workspaceGeometry() {
+    const metrics = await section('Categories')
+      .getByLabel('Dining', { exact: true })
+      .evaluate((input) => {
+        const checkbox = input.getBoundingClientRect();
+        const label = input.closest('label').getBoundingClientRect();
+        const fieldset = input.closest('fieldset').getBoundingClientRect();
+        return {
+          rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+          checkbox: checkbox.width,
+          inset: label.x - fieldset.x,
+        };
+      });
+    assert(
+      Math.abs(
+        metrics.checkbox - metrics.rem * (workspace === 'group' ? 1.25 : 1.125),
+      ) < 0.1,
+      'workspace checkbox size is preserved',
+    );
+    assert(
+      Math.abs(metrics.inset - (workspace === 'group' ? metrics.rem + 1 : 0)) <
+        0.1,
+      'workspace fieldset content inset is preserved',
+    );
+    if (workspace === 'household') {
+      const gap = await dialog
+        .getByRole('combobox', { name: 'Sort', exact: true })
+        .evaluate(
+          (select) =>
+            select.getBoundingClientRect().top -
+            select
+              .closest('label')
+              .querySelector('span')
+              .getBoundingClientRect().bottom,
+        );
+      assert(
+        Math.abs(gap - metrics.rem * 0.375) < 0.1,
+        'Household field label spacing is preserved',
+      );
+    }
+  }
+
   // Native summaries and focus loop work without relying on pointer controls.
   await summary('Categories').focus();
   await page.keyboard.press('Enter');
+  await workspaceGeometry();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await section('Categories').getByLabel('Groceries', { exact: true }).check();
   assert.match(await summary('Categories').innerText(), /2 selected/);
@@ -154,12 +204,12 @@ module.exports = async function verifyFilters({
   assert(applied.searchParams.getAll('memberIds').length);
   assert.equal(applied.searchParams.get('from'), from);
   assert.equal(applied.searchParams.get('to'), to);
-  await page.locator('.ledger-filter-button').waitFor();
+  await page.locator('[data-ui~="ledger-filter-button"]').waitFor();
   await page.waitForFunction(() =>
-    document.activeElement?.matches('.ledger-filter-button'),
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
   );
 
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   await reset.click();
   assert.match(await summary('Categories').innerText(), /All categories/);
   assert.match(await summary('Dates').innerText(), /All dates/);
@@ -167,9 +217,9 @@ module.exports = async function verifyFilters({
   await page.keyboard.press('Escape');
   assert.equal(page.url(), applied.href, 'Escape discards reset');
   await page.waitForFunction(() =>
-    document.activeElement?.matches('.ledger-filter-button'),
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
   );
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   assert.match(await summary('Categories').innerText(), /2 selected/);
   await reset.click();
   await apply.click();
@@ -179,7 +229,7 @@ module.exports = async function verifyFilters({
   );
 
   // A viewport change must not remount the draft or move actions off screen.
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   await summary('Categories').click();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await page.setViewportSize({ width: width < 600 ? 1280 : 320, height: 640 });
@@ -195,6 +245,33 @@ module.exports = async function verifyFilters({
       .isChecked(),
   );
   await page.keyboard.press('Escape');
+  if (workspace === 'household') {
+    // Retained Group styles must not change the same Household controls.
+    const navigation = page.getByRole('navigation', {
+      name: 'Financial navigation',
+      exact: true,
+    });
+    await navigation.getByRole('link', { name: 'Trips', exact: true }).click();
+    await page.locator('a[href="/trips/T"]').click();
+    await page
+      .getByRole('navigation', { name: /workspace/i })
+      .getByRole('link', { name: 'Expenses', exact: true })
+      .click();
+    await page.locator('#ledger-expense-e1').waitFor();
+    await navigation
+      .getByRole('link', { name: 'Household', exact: true })
+      .click();
+    await page
+      .getByRole('navigation', { name: /workspace/i })
+      .getByRole('link', { name: 'Expenses', exact: true })
+      .click();
+    await page.locator('#ledger-expense-e1').waitFor();
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await summary('Categories').click();
+    await workspaceGeometry();
+    await geometry('Household after Group navigation');
+    await page.keyboard.press('Escape');
+  }
   results.push({
     workspace,
     width,

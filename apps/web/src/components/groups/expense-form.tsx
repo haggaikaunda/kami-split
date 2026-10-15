@@ -25,6 +25,9 @@ import {
 import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
 import type { FinancialScope } from '@/lib/relay/environment';
+
+import formsFeatureStyles from './forms.module.css';
+
 type Outcome =
   | journeyCreateMutation['response']['createExpense']
   | journeyRecoveryQuery['response']['expenseOperation'];
@@ -223,7 +226,8 @@ export function ExpenseForm({
   };
   return (
     <section
-      className="financial-form-card"
+      data-ui="financial-form-card form-region"
+      className={formsFeatureStyles['financial-form-card']}
       aria-labelledby={embedded ? undefined : 'new-expense-title'}
       aria-label={embedded ? 'Add expense' : undefined}
     >
@@ -231,11 +235,20 @@ export function ExpenseForm({
       {!embedded && (
         <p>Record a shared expense in this group. No money is moved.</p>
       )}
-      <p ref={status} role="status" tabIndex={-1} className="financial-notice">
+      <p
+        ref={status}
+        role="status"
+        tabIndex={-1}
+        data-ui="financial-notice"
+        className={formsFeatureStyles['financial-notice']}
+      >
         {busy ? 'Working…' : notice}
       </p>
       {attempt && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <h3>Unconfirmed original expense</h3>
           <p>
             The original group, key and input are frozen. Recovery survives
@@ -256,12 +269,14 @@ export function ExpenseForm({
                 await accept(result.expenseOperation, attempt);
               })
             }
+            data-ui="form-button"
           >
             Recover original result
           </button>
           <button
             disabled={busy || storageFailed || denied}
             onClick={() => void run(() => send(attempt))}
+            data-ui="form-button"
           >
             Retry original expense
           </button>
@@ -276,7 +291,10 @@ export function ExpenseForm({
           }}
           noValidate
         >
-          <fieldset disabled={busy || !!attempt || storageFailed}>
+          <fieldset
+            disabled={busy || !!attempt || storageFailed}
+            data-ui="form-fieldset"
+          >
             <ExpenseFields
               draft={draft}
               members={members}
@@ -284,7 +302,10 @@ export function ExpenseForm({
               submitted={submitted}
             />
           </fieldset>
-          <div className="expense-create-actions">
+          <div
+            data-ui="expense-create-actions"
+            className={formsFeatureStyles['expense-create-actions']}
+          >
             {onCancel && (
               <Button
                 tone="text"

@@ -1,9 +1,5 @@
 'use client';
-import '../groups/journey.css';
-import onboardingStyles from './onboarding.module.css';
-import accountStyles from './account.module.css';
 
-import shellStyles from '../workspace/shell.module.css';
 import { cx } from '../ui/classnames';
 
 import {
@@ -20,6 +16,11 @@ import { AppearanceEditor } from './appearance';
 import { ProfileEditor } from './profile';
 import { LegacyInvitations } from './legacy-invitations';
 import { ActionRecovery } from './recovery';
+
+import onboardingStyles from './onboarding.module.css';
+import accountStyles from './account.module.css';
+import shellStyles from '../workspace/shell.module.css';
+import formLayoutStyles from '../ui/form-layout.module.css';
 
 export function OnboardingEntry({ mode }: { mode: Mode }) {
   if (mode === 'invitations') return <LegacyInvitations />;
@@ -82,13 +83,10 @@ function OnboardingVisit({
   const account = mode === 'account' || mode === 'invitations';
   return (
     <main
-      data-ui={account ? undefined : 'onboarding'}
+      data-ui={account ? 'form-scope account-workspace' : 'onboarding'}
       className={
         account
-          ? cx(
-              'financial-journey group-workspace account-workspace',
-              shellStyles.shell,
-            )
+          ? cx(formLayoutStyles['form-scope'], shellStyles.shell)
           : onboardingStyles['onboarding']
       }
       id="page-content"
@@ -110,7 +108,7 @@ function OnboardingVisit({
         ref={panel}
       >
         {!account && (
-          <header>
+          <header data-ui="form-region">
             <Link
               href="/sign-in"
               data-ui="onboarding-brand"
@@ -151,7 +149,7 @@ function OnboardingVisit({
                   Account
                 </div>
                 <header
-                  data-ui="account-heading"
+                  data-ui="account-heading form-region"
                   className={accountStyles['account-heading']}
                 >
                   <h1>
@@ -167,7 +165,7 @@ function OnboardingVisit({
                       state={c}
                     />
                     <section
-                      data-ui="account-session"
+                      data-ui="account-session form-region"
                       className={accountStyles['account-session']}
                       aria-labelledby="session-heading"
                     >

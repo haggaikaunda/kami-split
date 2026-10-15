@@ -121,7 +121,9 @@ withAuthFixture(origin, session, async () => {
         .getByRole('button', { name: 'Add optional note', exact: true })
         .click();
     await page.locator('#expense-note').fill(' Original note ');
-    await page.locator('.financial-form-card button[type="submit"]').click();
+    await page
+      .locator('[data-ui~="financial-form-card"] button[type="submit"]')
+      .click();
     await page.waitForFunction(
       () => !document.querySelector('#expense-description'),
     );
@@ -178,9 +180,9 @@ withAuthFixture(origin, session, async () => {
       .getByRole('heading', { name: description, exact: true })
       .waitFor();
     assert(
-      (await page.locator('.expense-detail-total').innerText()).includes(
-        '$100.00',
-      ),
+      (
+        await page.locator('[data-ui~="expense-detail-total"]').innerText()
+      ).includes('$100.00'),
     );
     await page.reload();
     await page

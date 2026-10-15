@@ -1,9 +1,8 @@
 'use client';
+
 import { cx } from '../ui/classnames';
-import invitationStyles from '../onboarding/invitations.module.css';
+
 import { useExpenseEntry } from '@/components/expenses/entry';
-import workspaceStyles from '../workspace/patterns.module.css';
-import financialStyles from '../financial/presentation.module.css';
 
 import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
@@ -18,7 +17,8 @@ import {
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
-import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
+import { AppIcon } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useFragment } from 'react-relay';
@@ -57,6 +57,14 @@ import {
   shareHelp,
 } from '@/components/rich-help';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
+
+import financialPaletteStyles from '../financial/presentation.module.css';
+import invitationStyles from '../onboarding/invitations.module.css';
+import workspaceStyles from '../workspace/patterns.module.css';
+import financialStyles from '../financial/presentation.module.css';
+import workspaceFeatureStyles from './workspace.module.css';
+import overviewFeatureStyles from './overview.module.css';
+
 /** The route validates and owns canonical workspace identity before rendering. */
 type WorkspaceIdentity = Pick<
   Extract<
@@ -139,7 +147,11 @@ export function GroupWorkspaceContent({
       }
       context={
         <>
-          <Link className="banner-members-link" href={hrefFor('Members')}>
+          <Link
+            data-ui="banner-members-link"
+            className={workspaceFeatureStyles['banner-members-link']}
+            href={hrefFor('Members')}
+          >
             {activeMembers.length} members
           </Link>{' '}
           ·{' '}
@@ -165,9 +177,7 @@ export function GroupWorkspaceContent({
     </WorkspaceHeader>
   );
   return (
-    <div
-      className={`group-workspace-body ${group.trip ? 'group-workspace-body--trip' : ''}`}
-    >
+    <div>
       {showHeader &&
         (headerTarget
           ? createPortal(workspaceHeader, headerTarget)
@@ -181,11 +191,20 @@ export function GroupWorkspaceContent({
       )}
 
       {current === 'Members' && (
-        <div className="workspace-owner-actions">
+        <div
+          data-ui="workspace-owner-actions"
+          className={overviewFeatureStyles['workspace-owner-actions']}
+        >
           {' '}
           {group.viewerMembership.role === 'OWNER' && (
-            <div className="group-header-actions">
-              <details className="group-settings">
+            <div
+              data-ui="group-header-actions"
+              className={workspaceFeatureStyles['group-header-actions']}
+            >
+              <details
+                data-ui="group-settings"
+                className={workspaceFeatureStyles['group-settings']}
+              >
                 <summary>Group settings</summary>
                 <p>
                   Name: {group.name} · Currency: {group.currency}
@@ -217,20 +236,36 @@ export function GroupWorkspaceContent({
       ) : current === 'Overview' ? (
         <>
           <OverviewMetrics scope={scope} group={group} />
-          <div className="workspace-overview-columns">
-            <section aria-labelledby="recent-expenses-title">
-              <div className="group-section-heading">
+          <div
+            data-ui="workspace-overview-columns"
+            className={overviewFeatureStyles['workspace-overview-columns']}
+          >
+            <section
+              aria-labelledby="recent-expenses-title"
+              data-ui="form-region"
+            >
+              <div
+                data-ui="group-section-heading"
+                className={overviewFeatureStyles['group-section-heading']}
+              >
                 <h2 id="recent-expenses-title">Recent expenses</h2>
                 <Link href={hrefFor('Expenses')}>View all</Link>
               </div>
               <Expenses scope={scope} group={group} recent />
             </section>
             <aside
-              className="workspace-overview-balances"
+              data-ui="workspace-overview-balances"
+              className={overviewFeatureStyles['workspace-overview-balances']}
               aria-label="Overview member balances"
             >
               <h2>Balances</h2>
-              <div className="workspace-member-balances">
+              <div
+                data-ui="workspace-member-balances"
+                className={cx(
+                  overviewFeatureStyles['workspace-member-balances'],
+                  financialPaletteStyles['member-palette'],
+                )}
+              >
                 {group.balances?.__typename === 'GroupBalances' ? (
                   group.balances.positions.map((p) => (
                     <div
@@ -263,7 +298,10 @@ export function GroupWorkspaceContent({
                   <p role="alert">Balances are unavailable.</p>
                 )}
               </div>
-              <p className="overview-balance-note">
+              <p
+                data-ui="overview-balance-note"
+                className={overviewFeatureStyles['overview-balance-note']}
+              >
                 Complete balances · Not affected by expense filters.{' '}
                 <Link href={hrefFor('Balances')}>View balance details</Link>
               </p>
@@ -284,6 +322,7 @@ export function GroupWorkspaceContent({
         <>
           {group.isHousehold && <h2>Household expenses</h2>}
           <ExpenseLedger
+            filterLayout={group.isHousehold ? 'household' : 'group'}
             initialView={initialView}
             managedRefresh={!showTabs}
             scope={scope}
@@ -304,12 +343,18 @@ export function GroupWorkspaceContent({
         </>
       ) : current === 'Members' ? (
         <section
-          data-ui="workspace-panel members-panel"
-          className={cx('workspace-panel', invitationStyles['members-panel'])}
+          data-ui="workspace-panel members-panel form-region"
+          className={cx(
+            workspaceFeatureStyles['workspace-panel'],
+            invitationStyles['members-panel'],
+          )}
         >
           <h2>Members</h2>
           {group.trip && (
-            <p className="workspace-context-detail">
+            <p
+              data-ui="workspace-context-detail"
+              className={workspaceFeatureStyles['workspace-context-detail']}
+            >
               {group.trip.destination} ·{' '}
               <time dateTime={group.trip.startDate}>
                 {calendarDate(group.trip.startDate)}
@@ -486,8 +531,16 @@ function Expenses({
     .map(({ node }) => node.effectiveDate);
   return (
     <>
-      <p className="overview-month">{overviewPeriod(dates)}</p>
-      <ul className="group-expense-list">
+      <p
+        data-ui="overview-month"
+        className={overviewFeatureStyles['overview-month']}
+      >
+        {overviewPeriod(dates)}
+      </p>
+      <ul
+        data-ui="group-expense-list"
+        className={overviewFeatureStyles['group-expense-list']}
+      >
         {(recent ? page.edges.slice(0, 4) : page.edges).map(
           (edge) =>
             edge && (
@@ -499,7 +552,10 @@ function Expenses({
                   href={spaceExpenseHref(group, edge.node.expenseId)}
                 >
                   <CategoryIcon category={edge.node.category} />
-                  <span className="expense-row-copy">
+                  <span
+                    data-ui="expense-row-copy"
+                    className={overviewFeatureStyles['expense-row-copy']}
+                  >
                     <strong>{edge.node.description}</strong>
                     <span
                       data-ui="row-detail"
@@ -515,7 +571,10 @@ function Expenses({
                       </time>
                     </span>
                   </span>
-                  <span className="overview-expense-price">
+                  <span
+                    data-ui="overview-expense-price"
+                    className={overviewFeatureStyles['overview-expense-price']}
+                  >
                     <Money
                       value={money(edge.node.totalMinor)}
                       currency={group.currency}
@@ -549,7 +608,7 @@ export function GroupBalances({
   const b = group.balances;
   if (b?.__typename !== 'GroupBalances')
     return (
-      <section>
+      <section data-ui="form-region">
         <h2>
           {group.isHousehold ? 'Household expenses' : 'Complete balances'}
         </h2>
@@ -560,8 +619,11 @@ export function GroupBalances({
     );
   return (
     <section
-      data-ui="group-balances workspace-panel"
-      className="group-balances workspace-panel"
+      data-ui="group-balances workspace-panel form-region"
+      className={cx(
+        workspaceFeatureStyles['group-balances'],
+        workspaceFeatureStyles['workspace-panel'],
+      )}
     >
       <h2>{group.isHousehold ? 'Household expenses' : 'Balance details'}</h2>
       <ViewerMetric scope={scope} group={group} />
@@ -575,9 +637,19 @@ export function GroupBalances({
         View Activity and expense before/after history
       </Link>
       <h3>Each member’s balance</h3>
-      <div className="workspace-member-balances">
+      <div
+        data-ui="workspace-member-balances"
+        className={cx(
+          overviewFeatureStyles['workspace-member-balances'],
+          financialPaletteStyles['member-palette'],
+        )}
+      >
         {b.positions.map((p) => (
-          <div className="balance-position" key={p.member.id}>
+          <div
+            data-ui="balance-position"
+            className={workspaceFeatureStyles['balance-position']}
+            key={p.member.id}
+          >
             <div
               data-ui="balance-row"
               className={financialStyles['balance-row']}
@@ -593,7 +665,10 @@ export function GroupBalances({
             </div>
             <details>
               <summary>Position details for {p.member.displayName}</summary>
-              <dl className="balance-position-facts">
+              <dl
+                data-ui="balance-position-facts"
+                className={workspaceFeatureStyles['balance-position-facts']}
+              >
                 {[
                   ['Paid for expenses (+)', p.paidMinor],
                   ['Expense share (−)', p.owedMinor],
@@ -672,7 +747,7 @@ export function GroupBalances({
 }
 function RecentRepayments({ group }: { group: WorkspaceGroup }) {
   return (
-    <section>
+    <section data-ui="form-region">
       <h3>Recent recorded repayments</h3>
       {!group.repayments ? (
         <p role="alert">Repayment history is unavailable.</p>

@@ -146,12 +146,12 @@ it('renders P3 incomplete and remaining assignment, with surviving/reselected in
     },
   });
   expect(host.textContent).toContain('85% allocated · 15% remaining');
-  expect(host.querySelector('.percentage-money')).toBeNull();
+  expect(host.querySelector('[data-ui~="percentage-money"]')).toBeNull();
   expect(button('Save expense').disabled).toBe(true);
   await act(async () => button('Assign remaining to Sam').click());
   expect(percentage(2).value).toBe('30');
   expect(
-    [...host.querySelectorAll('.percentage-money')].map(
+    [...host.querySelectorAll('[data-ui~="percentage-money"]')].map(
       (node) => node.textContent,
     ),
   ).toEqual(['$80.00', '$60.00', '$60.00']);
@@ -165,7 +165,7 @@ it('renders P3 incomplete and remaining assignment, with surviving/reselected in
   expect(percentage(2).value).toBe('30');
   await set(input('expense-amount'), '100');
   expect(
-    [...host.querySelectorAll('.percentage-money')].map(
+    [...host.querySelectorAll('[data-ui~="percentage-money"]')].map(
       (node) => node.textContent,
     ),
   ).toEqual(['$40.00', '$30.00', '$30.00']);

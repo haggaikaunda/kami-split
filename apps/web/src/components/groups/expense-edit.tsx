@@ -1,5 +1,5 @@
 'use client';
-import uiStyles from '../ui/primitives.module.css';
+
 import { cx } from '../ui/classnames';
 
 import { calendarDate } from '@/lib/dates';
@@ -31,10 +31,15 @@ import {
 } from '@/lib/relay/edit-draft';
 import { createSessionId } from '@/lib/session-id';
 import { ExpenseFields } from './expense-fields';
-import { CategoryIcon } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import { Money } from '../financial/presentation';
 import { overviewDate } from './overview-date';
 import { money } from '@/lib/relay/money';
+
+import uiStyles from '../ui/primitives.module.css';
+import formsFeatureStyles from './forms.module.css';
+import detailFeatureStyles from './expense-detail.module.css';
+
 type Outcome =
   | expenseEditMutation['response']['updateExpense']
   | expenseEditRecoveryQuery['response']['updateExpenseOperation'];
@@ -288,30 +293,49 @@ export function ExpenseEdit({
   };
   return (
     <section
-      className="financial-form-card"
+      data-ui="financial-form-card form-region"
+      className={formsFeatureStyles['financial-form-card']}
       aria-labelledby="edit-expense-title"
     >
       <h2 id="edit-expense-title" ref={heading} tabIndex={-1}>
         Edit expense
       </h2>
-      <div className="expense-detail-identity">
+      <div
+        data-ui="expense-detail-identity"
+        className={detailFeatureStyles['expense-detail-identity']}
+      >
         <CategoryIcon category={expense.category} />
         <h2>{expense.description}</h2>
       </div>
-      <p className="expense-detail-total">
+      <p
+        data-ui="expense-detail-total"
+        className={detailFeatureStyles['expense-detail-total']}
+      >
         <Money value={money(expense.totalMinor)} currency={expense.currency} />
       </p>
-      <p className="expense-paid-by">
+      <p
+        data-ui="expense-paid-by"
+        className={detailFeatureStyles['expense-paid-by']}
+      >
         {expense.payer.displayName} paid ·{' '}
         <time dateTime={expense.effectiveDate}>
           {overviewDate(expense.effectiveDate)}
         </time>
       </p>
-      <p role="status" ref={status} tabIndex={-1} className="financial-notice">
+      <p
+        role="status"
+        ref={status}
+        tabIndex={-1}
+        data-ui="financial-notice"
+        className={formsFeatureStyles['financial-notice']}
+      >
         {busy ? 'Working…' : notice}
       </p>
       {attempt && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <h3>Unconfirmed original edit</h3>
           <p>
             The expense, version, key and input are frozen. Recovery survives
@@ -332,19 +356,24 @@ export function ExpenseEdit({
                 await accept(result.updateExpenseOperation, attempt);
               })
             }
+            data-ui="form-button"
           >
             Recover original edit
           </button>
           <button
             disabled={busy || blocked}
             onClick={() => void run(() => send(attempt))}
+            data-ui="form-button"
           >
             Retry original edit
           </button>
         </aside>
       )}
       {conflict && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <h3>Review a newer expense</h3>
           <p>Your draft has not replaced the latest saved expense.</p>
           <button
@@ -383,6 +412,7 @@ export function ExpenseEdit({
                 setLatest(node);
               })
             }
+            data-ui="form-button"
           >
             Reload latest expense
           </button>
@@ -411,7 +441,12 @@ export function ExpenseEdit({
                     .join('; ')}
                 </dd>
                 <dt>Note</dt>
-                <dd className="expense-note">{latest.note || 'No note'}</dd>
+                <dd
+                  data-ui="expense-note"
+                  className={detailFeatureStyles['expense-note']}
+                >
+                  {latest.note || 'No note'}
+                </dd>
               </dl>
               <button
                 disabled={!latest.canEdit || busy || blocked}
@@ -427,6 +462,7 @@ export function ExpenseEdit({
                     setNotice('Storage unavailable. Draft not reapplied.');
                   }
                 }}
+                data-ui="form-button"
               >
                 Reapply my draft to this version
               </button>
@@ -469,7 +505,8 @@ export function ExpenseEdit({
         }}
       >
         <fieldset
-          className="expense-edit-fields"
+          data-ui="expense-edit-fields form-fieldset"
+          className={formsFeatureStyles['expense-edit-fields']}
           disabled={busy || !!attempt || blocked || conflict}
         >
           <ExpenseFields
@@ -479,11 +516,14 @@ export function ExpenseEdit({
             submitted={submitted}
           />
         </fieldset>
-        <div className="expense-edit-actions">
+        <div
+          data-ui="expense-edit-actions"
+          className={formsFeatureStyles['expense-edit-actions']}
+        >
           {!attempt && (
             <button
               type="button"
-              data-ui="button button--text"
+              data-ui="button button--text form-button"
               className={cx(uiStyles['button'], uiStyles['button--text'])}
               disabled={busy}
               onClick={() => {
@@ -496,7 +536,7 @@ export function ExpenseEdit({
           )}
           <button
             type="submit"
-            data-ui="button button--primary"
+            data-ui="button button--primary form-button"
             className={cx(uiStyles['button'], uiStyles['button--primary'])}
             disabled={
               busy ||
@@ -511,10 +551,16 @@ export function ExpenseEdit({
           </button>
         </div>
       </form>
-      <p className="expense-edit-hint">
+      <p
+        data-ui="expense-edit-hint"
+        className={formsFeatureStyles['expense-edit-hint']}
+      >
         Closing keeps your draft until you save or discard.
       </p>
-      <details className="expense-edit-help">
+      <details
+        data-ui="expense-edit-help"
+        className={formsFeatureStyles['expense-edit-help']}
+      >
         <summary>About financial changes</summary>
         <p>
           Financial changes can change balances, including previously settled
@@ -524,8 +570,12 @@ export function ExpenseEdit({
       {cancel && (
         <aside role="alert">
           <p>Discard your unsaved changes and return to the expense?</p>
-          <button onClick={discard}>Discard changes</button>
-          <button onClick={() => setCancel(false)}>Keep editing</button>
+          <button onClick={discard} data-ui="form-button">
+            Discard changes
+          </button>
+          <button onClick={() => setCancel(false)} data-ui="form-button">
+            Keep editing
+          </button>
         </aside>
       )}
     </section>

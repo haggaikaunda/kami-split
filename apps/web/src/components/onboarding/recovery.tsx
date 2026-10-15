@@ -85,7 +85,7 @@ export function ActionRecovery({ state: c }: { state: OnboardingController }) {
         </aside>
       )}
       {receipt && mode !== 'join' && (
-        <section>
+        <section data-ui="form-region">
           <h2>Action result</h2>
           <p>{receipt.outcome}</p>
           {receipt.committedExpiresAt && (

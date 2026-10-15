@@ -1,5 +1,4 @@
 'use client';
-import uiStyles from '../ui/primitives.module.css';
 
 import { useId, useState, type ReactNode } from 'react';
 import { Button } from '../ui/primitives';
@@ -7,6 +6,10 @@ import { categories } from '@/lib/relay/draft';
 import { datePreset, expenseFilterText } from '@/lib/relay/expense-filter';
 import { overviewDate } from '@/components/groups/overview-date';
 import type { LedgerSpace } from './ledger';
+import { cx } from '../ui/classnames';
+
+import uiStyles from '../ui/primitives.module.css';
+import filterFeatureStyles from './filter-form.module.css';
 
 function FilterSection({
   title,
@@ -18,15 +21,37 @@ function FilterSection({
   children: ReactNode;
 }) {
   return (
-    <details className="ledger-filter-section">
+    <details
+      data-ui="ledger-filter-section"
+      className={filterFeatureStyles['ledger-filter-section']}
+    >
       <summary>
         <span>
-          <span className="ledger-filter-title">{title}</span>
-          <span className="ledger-filter-summary">{summary}</span>
+          <span
+            data-ui="ledger-filter-title"
+            className={filterFeatureStyles['ledger-filter-title']}
+          >
+            {title}
+          </span>
+          <span
+            data-ui="ledger-filter-summary"
+            className={filterFeatureStyles['ledger-filter-summary']}
+          >
+            {summary}
+          </span>
         </span>
-        <span className="ledger-filter-chevron" aria-hidden="true" />
+        <span
+          data-ui="ledger-filter-chevron"
+          className={filterFeatureStyles['ledger-filter-chevron']}
+          aria-hidden="true"
+        />
       </summary>
-      <div className="ledger-filter-section-content">{children}</div>
+      <div
+        data-ui="ledger-filter-section-content"
+        className={filterFeatureStyles['ledger-filter-section-content']}
+      >
+        {children}
+      </div>
     </details>
   );
 }
@@ -34,12 +59,14 @@ function FilterSection({
 export function ExpenseFilterForm({
   filterText,
   groupId,
+  layout,
   spaces,
   today,
   onApply,
 }: {
   filterText: string;
   groupId: string;
+  layout: 'group' | 'household';
   spaces: readonly LedgerSpace[];
   today: string;
   onApply: (data: FormData) => void;
@@ -84,20 +111,29 @@ export function ExpenseFilterForm({
 
   return (
     <form
-      className="ledger-filters"
+      data-ui="ledger-filters"
+      data-scope={layout}
+      className={filterFeatureStyles['ledger-filters']}
       onSubmit={(event) => {
         event.preventDefault();
         onApply(new FormData(event.currentTarget));
       }}
     >
-      <div className="ledger-filter-scroll">
+      <div
+        data-ui="ledger-filter-scroll"
+        className={filterFeatureStyles['ledger-filter-scroll']}
+      >
         {!groupId && (
-          <label className="ledger-filter-field">
+          <label
+            data-ui="ledger-filter-field form-label"
+            className={filterFeatureStyles['ledger-filter-field']}
+          >
             <span>Space</span>
             <select
               name="groupId"
               value={draft.get('groupId') ?? ''}
               onChange={(event) => update('groupId', event.target.value)}
+              data-ui="form-control"
             >
               <option value="">All spaces</option>
               {spaces.map((space) => (
@@ -118,7 +154,16 @@ export function ExpenseFilterForm({
                 : 'All categories'
           }
         >
-          <fieldset className="ledger-filter-options ledger-filter-categories">
+          <fieldset
+            data-ui={
+              'ledger-filter-options ledger-filter-categories' +
+              ' form-fieldset'
+            }
+            className={cx(
+              filterFeatureStyles['ledger-filter-options'],
+              filterFeatureStyles['ledger-filter-categories'],
+            )}
+          >
             <legend
               data-ui="visually-hidden"
               className={uiStyles['visually-hidden']}
@@ -126,7 +171,7 @@ export function ExpenseFilterForm({
               Categories
             </legend>
             {categories.map((category) => (
-              <label key={category}>
+              <label key={category} data-ui="form-label">
                 <input
                   type="checkbox"
                   name="categories"
@@ -135,6 +180,7 @@ export function ExpenseFilterForm({
                   onChange={(event) =>
                     toggle('categories', category, event.target.checked)
                   }
+                  data-ui="form-checkbox"
                 />
                 <span>{categoryLabel(category)}</span>
               </label>
@@ -153,13 +199,18 @@ export function ExpenseFilterForm({
               }
             >
               {key === 'memberIds' && (
-                <p id={`${id}-involving`} className="ledger-filter-hint">
+                <p
+                  id={`${id}-involving`}
+                  data-ui="ledger-filter-hint"
+                  className={filterFeatureStyles['ledger-filter-hint']}
+                >
                   Payer or participant, including zero shares.
                 </p>
               )}
               {spaces.map((space) => (
                 <fieldset
-                  className="ledger-filter-options"
+                  data-ui="ledger-filter-options form-fieldset"
+                  className={filterFeatureStyles['ledger-filter-options']}
                   key={space.groupId}
                   aria-describedby={
                     key === 'memberIds' ? `${id}-involving` : undefined
@@ -167,7 +218,7 @@ export function ExpenseFilterForm({
                 >
                   <legend>{space.name}</legend>
                   {space.members.map((member) => (
-                    <label key={member.id}>
+                    <label key={member.id} data-ui="form-label">
                       <input
                         type="checkbox"
                         name={key}
@@ -176,6 +227,7 @@ export function ExpenseFilterForm({
                         onChange={(event) =>
                           toggle(key, member.id, event.target.checked)
                         }
+                        data-ui="form-checkbox"
                       />
                       <span>{member.displayName}</span>
                     </label>
@@ -186,7 +238,10 @@ export function ExpenseFilterForm({
           );
         })}
         <FilterSection title="Dates" summary={dateSummary}>
-          <label className="ledger-filter-field">
+          <label
+            data-ui="ledger-filter-field form-label"
+            className={filterFeatureStyles['ledger-filter-field']}
+          >
             <span>Date range</span>
             <select
               value={preset}
@@ -198,6 +253,7 @@ export function ExpenseFilterForm({
                 update('from', range.from);
                 update('to', range.to);
               }}
+              data-ui="form-control"
             >
               <option value="all">All dates</option>
               <option value="today">Today</option>
@@ -207,9 +263,16 @@ export function ExpenseFilterForm({
               <option value="custom">Custom dates</option>
             </select>
           </label>
-          <div className="ledger-filter-date-fields">
+          <div
+            data-ui="ledger-filter-date-fields"
+            className={filterFeatureStyles['ledger-filter-date-fields']}
+          >
             {(['from', 'to'] as const).map((key) => (
-              <label className="ledger-filter-field" key={key}>
+              <label
+                data-ui="ledger-filter-field form-label"
+                className={filterFeatureStyles['ledger-filter-field']}
+                key={key}
+              >
                 <span>{key === 'from' ? 'From' : 'To'}</span>
                 <input
                   name={key}
@@ -220,20 +283,32 @@ export function ExpenseFilterForm({
                     setPreset('custom');
                     update(key, event.target.value);
                   }}
+                  data-ui="form-control"
                 />
               </label>
             ))}
           </div>
-          <p id={`${id}-dates`} className="ledger-filter-hint">
+          <p
+            id={`${id}-dates`}
+            data-ui="ledger-filter-hint"
+            className={filterFeatureStyles['ledger-filter-hint']}
+          >
             Includes both dates.
           </p>
         </FilterSection>
-        <label className="ledger-filter-field ledger-filter-sort">
+        <label
+          data-ui="ledger-filter-field ledger-filter-sort form-label"
+          className={cx(
+            filterFeatureStyles['ledger-filter-field'],
+            filterFeatureStyles['ledger-filter-sort'],
+          )}
+        >
           <span>Sort</span>
           <select
             name="sort"
             value={draft.get('sort') || 'DATE_DESC'}
             onChange={(event) => update('sort', event.target.value)}
+            data-ui="form-control"
           >
             <option value="DATE_DESC">Date: newest first</option>
             <option value="DATE_ASC">Date: oldest first</option>
@@ -242,7 +317,10 @@ export function ExpenseFilterForm({
           </select>
         </label>
       </div>
-      <div className="ledger-filter-actions">
+      <div
+        data-ui="ledger-filter-actions"
+        className={filterFeatureStyles['ledger-filter-actions']}
+      >
         <Button
           tone="text"
           type="button"

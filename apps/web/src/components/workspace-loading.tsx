@@ -25,7 +25,8 @@ export class WorkspaceLoading extends Component<Props> {
     return (
       <div
         ref={this.element}
-        className={`workspace-loading-surface ${this.props.className ?? ''}`}
+        data-ui="workspace-loading-surface"
+        className={this.props.className}
       >
         {this.props.children}
       </div>

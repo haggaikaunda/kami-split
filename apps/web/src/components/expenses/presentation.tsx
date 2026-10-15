@@ -1,18 +1,25 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { containDialogFocus } from '../ui/primitives';
-import './ledger.css';
+
 import { AppIcon } from '@/components/workspace-identity';
+import { cx } from '../ui/classnames';
+
+import formLayoutStyles from '../ui/form-layout.module.css';
+import dialogFeatureStyles from './dialog.module.css';
+import presentationFeatureStyles from './presentation.module.css';
 
 /** One mounted presentation preserves form drafts across responsive changes. */
 export function ExpensePresentation({
   title,
   kind = 'detail',
+  layout = 'group',
   onClose,
   children,
 }: {
   title: string;
   kind?: 'detail' | 'create';
+  layout?: 'group' | 'household';
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -80,7 +87,14 @@ export function ExpensePresentation({
   };
   return (
     <dialog
-      className={`ledger-dialog expense-presentation expense-presentation--${kind}`}
+      data-ui={`form-scope ledger-dialog expense-presentation expense-presentation--${kind}`}
+      className={cx(
+        formLayoutStyles['form-scope'],
+        dialogFeatureStyles['ledger-dialog'],
+        presentationFeatureStyles['expense-presentation'],
+        presentationFeatureStyles[`expense-presentation--${kind}`],
+      )}
+      data-layout={layout}
       ref={ref}
       role={mobile && kind === 'detail' ? 'region' : 'dialog'}
       aria-modal={mobile && kind === 'detail' ? undefined : true}
@@ -109,9 +123,10 @@ export function ExpensePresentation({
         outsideStart.current = false;
       }}
     >
-      <header>
+      <header data-ui="form-region">
         <button
-          className="expense-presentation-back"
+          data-ui="expense-presentation-back form-button"
+          className={presentationFeatureStyles['expense-presentation-back']}
           onClick={onClose}
           aria-label="Back to expenses"
         >
@@ -121,14 +136,20 @@ export function ExpensePresentation({
           {title}
         </h1>
         <button
-          className="expense-presentation-close"
+          data-ui="expense-presentation-close form-button"
+          className={presentationFeatureStyles['expense-presentation-close']}
           onClick={onClose}
           aria-label="Close expense"
         >
           <AppIcon name="close" />
         </button>
       </header>
-      <div className="expense-presentation-content">{children}</div>
+      <div
+        data-ui="expense-presentation-content"
+        className={presentationFeatureStyles['expense-presentation-content']}
+      >
+        {children}
+      </div>
     </dialog>
   );
 }

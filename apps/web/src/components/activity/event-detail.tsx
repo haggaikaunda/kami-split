@@ -1,4 +1,3 @@
-import activityStyles from './feed.module.css';
 import { cx } from '../ui/classnames';
 import { calendarDate } from '@/lib/dates';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
@@ -7,6 +6,7 @@ import { Money } from '../financial/presentation';
 import { money } from '@/lib/relay/money';
 import { percentageText } from '@/lib/relay/percentage';
 import type { activityDetailQuery } from '@/lib/relay/__generated__/activityDetailQuery.graphql';
+import activityStyles from './feed.module.css';
 export type HistoricalEvent = Extract<
   activityDetailQuery['response']['activityEvent'],
   { readonly __typename: 'ActivityEvent' }
@@ -92,7 +92,7 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
   return (
     <>
       <header
-        data-ui="activity-record-heading"
+        data-ui="activity-record-heading form-region"
         className={activityStyles['activity-record-heading']}
       >
         <span

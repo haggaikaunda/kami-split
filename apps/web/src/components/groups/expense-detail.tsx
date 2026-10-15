@@ -1,4 +1,7 @@
 'use client';
+
+import { cx } from '../ui/classnames';
+
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useFragment } from 'react-relay';
 import { NetworkQuery } from '@/lib/relay/query';
@@ -15,13 +18,19 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { calendarDate } from '@/lib/dates';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { overviewDate } from './overview-date';
-import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
+import { AppIcon } from '@/components/workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 import { Member, Button } from '../ui/primitives';
 import { Money } from '../financial/presentation';
 import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
 import { readEditDraft } from '@/lib/relay/edit-draft';
 import { ExpenseEdit } from './expense-edit';
+
+import financialPaletteStyles from '../financial/presentation.module.css';
+import detailFeatureStyles from './expense-detail.module.css';
+import formsFeatureStyles from './forms.module.css';
+
 type Props = {
   scope: FinancialScope;
   group: string;
@@ -98,7 +107,9 @@ function ExpenseUnavailable({
   return (
     <>
       <p role="alert">Expense unavailable. No expense details can be shown.</p>
-      <button onClick={retry}>Retry expense</button>
+      <button onClick={retry} data-ui="form-button">
+        Retry expense
+      </button>
     </>
   );
 }
@@ -132,17 +143,21 @@ function ExpenseDetailContent({
         document={membersDocument}
         variables={{ groupId: group }}
         fallback={
-          <section>
+          <section data-ui="form-region">
             <p role="status">Loading current editing permissions…</p>
-            <button onClick={() => setEditing(false)}>Back to expense</button>
+            <button onClick={() => setEditing(false)} data-ui="form-button">
+              Back to expense
+            </button>
           </section>
         }
         failure={
-          <section>
+          <section data-ui="form-region">
             <p role="alert">
               Current members are unavailable. Close editing and retry.
             </p>
-            <button onClick={() => setEditing(false)}>Back to expense</button>
+            <button onClick={() => setEditing(false)} data-ui="form-button">
+              Back to expense
+            </button>
           </section>
         }
       >
@@ -168,17 +183,29 @@ function ExpenseDetailContent({
       </NetworkQuery>
     );
   return (
-    <section className="expense-detail-card">
-      <div className="expense-detail-identity">
+    <section
+      data-ui="expense-detail-card form-region"
+      className={detailFeatureStyles['expense-detail-card']}
+    >
+      <div
+        data-ui="expense-detail-identity"
+        className={detailFeatureStyles['expense-detail-identity']}
+      >
         <CategoryIcon category={expense.category} />
         <div>
           <h2>{expense.description}</h2>
         </div>
       </div>
-      <p className="expense-detail-total">
+      <p
+        data-ui="expense-detail-total"
+        className={detailFeatureStyles['expense-detail-total']}
+      >
         <Money value={money(expense.totalMinor)} currency={expense.currency} />
       </p>
-      <div className="expense-paid-by">
+      <div
+        data-ui="expense-paid-by"
+        className={detailFeatureStyles['expense-paid-by']}
+      >
         {expense.payer.displayName} paid ·{' '}
         <time dateTime={expense.effectiveDate}>
           {overviewDate(expense.effectiveDate)}
@@ -196,19 +223,25 @@ function ExpenseDetailContent({
           {retainedAttempt ? 'Recover expense edit' : 'Edit expense'}
         </Button>
       ) : (
-        <p className="expense-edit-lock">
+        <p>
           {expense.editLockReason === 'FORMER_MEMBER'
             ? 'This expense cannot be edited because it involves a member who has left the group.'
             : 'This expense is currently read-only because editing eligibility is unavailable.'}
         </p>
       )}
       {expense.split === 'PERCENTAGE' && (
-        <p className="percentage-help">
+        <p
+          data-ui="percentage-help"
+          className={formsFeatureStyles['percentage-help']}
+        >
           Saved percentages describe responsibility. Fractional cents were
           distributed by largest remainder, then ascending participant identity.
         </p>
       )}
-      <dl className="expense-detail-fields">
+      <dl
+        data-ui="expense-detail-fields"
+        className={detailFeatureStyles['expense-detail-fields']}
+      >
         <div>
           <dt>Date</dt>
           <dd>
@@ -228,7 +261,10 @@ function ExpenseDetailContent({
           <dd>{expense.note || 'No note added.'}</dd>
         </div>
       </dl>
-      <section className="expense-detail-split">
+      <section
+        data-ui="expense-detail-split form-region"
+        className={detailFeatureStyles['expense-detail-split']}
+      >
         <h3>
           {expense.split === 'PERCENTAGE'
             ? 'Split by percentage'
@@ -236,13 +272,22 @@ function ExpenseDetailContent({
               ? 'Exact split'
               : 'Split equally'}
         </h3>{' '}
-        <ul className="expense-allocation-list">
+        <ul
+          data-ui="expense-allocation-list"
+          className={cx(
+            detailFeatureStyles['expense-allocation-list'],
+            financialPaletteStyles['member-palette'],
+          )}
+        >
           {expense.allocations.map((share) => (
             <li key={share.participant.id}>
               <Member name={share.participant.displayName} />
               {expense.split === 'PERCENTAGE' &&
                 share.percentageHundredths != null && (
-                  <span className="percentage-saved">
+                  <span
+                    data-ui="percentage-saved"
+                    className={detailFeatureStyles['percentage-saved']}
+                  >
                     {percentageText(share.percentageHundredths)}%
                   </span>
                 )}
@@ -254,7 +299,10 @@ function ExpenseDetailContent({
           ))}
         </ul>
       </section>
-      <p className="expense-detail-audit">
+      <p
+        data-ui="expense-detail-audit"
+        className={detailFeatureStyles['expense-detail-audit']}
+      >
         Created by {expense.creator.displayName} ·{' '}
         <Timestamp value={expense.createdAt} />
       </p>
@@ -275,9 +323,11 @@ function EditUnavailable({
     unavailable();
   }, []);
   return (
-    <section>
+    <section data-ui="form-region">
       <p role="alert">Current source access is unavailable.</p>
-      <button onClick={onBack}>Back to expense</button>
+      <button onClick={onBack} data-ui="form-button">
+        Back to expense
+      </button>
     </section>
   );
 }

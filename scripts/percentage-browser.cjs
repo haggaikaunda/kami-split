@@ -347,19 +347,19 @@ withAuthFixture(origin, session, async () => {
         );
         assert(
           await page
-            .locator('.percentage-status')
+            .locator('[data-ui~="percentage-status"]')
             .innerText()
             .then((s) => s.includes('100% allocated')),
         );
         assert.equal(
           await page
-            .locator('.financial-form-card button[type="submit"]')
+            .locator('[data-ui~="financial-form-card"] button[type="submit"]')
             .isEnabled(),
           true,
         );
         assert.equal(
           await page
-            .locator('.percentage-money')
+            .locator('[data-ui~="percentage-money"]')
             .allTextContents()
             .then((a) => a.join('|')),
           '$75.00|$50.00',
@@ -370,13 +370,13 @@ withAuthFixture(origin, session, async () => {
         path: `${output}/${baseline ? 'before' : 'P1-P2'}-top-${width}-${scale}.png`,
       });
       await page
-        .locator('.financial-form-card button[type="submit"]')
+        .locator('[data-ui~="financial-form-card"] button[type="submit"]')
         .scrollIntoViewIfNeeded();
       await page.screenshot({
         path: `${output}/${baseline ? 'before' : 'P1-P2'}-bottom-${width}-${scale}.png`,
       });
       const saveBox = await page
-        .locator('.financial-form-card button[type="submit"]')
+        .locator('[data-ui~="financial-form-card"] button[type="submit"]')
         .boundingBox();
       assert(
         saveBox.y >= 0 && saveBox.y + saveBox.height <= 900,
@@ -409,7 +409,7 @@ withAuthFixture(origin, session, async () => {
         );
         assert.equal(
           await page
-            .locator('.financial-form-card button[type="submit"]')
+            .locator('[data-ui~="financial-form-card"] button[type="submit"]')
             .isDisabled(),
           true,
         );
@@ -417,7 +417,7 @@ withAuthFixture(origin, session, async () => {
         await page.locator('#expense-amount').fill('9999999.99');
         assert(
           await page
-            .locator('.percentage-money')
+            .locator('[data-ui~="percentage-money"]')
             .first()
             .innerText()
             .then((s) => s === '$5,999,999.99'),
@@ -432,7 +432,7 @@ withAuthFixture(origin, session, async () => {
       }
       if (!baseline) {
         await page
-          .locator('.financial-form-card button[type="submit"]')
+          .locator('[data-ui~="financial-form-card"] button[type="submit"]')
           .click();
         const frozen = await page.evaluate(
           () =>
@@ -499,13 +499,16 @@ withAuthFixture(origin, session, async () => {
           await page.locator(`[id="percentage-${id}"]`).fill(value);
         assert(
           await page
-            .locator('.percentage-status')
+            .locator('[data-ui~="percentage-status"]')
             .innerText()
             .then((s) => s.includes('85% allocated · 15% remaining')),
         );
-        assert.equal(await page.locator('.percentage-money').count(), 0);
+        assert.equal(
+          await page.locator('[data-ui~="percentage-money"]').count(),
+          0,
+        );
         await page
-          .locator('.financial-form-card button[type="submit"]')
+          .locator('[data-ui~="financial-form-card"] button[type="submit"]')
           .scrollIntoViewIfNeeded();
         await page.screenshot({
           path: `${output}/P3-invalid-${width}-${scale}.png`,
@@ -519,7 +522,7 @@ withAuthFixture(origin, session, async () => {
         );
         assert.equal(
           await page
-            .locator('.percentage-money')
+            .locator('[data-ui~="percentage-money"]')
             .allTextContents()
             .then((a) => a.join('|')),
           '$80.00|$60.00|$60.00',
@@ -536,14 +539,14 @@ withAuthFixture(origin, session, async () => {
         await page.getByRole('heading', { name: 'Coffee stop' }).waitFor();
         assert.equal(
           await page
-            .locator('.percentage-saved')
+            .locator('[data-ui~="percentage-saved"]')
             .allTextContents()
             .then((a) => a.join('|')),
           '60%|40%',
         );
         assert(
           await page
-            .locator('.expense-allocation-list')
+            .locator('[data-ui~="expense-allocation-list"]')
             .innerText()
             .then((s) => s.includes('$6.01') && s.includes('$4.00')),
         );
@@ -568,13 +571,13 @@ withAuthFixture(origin, session, async () => {
         await page.locator('[id="percentage-M1"]').fill('40');
         assert.equal(
           await page
-            .locator('.financial-form-card button[type="submit"]')
+            .locator('[data-ui~="financial-form-card"] button[type="submit"]')
             .isEnabled(),
           true,
         );
         await page.emulateMedia({ colorScheme: 'dark' });
         await page
-          .locator('.financial-form-card button[type="submit"]')
+          .locator('[data-ui~="financial-form-card"] button[type="submit"]')
           .scrollIntoViewIfNeeded();
         assert(
           await page.evaluate(

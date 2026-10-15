@@ -255,7 +255,8 @@ it('bounds repeated and slow observer callbacks, retains manual retry, deduplica
   await intersect();
   expect(state.requests).toHaveLength(2);
   expect(
-    host.querySelector('.ledger-pagination [role="status"]')?.textContent,
+    host.querySelector('[data-ui~="ledger-pagination"] [role="status"]')
+      ?.textContent,
   ).toContain('Loading more');
   await act(async () => state.requests[1].error?.());
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('Retry');
@@ -266,7 +267,7 @@ it('bounds repeated and slow observer callbacks, retains manual retry, deduplica
   expect(state.requests).toHaveLength(3);
   expect(state.requests[2].variables).toMatchObject({ after: 'first' });
   await respond(result(['one', 'two'], 'second'));
-  expect(host.querySelectorAll('.ledger-month li')).toHaveLength(2);
+  expect(host.querySelectorAll('[data-ui~="ledger-month"] li')).toHaveLength(2);
   expect(document.activeElement).toBe(anchor);
   await intersect();
   expect(state.requests).toHaveLength(3);
@@ -401,7 +402,7 @@ it.each(['repeated cursor', 'empty continuing page', 'missing cursor'])(
     await intersect();
     expect(state.requests).toHaveLength(2);
     expect(host.textContent).toContain('pagination changed');
-    expect(host.querySelector('.ledger-month')).toBeNull();
+    expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
   },
 );
 it('bounds replay even if a server returns duplicate-only pages with changing cursors', async () => {
@@ -522,7 +523,9 @@ it('does not finish a saved-overlay return from the old page while fresh authori
       for (const callback of frames.values()) callback(0);
     });
     expect(document.activeElement?.id).toBe('ledger-expense-late');
-    expect(host.querySelectorAll('.ledger-month li')).toHaveLength(8);
+    expect(host.querySelectorAll('[data-ui~="ledger-month"] li')).toHaveLength(
+      8,
+    );
   } finally {
     frameSpy.mockRestore();
     cancelSpy.mockRestore();
