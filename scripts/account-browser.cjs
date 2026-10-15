@@ -186,7 +186,7 @@ withAuthFixture(origin, session, async () => {
                     kind: 'SHARED',
                     recipient: null,
                     expiresAt: '2026-10-13T00:00:00Z',
-                    lifecycle: 'OUTSTANDING',
+                    lifecycle: 'PENDING',
                     actionID: null,
                     delivery: 'NOT_REQUESTED',
                   },
@@ -219,11 +219,14 @@ withAuthFixture(origin, session, async () => {
             };
           return r.fulfill({ json: { data } });
         });
-        const resize = async () =>
-          page.evaluate(
+        const resize = async () => {
+          await page.evaluate(
             (s) => (document.documentElement.style.fontSize = `${16 * s}px`),
             scale,
           );
+          // Let the shell's ResizeObserver settle after changing actual text size.
+          await page.waitForTimeout(100);
+        };
         const capture = async (label) => {
           await resize();
           await page.screenshot({
@@ -238,19 +241,6 @@ withAuthFixture(origin, session, async () => {
           );
         };
         await page.goto(origin + '/account');
-        if (process.env.BASELINE === '1') {
-          await page
-            .getByRole('button', { name: 'Manage invitations for Maui' })
-            .waitFor();
-          await capture('before-account');
-          await page
-            .getByRole('button', { name: 'Manage invitations for Maui' })
-            .click();
-          await page.getByText('Shared group link', { exact: true }).waitFor();
-          await capture('before-invitations');
-          await page.close();
-          continue;
-        }
         await page.getByLabel('Display name', { exact: true }).waitFor();
         await resize();
         assert.equal(
@@ -352,14 +342,18 @@ withAuthFixture(origin, session, async () => {
           .getByRole('link', { name: 'Household', exact: true })
           .click();
         await page
-          .getByRole('link', { name: 'Manage invitations', exact: true })
-          .waitFor();
-        await page
-          .getByRole('link', { name: 'Manage invitations', exact: true })
+          .getByRole('navigation', { name: 'Household workspace' })
+          .getByRole('link', { name: 'Members', exact: true })
           .click();
         await page
-          .getByRole('heading', { name: 'Invitations for Household' })
+          .getByRole('region', { name: 'People and invitations for Household' })
+          .getByText('Shared group link', { exact: true })
           .waitFor();
+        assert.equal(
+          requests.filter((x) => x.query.includes('ownerInvitations')).at(-1)
+            .variables.groupID,
+          'H',
+        );
         await capture('household-invitations');
         await page.emulateMedia({ colorScheme: 'dark' });
         await page.waitForFunction(
@@ -379,9 +373,10 @@ withAuthFixture(origin, session, async () => {
         ]) {
           await page.goto(`${origin}/${kind}/${id}?tab=members#invitations`);
           await page
-            .getByRole('heading', {
-              name: `Invitations for ${id === 'G' ? 'Friends' : 'Maui'}`,
+            .getByRole('region', {
+              name: `People and invitations for ${id === 'G' ? 'Friends' : 'Maui'}`,
             })
+            .getByText('Shared group link', { exact: true })
             .waitFor();
           await capture(`${kind}-invitations`);
           assert.equal(
@@ -391,13 +386,13 @@ withAuthFixture(origin, session, async () => {
           );
           await page.reload();
           await page
-            .getByRole('heading', { name: /Invitations for/ })
+            .getByRole('region', { name: /People and invitations for/ })
             .waitFor();
         }
         await page.goto(origin + '/invitations?group=T');
         await page.waitForURL('**/trips/T?tab=members#invitations');
         await page
-          .getByRole('heading', { name: 'Invitations for Maui' })
+          .getByRole('region', { name: 'People and invitations for Maui' })
           .waitFor();
         await page.goto(origin + '/invitations');
         await page
@@ -413,7 +408,9 @@ withAuthFixture(origin, session, async () => {
           .getByRole('heading', { name: 'Members', exact: true })
           .waitFor();
         assert.equal(
-          await page.getByRole('heading', { name: /Invitations for/ }).count(),
+          await page
+            .getByRole('region', { name: /People and invitations for/ })
+            .count(),
           0,
         );
         member = false;
@@ -435,7 +432,10 @@ withAuthFixture(origin, session, async () => {
           ),
           'dark',
         );
-        const darkContrast = await page.evaluate(() => {
+        const brandColor = await page
+          .getByText('Kami Grow', { exact: true })
+          .evaluate((element) => getComputedStyle(element).color);
+        const darkContrast = await page.evaluate((brandColor) => {
           const luminance = (color) => {
             const rgb = color
               .match(/[0-9.]+/g)
@@ -455,16 +455,11 @@ withAuthFixture(origin, session, async () => {
             return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
           };
           const background = getComputedStyle(
-            document.querySelector('.profile-card'),
+            document.getElementById('profile-heading').closest('section'),
           ).backgroundColor;
           return {
             canvas: getComputedStyle(document.documentElement).backgroundColor,
-            brand: ratio(
-              getComputedStyle(
-                document.querySelector('[data-ui~="workspace-brand"]'),
-              ).color,
-              background,
-            ),
+            brand: ratio(brandColor, background),
             heading: ratio(
               getComputedStyle(document.querySelector('#profile-heading'))
                 .color,
@@ -477,8 +472,8 @@ withAuthFixture(origin, session, async () => {
               background,
             ),
           };
-        });
-        assert.equal(darkContrast.canvas, 'rgb(11, 17, 26)');
+        }, brandColor);
+        assert.equal(darkContrast.canvas, 'rgb(11, 17, 27)');
         assert(
           darkContrast.heading >= 4.5 &&
             darkContrast.label >= 4.5 &&
@@ -502,7 +497,7 @@ withAuthFixture(origin, session, async () => {
         await page
           .getByRole('button', { name: 'Sign out of this session' })
           .click();
-        await page.waitForURL('**/sign-in');
+        await page.waitForURL((url) => url.pathname === '/sign-in');
         await page.getByLabel('Email address', { exact: true }).waitFor();
         await capture('signed-out');
         assert.equal(

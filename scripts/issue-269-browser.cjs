@@ -146,11 +146,16 @@ module.exports = async function verifyIssue269({
           /Repayments do not change your share/,
         );
         await balance.click();
-        assert.equal(await page.locator('.rich-help-panel').count(), 1);
+        assert.equal(
+          await page.locator('[data-ui~="rich-help-panel"]').count(),
+          1,
+        );
         await page.keyboard.press('Escape');
       } else {
         assert.equal(
-          await page.locator('.balance-explanations details[open]').count(),
+          await page
+            .locator('[data-ui~="balance-explanations"] details[open]')
+            .count(),
           0,
         );
         await page.getByText('How your balance works', { exact: true }).click();

@@ -1,3 +1,4 @@
+import invitationStyles from './invitations.module.css';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { Button, Field } from '../ui/primitives';
 import type { OnboardingController } from './controller';
@@ -43,9 +44,15 @@ export function InvitationPanel({
       <ExactTimestamp value={item.expiresAt} />
       {item.kind !== 'SHARED' && <p>{deliveryStatus(item.delivery)}</p>}
       {!['ACCEPTED', 'REVOKED'].includes(item.lifecycle) && (
-        <details className="invitation-actions">
+        <details
+          data-ui="invitation-actions"
+          className={invitationStyles['invitation-actions']}
+        >
           <summary>Invitation options</summary>
-          <div className="onboarding-actions">
+          <div
+            data-ui="invitation-buttons"
+            className={invitationStyles['invitation-buttons']}
+          >
             {item.kind === 'SHARED' && (
               <Button
                 tone="secondary"
@@ -113,10 +120,16 @@ export function InvitationPanel({
   );
   return (
     <>
-      <section className="account-management">
+      <section
+        data-ui="account-management"
+        className={invitationStyles['account-management']}
+      >
         {group && (
           <>
-            <details className="add-member">
+            <details
+              data-ui="add-member"
+              className={invitationStyles['add-member']}
+            >
               <summary>Add member</summary>
               <p>
                 Joining shares the group’s ledger and full expense history.
@@ -174,7 +187,10 @@ export function InvitationPanel({
                   These links are not members. Access starts only after a valid
                   invitation is accepted.
                 </p>
-                <ul className="account-rows">
+                <ul
+                  data-ui="account-rows"
+                  className={invitationStyles['account-rows']}
+                >
                   {invites
                     .filter(
                       (item) =>
@@ -184,9 +200,15 @@ export function InvitationPanel({
                 </ul>
               </section>
             )}
-            <details className="invitation-history">
+            <details
+              data-ui="invitation-history"
+              className={invitationStyles['invitation-history']}
+            >
               <summary>Invitation history</summary>
-              <ul className="account-rows">
+              <ul
+                data-ui="account-rows"
+                className={invitationStyles['account-rows']}
+              >
                 {invites
                   .filter((item) => item.lifecycle !== 'PENDING')
                   .map((item) => renderInvitation(item))}

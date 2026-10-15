@@ -1,4 +1,6 @@
 'use client';
+import { cx } from '../ui/classnames';
+import invitationStyles from '../onboarding/invitations.module.css';
 import { useExpenseEntry } from '@/components/expenses/entry';
 import workspaceStyles from '../workspace/patterns.module.css';
 import financialStyles from '../financial/presentation.module.css';
@@ -301,7 +303,10 @@ export function GroupWorkspaceContent({
           />
         </>
       ) : current === 'Members' ? (
-        <section className="workspace-panel members-panel">
+        <section
+          data-ui="workspace-panel members-panel"
+          className={cx('workspace-panel', invitationStyles['members-panel'])}
+        >
           <h2>Members</h2>
           {group.trip && (
             <p className="workspace-context-detail">
@@ -554,7 +559,10 @@ export function GroupBalances({
       </section>
     );
   return (
-    <section className="group-balances workspace-panel">
+    <section
+      data-ui="group-balances workspace-panel"
+      className="group-balances workspace-panel"
+    >
       <h2>{group.isHousehold ? 'Household expenses' : 'Balance details'}</h2>
       <ViewerMetric scope={scope} group={group} />
       <p>

@@ -142,10 +142,10 @@
   white-space: normal;
 }
 .account-card > [data-ui~='status'],
-.account-card > #profile-feedback {
+.account-card > .profile-feedback {
   margin-bottom: 16px;
 }
-.appearance-options {
+.account-card .appearance-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.5rem), 1fr));
   gap: 12px;
@@ -164,6 +164,9 @@
   background: var(--color-surface);
   text-align: center;
   cursor: pointer;
+}
+.appearance-options .appearance-choice {
+  margin: 0;
 }
 .appearance-choice:has(input:checked) {
   padding: 11px;
@@ -293,7 +296,7 @@
   .account-profile-fields [data-ui~='field'] [data-ui='field-control'] {
     font-size: 1rem;
   }
-  .appearance-options {
+  .account-card .appearance-options {
     gap: 8px;
   }
   .appearance-choice {

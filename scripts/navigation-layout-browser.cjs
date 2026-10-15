@@ -206,7 +206,7 @@ module.exports = async function verifyLayout({
     .locator('[data-ui~="workspace-navigation"]')
     .getByRole('link', { name: 'Account', exact: true })
     .click();
-  await page.locator('.account-heading').waitFor();
+  await page.locator('[data-ui~="account-heading"]').waitFor();
   assert.equal(
     await page
       .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
@@ -217,7 +217,7 @@ module.exports = async function verifyLayout({
   const shortPage = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > innerWidth,
     contentTop: document
-      .querySelector('.account-content')
+      .querySelector('[data-ui~="account-content"]')
       .getBoundingClientRect().top,
     headerBottom: document
       .querySelector('[data-ui~="workspace-navigation-brand"]')
@@ -228,7 +228,9 @@ module.exports = async function verifyLayout({
     shortPage.contentTop >= shortPage.headerBottom,
     'Account starts below header',
   );
-  const account = await page.locator('.account-content').boundingBox();
+  const account = await page
+    .locator('[data-ui~="account-content"]')
+    .boundingBox();
   assert(account.width <= 46.25 * 16 * scale + 1, 'Settings width is narrower');
   await page.goBack();
   await page.locator('#ledger-expense-e40').waitFor();

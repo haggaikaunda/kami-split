@@ -162,7 +162,7 @@ it('reauthorizes the complete source context in event detail and clears revoked 
   expect(boundary.requests).toHaveLength(2);
   expect(host.textContent).not.toContain('Alice');
   expect(host.textContent).toContain('Activity access changed');
-  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.querySelector('[data-ui~="activity-detail"]')).toBeNull();
   expect(host.textContent).not.toContain('Trip');
 });
 it('rejects a detail from a different group and ignores late detail after close', async () => {
@@ -267,14 +267,14 @@ it('removes current detail and source identity before paging reauthorization and
   );
   expect(host.textContent).toContain('Sensitive lunch');
   await click('Next activity page');
-  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.querySelector('[data-ui~="activity-detail"]')).toBeNull();
   expect(host.textContent).not.toContain('Sensitive lunch');
   expect(host.textContent).not.toContain('Trip');
   expect(boundary.requests.at(-1)?.variables).toMatchObject({
     after: 'next-cursor',
   });
   await respond({ __typename: 'Problem' });
-  expect(host.querySelector('.activity-detail')).toBeNull();
+  expect(host.querySelector('[data-ui~="activity-detail"]')).toBeNull();
   expect(host.textContent).not.toContain('Trip');
   expect(host.querySelector('[role="alert"]')?.textContent).toContain(
     'unavailable',

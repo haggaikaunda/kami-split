@@ -1,4 +1,5 @@
 'use client';
+import invitationStyles from '../onboarding/invitations.module.css';
 import financialStyles from '../financial/presentation.module.css';
 import { cx } from '../ui/classnames';
 
@@ -226,7 +227,13 @@ function HouseholdMembers({
   onRefresh?: () => void | Promise<void>;
 }) {
   return (
-    <section className="workspace-panel household-members members-panel">
+    <section
+      data-ui="workspace-panel household-members members-panel"
+      className={cx(
+        'workspace-panel household-members',
+        invitationStyles['members-panel'],
+      )}
+    >
       <h2>Household members</h2>
       <p>
         Active Household members share this ledger and its full expense history.

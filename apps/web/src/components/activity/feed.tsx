@@ -1,4 +1,6 @@
 'use client';
+import activityStyles from './feed.module.css';
+import { cx } from '../ui/classnames';
 
 import shellStyles from '../workspace/shell.module.css';
 import { WorkspaceLoading } from '@/components/workspace-loading';
@@ -33,7 +35,7 @@ import feedDocument, {
 import detailDocument, {
   type activityDetailQuery,
 } from '@/lib/relay/__generated__/activityDetailQuery.graphql';
-import './feed.css';
+
 import { HistoricalDetail, eventAction } from './event-detail';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 type Connection = Extract<
@@ -236,15 +238,29 @@ export function ActivityFeed({
   return (
     <WorkspaceLoading
       busy={loading}
-      className={`activity-view ${selected ? 'activity-view-selected' : ''}`}
+      data-ui={`activity-view ${selected ? 'activity-view-selected' : ''}`}
+      className={cx(
+        activityStyles['activity-view'],
+        selected && activityStyles['activity-view-selected'],
+      )}
     >
       {!managedRefresh && (
         <WorkspaceRefresh busy={loading} error={error} onRefresh={reset} />
       )}
-      <section className="activity-feed-panel" aria-labelledby={headingId}>
-        <header className="activity-feed-header">
+      <section
+        data-ui="activity-feed-panel"
+        className={activityStyles['activity-feed-panel']}
+        aria-labelledby={headingId}
+      >
+        <header
+          data-ui="activity-feed-header"
+          className={activityStyles['activity-feed-header']}
+        >
           <h2 id={headingId}>Recent activity</h2>
-          <div className="activity-controls">
+          <div
+            data-ui="activity-controls"
+            className={activityStyles['activity-controls']}
+          >
             <label>
               Event type
               <select
@@ -275,7 +291,10 @@ export function ActivityFeed({
         ) : (
           page && (
             <>
-              <ol className="activity-events">
+              <ol
+                data-ui="activity-events"
+                className={activityStyles['activity-events']}
+              >
                 {page.edges.map(({ node }) => (
                   <li key={node.id}>
                     <button
@@ -295,7 +314,13 @@ export function ActivityFeed({
                         <CategoryIcon category={node.after.category} />
                       ) : (
                         <span
-                          className={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
+                          data-ui={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
+                          className={cx(
+                            activityStyles['activity-kind'],
+                            activityStyles[
+                              `activity-kind-${node.kind.toLowerCase()}`
+                            ],
+                          )}
                           aria-hidden="true"
                         >
                           <AppIcon
@@ -309,7 +334,10 @@ export function ActivityFeed({
                           />
                         </span>
                       )}
-                      <span className="activity-row-content">
+                      <span
+                        data-ui="activity-row-content"
+                        className={activityStyles['activity-row-content']}
+                      >
                         <strong>
                           {node.creator.displayName}{' '}
                           {node.kind === 'EXPENSE_UPDATED'
@@ -322,7 +350,10 @@ export function ActivityFeed({
                               ? 'a repayment'
                               : 'an expense')}
                         </strong>
-                        <span className="activity-row-metadata">
+                        <span
+                          data-ui="activity-row-metadata"
+                          className={activityStyles['activity-row-metadata']}
+                        >
                           <Money
                             value={money(node.amountMinor)}
                             currency={node.currency}
@@ -356,7 +387,10 @@ export function ActivityFeed({
                   </li>
                 ))}
               </ol>
-              <div className="activity-pagination">
+              <div
+                data-ui="activity-pagination"
+                className={activityStyles['activity-pagination']}
+              >
                 {page.pageInfo.hasNextPage && (
                   <Button
                     tone="text"
@@ -383,12 +417,16 @@ export function ActivityFeed({
       </section>
       {selected && (
         <section
-          className="activity-detail"
+          data-ui="activity-detail"
+          className={activityStyles['activity-detail']}
           aria-label="Historical event detail"
           tabIndex={-1}
           ref={detailRef}
         >
-          <header className="activity-detail-header">
+          <header
+            data-ui="activity-detail-header"
+            className={activityStyles['activity-detail-header']}
+          >
             <h2>Activity detail</h2>
             <Button
               tone="text"

@@ -90,7 +90,7 @@ const protectedRoutes = [
   '/future-private-route/nested',
 ];
 const forbidden =
-  '[data-ui~="workspace-navigation"],.workspace-nav,[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],.account-heading,.financial-navigation';
+  '[data-ui~="workspace-navigation"],.workspace-nav,[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],[data-ui~="account-heading"],.financial-navigation';
 async function noPrivate(page) {
   assert.equal(await page.locator(forbidden).count(), 0, page.url());
   assert.equal(

@@ -1,4 +1,6 @@
 'use client';
+import accountStyles from './account.module.css';
+
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Field, Status } from '../ui/primitives';
@@ -138,28 +140,53 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
   return (
     <>
       {savedName !== undefined && (
-        <div className="account-identity">
-          <span className="account-avatar" aria-hidden="true">
+        <div
+          data-ui="account-identity"
+          className={accountStyles['account-identity']}
+        >
+          <span
+            data-ui="account-avatar"
+            className={accountStyles['account-avatar']}
+            aria-hidden="true"
+          >
             {Array.from(savedName.trim())[0] || '?'}
           </span>
           <div>
             <h2>{savedName}</h2>
-            <p className="account-secondary">{c.session?.user.email}</p>
+            <p
+              data-ui="account-secondary"
+              className={accountStyles['account-secondary']}
+            >
+              {c.session?.user.email}
+            </p>
           </div>
         </div>
       )}
-      <section className="account-card" aria-labelledby="profile-heading">
-        <div className="account-section-title">
+      <section
+        data-ui="account-card"
+        className={accountStyles['account-card']}
+        aria-labelledby="profile-heading"
+      >
+        <div
+          data-ui="account-section-title"
+          className={accountStyles['account-section-title']}
+        >
           <AppIcon name="account" />
           <div>
             <h2 id="profile-heading">Profile</h2>
-            <p className="account-secondary">
+            <p
+              data-ui="account-secondary"
+              className={accountStyles['account-secondary']}
+            >
               How you appear to people in your spaces.
             </p>
           </div>
         </div>
         {message && (
-          <div id="profile-feedback">
+          <div
+            id="profile-feedback"
+            className={accountStyles['profile-feedback']}
+          >
             <Status kind={failed ? 'error' : 'info'}>{message}</Status>
           </div>
         )}
@@ -177,7 +204,10 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
               void action(save);
             }}
           >
-            <div className="account-profile-fields">
+            <div
+              data-ui="account-profile-fields"
+              className={accountStyles['account-profile-fields']}
+            >
               <Field
                 id="display-name"
                 label="Display name"
@@ -199,7 +229,10 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
                 readOnly
               />
             </div>
-            <div className="account-actions">
+            <div
+              data-ui="account-actions"
+              className={accountStyles['account-actions']}
+            >
               <Button type="submit" disabled={working || !dirty || uncertain}>
                 Save changes
               </Button>
@@ -212,7 +245,14 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
                   setFailed(false);
                 }}
               >
-                Discard<span className="account-control-context"> edits</span>
+                Discard
+                <span
+                  data-ui="account-control-context"
+                  className={accountStyles['account-control-context']}
+                >
+                  {' '}
+                  edits
+                </span>
               </Button>
               {uncertain && (
                 <Button
