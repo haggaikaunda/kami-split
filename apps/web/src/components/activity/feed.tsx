@@ -14,6 +14,7 @@ import {
 } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { NetworkQuery } from '@/lib/relay/query';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import { Button, Skeleton } from '../ui/primitives';
@@ -42,11 +43,6 @@ type Connection = Extract<
   { readonly __typename: 'ActivityConnection' }
 >;
 type Event = Connection['edges'][number]['node'];
-type Detail = Extract<
-  activityDetailQuery['response']['activityEvent'],
-  { readonly __typename: 'ActivityEvent' }
->;
-
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
@@ -135,16 +131,13 @@ export function ActivityFeed({
   useEffect(() => {
     reportRead();
   }, [loading, error]);
-  const [selected, setSelected] = useState<Event>();
-  const [detail, setDetail] = useState<Detail>();
-  const [detailError, setDetailError] = useState('');
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [selected, setSelected] =
+    useState<Pick<Event, 'id' | 'groupId' | 'recordId'>>();
   const invalidate = () => {
     generation.current++;
     request.current?.unsubscribe();
     setPage(undefined);
     setSelected(undefined);
-    setDetail(undefined);
     setError('');
     setAfter(null);
     setLoading(true);
@@ -176,7 +169,6 @@ export function ActivityFeed({
       } else {
         onDenied?.();
         setSelected(undefined);
-        setDetail(undefined);
         setError(
           'Activity is unavailable. Your access or this page may have changed. Refresh to try again.',
         );
@@ -186,7 +178,6 @@ export function ActivityFeed({
     const fail = () => {
       if (live && scope.isLive() && ticket === generation.current) {
         setSelected(undefined);
-        setDetail(undefined);
         setError('Activity is unavailable. Refresh to try again.');
         setLoading(false);
       }
@@ -236,44 +227,13 @@ export function ActivityFeed({
       window.scrollTo({ top: feedScroll.current });
   }, [selected, scope]);
   useEffect(() => {
-    if (!selected) return;
-    let live = true;
-    const ticket = generation.current;
-    detailRef.current?.focus();
-    void fetchQuery<activityDetailQuery>(
-      scope.environment,
-      detailDocument,
-      { eventId: selected.id, groupId: groupId || null },
-      { fetchPolicy: 'network-only' },
-    )
-      .toPromise()
-      .then((result) => {
-        if (!live || !scope.isLive() || ticket !== generation.current) return;
-        const event = result?.activityEvent;
-        if (
-          event?.__typename !== 'ActivityEvent' ||
-          event.id !== selected.id ||
-          event.groupId !== selected.groupId ||
-          event.recordId !== selected.recordId
-        )
-          throw new Error('access');
-        setDetail(event);
-        setDetailLoading(false);
-      })
-      .catch(() => {
-        if (live && scope.isLive() && ticket === generation.current) {
-          setPage(undefined);
-          setSelected(undefined);
-          setDetail(undefined);
-          setError('Activity access changed. Refresh to recheck access.');
-          setDetailError('This record is unavailable.');
-          setDetailLoading(false);
-        }
-      });
-    return () => {
-      live = false;
-    };
-  }, [scope, groupId, selected]);
+    if (selected) detailRef.current?.focus();
+  }, [selected]);
+  const denyDetail = () => {
+    setPage(undefined);
+    setSelected(undefined);
+    setError('Activity access changed. Refresh to recheck access.');
+  };
 
   return (
     <WorkspaceLoading
@@ -343,10 +303,11 @@ export function ActivityFeed({
                       onClick={(event) => {
                         triggerRef.current = event.currentTarget;
                         feedScroll.current = window.scrollY;
-                        setDetailError('');
-                        setSelected({ ...node });
-                        setDetail(undefined);
-                        setDetailLoading(true);
+                        setSelected({
+                          id: node.id,
+                          groupId: node.groupId,
+                          recordId: node.recordId,
+                        });
                       }}
                     >
                       {node.kind === 'EXPENSE_CREATED' && node.after ? (
@@ -436,7 +397,6 @@ export function ActivityFeed({
                     onClick={() => {
                       setError('');
                       setSelected(undefined);
-                      setDetail(undefined);
                       setPage(undefined);
                       setLoading(true);
                       setAfter(page.pageInfo.endCursor ?? null);
@@ -472,33 +432,68 @@ export function ActivityFeed({
               tone="text"
               onClick={() => {
                 setSelected(undefined);
-                setDetail(undefined);
                 restoreFeedFocus.current = true;
               }}
             >
               Close detail
             </Button>
           </header>
-          {detailLoading ? (
-            <p role="status">Loading activity detail…</p>
-          ) : detailError ? (
-            <p role="alert">{detailError}</p>
-          ) : (
-            detail && (
-              <>
-                <HistoricalDetail event={detail} />
-                <Link
-                  href={`${spaceHref({ id: detail.groupId, isHousehold: detail.isHousehold, kind: detail.groupKind })}${detail.kind === 'REPAYMENT_RECORDED' ? '?tab=balances' : `?tab=expenses&expense=${encodeURIComponent(detail.recordId)}&expenseGroup=${encodeURIComponent(detail.groupId)}`}`}
-                >
-                  {detail.kind === 'REPAYMENT_RECORDED'
-                    ? 'View source balances'
-                    : 'View current expense'}
-                </Link>
-              </>
-            )
-          )}
+          <NetworkQuery<activityDetailQuery>
+            scope={scope}
+            key={selected.id}
+            document={detailDocument}
+            variables={{ eventId: selected.id, groupId: groupId || null }}
+            fallback={<p role="status">Loading activity detail…</p>}
+            failure={<ActivityUnavailable onUnavailable={denyDetail} />}
+          >
+            {(result) => (
+              <ActivityDetail
+                result={result}
+                selected={selected}
+                onUnavailable={denyDetail}
+              />
+            )}
+          </NetworkQuery>
         </section>
       )}
     </WorkspaceLoading>
+  );
+}
+
+function ActivityUnavailable({ onUnavailable }: { onUnavailable: () => void }) {
+  const deny = useEffectEvent(onUnavailable);
+  useEffect(() => {
+    deny();
+  }, []);
+  return <p role="alert">This record is unavailable.</p>;
+}
+function ActivityDetail({
+  result,
+  selected,
+  onUnavailable,
+}: {
+  result: activityDetailQuery['response'];
+  selected: Pick<Event, 'id' | 'groupId' | 'recordId'>;
+  onUnavailable: () => void;
+}) {
+  const detail = result.activityEvent;
+  if (
+    detail?.__typename !== 'ActivityEvent' ||
+    detail.id !== selected.id ||
+    detail.groupId !== selected.groupId ||
+    detail.recordId !== selected.recordId
+  )
+    return <ActivityUnavailable onUnavailable={onUnavailable} />;
+  return (
+    <>
+      <HistoricalDetail event={detail} />
+      <Link
+        href={`${spaceHref({ id: detail.groupId, isHousehold: detail.isHousehold, kind: detail.groupKind })}${detail.kind === 'REPAYMENT_RECORDED' ? '?tab=balances' : `?tab=expenses&expense=${encodeURIComponent(detail.recordId)}&expenseGroup=${encodeURIComponent(detail.groupId)}`}`}
+      >
+        {detail.kind === 'REPAYMENT_RECORDED'
+          ? 'View source balances'
+          : 'View current expense'}
+      </Link>
+    </>
   );
 }

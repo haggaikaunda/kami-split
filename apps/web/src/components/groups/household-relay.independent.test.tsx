@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -81,7 +82,7 @@ beforeEach(() => {
   } as FinancialScope;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());

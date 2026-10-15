@@ -15,7 +15,9 @@ type Profile = { id: string; displayName: string };
  * response must be reconciled by reading before another explicit save. */
 export function ProfileEditor({ state: c }: { state: OnboardingController }) {
   const { scope } = useFinancialSession();
-  const [profile, setProfile] = useState<Profile>();
+  // This is the last explicitly accepted compare-and-set baseline, not a
+  // reactive server entity: background reads must not advance a pending draft.
+  const [savedName, setSavedName] = useState<string>();
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
@@ -24,7 +26,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
   const active = useRef(true),
     lock = useRef(false);
   const apply = (value: Profile, replaceDraft: boolean) => {
-    setProfile(value);
+    setSavedName(value.displayName);
     if (replaceDraft) setName(value.displayName);
     // Membership IDs differ from Viewer IDs. Invalidate all current projections;
     // subsequent workspace reads fetch current names without disposing drafts.
@@ -84,7 +86,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
     }
   };
   const save = async () => {
-    if (!profile || uncertain) return;
+    if (savedName === undefined || uncertain) return;
     const value = normalizedName(name);
     if (
       [...value].length < 1 ||
@@ -102,7 +104,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
         query: mutation.params.text,
         variables: {
           displayName: value,
-          expectedDisplayName: profile.displayName,
+          expectedDisplayName: savedName,
         },
       });
       if (!active.current) return;
@@ -134,10 +136,10 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
       }
     }
   };
-  const dirty = profile && name !== profile.displayName;
+  const dirty = savedName !== undefined && name !== savedName;
   return (
     <>
-      {profile && (
+      {savedName !== undefined && (
         <div
           data-ui="account-identity"
           className={accountStyles['account-identity']}
@@ -147,10 +149,10 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
             className={accountStyles['account-avatar']}
             aria-hidden="true"
           >
-            {Array.from(profile.displayName.trim())[0] || '?'}
+            {Array.from(savedName.trim())[0] || '?'}
           </span>
           <div>
-            <h2>{profile.displayName}</h2>
+            <h2>{savedName}</h2>
             <p
               data-ui="account-secondary"
               className={accountStyles['account-secondary']}
@@ -190,12 +192,12 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
         )}
         {working && (
           <Status kind="pending">
-            {profile
+            {savedName !== undefined
               ? 'Saving or checking your profile…'
               : 'Loading your profile…'}
           </Status>
         )}
-        {profile ? (
+        {savedName !== undefined ? (
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -238,7 +240,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
                 tone="text"
                 disabled={working || !dirty}
                 onClick={() => {
-                  setName(profile.displayName);
+                  setName(savedName);
                   setMessage('');
                   setFailed(false);
                 }}

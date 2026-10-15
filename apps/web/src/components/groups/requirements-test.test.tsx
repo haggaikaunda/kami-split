@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import Link from 'next/link';
@@ -58,7 +59,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mock.path,
   useSearchParams: () => new URLSearchParams(mock.search),
 }));
-vi.mock('relay-runtime', () => ({
+vi.mock('relay-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('relay-runtime')>()),
   commitMutation: (...args: unknown[]) => mock.mutation(...args),
   fetchQuery: (
     _environment: unknown,
@@ -103,7 +105,7 @@ let root: Root, host: HTMLDivElement;
 const scope = {
   id: 'scope-a',
   actor: 'a',
-  environment: {},
+  environment: queryEnvironment(() => {}),
   isLive: () => true,
   visits: new Map(),
   restored: new Set<string>(),
@@ -153,6 +155,9 @@ beforeEach(() => {
   };
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
+  scope.environment = queryEnvironment((request) =>
+    mock.requests.push(request),
+  );
   scope.visits.clear();
   scope.restored.clear();
   mock.path = '/trips/T';
@@ -162,7 +167,10 @@ beforeEach(() => {
   mock.access = { scope, loading: false };
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(
+    createRoot(host),
+    () => mock.access.scope as typeof scope | undefined,
+  );
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -182,7 +190,7 @@ function groupResult(
   } = {},
 ) {
   return {
-    viewer: { __typename: 'Viewer', today: '2026-10-04' },
+    viewer: { __typename: 'Viewer', id: 'A', today: '2026-10-04' },
     group: {
       __typename: 'Group',
       id,
@@ -191,7 +199,7 @@ function groupResult(
       kind: id === 'T' ? 'TRIP' : 'ORDINARY',
       isHousehold: id === 'H',
       trip: id === 'T' ? groups[1].trip : null,
-      viewerMembership: { id: 'member-A' },
+      viewerMembership: { id: 'member-A', role: 'OWNER' },
       members: [],
       balances: options.balancesFailed
         ? { __typename: 'Problem', code: 'UNAVAILABLE' }
@@ -206,11 +214,14 @@ function groupResult(
       expenses: options.pageFailed
         ? null
         : {
+            id: 'expense-page-' + id,
             edges: options.empty
               ? []
               : [
                   {
+                    cursor: 'pre-trip',
                     node: {
+                      id: 'snapshot-pre-trip-1',
                       expenseId: 'pre-trip',
                       version: '1',
                       description: 'Pre-trip booking',
@@ -218,7 +229,7 @@ function groupResult(
                       totalMinor: '9007199254740993',
                       category: 'TRAVEL',
                       note: '',
-                      payer: { displayName: 'Alice' },
+                      payer: { id: 'member-A', displayName: 'Alice' },
                       allocations: [],
                     },
                   },
@@ -459,7 +470,7 @@ it('refreshes complete positions and repayment history after recording while exp
   Object.assign(data.group, {
     viewerMembership: a,
     members: [a, b],
-    repayments: { edges: [] },
+    repayments: { edges: [], pageInfo: { hasNextPage: false } },
   });
   Object.assign(data.group.balances, {
     positions: [
@@ -683,7 +694,7 @@ it('resolves the original Household ledger from authorized discovery and keeps o
   mock.path = '/household/ledger';
   mock.search = 'tab=members&groupId=other-client-id';
   await render(originalLedger());
-  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  expect(mock.requests.at(-1)?.name).toBe('householdAccessQuery');
   expect(mock.requests.at(-1)?.variables).toEqual({});
   expect(host.querySelectorAll('main')).toHaveLength(1);
   expect(
@@ -729,12 +740,8 @@ it.each([
     mock.path = '/household/ledger';
     await render(originalLedger());
     await resolveGroup(data);
-    expect(
-      mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
-    ).toHaveLength(1);
-    expect(
-      mock.requests.find((r) => r.name === 'householdAccessQuery'),
-    ).toBeUndefined();
+    expect(mock.requests).toHaveLength(1);
+    expect(mock.requests[0].name).toBe('householdAccessQuery');
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       'Household ledger access is unavailable',
     );
@@ -749,28 +756,31 @@ it('Household ledger discovery and workspace discard old-account results immedia
   mock.search = 'tab=members';
   await render(originalLedger());
   const oldDiscovery = mock.requests.find(
-    (r) => r.name === 'journeyViewerQuery',
+    (r) => r.name === 'householdAccessQuery',
   )!;
   await resolveGroup(householdViewer());
   const oldWorkspace = mock.requests.at(-1)!;
   expect(mock.requests.some((r) => r.name === 'householdAccessQuery')).toBe(
-    false,
+    true,
   );
   mock.access = {
-    scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
+    scope: {
+      ...scope,
+      id: 'scope-b',
+      actor: 'b',
+      environment: queryEnvironment((request) => mock.requests.push(request)),
+    },
     loading: false,
   };
   await render(originalLedger());
   expect(oldDiscovery.canceled).toBe(true);
   expect(oldWorkspace.canceled).toBe(true);
-  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  expect(mock.requests.at(-1)?.name).toBe('householdAccessQuery');
   await act(async () => {
     oldDiscovery.next(householdViewer());
     oldWorkspace.next(groupResult('H'));
   });
-  expect(
-    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
-  ).toHaveLength(3);
+  expect(mock.requests).toHaveLength(3);
   expect(host.textContent).not.toContain('Pre-trip booking');
   await resolveGroup({ viewer: { __typename: 'Viewer', groups: [] } });
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
@@ -794,7 +804,7 @@ it('foregrounding the original Household ledger clears private data before redis
       requestAnimationFrame(() => resolve()),
     );
   });
-  expect(mock.requests.at(-1)?.name).toBe('journeyViewerQuery');
+  expect(mock.requests.at(-1)?.name).toBe('householdAccessQuery');
   await act(async () => {
     oldDiscovery.next(householdViewer());
     oldWorkspace.next(groupResult('H'));
@@ -830,6 +840,10 @@ it('canonical Household expense details retain original IDs and the dedicated fr
       __typename: 'Expense',
       id: 'E',
       groupId: 'H',
+      version: '1',
+      canEdit: false,
+      editLockReason: 'NOT_CREATOR',
+      split: 'EQUAL',
       description: 'Original Household dinner',
       totalMinor: '1001',
       currency: 'USD',
@@ -837,8 +851,8 @@ it('canonical Household expense details retain original IDs and the dedicated fr
       effectiveDate: '2026-10-04',
       createdAt: '2026-10-04T12:00:00Z',
       note: '',
-      payer: { displayName: 'Alice' },
-      creator: { displayName: 'Alice' },
+      payer: { id: 'member-A', displayName: 'Alice' },
+      creator: { id: 'member-A', displayName: 'Alice' },
       allocations: [],
     },
   });
@@ -878,7 +892,7 @@ it('canonical Household repayments keep the original group operation scope and s
   Object.assign(data.group, {
     viewerMembership: a,
     members: [a, b],
-    repayments: { edges: [] },
+    repayments: { edges: [], pageInfo: { hasNextPage: false } },
   });
   Object.assign(data.group.balances, {
     positions: [
@@ -939,7 +953,12 @@ it('does not redirect a legacy route from wrong-ID metadata or a late account re
   expect(mock.push).not.toHaveBeenCalled();
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
   mock.access = {
-    scope: { ...scope, id: 'scope-b', actor: 'b', environment: {} },
+    scope: {
+      ...scope,
+      id: 'scope-b',
+      actor: 'b',
+      environment: queryEnvironment((request) => mock.requests.push(request)),
+    },
     loading: false,
   };
   await render(<GroupJourney initialGroup="H" />);
@@ -968,9 +987,7 @@ it('logout cancels canonical Household discovery and keeps the authorized destin
     '/household/ledger?tab=balances',
   );
   await act(async () => pending.next(householdViewer()));
-  expect(
-    mock.requests.filter((r) => r.name !== 'householdAccessQuery'),
-  ).toHaveLength(1);
+  expect(mock.requests).toHaveLength(1);
   expect(mock.requests.every((r) => r.canceled)).toBe(true);
   expect(host.textContent).not.toContain('Pre-trip booking');
   expect(host.textContent).not.toContain('Authorized home');

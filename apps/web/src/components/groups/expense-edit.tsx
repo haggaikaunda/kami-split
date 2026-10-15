@@ -12,8 +12,8 @@ import recovery, {
   type expenseEditRecoveryQuery,
 } from '@/lib/relay/__generated__/expenseEditRecoveryQuery.graphql';
 import document, {
-  type journeyExpenseQuery,
-} from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
+  type expenseEditCurrentQuery,
+} from '@/lib/relay/__generated__/expenseEditCurrentQuery.graphql';
 import { type FinancialScope } from '@/lib/relay/environment';
 import {
   createInput,
@@ -40,8 +40,8 @@ type Outcome =
   | expenseEditRecoveryQuery['response']['updateExpenseOperation'];
 export function ExpenseEdit({
   scope,
-  expense,
-  members,
+  expense: currentExpense,
+  members: currentMembers,
   onCancel,
   onCommitted,
   onDenied,
@@ -53,6 +53,11 @@ export function ExpenseEdit({
   onCommitted: () => Promise<void>;
   onDenied: () => void;
 }) {
+  // Opening an edit establishes its comparison/eligibility baseline. Reactive
+  // detail updates must not change dirty checks or the frozen version behind a
+  // draft; only the explicit conflict reload/reapply flow advances that baseline.
+  const [expense] = useState(currentExpense);
+  const [members] = useState(currentMembers);
   const [initial] = useState(() => {
     try {
       return { value: readEditDraft(scope.actor, expense.groupId, expense.id) };
@@ -82,6 +87,7 @@ export function ExpenseEdit({
       ? 'Saved edit cannot be read. Restore tab storage access and reload before saving.'
       : '',
   );
+  const latestRead = useRef<(() => void) | undefined>(undefined);
   const alive = useRef(true),
     pending = useRef(false),
     form = useRef<HTMLFormElement>(null),
@@ -113,6 +119,7 @@ export function ExpenseEdit({
     heading.current?.focus({ preventScroll: true });
     return () => {
       alive.current = false;
+      latestRead.current?.();
     };
   }, []);
   useEffect(() => {
@@ -344,12 +351,24 @@ export function ExpenseEdit({
             disabled={busy || blocked}
             onClick={() =>
               void run(async () => {
-                const result = await fetchQuery<journeyExpenseQuery>(
-                  scope.environment,
-                  document,
-                  { id: expense.id },
-                  { fetchPolicy: 'network-only' },
-                ).toPromise();
+                const result = await new Promise<
+                  expenseEditCurrentQuery['response'] | undefined
+                >((resolve, reject) => {
+                  const subscription = fetchQuery<expenseEditCurrentQuery>(
+                    scope.environment,
+                    document,
+                    { id: expense.id },
+                    { fetchPolicy: 'network-only' },
+                  ).subscribe({
+                    next: resolve,
+                    error: reject,
+                    complete: () => resolve(undefined),
+                  });
+                  latestRead.current = () => {
+                    subscription.unsubscribe();
+                    resolve(undefined);
+                  };
+                });
                 if (!current()) return;
                 const node = result?.node;
                 if (

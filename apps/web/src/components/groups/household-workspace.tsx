@@ -23,14 +23,20 @@ import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
 import { AppIcon, CategoryIcon } from '@/components/workspace-identity';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { fetchQuery } from 'relay-runtime';
+import { useEffect, useEffectEvent, useState } from 'react';
+import { useFragment } from 'react-relay';
+import { NetworkQuery } from '@/lib/relay/query';
+import dashboardDocument, {
+  type householdContentDashboard$data,
+  type householdContentDashboard$key,
+} from '@/lib/relay/__generated__/householdContentDashboard.graphql';
 import document, {
   type householdWorkspaceQuery,
 } from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
 import { Skeleton } from '../ui/primitives';
 import type { householdMembersQuery } from '@/lib/relay/__generated__/householdMembersQuery.graphql';
-import { useHouseholdMembers } from './household-members';
+import { HouseholdAccess } from './household-access';
+import membersDocument from '@/lib/relay/__generated__/householdMembersQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
 import { SummaryMetric, Money } from '../financial/presentation';
@@ -44,10 +50,7 @@ import { ScopedLink, RestoreSource } from './navigation';
 import './journey.css';
 import { useForegroundRefresh } from './foreground';
 import './household-workspace.css';
-export type Dashboard = Extract<
-  householdWorkspaceQuery['response']['householdDashboard'],
-  { readonly __typename: 'HouseholdDashboard' }
->;
+export type Dashboard = householdContentDashboard$data;
 type Totals = Extract<
   Dashboard['totals'],
   { readonly __typename: 'HouseholdDashboardTotals' }
@@ -133,22 +136,85 @@ export function HouseholdRead({
   );
 }
 function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
-  const { members, error, reset } = useHouseholdMembers(scope);
+  const [version, setVersion] = useState(0);
+  const [active, setActive] = useState(true);
+  const [accessState, setAccessState] = useState({ busy: true, error: false });
+  const [memberState, setMemberState] = useState({ busy: true, error: false });
+  const [denied, setDenied] = useState(false);
+  const clear = () => {
+    setAccessState({ busy: true, error: false });
+    setMemberState({ busy: true, error: false });
+    setDenied(false);
+  };
+  const reset = () => {
+    clear();
+    setVersion((v) => v + 1);
+    setActive(true);
+  };
+  useForegroundRefresh(() => {
+    clear();
+    setActive(false);
+  }, reset);
+  const error =
+    denied || accessState.error || memberState.error
+      ? 'Household membership is unavailable. Refresh to check current access.'
+      : '';
+  const busy = !error && (accessState.busy || memberState.busy);
+  const loading = <Skeleton label="Loading Household membership" />;
+  const failure = (
+    <HouseholdMembershipFailure onDenied={() => setDenied(true)} />
+  );
   return (
-    <WorkspaceLoading busy={!members && !error}>
-      <WorkspaceRefresh
-        busy={!members && !error}
-        error={error}
-        onRefresh={reset}
-      />
-      {error ? (
-        <p role="alert">{error}</p>
-      ) : members ? (
-        <HouseholdMembers members={members} scope={scope} onRefresh={reset} />
+    <WorkspaceLoading busy={busy}>
+      <WorkspaceRefresh busy={busy} error={error} onRefresh={reset} />
+      {active ? (
+        <HouseholdAccess
+          key={version}
+          scope={scope}
+          fallback={loading}
+          failure={failure}
+          onState={setAccessState}
+        >
+          {(home) => (
+            <NetworkQuery<householdMembersQuery>
+              key={home}
+              scope={scope}
+              document={membersDocument}
+              variables={{ id: home }}
+              fallback={loading}
+              failure={failure}
+              onState={setMemberState}
+            >
+              {(result) =>
+                result.group.__typename === 'Group' &&
+                result.group.id === home ? (
+                  <HouseholdMembers
+                    members={result.group}
+                    scope={scope}
+                    onRefresh={reset}
+                  />
+                ) : (
+                  failure
+                )
+              }
+            </NetworkQuery>
+          )}
+        </HouseholdAccess>
       ) : (
-        <Skeleton label="Loading Household membership" />
+        loading
       )}
     </WorkspaceLoading>
+  );
+}
+function HouseholdMembershipFailure({ onDenied }: { onDenied: () => void }) {
+  const report = useEffectEvent(onDenied);
+  useEffect(() => {
+    report();
+  }, []);
+  return (
+    <p role="alert">
+      Household membership is unavailable. Refresh to check current access.
+    </p>
   );
 }
 function HouseholdMembers({
@@ -188,7 +254,7 @@ function HouseholdMembers({
     </section>
   );
 }
-/** Every visit and foreground refresh starts from an empty, network-only read. */
+/** Each authorization visit retains one query reference and no projection copy. */
 function HouseholdSummaryRead({
   scope,
   current,
@@ -197,109 +263,117 @@ function HouseholdSummaryRead({
   current: WorkspaceSection;
 }) {
   const [version, setVersion] = useState(0);
-  const [data, setData] = useState<Dashboard>();
-  const [recent, setRecent] = useState<Recent>();
-  const [error, setError] = useState('');
+  const [active, setActive] = useState(true);
+  const [state, setState] = useState({ busy: true, error: false });
+  const [domainError, setDomainError] = useState('');
   const [saved, setSaved] = useState(false);
-  const generation = useRef(0);
-  const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const invalidate = () => {
-    generation.current++;
-    request.current?.unsubscribe();
-    setData(undefined);
-    setRecent(undefined);
-    setError('');
+    setActive(false);
+    setDomainError('');
+    setState({ busy: true, error: false });
   };
   const reset = () => {
-    invalidate();
     setVersion((v) => v + 1);
+    setActive(true);
+    setDomainError('');
+    setState({ busy: true, error: false });
   };
-  useForegroundRefresh(invalidate, () => setVersion((v) => v + 1));
-  useEffect(() => {
-    let active = true;
-    const ticket = ++generation.current;
-    const live = () =>
-      active && scope.isLive() && ticket === generation.current;
-    const failed = () => {
-      if (live())
-        setError(
-          'Household data is unavailable. No zero balance or settled status can be established.',
-        );
-    };
-    const dashboardRead = (request.current =
-      fetchQuery<householdWorkspaceQuery>(
-        scope.environment,
-        document,
-        { recent: current === 'Overview', balances: current === 'Balances' },
-        { fetchPolicy: 'network-only' },
-      ).subscribe({
-        next: (result) => {
-          if (!live()) return;
-          if (result.householdDashboard.__typename !== 'HouseholdDashboard') {
-            setError(
-              'Household access is unavailable. Refresh to check current access.',
-            );
-            return;
-          }
-          const dashboard = result.householdDashboard;
-          const home = dashboard.spaces.find((s) => s.isHousehold);
-          if (!home) {
-            setError('Household access is unavailable.');
-            return;
-          }
-          setData(dashboard);
-          setRecent(result.householdExpenses);
-        },
-        error: failed,
-      }));
-    return () => {
-      active = false;
-      // Unsubscribe prevents Relay from reusing a pre-revalidation inflight read.
-      dashboardRead.unsubscribe();
-    };
-  }, [scope, current, version]);
+  useForegroundRefresh(invalidate, reset);
+  const error =
+    domainError ||
+    (state.error
+      ? 'Household data is unavailable. No zero balance or settled status can be established.'
+      : '');
+  const loading = <Skeleton label="Loading Household" />;
   return (
-    <WorkspaceLoading busy={!data && !error}>
+    <WorkspaceLoading busy={state.busy}>
       {saved && (
         <p role="status">
           Expense edit saved. Current Household data is a separate authorized
           refresh; unavailable data does not undo your edit.
         </p>
       )}
-      <WorkspaceRefresh
-        busy={!data && !error}
-        error={error}
-        onRefresh={reset}
-      />
-      {error ? (
+      <WorkspaceRefresh busy={state.busy} error={error} onRefresh={reset} />
+      {active ? (
+        <NetworkQuery<householdWorkspaceQuery>
+          scope={scope}
+          key={version}
+          document={document}
+          variables={{
+            recent: current === 'Overview',
+            balances: current === 'Balances',
+          }}
+          fallback={loading}
+          failure={
+            <p role="alert">
+              {error ||
+                'Household data is unavailable. No zero balance or settled status can be established.'}
+            </p>
+          }
+          onState={setState}
+        >
+          {(result) =>
+            result.householdDashboard.__typename === 'HouseholdDashboard' &&
+            result.householdDashboard.dashboard ? (
+              <HouseholdProjection
+                scope={scope}
+                reference={result.householdDashboard.dashboard}
+                current={current}
+                recent={result.householdExpenses}
+                onError={setDomainError}
+                onRefresh={async () => {
+                  setSaved(true);
+                  reset();
+                }}
+                onUnavailable={() => {
+                  invalidate();
+                  setState({ busy: false, error: false });
+                  setDomainError(
+                    'Expense source access is unavailable. Refresh to check current access.',
+                  );
+                }}
+              />
+            ) : (
+              <HouseholdFailure onError={setDomainError} />
+            )
+          }
+        </NetworkQuery>
+      ) : error ? (
         <p role="alert">{error}</p>
-      ) : !data ? (
-        <Skeleton label="Loading Household" />
       ) : (
-        <>
-          <HouseholdContent
-            scope={scope}
-            dashboard={data}
-            current={current}
-            recent={recent}
-            onRefresh={async () => {
-              setSaved(true);
-              reset();
-            }}
-            onUnavailable={() => {
-              invalidate();
-              setError(
-                'Expense source access is unavailable. Refresh to check current access.',
-              );
-            }}
-          />
-          <RestoreSource
-            scope={scope}
-            allowed={data.spaces.map((s) => s.groupId)}
-          />
-        </>
+        loading
       )}
     </WorkspaceLoading>
+  );
+}
+function HouseholdFailure({ onError }: { onError: (error: string) => void }) {
+  const error =
+    'Household access is unavailable. Refresh to check current access.';
+  useEffect(() => {
+    onError(error);
+  }, [onError]);
+  return <p role="alert">{error}</p>;
+}
+function HouseholdProjection({
+  reference,
+  scope,
+  onError,
+  ...props
+}: Omit<Parameters<typeof HouseholdContent>[0], 'dashboard'> & {
+  reference: householdContentDashboard$key;
+  onError: (error: string) => void;
+}) {
+  const dashboard = useFragment(dashboardDocument, reference);
+  if (!dashboard.spaces.some((space) => space.isHousehold))
+    return <HouseholdFailure onError={onError} />;
+  return (
+    <>
+      <HouseholdContent {...props} scope={scope} dashboard={dashboard} />
+      <RestoreSource
+        scope={scope}
+        allowed={dashboard.spaces.map((s) => s.groupId)}
+      />
+    </>
   );
 }
 export function HouseholdContent({

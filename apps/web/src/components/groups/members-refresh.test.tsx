@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot } from 'react-dom/client';
@@ -64,7 +65,7 @@ it('foreground refresh reauthorizes membership and reconciles accepted reactivat
   } as unknown as OnboardingController;
   const host = document.createElement('div');
   document.body.append(host);
-  const root = createRoot(host);
+  const root = relayRoot(createRoot(host), () => scope);
   const access = {
     viewer: {
       __typename: 'Viewer',

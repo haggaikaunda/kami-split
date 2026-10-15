@@ -146,7 +146,7 @@ export function responseFor(operation, variables) {
       return {
         currentProfile: {
           __typename: 'Profile',
-          id: 'v',
+          id: 'profile-v',
           displayName: 'Private synthetic person',
           appearance: 'LIGHT',
         },

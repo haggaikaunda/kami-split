@@ -1,5 +1,5 @@
 import type { UpdateExpenseInput } from './__generated__/expenseEditMutation.graphql';
-import type { journeyExpenseQuery } from './__generated__/journeyExpenseQuery.graphql';
+import type { expenseEditCurrentQuery } from './__generated__/expenseEditCurrentQuery.graphql';
 import {
   editStorageKey,
   storedDraft,
@@ -9,7 +9,7 @@ import {
 import { percentageText } from './percentage';
 import { minor } from './money';
 export type EditableExpense = Extract<
-  NonNullable<journeyExpenseQuery['response']['node']>,
+  NonNullable<expenseEditCurrentQuery['response']['node']>,
   { readonly __typename: 'Expense' }
 >;
 export type EditDraft = {

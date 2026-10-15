@@ -335,7 +335,7 @@ withAuthFixture(origin, session, async () => {
         data = {
           currentProfile: {
             __typename: 'Profile',
-            id: 'v',
+            id: 'profile-v',
             displayName: 'Alex',
             appearance:
               process.env.THEME === 'system'

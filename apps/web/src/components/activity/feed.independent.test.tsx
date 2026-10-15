@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
@@ -8,14 +9,15 @@ import type { FinancialScope } from '@/lib/relay/environment';
 const boundary = vi.hoisted(() => ({
   requests: [] as {
     variables: unknown;
-    options: unknown;
+    options?: unknown;
     next?: (value: unknown) => void;
     error?: () => void;
     resolve?: (value: unknown) => void;
     unsubscribe: ReturnType<typeof vi.fn>;
   }[],
 }));
-vi.mock('relay-runtime', () => ({
+vi.mock('relay-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('relay-runtime')>()),
   readInlineData: (_document: unknown, reference: unknown) => reference,
   fetchQuery: (
     _environment: unknown,
@@ -77,12 +79,12 @@ beforeEach(() => {
   live = true;
   scope = {
     id: 'alice',
-    environment: {},
+    environment: queryEnvironment((request) => boundary.requests.push(request)),
     isLive: () => live,
   } as FinancialScope;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import {
   foregroundRefresh,
@@ -112,7 +113,7 @@ beforeEach(() => {
   } as FinancialScope;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -148,7 +149,11 @@ it('keeps the same public tab shell while destination changes cancel old request
     requests[1].next({
       viewer,
       group: { __typename: 'Problem', code: 'NOT_FOUND', message: 'denied' },
-      groupActivity: { __typename: 'Problem', code: 'NOT_FOUND' },
+      groupActivity: {
+        __typename: 'Problem',
+        code: 'NOT_FOUND',
+        message: 'denied',
+      },
     }),
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();
@@ -187,7 +192,10 @@ it('consumes the composed Activity result without a second dedicated read and co
 });
 it.each([
   [{ __typename: 'Problem', code: 'UNAUTHENTICATED' }, 'Sign in again'],
-  [{ __typename: 'Problem', code: 'UNAVAILABLE' }, 'Refresh to try again'],
+  [
+    { __typename: 'Problem', code: 'UNAVAILABLE', message: 'unavailable' },
+    'Refresh to try again',
+  ],
   [{ __typename: 'ViewerAccess', state: 'DISABLED' }, 'cannot access'],
   [{ __typename: 'ViewerAccess', state: 'UNPROVISIONED' }, 'cannot access'],
 ])(
@@ -256,7 +264,11 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
     requests[2].next({
       viewer,
       group: { __typename: 'Problem', code: 'NOT_FOUND', message: 'denied' },
-      groupActivity: { __typename: 'Problem', code: 'NOT_FOUND' },
+      groupActivity: {
+        __typename: 'Problem',
+        code: 'NOT_FOUND',
+        message: 'denied',
+      },
     }),
   );
   await act(async () => {
@@ -281,6 +293,57 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
       ?.textContent,
   ).toBe('Activity');
 });
+it.each([
+  ['category=TRANSPORT', { categories: ['TRANSPORT'] }],
+  ['category=GROCERIES&sort=AMOUNT_DESC', { sort: 'AMOUNT_DESC' }],
+])(
+  'does not relabel an in-flight workspace expense result after URL filters change to %s',
+  async (nextFilter, expectedFilter) => {
+    const view = (amount: string) => ({
+      __typename: 'ExpenseView',
+      viewerShareMinor: '0',
+      viewerPaidMinor: '0',
+      categories: [],
+      contextVersion: null,
+      totalExpenseMinor: amount,
+      expenseCount: '0',
+      months: [],
+      edges: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    });
+    search = 'tab=expenses&category=GROCERIES';
+    await act(async () => root.render(<GroupJourney initialGroup="G" />));
+    expect(requests[0].variables.filter).toMatchObject({
+      categories: ['GROCERIES'],
+    });
+    // Back/Forward can change the filter while the composed workspace request
+    // still owns its original variables and has not mounted a ledger yet.
+    search = `tab=expenses&${nextFilter}`;
+    await act(async () => root.render(<GroupJourney initialGroup="G" />));
+    expect(requests).toHaveLength(1);
+    await act(async () =>
+      requests[0].next({
+        viewer: { ...viewer, id: 'V' },
+        group: {
+          ...group,
+          balances: {
+            __typename: 'Problem',
+            code: 'UNAVAILABLE',
+            message: 'unavailable',
+          },
+        },
+        groupExpenses: view('12345'),
+      }),
+    );
+    expect(host.textContent).not.toContain('$123.45');
+    expect(requests).toHaveLength(2);
+    expect(requests[1].name).toBe('expensesGroupQuery');
+    expect(requests[1].variables.filter).toMatchObject(expectedFilter);
+    await act(async () => requests[1].next({ groupExpenses: view('700') }));
+    expect(host.textContent).toContain('$7.00');
+    expect(host.textContent).not.toContain('$123.45');
+  },
+);
 it('returning to the original expense filter reads fresh authorization instead of resurrecting its consumed initial result', async () => {
   const view = (amount: string) => ({
     __typename: 'ExpenseView',
@@ -301,7 +364,11 @@ it('returning to the original expense filter reads fresh authorization instead o
       viewer,
       group: {
         ...group,
-        balances: { __typename: 'Problem', code: 'UNAVAILABLE' },
+        balances: {
+          __typename: 'Problem',
+          code: 'UNAVAILABLE',
+          message: 'unavailable',
+        },
       },
       groupExpenses: view('12345'),
     }),
@@ -321,7 +388,11 @@ it('returning to the original expense filter reads fresh authorization instead o
   expect(host.textContent).not.toContain('$7.00');
   await act(async () =>
     requests[2].next({
-      groupExpenses: { __typename: 'Problem', code: 'NOT_FOUND' },
+      groupExpenses: {
+        __typename: 'Problem',
+        code: 'NOT_FOUND',
+        message: 'denied',
+      },
     }),
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();
@@ -376,7 +447,11 @@ it('Household returning to the initial filter cannot revive previously authorize
   expect(host.textContent).not.toContain('$7.00');
   await act(async () =>
     requests[2].next({
-      householdExpenses: { __typename: 'Problem', code: 'NOT_FOUND' },
+      householdExpenses: {
+        __typename: 'Problem',
+        code: 'NOT_FOUND',
+        message: 'denied',
+      },
     }),
   );
   expect(host.querySelector('[role=alert]')).not.toBeNull();

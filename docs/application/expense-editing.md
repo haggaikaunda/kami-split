@@ -125,8 +125,8 @@ Expense IDs overlap across financial versions. Current production operations use
 The financial ledger currently retains a request snapshot for each signed
 traversal. A refresh clears all rows, complete aggregates and cursor state before
 starting a new traversal; a continuation appends only within that same owner and
-account/visit generation. Keep this explicit transition until component Relay
-reads preserve equivalent reset and continuation ownership. Cache identity alone
+account/visit generation. This deliberate [snapshot reader exception](frontend.md#financial-identity-and-deliberate-snapshots)
+prevents a new normalized first page from replacing one part of an active traversal. Cache identity alone
 does not authorize combining separate traversals, infer complete aggregates from
 loaded pages, replace Household context matching, or turn a failed post-mutation
 refresh into a failed write.

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
@@ -6,17 +7,6 @@ import { ExpenseDetail } from './expense-detail';
 import type { FinancialScope } from '@/lib/relay/environment';
 const boundary = vi.hoisted(() => ({
   observers: [] as { next: (value: unknown) => void; error: () => void }[],
-}));
-vi.mock('relay-runtime', () => ({
-  fetchQuery: () => ({
-    subscribe: (observer: {
-      next: (value: unknown) => void;
-      error: () => void;
-    }) => {
-      boundary.observers.push(observer);
-      return { unsubscribe: vi.fn() };
-    },
-  }),
 }));
 vi.mock('./expense-edit', () => ({
   ExpenseEdit: ({ onCommitted }: { onCommitted: () => Promise<void> }) => (
@@ -29,12 +19,14 @@ it('keeps the successful edit receipt visible after its fresh detail read fails'
   boundary.observers = [];
   const host = document.createElement('div');
   document.body.append(host);
-  const root = createRoot(host);
   const scope = {
     actor: 'actor',
-    environment: {},
+    environment: queryEnvironment((request) =>
+      boundary.observers.push(request),
+    ),
     isLive: () => true,
   } as FinancialScope;
+  const root = relayRoot(createRoot(host), () => scope);
   try {
     await act(async () =>
       root.render(<ExpenseDetail scope={scope} group="g" id="e" />),
@@ -46,6 +38,7 @@ it('keeps the successful edit receipt visible after its fresh detail read fails'
           id: 'e',
           groupId: 'g',
           canEdit: true,
+          editLockReason: null,
           version: '1',
           description: 'Lunch',
           effectiveDate: '2026-10-01',
@@ -53,7 +46,7 @@ it('keeps the successful edit receipt visible after its fresh detail read fails'
           currency: 'USD',
           category: 'DINING',
           payer: { id: 'a', displayName: 'Alice' },
-          creator: { displayName: 'Alice' },
+          creator: { id: 'a', displayName: 'Alice' },
           note: '',
           createdAt: '2026-10-01T00:00:00Z',
           split: 'EQUAL',

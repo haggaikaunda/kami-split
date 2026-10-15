@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { queryEnvironment } from '@/lib/relay/test-queries';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { ExpenseEdit } from './expense-edit';
@@ -12,11 +13,20 @@ import {
 import { createInput } from '@/lib/relay/draft';
 import type { FinancialScope } from '@/lib/relay/environment';
 const network = vi.hoisted(() => ({ mutate: vi.fn(), read: vi.fn() }));
-vi.mock('relay-runtime', async (original) => ({
-  ...(await original<object>()),
-  commitMutation: (...args: unknown[]) => network.mutate(...args),
-  fetchQuery: () => ({ toPromise: network.read }),
-}));
+vi.mock('relay-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('relay-runtime')>();
+  return {
+    ...actual,
+    commitMutation: (...args: unknown[]) => network.mutate(...args),
+    fetchQuery: (...args: Parameters<typeof actual.fetchQuery>) =>
+      (args[1] as { params: { name: string } }).params.name ===
+      'expenseEditCurrentQuery'
+        ? actual.fetchQuery(...args)
+        : { toPromise: network.read },
+  };
+});
+type Request = Parameters<Parameters<typeof queryEnvironment>[0]>[0];
+let requests: Request[];
 const members = [{ id: 'a', displayName: 'Alice', canParticipate: true }];
 const expense = {
   __typename: 'Expense',
@@ -57,6 +67,11 @@ beforeEach(() => {
   sessionStorage.clear();
   vi.resetAllMocks();
   live = true;
+  requests = [];
+  scope.environment = queryEnvironment((request) => {
+    requests.push(request);
+    void Promise.resolve(network.read()).then(request.next, request.error);
+  });
   vi.stubGlobal('requestAnimationFrame', (f: () => void) => {
     f();
     return 1;
@@ -70,12 +85,12 @@ afterEach(() => {
   host.remove();
   vi.unstubAllGlobals();
 });
-async function render() {
+async function render(current = expense) {
   await act(async () =>
     root.render(
       <ExpenseEdit
         scope={scope}
-        expense={expense}
+        expense={current}
         members={members}
         onCancel={cancel}
         onCommitted={committed}
@@ -268,4 +283,38 @@ it('initially focuses its title and leaves editable controls for deliberate user
   )!;
   description.focus();
   expect(document.activeElement).toBe(description);
+});
+
+it('keeps the opened edit baseline when a reactive detail projection changes', async () => {
+  await render();
+  await render({
+    ...expense,
+    version: '2',
+    description: 'Changed elsewhere',
+    totalMinor: '2000',
+  });
+  expect(button('Save changes').disabled).toBe(true);
+  expect(network.mutate).not.toHaveBeenCalled();
+  expect(
+    host.querySelector<HTMLInputElement>('#expense-description')?.value,
+  ).toBe('Lunch');
+});
+
+it('cancels the explicit latest-expense snapshot read when editing closes', async () => {
+  stored();
+  let finish!: (value: unknown) => void;
+  network.read.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render({ ...expense, version: '2' });
+  await act(async () => button('Reload latest expense').click());
+  expect(requests).toHaveLength(1);
+  await act(async () => root.render(null));
+  expect(requests[0].canceled).toBe(true);
+  await act(async () => finish({ node: { ...expense, version: '3' } }));
+  expect(scope.environment.getStore().getSource().get('e')).toBeUndefined();
+  expect(readEditDraft('actor', 'g', 'e')?.draft.amount).toBe('8.00');
 });
