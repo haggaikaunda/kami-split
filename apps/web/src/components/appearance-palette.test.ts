@@ -37,7 +37,7 @@ it('keeps the approved Dark palette behind the explicit appearance selector', ()
     expect(dark?.toLowerCase()).toContain(`--color-${token}: ${value};`);
   }
   const account = readFileSync(
-    new URL('./onboarding/onboarding.css', import.meta.url),
+    new URL('./onboarding/onboarding.module.css', import.meta.url),
     'utf8',
   );
   expect(css + account).not.toContain('prefers-color-scheme');

@@ -1,4 +1,6 @@
 'use client';
+import helpStyles from './rich-help.module.css';
+
 import {
   useEffect,
   useId,
@@ -8,7 +10,6 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import './rich-help.css';
 
 /** Optional rich help opens on activation, with a dismiss action and no modal trap. */
 export function RichHelp({
@@ -113,7 +114,8 @@ export function RichHelp({
       <button
         ref={trigger}
         type="button"
-        className="rich-help-trigger"
+        data-ui="rich-help-trigger"
+        className={helpStyles['rich-help-trigger']}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-haspopup="dialog"
@@ -132,7 +134,11 @@ export function RichHelp({
         }}
       >
         {label}
-        <span aria-hidden="true" className="rich-help-info">
+        <span
+          aria-hidden="true"
+          data-ui="rich-help-info"
+          className={helpStyles['rich-help-info']}
+        >
           ⓘ
         </span>
       </button>
@@ -143,7 +149,8 @@ export function RichHelp({
             id={id}
             role="dialog"
             aria-label={label}
-            className="rich-help-panel"
+            data-ui="rich-help-panel"
+            className={helpStyles['rich-help-panel']}
             style={position}
             onKeyDown={(event) => {
               if (
@@ -162,7 +169,12 @@ export function RichHelp({
             }}
           >
             <strong>{label}</strong>
-            <div className="rich-help-copy">{children}</div>
+            <div
+              data-ui="rich-help-copy"
+              className={helpStyles['rich-help-copy']}
+            >
+              {children}
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -192,7 +204,10 @@ export function BalanceExplanation({
   household?: boolean;
 }) {
   return (
-    <div className="balance-explanations">
+    <div
+      data-ui="balance-explanations"
+      className={helpStyles['balance-explanations']}
+    >
       <details>
         <summary>How your balance works</summary>
         <p>

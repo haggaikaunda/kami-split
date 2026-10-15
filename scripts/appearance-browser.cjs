@@ -527,7 +527,7 @@ withAuthFixture(origin, session, async () => {
   });
   for (const choice of ['Dark', 'Light', 'System']) {
     await page
-      .locator('.appearance-choice')
+      .locator('[data-ui~="appearance-choice"]')
       .filter({ has: page.getByRole('radio', { name: choice, exact: true }) })
       .click();
     await page
@@ -541,7 +541,7 @@ withAuthFixture(origin, session, async () => {
     results.push({ choice, liveOSChange: true });
   }
   await page
-    .locator('.appearance-choice')
+    .locator('[data-ui~="appearance-choice"]')
     .filter({ has: page.getByRole('radio', { name: 'Dark', exact: true }) })
     .click();
   await page

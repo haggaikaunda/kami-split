@@ -69,7 +69,7 @@ it('keeps membership identities and pending recipients together, with terminal r
   expect(people.textContent).not.toContain('alice@example.test');
   expect(people.textContent).not.toContain('Shared group link');
   const history = host.querySelector(
-    '.invitation-history',
+    '[data-ui~="invitation-history"]',
   ) as HTMLDetailsElement;
   expect(history.open).toBe(false);
   expect(history.querySelectorAll('li')).toHaveLength(4);
@@ -82,9 +82,9 @@ it('keeps membership identities and pending recipients together, with terminal r
   expect(host.textContent).not.toMatch(
     /UNKNOWN|PROVIDER_ACCEPTED|REVOKED|NOT_REQUESTED/,
   );
-  expect((host.querySelector('.add-member') as HTMLDetailsElement).open).toBe(
-    false,
-  );
+  expect(
+    (host.querySelector('[data-ui~="add-member"]') as HTMLDetailsElement).open,
+  ).toBe(false);
 });
 it('retains exact invitation identity for renewal, revocation, email retry and pagination', async () => {
   const c = controller([

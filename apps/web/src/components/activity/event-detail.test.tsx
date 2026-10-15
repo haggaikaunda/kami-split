@@ -60,9 +60,9 @@ it('retains complete created-event facts while showing the unchanged title and t
   expect(
     [...host.querySelectorAll('dt')].map((node) => node.textContent),
   ).not.toContain('Description');
-  expect(host.querySelector('.activity-detail-amount')?.textContent).toContain(
-    '$1.01',
-  );
+  expect(
+    host.querySelector('[data-ui~="activity-detail-amount"]')?.textContent,
+  ).toContain('$1.01');
   expect(fact(host, 'Date').textContent).toBe('Oct 1, 2026');
   expect(fact(host, 'Payer').textContent).toBe('Alice');
   expect(fact(host, 'Note').textContent).toBe('Original recorded note');
@@ -107,12 +107,12 @@ it('retains labeled old and new description, total, payer and exact percentage a
     ['Participants', 'Alice$0.51 USD (50%)', 'Alice$0.26 USD (25%)'],
   ]) {
     const row = fact(host, name);
-    expect(row.querySelector('.activity-previous')?.textContent).toContain(
-      `Previous${previous}`,
-    );
-    expect(row.querySelector('.activity-new')?.textContent).toContain(
-      `New${next}`,
-    );
+    expect(
+      row.querySelector('[data-ui~="activity-previous"]')?.textContent,
+    ).toContain(`Previous${previous}`);
+    expect(
+      row.querySelector('[data-ui~="activity-new"]')?.textContent,
+    ).toContain(`New${next}`);
   }
   expect(fact(host, 'Participants').textContent).toContain('$0.77 USD (75%)');
   expect(fact(host, 'Note').textContent).toContain('Original recorded note');
@@ -145,10 +145,10 @@ it('compares original calendar dates before formatting historical previous and n
     after: { ...snapshot, effectiveDate: '2027-01-01' },
   });
   const row = fact(changed, 'Date');
-  expect(row.querySelector('.activity-previous')?.textContent).toBe(
+  expect(row.querySelector('[data-ui~="activity-previous"]')?.textContent).toBe(
     'PreviousDec 31, 2026',
   );
-  expect(row.querySelector('.activity-new')?.textContent).toBe(
+  expect(row.querySelector('[data-ui~="activity-new"]')?.textContent).toBe(
     'NewJan 1, 2027',
   );
   expect(
@@ -159,7 +159,7 @@ it('compares original calendar dates before formatting historical previous and n
     'Date',
   );
   expect(unchanged.textContent).toBe('Oct 1, 2026 (unchanged)');
-  expect(unchanged.querySelector('.activity-previous')).toBeNull();
+  expect(unchanged.querySelector('[data-ui~="activity-previous"]')).toBeNull();
 });
 
 it('retains exact offset and fractional precision behind a semantic timestamp disclosure', () => {

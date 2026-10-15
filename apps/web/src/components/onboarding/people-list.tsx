@@ -1,3 +1,5 @@
+import invitationStyles from './invitations.module.css';
+import { cx } from '../ui/classnames';
 import { Member } from '../ui/primitives';
 import type { ReactNode } from 'react';
 
@@ -17,7 +19,11 @@ export function PeopleList({
   children?: ReactNode;
 }) {
   return (
-    <ul className="group-members-list account-rows" aria-label="People">
+    <ul
+      data-ui="group-members-list account-rows"
+      className={cx('group-members-list', invitationStyles['account-rows'])}
+      aria-label="People"
+    >
       {members.map((member) => (
         <li key={member.id}>
           <Member

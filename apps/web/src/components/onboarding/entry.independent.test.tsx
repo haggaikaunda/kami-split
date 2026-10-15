@@ -1130,7 +1130,9 @@ it.each(['TARGETED', 'SHARED'])(
     );
     expect(container.textContent).not.toContain('private@example.test');
     expect(identity.textContent).not.toContain('42');
-    expect(container.querySelectorAll('.onboarding-art')).toHaveLength(1);
+    expect(
+      container.querySelectorAll('[data-ui~="onboarding-art"]'),
+    ).toHaveLength(1);
     expect(document.activeElement).toBe(container.querySelector('h1'));
     if (kind === 'SHARED') {
       await click('Create an account');

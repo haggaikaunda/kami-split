@@ -109,9 +109,9 @@ it('foreground refresh reauthorizes membership and reconciles accepted reactivat
     expect(people.textContent).toContain('Bob');
     expect(people.textContent).not.toContain('Inactive');
     expect(people.textContent).not.toContain('bob@example.test');
-    expect(host.querySelector('.invitation-history')?.textContent).toContain(
-      'Accepted',
-    );
+    expect(
+      host.querySelector('[data-ui~="invitation-history"]')?.textContent,
+    ).toContain('Accepted');
     expect(state.current.loadInvites).toHaveBeenCalledTimes(2);
   } finally {
     await act(async () => root.unmount());

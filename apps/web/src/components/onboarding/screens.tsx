@@ -1,3 +1,4 @@
+import onboardingStyles from './onboarding.module.css';
 import uiStyles from '../ui/primitives.module.css';
 import { cx } from '../ui/classnames';
 import Link from 'next/link';
@@ -11,10 +12,15 @@ export function InvitationCard({ state: c }: { state: OnboardingController }) {
   if (!c.preview) return null;
   return (
     <section
-      className="onboarding-invitation"
+      data-ui="onboarding-invitation"
+      className={onboardingStyles['onboarding-invitation']}
       aria-labelledby="invitation-group-name"
     >
-      <span className="onboarding-invitation-mark" aria-hidden="true">
+      <span
+        data-ui="onboarding-invitation-mark"
+        className={onboardingStyles['onboarding-invitation-mark']}
+        aria-hidden="true"
+      >
         <AppIcon name="home" />
       </span>
       <div>
@@ -29,7 +35,13 @@ export function InvitationCard({ state: c }: { state: OnboardingController }) {
   );
 }
 export function HouseIllustration() {
-  return <div className="onboarding-art" aria-hidden="true" />;
+  return (
+    <div
+      data-ui="onboarding-art"
+      className={onboardingStyles['onboarding-art']}
+      aria-hidden="true"
+    />
+  );
 }
 export function PasswordSetup({ state: c }: { state: OnboardingController }) {
   const [confirmation, setConfirmation] = useState('');
@@ -72,7 +84,10 @@ export function PasswordSetup({ state: c }: { state: OnboardingController }) {
           setMismatch(false);
         }}
       />
-      <label className="onboarding-check">
+      <label
+        data-ui="onboarding-check"
+        className={onboardingStyles['onboarding-check']}
+      >
         <input
           type="checkbox"
           checked={visible}

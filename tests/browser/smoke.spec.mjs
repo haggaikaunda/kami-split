@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.mjs';
 
 const forbidden =
-  '[data-ui~="workspace-navigation"],[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],.account-heading';
+  '[data-ui~="workspace-navigation"],[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],[data-ui~="account-heading"]';
 async function signedOut(page) {
   await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
   await expect(page.getByLabel('Email address', { exact: true })).toBeVisible();
