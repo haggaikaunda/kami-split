@@ -18,7 +18,7 @@ financial content.
 ## Request ownership and matrix
 
 All visible private data comes from `network-only` reads. These counts describe
-cold/ordinary activation **without intent warming**, excluding Next code/RSC
+ordinary activation, excluding Next code/RSC
 prefetch and later filters, details or pages:
 
 | Destination        | Before #193                             | Current activation                   | Requested data                                                                                        |
@@ -75,24 +75,19 @@ not change this version; mutation success separately refreshes context and total
 Deploy the additive API fields before deploying the web operations that request
 them. There is no database migration or shared/private HTTP caching change.
 
-## Intent, disposal and freshness
+## Navigation, disposal and freshness
 
-Pointer intent (excluding touch) and keyboard focus warm **at most one** destination
-per mounted workspace and account. Repeated focus/hover for that candidate share
-one subscription. Moving to another candidate cancels the first; blur/leave only
-cancel their own candidate, not a more recent hover. This is not an eager fetch of
-all tabs or expenses, and no query reference is retained for rendering.
+Hovering or focusing a workspace tab does not start a financial GraphQL read.
+Next Link may prefetch route code/RSC payloads; that prefetch does not authorize
+private data. Activating a destination starts its ordinary network-only read as
+listed above. Speculative financial reads are not useful while every activation
+requires a separate response, so tab navigation owns no financial intent request.
 
-A completed or in-flight intent result cannot prove authorization at activation.
-Navigation cancels intent and performs a fresh network-only visit read. Thus
-pointer/focus navigation can add one speculative request to the matrix; touch or
-no-intent activation uses only the visit read. This deliberate trade-off preserves
-revocation safety instead of treating a TTL or matching Auth identity as permission.
+A cached record is not proof of current access. Every activation still waits for
+a fresh authorized result, including a return to a previously visited tab.
 No private result transfers between environments and no second store/provider exists.
-Route commits (including Back/Forward), foreground events, superseded candidates,
-unmount and account disposal release intent work. Relay network subscriptions own
-AbortControllers; cancellation before session lookup completes suppresses transport,
-and cancellation/disposal prevents late normalization.
+Relay network subscriptions own AbortControllers; cancellation before session lookup
+completes suppresses transport, and cancellation/disposal prevents late normalization.
 
 The parent Group or Household context owns foreground invalidation for embedded
 ledgers/feeds. Every focus/visibility/pageshow event synchronously clears private
@@ -103,7 +98,7 @@ invalidate the owning context; financial success is never reported optimisticall
 
 ## Verification
 
-The independent `intent`, `workspace-lifecycle`, `household-lifecycle` and
+The independent `workspace-lifecycle`, `household-lifecycle` and
 `foreground` tests exercise actual Relay operations/network ownership and held
 responses. Existing ledger/session/recovery tests preserve exact totals, drafts,
 source restoration, denial and operation recovery. Real database context-version
@@ -129,7 +124,7 @@ sets reduced motion, seeds supported cookie sessions, starts a loopback Auth fix
 no production credentials or financial data are used. It records requests,
 feedback/content timing, exact shell retention and document loads, and asserts
 keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,
-native modified-click entry and denial after completed intent warming.
+native modified-click entry and denial after focusing a destination tab.
 
 Set `LAYOUT_TESTS=1` for the #238/#267 layout regression matrix instead of the request
 profile. It uses a long synthetic expense list and checks top/bottom edge anchoring

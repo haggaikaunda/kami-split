@@ -839,9 +839,7 @@ withAuthFixture(origin, session, async () => {
         authorizedResponseMs: total,
         requests: log.map((x) => ({
           ...x,
-          phase: x.canceled
-            ? 'canceled speculative request'
-            : 'completed request',
+          phase: x.canceled ? 'canceled request' : 'completed request',
           start: x.start - start,
           end: x.end - start,
         })),
@@ -1195,7 +1193,7 @@ withAuthFixture(origin, session, async () => {
         await page.getByText(group('T').name, { exact: true }).count(),
         0,
       );
-      results.push({ workspace, completedPreloadThenRevocationDenied: true });
+      results.push({ workspace, tabHoverThenRevocationDenied: true });
     }
     assert.deepEqual(errors, []);
     await page.close();

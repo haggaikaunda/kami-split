@@ -181,7 +181,7 @@ restore focus/scroll after fresh authorization; a missing row uses the heading.
 
 ## Navigation and read ownership (#193)
 
-The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent signed-in Household/Group navigation, separately owned private visits, bounded intent warming, cancellation and fresh activation reads. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.
+The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent signed-in Household/Group navigation, separately owned private visits, route prefetching without speculative financial reads, cancellation and fresh activation reads. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.
 
 ## Household and Trip navigation
 

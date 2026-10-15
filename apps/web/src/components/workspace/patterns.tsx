@@ -89,14 +89,10 @@ export function WorkspaceTabs({
   current,
   hrefFor,
   label = 'Workspace',
-  onIntent,
-  onIntentEnd,
 }: {
   current: WorkspaceSection;
   hrefFor: (section: WorkspaceSection) => string;
   label?: string;
-  onIntent?: (section: WorkspaceSection) => void;
-  onIntentEnd?: (section?: WorkspaceSection) => void;
 }) {
   return (
     <nav
@@ -107,16 +103,6 @@ export function WorkspaceTabs({
       {workspaceSections.map((section) => (
         <Link
           scroll={false}
-          onPointerEnter={(event) => {
-            if (event.pointerType !== 'touch' && current !== section)
-              onIntent?.(section);
-          }}
-          onFocus={() => {
-            if (current !== section) onIntent?.(section);
-          }}
-          onPointerLeave={() => onIntentEnd?.(section)}
-          onBlur={() => onIntentEnd?.(section)}
-          onNavigate={() => onIntentEnd?.()}
           key={section}
           href={hrefFor(section)}
           aria-current={current === section ? 'page' : undefined}

@@ -79,7 +79,7 @@ before rendering. Query errors and access denials retain the existing safe copy,
 recovery and navigation affordances. Panel-only URL changes preserve the active
 ledger traversal and durable draft; they must not accidentally restart the screen.
 See [authorized loading](../navigation/workspace-loading.md) for the request matrix,
-intent warming, cancellation and context-version contract.
+route prefetching, cancellation and context-version contract.
 
 Keep server objects out of local state when their only purpose is rendering.
 Local state may retain the query reference, request status, selected IDs, edit state,

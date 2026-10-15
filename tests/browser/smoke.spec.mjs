@@ -10,6 +10,155 @@ async function signedOut(page) {
   await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
 }
 
+for (const workspace of [
+  { name: 'Group', base: '/groups/F', operation: 'journeyWorkspaceQuery' },
+  { name: 'Trip', base: '/trips/T', operation: 'journeyWorkspaceQuery' },
+  {
+    name: 'Household',
+    base: '/household',
+    operation: 'householdWorkspaceQuery',
+  },
+]) {
+  test(`${workspace.name} tabs: intent is request-free and cached revisits require fresh authorization`, async ({
+    page,
+    app,
+  }) => {
+    await app.authenticate();
+    await page.goto(`${workspace.base}?tab=overview`);
+    const tabs = page.locator('[data-ui~="workspace-tabs"]');
+    const overview = tabs.getByRole('link', { name: 'Overview', exact: true });
+    const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
+    const privateBalances = page.locator(
+      workspace.name === 'Household'
+        ? '[data-ui~="household-balances"]'
+        : '[data-ui~="group-balances"]',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Add expense', exact: true }),
+    ).toBeVisible();
+    await expect(overview).toHaveAttribute('aria-current', 'page');
+    const beforeIntent = app.requests.length;
+    const sections = [
+      'Overview',
+      'Expenses',
+      'Balances',
+      'Activity',
+      'Members',
+    ];
+    for (const section of sections) {
+      const tab = tabs.getByRole('link', { name: section, exact: true });
+      const href =
+        workspace.name === 'Household' &&
+        ['Expenses', 'Activity'].includes(section)
+          ? `/household/${section.toLowerCase()}`
+          : `${workspace.base}?tab=${section.toLowerCase()}`;
+      await expect(tab).toHaveAttribute('href', href);
+      await tab.hover();
+    }
+    // Observe long enough for an asynchronous intent request to reach transport.
+    await page.waitForTimeout(250);
+    expect(app.requests).toHaveLength(beforeIntent);
+    await overview.focus();
+    for (const section of sections) {
+      await expect(
+        tabs.getByRole('link', { name: section, exact: true }),
+      ).toBeFocused();
+      if (section !== 'Members') await page.keyboard.press('Tab');
+    }
+    await page.waitForTimeout(250);
+    expect(app.requests).toHaveLength(beforeIntent);
+
+    const reads = () =>
+      app.requests.filter(
+        (request) => request.operation === workspace.operation,
+      ).length;
+    const beforeActivation = reads();
+    const fresh = app.hold(workspace.operation);
+    await balances.focus();
+    await page.keyboard.press('Enter');
+    await fresh.started;
+    expect(reads()).toBe(beforeActivation + 1);
+    await expect(privateBalances).toHaveCount(0);
+    await expect(
+      page.getByRole('status').filter({
+        hasText:
+          workspace.name === 'Household'
+            ? 'Loading Household…'
+            : 'Loading workspace…',
+      }),
+    ).toBeVisible();
+    await fresh.release();
+    await expect(privateBalances).toBeVisible();
+    await expect(balances).toHaveAttribute('aria-current', 'page');
+    await expect(overview).not.toHaveAttribute('aria-current', 'page');
+
+    await overview.click();
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    const beforeRevisit = reads();
+    const denied = app.hold(
+      workspace.operation,
+      workspace.name === 'Household'
+        ? { householdDashboard: { __typename: 'Problem', code: 'FORBIDDEN' } }
+        : {
+            viewer: { __typename: 'Viewer', today: '2026-10-05' },
+            group: {
+              __typename: 'Problem',
+              code: 'FORBIDDEN',
+              message: 'Access denied',
+            },
+          },
+    );
+    await balances.click();
+    await denied.started;
+    expect(reads()).toBe(beforeRevisit + 1);
+    await expect(privateBalances).toHaveCount(0);
+    await denied.release();
+    await expect(
+      page
+        .getByText(
+          workspace.name === 'Household'
+            ? 'Household access is unavailable. Refresh to check current access.'
+            : 'Group unavailable',
+          { exact: true },
+        )
+        .first(),
+    ).toBeVisible();
+    await expect(privateBalances).toHaveCount(0);
+    await expect(page.getByText('Brian owes you', { exact: true })).toHaveCount(
+      0,
+    );
+  });
+}
+
+test('workspace tab modified clicks keep the current route and open the real destination', async ({
+  page,
+  context,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=overview');
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  const balances = page
+    .locator('[data-ui~="workspace-tabs"]')
+    .getByRole('link', { name: 'Balances', exact: true });
+  const opened = context.waitForEvent('page');
+  await balances.click({ modifiers: ['ControlOrMeta'] });
+  const destination = await opened;
+  await expect(destination).toHaveURL(/\/trips\/T\?tab=balances$/);
+  await expect(
+    destination.locator('[data-ui~="group-balances"]'),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/trips\/T\?tab=overview$/);
+  await destination.close();
+});
+
 test('auth boundary: cold denial, safe continuation and logout history', async ({
   page,
   request,

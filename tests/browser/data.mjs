@@ -162,6 +162,36 @@ export function responseFor(operation, variables) {
           groups,
         },
       };
+    case 'householdAccessQuery':
+      return { viewer: { __typename: 'Viewer', groups } };
+    case 'householdWorkspaceQuery':
+      return {
+        householdDashboard: {
+          __typename: 'HouseholdDashboard',
+          state: 'COMPLETE',
+          totals: {
+            __typename: 'HouseholdDashboardTotals',
+            viewerNetMinor: '8420',
+            viewerShareMinor: '300',
+            viewerPaidMinor: '8720',
+            openBalanceCount: '1',
+            activeSpaceCount: '1',
+            totalSharedExpenseMinor: '8720',
+            totalSharedExpenseCount: '1',
+          },
+          spaces: [
+            {
+              ...groups[0],
+              groupId: 'H',
+              viewerMembership: members[0],
+              viewerNetMinor: '8420',
+              sharedExpenseCount: '1',
+              balances: group('H').balances,
+            },
+          ],
+        },
+        ...(variables.recent ? { householdExpenses: view } : {}),
+      };
     case 'journeyWorkspaceQuery':
       return {
         viewer: { __typename: 'Viewer', today: '2026-10-05' },

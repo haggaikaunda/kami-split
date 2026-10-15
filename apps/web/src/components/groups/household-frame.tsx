@@ -1,16 +1,9 @@
 'use client';
 import { ExpenseEntryProvider } from '@/components/expenses/entry';
 
-import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
 import { HouseholdBannerAction } from './household-banner-action';
 import { RichHelp, householdScopeHelp } from '@/components/rich-help';
-import { createWorkspaceIntent } from '@/lib/relay/intent';
-import householdDocument from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
-import activityDocument from '@/lib/relay/__generated__/activityHouseholdQuery.graphql';
-import accessDocument from '@/lib/relay/__generated__/householdAccessQuery.graphql';
-import expensesDocument from '@/lib/relay/__generated__/expensesHouseholdInitialQuery.graphql';
-import { expenseFilter } from '@/lib/relay/expense-filter';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import {
@@ -35,28 +28,9 @@ export function householdHref(section: WorkspaceSection) {
 /** Public frame persists in the Household layout; it owns no private data. */
 export function HouseholdFrame({ children }: { children: React.ReactNode }) {
   const access = useFinancialSession();
-  const intent = useMemo(
-    () => (access.scope ? createWorkspaceIntent(access.scope) : undefined),
-    [access.scope],
-  );
-  useEffect(() => () => intent?.cancel(), [intent]);
   const pathname = usePathname(),
     params = useSearchParams();
-  const intentVisit = pathname + '?' + params.toString();
-  useLayoutEffect(() => {
-    intent?.cancel();
-  }, [intent, intentVisit]);
-  useEffect(() => {
-    const cancel = () => intent?.cancel();
-    window.addEventListener('focus', cancel);
-    window.addEventListener('pageshow', cancel);
-    document.addEventListener('visibilitychange', cancel);
-    return () => {
-      window.removeEventListener('focus', cancel);
-      window.removeEventListener('pageshow', cancel);
-      document.removeEventListener('visibilitychange', cancel);
-    };
-  }, [intent]);
+  const visit = pathname + '?' + params.toString();
   const ledger = pathname === '/household/ledger';
   const current =
     params.get('repayment') === '1'
@@ -101,7 +75,7 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
           >
             {access.scope && (
               <HouseholdBannerAction
-                key={`${access.scope.id}:${intentVisit}`}
+                key={`${access.scope.id}:${visit}`}
                 scope={access.scope}
               />
             )}
@@ -114,28 +88,6 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
                 : householdHref
             }
             label="Household workspace"
-            onIntentEnd={(section) => intent?.cancel(section)}
-            onIntent={(section) => {
-              if (ledger) return;
-              const document =
-                section === 'Activity'
-                  ? activityDocument
-                  : section === 'Members'
-                    ? accessDocument
-                    : section === 'Expenses'
-                      ? expensesDocument
-                      : householdDocument;
-              const variables =
-                section === 'Activity' || section === 'Members'
-                  ? {}
-                  : section === 'Expenses'
-                    ? { filter: expenseFilter('') }
-                    : {
-                        recent: section === 'Overview',
-                        balances: section === 'Balances',
-                      };
-              intent?.warm({ document, variables, key: section });
-            }}
           />
           {children}
           {access.scope && <WorkspacePrivacy />}
