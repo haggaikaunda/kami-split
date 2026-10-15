@@ -165,8 +165,7 @@ function Examples() {
         />
       </section>
       <p>
-        Example links demonstrate navigation styling only. Product routes are
-        integrated in later redesign slices.
+        Gallery links are illustrative; production consumers own real routes.
       </p>
       <div className="preview-grid">
         <Card title="Informational Household aggregate">

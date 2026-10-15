@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 
 import financialPaletteStyles from '../financial/presentation.module.css';
 import invitationStyles from './invitations.module.css';
-import workspaceFeatureStyles from '../groups/workspace.module.css';
 
 export type Person = {
   id: string;
@@ -25,10 +24,8 @@ export function PeopleList({
     <ul
       data-ui="group-members-list account-rows"
       className={cx(
-        cx(
-          workspaceFeatureStyles['group-members-list'],
-          invitationStyles['account-rows'],
-        ),
+        invitationStyles['group-members-list'],
+        invitationStyles['account-rows'],
         financialPaletteStyles['member-palette'],
       )}
       aria-label="People"

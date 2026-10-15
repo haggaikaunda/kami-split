@@ -49,11 +49,7 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   return (
     <main
       data-ui="form-scope activity-workspace"
-      className={cx(
-        formLayoutStyles['form-scope'],
-        'activity-workspace',
-        shellStyles.shell,
-      )}
+      className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
       id="page-content"
     >
       <WorkspaceNavigation />

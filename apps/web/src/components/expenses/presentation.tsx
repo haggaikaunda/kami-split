@@ -13,11 +13,13 @@ import presentationFeatureStyles from './presentation.module.css';
 export function ExpensePresentation({
   title,
   kind = 'detail',
+  layout = 'group',
   onClose,
   children,
 }: {
   title: string;
   kind?: 'detail' | 'create';
+  layout?: 'group' | 'household';
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -92,6 +94,7 @@ export function ExpensePresentation({
         presentationFeatureStyles['expense-presentation'],
         presentationFeatureStyles[`expense-presentation--${kind}`],
       )}
+      data-layout={layout}
       ref={ref}
       role={mobile && kind === 'detail' ? 'region' : 'dialog'}
       aria-modal={mobile && kind === 'detail' ? undefined : true}

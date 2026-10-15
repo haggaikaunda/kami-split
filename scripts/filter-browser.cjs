@@ -70,6 +70,13 @@ module.exports = async function verifyFilters({
       'dialog vertical bounds',
     );
     assert(
+      Math.abs(
+        metrics.dialog.y -
+          (metrics.height - (metrics.dialog.bottom - metrics.dialog.y)) / 2,
+      ) <= 1,
+      'compact filter dialog stays vertically centered within the viewport',
+    );
+    assert(
       metrics.bodyOverflow <= 1 && metrics.pageOverflow <= 1,
       'no horizontal overflow',
     );
@@ -106,9 +113,52 @@ module.exports = async function verifyFilters({
     ),
   });
 
+  async function workspaceGeometry() {
+    const metrics = await section('Categories')
+      .getByLabel('Dining', { exact: true })
+      .evaluate((input) => {
+        const checkbox = input.getBoundingClientRect();
+        const label = input.closest('label').getBoundingClientRect();
+        const fieldset = input.closest('fieldset').getBoundingClientRect();
+        return {
+          rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+          checkbox: checkbox.width,
+          inset: label.x - fieldset.x,
+        };
+      });
+    assert(
+      Math.abs(
+        metrics.checkbox - metrics.rem * (workspace === 'group' ? 1.25 : 1.125),
+      ) < 0.1,
+      'workspace checkbox size is preserved',
+    );
+    assert(
+      Math.abs(metrics.inset - (workspace === 'group' ? metrics.rem + 1 : 0)) <
+        0.1,
+      'workspace fieldset content inset is preserved',
+    );
+    if (workspace === 'household') {
+      const gap = await dialog
+        .getByRole('combobox', { name: 'Sort', exact: true })
+        .evaluate(
+          (select) =>
+            select.getBoundingClientRect().top -
+            select
+              .closest('label')
+              .querySelector('span')
+              .getBoundingClientRect().bottom,
+        );
+      assert(
+        Math.abs(gap - metrics.rem * 0.375) < 0.1,
+        'Household field label spacing is preserved',
+      );
+    }
+  }
+
   // Native summaries and focus loop work without relying on pointer controls.
   await summary('Categories').focus();
   await page.keyboard.press('Enter');
+  await workspaceGeometry();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await section('Categories').getByLabel('Groceries', { exact: true }).check();
   assert.match(await summary('Categories').innerText(), /2 selected/);
@@ -195,6 +245,33 @@ module.exports = async function verifyFilters({
       .isChecked(),
   );
   await page.keyboard.press('Escape');
+  if (workspace === 'household') {
+    // Retained Group styles must not change the same Household controls.
+    const navigation = page.getByRole('navigation', {
+      name: 'Financial navigation',
+      exact: true,
+    });
+    await navigation.getByRole('link', { name: 'Trips', exact: true }).click();
+    await page.locator('a[href="/trips/T"]').click();
+    await page
+      .getByRole('navigation', { name: /workspace/i })
+      .getByRole('link', { name: 'Expenses', exact: true })
+      .click();
+    await page.locator('#ledger-expense-e1').waitFor();
+    await navigation
+      .getByRole('link', { name: 'Household', exact: true })
+      .click();
+    await page
+      .getByRole('navigation', { name: /workspace/i })
+      .getByRole('link', { name: 'Expenses', exact: true })
+      .click();
+    await page.locator('#ledger-expense-e1').waitFor();
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await summary('Categories').click();
+    await workspaceGeometry();
+    await geometry('Household after Group navigation');
+    await page.keyboard.press('Escape');
+  }
   results.push({
     workspace,
     width,

@@ -144,3 +144,7 @@
     padding-inline: 0;
   }
 }
+
+.group-members-list [data-ui~='member-detail'] {
+  font-size: 0.875rem;
+}

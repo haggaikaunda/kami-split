@@ -294,13 +294,13 @@
 .expense-split-heading label {
   margin: 0;
 }
-.financial-form-card .financial-participants .expense-split-heading select {
+.financial-form-card .expense-split-heading select {
   width: auto;
   max-width: 100%;
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
-  background: transparent;
+  background: var(--expense-split-control-background, transparent);
   border: 0;
 }
 .expense-split-heading [data-ui~='space-chip'] {

@@ -127,3 +127,20 @@
     scroll-padding-block: 0;
   }
 }
+
+/* Expense creation owns its native control canvas; the shared frame has no
+   mobile sizing because this presentation and compact filters differ. */
+@media (max-width: 600px) {
+  .expense-presentation--create
+    :is(input, select):where(
+      [data-ui~='form-control'],
+      [data-ui~='field-control'],
+      [data-ui~='form-checkbox'],
+      [data-ui~='form-radio']
+    ) {
+    background: var(--color-canvas);
+  }
+  .expense-presentation--create[data-layout='household'] {
+    --expense-split-control-background: var(--color-canvas);
+  }
+}

@@ -964,6 +964,7 @@ function LedgerContent({
       {(selected || create) && (
         <ExpensePresentation
           kind={selected ? 'detail' : 'create'}
+          layout={filterLayout}
           title={selected ? 'Expense detail' : 'Add expense'}
           onClose={close}
         >

@@ -50,9 +50,6 @@
   color: var(--color-muted);
   font-size: 0.875rem;
 }
-.group-members-list [data-ui~='member-detail'] {
-  font-size: 0.875rem;
-}
 .balance-position {
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--color-separator);

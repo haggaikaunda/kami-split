@@ -52,7 +52,8 @@
   color: var(--color-primary);
   cursor: pointer;
 }
-:where(.form-scope) button[data-ui~='form-button']:disabled {
+.form-scope
+  button:where([data-ui~='form-button'], [data-ui~='button']):disabled {
   opacity: 0.65;
   cursor: default;
 }
