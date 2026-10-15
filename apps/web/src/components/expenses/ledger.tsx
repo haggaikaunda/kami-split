@@ -37,7 +37,7 @@ import householdDocument, {
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
 import { Button, containDialogFocus, Skeleton } from '../ui/primitives';
 import { Money } from '../financial/presentation';
-import { ExpenseDetail } from '@/components/groups/expense-detail';
+import { AuthorizedDetail } from './authorized-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
 import { ExpensePresentation } from './presentation';
 import { ExpenseBreakdown } from './breakdown';
@@ -958,76 +958,6 @@ function LedgerContent({
         </ExpensePresentation>
       )}
     </section>
-  );
-}
-function AuthorizedDetail({
-  scope,
-  groupId,
-  source,
-  id,
-  onDenied,
-  onCommitted,
-}: {
-  scope: FinancialScope;
-  groupId: string;
-  source: string;
-  id: string;
-  onDenied: () => void;
-  onCommitted: () => Promise<void>;
-}) {
-  const [name, setName] = useState<string>();
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let live = true;
-    const accept = (reference: expensesView$key) => {
-      if (!live || !scope.isLive()) return;
-      const view = readInlineData<expensesView$key>(viewDocument, reference);
-      if (view.__typename !== 'ExpenseView') {
-        setFailed(true);
-        onDenied();
-      } else setName(view.edges[0]?.source.name ?? 'Authorized source space');
-    };
-    const fail = () => {
-      if (live && scope.isLive()) {
-        setFailed(true);
-        onDenied();
-      }
-    };
-    const request = groupId
-      ? fetchQuery<expensesGroupQuery>(
-          scope.environment,
-          groupDocument,
-          { groupId, filter: { groupId: source } },
-          { fetchPolicy: 'network-only' },
-        ).subscribe({ next: (r) => accept(r.groupExpenses), error: fail })
-      : fetchQuery<expensesHouseholdQuery>(
-          scope.environment,
-          householdDocument,
-          { filter: { groupId: source } },
-          { fetchPolicy: 'network-only' },
-        ).subscribe({ next: (r) => accept(r.householdExpenses), error: fail });
-    return () => {
-      live = false;
-      request.unsubscribe();
-    };
-    // Denial invalidates the owning list; request identities own the lifecycle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, groupId, source]);
-  return failed ? (
-    <p role="alert">Expense unavailable.</p>
-  ) : name ? (
-    <>
-      <p className="expense-detail-source">Source: {name}</p>
-      <ExpenseDetail
-        scope={scope}
-        group={source}
-        id={id}
-        onUnavailable={onDenied}
-        onCommitted={onCommitted}
-      />
-    </>
-  ) : (
-    <p role="status">Loading expense…</p>
   );
 }
 export function LedgerDialog({

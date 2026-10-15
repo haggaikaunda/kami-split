@@ -3,13 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   createOperationDescriptor,
   readInlineData,
+  getSingularSelector,
   type GraphQLTaggedNode,
   type Variables,
 } from 'relay-runtime';
 import { createScope } from './environment';
 import householdQuery from './__generated__/expensesHouseholdQuery.graphql';
 import groupQuery from './__generated__/expensesGroupQuery.graphql';
-import expenseQuery from './__generated__/journeyExpenseQuery.graphql';
+import expenseQuery, {
+  type journeyExpenseQuery,
+} from './__generated__/journeyExpenseQuery.graphql';
+import expenseFragment from './__generated__/expenseDetailExpense.graphql';
 import combinedQuery from './__generated__/financialIdentityTestQuery.graphql';
 import partialQuery from './__generated__/financialIdentityTestPartialQuery.graphql';
 import expenseView, {
@@ -156,18 +160,28 @@ describe('financial snapshot normalization in the account Relay store', () => {
           months: [{ totalExpenseMinor: '30000' }],
           categories: [{ totalExpenseMinor: '30000' }],
         });
-        expect(environment.lookup(detail.fragment).data).toMatchObject({
-          node: {
-            id: expenseId,
-            version: '2',
-            totalMinor: '15000',
-            note: 'corrected note',
-            payer: { id: bob.id },
-            allocations: [
-              { amountMinor: '0', percentageHundredths: 0 },
-              { amountMinor: '15000', percentageHundredths: 10000 },
-            ],
-          },
+        const detailRef = (
+          environment.lookup(detail.fragment)
+            .data as journeyExpenseQuery['response']
+        ).node;
+        if (detailRef?.__typename !== 'Expense')
+          throw new Error('Expected current Expense');
+        const detailSelector = getSingularSelector(
+          expenseFragment,
+          detailRef.expense,
+        );
+        if (!detailSelector)
+          throw new Error('Expected Expense fragment reference');
+        expect(environment.lookup(detailSelector).data).toMatchObject({
+          id: expenseId,
+          version: '2',
+          totalMinor: '15000',
+          note: 'corrected note',
+          payer: { id: bob.id },
+          allocations: [
+            { amountMinor: '0', percentageHundredths: 0 },
+            { amountMinor: '15000', percentageHundredths: 10000 },
+          ],
         });
         // Another refresh/continuation cannot silently publish mixed old rows/new totals.
         writeDetail();

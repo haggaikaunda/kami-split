@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a04e3ede74848a9720856946912f352f>>
+ * @generated SignedSource<<c1b1b3934b90c8889e6df858c2813334>>
  * @lightSyntaxTransform
  */
 
@@ -8,11 +8,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+import { FragmentRefs } from "relay-runtime";
 export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
 export type Currency = "USD" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
-export type HouseholdDashboardState = "COMPLETE" | "INCOMPLETE" | "UNAVAILABLE" | "%future added value";
-export type MembershipRole = "MEMBER" | "OWNER" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 export type householdWorkspaceQuery$variables = {
   balances: boolean;
@@ -21,58 +20,8 @@ export type householdWorkspaceQuery$variables = {
 export type householdWorkspaceQuery$data = {
   readonly householdDashboard: {
     readonly __typename: "HouseholdDashboard";
-    readonly spaces: ReadonlyArray<{
-      readonly balances?: {
-        readonly __typename: "GroupBalances";
-        readonly obligations: ReadonlyArray<{
-          readonly amountMinor: string;
-          readonly from: {
-            readonly displayName: string;
-            readonly id: string;
-          };
-          readonly to: {
-            readonly displayName: string;
-            readonly id: string;
-          };
-        }>;
-        readonly settled: boolean;
-      } | {
-        readonly __typename: "Problem";
-        readonly code: ProblemCode;
-      } | {
-        // This will never be '%other', but we need some
-        // value in case none of the concrete values match.
-        readonly __typename: "%other";
-      };
-      readonly currency: Currency;
-      readonly groupId: string;
-      readonly isHousehold: boolean;
-      readonly kind: GroupKind;
-      readonly name: string;
-      readonly sharedExpenseCount: string;
-      readonly viewerMembership: {
-        readonly id: string;
-        readonly role: MembershipRole;
-      };
-      readonly viewerNetMinor: string | null | undefined;
-    }>;
-    readonly state: HouseholdDashboardState;
-    readonly totals: {
-      readonly __typename: "HouseholdDashboardTotals";
-      readonly activeSpaceCount: string;
-      readonly openBalanceCount: string;
-      readonly totalSharedExpenseCount: string;
-      readonly totalSharedExpenseMinor: string;
-      readonly viewerNetMinor: string;
-      readonly viewerPaidMinor: string;
-      readonly viewerShareMinor: string;
-    } | {
-      readonly __typename: "Problem";
-      readonly code: ProblemCode;
-    } | {
-      // This will never be '%other', but we need some
-      // value in case none of the concrete values match.
-      readonly __typename: "%other";
+    readonly dashboard: {
+      readonly " $fragmentSpreads": FragmentRefs<"householdContentDashboard">;
     } | null | undefined;
   } | {
     readonly __typename: "Problem";
@@ -154,321 +103,77 @@ v3 = {
   "type": "Problem",
   "abstractKey": null
 },
-v4 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "viewerNetMinor",
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "groupId",
-  "storageKey": null
-},
-v6 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v7 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "kind",
-  "storageKey": null
-},
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "isHousehold",
-  "storageKey": null
-},
-v9 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "currency",
-  "storageKey": null
-},
-v10 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
-v11 = [
-  (v10/*:: as any*/),
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "displayName",
-    "storageKey": null
-  }
-],
-v12 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "amountMinor",
-  "storageKey": null
-},
-v13 = {
-  "alias": null,
-  "args": null,
-  "concreteType": null,
-  "kind": "LinkedField",
-  "name": "householdDashboard",
-  "plural": false,
-  "selections": [
-    (v2/*:: as any*/),
-    (v3/*:: as any*/),
-    {
-      "kind": "InlineFragment",
-      "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "state",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "concreteType": null,
-          "kind": "LinkedField",
-          "name": "totals",
-          "plural": false,
-          "selections": [
-            (v2/*:: as any*/),
-            {
-              "kind": "InlineFragment",
-              "selections": [
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "viewerShareMinor",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "viewerPaidMinor",
-                  "storageKey": null
-                },
-                (v4/*:: as any*/),
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "openBalanceCount",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "activeSpaceCount",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "totalSharedExpenseMinor",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "totalSharedExpenseCount",
-                  "storageKey": null
-                }
-              ],
-              "type": "HouseholdDashboardTotals",
-              "abstractKey": null
-            },
-            (v3/*:: as any*/)
-          ],
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "concreteType": "HouseholdDashboardSpace",
-          "kind": "LinkedField",
-          "name": "spaces",
-          "plural": true,
-          "selections": [
-            (v5/*:: as any*/),
-            (v6/*:: as any*/),
-            (v7/*:: as any*/),
-            (v8/*:: as any*/),
-            (v9/*:: as any*/),
-            (v4/*:: as any*/),
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "sharedExpenseCount",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "Membership",
-              "kind": "LinkedField",
-              "name": "viewerMembership",
-              "plural": false,
-              "selections": [
-                (v10/*:: as any*/),
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "role",
-                  "storageKey": null
-                }
-              ],
-              "storageKey": null
-            },
-            {
-              "condition": "balances",
-              "kind": "Condition",
-              "passingValue": true,
-              "selections": [
-                {
-                  "alias": null,
-                  "args": null,
-                  "concreteType": null,
-                  "kind": "LinkedField",
-                  "name": "balances",
-                  "plural": false,
-                  "selections": [
-                    (v2/*:: as any*/),
-                    {
-                      "kind": "InlineFragment",
-                      "selections": [
-                        {
-                          "alias": null,
-                          "args": null,
-                          "kind": "ScalarField",
-                          "name": "settled",
-                          "storageKey": null
-                        },
-                        {
-                          "alias": null,
-                          "args": null,
-                          "concreteType": "Obligation",
-                          "kind": "LinkedField",
-                          "name": "obligations",
-                          "plural": true,
-                          "selections": [
-                            {
-                              "alias": null,
-                              "args": null,
-                              "concreteType": "Membership",
-                              "kind": "LinkedField",
-                              "name": "from",
-                              "plural": false,
-                              "selections": (v11/*:: as any*/),
-                              "storageKey": null
-                            },
-                            {
-                              "alias": null,
-                              "args": null,
-                              "concreteType": "Membership",
-                              "kind": "LinkedField",
-                              "name": "to",
-                              "plural": false,
-                              "selections": (v11/*:: as any*/),
-                              "storageKey": null
-                            },
-                            (v12/*:: as any*/)
-                          ],
-                          "storageKey": null
-                        }
-                      ],
-                      "type": "GroupBalances",
-                      "abstractKey": null
-                    },
-                    (v3/*:: as any*/)
-                  ],
-                  "storageKey": null
-                }
-              ]
-            }
-          ],
-          "storageKey": null
-        }
-      ],
-      "type": "HouseholdDashboard",
-      "abstractKey": null
-    }
-  ],
-  "storageKey": null
-},
-v14 = [
+v4 = [
   {
     "kind": "Literal",
     "name": "first",
     "value": 4
   }
 ],
-v15 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "expenseId",
   "storageKey": null
 },
-v16 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "version",
   "storageKey": null
 },
-v17 = {
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "groupId",
+  "storageKey": null
+},
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v18 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "effectiveDate",
   "storageKey": null
 },
-v19 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalMinor",
   "storageKey": null
 },
-v20 = {
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "category",
   "storageKey": null
 },
-v21 = {
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v13 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "amountMinor",
+  "storageKey": null
+},
+v14 = {
   "alias": null,
   "args": null,
   "concreteType": "Allocation",
@@ -484,15 +189,43 @@ v21 = {
       "name": "participant",
       "plural": false,
       "selections": [
-        (v10/*:: as any*/)
+        (v12/*:: as any*/)
       ],
       "storageKey": null
     },
-    (v12/*:: as any*/)
+    (v13/*:: as any*/)
   ],
   "storageKey": null
 },
-v22 = {
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "kind",
+  "storageKey": null
+},
+v17 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isHousehold",
+  "storageKey": null
+},
+v18 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currency",
+  "storageKey": null
+},
+v19 = {
   "alias": null,
   "args": null,
   "concreteType": "GroupSummary",
@@ -500,14 +233,31 @@ v22 = {
   "name": "source",
   "plural": false,
   "selections": [
-    (v10/*:: as any*/),
-    (v6/*:: as any*/),
-    (v7/*:: as any*/),
-    (v8/*:: as any*/),
-    (v9/*:: as any*/)
+    (v12/*:: as any*/),
+    (v15/*:: as any*/),
+    (v16/*:: as any*/),
+    (v17/*:: as any*/),
+    (v18/*:: as any*/)
   ],
   "storageKey": null
-};
+},
+v20 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "viewerNetMinor",
+  "storageKey": null
+},
+v21 = [
+  (v12/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "displayName",
+    "storageKey": null
+  }
+];
 return {
   "fragment": {
     "argumentDefinitions": [
@@ -518,7 +268,48 @@ return {
     "metadata": null,
     "name": "householdWorkspaceQuery",
     "selections": [
-      (v13/*:: as any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "householdDashboard",
+        "plural": false,
+        "selections": [
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
+          {
+            "kind": "InlineFragment",
+            "selections": [
+              {
+                "fragment": {
+                  "kind": "InlineFragment",
+                  "selections": [
+                    {
+                      "args": [
+                        {
+                          "kind": "Variable",
+                          "name": "balances",
+                          "variableName": "balances"
+                        }
+                      ],
+                      "kind": "FragmentSpread",
+                      "name": "householdContentDashboard"
+                    }
+                  ],
+                  "type": "HouseholdDashboard",
+                  "abstractKey": null
+                },
+                "kind": "AliasedInlineFragmentSpread",
+                "name": "dashboard"
+              }
+            ],
+            "type": "HouseholdDashboard",
+            "abstractKey": null
+          }
+        ],
+        "storageKey": null
+      },
       {
         "condition": "recent",
         "kind": "Condition",
@@ -526,7 +317,7 @@ return {
         "selections": [
           {
             "alias": null,
-            "args": (v14/*:: as any*/),
+            "args": (v4/*:: as any*/),
             "concreteType": null,
             "kind": "LinkedField",
             "name": "householdExpenses",
@@ -553,18 +344,18 @@ return {
                         "name": "snapshot",
                         "plural": false,
                         "selections": [
-                          (v15/*:: as any*/),
-                          (v16/*:: as any*/),
                           (v5/*:: as any*/),
-                          (v17/*:: as any*/),
-                          (v18/*:: as any*/),
-                          (v19/*:: as any*/),
-                          (v20/*:: as any*/),
-                          (v21/*:: as any*/)
+                          (v6/*:: as any*/),
+                          (v7/*:: as any*/),
+                          (v8/*:: as any*/),
+                          (v9/*:: as any*/),
+                          (v10/*:: as any*/),
+                          (v11/*:: as any*/),
+                          (v14/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v22/*:: as any*/)
+                      (v19/*:: as any*/)
                     ],
                     "storageKey": null
                   }
@@ -590,7 +381,205 @@ return {
     "kind": "Operation",
     "name": "householdWorkspaceQuery",
     "selections": [
-      (v13/*:: as any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "householdDashboard",
+        "plural": false,
+        "selections": [
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
+          {
+            "kind": "InlineFragment",
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "state",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": null,
+                "kind": "LinkedField",
+                "name": "totals",
+                "plural": false,
+                "selections": [
+                  (v2/*:: as any*/),
+                  {
+                    "kind": "InlineFragment",
+                    "selections": [
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "viewerShareMinor",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "viewerPaidMinor",
+                        "storageKey": null
+                      },
+                      (v20/*:: as any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "openBalanceCount",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "activeSpaceCount",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "totalSharedExpenseMinor",
+                        "storageKey": null
+                      },
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "totalSharedExpenseCount",
+                        "storageKey": null
+                      }
+                    ],
+                    "type": "HouseholdDashboardTotals",
+                    "abstractKey": null
+                  },
+                  (v3/*:: as any*/)
+                ],
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "HouseholdDashboardSpace",
+                "kind": "LinkedField",
+                "name": "spaces",
+                "plural": true,
+                "selections": [
+                  (v7/*:: as any*/),
+                  (v15/*:: as any*/),
+                  (v16/*:: as any*/),
+                  (v17/*:: as any*/),
+                  (v18/*:: as any*/),
+                  (v20/*:: as any*/),
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "sharedExpenseCount",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "concreteType": "Membership",
+                    "kind": "LinkedField",
+                    "name": "viewerMembership",
+                    "plural": false,
+                    "selections": [
+                      (v12/*:: as any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "role",
+                        "storageKey": null
+                      }
+                    ],
+                    "storageKey": null
+                  },
+                  {
+                    "condition": "balances",
+                    "kind": "Condition",
+                    "passingValue": true,
+                    "selections": [
+                      {
+                        "alias": null,
+                        "args": null,
+                        "concreteType": null,
+                        "kind": "LinkedField",
+                        "name": "balances",
+                        "plural": false,
+                        "selections": [
+                          (v2/*:: as any*/),
+                          {
+                            "kind": "InlineFragment",
+                            "selections": [
+                              {
+                                "alias": null,
+                                "args": null,
+                                "kind": "ScalarField",
+                                "name": "settled",
+                                "storageKey": null
+                              },
+                              {
+                                "alias": null,
+                                "args": null,
+                                "concreteType": "Obligation",
+                                "kind": "LinkedField",
+                                "name": "obligations",
+                                "plural": true,
+                                "selections": [
+                                  {
+                                    "alias": null,
+                                    "args": null,
+                                    "concreteType": "Membership",
+                                    "kind": "LinkedField",
+                                    "name": "from",
+                                    "plural": false,
+                                    "selections": (v21/*:: as any*/),
+                                    "storageKey": null
+                                  },
+                                  {
+                                    "alias": null,
+                                    "args": null,
+                                    "concreteType": "Membership",
+                                    "kind": "LinkedField",
+                                    "name": "to",
+                                    "plural": false,
+                                    "selections": (v21/*:: as any*/),
+                                    "storageKey": null
+                                  },
+                                  (v13/*:: as any*/)
+                                ],
+                                "storageKey": null
+                              }
+                            ],
+                            "type": "GroupBalances",
+                            "abstractKey": null
+                          },
+                          (v3/*:: as any*/)
+                        ],
+                        "storageKey": null
+                      }
+                    ]
+                  }
+                ],
+                "storageKey": null
+              }
+            ],
+            "type": "HouseholdDashboard",
+            "abstractKey": null
+          }
+        ],
+        "storageKey": null
+      },
       {
         "condition": "recent",
         "kind": "Condition",
@@ -598,7 +587,7 @@ return {
         "selections": [
           {
             "alias": null,
-            "args": (v14/*:: as any*/),
+            "args": (v4/*:: as any*/),
             "concreteType": null,
             "kind": "LinkedField",
             "name": "householdExpenses",
@@ -625,23 +614,23 @@ return {
                         "name": "snapshot",
                         "plural": false,
                         "selections": [
-                          (v15/*:: as any*/),
-                          (v16/*:: as any*/),
                           (v5/*:: as any*/),
-                          (v17/*:: as any*/),
-                          (v18/*:: as any*/),
-                          (v19/*:: as any*/),
-                          (v20/*:: as any*/),
-                          (v21/*:: as any*/),
-                          (v10/*:: as any*/)
+                          (v6/*:: as any*/),
+                          (v7/*:: as any*/),
+                          (v8/*:: as any*/),
+                          (v9/*:: as any*/),
+                          (v10/*:: as any*/),
+                          (v11/*:: as any*/),
+                          (v14/*:: as any*/),
+                          (v12/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v22/*:: as any*/)
+                      (v19/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v10/*:: as any*/)
+                  (v12/*:: as any*/)
                 ],
                 "type": "ExpenseView",
                 "abstractKey": null
@@ -654,16 +643,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "0e9232f3f00c20e860ed6f58fe92e36f",
+    "cacheID": "d28f8b4c26762b16116cff6a1c38199f",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      state\n      totals {\n        __typename\n        ... on HouseholdDashboardTotals {\n          viewerShareMinor\n          viewerPaidMinor\n          viewerNetMinor\n          openBalanceCount\n          activeSpaceCount\n          totalSharedExpenseMinor\n          totalSharedExpenseCount\n        }\n        ... on Problem {\n          code\n        }\n      }\n      spaces {\n        groupId\n        name\n        kind\n        isHousehold\n        currency\n        viewerNetMinor\n        sharedExpenseCount\n        viewerMembership {\n          id\n          role\n        }\n        balances @include(if: $balances) {\n          __typename\n          ... on GroupBalances {\n            settled\n            obligations {\n              from {\n                id\n                displayName\n              }\n              to {\n                id\n                displayName\n              }\n              amountMinor\n            }\n          }\n          ... on Problem {\n            code\n          }\n        }\n      }\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      ...householdContentDashboard_4qorL8\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n\nfragment householdContentDashboard_4qorL8 on HouseholdDashboard {\n  state\n  totals {\n    __typename\n    ... on HouseholdDashboardTotals {\n      viewerShareMinor\n      viewerPaidMinor\n      viewerNetMinor\n      openBalanceCount\n      activeSpaceCount\n      totalSharedExpenseMinor\n      totalSharedExpenseCount\n    }\n    ... on Problem {\n      code\n    }\n  }\n  spaces {\n    groupId\n    name\n    kind\n    isHousehold\n    currency\n    viewerNetMinor\n    sharedExpenseCount\n    viewerMembership {\n      id\n      role\n    }\n    balances @include(if: $balances) {\n      __typename\n      ... on GroupBalances {\n        settled\n        obligations {\n          from {\n            id\n            displayName\n          }\n          to {\n            id\n            displayName\n          }\n          amountMinor\n        }\n      }\n      ... on Problem {\n        code\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "877b3a4e973bd8a8f0e815279834798c";
+(node as any).hash = "eb147dbef8df3b43f4e3e47e8e861582";
 
 export default node;

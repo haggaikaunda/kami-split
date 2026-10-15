@@ -1,9 +1,16 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { fetchQuery } from 'relay-runtime';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useFragment } from 'react-relay';
+import { NetworkQuery } from '@/lib/relay/query';
 import document, {
   type journeyExpenseQuery,
 } from '@/lib/relay/__generated__/journeyExpenseQuery.graphql';
+import fragment, {
+  type expenseDetailExpense$key,
+} from '@/lib/relay/__generated__/expenseDetailExpense.graphql';
+import membersDocument, {
+  type expenseEditMembersQuery,
+} from '@/lib/relay/__generated__/expenseEditMembersQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { calendarDate } from '@/lib/dates';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
@@ -15,27 +22,15 @@ import { percentageText } from '@/lib/relay/percentage';
 import { money } from '@/lib/relay/money';
 import { readEditDraft } from '@/lib/relay/edit-draft';
 import { ExpenseEdit } from './expense-edit';
-import membersDocument, {
-  type expenseEditMembersQuery,
-} from '@/lib/relay/__generated__/expenseEditMembersQuery.graphql';
-import type { Member as ExpenseMember } from '@/lib/relay/draft';
-type Expense = Extract<
-  NonNullable<journeyExpenseQuery['response']['node']>,
-  { readonly __typename: 'Expense' }
->;
-export function ExpenseDetail({
-  scope,
-  group,
-  id,
-  onUnavailable,
-  onCommitted,
-}: {
+type Props = {
   scope: FinancialScope;
   group: string;
   id: string;
   onUnavailable?: () => void;
   onCommitted?: () => Promise<void>;
-}) {
+};
+export function ExpenseDetail(props: Props) {
+  const { scope, group, id, onUnavailable } = props;
   const [retainedAttempt] = useState(() => {
     try {
       return !!readEditDraft(scope.actor, group, id)?.attempt;
@@ -43,147 +38,137 @@ export function ExpenseDetail({
       return true;
     }
   });
-  const [editing, setEditing] = useState(false);
-  const [members, setMembers] = useState<readonly ExpenseMember[]>();
-  const [editError, setEditError] = useState('');
-  const [saved, setSaved] = useState(false);
-  const savedNotice = saved ? (
-    <p role="status">
-      Expense edit saved. Current expense data is being checked separately; an
-      unavailable refresh does not undo the edit.
-    </p>
-  ) : null;
-  const editTrigger = useRef<HTMLButtonElement>(null);
-  const [expense, setExpense] = useState<Expense>();
-  const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
-  useEffect(() => {
-    let active = true;
-    const subscription = fetchQuery<journeyExpenseQuery>(
-      scope.environment,
-      document,
-      { id },
-      { fetchPolicy: 'network-only' },
-    ).subscribe({
-      next(result) {
-        if (!active || !scope.isLive()) return;
-        // Do not render any fields until both canonical IDs match.
-        if (
+  const [saved, setSaved] = useState(false);
+  const retry = () => setVersion((v) => v + 1);
+  const unavailable = (
+    <ExpenseUnavailable retry={retry} onUnavailable={onUnavailable} />
+  );
+  return (
+    <>
+      {saved && (
+        <p role="status">
+          Expense edit saved. Current expense data is being checked separately;
+          an unavailable refresh does not undo the edit.
+        </p>
+      )}
+      <NetworkQuery<journeyExpenseQuery>
+        scope={scope}
+        key={version}
+        document={document}
+        variables={{ id }}
+        fallback={<p role="status">Loading authorized expense…</p>}
+        failure={unavailable}
+      >
+        {(result) =>
           result.node?.__typename === 'Expense' &&
           result.node.id === id &&
-          result.node.groupId === group
-        )
-          setExpense(result.node);
-        else {
-          setFailed(true);
-          onUnavailable?.();
+          result.node.groupId === group &&
+          result.node.expense ? (
+            <ExpenseDetailContent
+              {...props}
+              reference={result.node.expense}
+              onRetry={retry}
+              retainedAttempt={retainedAttempt}
+              onCommitted={async () => {
+                setSaved(true);
+                retry();
+                await props.onCommitted?.();
+              }}
+            />
+          ) : (
+            unavailable
+          )
         }
-      },
-      error() {
-        if (active && scope.isLive()) {
-          setFailed(true);
-          onUnavailable?.();
-        }
-      },
-    });
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-    // The owning list invalidates on failure; request identity owns the lifecycle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, group, id, version]);
+      </NetworkQuery>
+    </>
+  );
+}
+function ExpenseUnavailable({
+  retry,
+  onUnavailable,
+}: {
+  retry: () => void;
+  onUnavailable?: () => void;
+}) {
+  const unavailable = useEffectEvent(() => onUnavailable?.());
   useEffect(() => {
-    if (!editing) return;
-    let live = true;
-    const request = fetchQuery<expenseEditMembersQuery>(
-      scope.environment,
-      membersDocument,
-      { groupId: group },
-      { fetchPolicy: 'network-only' },
-    ).subscribe({
-      next(result) {
-        if (!live || !scope.isLive()) return;
-        if (result.group.__typename === 'Group' && result.group.id === group)
-          setMembers(result.group.members);
-        else {
-          setEditError('Current source access is unavailable.');
-          onUnavailable?.();
-        }
-      },
-      error() {
-        if (live && scope.isLive())
-          setEditError(
-            'Current members are unavailable. Close editing and retry.',
-          );
-      },
-    });
-    return () => {
-      live = false;
-      request.unsubscribe();
-    };
-    // Source and session own this authorized read.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, scope, group]);
-  if (failed)
-    return (
-      <>
-        {savedNotice}
-        <p role="alert">
-          Expense unavailable. No expense details can be shown.
-        </p>
-        <button
-          onClick={() => {
-            setFailed(false);
-            setExpense(undefined);
-            setVersion((v) => v + 1);
-          }}
-        >
-          Retry expense
-        </button>
-      </>
-    );
-  if (!expense)
-    return (
-      <>
-        {savedNotice}
-        <p role="status">Loading authorized expense…</p>
-      </>
-    );
+    unavailable();
+  }, []);
+  return (
+    <>
+      <p role="alert">Expense unavailable. No expense details can be shown.</p>
+      <button onClick={retry}>Retry expense</button>
+    </>
+  );
+}
+function ExpenseDetailContent({
+  scope,
+  group,
+  reference,
+  retainedAttempt,
+  onUnavailable,
+  onCommitted,
+  onRetry,
+}: Props & {
+  reference: expenseDetailExpense$key;
+  retainedAttempt: boolean;
+  onRetry: () => void;
+}) {
+  const expense = useFragment(fragment, reference);
+  const [editing, setEditing] = useState(false);
+  const [denied, setDenied] = useState(false);
+  const editTrigger = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    setEditing(false);
+    requestAnimationFrame(() => editTrigger.current?.focus());
+  };
+  if (denied)
+    return <ExpenseUnavailable retry={onRetry} onUnavailable={onUnavailable} />;
   if (editing)
-    return members ? (
-      <ExpenseEdit
+    return (
+      <NetworkQuery<expenseEditMembersQuery>
         scope={scope}
-        expense={expense}
-        members={members}
-        onDenied={() => {
-          setEditing(false);
-          setFailed(true);
-          onUnavailable?.();
-        }}
-        onCancel={() => {
-          setEditing(false);
-          requestAnimationFrame(() => editTrigger.current?.focus());
-        }}
-        onCommitted={async () => {
-          setSaved(true);
-          setEditing(false);
-          setExpense(undefined);
-          setVersion((v) => v + 1);
-          await onCommitted?.();
-        }}
-      />
-    ) : (
-      <section>
-        <p role={editError ? 'alert' : 'status'}>
-          {editError || 'Loading current editing permissions…'}
-        </p>
-        <button onClick={() => setEditing(false)}>Back to expense</button>
-      </section>
+        document={membersDocument}
+        variables={{ groupId: group }}
+        fallback={
+          <section>
+            <p role="status">Loading current editing permissions…</p>
+            <button onClick={() => setEditing(false)}>Back to expense</button>
+          </section>
+        }
+        failure={
+          <section>
+            <p role="alert">
+              Current members are unavailable. Close editing and retry.
+            </p>
+            <button onClick={() => setEditing(false)}>Back to expense</button>
+          </section>
+        }
+      >
+        {(result) =>
+          result.group.__typename === 'Group' && result.group.id === group ? (
+            <ExpenseEdit
+              scope={scope}
+              expense={expense}
+              members={result.group.members}
+              onDenied={() => {
+                setDenied(true);
+              }}
+              onCancel={close}
+              onCommitted={onCommitted ?? (async () => {})}
+            />
+          ) : (
+            <EditUnavailable
+              onUnavailable={onUnavailable}
+              onBack={() => setEditing(false)}
+            />
+          )
+        }
+      </NetworkQuery>
     );
   return (
     <section className="expense-detail-card">
-      {savedNotice}
       <div className="expense-detail-identity">
         <CategoryIcon category={expense.category} />
         <div>
@@ -204,8 +189,6 @@ export function ExpenseDetail({
           tone="tonal"
           ref={editTrigger}
           onClick={() => {
-            setMembers(undefined);
-            setEditError('');
             setEditing(true);
           }}
         >
@@ -276,6 +259,25 @@ export function ExpenseDetail({
         <Timestamp value={expense.createdAt} />
       </p>
       <ExactTimestamp value={expense.createdAt} />
+    </section>
+  );
+}
+
+function EditUnavailable({
+  onUnavailable,
+  onBack,
+}: {
+  onUnavailable?: () => void;
+  onBack: () => void;
+}) {
+  const unavailable = useEffectEvent(() => onUnavailable?.());
+  useEffect(() => {
+    unavailable();
+  }, []);
+  return (
+    <section>
+      <p role="alert">Current source access is unavailable.</p>
+      <button onClick={onBack}>Back to expense</button>
     </section>
   );
 }

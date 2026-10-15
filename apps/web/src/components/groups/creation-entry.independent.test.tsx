@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -48,7 +49,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mock.path,
   useSearchParams: () => new URLSearchParams(mock.search),
 }));
-vi.mock('relay-runtime', () => ({
+vi.mock('relay-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('relay-runtime')>()),
   commitMutation: (...args: unknown[]) => mock.mutation(...args),
   fetchQuery: (
     _environment: unknown,
@@ -88,7 +90,7 @@ let root: Root, host: HTMLDivElement;
 const scope = {
   id: 'scope-a',
   actor: 'a',
-  environment: {},
+  environment: queryEnvironment(() => {}),
   isLive: () => true,
   visits: new Map(),
   restored: new Set<string>(),
@@ -136,6 +138,9 @@ function viewer(items = groups) {
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
+  scope.environment = queryEnvironment((request) =>
+    mock.requests.push(request),
+  );
   sessionStorage.clear();
   scope.visits.clear();
   scope.restored.clear();
@@ -146,7 +151,10 @@ beforeEach(() => {
   mock.access = { scope, loading: false };
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(
+    createRoot(host),
+    () => mock.access.scope as typeof scope | undefined,
+  );
 });
 afterEach(() => {
   act(() => root.unmount());

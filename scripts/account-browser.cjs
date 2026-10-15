@@ -157,7 +157,7 @@ withAuthFixture(origin, session, async () => {
             data = {
               updateMyProfile: {
                 __typename: 'Profile',
-                id: 'v',
+                id: 'profile-v',
                 displayName: name,
               },
             };
@@ -171,7 +171,7 @@ withAuthFixture(origin, session, async () => {
                   }
                 : {
                     __typename: 'Profile',
-                    id: 'v',
+                    id: 'profile-v',
                     displayName: name,
                     appearance: 'SYSTEM',
                   },

@@ -19,7 +19,11 @@ import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
 import { CategoryIcon, AppIcon } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
+import { useFragment } from 'react-relay';
+import groupDocument, {
+  type workspaceGroup$key,
+  type workspaceGroup$data,
+} from '@/lib/relay/__generated__/workspaceGroup.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { tripState } from '@/lib/relay/discovery';
 import { minor, money } from '@/lib/relay/money';
@@ -50,11 +54,28 @@ import {
   balanceHelp,
   shareHelp,
 } from '@/components/rich-help';
-export type WorkspaceGroup = Extract<
-  journeyWorkspaceQuery['response']['group'],
-  { readonly __typename: 'Group' }
+import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
+/** The route validates and owns canonical workspace identity before rendering. */
+type WorkspaceIdentity = Pick<
+  Extract<
+    journeyWorkspaceQuery['response']['group'],
+    { readonly __typename: 'Group' }
+  >,
+  'id' | 'name' | 'kind' | 'isHousehold'
 >;
+export type WorkspaceGroup = workspaceGroup$data & WorkspaceIdentity;
 export function GroupWorkspace({
+  groupRef,
+  identity,
+  ...props
+}: Omit<Parameters<typeof GroupWorkspaceContent>[0], 'group'> & {
+  groupRef: workspaceGroup$key;
+  identity: WorkspaceIdentity;
+}) {
+  const group = useFragment(groupDocument, groupRef);
+  return <GroupWorkspaceContent {...props} group={{ ...group, ...identity }} />;
+}
+export function GroupWorkspaceContent({
   activityKind,
   onActivityReadState,
   onActivityKindChange,

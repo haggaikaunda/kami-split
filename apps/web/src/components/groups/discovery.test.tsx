@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GroupJourney } from './journey';
 import { ExpenseDetail } from './expense-detail';
+import { createOperationDescriptor } from 'relay-runtime';
+import viewerDocument from '@/lib/relay/__generated__/journeyViewerQuery.graphql';
 const mock = vi.hoisted(() => ({
   path: '/groups',
   access: {} as Record<string, unknown>,
@@ -37,46 +40,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mock.path,
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock('relay-runtime', () => ({
-  fetchQuery: (
-    _environment: unknown,
-    document: { params: { name: string } },
-    variables: Record<string, unknown>,
-  ) => {
-    const request = {
-      name: document.params.name,
-      variables,
-      next: (_data: unknown) => {
-        void _data;
-      },
-      error: (_error: Error) => {
-        void _error;
-      },
-      resolve: (_data: unknown) => {
-        void _data;
-      },
-    };
-    mock.requests.push(request);
-    return {
-      subscribe: (callbacks: {
-        next: typeof request.next;
-        error: typeof request.error;
-      }) => {
-        Object.assign(request, callbacks);
-        return { unsubscribe() {} };
-      },
-      toPromise: () =>
-        new Promise((resolve) => {
-          request.resolve = resolve;
-        }),
-    };
-  },
-}));
 let root: Root, host: HTMLDivElement;
 const scope = {
   id: 'scope-a',
   actor: 'a',
-  environment: {},
+  environment: queryEnvironment(() => {}),
   isLive: () => true,
   visits: new Map(),
   restored: new Set<string>(),
@@ -124,11 +92,17 @@ function viewer(items = groups) {
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   mock.requests = [];
+  scope.environment = queryEnvironment((request) =>
+    mock.requests.push(request),
+  );
   mock.path = '/groups';
   mock.access = { scope, loading: false };
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(
+    createRoot(host),
+    () => mock.access.scope as typeof scope | undefined,
+  );
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -256,4 +230,55 @@ it('offers the dedicated Trip creation route while preserving the separate creat
     'Create trip',
   );
   expect(host.querySelector('a[href="/groups/new"]')).toBeNull();
+});
+
+it.each([
+  ['UNAUTHENTICATED', 'Your session is unavailable'],
+  ['SESSION_CHANGED', 'Your session is unavailable'],
+  ['INVALID_CURSOR', 'This expense page is no longer available'],
+])(
+  'preserves transport failure copy and refresh failure status (%s)',
+  async (code, copy) => {
+    await render(<GroupJourney />);
+    await act(async () => mock.requests.at(-1)!.error(new Error(code)));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(copy);
+    expect(host.querySelector('.workspace-refresh')?.textContent).toContain(
+      'Couldn’t refresh. Try again.',
+    );
+  },
+);
+it.each([
+  {
+    __typename: 'Problem',
+    code: 'UNAUTHENTICATED',
+    message: 'Safe test problem',
+  },
+  { __typename: 'ViewerAccess', state: 'DISABLED' },
+])(
+  'reports fulfilled access failures to the refresh owner (%j)',
+  async (result) => {
+    await render(<GroupJourney />);
+    await respond({ viewer: result });
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    expect(host.querySelector('.workspace-refresh')?.textContent).toContain(
+      'Couldn’t refresh. Try again.',
+    );
+    expect(host.textContent).not.toContain('Up to date');
+  },
+);
+
+it('renders the card fragment from its retained store record without a copied server object', async () => {
+  await render(<GroupJourney />);
+  await respond(viewer());
+  const count = mock.requests.length;
+  await act(async () =>
+    scope.environment.commitPayload(
+      createOperationDescriptor(viewerDocument, {}),
+      viewer([{ ...groups[2], name: 'Renamed friends' }]),
+    ),
+  );
+  expect(host.querySelector('a[href="/groups/F"]')?.textContent).toContain(
+    'Renamed friends',
+  );
+  expect(mock.requests).toHaveLength(count);
 });

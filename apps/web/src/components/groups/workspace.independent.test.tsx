@@ -2,7 +2,10 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { GroupWorkspace, type WorkspaceGroup } from './workspace';
+import {
+  GroupWorkspaceContent as GroupWorkspace,
+  type WorkspaceGroup,
+} from './workspace';
 const nav = vi.hoisted(() => ({ search: '', push: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: nav.push }),

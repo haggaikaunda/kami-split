@@ -7,55 +7,9 @@ export const householdWorkspaceQuery = graphql`
         code
       }
       ... on HouseholdDashboard {
-        state
-        totals {
-          __typename
-          ... on HouseholdDashboardTotals {
-            viewerShareMinor
-            viewerPaidMinor
-            viewerNetMinor
-            openBalanceCount
-            activeSpaceCount
-            totalSharedExpenseMinor
-            totalSharedExpenseCount
-          }
-          ... on Problem {
-            code
-          }
-        }
-        spaces {
-          groupId
-          name
-          kind
-          isHousehold
-          currency
-          viewerNetMinor
-          sharedExpenseCount
-          viewerMembership {
-            id
-            role
-          }
-          balances @include(if: $balances) {
-            __typename
-            ... on GroupBalances {
-              settled
-              obligations {
-                from {
-                  id
-                  displayName
-                }
-                to {
-                  id
-                  displayName
-                }
-                amountMinor
-              }
-            }
-            ... on Problem {
-              code
-            }
-          }
-        }
+        ...householdContentDashboard
+          @alias(as: "dashboard")
+          @arguments(balances: $balances)
       }
     }
     householdExpenses(first: 4) @include(if: $recent) {

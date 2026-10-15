@@ -1,0 +1,341 @@
+/**
+ * @generated SignedSource<<d8bbaebfcc347ac5e887b2ece0684a3d>>
+ * @lightSyntaxTransform
+ */
+
+/* tslint:disable */
+/* eslint-disable */
+// @ts-nocheck
+
+import { ConcreteRequest } from 'relay-runtime';
+export type Category = "ACCOMMODATION" | "ACTIVITIES" | "DINING" | "GROCERIES" | "HOME" | "OTHER" | "TRANSPORT" | "%future added value";
+export type Currency = "USD" | "%future added value";
+export type ExpenseEditLockReason = "FORMER_MEMBER" | "INELIGIBLE_MEMBER" | "%future added value";
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "%future added value";
+export type expenseEditCurrentQuery$variables = {
+  id: string;
+};
+export type expenseEditCurrentQuery$data = {
+  readonly node: {
+    readonly __typename: "Expense";
+    readonly allocations: ReadonlyArray<{
+      readonly amountMinor: string;
+      readonly participant: {
+        readonly displayName: string;
+        readonly id: string;
+      };
+      readonly percentageHundredths: number | null | undefined;
+    }>;
+    readonly canEdit: boolean;
+    readonly category: Category;
+    readonly createdAt: string;
+    readonly creator: {
+      readonly displayName: string;
+      readonly id: string;
+    };
+    readonly currency: Currency;
+    readonly description: string;
+    readonly editLockReason: ExpenseEditLockReason | null | undefined;
+    readonly effectiveDate: string;
+    readonly groupId: string;
+    readonly id: string;
+    readonly note: string;
+    readonly payer: {
+      readonly displayName: string;
+      readonly id: string;
+    };
+    readonly split: SplitMode;
+    readonly totalMinor: string;
+    readonly version: string;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
+  } | null | undefined;
+};
+export type expenseEditCurrentQuery = {
+  response: expenseEditCurrentQuery$data;
+  variables: expenseEditCurrentQuery$variables;
+};
+
+const node: ConcreteRequest = (function(){
+var v0 = [
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "id"
+  }
+],
+v1 = [
+  {
+    "kind": "Variable",
+    "name": "id",
+    "variableName": "id"
+  }
+],
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "__typename",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "groupId",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "version",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "canEdit",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "editLockReason",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "effectiveDate",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "totalMinor",
+  "storageKey": null
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currency",
+  "storageKey": null
+},
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v13 = [
+  (v3/*:: as any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "displayName",
+    "storageKey": null
+  }
+],
+v14 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Membership",
+  "kind": "LinkedField",
+  "name": "creator",
+  "plural": false,
+  "selections": (v13/*:: as any*/),
+  "storageKey": null
+},
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "category",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "note",
+  "storageKey": null
+},
+v17 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Membership",
+  "kind": "LinkedField",
+  "name": "payer",
+  "plural": false,
+  "selections": (v13/*:: as any*/),
+  "storageKey": null
+},
+v18 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "split",
+  "storageKey": null
+},
+v19 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Allocation",
+  "kind": "LinkedField",
+  "name": "allocations",
+  "plural": true,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Membership",
+      "kind": "LinkedField",
+      "name": "participant",
+      "plural": false,
+      "selections": (v13/*:: as any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "amountMinor",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "percentageHundredths",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+};
+return {
+  "fragment": {
+    "argumentDefinitions": (v0/*:: as any*/),
+    "kind": "Fragment",
+    "metadata": null,
+    "name": "expenseEditCurrentQuery",
+    "selections": [
+      {
+        "alias": null,
+        "args": (v1/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "node",
+        "plural": false,
+        "selections": [
+          (v2/*:: as any*/),
+          {
+            "kind": "InlineFragment",
+            "selections": [
+              (v3/*:: as any*/),
+              (v4/*:: as any*/),
+              (v5/*:: as any*/),
+              (v6/*:: as any*/),
+              (v7/*:: as any*/),
+              (v8/*:: as any*/),
+              (v9/*:: as any*/),
+              (v10/*:: as any*/),
+              (v11/*:: as any*/),
+              (v12/*:: as any*/),
+              (v14/*:: as any*/),
+              (v15/*:: as any*/),
+              (v16/*:: as any*/),
+              (v17/*:: as any*/),
+              (v18/*:: as any*/),
+              (v19/*:: as any*/)
+            ],
+            "type": "Expense",
+            "abstractKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ],
+    "type": "Query",
+    "abstractKey": null
+  },
+  "kind": "Request",
+  "operation": {
+    "argumentDefinitions": (v0/*:: as any*/),
+    "kind": "Operation",
+    "name": "expenseEditCurrentQuery",
+    "selections": [
+      {
+        "alias": null,
+        "args": (v1/*:: as any*/),
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "node",
+        "plural": false,
+        "selections": [
+          (v2/*:: as any*/),
+          (v3/*:: as any*/),
+          {
+            "kind": "InlineFragment",
+            "selections": [
+              (v4/*:: as any*/),
+              (v5/*:: as any*/),
+              (v6/*:: as any*/),
+              (v7/*:: as any*/),
+              (v8/*:: as any*/),
+              (v9/*:: as any*/),
+              (v10/*:: as any*/),
+              (v11/*:: as any*/),
+              (v12/*:: as any*/),
+              (v14/*:: as any*/),
+              (v15/*:: as any*/),
+              (v16/*:: as any*/),
+              (v17/*:: as any*/),
+              (v18/*:: as any*/),
+              (v19/*:: as any*/)
+            ],
+            "type": "Expense",
+            "abstractKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ]
+  },
+  "params": {
+    "cacheID": "151a8797519e628600c83d7d90e23e7f",
+    "id": null,
+    "metadata": {},
+    "name": "expenseEditCurrentQuery",
+    "operationKind": "query",
+    "text": "query expenseEditCurrentQuery(\n  $id: ID!\n) {\n  node(id: $id) {\n    __typename\n    ... on Expense {\n      id\n      groupId\n      version\n      canEdit\n      editLockReason\n      description\n      effectiveDate\n      totalMinor\n      currency\n      createdAt\n      creator {\n        id\n        displayName\n      }\n      category\n      note\n      payer {\n        id\n        displayName\n      }\n      split\n      allocations {\n        participant {\n          id\n          displayName\n        }\n        amountMinor\n        percentageHundredths\n      }\n    }\n    id\n  }\n}\n"
+  }
+};
+})();
+
+(node as any).hash = "88e8f1b0214be23294fd2e5cfe5732bf";
+
+export default node;

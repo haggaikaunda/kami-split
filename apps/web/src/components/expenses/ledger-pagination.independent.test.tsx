@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExpenseLedger } from './ledger';
@@ -51,22 +52,32 @@ vi.mock('next/link', () => ({
     );
   },
 }));
-vi.mock('relay-runtime', () => ({
-  readInlineData: (_: unknown, r: unknown) => r,
-  fetchQuery: (_: unknown, _doc: unknown, variables: unknown) => {
-    const r = {
-      variables,
-      unsubscribe: vi.fn(),
-    } as (typeof state.requests)[number];
-    state.requests.push(r);
-    return {
-      subscribe: (observer: unknown) => {
-        Object.assign(r, observer);
-        return { unsubscribe: r.unsubscribe };
-      },
-    };
-  },
-}));
+vi.mock('relay-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('relay-runtime')>();
+  return {
+    ...actual,
+    readInlineData: (
+      document: import('relay-runtime').GraphQLTaggedNode,
+      value: unknown,
+    ) =>
+      value && typeof value === 'object' && '__fragments' in value
+        ? actual.readInlineData(document, value as never)
+        : value,
+    fetchQuery: (_: unknown, _doc: unknown, variables: unknown) => {
+      const r = {
+        variables,
+        unsubscribe: vi.fn(),
+      } as (typeof state.requests)[number];
+      state.requests.push(r);
+      return {
+        subscribe: (observer: unknown) => {
+          Object.assign(r, observer);
+          return { unsubscribe: r.unsubscribe };
+        },
+      };
+    },
+  };
+});
 vi.mock('@/components/groups/session', () => ({
   useFinancialSession: () => ({ scope, loading: false, error: '' }),
 }));
@@ -175,7 +186,10 @@ beforeEach(() => {
   live = true;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  scope.environment = queryEnvironment((request) =>
+    state.requests.push(request),
+  );
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());

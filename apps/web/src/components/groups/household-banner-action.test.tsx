@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
@@ -16,22 +17,16 @@ type Request = {
   unsubscribe: ReturnType<typeof vi.fn>;
 };
 const requests: Request[] = [];
-vi.mock('relay-runtime', () => ({
-  fetchQuery: () => ({
-    subscribe: (callbacks: Omit<Request, 'unsubscribe'>) => {
-      const request = { ...callbacks, unsubscribe: vi.fn() };
-      requests.push(request);
-      return request;
-    },
-  }),
-}));
 let root: Root, host: HTMLDivElement, scope: FinancialScope;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
-  scope = { environment: {}, isLive: () => true } as unknown as FinancialScope;
+  scope = {
+    environment: queryEnvironment((request) => requests.push(request)),
+    isLive: () => true,
+  } as unknown as FinancialScope;
+  root = relayRoot(createRoot(host), () => scope);
   requests.length = 0;
   nav.path = '/household';
   nav.search = '';
@@ -43,13 +38,14 @@ afterEach(() => {
 const home = {
   viewer: {
     __typename: 'Viewer',
+    id: 'viewer',
     groups: [
       { id: 'home/a', isHousehold: true },
       { id: 'trip', isHousehold: false },
     ],
   },
 };
-it('resolves a real Household source across tab routes and preserves expense filters', () => {
+it('resolves a real Household source across tab routes and preserves expense filters', async () => {
   for (const [path, search] of [
     ['/household', 'tab=overview'],
     ['/household', 'tab=balances'],
@@ -63,11 +59,11 @@ it('resolves a real Household source across tab routes and preserves expense fil
   ]) {
     nav.path = path;
     nav.search = search;
-    act(() =>
+    await act(async () =>
       root.render(<HouseholdBannerAction key={path + search} scope={scope} />),
     );
     expect(host.querySelector('a')).toBeNull();
-    act(() => requests.at(-1)!.next(home));
+    await act(async () => requests.at(-1)!.next(home));
     const href = host.querySelector('a')!.getAttribute('href')!;
     const query = new URL(href, 'http://localhost').searchParams;
     expect(query.get('create')).toBe('home/a');
@@ -82,23 +78,23 @@ it('resolves a real Household source across tab routes and preserves expense fil
   }
 });
 it('invalidates stale source synchronously on foreground and ignores late replies after access failure or actor disposal', async () => {
-  act(() => root.render(<HouseholdBannerAction scope={scope} />));
-  act(() => requests[0].next(home));
+  await act(async () => root.render(<HouseholdBannerAction scope={scope} />));
+  await act(async () => requests[0].next(home));
   expect(host.querySelector('a')).not.toBeNull();
-  act(() => window.dispatchEvent(new Event('focus')));
+  await act(async () => window.dispatchEvent(new Event('focus')));
   expect(host.querySelector('a')).toBeNull();
   expect(requests[0].unsubscribe).toHaveBeenCalled();
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
   });
-  act(() =>
+  await act(async () =>
     requests
       .at(-1)!
       .next({ viewer: { __typename: 'Problem', code: 'FORBIDDEN' } }),
   );
-  act(() => requests[0].next(home));
+  await act(async () => requests[0].next(home));
   expect(host.querySelector('a')).toBeNull();
-  act(() =>
+  await act(async () =>
     root.render(
       <HouseholdBannerAction
         key="new-actor"
@@ -106,18 +102,20 @@ it('invalidates stale source synchronously on foreground and ignores late replie
       />,
     ),
   );
-  act(() => requests.at(-1)!.next(home));
+  await act(async () => requests.at(-1)!.next(home));
   expect(host.querySelector('a')).toBeNull();
 });
 
-it('revalidates the banner source on accepted workspace pull refresh without keeping the old link', () => {
-  act(() => root.render(<HouseholdBannerAction scope={scope} />));
-  act(() => requests[0].next(home));
+it('revalidates the banner source on accepted workspace pull refresh without keeping the old link', async () => {
+  await act(async () => root.render(<HouseholdBannerAction scope={scope} />));
+  await act(async () => requests[0].next(home));
   expect(host.querySelector('a')).not.toBeNull();
-  act(() => window.dispatchEvent(new Event('workspace-refresh-request')));
+  await act(async () =>
+    window.dispatchEvent(new Event('workspace-refresh-request')),
+  );
   expect(host.querySelector('a')).toBeNull();
   expect(requests[0].unsubscribe).toHaveBeenCalled();
   expect(requests).toHaveLength(2);
-  act(() => requests[1].error());
+  await act(async () => requests[1].error());
   expect(host.querySelector('a')).toBeNull();
 });

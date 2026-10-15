@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { act } from 'react';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
@@ -41,7 +42,8 @@ vi.mock('@/components/onboarding/scoped-invitations', () => ({
     </>
   ),
 }));
-vi.mock('relay-runtime', () => ({
+vi.mock('relay-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('relay-runtime')>()),
   fetchQuery: (...args: unknown[]) => {
     const request = queries.fetch(...args) as { toPromise(): Promise<unknown> };
     return {
@@ -137,10 +139,21 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   queries.fetch.mockReset();
   live = true;
-  scope = { environment: {}, isLive: () => live } as unknown as FinancialScope;
+  scope = {
+    environment: queryEnvironment((request) => {
+      const response = queries.fetch(
+        scope.environment,
+        { params: { name: request.name } },
+        request.variables,
+        { fetchPolicy: 'network-only' },
+      ) as { toPromise: () => Promise<unknown> };
+      void response.toPromise().then(request.next, request.error);
+    }),
+    isLive: () => live,
+  } as unknown as FinancialScope;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());

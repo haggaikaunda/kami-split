@@ -9,13 +9,12 @@ export const journeyViewerQuery = graphql`
         today
         canCreateGroups
         groups {
+          ...discoveryCard
           id
-          name
           currency
           kind
           isHousehold
           trip {
-            destination
             startDate
             endDate
           }

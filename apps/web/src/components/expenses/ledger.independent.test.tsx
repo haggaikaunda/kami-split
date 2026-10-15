@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
+import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -45,22 +46,32 @@ vi.mock('next/link', () => ({
     return <a {...props}>{children}</a>;
   },
 }));
-vi.mock('relay-runtime', () => ({
-  readInlineData: (_: unknown, r: unknown) => r,
-  fetchQuery: (_: unknown, _doc: unknown, variables: unknown) => {
-    const r = {
-      variables,
-      unsubscribe: vi.fn(),
-    } as (typeof state.requests)[number];
-    state.requests.push(r);
-    return {
-      subscribe: (observer: unknown) => {
-        Object.assign(r, observer);
-        return { unsubscribe: r.unsubscribe };
-      },
-    };
-  },
-}));
+vi.mock('relay-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('relay-runtime')>();
+  return {
+    ...actual,
+    readInlineData: (
+      document: import('relay-runtime').GraphQLTaggedNode,
+      value: unknown,
+    ) =>
+      value && typeof value === 'object' && '__fragments' in value
+        ? actual.readInlineData(document, value as never)
+        : value,
+    fetchQuery: (_: unknown, _doc: unknown, variables: unknown) => {
+      const r = {
+        variables,
+        unsubscribe: vi.fn(),
+      } as (typeof state.requests)[number];
+      state.requests.push(r);
+      return {
+        subscribe: (observer: unknown) => {
+          Object.assign(r, observer);
+          return { unsubscribe: r.unsubscribe };
+        },
+      };
+    },
+  };
+});
 vi.mock('@/components/groups/session', () => ({
   useFinancialSession: () => ({ scope, loading: false, error: '' }),
 }));
@@ -89,6 +100,7 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
   cursor: id,
   source: { id: 'home', name: 'Home', currency: 'USD' },
   node: {
+    id: `snapshot:${id}:1`,
     expenseId: id,
     version: '1',
     groupId: 'home',
@@ -104,6 +116,7 @@ const edge = (id: string, date: string, amount = '9007199254740993') => ({
 });
 const page = (edges = [edge('one', '2026-09-02')], more = false) => ({
   __typename: 'ExpenseView',
+  id: `view:${edges.map((edge) => edge.cursor).join(':')}`,
   contextVersion: 'scope-v1',
   totalExpenseMinor: '9007199254740994',
   viewerShareMinor: '0',
@@ -155,7 +168,10 @@ beforeEach(() => {
   live = true;
   host = document.createElement('div');
   document.body.append(host);
-  root = createRoot(host);
+  scope.environment = queryEnvironment((request) =>
+    state.requests.push(request),
+  );
+  root = relayRoot(createRoot(host), () => scope);
 });
 afterEach(() => {
   act(() => root.unmount());
