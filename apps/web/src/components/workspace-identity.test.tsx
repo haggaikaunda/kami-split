@@ -2,7 +2,8 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { CategoryIcon, WorkspaceNavigation } from './workspace-identity';
+import { WorkspaceNavigation } from './workspace-identity';
+import { CategoryIcon } from '@/components/financial/category';
 const route = vi.hoisted(() => ({ pathname: '/household/expenses' }));
 vi.mock('next/navigation', () => ({ usePathname: () => route.pathname }));
 it('keeps canonical navigation available and current across source routes without implicit financial actions', () => {

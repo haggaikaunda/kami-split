@@ -24,7 +24,7 @@ module.exports = async function verifyFilters({
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });
   const section = (title) =>
     dialog.locator('details').filter({
-      has: page.locator('.ledger-filter-title', { hasText: title }),
+      has: page.locator('[data-ui~="ledger-filter-title"]', { hasText: title }),
     });
   const summary = (title) => section(title).locator('summary');
   const apply = dialog.getByRole('button', { name: 'Apply filters' });
@@ -46,15 +46,15 @@ module.exports = async function verifyFilters({
         const r = node.getBoundingClientRect();
         return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
       };
-      const body = el.querySelector('.ledger-filter-scroll');
+      const body = el.querySelector('[data-ui~="ledger-filter-scroll"]');
       return {
         dialog: rect(el),
         header: rect(el.querySelector('header')),
         body: rect(body),
-        footer: rect(el.querySelector('.ledger-filter-actions')),
-        buttons: [...el.querySelectorAll('.ledger-filter-actions button')].map(
-          rect,
-        ),
+        footer: rect(el.querySelector('[data-ui~="ledger-filter-actions"]')),
+        buttons: [
+          ...el.querySelectorAll('[data-ui~="ledger-filter-actions"] button'),
+        ].map(rect),
         bodyOverflow: body.scrollWidth - body.clientWidth,
         pageOverflow: document.documentElement.scrollWidth - innerWidth,
         height: innerHeight,
@@ -154,12 +154,12 @@ module.exports = async function verifyFilters({
   assert(applied.searchParams.getAll('memberIds').length);
   assert.equal(applied.searchParams.get('from'), from);
   assert.equal(applied.searchParams.get('to'), to);
-  await page.locator('.ledger-filter-button').waitFor();
+  await page.locator('[data-ui~="ledger-filter-button"]').waitFor();
   await page.waitForFunction(() =>
-    document.activeElement?.matches('.ledger-filter-button'),
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
   );
 
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   await reset.click();
   assert.match(await summary('Categories').innerText(), /All categories/);
   assert.match(await summary('Dates').innerText(), /All dates/);
@@ -167,9 +167,9 @@ module.exports = async function verifyFilters({
   await page.keyboard.press('Escape');
   assert.equal(page.url(), applied.href, 'Escape discards reset');
   await page.waitForFunction(() =>
-    document.activeElement?.matches('.ledger-filter-button'),
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
   );
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   assert.match(await summary('Categories').innerText(), /2 selected/);
   await reset.click();
   await apply.click();
@@ -179,7 +179,7 @@ module.exports = async function verifyFilters({
   );
 
   // A viewport change must not remount the draft or move actions off screen.
-  await page.locator('.ledger-filter-button').click();
+  await page.locator('[data-ui~="ledger-filter-button"]').click();
   await summary('Categories').click();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await page.setViewportSize({ width: width < 600 ? 1280 : 320, height: 640 });

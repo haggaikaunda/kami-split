@@ -1,0 +1,44 @@
+.category-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.875rem;
+}
+.category-icon--dining {
+  color: var(--color-coral);
+  background: var(--color-coral-surface);
+}
+.category-icon--groceries {
+  color: var(--color-primary);
+  background: var(--color-green-surface);
+}
+.category-icon--accommodation {
+  color: var(--color-violet);
+  background: var(--color-violet-surface);
+}
+.category-icon--other {
+  color: var(--color-violet);
+  background: var(--color-violet-surface);
+}
+.category-icon--transport {
+  color: var(--color-blue);
+  background: var(--color-blue-surface);
+}
+.category-icon--home {
+  color: var(--color-blue);
+  background: var(--color-blue-surface);
+}
+.category-icon--activities {
+  color: var(--color-orange);
+  background: var(--color-orange-surface);
+}
+@media (max-width: 600px) {
+  .category-icon {
+    width: 2.125rem;
+    height: 2.25rem;
+    flex-basis: 2.125rem;
+    border-radius: 0.75rem;
+  }
+}

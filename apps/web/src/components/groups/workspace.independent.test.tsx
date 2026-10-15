@@ -118,7 +118,7 @@ it('uses the same five shared workspace tabs for ordinary groups and trips, with
     expect(summaries.querySelectorAll('a')).toHaveLength(0);
     expect(
       host
-        .querySelector('.workspace-overview-balances a')
+        .querySelector('[data-ui~="workspace-overview-balances"] a')
         ?.getAttribute('href'),
     ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
     expect(
@@ -249,7 +249,7 @@ it('explains authoritative expense and repayment contributions with exact displa
   ]);
   expect(
     host.querySelector(
-      '.group-balances a[href="/household/ledger?tab=activity"]',
+      '[data-ui~="group-balances"] a[href="/household/ledger?tab=activity"]',
     )?.textContent,
   ).toContain('before/after history');
 });
@@ -332,7 +332,7 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
   expect(host.querySelector('[role="alert"]')?.textContent).toContain(
     'Balances are unavailable',
   );
-  expect(host.querySelector('.balance-position')).toBeNull();
+  expect(host.querySelector('[data-ui~="balance-position"]')).toBeNull();
   expect(host.textContent).not.toContain('Everyone in this space is settled');
   expect(host.textContent).not.toContain('$0.00');
 });

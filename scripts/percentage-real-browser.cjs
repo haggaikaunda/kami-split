@@ -101,10 +101,12 @@ withAuthFixture(origin, session, async () => {
       if (await extra.count()) await extra.uncheck();
     }
     await page.locator('#expense-split').selectOption('PERCENTAGE');
-    const inputs = page.locator('.percentage-input input');
+    const inputs = page.locator('[data-ui~="percentage-input"] input');
     await inputs.first().fill('60');
     assert.equal(await inputs.nth(1).inputValue(), '40');
-    await page.locator('.financial-form-card button[type="submit"]').click();
+    await page
+      .locator('[data-ui~="financial-form-card"] button[type="submit"]')
+      .click();
     await page.waitForFunction(
       () => !document.querySelector('#expense-description'),
     );
@@ -132,18 +134,18 @@ withAuthFixture(origin, session, async () => {
     );
     await page.getByRole('heading', { name: description }).waitFor();
     assert.deepEqual(
-      await page.locator('.percentage-saved').allTextContents(),
+      await page.locator('[data-ui~="percentage-saved"]').allTextContents(),
       ['60%', '40%'],
     );
     assert(
-      (await page.locator('.expense-allocation-list').innerText()).includes(
-        '$6.01',
-      ),
+      (
+        await page.locator('[data-ui~="expense-allocation-list"]').innerText()
+      ).includes('$6.01'),
     );
     await page.reload();
     await page.getByRole('heading', { name: description }).waitFor();
     assert.deepEqual(
-      await page.locator('.percentage-saved').allTextContents(),
+      await page.locator('[data-ui~="percentage-saved"]').allTextContents(),
       ['60%', '40%'],
     );
     assert.deepEqual(errors, []);

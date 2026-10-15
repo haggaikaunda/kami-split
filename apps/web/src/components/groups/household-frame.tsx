@@ -1,6 +1,5 @@
 'use client';
 import { ExpenseEntryProvider } from '@/components/expenses/entry';
-import shellStyles from '../workspace/shell.module.css';
 
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFinancialSession } from './session';
@@ -21,8 +20,11 @@ import {
   workspaceSections,
   type WorkspaceSection,
 } from '../workspace/patterns';
-import './journey.css';
-import './household-workspace.css';
+import { cx } from '../ui/classnames';
+
+import shellStyles from '../workspace/shell.module.css';
+import formLayoutStyles from '../ui/form-layout.module.css';
+
 export function householdHref(section: WorkspaceSection) {
   return section === 'Expenses'
     ? '/household/expenses'
@@ -69,7 +71,8 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
   return (
     <ExpenseEntryProvider scope={access.scope} visit={`${pathname}:${current}`}>
       <main
-        className={`financial-journey group-workspace household-workspace ${shellStyles.shell}`}
+        data-ui="form-scope group-workspace household-workspace"
+        className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
         id="page-content"
       >
         <WorkspaceNavigation />

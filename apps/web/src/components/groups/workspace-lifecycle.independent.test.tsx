@@ -175,7 +175,9 @@ it('consumes the composed Activity result without a second dedicated read and co
     }),
   );
   expect(host.textContent).toContain('No activity');
-  expect(host.querySelectorAll('.workspace-refresh')).toHaveLength(1);
+  expect(host.querySelectorAll('[data-ui~="workspace-refresh"]')).toHaveLength(
+    1,
+  );
   expect(requests).toHaveLength(1);
   act(() => {
     window.dispatchEvent(new Event('focus'));
@@ -528,9 +530,11 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   await act(async () => requests[0].next(result));
   expect(requests[1].name).toBe('activityGroupQuery');
   await act(async () => requests[1].next({ groupActivity: feed }));
-  const control = () => pullRefresh(host.querySelector('.workspace-refresh')!);
+  const control = () =>
+    pullRefresh(host.querySelector('[data-ui~="workspace-refresh"]')!);
   const status = () =>
-    host.querySelector('.workspace-refresh [role=status]')!.textContent;
+    host.querySelector('[data-ui~="workspace-refresh"] [role=status]')!
+      .textContent;
   await act(async () => control());
   expect(requests[2].name).toBe('journeyWorkspaceQuery');
   await act(async () => requests[2].next(result));
@@ -538,13 +542,17 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   expect(requests[3].variables.filter).toMatchObject({
     kind: 'REPAYMENT_RECORDED',
   });
-  expect(host.querySelector('.workspace-refresh button')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="workspace-refresh"] button'),
+  ).toBeNull();
   expect(status()).toContain('Updating');
   expect(status()).not.toContain('Up to date');
   await act(async () => control());
   expect(requests).toHaveLength(4);
   await act(async () => requests[3].fail());
-  expect(host.querySelector('.workspace-refresh button')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="workspace-refresh"] button'),
+  ).toBeNull();
   expect(status()).toContain('Try again');
   expect(status()).not.toContain('Up to date');
   await act(async () => control());
@@ -554,5 +562,7 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   expect(requests[5].name).toBe('activityGroupQuery');
   await act(async () => requests[5].next({ groupActivity: feed }));
   expect(status()).toContain('Up to date');
-  expect(host.querySelector('.workspace-refresh button')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="workspace-refresh"] button'),
+  ).toBeNull();
 });

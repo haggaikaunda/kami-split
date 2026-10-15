@@ -16,7 +16,8 @@ export function HouseholdLedger() {
   const next = new URLSearchParams(params);
   next.delete('source');
   next.delete('restore');
-  if (access.loading) return <Skeleton label="Loading Household" />;
+  if (access.loading)
+    return <Skeleton size="workspace" label="Loading Household" />;
   if (access.error) return <p role="alert">{access.error}</p>;
   if (!access.scope)
     return (
@@ -52,7 +53,9 @@ function LedgerRead({ scope }: { scope: FinancialScope }) {
       />
     </>
   );
-  const loading = <Skeleton label="Loading Household ledger" />;
+  const loading = (
+    <Skeleton size="workspace" label="Loading Household ledger" />
+  );
   return active ? (
     <HouseholdAccess
       key={version}

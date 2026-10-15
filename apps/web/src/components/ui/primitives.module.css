@@ -234,3 +234,11 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+.loading--workspace {
+  min-height: 22rem;
+  align-content: start;
+}
+.loading--workspace .skeleton {
+  height: 5rem;
+}

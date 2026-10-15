@@ -45,7 +45,7 @@ module.exports = async function preservation({
   });
   await chart.waitFor();
   await page.waitForFunction(() => {
-    const chart = document.querySelector('.breakdown-chart');
+    const chart = document.querySelector('[data-ui~="breakdown-chart"]');
     const svg = chart?.querySelector('svg');
     return (
       chart &&

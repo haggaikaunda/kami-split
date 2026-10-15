@@ -22,7 +22,10 @@ export function WorkspaceHeader({
 }) {
   return (
     <header
-      data-ui={`workspace-header ${appearance ? `workspace-header--${appearance}` : ''}${compact ? ' workspace-header--compact' : ''}`}
+      data-ui={
+        `workspace-header ${appearance ? `workspace-header--${appearance}` : ''}${compact ? ' workspace-header--compact' : ''}` +
+        ' form-region'
+      }
       className={cx(
         workspaceStyles['workspace-header'],
         appearance && workspaceStyles[`workspace-header--${appearance}`],

@@ -29,19 +29,19 @@ module.exports = async function verifyRefresh({
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
   assert.equal(
-    await page.locator('.workspace-refresh').count(),
+    await page.locator('[data-ui~="workspace-refresh"]').count(),
     1,
     'one refresh owner',
   );
   assert.equal(
-    await page.locator('.workspace-refresh button').count(),
+    await page.locator('[data-ui~="workspace-refresh"] button').count(),
     0,
     'no routine refresh button',
   );
   assert.equal(
     await page
       .locator(
-        '[data-ui~="workspace-navigation"] button, [data-ui~="workspace-header"] .workspace-refresh',
+        '[data-ui~="workspace-navigation"] button, [data-ui~="workspace-header"] [data-ui~="workspace-refresh"]',
       )
       .count(),
     0,
@@ -53,7 +53,9 @@ module.exports = async function verifyRefresh({
       ? 'journeyWorkspaceQuery'
       : 'expensesHouseholdInitialQuery';
   const count = () => requests().filter((r) => r.op === query).length;
-  const surface = page.locator('.workspace-loading-surface').first();
+  const surface = page
+    .locator('[data-ui~="workspace-loading-surface"]')
+    .first();
   const previousHeight = (await surface.boundingBox()).height;
 
   let before = count();

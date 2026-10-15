@@ -12,6 +12,7 @@ Run `pnpm --package=vite@8.3.0 dlx vite docs/primitives-preview --host 127.0.0.1
 - `Dialog` uses the native modal top layer with an explicit Tab/Shift+Tab edge loop. It initially focuses its heading, or a supplied initial focus ref. Escape requests controlled closure. Cleanup restores a supplied surviving return target, the original trigger, or the surviving main/body fallback. Confirmation defaults to its safe action. Consumers own dirty-draft and pending-operation policy.
 - Dialogs become full-screen below 760px; panels align to the right on larger screens. Phone padding respects safe areas and content scrolls inside the viewport. On-screen keyboards must still be checked during journey integration on target mobile devices.
 - `Member` uses initials on missing or failed photos. Production and the gallery use the shared system font tokens. The gallery imports `tokens.css`, `base.css`, and the component-owned CSS Modules. No visitor request goes to a font provider.
+- The neutral native-form example composes `ui/form-layout.module.css` with explicit control slots. It requires no expense stylesheet. Category icons use the financial category owner; `Skeleton size="workspace"` demonstrates the taller workspace loading variant.
 - Status labels explicitly distinguish pending, error, stale and unavailable states; color is supplementary. Skeletons announce loading without fabricated financial values. Toasts announce feedback, but are not proof of a mutation.
 
 ## Verification

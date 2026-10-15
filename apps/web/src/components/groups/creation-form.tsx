@@ -24,6 +24,9 @@ import {
 import { createSessionId } from '@/lib/session-id';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { ErrorSummary } from '../ui/primitives';
+
+import formsFeatureStyles from './forms.module.css';
+
 type Outcome =
   | journeyGroupCreationMutation['response']['createGroup']
   | journeyGroupCreationRecoveryQuery['response']['groupCreationOperation'];
@@ -243,7 +246,11 @@ export function CreationForm({
   }
   const disabled = busy || !!attempt || storageFailed || denied;
   return (
-    <section className="financial-form-card" aria-labelledby="creation-heading">
+    <section
+      data-ui="financial-form-card form-region"
+      className={formsFeatureStyles['financial-form-card']}
+      aria-labelledby="creation-heading"
+    >
       <h2 id="creation-heading" tabIndex={-1}>
         Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
       </h2>
@@ -258,7 +265,10 @@ export function CreationForm({
         Inspect your {kind === 'TRIP' ? 'trips' : 'groups'}
       </Link>
       {attempt && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <h3>Unconfirmed original creation</h3>
           <p>
             The original name, type, trip fields and key are frozen. Leaving
@@ -279,19 +289,24 @@ export function CreationForm({
                 await accept(data.groupCreationOperation, attempt);
               })
             }
+            data-ui="form-button"
           >
             Check creation
           </button>
           <button
             disabled={busy || storageFailed || denied}
             onClick={() => void run(() => send(attempt))}
+            data-ui="form-button"
           >
             Retry original creation
           </button>
         </aside>
       )}
       {!attempt && !denied && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <p>
             {storageFailed
               ? 'Saved creation cannot be safely read or saved.'
@@ -300,11 +315,12 @@ export function CreationForm({
             Inspect your groups before deliberately creating another; a new key
             cannot deduplicate a lost attempt.
           </p>
-          <label>
+          <label data-ui="form-label">
             <input
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
+              data-ui="form-checkbox"
             />
             I have checked my groups and want a new creation.
           </label>
@@ -336,6 +352,7 @@ export function CreationForm({
                   );
                 }
               }}
+              data-ui="form-button"
             >
               Start new draft after storage loss
             </button>
@@ -370,16 +387,26 @@ export function CreationForm({
               message,
             }))}
           />
-          <fieldset className="financial-entry-fields" disabled={disabled}>
+          <fieldset
+            data-ui="financial-entry-fields form-fieldset"
+            className={formsFeatureStyles['financial-entry-fields']}
+            disabled={disabled}
+          >
             <legend>Group details</legend>
-            <div className="financial-field">
-              <label htmlFor="creation-kind">Type</label>
+            <div
+              data-ui="financial-field"
+              className={formsFeatureStyles['financial-field']}
+            >
+              <label htmlFor="creation-kind" data-ui="form-label">
+                Type
+              </label>
               <select
                 id="creation-kind"
                 value={draft.kind}
                 onChange={(e) =>
                   change({ kind: e.target.value as CreationDraft['kind'] })
                 }
+                data-ui="form-control"
               >
                 <option value="ORDINARY">Group</option>
                 <option value="TRIP">Trip</option>
@@ -393,8 +420,12 @@ export function CreationForm({
                   : []),
               ] as const
             ).map((key) => (
-              <div className="financial-field" key={key}>
-                <label htmlFor={`creation-${key}`}>
+              <div
+                data-ui="financial-field"
+                className={formsFeatureStyles['financial-field']}
+                key={key}
+              >
+                <label htmlFor={`creation-${key}`} data-ui="form-label">
                   {
                     {
                       name: 'Name',
@@ -413,13 +444,18 @@ export function CreationForm({
                   aria-describedby={
                     errors[key] ? `creation-${key}-error` : undefined
                   }
+                  data-ui="form-control"
                 />
                 {errors[key] && (
                   <p id={`creation-${key}-error`}>{errors[key]}</p>
                 )}
               </div>
             ))}
-            <button type="submit" disabled={!acknowledged}>
+            <button
+              type="submit"
+              disabled={!acknowledged}
+              data-ui="form-button"
+            >
               Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
             </button>
           </fieldset>

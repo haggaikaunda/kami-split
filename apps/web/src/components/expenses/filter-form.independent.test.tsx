@@ -83,7 +83,7 @@ async function mount(groupId = '') {
     ),
   );
   const trigger = host.querySelector<HTMLButtonElement>(
-    '.ledger-filter-button',
+    '[data-ui~="ledger-filter-button"]',
   )!;
   trigger.focus();
   await act(async () => trigger.click());

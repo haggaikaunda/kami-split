@@ -4,6 +4,9 @@ import { AppIcon } from '@/components/workspace-identity';
 import { Button } from '../ui/primitives';
 import { Money } from '../financial/presentation';
 import { minor, money } from '@/lib/relay/money';
+import { cx } from '../ui/classnames';
+
+import breakdownFeatureStyles from './breakdown.module.css';
 
 export type CategoryTotal = {
   readonly category: string;
@@ -114,16 +117,17 @@ export function ExpenseBreakdown({
   return (
     <>
       <section
-        className="expense-breakdown"
+        data-ui="expense-breakdown form-region"
+        className={breakdownFeatureStyles['expense-breakdown']}
         aria-label="Spending by category"
         aria-describedby={hasNote ? noteId : undefined}
       >
-        <header>
+        <header data-ui="form-region">
           <div>
             <h2>Spending by category</h2>
             <p>{context} · USD</p>
           </div>
-          <label>
+          <label data-ui="form-label">
             Show{' '}
             <select
               aria-label="Chart amount"
@@ -131,6 +135,7 @@ export function ExpenseBreakdown({
               onChange={(event) =>
                 onBasis(event.target.value === 'share' ? 'share' : 'total')
               }
+              data-ui="form-control"
             >
               <option value="total">Total expenses</option>
               <option value="share">Your share</option>
@@ -144,8 +149,15 @@ export function ExpenseBreakdown({
             {total === 0n && (
               <p>Your share is zero for these matching expenses.</p>
             )}
-            <div className="breakdown-content">
-              <div className="breakdown-chart" ref={chart}>
+            <div
+              data-ui="breakdown-content"
+              className={breakdownFeatureStyles['breakdown-content']}
+            >
+              <div
+                data-ui="breakdown-chart"
+                className={breakdownFeatureStyles['breakdown-chart']}
+                ref={chart}
+              >
                 <svg
                   viewBox={`0 0 ${chartSize} ${chartSize}`}
                   aria-hidden="true"
@@ -178,7 +190,13 @@ export function ExpenseBreakdown({
                                 : undefined
                             }
                             opacity={selection && !active ? 0.55 : 1}
-                            className={`breakdown-sector breakdown-category--${sector.category.toLowerCase()}`}
+                            data-ui={`breakdown-sector breakdown-category--${sector.category.toLowerCase()}`}
+                            className={cx(
+                              breakdownFeatureStyles['breakdown-sector'],
+                              breakdownFeatureStyles[
+                                `breakdown-category--${sector.category.toLowerCase()}`
+                              ],
+                            )}
                             data-selected={active}
                             d={categoryPath(
                               sector.start,
@@ -189,7 +207,10 @@ export function ExpenseBreakdown({
                           />
                           {sector.amount * 100n >= total * 8n && (
                             <text
-                              className="breakdown-slice-label"
+                              data-ui="breakdown-slice-label"
+                              className={
+                                breakdownFeatureStyles['breakdown-slice-label']
+                              }
                               x={
                                 chartSize / 2 +
                                 Math.cos(angle) * chartSize * 0.3615
@@ -207,7 +228,11 @@ export function ExpenseBreakdown({
                       );
                     })}
                 </svg>
-                <div className="breakdown-center" aria-live="polite">
+                <div
+                  data-ui="breakdown-center"
+                  className={breakdownFeatureStyles['breakdown-center']}
+                  aria-live="polite"
+                >
                   <span>
                     {selection
                       ? categoryName(selection.category)
@@ -225,7 +250,8 @@ export function ExpenseBreakdown({
                 </div>
               </div>
               <ul
-                className="breakdown-legend"
+                data-ui="breakdown-legend"
+                className={breakdownFeatureStyles['breakdown-legend']}
                 aria-label="Category amounts and percentages"
               >
                 {sectors.map((sector) => (
@@ -233,14 +259,31 @@ export function ExpenseBreakdown({
                     <button
                       aria-pressed={selection?.category === sector.category}
                       onClick={() => choose(sector.category)}
+                      data-ui="form-button"
                     >
                       <span
-                        className={`breakdown-legend-dot breakdown-category--${sector.category.toLowerCase()}`}
+                        data-ui={`breakdown-legend-dot breakdown-category--${sector.category.toLowerCase()}`}
+                        className={cx(
+                          breakdownFeatureStyles['breakdown-legend-dot'],
+                          breakdownFeatureStyles[
+                            `breakdown-category--${sector.category.toLowerCase()}`
+                          ],
+                        )}
                       />
-                      <span className="breakdown-legend-label">
+                      <span
+                        data-ui="breakdown-legend-label"
+                        className={
+                          breakdownFeatureStyles['breakdown-legend-label']
+                        }
+                      >
                         {categoryName(sector.category)}
                       </span>
-                      <span className="breakdown-legend-amount">
+                      <span
+                        data-ui="breakdown-legend-amount"
+                        className={
+                          breakdownFeatureStyles['breakdown-legend-amount']
+                        }
+                      >
                         <Money
                           value={money(sector.amount.toString())}
                           currency="USD"
@@ -255,7 +298,10 @@ export function ExpenseBreakdown({
                 ))}
               </ul>
             </div>
-            <div className="breakdown-drilldown">
+            <div
+              data-ui="breakdown-drilldown"
+              className={breakdownFeatureStyles['breakdown-drilldown']}
+            >
               <span>
                 {selection
                   ? `${categoryName(selection.category)} · ${categoryPercentage(selection.amount, total)} of this view`
@@ -272,7 +318,11 @@ export function ExpenseBreakdown({
         )}
       </section>
       {hasNote && (
-        <p className="breakdown-rounding" id={noteId}>
+        <p
+          data-ui="breakdown-rounding"
+          className={breakdownFeatureStyles['breakdown-rounding']}
+          id={noteId}
+        >
           {roundedPercentages &&
             'Percentages are rounded to one decimal place and may not add to 100%.'}
           {roundedPercentages && shareCountNote && ' '}

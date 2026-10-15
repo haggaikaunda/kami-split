@@ -14,6 +14,8 @@ import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
 
+import detailFeatureStyles from '../groups/expense-detail.module.css';
+
 type Props = {
   scope: FinancialScope;
   groupId: string;
@@ -65,7 +67,10 @@ function SourceDetail({
     return <SourceUnavailable onDenied={onDenied} />;
   return (
     <>
-      <p className="expense-detail-source">
+      <p
+        data-ui="expense-detail-source"
+        className={detailFeatureStyles['expense-detail-source']}
+      >
         Source: {view.edges[0]?.source.name ?? 'Authorized source space'}
       </p>
       <ExpenseDetail

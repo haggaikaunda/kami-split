@@ -15,13 +15,17 @@ import card, {
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { Skeleton } from '../ui/primitives';
-import uiStyles from '../ui/primitives.module.css';
+
 import { cx } from '../ui/classnames';
 import { tripState } from '@/lib/relay/discovery';
 import { spaceHref } from '@/lib/relay/space-routes';
 import { CreationForm } from './creation-form';
 import { ScopedLink, RestoreSource } from './navigation';
 import { useForegroundRefresh } from './foreground';
+
+import uiStyles from '../ui/primitives.module.css';
+import discoveryFeatureStyles from './discovery.module.css';
+
 type Viewer = Extract<
   journeyViewerQuery['response']['viewer'],
   { readonly __typename: 'Viewer' }
@@ -56,7 +60,10 @@ export function ViewerJourney(props: Props) {
     return () => clearTimeout(timer);
   }, [version]);
   const loading = (
-    <Skeleton label={props.trips ? 'Loading trips' : 'Loading groups'} />
+    <Skeleton
+      size="workspace"
+      label={props.trips ? 'Loading trips' : 'Loading groups'}
+    />
   );
   return (
     <WorkspaceLoading busy={state.busy}>
@@ -125,7 +132,12 @@ function DiscoveryResults({
 
   return (
     <>
-      <p className="journey-viewer">Signed in as {viewer.displayName}</p>
+      <p
+        data-ui="journey-viewer"
+        className={discoveryFeatureStyles['journey-viewer']}
+      >
+        Signed in as {viewer.displayName}
+      </p>
       {creation &&
         (viewer.canCreateGroups ? (
           <CreationForm
@@ -151,7 +163,7 @@ function DiscoveryResults({
               className={cx(
                 uiStyles.button,
                 uiStyles['button--primary'],
-                'discovery-create',
+                discoveryFeatureStyles['discovery-create'],
               )}
               href={trips ? '/trips/new' : '/groups/new'}
             >
@@ -159,7 +171,11 @@ function DiscoveryResults({
             </Link>
           )}
           {trips && (
-            <nav className="discovery-filters" aria-label="Trip date filter">
+            <nav
+              data-ui="discovery-filters"
+              className={discoveryFeatureStyles['discovery-filters']}
+              aria-label="Trip date filter"
+            >
               {['all', 'upcoming', 'past'].map((value) => (
                 <Link
                   key={value}
@@ -189,7 +205,10 @@ function DiscoveryResults({
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (
-            <ul className="discovery-cards">
+            <ul
+              data-ui="discovery-cards"
+              className={discoveryFeatureStyles['discovery-cards']}
+            >
               {groups.map((item) => (
                 <DiscoveryCard
                   key={item.id}
@@ -223,7 +242,11 @@ function DiscoveryCard({
   return (
     <li>
       <div
-        className={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+        data-ui={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
+        className={cx(
+          discoveryFeatureStyles['financial-cover'],
+          item.trip ? discoveryFeatureStyles['financial-cover--trip'] : '',
+        )}
         aria-hidden="true"
       />
       <ScopedLink scope={scope} id={`group-${item.id}`} href={spaceHref(item)}>

@@ -542,7 +542,7 @@ withAuthFixture(origin, session, async () => {
     if (workspace === 'group') {
       await page.goto(origin + '/groups');
       await page.getByText('Signed in as Alex').waitFor();
-      const cards = page.locator('.discovery-cards a');
+      const cards = page.locator('[data-ui~="discovery-cards"] a');
       assert.equal(
         await cards.count(),
         1,
@@ -729,7 +729,9 @@ withAuthFixture(origin, session, async () => {
       );
       assert.equal(labels[2], 'Your share');
       assert.equal(
-        await page.locator('.workspace-overview-balances').isVisible(),
+        await page
+          .locator('[data-ui~="workspace-overview-balances"]')
+          .isVisible(),
         width > 900,
         'overview balances responsive visibility',
       );
@@ -906,7 +908,7 @@ withAuthFixture(origin, session, async () => {
       );
       await page.getByLabel('Chart amount').selectOption('share');
       await page.waitForURL((url) => url.searchParams.get('basis') === 'share');
-      const sector = page.locator('.breakdown-legend button');
+      const sector = page.locator('[data-ui~="breakdown-legend"] button');
       const legendContrast = async () =>
         sector.evaluate((button) => {
           const luminance = (color) =>
@@ -943,7 +945,7 @@ withAuthFixture(origin, session, async () => {
         `unselected legend text contrast ${unselectedContrast}`,
       );
       const switchColors = await page
-        .locator('.ledger-view-switch button')
+        .locator('[data-ui~="ledger-view-switch"] button')
         .evaluateAll((buttons) =>
           buttons.map((button) => getComputedStyle(button).backgroundColor),
         );
@@ -997,7 +999,7 @@ withAuthFixture(origin, session, async () => {
       .waitFor();
     await page.getByText('Private fixture note').waitFor();
     if (process.env.MATERIAL_TESTS === '1') {
-      const panel = page.locator('.expense-presentation');
+      const panel = page.locator('[data-ui~="expense-presentation"]');
       const bounds = await panel.boundingBox();
       await page.screenshot({
         path: path.join(output, `detail-${workspace}.png`),
@@ -1071,7 +1073,7 @@ withAuthFixture(origin, session, async () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.mouse.click(8, 8);
       await page
-        .locator('.expense-presentation')
+        .locator('[data-ui~="expense-presentation"]')
         .waitFor({ state: 'detached' });
       assert.equal(page.url(), filteredURL, 'draft dismiss retains source URL');
       await row.click();
@@ -1115,7 +1117,9 @@ withAuthFixture(origin, session, async () => {
       });
     }
     await page.keyboard.press('Escape');
-    await page.locator('.expense-presentation').waitFor({ state: 'detached' });
+    await page
+      .locator('[data-ui~="expense-presentation"]')
+      .waitFor({ state: 'detached' });
     await page.waitForTimeout(50);
     assert(
       await row.evaluate((e) => e === document.activeElement),
@@ -1124,7 +1128,9 @@ withAuthFixture(origin, session, async () => {
     await page.goForward();
     await page.getByText('Private fixture note').waitFor();
     await page.goBack();
-    await page.locator('.expense-presentation').waitFor({ state: 'detached' });
+    await page
+      .locator('[data-ui~="expense-presentation"]')
+      .waitFor({ state: 'detached' });
     await row.waitFor();
     assert.equal(page.url(), filteredURL, 'detail lost source filter');
     results.push({

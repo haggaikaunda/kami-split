@@ -1,8 +1,8 @@
-import invitationStyles from './invitations.module.css';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { Button, Field } from '../ui/primitives';
 import type { OnboardingController } from './controller';
 import { PeopleList, type Person } from './people-list';
+import invitationStyles from './invitations.module.css';
 export function InvitationPanel({
   state: c,
   members = [],
@@ -121,7 +121,7 @@ export function InvitationPanel({
   return (
     <>
       <section
-        data-ui="account-management"
+        data-ui="account-management form-region"
         className={invitationStyles['account-management']}
       >
         {group && (
@@ -181,7 +181,10 @@ export function InvitationPanel({
             {invites.some(
               (item) => item.kind === 'SHARED' && item.lifecycle === 'PENDING',
             ) && (
-              <section aria-label="Shared invitation links">
+              <section
+                aria-label="Shared invitation links"
+                data-ui="form-region"
+              >
                 <h3>Shared invitation links</h3>
                 <p>
                   These links are not members. Access starts only after a valid

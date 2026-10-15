@@ -1,0 +1,44 @@
+.ledger-dialog {
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  margin-top: 68px;
+  width: min(27.5rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 92px);
+  border: 0;
+  border-radius: 28px;
+  padding: 27px;
+  box-shadow: var(--shadow-panel);
+  overflow: auto;
+}
+.ledger-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+.ledger-dialog > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.ledger-dialog > header h2 {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .ledger-dialog:not([data-ui~='expense-presentation--detail']) {
+    background: var(--color-canvas);
+    padding: 22px;
+    width: calc(100vw - 1.25rem);
+    max-width: none;
+    margin-top: 24px;
+    max-height: calc(100dvh - 48px);
+  }
+  .ledger-dialog:not([data-ui~='expense-presentation--detail'])
+    :is(input, select):where(
+      [data-ui~='form-control'],
+      [data-ui~='field-control'],
+      [data-ui~='form-checkbox'],
+      [data-ui~='form-radio']
+    ) {
+    background: var(--color-canvas);
+  }
+}

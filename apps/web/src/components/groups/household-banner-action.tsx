@@ -1,6 +1,5 @@
 'use client';
 import { useExpenseEntry } from '@/components/expenses/entry';
-import workspaceStyles from '../workspace/patterns.module.css';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -9,6 +8,7 @@ import { HouseholdAccess } from './household-access';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { AppIcon } from '@/components/workspace-identity';
 import { useForegroundRefresh } from './foreground';
+import workspaceStyles from '../workspace/patterns.module.css';
 
 /** The banner resolves a real source before entering the existing creation flow. */
 export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {

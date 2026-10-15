@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
+import refreshFeatureStyles from './workspace-refresh.module.css';
+
 /** One gesture/status owner per network read. Browser reload remains available. */
 export function WorkspaceRefresh({
   busy,
@@ -115,7 +117,10 @@ export function WorkspaceRefresh({
             ? 'Up to date'
             : '';
   return (
-    <div className="workspace-refresh">
+    <div
+      data-ui="workspace-refresh"
+      className={refreshFeatureStyles['workspace-refresh']}
+    >
       <span role="status" aria-live="polite">
         {status}
       </span>

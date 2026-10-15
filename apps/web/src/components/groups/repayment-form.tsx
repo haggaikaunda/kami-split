@@ -21,6 +21,9 @@ import type { Member } from '@/lib/relay/draft';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { money } from '@/lib/relay/money';
 import { ErrorSummary } from '../ui/primitives';
+
+import formsFeatureStyles from './forms.module.css';
+
 type Outcome =
   | journeyRepaymentMutation['response']['recordRepayment']
   | journeyRepaymentRecoveryQuery['response']['repaymentOperation'];
@@ -216,7 +219,8 @@ export function RepaymentForm({
   const disabled = busy || !!attempt || storageFailed || denied;
   return (
     <section
-      className="financial-form-card"
+      data-ui="financial-form-card form-region"
+      className={formsFeatureStyles['financial-form-card']}
       aria-labelledby="repayment-heading"
     >
       <h1 id="repayment-heading" tabIndex={-1}>
@@ -230,7 +234,10 @@ export function RepaymentForm({
         {busy ? 'Working…' : notice}
       </p>
       {attempt && (
-        <aside className="financial-recovery">
+        <aside
+          data-ui="financial-recovery"
+          className={formsFeatureStyles['financial-recovery']}
+        >
           <h3>Unconfirmed original repayment</h3>
           <p>
             The original group, sender, recipient, input and operation key are
@@ -250,12 +257,14 @@ export function RepaymentForm({
                 await accept(result.repaymentOperation, attempt);
               })
             }
+            data-ui="form-button"
           >
             Recover original repayment
           </button>
           <button
             disabled={busy || storageFailed || denied}
             onClick={() => void run(() => send(attempt))}
+            data-ui="form-button"
           >
             Retry original repayment
           </button>
@@ -304,11 +313,19 @@ export function RepaymentForm({
               }))}
             />
           )}
-          <fieldset className="financial-entry-fields" disabled={disabled}>
+          <fieldset
+            data-ui="financial-entry-fields form-fieldset"
+            className={formsFeatureStyles['financial-entry-fields']}
+            disabled={disabled}
+          >
             <legend>Original group: {name}</legend>
             {(['sender', 'recipient'] as const).map((key) => (
-              <div className="financial-field" key={key}>
-                <label htmlFor={`repayment-${key}`}>
+              <div
+                data-ui="financial-field"
+                className={formsFeatureStyles['financial-field']}
+                key={key}
+              >
+                <label htmlFor={`repayment-${key}`} data-ui="form-label">
                   {key === 'sender' ? 'Sender' : 'Recipient'}
                 </label>
                 <select
@@ -316,6 +333,7 @@ export function RepaymentForm({
                   value={draft[key]}
                   onChange={(e) => change({ [key]: e.target.value })}
                   aria-invalid={submitted && !!checked.errors[key]}
+                  data-ui="form-control"
                 >
                   <option value="">Choose {key}</option>
                   {members
@@ -328,36 +346,56 @@ export function RepaymentForm({
                 </select>
               </div>
             ))}
-            <div className="financial-field">
-              <label htmlFor="repayment-amount">Amount (USD)</label>
+            <div
+              data-ui="financial-field"
+              className={formsFeatureStyles['financial-field']}
+            >
+              <label htmlFor="repayment-amount" data-ui="form-label">
+                Amount (USD)
+              </label>
               <input
                 id="repayment-amount"
                 inputMode="decimal"
                 value={draft.amount}
                 aria-invalid={submitted && !!checked.errors.amount}
                 onChange={(e) => change({ amount: e.target.value })}
+                data-ui="form-control"
               />
             </div>
-            <div className="financial-field">
-              <label htmlFor="repayment-date">Transfer date</label>
+            <div
+              data-ui="financial-field"
+              className={formsFeatureStyles['financial-field']}
+            >
+              <label htmlFor="repayment-date" data-ui="form-label">
+                Transfer date
+              </label>
               <input
                 id="repayment-date"
                 type="date"
                 value={draft.date}
                 aria-invalid={submitted && !!checked.errors.date}
                 onChange={(e) => change({ date: e.target.value })}
+                data-ui="form-control"
               />
             </div>
-            <div className="financial-field">
-              <label htmlFor="repayment-note">Optional note</label>
+            <div
+              data-ui="financial-field"
+              className={formsFeatureStyles['financial-field']}
+            >
+              <label htmlFor="repayment-note" data-ui="form-label">
+                Optional note
+              </label>
               <textarea
                 id="repayment-note"
                 value={draft.note}
                 aria-invalid={submitted && !!checked.errors.note}
                 onChange={(e) => change({ note: e.target.value })}
+                data-ui="form-control"
               />
             </div>
-            <button type="submit">Record repayment</button>
+            <button type="submit" data-ui="form-button">
+              Record repayment
+            </button>
           </fieldset>
         </form>
       )}

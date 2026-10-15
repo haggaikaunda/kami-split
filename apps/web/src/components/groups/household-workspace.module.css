@@ -1,3 +1,9 @@
+.household-balances a {
+  color: var(--color-ink);
+}
+.household-space-copy {
+  flex: 1;
+}
 .household-balances {
   list-style: none;
   padding: 0 !important;
@@ -20,21 +26,11 @@
   text-align: right;
   flex: 0 0 auto;
 }
-.household-balance--positive [data-ui~='money'] {
+.household-balance[data-position='positive'] [data-ui~='money'] {
   color: var(--color-primary);
 }
-.household-balance--negative [data-ui~='money'] {
+.household-balance[data-position='negative'] [data-ui~='money'] {
   color: var(--color-owes);
-}
-.household-workspace .household-refresh {
-  background: transparent;
-  border-color: transparent;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  margin: 0;
-}
-.household-workspace .household-refresh:hover:enabled {
-  background: var(--color-subtle);
 }
 
 .household-source-name {
@@ -81,11 +77,11 @@
 }
 
 @container (max-width: 28rem) {
-  .household-balances li[class] > a {
+  .household-balances .household-balance > a {
     flex-direction: column;
     align-items: stretch;
   }
-  .household-balances li[class] > a > span:last-child {
+  .household-balances .household-balance > a > span:last-child {
     text-align: left;
   }
 }

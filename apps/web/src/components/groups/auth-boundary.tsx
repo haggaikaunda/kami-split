@@ -50,7 +50,10 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
         </p>
         <a href={signInHref(pathname)}>Sign in</a>
         {access.error && (
-          <button onClick={() => window.location.reload()}>
+          <button
+            onClick={() => window.location.reload()}
+            data-ui="form-button"
+          >
             Retry account access
           </button>
         )}

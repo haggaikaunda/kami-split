@@ -1,5 +1,4 @@
 'use client';
-import shellStyles from '../workspace/shell.module.css';
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
@@ -7,7 +6,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import { useOnboarding } from './controller';
 import { spaceInvitationsHref } from '@/lib/relay/space-routes';
-import '../groups/journey.css';
+import { cx } from '../ui/classnames';
+
+import shellStyles from '../workspace/shell.module.css';
+import formLayoutStyles from '../ui/form-layout.module.css';
+
 /** Legacy URLs resolve only their explicit authorized target. This landing
  * never lists private invitations or chooses a workspace for the user. */
 export function LegacyInvitations() {
@@ -41,7 +44,8 @@ export function LegacyInvitations() {
   }, [c, id, router]);
   return (
     <main
-      className={`financial-journey group-workspace ${shellStyles.shell}`}
+      data-ui="form-scope group-workspace"
+      className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
       id="page-content"
     >
       <WorkspaceNavigation />

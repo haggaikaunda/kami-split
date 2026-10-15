@@ -1,11 +1,12 @@
 'use client';
-import uiStyles from './ui/primitives.module.css';
-import shellStyles from './workspace/shell.module.css';
+
 import { cx } from './ui/classnames';
 
 import Link from 'next/link';
 import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import uiStyles from './ui/primitives.module.css';
+import shellStyles from './workspace/shell.module.css';
 
 // Reference icon geometry: Lucide1.17.0 (ISC/MIT); see LUCIDE-LICENSE.txt.
 // The existing leaf brand remains unchanged.
@@ -366,25 +367,5 @@ export function WorkspaceNavigation() {
         ))}
       </div>
     </nav>
-  );
-}
-const categories: Record<string, IconName> = {
-  DINING: 'dining',
-  GROCERIES: 'groceries',
-  ACCOMMODATION: 'bed',
-  TRANSPORT: 'car',
-  ACTIVITIES: 'activity',
-  HOME: 'home',
-  OTHER: 'expense',
-};
-export function CategoryIcon({ category }: { category: string }) {
-  return (
-    <span
-      className={`category-icon category-icon--${category.toLowerCase()}`}
-      role="img"
-      aria-label={category.toLowerCase()}
-    >
-      <AppIcon name={categories[category] ?? 'other'} />
-    </span>
   );
 }

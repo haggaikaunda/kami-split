@@ -1,5 +1,4 @@
 'use client';
-import invitationStyles from './invitations.module.css';
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
@@ -9,6 +8,7 @@ import { useOnboarding } from './controller';
 import { InvitationPanel } from './invitations';
 import { ActionRecovery } from './recovery';
 import { PeopleList, type Person } from './people-list';
+import invitationStyles from './invitations.module.css';
 
 /** Mounted only from an authorized owner's Members workspace. Requests and
  * pending operations retain their original scope through route transitions. */
@@ -55,7 +55,7 @@ function InvitationVisit({
   return (
     <section
       id="invitations"
-      data-ui="scoped-invitations"
+      data-ui="scoped-invitations form-region"
       className={invitationStyles['scoped-invitations']}
       aria-label={`People and invitations for ${group.name}`}
     >

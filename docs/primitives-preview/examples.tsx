@@ -1,4 +1,6 @@
 import financialStyles from '../../apps/web/src/components/financial/presentation.module.css';
+import formLayoutStyles from '../../apps/web/src/components/ui/form-layout.module.css';
+import { CategoryIcon } from '../../apps/web/src/components/financial/category';
 import uiStyles from '../../apps/web/src/components/ui/primitives.module.css';
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -211,6 +213,36 @@ function Examples() {
             </Button>
             <Button pending>Save</Button>
           </div>
+        </Card>
+        <Card title="Native form layout and categories">
+          <form
+            className={formLayoutStyles['form-scope']}
+            onSubmit={(event) => event.preventDefault()}
+          >
+            <fieldset data-ui="form-fieldset">
+              <legend>Neutral control slots</legend>
+              <label data-ui="form-label" htmlFor="example-native-name">
+                Example name
+              </label>
+              <input
+                data-ui="form-control"
+                id="example-native-name"
+                defaultValue="A shared plan"
+              />
+              <label data-ui="form-label">
+                <input data-ui="form-checkbox" type="checkbox" /> Receive an
+                example reminder
+              </label>
+              <button data-ui="form-button" type="submit">
+                Example action
+              </button>
+            </fieldset>
+          </form>
+          <div className="preview-stack">
+            <CategoryIcon category="GROCERIES" />
+            <CategoryIcon category="TRANSPORT" />
+          </div>
+          <Skeleton size="workspace" label="Loading workspace" />
         </Card>
         <Card title="Named recovery states">
           <div className="preview-stack">

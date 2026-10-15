@@ -1,5 +1,3 @@
-import onboardingStyles from './onboarding.module.css';
-import uiStyles from '../ui/primitives.module.css';
 import { cx } from '../ui/classnames';
 import Link from 'next/link';
 import { AppIcon } from '@/components/workspace-identity';
@@ -7,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Field } from '../ui/primitives';
 import type { OnboardingController } from './controller';
+import onboardingStyles from './onboarding.module.css';
+import uiStyles from '../ui/primitives.module.css';
 
 export function InvitationCard({ state: c }: { state: OnboardingController }) {
   if (!c.preview) return null;
   return (
     <section
-      data-ui="onboarding-invitation"
+      data-ui="onboarding-invitation form-region"
       className={onboardingStyles['onboarding-invitation']}
       aria-labelledby="invitation-group-name"
     >
@@ -85,13 +85,14 @@ export function PasswordSetup({ state: c }: { state: OnboardingController }) {
         }}
       />
       <label
-        data-ui="onboarding-check"
+        data-ui="onboarding-check form-label"
         className={onboardingStyles['onboarding-check']}
       >
         <input
           type="checkbox"
           checked={visible}
           onChange={(e) => setVisible(e.target.checked)}
+          data-ui="form-checkbox"
         />{' '}
         Show passwords
       </label>

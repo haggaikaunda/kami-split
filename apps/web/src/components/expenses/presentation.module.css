@@ -1,0 +1,129 @@
+.expense-presentation
+  :is(input, select, textarea):where(
+    [data-ui~='form-control'],
+    [data-ui~='field-control']
+  ) {
+  font-size: max(1rem, 16px);
+}
+.expense-presentation--detail {
+  position: fixed;
+  background: var(--color-surface);
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: 27.5rem;
+  max-width: 62%;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border-radius: 0;
+  border-left: 1px solid var(--color-separator);
+  box-shadow: -8px 0 30px #00000020;
+  overscroll-behavior: contain;
+}
+.expense-presentation--detail::backdrop {
+  background: var(--color-detail-backdrop);
+}
+.expense-presentation--detail > header {
+  border-bottom: 1px solid var(--color-separator);
+}
+.expense-presentation--detail > header h1 {
+  font-size: 1rem;
+  line-height: 1.75rem;
+  margin: 0;
+}
+.expense-presentation-close,
+.expense-presentation--detail .expense-presentation-back {
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  padding: 0;
+}
+.expense-presentation-close {
+  display: inline-grid;
+  min-height: 2.5rem;
+  place-items: center;
+  width: 2.75rem;
+}
+.expense-presentation--detail .expense-presentation-back {
+  display: none;
+  color: var(--color-primary);
+}
+@media (max-width: 600px) {
+  .expense-presentation--detail {
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    border: 0;
+    box-shadow: none;
+    background: var(--color-canvas);
+  }
+  .expense-presentation--detail > header h1 {
+    overflow: hidden;
+  }
+}
+.expense-presentation--create > header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.expense-presentation--create > header h1:focus {
+  outline: none;
+}
+.expense-presentation--create .expense-presentation-close {
+  width: 2.5rem;
+}
+.expense-presentation--create .expense-presentation-back {
+  display: none;
+}
+[data-ui~='ledger-dialog'].expense-presentation[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  top: var(--expense-viewport-top, 0px);
+  margin-top: 0;
+  max-height: var(--expense-viewport-height, 100dvh);
+  padding: 0;
+}
+.expense-presentation > header {
+  flex: none;
+  margin: 0;
+  padding: 1rem;
+  background: inherit;
+}
+.expense-presentation > header h1 {
+  min-width: 0;
+}
+.expense-presentation .expense-presentation-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 1rem 7rem;
+  padding: 1rem;
+}
+[data-ui~='ledger-dialog'].expense-presentation--detail {
+  top: var(--expense-viewport-top, 0px);
+  height: var(--expense-viewport-height, 100dvh);
+  max-height: var(--expense-viewport-height, 100dvh);
+}
+@media (max-width: 600px) {
+  [data-ui~='ledger-dialog'].expense-presentation[open] {
+    position: fixed;
+    inset: var(--expense-viewport-top, 0px) 0 auto;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    height: var(--expense-viewport-height, 100dvh);
+    max-height: var(--expense-viewport-height, 100dvh);
+    border-radius: 0;
+  }
+}
+.expense-presentation[data-compact='true'] .expense-presentation-content {
+  scroll-padding-block: 0;
+}
+@media (max-height: 30rem) {
+  .expense-presentation .expense-presentation-content {
+    scroll-padding-block: 0;
+  }
+}

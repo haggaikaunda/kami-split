@@ -287,9 +287,22 @@ export function ErrorSummary({
   );
 }
 
-export function Skeleton({ label = 'Loading expenses' }: { label?: string }) {
+export function Skeleton({
+  label = 'Loading expenses',
+  size = 'default',
+}: {
+  label?: string;
+  size?: 'default' | 'workspace';
+}) {
   return (
-    <div role="status" data-ui="loading" className={uiStyles['loading']}>
+    <div
+      role="status"
+      data-ui="loading"
+      className={cx(
+        uiStyles.loading,
+        size === 'workspace' && uiStyles['loading--workspace'],
+      )}
+    >
       <span>{label}…</span>
       <span
         aria-hidden="true"

@@ -17,11 +17,11 @@ import { useForegroundRefresh } from '@/components/groups/foreground';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { Skeleton } from '../ui/primitives';
 import { ExpenseLedger } from './ledger';
-import '@/components/groups/journey.css';
+
 export function HouseholdExpenses() {
   const access = useFinancialSession();
   return access.loading ? (
-    <Skeleton label="Loading workspace" />
+    <Skeleton size="workspace" label="Loading workspace" />
   ) : access.error ? (
     <p role="alert">{access.error}</p>
   ) : !access.scope ? (
@@ -143,7 +143,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
       <WorkspaceLoading busy={!context && !error}>
         {savedNotice}
         {refreshControl}
-        <Skeleton label="Loading expenses" />
+        <Skeleton size="workspace" label="Loading expenses" />
       </WorkspaceLoading>
     );
   return (

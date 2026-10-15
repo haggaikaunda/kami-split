@@ -181,9 +181,9 @@ it('renders exact server aggregates and zero net with open source balances witho
   const row = host.querySelector('[data-ui~="summary-row"]')!;
   expect(row.children).toHaveLength(3);
   expect(row.textContent).toContain('$90,071,992,547,409.93');
-  expect(host.querySelector('.overview-count')?.textContent).toContain(
-    '17 expenses',
-  );
+  expect(
+    host.querySelector('[data-ui~="overview-count"]')?.textContent,
+  ).toContain('17 expenses');
   expect(row.textContent).not.toContain('repayments excluded');
   expect(row.textContent).toContain('Payments still to settle');
   expect(row.textContent).not.toContain('Nothing to pay or collect');
@@ -191,7 +191,9 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(row.textContent).not.toContain('2 open balances');
   expect(host.querySelector('a[href="/household/expenses"]')).not.toBeNull();
   await content('Balances');
-  expect(host.querySelectorAll('.household-balances li')).toHaveLength(3);
+  expect(
+    host.querySelectorAll('[data-ui~="household-balances"] li'),
+  ).toHaveLength(3);
   expect(host.querySelectorAll('a[href*="repayments"]')).toHaveLength(0);
   expect(host.querySelectorAll('button[aria-haspopup=dialog]')).toHaveLength(1);
   expect(
@@ -521,11 +523,13 @@ it('identifies aggregate and individual source scope without claiming unavailabl
   } as Dashboard);
   expect(host.textContent).not.toContain('this space has open balances');
   expect(host.textContent).not.toContain('Settled');
-  expect(host.querySelectorAll('.household-balance--unavailable')).toHaveLength(
-    3,
-  );
+  expect(
+    host.querySelectorAll(
+      '[data-ui~="household-balance"][data-position="unavailable"]',
+    ),
+  ).toHaveLength(3);
   await content('Balances', { ...dashboard, state: 'INCOMPLETE' } as Dashboard);
-  expect(host.querySelector('.household-balances')).toBeNull();
+  expect(host.querySelector('[data-ui~="household-balances"]')).toBeNull();
   expect(host.textContent).not.toContain('Maui');
 });
 
@@ -560,7 +564,9 @@ it('replaces eligible sources after revalidation rather than retaining a removed
   await foregroundRefresh();
   expect(host.textContent).not.toContain('Maui');
   expect(host.querySelector('a[href="/trips/trip-b?tab=balances"]')).toBeNull();
-  expect(host.querySelectorAll('.household-balances li')).toHaveLength(2);
+  expect(
+    host.querySelectorAll('[data-ui~="household-balances"] li'),
+  ).toHaveLength(2);
   expect(
     host.querySelector('[data-ui~="signed-balance"]')?.textContent,
   ).toContain('$84.20');
@@ -587,7 +593,7 @@ it.each(['INCOMPLETE', 'UNAVAILABLE', 'FORBIDDEN', 'NETWORK'])(
     expect(host.textContent).toContain('Maui');
     await foregroundRefresh();
     expect(host.textContent).not.toContain('Maui');
-    expect(host.querySelector('.household-balances')).toBeNull();
+    expect(host.querySelector('[data-ui~="household-balances"]')).toBeNull();
     expect(host.querySelector('[data-ui~="signed-balance"]')).toBeNull();
     expect(host.textContent).not.toContain('$0.00');
     expect(host.textContent).not.toContain('Everyone in this space is settled');

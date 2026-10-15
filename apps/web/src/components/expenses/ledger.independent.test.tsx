@@ -233,8 +233,8 @@ it('uses full server totals and month subtotals while accumulating pages, includ
   await click('Load more expenses');
   expect(state.requests.at(-1)?.variables).toMatchObject({ after: 'cursor' });
   await respond(page([edge('two', '2026-09-01', '1')]));
-  expect(host.querySelectorAll('.ledger-month li')).toHaveLength(2);
-  expect(host.querySelectorAll('.ledger-month')).toHaveLength(1);
+  expect(host.querySelectorAll('[data-ui~="ledger-month"] li')).toHaveLength(2);
+  expect(host.querySelectorAll('[data-ui~="ledger-month"]')).toHaveLength(1);
   expect(host.textContent).toContain('Dinner one');
   expect(host.textContent).toContain('Dinner two');
 });
@@ -243,14 +243,14 @@ it('identifies household sources and omits redundant group sources and space fil
   await respond(page());
   expect(
     host.querySelector('[data-ui~="space-chip"]')?.textContent ??
-      host.querySelector('.ledger-description')?.textContent,
+      host.querySelector('[data-ui~="ledger-description"]')?.textContent,
   ).toContain('Home');
   await render('home');
   await respond(page());
   expect(host.querySelector('select[name="groupId"]')).toBeNull();
-  expect(host.querySelector('.ledger-description')?.textContent).not.toContain(
-    'Home',
-  );
+  expect(
+    host.querySelector('[data-ui~="ledger-description"]')?.textContent,
+  ).not.toContain('Home');
   expect(
     host.querySelector('[aria-label="Total expenses"]')?.textContent,
   ).toContain('total');
@@ -512,7 +512,7 @@ it('edits structured filters in a dialog and applies an explicit reset to the UR
   state.params = 'category=DINING&from=2026-09-01';
   await render();
   await respond(page());
-  expect(host.querySelector('form.ledger-filters')).toBeNull();
+  expect(host.querySelector('form[data-ui~="ledger-filters"]')).toBeNull();
   await click('Filters · 2');
   const category = host.querySelector<HTMLInputElement>(
     'input[name="categories"][value="DINING"]',
@@ -536,15 +536,15 @@ it('preserves combined filters while switching views and drilling into complete 
     'view=breakdown&groupId=home&memberId=me&from=2026-09-01&to=2026-09-30';
   await render();
   await respond(page(undefined, true));
-  expect(host.querySelector('.breakdown-center')?.textContent).toContain(
-    '90,071,992,547,409.94',
-  );
-  expect(host.querySelector('.breakdown-legend')?.textContent).toContain(
-    '2 expenses',
-  );
-  expect(host.querySelector('.ledger-month')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="breakdown-center"]')?.textContent,
+  ).toContain('90,071,992,547,409.94');
+  expect(
+    host.querySelector('[data-ui~="breakdown-legend"]')?.textContent,
+  ).toContain('2 expenses');
+  expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
   const category = host.querySelector(
-    '.breakdown-legend button',
+    '[data-ui~="breakdown-legend"] button',
   ) as HTMLButtonElement;
   await act(async () => category.click());
   await click('View expenses');
@@ -579,7 +579,7 @@ it('names the member source and past filter year without changing filter values'
   await render();
   await respond(page());
   expect(
-    [...host.querySelectorAll('.ledger-filter-chip')].map((chip) =>
+    [...host.querySelectorAll('[data-ui~="ledger-filter-chip"]')].map((chip) =>
       chip.textContent?.trim(),
     ),
   ).toEqual([
@@ -589,9 +589,9 @@ it('names the member source and past filter year without changing filter values'
     'Dining',
     'Involving: Alice · Home',
   ]);
-  expect(host.querySelector('.ledger-filter-button')?.textContent).toContain(
-    'Filters · 5',
-  );
+  expect(
+    host.querySelector('[data-ui~="ledger-filter-button"]')?.textContent,
+  ).toContain('Filters · 5');
   expect(state.requests[0].variables).toMatchObject({
     filter: {
       groupId: 'home',
@@ -613,9 +613,9 @@ it.each(['invalid', '2026-02-31', '0000-01-01', '2026-9-01'])(
     state.params = `from=${value}`;
     await render();
     await respond({ __typename: 'Problem', code: 'INVALID_INPUT' });
-    expect(host.querySelector('.ledger-filter-chip')?.textContent).toContain(
-      `From ${value}`,
-    );
+    expect(
+      host.querySelector('[data-ui~="ledger-filter-chip"]')?.textContent,
+    ).toContain(`From ${value}`);
     await click(`Remove From ${value}`);
     expect(state.push).toHaveBeenCalledWith('/household/expenses?', {
       scroll: false,
@@ -637,22 +637,25 @@ it('shows complete filtered month totals before later pages and keeps payer and 
     { month: '2026-08', totalExpenseMinor: '1234', expenseCount: '1' },
   ];
   await respond(first);
-  const september = host.querySelector('.ledger-month > header')!;
+  const september = host.querySelector('[data-ui~="ledger-month"] > header')!;
   expect(september.textContent).toContain('September 2026');
   expect(september.textContent).toContain('$90,071,992,547,409.94');
   expect(september.textContent).toContain('8 expenses');
-  expect(september.querySelector('.ledger-month-count')?.textContent).toBe(
-    '8 expenses',
-  );
   expect(
-    september.querySelector('.ledger-month-heading > h2')?.textContent,
+    september.querySelector('[data-ui~="ledger-month-count"]')?.textContent,
+  ).toBe('8 expenses');
+  expect(
+    september.querySelector('[data-ui~="ledger-month-heading"] > h2')
+      ?.textContent,
   ).toBe('September 2026');
-  expect(september.querySelector('.ledger-month-total')?.textContent).toBe(
-    '$90,071,992,547,409.94 USD',
-  );
-  expect(host.querySelectorAll('.ledger-month li')).toHaveLength(1);
+  expect(
+    september.querySelector('[data-ui~="ledger-month-total"]')?.textContent,
+  ).toBe('$90,071,992,547,409.94 USD');
+  expect(host.querySelectorAll('[data-ui~="ledger-month"] li')).toHaveLength(1);
   expect(september.querySelector('details')).toBeNull();
-  expect(host.querySelector('.ledger-payer')?.textContent).toBe('Paid by Bob');
+  expect(host.querySelector('[data-ui~="ledger-payer"]')?.textContent).toBe(
+    'Paid by Bob',
+  );
   expect(
     host.querySelector('#ledger-expense-one')?.getAttribute('href'),
   ).toContain('expense=one');
@@ -663,20 +666,20 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   const second = page([edge('two', '2026-08-20', '1234')]);
   second.months = first.months;
   await respond(second);
-  const headers = host.querySelectorAll('.ledger-month > header');
+  const headers = host.querySelectorAll('[data-ui~="ledger-month"] > header');
   expect(headers).toHaveLength(2);
   expect(headers[0].textContent).toBe(september.textContent);
   expect(headers[1].textContent).toContain('August 2026');
-  expect(headers[1].querySelector('.ledger-month-heading')?.textContent).toBe(
-    'August 20261 expense',
-  );
-  expect(headers[1].querySelector('.ledger-month-total')?.textContent).toBe(
-    '$12.34 USD',
-  );
+  expect(
+    headers[1].querySelector('[data-ui~="ledger-month-heading"]')?.textContent,
+  ).toBe('August 20261 expense');
+  expect(
+    headers[1].querySelector('[data-ui~="ledger-month-total"]')?.textContent,
+  ).toBe('$12.34 USD');
   await foregroundRefresh();
-  expect(host.querySelector('.ledger-month')).toBeNull();
+  expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
   await act(async () => state.requests.at(-1)?.error?.());
-  expect(host.querySelector('.ledger-month')).toBeNull();
+  expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
   expect(host.textContent).toContain('Total unavailable');
   expect(host.textContent).not.toContain('Paid by Bob');
 });
@@ -687,12 +690,12 @@ it('keeps expense controls focused on views and filters without a balance explai
   await respond(page([]));
   expect(host.textContent).not.toContain('Balance details');
   expect(host.querySelector('.ledger-net')).toBeNull();
-  expect(host.querySelector('.ledger-view-switch')?.textContent).toContain(
-    'Breakdown',
-  );
-  expect(host.querySelector('.ledger-filter-button')?.textContent).toContain(
-    'Filters',
-  );
+  expect(
+    host.querySelector('[data-ui~="ledger-view-switch"]')?.textContent,
+  ).toContain('Breakdown');
+  expect(
+    host.querySelector('[data-ui~="ledger-filter-button"]')?.textContent,
+  ).toContain('Filters');
 });
 
 it('preserves interleaved month order for amount sort and displays complete monthly totals', async () => {
@@ -710,7 +713,7 @@ it('preserves interleaved month order for amount sort and displays complete mont
     ],
   });
   expect(
-    [...host.querySelectorAll('.ledger-description strong')].map(
+    [...host.querySelectorAll('[data-ui~="ledger-description"] strong')].map(
       (el) => el.textContent,
     ),
   ).toEqual(['Dinner large', 'Dinner middle', 'Dinner small']);
@@ -729,7 +732,7 @@ it('uses server encounter order for ascending date month groups', async () => {
     ],
   });
   expect(
-    [...host.querySelectorAll('.ledger-month')].map((el) =>
+    [...host.querySelectorAll('[data-ui~="ledger-month"]')].map((el) =>
       el.getAttribute('aria-label'),
     ),
   ).toEqual(['2026-08', '2026-09']);
@@ -775,7 +778,7 @@ it('captures the shared banner creation origin with complete loaded rows and ret
         x: 0,
         y: this === banner ? 20 : 0,
         width: 390,
-        height: this.classList.contains('expense-ledger') ? 850 : 44,
+        height: this.matches('[data-ui~="expense-ledger"]') ? 850 : 44,
         top: this === banner ? 20 : 0,
         left: 0,
         bottom: 850,
