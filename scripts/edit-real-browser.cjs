@@ -233,37 +233,43 @@ withAuthFixture(origin, session, async () => {
     }
     await event.first().focus();
     await page.keyboard.press('Enter');
-    await page.locator('.activity-facts').waitFor();
+    await page.locator('[data-ui~="activity-facts"]').waitFor();
     // The source-aligned feed shows the current amount; verify the complete
     // change description in its labeled historical Amount row instead.
-    const amountChange = page.locator('.activity-facts > div').filter({
-      has: page.locator('dt', { hasText: /^Amount$/ }),
-    });
+    const amountChange = page
+      .locator('[data-ui~="activity-facts"] > div')
+      .filter({
+        has: page.locator('dt', { hasText: /^Amount$/ }),
+      });
     assert.equal(await amountChange.count(), 1);
     assert.equal(
-      (await amountChange.locator('.activity-previous').innerText())
+      (await amountChange.locator('[data-ui~="activity-previous"]').innerText())
         .replace(/\s+/g, ' ')
         .trim(),
       'PREVIOUS $120.00 USD',
       'The historical amount must preserve the exact previous value',
     );
     assert.equal(
-      (await amountChange.locator('.activity-new').innerText())
+      (await amountChange.locator('[data-ui~="activity-new"]').innerText())
         .replace(/\s+/g, ' ')
         .trim(),
       'NEW $100.00 USD',
       'The historical amount must preserve the exact new value',
     );
     assert(
-      (await page.locator('.activity-detail').innerText())
+      (await page.locator('[data-ui~="activity-detail"]').innerText())
         .toLowerCase()
         .includes('previous'),
     );
     assert(
-      (await page.locator('.activity-detail').innerText()).includes('$120.00'),
+      (await page.locator('[data-ui~="activity-detail"]').innerText()).includes(
+        '$120.00',
+      ),
     );
     assert(
-      (await page.locator('.activity-detail').innerText()).includes('$100.00'),
+      (await page.locator('[data-ui~="activity-detail"]').innerText()).includes(
+        '$100.00',
+      ),
     );
     for (const width of [320, 390, 768, 1280])
       for (const theme of ['light', 'dark'])
@@ -318,7 +324,7 @@ withAuthFixture(origin, session, async () => {
             'Actual application theme must follow the requested color scheme',
           );
           const contrast = await page
-            .locator('.activity-row-content > span:nth-child(2)')
+            .locator('[data-ui~="activity-row-content"] > span:nth-child(2)')
             .first()
             .evaluate((element) => {
               const rgb = (value) => value.match(/[\d.]+/g).map(Number);
@@ -370,11 +376,11 @@ withAuthFixture(origin, session, async () => {
       .getByRole('button', { name: /added an expense/ })
       .filter({ hasText: description })
       .click();
-    await page.locator('.activity-facts').waitFor();
+    await page.locator('[data-ui~="activity-facts"]').waitFor();
     assert(
-      (await page.locator('.activity-detail-amount').innerText()).includes(
-        '$120.00',
-      ),
+      (
+        await page.locator('[data-ui~="activity-detail-amount"]').innerText()
+      ).includes('$120.00'),
       'Creation detail remains the original snapshot',
     );
     await page.screenshot({
@@ -388,9 +394,9 @@ withAuthFixture(origin, session, async () => {
       .getByRole('button', { name: /recorded a repayment/ })
       .first()
       .click();
-    await page.locator('.activity-facts').waitFor();
+    await page.locator('[data-ui~="activity-facts"]').waitFor();
     assert(
-      (await page.locator('.activity-detail').innerText()).includes(
+      (await page.locator('[data-ui~="activity-detail"]').innerText()).includes(
         'actual transfer',
       ),
     );

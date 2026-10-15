@@ -1,3 +1,5 @@
+import activityStyles from './feed.module.css';
+import { cx } from '../ui/classnames';
 import { calendarDate } from '@/lib/dates';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
 import { AppIcon } from '@/components/workspace-identity';
@@ -62,7 +64,10 @@ function HistoricalValue({
     return <Money value={money(snapshot.totalMinor)} currency={currency} />;
   if (name === 'Participants')
     return (
-      <ul className="activity-participants">
+      <ul
+        data-ui="activity-participants"
+        className={activityStyles['activity-participants']}
+      >
         {snapshot.allocations.map((allocation) => (
           <li key={allocation.participant.id}>
             <span>{allocation.participant.displayName}</span>
@@ -86,9 +91,16 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
     after = event.after ? rows(event.after) : undefined;
   return (
     <>
-      <header className="activity-record-heading">
+      <header
+        data-ui="activity-record-heading"
+        className={activityStyles['activity-record-heading']}
+      >
         <span
-          className={`activity-kind activity-kind-${event.kind.toLowerCase()}`}
+          data-ui={`activity-kind activity-kind-${event.kind.toLowerCase()}`}
+          className={cx(
+            activityStyles['activity-kind'],
+            activityStyles[`activity-kind-${event.kind.toLowerCase()}`],
+          )}
         >
           <AppIcon
             name={
@@ -109,14 +121,18 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
         </div>
       </header>
       <p
-        className="activity-detail-amount"
+        data-ui="activity-detail-amount"
+        className={activityStyles['activity-detail-amount']}
         role="group"
         tabIndex={0}
         aria-label={`${money(event.amountMinor)} ${event.currency}`}
       >
         <Money value={money(event.amountMinor)} currency={event.currency} />
       </p>
-      <p className="activity-detail-attribution">
+      <p
+        data-ui="activity-detail-attribution"
+        className={activityStyles['activity-detail-attribution']}
+      >
         <span>
           {event.creator.displayName} {eventAction(event.kind)}
         </span>
@@ -126,7 +142,10 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
       </p>
       <ExactTimestamp value={event.timestamp} />
       {after ? (
-        <dl className="activity-facts">
+        <dl
+          data-ui="activity-facts"
+          className={activityStyles['activity-facts']}
+        >
           {Object.entries(after).map(([key, value]) => {
             const changed =
               before &&
@@ -146,8 +165,16 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
                 <dd>
                   {changed ? (
                     <>
-                      <div className="activity-previous">
-                        <span className="activity-value-label">Previous</span>
+                      <div
+                        data-ui="activity-previous"
+                        className={activityStyles['activity-previous']}
+                      >
+                        <span
+                          data-ui="activity-value-label"
+                          className={activityStyles['activity-value-label']}
+                        >
+                          Previous
+                        </span>
                         <HistoricalValue
                           name={key}
                           value={before[key as keyof typeof before]}
@@ -155,8 +182,16 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
                           currency={event.currency}
                         />
                       </div>
-                      <div className="activity-new">
-                        <span className="activity-value-label">New</span>
+                      <div
+                        data-ui="activity-new"
+                        className={activityStyles['activity-new']}
+                      >
+                        <span
+                          data-ui="activity-value-label"
+                          className={activityStyles['activity-value-label']}
+                        >
+                          New
+                        </span>
                         <HistoricalValue
                           name={key}
                           value={value}
@@ -182,7 +217,10 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
           })}
         </dl>
       ) : (
-        <dl className="activity-facts">
+        <dl
+          data-ui="activity-facts"
+          className={activityStyles['activity-facts']}
+        >
           {Object.entries({
             Date: event.effectiveDate,
             Sender: event.sender?.displayName ?? '',
@@ -202,7 +240,10 @@ export function HistoricalDetail({ event }: { event: HistoricalEvent }) {
           ))}
         </dl>
       )}
-      <p className="activity-event-help">
+      <p
+        data-ui="activity-event-help"
+        className={activityStyles['activity-event-help']}
+      >
         {event.kind === 'REPAYMENT_RECORDED'
           ? 'This records an actual transfer between the sender and recipient. It changes their balances without changing expense spending. No money is moved by this app.'
           : 'These are the values recorded at this event. Later expense changes do not rewrite this history.'}

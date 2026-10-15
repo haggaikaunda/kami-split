@@ -16,7 +16,7 @@ it.each([-100, 700])(
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
         return (
-          this.classList.contains('rich-help-panel')
+          this.getAttribute('role') === 'dialog'
             ? {
                 width: 300,
                 height: 180,

@@ -12,7 +12,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: HTMLElement) {
       return (
-        this.classList.contains('rich-help-panel')
+        this.getAttribute('role') === 'dialog'
           ? {
               width: 300,
               height: 180,
@@ -155,7 +155,7 @@ it('keeps help scrollable within a short enlarged-text viewport when neither sid
   vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(
     function (this: HTMLElement) {
       return (
-        this.classList.contains('rich-help-panel')
+        this.getAttribute('role') === 'dialog'
           ? {
               width: 300,
               height: 360,

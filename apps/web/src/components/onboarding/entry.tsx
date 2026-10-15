@@ -1,4 +1,8 @@
 'use client';
+import '../groups/journey.css';
+import onboardingStyles from './onboarding.module.css';
+import accountStyles from './account.module.css';
+
 import shellStyles from '../workspace/shell.module.css';
 import { cx } from '../ui/classnames';
 
@@ -15,10 +19,8 @@ import { HouseIllustration, InvitationScreens, SignIn } from './screens';
 import { AppearanceEditor } from './appearance';
 import { ProfileEditor } from './profile';
 import { LegacyInvitations } from './legacy-invitations';
-import '../groups/journey.css';
 import { ActionRecovery } from './recovery';
-import './onboarding.css';
-import './account.css';
+
 export function OnboardingEntry({ mode }: { mode: Mode }) {
   if (mode === 'invitations') return <LegacyInvitations />;
   return <OnboardingRoute key={mode} mode={mode} />;
@@ -80,13 +82,14 @@ function OnboardingVisit({
   const account = mode === 'account' || mode === 'invitations';
   return (
     <main
+      data-ui={account ? undefined : 'onboarding'}
       className={
         account
           ? cx(
               'financial-journey group-workspace account-workspace',
               shellStyles.shell,
             )
-          : 'onboarding'
+          : onboardingStyles['onboarding']
       }
       id="page-content"
     >
@@ -98,14 +101,21 @@ function OnboardingVisit({
         }
         className={
           account
-            ? cx(shellStyles['workspace-content'], 'account-content')
-            : 'onboarding-panel'
+            ? cx(
+                shellStyles['workspace-content'],
+                accountStyles['account-content'],
+              )
+            : onboardingStyles['onboarding-panel']
         }
         ref={panel}
       >
         {!account && (
           <header>
-            <Link href="/sign-in" className="onboarding-brand">
+            <Link
+              href="/sign-in"
+              data-ui="onboarding-brand"
+              className={onboardingStyles['onboarding-brand']}
+            >
               <Brand />
             </Link>
           </header>
@@ -140,7 +150,10 @@ function OnboardingVisit({
                 >
                   Account
                 </div>
-                <header className="account-heading">
+                <header
+                  data-ui="account-heading"
+                  className={accountStyles['account-heading']}
+                >
                   <h1>
                     {mode === 'account' ? 'Your account' : 'Manage invitations'}
                   </h1>
@@ -154,13 +167,20 @@ function OnboardingVisit({
                       state={c}
                     />
                     <section
-                      className="account-session"
+                      data-ui="account-session"
+                      className={accountStyles['account-session']}
                       aria-labelledby="session-heading"
                     >
-                      <div className="account-session-row">
+                      <div
+                        data-ui="account-session-row"
+                        className={accountStyles['account-session-row']}
+                      >
                         <div>
                           <h2 id="session-heading">Session</h2>
-                          <p className="account-secondary">
+                          <p
+                            data-ui="account-secondary"
+                            className={accountStyles['account-secondary']}
+                          >
                             Signed in on this device
                           </p>
                         </div>
@@ -171,13 +191,22 @@ function OnboardingVisit({
                         >
                           <AppIcon name="signout" />
                           Sign out
-                          <span className="account-control-context">
+                          <span
+                            data-ui="account-control-context"
+                            className={accountStyles['account-control-context']}
+                          >
                             {' '}
                             of this session
                           </span>
                         </Button>
                       </div>
-                      <p className="account-footnote account-session-notice">
+                      <p
+                        data-ui="account-footnote account-session-notice"
+                        className={cx(
+                          accountStyles['account-footnote'],
+                          accountStyles['account-session-notice'],
+                        )}
+                      >
                         Other devices may remain signed in. Existing access
                         tokens can remain valid for up to 15 minutes.
                       </p>

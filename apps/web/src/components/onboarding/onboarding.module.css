@@ -7,9 +7,6 @@
   align-content: center;
   overflow-wrap: anywhere;
 }
-.onboarding--account {
-  width: min(100%, 54rem);
-}
 .onboarding-panel {
   min-width: 0;
   display: grid;
@@ -59,8 +56,7 @@
   color: var(--color-muted);
 }
 .onboarding form,
-.onboarding aside,
-.onboarding-actions {
+.onboarding aside {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
@@ -173,158 +169,6 @@
   }
 }
 
-.account-management {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
-  min-width: 0;
-}
-.account-management h2 {
-  margin: 0.5rem 0 0;
-}
-.account-rows {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.account-rows > li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.5rem;
-  min-width: 0;
-  margin: 0;
-  padding: 1rem;
-  border: 1px solid var(--color-separator);
-  border-radius: var(--radius-card);
-  background: var(--color-subtle);
-}
-.account-rows > li > strong {
-  overflow-wrap: anywhere;
-}
-.account-rows > li > a {
-  font-weight: 700;
-  min-height: var(--target-size);
-  display: flex;
-  align-items: center;
-}
-.account-rows p {
-  color: var(--color-muted);
-  font-size: 0.875rem;
-}
-.account-management [data-ui~='button--secondary'] {
-  border-color: var(--color-separator);
-  background: var(--color-surface);
-  color: var(--color-primary);
-  text-decoration: none;
-}
-.account-management .onboarding-actions {
-  gap: 0.5rem;
-}
-
-.scoped-invitations {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  margin-top: 1.5rem;
-  max-width: 46.25rem;
-  gap: var(--space-4);
-  min-width: 0;
-  overflow-wrap: break-word;
-  padding: var(--space-6);
-  border: 1px solid var(--color-separator);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-}
-.scoped-invitations h2,
-.scoped-invitations h3 {
-  margin: 0;
-}
-.scoped-invitations [data-ui~='button'] {
-  justify-self: start;
-  width: auto;
-  white-space: normal;
-}
-.scoped-invitations [data-ui~='button--secondary'] {
-  background: var(--color-surface);
-  color: var(--color-primary);
-}
-.scoped-invitations .onboarding-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-@media (max-width: 600px) {
-  .scoped-invitations {
-    padding: 20px 17px;
-  }
-  .scoped-invitations .account-rows > li {
-    padding: 16px;
-  }
-  .scoped-invitations [data-ui~='button'] {
-    padding: 10px 22px;
-  }
-}
-
 .onboarding :is(input, select, textarea) {
   font-size: max(1rem, 16px);
-}
-
-/* The members surface shares one people list; infrequent controls disclose inline. */
-.scoped-invitations {
-  margin-top: 0;
-  max-width: none;
-  padding: 0;
-  border: 0;
-}
-.add-member,
-.invitation-history,
-.invitation-actions {
-  min-width: 0;
-}
-.add-member > summary,
-.invitation-history > summary,
-.invitation-actions > summary {
-  cursor: pointer;
-  min-height: var(--target-size);
-  padding: 0.75rem;
-  border-radius: var(--radius-control);
-  overflow-wrap: anywhere;
-}
-.add-member > summary {
-  width: fit-content;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: 700;
-}
-.add-member[open] > :not(summary),
-.invitation-history[open] > :not(summary) {
-  margin-top: var(--space-4);
-}
-.add-member form {
-  display: grid;
-  gap: var(--space-4);
-}
-.scoped-invitations summary:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 3px;
-}
-
-@container (max-width: 32rem) {
-  .workspace-panel.members-panel {
-    padding: 16px;
-  }
-  .members-panel .account-rows > li {
-    padding: 12px;
-  }
-  .members-panel [data-ui~='member'] {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-  .members-panel .invitation-actions > summary {
-    padding-inline: 0;
-  }
 }

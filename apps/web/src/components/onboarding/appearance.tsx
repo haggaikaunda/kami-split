@@ -1,4 +1,7 @@
 'use client';
+import accountStyles from './account.module.css';
+import { cx } from '../ui/classnames';
+
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '../ui/primitives';
 import { AppIcon } from '@/components/workspace-identity';
@@ -122,12 +125,22 @@ export function AppearanceEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <section className="account-card" aria-labelledby="appearance-heading">
-      <div className="account-section-title">
+    <section
+      data-ui="account-card"
+      className={accountStyles['account-card']}
+      aria-labelledby="appearance-heading"
+    >
+      <div
+        data-ui="account-section-title"
+        className={accountStyles['account-section-title']}
+      >
         <AppIcon name="palette" />
         <div>
           <h2 id="appearance-heading">Appearance</h2>
-          <p className="account-secondary">
+          <p
+            data-ui="account-secondary"
+            className={accountStyles['account-secondary']}
+          >
             Choose a theme that feels comfortable.
           </p>
         </div>
@@ -144,14 +157,26 @@ export function AppearanceEditor({
       {message && <Status kind={failed ? 'error' : 'info'}>{message}</Status>}
       {saved ? (
         <div>
-          <fieldset className="appearance-options" disabled={uncertain}>
+          <fieldset
+            data-ui="appearance-options"
+            className={accountStyles['appearance-options']}
+            disabled={uncertain}
+          >
             <legend>Theme</legend>
             {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
               <label
-                className={`appearance-choice appearance-choice--${value.toLowerCase()}`}
+                data-ui={`appearance-choice appearance-choice--${value.toLowerCase()}`}
+                className={cx(
+                  accountStyles['appearance-choice'],
+                  accountStyles[`appearance-choice--${value.toLowerCase()}`],
+                )}
                 key={value}
               >
-                <span className="appearance-preview" aria-hidden="true">
+                <span
+                  data-ui="appearance-preview"
+                  className={accountStyles['appearance-preview']}
+                  aria-hidden="true"
+                >
                   <span />
                   <span />
                   <span />
@@ -163,7 +188,10 @@ export function AppearanceEditor({
                   checked={selected === value}
                   onChange={() => choose(value)}
                 />
-                <span className="appearance-choice-label">
+                <span
+                  data-ui="appearance-choice-label"
+                  className={accountStyles['appearance-choice-label']}
+                >
                   <AppIcon
                     name={
                       value === 'LIGHT'
@@ -178,8 +206,14 @@ export function AppearanceEditor({
               </label>
             ))}
           </fieldset>
-          <div className="appearance-footer">
-            <p className="account-footnote">
+          <div
+            data-ui="appearance-footer"
+            className={accountStyles['appearance-footer']}
+          >
+            <p
+              data-ui="account-footnote"
+              className={accountStyles['account-footnote']}
+            >
               System follows your device’s appearance.
             </p>
           </div>
