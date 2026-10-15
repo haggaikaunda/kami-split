@@ -67,8 +67,11 @@ the local error boundary, and feature owners inspect domain unions and report th
 loading/error status to the existing refresh surface. A fulfilled access Problem is
 an error, never an empty result or successful refresh.
 
-The route owns the keyed read identity: account, destination, source return,
-filters and explicit refresh generation. Foreground invalidation hides the private
+Each read owner defines its keyed identity: account, destination, source return,
+ledger filters and explicit refresh generation. A composed workspace query keeps
+its original variables while URL filters change. Its initial expense payload may
+seed the ledger only when the query reference's captured filters match the current
+canonical filters; otherwise the ledger performs a dedicated fresh read. Foreground invalidation hides the private
 owner synchronously, then starts a new read after the event burst. A fresh visit
 requires a response even if the same query is complete in the store. Group identity,
 Household source identity and current expense group/record identity are checked

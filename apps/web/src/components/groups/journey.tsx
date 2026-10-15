@@ -8,7 +8,7 @@ import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
-import { expenseFilterText } from '@/lib/relay/expense-filter';
+import { expenseFilter, expenseFilterText } from '@/lib/relay/expense-filter';
 import {
   WorkspaceTabs,
   WorkspacePrivacy,
@@ -335,7 +335,7 @@ function GroupDetails({
             setState(state);
           }}
         >
-          {(result) => (
+          {(result, requestedVariables) => (
             <GroupDestination
               result={result}
               scope={scope}
@@ -345,6 +345,7 @@ function GroupDetails({
               repayment={repayment}
               tab={tab}
               filters={filters}
+              requestedFilter={requestedVariables.filter}
               saved={saved}
               setSaved={setSaved}
               read={read}
@@ -410,6 +411,7 @@ function GroupDestination({
   repayment,
   tab,
   filters,
+  requestedFilter,
   saved,
   setSaved,
   read,
@@ -426,6 +428,7 @@ function GroupDestination({
   repayment: boolean;
   tab: string;
   filters: string;
+  requestedFilter: journeyWorkspaceQuery['variables']['filter'];
   saved: string;
   setSaved: (message: string) => void;
   read: () => Promise<void>;
@@ -582,7 +585,11 @@ function GroupDestination({
           headerTarget={headerTarget}
           showHeader={!household}
           initialView={
-            result.groupExpenses
+            // The request may finish after Back/Forward changes the URL. Only
+            // seed the ledger when its filters match the query reference.
+            result.groupExpenses &&
+            JSON.stringify(requestedFilter) ===
+              JSON.stringify(expenseFilter(filters))
               ? {
                   filterText: filters,
                   reference: result.groupExpenses,

@@ -19,7 +19,8 @@ import type { FinancialScope } from './environment';
 type ReadState = { busy: boolean; error: boolean };
 /** A mounted, freshly authorized read. Owners unmount this boundary before
  * revalidation; Relay retains only its query reference and disposes on unmount.
- * The owning feature validates domain unions and chooses its loading/error UI. */
+ * Children receive the variables captured by this reference, even if later URL
+ * props change. The feature validates domain unions and owns loading/error UI. */
 export function NetworkQuery<T extends OperationType>({
   document,
   scope,
@@ -35,7 +36,7 @@ export function NetworkQuery<T extends OperationType>({
   variables: T['variables'];
   fallback: ReactNode;
   failure: ReactNode;
-  children: (data: T['response']) => ReactNode;
+  children: (data: T['response'], variables: T['variables']) => ReactNode;
   onState?: (state: ReadState) => void;
   onError?: (error: Error) => void;
 }) {
@@ -54,7 +55,7 @@ export function NetworkQuery<T extends OperationType>({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReference(query);
     return () => query.dispose();
-    // Variables/scope are immutable within a keyed authorization visit. URL-only
+    // Query variables are captured for one keyed authorization visit. URL-only
     // panel changes must not reset a retained traversal or durable form draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [environment, document]);
@@ -73,7 +74,9 @@ export function NetworkQuery<T extends OperationType>({
             reference={reference}
             onReady={() => onState?.({ busy: false, error: false })}
           >
-            {(data) => (scope.isLive() ? children(data) : fallback)}
+            {(data) =>
+              scope.isLive() ? children(data, reference.variables) : fallback
+            }
           </QueryResult>
         ) : (
           fallback
