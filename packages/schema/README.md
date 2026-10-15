@@ -4,7 +4,13 @@
 
 Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. Pinned Relay tooling consumes the same authoritative SDL through `pnpm relay:generate`; `pnpm relay:check` verifies committed web artifact drift. The generator resolves server SDL extensions into a complete schema before compilation, so Relay emits executable server operations rather than client-only extension fields. Wire-operation tests validate compiled requests against the authoritative SDL.
 
-Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript money logic and DataPort remain in `apps/web`; Go application operations own persisted financial rules. Language-neutral test fixtures may be shared when implemented.
+Web operation documents are authored beside their owning feature under
+`apps/web/src/components`; generated artifacts remain in
+`apps/web/src/lib/relay/__generated__`. The compiler discovers all `apps/web/src`
+documents, including normalization fixtures, and application code imports only the
+compiled artifacts. See [frontend ownership](../../docs/application/frontend.md).
+
+Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript exact-money presentation and draft validation remain in `apps/web`; Go application operations own persisted financial rules. Language-neutral test fixtures may be shared when implemented.
 
 ## Public contract documentation
 

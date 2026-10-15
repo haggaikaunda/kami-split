@@ -1,4 +1,5 @@
 'use client';
+import { ExpenseEntryProvider } from '@/components/expenses/entry';
 import shellStyles from '../workspace/shell.module.css';
 import uiStyles from '../ui/primitives.module.css';
 import { cx } from '../ui/classnames';
@@ -169,68 +170,76 @@ export function GroupJourney({
   );
   if (household) return body;
   return (
-    <main
-      className={cx(
-        'financial-journey',
-        shellStyles.shell,
-        initialGroup && 'group-workspace',
-      )}
-      id="page-content"
+    <ExpenseEntryProvider
+      scope={access.scope}
+      visit={`${pathname}:${currentTab}`}
     >
-      <WorkspaceNavigation />
-      <div
-        data-ui="workspace-content"
-        className={shellStyles['workspace-content']}
-      >
-        <header className="journey-page-heading">
-          {!initialGroup && (
-            <h1 data-page-heading tabIndex={-1}>
-              {creation
-                ? creation === 'TRIP'
-                  ? 'New trip'
-                  : 'New group'
-                : trips
-                  ? 'Your trips'
-                  : initialGroup
-                    ? 'Your group'
-                    : 'Your groups'}
-            </h1>
-          )}
-        </header>
-        {initialGroup && (
-          <>
-            {access.scope && (
-              <div
-                data-ui="workspace-crumb"
-                className={shellStyles['workspace-crumb']}
-              >
-                <SourceReturn scope={access.scope} />
-              </div>
-            )}
-            <div ref={setHeaderTarget} />
-            <WorkspaceTabs
-              current={repayment ? 'Balances' : currentTab}
-              label={trips ? 'Trip workspace' : 'Group workspace'}
-              onIntent={(section) =>
-                intent?.warm(
-                  workspaceRequest(initialGroup, section.toLowerCase()),
-                )
-              }
-              onIntentEnd={(section) =>
-                intent?.cancel(
-                  section
-                    ? workspaceRequest(initialGroup, section.toLowerCase()).key
-                    : undefined,
-                )
-              }
-              hrefFor={(section) => `${groupBase}?tab=${section.toLowerCase()}`}
-            />
-          </>
+      <main
+        className={cx(
+          'financial-journey',
+          shellStyles.shell,
+          initialGroup && 'group-workspace',
         )}
-        {body}
-        {initialGroup && access.scope && <WorkspacePrivacy />}
-      </div>
-    </main>
+        id="page-content"
+      >
+        <WorkspaceNavigation />
+        <div
+          data-ui="workspace-content"
+          className={shellStyles['workspace-content']}
+        >
+          <header className="journey-page-heading">
+            {!initialGroup && (
+              <h1 data-page-heading tabIndex={-1}>
+                {creation
+                  ? creation === 'TRIP'
+                    ? 'New trip'
+                    : 'New group'
+                  : trips
+                    ? 'Your trips'
+                    : initialGroup
+                      ? 'Your group'
+                      : 'Your groups'}
+              </h1>
+            )}
+          </header>
+          {initialGroup && (
+            <>
+              {access.scope && (
+                <div
+                  data-ui="workspace-crumb"
+                  className={shellStyles['workspace-crumb']}
+                >
+                  <SourceReturn scope={access.scope} />
+                </div>
+              )}
+              <div ref={setHeaderTarget} />
+              <WorkspaceTabs
+                current={repayment ? 'Balances' : currentTab}
+                label={trips ? 'Trip workspace' : 'Group workspace'}
+                onIntent={(section) =>
+                  intent?.warm(
+                    workspaceRequest(initialGroup, section.toLowerCase()),
+                  )
+                }
+                onIntentEnd={(section) =>
+                  intent?.cancel(
+                    section
+                      ? workspaceRequest(initialGroup, section.toLowerCase())
+                          .key
+                      : undefined,
+                  )
+                }
+                hrefFor={(section) =>
+                  `${groupBase}?tab=${section.toLowerCase()}`
+                }
+              />
+            </>
+          )}
+          {body}
+          {initialGroup && access.scope && <WorkspacePrivacy />}
+        </div>
+      </main>
+    </ExpenseEntryProvider>
   );
 }
 function ViewerJourney({

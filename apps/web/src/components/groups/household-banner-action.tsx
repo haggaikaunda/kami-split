@@ -1,4 +1,5 @@
 'use client';
+import { useExpenseEntry } from '@/components/expenses/entry';
 import workspaceStyles from '../workspace/patterns.module.css';
 
 import Link from 'next/link';
@@ -16,6 +17,7 @@ import { useForegroundRefresh } from './foreground';
 export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
   const pathname = usePathname();
   const params = useSearchParams();
+  const expenseEntry = useExpenseEntry();
   const [source, setSource] = useState<string>();
   const [version, setVersion] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -97,6 +99,7 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
   next.set('create', source);
   return (
     <Link
+      onClick={(event) => expenseEntry?.activate(event, source)}
       id="workspace-add"
       scroll={false}
       data-ui="banner-action"

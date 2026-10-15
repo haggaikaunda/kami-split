@@ -1,4 +1,5 @@
 'use client';
+import { useExpenseEntry } from '@/components/expenses/entry';
 import workspaceStyles from '../workspace/patterns.module.css';
 import financialStyles from '../financial/presentation.module.css';
 
@@ -91,6 +92,7 @@ export function GroupWorkspace({
   onDenied: () => void;
 }) {
   const params = useSearchParams();
+  const expenseEntry = useExpenseEntry();
   const requested = params.get('tab');
   const current: WorkspaceSection =
     workspaceSections.find((t) => t.toLowerCase() === requested) ??
@@ -128,6 +130,7 @@ export function GroupWorkspace({
       }
     >
       <Link
+        onClick={(event) => expenseEntry?.activate(event, group.id)}
         id="workspace-add"
         scroll={false}
         data-ui="banner-action"

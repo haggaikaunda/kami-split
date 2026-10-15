@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { act, useEffect } from 'react';
+import { useRelayEnvironment } from 'react-relay';
+import type { IEnvironment } from 'relay-runtime';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FinancialSession, useFinancialSession } from './session';
@@ -34,6 +36,14 @@ vi.mock('@/lib/onboarding/client', () => ({
   }),
 }));
 let current: ReturnType<typeof useFinancialSession>;
+let renderedEnvironment: IEnvironment | undefined;
+function EnvironmentProbe() {
+  const environment = useRelayEnvironment();
+  useEffect(() => {
+    renderedEnvironment = environment;
+  }, [environment]);
+  return null;
+}
 function Probe() {
   const access = useFinancialSession();
   useEffect(() => {
@@ -41,6 +51,7 @@ function Probe() {
   }, [access]);
   return (
     <p>
+      {access.scope && <EnvironmentProbe />}
       {access.scope
         ? `Private ${access.scope.actor}`
         : (access.error ?? 'No private data')}
@@ -79,6 +90,7 @@ async function render() {
 it('disposes private memory even when logout storage cleanup throws', async () => {
   await render();
   const original = current.scope!;
+  expect(renderedEnvironment).toBe(original.environment);
   sessionStorage.setItem(privateStorageKey, '{}');
   vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
     throw new DOMException('Blocked', 'SecurityError');
@@ -99,6 +111,7 @@ it('disposes private memory even when logout storage cleanup throws', async () =
 it('replaces the environment and clears private drafts on switch and same-account logout/login', async () => {
   await render();
   const original = current.scope!;
+  expect(renderedEnvironment).toBe(original.environment);
   sessionStorage.setItem(privateStorageKey, '{}');
   await act(async () => {
     sdk.changed('SIGNED_IN', { user: { id: 'bob' } });
@@ -106,6 +119,7 @@ it('replaces the environment and clears private drafts on switch and same-accoun
   });
   expect(original.isLive()).toBe(false);
   expect(current.scope!.actor).toBe('bob');
+  expect(renderedEnvironment).toBe(current.scope!.environment);
   expect(current.scope!.environment).not.toBe(original.environment);
   expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
   const bob = current.scope!;
@@ -128,12 +142,14 @@ it('retains the environment for token refresh and does not restore old subject s
     await vi.runAllTimersAsync();
   });
   expect(current.scope).toBe(original);
+  expect(renderedEnvironment).toBe(original!.environment);
 });
 
 it('invalidates an expired session while a fresh provider check is unresolved, then purges rejected private state', async () => {
   sdk.expires = Math.floor(Date.now() / 1000) + 1;
   await render();
   const original = current.scope!;
+  expect(renderedEnvironment).toBe(original.environment);
   sessionStorage.setItem(privateStorageKey, '{}');
   let finish!: (value: unknown) => void;
   sdk.checked.mockImplementation(

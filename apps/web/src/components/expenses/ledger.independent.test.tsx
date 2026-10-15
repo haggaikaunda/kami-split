@@ -3,6 +3,7 @@ import { act } from 'react';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { ExpenseEntryProvider, useExpenseEntry } from './entry';
 import { ExpenseLedger } from './ledger';
 import { HouseholdFrame } from '@/components/groups/household-frame';
 import { HouseholdExpenses } from './household';
@@ -160,16 +161,34 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
 });
+function Banner() {
+  const entry = useExpenseEntry();
+  return (
+    <a
+      id="workspace-add"
+      href="/household/expenses?create=home"
+      onClick={(event) => {
+        entry?.activate(event, 'home');
+        event.preventDefault();
+      }}
+    >
+      Add expense
+    </a>
+  );
+}
 async function render(groupId = '') {
   await act(async () =>
     root.render(
-      <ExpenseLedger
-        scope={scope}
-        groupId={groupId}
-        spaces={spaces}
-        today="2026-09-03"
-        onDenied={vi.fn()}
-      />,
+      <ExpenseEntryProvider scope={scope} visit="household-expenses">
+        <Banner />
+        <ExpenseLedger
+          scope={scope}
+          groupId={groupId}
+          spaces={spaces}
+          today="2026-09-03"
+          onDenied={vi.fn()}
+        />
+      </ExpenseEntryProvider>,
     ),
   );
 }
@@ -732,12 +751,7 @@ it('removes one selected category and retains other categories and payer filters
 });
 
 it('captures the shared banner creation origin with complete loaded rows and returns through history on cancel', async () => {
-  const banner = document.createElement('a');
-  banner.id = 'workspace-add';
-  banner.href = '/household/expenses?create=home';
-  banner.textContent = 'Add expense';
-  banner.addEventListener('click', (event) => event.preventDefault());
-  document.body.append(banner);
+  let banner: HTMLAnchorElement;
   const rect = vi
     .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
     .mockImplementation(function (this: HTMLElement) {
@@ -758,6 +772,7 @@ it('captures the shared banner creation origin with complete loaded rows and ret
   state.back.mockClear();
   try {
     await render('home');
+    banner = host.querySelector('#workspace-add')!;
     await respond(page([edge('one', '2026-09-02')], true));
     await click('Load more expenses');
     await respond(page([edge('two', '2026-09-01', '1')]));
@@ -787,7 +802,6 @@ it('captures the shared banner creation origin with complete loaded rows and ret
     expect(state.replace).not.toHaveBeenCalled();
   } finally {
     positions.clear();
-    banner.remove();
     rect.mockRestore();
   }
 });
