@@ -22,10 +22,10 @@ export const test = base.extend({
       const { query, variables } = route.request().postDataJSON();
       const operation = query.match(/(?:query|mutation) (\w+)/)?.[1];
       requests.push({ operation, variables });
-      const data = responseFor(operation, variables);
       const hold = holds.find(
         (item) => !item.claimed && item.operation === operation,
       );
+      const data = hold?.data ?? responseFor(operation, variables);
       if (hold) {
         hold.claimed = true;
         hold.started.resolve();
@@ -68,9 +68,10 @@ export const test = base.extend({
             .getByRole('button', { name: 'Sign in', exact: true })
             .click();
         },
-        hold(operation) {
+        hold(operation, data) {
           const item = {
             operation,
+            data,
             started: Promise.withResolvers(),
             released: Promise.withResolvers(),
             finished: Promise.withResolvers(),

@@ -16,7 +16,7 @@ import {
 } from '../workspace/patterns';
 import { Skeleton } from '../ui/primitives';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { readInlineData } from 'relay-runtime';
 import expenseView, {
   type expensesView$key,
@@ -37,7 +37,6 @@ import { GroupWorkspace } from './workspace';
 import { useFinancialSession } from './session';
 import { ViewerJourney } from './discovery';
 
-import { createWorkspaceIntent } from '@/lib/relay/intent';
 import { workspaceRequest } from '@/lib/relay/workspace-request';
 import { useForegroundRefresh } from './foreground';
 
@@ -66,28 +65,8 @@ export function GroupJourney({
     expense = routeId(pathExpense);
   const access = useFinancialSession();
   const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
-  const intent = useMemo(
-    () => (access.scope ? createWorkspaceIntent(access.scope) : undefined),
-    [access.scope],
-  );
-  useEffect(() => () => intent?.cancel(), [intent]);
   const params = useSearchParams(),
     pathname = usePathname();
-  const intentVisit = pathname + '?' + params.toString();
-  useLayoutEffect(() => {
-    intent?.cancel();
-  }, [intent, intentVisit]);
-  useEffect(() => {
-    const cancel = () => intent?.cancel();
-    window.addEventListener('focus', cancel);
-    window.addEventListener('pageshow', cancel);
-    document.addEventListener('visibilitychange', cancel);
-    return () => {
-      window.removeEventListener('focus', cancel);
-      window.removeEventListener('pageshow', cancel);
-      document.removeEventListener('visibilitychange', cancel);
-    };
-  }, [intent]);
   const groupBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(initialGroup)}`;
   const currentTab =
     workspaceSections.find((t) => t.toLowerCase() === params.get('tab')) ??
@@ -200,19 +179,6 @@ export function GroupJourney({
               <WorkspaceTabs
                 current={repayment ? 'Balances' : currentTab}
                 label={trips ? 'Trip workspace' : 'Group workspace'}
-                onIntent={(section) =>
-                  intent?.warm(
-                    workspaceRequest(initialGroup, section.toLowerCase()),
-                  )
-                }
-                onIntentEnd={(section) =>
-                  intent?.cancel(
-                    section
-                      ? workspaceRequest(initialGroup, section.toLowerCase())
-                          .key
-                      : undefined,
-                  )
-                }
                 hrefFor={(section) =>
                   `${groupBase}?tab=${section.toLowerCase()}`
                 }
