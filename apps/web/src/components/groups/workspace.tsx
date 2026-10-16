@@ -126,19 +126,21 @@ export function GroupWorkspaceContent({
   const params = useSearchParams();
   const header = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
-    if (!headerTarget || !showHeader) return;
-    headerTarget.style.removeProperty('--workspace-header-height');
-    headerTarget.style.minHeight = '';
+    const element = header.current;
+    const host = element?.parentElement;
+    if (!showHeader || !element || !host || host !== headerTarget) return;
+    host.style.removeProperty('--workspace-header-height');
+    host.style.removeProperty('min-height');
     return () => {
       // Layout cleanup runs before React hides/removes the private header.
       // Keep only geometry in the stable host, including its bottom margin.
-      const height = header.current?.getBoundingClientRect().height;
+      const height = element.getBoundingClientRect().height;
       if (!height) return;
-      headerTarget.style.minHeight = `${headerTarget.getBoundingClientRect().height}px`;
-      headerTarget.style.setProperty(
-        '--workspace-header-height',
-        `${height}px`,
+      host.style.setProperty(
+        'min-height',
+        `${host.getBoundingClientRect().height}px`,
       );
+      host.style.setProperty('--workspace-header-height', `${height}px`);
     };
   }, [headerTarget, showHeader]);
   const expenseEntry = useExpenseEntry();
