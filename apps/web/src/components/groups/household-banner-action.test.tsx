@@ -45,7 +45,7 @@ const home = {
     ],
   },
 };
-it('resolves a real Household source across tab routes and preserves expense filters', async () => {
+it('resolves an invalidated Household source across tab routes and preserves expense filters', async () => {
   for (const [path, search] of [
     ['/household', 'tab=overview'],
     ['/household', 'tab=balances'],
@@ -57,6 +57,9 @@ it('resolves a real Household source across tab routes and preserves expense fil
       'category=FOOD&view=breakdown&sort=oldest&expense=e&expenseGroup=g&after=cursor',
     ],
   ]) {
+    scope.environment.commitUpdate((store) => {
+      (store as typeof store & { invalidateStore(): void }).invalidateStore();
+    });
     nav.path = path;
     nav.search = search;
     await act(async () =>

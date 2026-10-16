@@ -16,7 +16,7 @@ import {
 } from '../workspace/patterns';
 import { Skeleton } from '../ui/primitives';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { readInlineData } from 'relay-runtime';
 import expenseView, {
   type expensesView$key,
@@ -231,6 +231,7 @@ function GroupDetails({
     setState({ busy: true, error: false });
   };
   const read = async () => {
+    scope.invalidate?.();
     setVersion((v) => v + 1);
     setActive(true);
     setDomainError('');
@@ -238,10 +239,11 @@ function GroupDetails({
     setState({ busy: true, error: false });
   };
   useForegroundRefresh(invalidate, () => void read());
+  const midnightRead = useEffectEvent(read);
   useEffect(() => {
     const timer = setTimeout(
       () => {
-        if (document.visibilityState === 'visible') void read();
+        if (document.visibilityState === 'visible') void midnightRead();
       },
       86400000 - (Date.now() % 86400000),
     );
@@ -289,6 +291,9 @@ function GroupDetails({
       />
       {active ? (
         <NetworkQuery<journeyWorkspaceQuery>
+          reuse={
+            !expense && !repayment && !params.has('create') && version === 0
+          }
           scope={scope}
           key={`${version}:${after}`}
           document={groupDocument}

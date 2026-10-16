@@ -155,6 +155,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
     setDenied(false);
   };
   const reset = () => {
+    scope.invalidate?.();
     clear();
     setVersion((v) => v + 1);
     setActive(true);
@@ -179,6 +180,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       <WorkspaceRefresh busy={busy} error={error} onRefresh={reset} />
       {active ? (
         <HouseholdAccess
+          reuse={version === 0}
           key={version}
           scope={scope}
           fallback={loading}
@@ -187,6 +189,7 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
         >
           {(home) => (
             <NetworkQuery<householdMembersQuery>
+              reuse={version === 0}
               key={home}
               scope={scope}
               document={membersDocument}
@@ -283,6 +286,7 @@ function HouseholdSummaryRead({
     setState({ busy: true, error: false });
   };
   const reset = () => {
+    scope.invalidate?.();
     setVersion((v) => v + 1);
     setActive(true);
     setDomainError('');
@@ -306,6 +310,7 @@ function HouseholdSummaryRead({
       <WorkspaceRefresh busy={state.busy} error={error} onRefresh={reset} />
       {active ? (
         <NetworkQuery<householdWorkspaceQuery>
+          reuse={version === 0}
           scope={scope}
           key={version}
           document={document}

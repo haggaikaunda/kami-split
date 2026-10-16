@@ -108,6 +108,10 @@ beforeEach(() => {
     actor: 'A',
     environment,
     isLive: () => true,
+    invalidate: () =>
+      environment.commitUpdate((store) => {
+        (store as typeof store & { invalidateStore(): void }).invalidateStore();
+      }),
     visits: new Map(),
     restored: new Set(),
   } as FinancialScope;

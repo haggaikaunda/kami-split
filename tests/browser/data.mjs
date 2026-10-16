@@ -200,6 +200,29 @@ export function responseFor(operation, variables) {
           ? { groupExpenses: expensePage(variables.after) }
           : {}),
       };
+    case 'expensesHouseholdInitialQuery': {
+      const dashboard = responseFor(
+        'householdWorkspaceQuery',
+        {},
+      ).householdDashboard;
+      return {
+        viewer: { __typename: 'Viewer', today: '2026-10-05' },
+        householdDashboard: {
+          ...dashboard,
+          contextVersion: view.contextVersion,
+          spaces: dashboard.spaces.map((space) => ({ ...space, members })),
+        },
+        householdExpenses: view,
+      };
+    }
+    case 'activityHouseholdQuery':
+      return {
+        householdActivity: {
+          __typename: 'ActivityConnection',
+          edges: [],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      };
     case 'expensesGroupQuery':
       return { groupExpenses: expensePage(variables.after) };
     case 'journeyGroupQuery':

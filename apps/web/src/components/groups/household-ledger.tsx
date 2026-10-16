@@ -58,6 +58,7 @@ function LedgerRead({ scope }: { scope: FinancialScope }) {
   );
   return active ? (
     <HouseholdAccess
+      reuse={version === 0}
       key={version}
       scope={scope}
       fallback={loading}

@@ -17,9 +17,11 @@ financial content.
 
 ## Request ownership and matrix
 
-All visible private data comes from `network-only` reads. These counts describe
-ordinary activation, excluding Next code/RSC
-prefetch and later filters, details or pages:
+Eligible read-only workspace destinations use the account Relay store with
+`store-or-network`. These counts describe a cold, incomplete, expired or invalidated
+activation; a complete recent repeat of the same operation and variables needs no
+financial request. Next code/RSC and session requests, later filters, details and
+pages are separate:
 
 | Destination        | Before #193                             | Current activation                   | Requested data                                                                                        |
 | ------------------ | --------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -79,22 +81,41 @@ them. There is no database migration or shared/private HTTP caching change.
 
 Hovering or focusing a workspace tab does not start a financial GraphQL read.
 Next Link may prefetch route code/RSC payloads; that prefetch does not authorize
-private data. Activating a destination starts its ordinary network-only read as
-listed above. Speculative financial reads are not useful while every activation
-requires a separate response, so tab navigation owns no financial intent request.
+private data. Tab navigation owns no speculative financial intent request.
 
-A cached record is not proof of current access. Every activation still waits for
-a fresh authorized result, including a return to a previously visited tab.
-No private result transfers between environments and no second store/provider exists.
-Relay network subscriptions own AbortControllers; cancellation before session lookup
-completes suppresses transport, and cancellation/disposal prevents late normalization.
+Read-only Group/Trip tabs, Household summary/membership/access, the initial
+Household expense traversal and first Activity pages may reuse complete Relay data
+for **30 seconds from its server fetch**. Relay owns the only private store and its
+native operation fetch timestamps; its release buffer retains at most 30 released
+operations. Memory pressure/collection, missing fields, expiry or explicit store
+invalidation can require another read sooner. Reuse does not extend the fetch time.
+Expiry is checked when a destination consumes a query, not by a polling timer. An
+already displayed screen does not discover remote revocation immediately at expiry.
+Reload creates a new account store. No private data is persisted for offline use.
 
-The parent Group or Household context owns foreground invalidation for embedded
-ledgers/feeds. Every focus/visibility/pageshow event synchronously clears private
-content and cancels obsolete work; reads start once after the event burst on an
-animation frame. Standalone Activity owns the same lifecycle. No pre-event read
-is reused as authorization. Manual refresh and successful financial mutations
-invalidate the owning context; financial success is never reported optimistically.
+A cached display never grants authorization to read or mutate on the server. Every
+actual API request independently enforces authentication and resource authorization.
+Current details, edit/member baselines, repayment forms, discovery and all mutation
+recovery reads retain their network-only safety contract. Continuation pages retain
+their signed traversal and anchor; reuse never merges a new traversal into old pages
+or derives authoritative totals from loaded rows.
+
+Foreground focus, visibility and pageshow events invalidate all reusable operations;
+private owners hide and coalesce their fresh read after the event burst. Manual
+refresh also invalidates before reading. Mutation responses conservatively invalidate
+the account store, including expenses, activity, balances and Household aggregates.
+Pre-invalidation in-flight query responses are rejected before normalization. Mutation
+success remains distinct from a failed subsequent refresh and is never optimistic.
+
+HTTP 401/403/404, GraphQL authentication/access codes and typed domain access Problems
+(including access-masked NOT_FOUND) dispose the entire financial account scope. This
+conservative reset removes dependent aggregates and retained query records together,
+aborts requests, hides protected UI and guards late responses. Reload rechecks access
+in a new scope. Logout, account switch and session expiry likewise dispose the scope.
+Recovery-query NOT_FOUND remains an operation outcome; transport failures, unavailable
+projections and legitimate empty lists do not become access denial. There is no cached
+fallback after denial. Retained references are released on owner unmount; normal
+navigation cancellation does not dispose an otherwise valid account.
 
 ## Verification
 

@@ -47,7 +47,17 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
             }
             if (actor) sessionStorage.setItem('kami-financial-subject', actor);
             else sessionStorage.removeItem('kami-financial-subject');
-            if (actor && !scope) scope = createScope(client, actor);
+            if (actor && !scope)
+              scope = createScope(client, actor, () => {
+                ticket++;
+                scope = undefined;
+                setAccess({
+                  loading: false,
+                  client,
+                  error:
+                    'Financial access is unavailable. Reload to check current access.',
+                });
+              });
             setAccess({ loading: false, client, scope });
           } catch {
             scope?.dispose();
@@ -83,7 +93,11 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
               const expires = snapshot.data.session?.expires_at;
               if (expires)
                 expiryTimer = setTimeout(
-                  () => void verify(),
+                  () => {
+                    scope?.dispose();
+                    scope = undefined;
+                    void verify();
+                  },
                   Math.max(0, expires * 1000 - Date.now()),
                 );
             }

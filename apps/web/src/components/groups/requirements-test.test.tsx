@@ -293,10 +293,13 @@ it('invalidates visible records on foregrounding before accepting another author
   expect(host.querySelector('nav[aria-label="Trip workspace"]')).not.toBeNull();
 });
 
-it('rereads the same source URL before revealing private fields on return', async () => {
+it('rereads an explicitly invalidated source URL before revealing private fields on return', async () => {
   mock.path = '/trips/T';
   await render(<GroupJourney trips initialGroup="T" />);
   await resolveGroup(groupResult('T'));
+  scope.environment.commitUpdate((store) => {
+    (store as typeof store & { invalidateStore(): void }).invalidateStore();
+  });
   mock.search = 'restore=return-token';
   await render(<GroupJourney trips initialGroup="T" />);
   expect(host.textContent).not.toContain('Pre-trip booking');

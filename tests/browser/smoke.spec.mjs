@@ -19,11 +19,13 @@ for (const workspace of [
     operation: 'householdWorkspaceQuery',
   },
 ]) {
-  test(`${workspace.name} tabs: intent is request-free and cached revisits require fresh authorization`, async ({
+  test(`${workspace.name} tabs: intent is request-free, recent revisits reuse data, and expired reads enforce denial`, async ({
     page,
     app,
   }) => {
     await app.authenticate();
+    const now = Date.now();
+    await page.clock.setFixedTime(now);
     await page.goto(`${workspace.base}?tab=overview`);
     const tabs = page.locator('[data-ui~="workspace-tabs"]');
     const overview = tabs.getByRole('link', { name: 'Overview', exact: true });
@@ -95,11 +97,34 @@ for (const workspace of [
     await expect(balances).toHaveAttribute('aria-current', 'page');
     await expect(overview).not.toHaveAttribute('aria-current', 'page');
 
+    const beforeRevisit = reads();
     await overview.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
-    const beforeRevisit = reads();
+    await balances.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
+    await expect(privateBalances).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    await page.goForward();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
+    await expect(privateBalances).toBeVisible();
+    await page.waitForTimeout(250);
+    expect(reads()).toBe(beforeRevisit);
+
+    await overview.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    // Advancing consumption time expires retained data without timers or polling.
+    await page.clock.setFixedTime(now + 30_001);
+    expect(reads()).toBe(beforeRevisit);
     const denied = app.hold(
       workspace.operation,
       workspace.name === 'Household'
@@ -114,6 +139,7 @@ for (const workspace of [
           },
     );
     await balances.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
     await denied.started;
     expect(reads()).toBe(beforeRevisit + 1);
     await expect(privateBalances).toHaveCount(0);
@@ -121,9 +147,7 @@ for (const workspace of [
     await expect(
       page
         .getByText(
-          workspace.name === 'Household'
-            ? 'Household access is unavailable. Refresh to check current access.'
-            : 'Group unavailable',
+          'Financial access is unavailable. Reload to check current access.',
           { exact: true },
         )
         .first(),
@@ -132,6 +156,33 @@ for (const workspace of [
     await expect(page.getByText('Brian owes you', { exact: true })).toHaveCount(
       0,
     );
+  });
+
+  test(`${workspace.name} foreground refresh reads again within the freshness window`, async ({
+    page,
+    app,
+  }) => {
+    await app.authenticate();
+    await page.clock.setFixedTime(Date.now());
+    await page.goto(`${workspace.base}?tab=balances`);
+    const privateBalances = page.locator(
+      workspace.name === 'Household'
+        ? '[data-ui~="household-balances"]'
+        : '[data-ui~="group-balances"]',
+    );
+    await expect(privateBalances).toBeVisible();
+    const reads = () =>
+      app.requests.filter(
+        (request) => request.operation === workspace.operation,
+      ).length;
+    const before = reads();
+    const refreshed = app.hold(workspace.operation);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await refreshed.started;
+    expect(reads()).toBe(before + 1);
+    await expect(privateBalances).toHaveCount(0);
+    await refreshed.release();
+    await expect(privateBalances).toBeVisible();
   });
 }
 
@@ -302,4 +353,44 @@ test('account lifecycle: a held private response cannot restore rows after sign-
   await page.goBack();
   await page.reload();
   await signedOut(page);
+});
+
+test('Household Expenses and Activity reuse initial reads through repeat and Back/Forward navigation', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.clock.setFixedTime(Date.now());
+  await page.goto('/household/expenses');
+  const row = page.locator('#ledger-expense-e1');
+  const empty = page.getByText('No activity yet.', { exact: true });
+  const tabs = page.locator('[data-ui~="workspace-tabs"]');
+  await expect(row).toBeVisible();
+  await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
+  await expect(page).toHaveURL('/household/activity');
+  await expect(empty).toBeVisible();
+  const operations = [
+    'expensesHouseholdInitialQuery',
+    'activityHouseholdQuery',
+  ];
+  const counts = () =>
+    operations.map(
+      (operation) =>
+        app.requests.filter((request) => request.operation === operation)
+          .length,
+    );
+  const firstVisits = counts();
+  expect(firstVisits).toEqual([1, 1]);
+  await tabs.getByRole('link', { name: 'Expenses', exact: true }).click();
+  await expect(page).toHaveURL('/household/expenses');
+  await expect(row).toBeVisible();
+  await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
+  await expect(page).toHaveURL('/household/activity');
+  await expect(empty).toBeVisible();
+  await page.goBack();
+  await expect(row).toBeVisible();
+  await page.goForward();
+  await expect(empty).toBeVisible();
+  await page.waitForTimeout(250);
+  expect(counts()).toEqual(firstVisits);
 });

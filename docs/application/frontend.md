@@ -57,11 +57,13 @@ Shared financial presentation receives ordinary, exact-value props and can
 still render in the gallery without a Relay provider.
 
 `NetworkQuery` is the common read boundary: an effect calls `loadQuery` with
-`network-only`, the child reads through `usePreloadedQuery`, and effect cleanup
+`network-only` by default (eligible read-only workspace callers explicitly opt into
+`store-or-network`), the child reads through `usePreloadedQuery`, and effect cleanup
 calls the reference's public `dispose()`. The effect owns that reference immediately,
 even when an access event removes the component before its reference reaches render.
 Disposal releases retention and cancels pending transport; completion alone does not
-permit reuse as the next visit's authorization. This explicit ownership also covers
+grant server authorization. Eligible navigation reuse is bounded by the account
+store’s 30-second expiry and explicit invalidation. This explicit ownership also covers
 React Strict Mode setup/cleanup. Loading uses Suspense, transport/render failures use
 the local error boundary, and feature owners inspect domain unions and report their
 loading/error status to the existing refresh surface. A fulfilled access Problem is
@@ -72,8 +74,8 @@ ledger filters and explicit refresh generation. A composed workspace query keeps
 its original variables while URL filters change. Its initial expense payload may
 seed the ledger only when the query reference's captured filters match the current
 canonical filters; otherwise the ledger performs a dedicated fresh read. Foreground invalidation hides the private
-owner synchronously, then starts a new read after the event burst. A fresh visit
-requires a response even if the same query is complete in the store. Group identity,
+owner synchronously, then starts a new read after the event burst. An eligible read-only visit can reuse a complete, unexpired operation; missing,
+expired or invalidated operations require a response. Group identity,
 Household source identity and current expense group/record identity are checked
 before rendering. Query errors and access denials retain the existing safe copy,
 recovery and navigation affordances. Panel-only URL changes preserve the active
@@ -126,7 +128,8 @@ successful mutation and a failed follow-up refresh are separate facts.
 ## Verification choices
 
 Use the generated operations and real account normalization in read-lifecycle tests.
-Cover cached data requiring a fresh response, delayed work after account/visit
+Cover bounded complete-data reuse, incomplete/expired/invalidated data requiring a
+fresh response, denial eviction and delayed work after account/visit
 replacement, early invalidation during request startup, cancellation, retention and
 Strict Mode. Fragment tests should show a normalized record update reaching its
 consumer without a copied result. Financial identity tests cover both write orders,
