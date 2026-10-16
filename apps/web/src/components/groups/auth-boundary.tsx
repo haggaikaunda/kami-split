@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { signInHref } from '@/lib/auth/routes';
 import { useFinancialSession } from './session';
+import { ScreenLoading } from '../ui/loading';
 
 /** Suppresses protected children during resolution, logout, and history restoration. */
 export function AuthBoundary({ children }: { children: React.ReactNode }) {
@@ -36,12 +37,7 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
     };
   }, []);
   if (publicPage) return children;
-  if (access.loading)
-    return (
-      <main>
-        <p role="status">Checking account access…</p>
-      </main>
-    );
+  if (access.loading) return <ScreenLoading />;
   if (!access.scope)
     return (
       <main>

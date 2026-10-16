@@ -33,7 +33,7 @@ import dashboardDocument, {
 import document, {
   type householdWorkspaceQuery,
 } from '@/lib/relay/__generated__/householdWorkspaceQuery.graphql';
-import { Skeleton } from '../ui/primitives';
+import { ContentLoading } from '../ui/loading';
 import type { householdMembersQuery } from '@/lib/relay/__generated__/householdMembersQuery.graphql';
 import { HouseholdAccess } from './household-access';
 import membersDocument from '@/lib/relay/__generated__/householdMembersQuery.graphql';
@@ -91,7 +91,12 @@ export function HouseholdWorkspace({
   return (
     <>
       {access.loading ? (
-        <p role="status">Loading workspace…</p>
+        <ContentLoading
+          layout={
+            current.toLowerCase() as
+              'overview' | 'expenses' | 'balances' | 'activity' | 'members'
+          }
+        />
       ) : access.error ? (
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
@@ -169,15 +174,18 @@ function HouseholdMembersRead({ scope }: { scope: FinancialScope }) {
       ? 'Household membership is unavailable. Refresh to check current access.'
       : '';
   const busy = !error && (accessState.busy || memberState.busy);
-  const loading = (
-    <Skeleton size="workspace" label="Loading Household membership" />
-  );
+  const loading = <ContentLoading layout="members" />;
   const failure = (
     <HouseholdMembershipFailure onDenied={() => setDenied(true)} />
   );
   return (
     <WorkspaceLoading busy={busy}>
-      <WorkspaceRefresh busy={busy} error={error} onRefresh={reset} />
+      <WorkspaceRefresh
+        contentPending
+        busy={busy}
+        error={error}
+        onRefresh={reset}
+      />
       {active ? (
         <HouseholdAccess
           reuse={version === 0}
@@ -298,7 +306,9 @@ function HouseholdSummaryRead({
     (state.error
       ? 'Household data is unavailable. No zero balance or settled status can be established.'
       : '');
-  const loading = <Skeleton size="workspace" label="Loading Household" />;
+  const loading = (
+    <ContentLoading layout={current === 'Balances' ? 'balances' : 'overview'} />
+  );
   return (
     <WorkspaceLoading busy={state.busy}>
       {saved && (
@@ -307,7 +317,12 @@ function HouseholdSummaryRead({
           refresh; unavailable data does not undo your edit.
         </p>
       )}
-      <WorkspaceRefresh busy={state.busy} error={error} onRefresh={reset} />
+      <WorkspaceRefresh
+        contentPending
+        busy={state.busy}
+        error={error}
+        onRefresh={reset}
+      />
       {active ? (
         <NetworkQuery<householdWorkspaceQuery>
           reuse={version === 0}
@@ -439,7 +454,7 @@ export function HouseholdContent({
             onRefresh={onRefresh}
           />
         ) : (
-          <p role="status">Loading Household membership…</p>
+          <ContentLoading layout="members" />
         )
       ) : current === 'Activity' ? (
         <ActivityFeed scope={scope} groupId="" />

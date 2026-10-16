@@ -30,12 +30,9 @@ module.exports = async function verifyIssue269({
     await header
       .getByRole('link', { name: 'Add expense', exact: true })
       .waitFor();
-    await page.waitForFunction(
-      () =>
-        !document.querySelector(
-          '[data-ui~="workspace-loading-surface"][aria-busy=true]',
-        ),
-    );
+    await page
+      .locator('[data-ui="content-loading"]:visible')
+      .waitFor({ state: 'hidden' });
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
     assert.equal(await page.locator('[data-ui~="banner-action"]').count(), 1);

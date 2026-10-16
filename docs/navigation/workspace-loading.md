@@ -3,15 +3,18 @@
 Issue #193 keeps the sole root `FinancialSession` and its actor-scoped Relay
 store across client navigation. `WorkspaceTabs` uses Next Link, real hrefs,
 `aria-current`, native modified clicks, and `scroll={false}`. `useLinkStatus`
-shows route-pending feedback; client query skeletons separately describe data
-loading. Route prefetch only warms Next code/RSC payloads, not client-effect
+shows a reserved decorative route-pending cue without shifting labels; the
+destination ContentLoading separately owns the single data-loading announcement.
+See the [shared loading presentations](../application/ui.md#loading-presentations)
+for anti-flash/slow timing, skeleton variants and caller responsibilities. Route prefetch only warms Next code/RSC payloads, not client-effect
 Relay queries.
 
 The signed-in Group navigation remains outside the financial destination reader.
 Household's signed-in header/navigation live in a shared layout across Overview,
 Expenses, Balances, Activity and Members. The [shared auth boundary](../application/web-auth-routing.md) verifies every page request before rendering and suppresses the entire shell during browser session resolution or logout; only `/sign-in` is public. Private Group names/member fields are
-removed with the private reader on tab changes or invalidation; they are never
-used as public loading placeholders. Tabs retain the committed route's current
+removed with the private reader on tab changes or invalidation; a generic public
+Group/Trip banner preserves the header area while the read is pending. Private
+fields are never used as public loading placeholders. Tabs retain the committed route's current
 state while Next is pending. A destination never displays the previous tab's
 financial content.
 

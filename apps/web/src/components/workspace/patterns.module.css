@@ -117,8 +117,38 @@
   background: var(--color-primary);
 }
 .workspace-navigation-pending {
-  font-size: 0.875rem;
-  margin-inline-start: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-start: 0.125rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.workspace-navigation-pending[data-pending] {
+  background: var(--color-subtle);
+}
+.navigation-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: navigation-pulse 1.5s ease-in-out infinite;
+}
+@keyframes navigation-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navigation-dot {
+    animation: none;
+  }
 }
 .space-chip {
   display: inline-block;

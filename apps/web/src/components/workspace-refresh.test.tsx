@@ -138,3 +138,38 @@ it('reports completion for owning-reader automatic refreshes without a button or
   expect(refresh).not.toHaveBeenCalled();
   expect(host.querySelector('button')).toBeNull();
 });
+
+it('hands pending speech to the content loader and coalesces explicit read retry with gestures', () => {
+  const refresh = vi.fn();
+  const render = (busy: boolean, error = '') =>
+    act(() =>
+      root.render(
+        <WorkspaceRefresh
+          busy={busy}
+          error={error}
+          onRefresh={refresh}
+          contentPending
+        />,
+      ),
+    );
+  render(true);
+  expect(host.querySelector('[role="status"]')).toBeNull();
+  render(false, 'offline');
+  const retry = host.querySelector('button')!;
+  expect(retry.textContent).toBe('Try again');
+  act(() => {
+    retry.click();
+    retry.click();
+  });
+  pull();
+  expect(refresh).toHaveBeenCalledTimes(1);
+  render(true);
+  expect(host.querySelector('button')).toBeNull();
+  expect(host.querySelector('[role="status"]')).toBeNull();
+  render(false, 'offline');
+  act(() => host.querySelector('button')!.click());
+  expect(refresh).toHaveBeenCalledTimes(2);
+  render(true);
+  render(false);
+  expect(host.textContent).toBe('Up to date');
+});

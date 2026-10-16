@@ -537,8 +537,8 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   const control = () =>
     pullRefresh(host.querySelector('[data-ui~="workspace-refresh"]')!);
   const status = () =>
-    host.querySelector('[data-ui~="workspace-refresh"] [role=status]')!
-      .textContent;
+    host.querySelector('[data-ui~="workspace-refresh"] [role=status]')
+      ?.textContent ?? '';
   await act(async () => control());
   expect(requests[2].name).toBe('journeyWorkspaceQuery');
   await act(async () => requests[2].next(result));
@@ -549,20 +549,26 @@ it('keeps filtered Activity refresh pending through its child read and exposes r
   expect(
     host.querySelector('[data-ui~="workspace-refresh"] button'),
   ).toBeNull();
-  expect(status()).toContain('Updating');
+  expect(status()).toBe('');
+  expect(
+    host.querySelector('[data-ui="content-loading"][data-layout="activity"]'),
+  ).not.toBeNull();
   expect(status()).not.toContain('Up to date');
   await act(async () => control());
   expect(requests).toHaveLength(4);
   await act(async () => requests[3].fail());
   expect(
-    host.querySelector('[data-ui~="workspace-refresh"] button'),
-  ).toBeNull();
+    host.querySelector('[data-ui~="workspace-refresh"] button')?.textContent,
+  ).toBe('Try again');
   expect(status()).toContain('Try again');
   expect(status()).not.toContain('Up to date');
   await act(async () => control());
   expect(requests[4].name).toBe('journeyWorkspaceQuery');
   await act(async () => requests[4].next(result));
-  expect(status()).toContain('Updating');
+  expect(status()).toBe('');
+  expect(
+    host.querySelector('[data-ui="content-loading"][data-layout="activity"]'),
+  ).not.toBeNull();
   expect(requests[5].name).toBe('activityGroupQuery');
   await act(async () => requests[5].next({ groupActivity: feed }));
   expect(status()).toContain('Up to date');

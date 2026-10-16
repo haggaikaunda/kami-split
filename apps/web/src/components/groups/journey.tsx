@@ -13,8 +13,10 @@ import {
   WorkspaceTabs,
   WorkspacePrivacy,
   workspaceSections,
+  WorkspaceHeader,
 } from '../workspace/patterns';
-import { Skeleton } from '../ui/primitives';
+import { ContentLoading, type LoadingLayout } from '../ui/loading';
+import { createPortal } from 'react-dom';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { readInlineData } from 'relay-runtime';
@@ -99,7 +101,7 @@ export function GroupJourney({
   }
   const signInReturn = pathname + (returnQuery.size ? `?${returnQuery}` : '');
   const body = access.loading ? (
-    <p role="status">Loading workspace…</p>
+    <ContentLoading layout={currentTab.toLowerCase() as LoadingLayout} />
   ) : access.error ? (
     <p role="alert">{access.error}</p>
   ) : !access.scope ? (
@@ -257,7 +259,24 @@ function GroupDetails({
     return () => cancelAnimationFrame(frame);
   }, [saved, state.busy, scope]);
   const error = domainError || (state.error ? message('UNAVAILABLE') : '');
-  const loading = <Skeleton size="workspace" label="Loading workspace" />;
+  const loading = (
+    <>
+      {!household &&
+        headerTarget &&
+        createPortal(
+          <WorkspaceHeader
+            title={pathname.startsWith('/trips/') ? 'Trip' : 'Group'}
+            appearance={pathname.startsWith('/trips/') ? 'trip' : 'group'}
+          />,
+          headerTarget,
+        )}
+      <ContentLoading
+        layout={
+          expense ? 'expenses' : repayment ? 'balances' : (tab as LoadingLayout)
+        }
+      />
+    </>
+  );
   const failure = (
     <GroupFailure
       household={household}
@@ -267,7 +286,7 @@ function GroupDetails({
   );
   return (
     <WorkspaceLoading busy={state.busy}>
-      {!household && heading && (
+      {!household && !state.busy && heading && (
         <h1 tabIndex={-1} data-page-heading>
           {heading}
         </h1>
@@ -278,6 +297,7 @@ function GroupDetails({
         </p>
       )}
       <WorkspaceRefresh
+        contentPending
         busy={state.busy || activityRead.busy}
         error={error || activityRead.error}
         onRefresh={() => {
@@ -500,7 +520,7 @@ function GroupDestination({
     else next.delete('activityKind');
     router.replace(`${pathname}?${next}`, { scroll: false });
   };
-  if (redirect) return <Skeleton size="workspace" label="Loading workspace" />;
+  if (redirect) return <ContentLoading layout={tab as LoadingLayout} />;
   if (code || !group)
     return (
       <GroupFailure

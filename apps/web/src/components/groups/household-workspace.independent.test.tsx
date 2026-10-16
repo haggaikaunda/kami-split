@@ -381,7 +381,8 @@ it('foreground refresh removes prior authorized content while a new read is pend
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   expect(host.textContent).not.toContain('Maui');
-  expect(host.textContent).toContain('Loading Household');
+  expect(host.querySelector('[data-ui="content-loading"]')).not.toBeNull();
+  expect(host.querySelector('[aria-busy="true"]')).not.toBeNull();
   await act(async () => pending.resolve(result()));
   expect(host.textContent).toContain('Maui');
   visibility.mockRestore();

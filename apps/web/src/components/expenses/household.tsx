@@ -16,13 +16,13 @@ import { expenseFilterText, expenseFilter } from '@/lib/relay/expense-filter';
 import { useFinancialSession } from '@/components/groups/session';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { Skeleton } from '../ui/primitives';
+import { ContentLoading } from '../ui/loading';
 import { ExpenseLedger } from './ledger';
 
 export function HouseholdExpenses() {
   const access = useFinancialSession();
   return access.loading ? (
-    <Skeleton size="workspace" label="Loading workspace" />
+    <ContentLoading layout="expenses" />
   ) : access.error ? (
     <p role="alert">{access.error}</p>
   ) : !access.scope ? (
@@ -127,6 +127,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     viewer = context?.result.viewer;
   const refreshControl = (
     <WorkspaceRefresh
+      contentPending
       busy={!context && !error}
       error={error}
       onRefresh={() => {
@@ -152,7 +153,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
       <WorkspaceLoading busy={!context && !error}>
         {savedNotice}
         {refreshControl}
-        <Skeleton size="workspace" label="Loading expenses" />
+        <ContentLoading layout="expenses" />
       </WorkspaceLoading>
     );
   return (

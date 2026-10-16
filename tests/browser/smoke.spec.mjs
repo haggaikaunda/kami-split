@@ -1,4 +1,9 @@
+import { createRequire } from 'node:module';
 import { test, expect } from './fixtures.mjs';
+
+const axePath = createRequire(
+  new URL('../../apps/web/package.json', import.meta.url),
+).resolve('axe-core/axe.min.js');
 
 const forbidden =
   '[data-ui~="workspace-navigation"],[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],[data-ui~="account-heading"]';
@@ -86,10 +91,7 @@ for (const workspace of [
     await expect(privateBalances).toHaveCount(0);
     await expect(
       page.getByRole('status').filter({
-        hasText:
-          workspace.name === 'Household'
-            ? 'Loading Household…'
-            : 'Loading workspace…',
+        hasText: 'Loading balances…',
       }),
     ).toBeVisible();
     await fresh.release();
@@ -393,4 +395,428 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
   await expect(empty).toBeVisible();
   await page.waitForTimeout(250);
   expect(counts()).toEqual(firstVisits);
+});
+
+test('loading handoff: route cue, one slow content status, failure and one explicit retry preserve navigation and focus', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const routeStarted = Promise.withResolvers();
+  const routeReleased = Promise.withResolvers();
+  let heldRoute = false;
+  await page.route('**/groups/F?*', async (route) => {
+    if (
+      !heldRoute &&
+      new URL(route.request().url()).searchParams.get('tab') === 'balances' &&
+      route.request().headers().rsc === '1'
+    ) {
+      heldRoute = true;
+      routeStarted.resolve();
+      await routeReleased.promise;
+    }
+    await route.fallback();
+  });
+  try {
+    await page.goto('/groups/F?tab=overview');
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    const tabs = page.locator('[data-ui~="workspace-tabs"]');
+    const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
+    const before = await balances.boundingBox();
+    const reads = () =>
+      app.requests.filter((r) => r.operation === 'journeyWorkspaceQuery')
+        .length;
+    const baseline = reads();
+    const pending = app.hold('journeyWorkspaceQuery', undefined, {
+      status: 503,
+    });
+    await balances.focus();
+    await page.keyboard.press('Enter');
+    await routeStarted.promise;
+    const cue = balances.locator('[data-ui="workspace-navigation-pending"]');
+    await expect(cue).toHaveAttribute('data-pending', 'true');
+    await expect(cue.locator('span')).not.toHaveCount(0);
+    await expect(
+      tabs.getByRole('link', { name: 'Overview', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-ui="screen-loading"]')).toHaveCount(0);
+    expect(await balances.boundingBox()).toEqual(before);
+    routeReleased.resolve();
+    await pending.started;
+    const loading = page.locator('[data-ui="content-loading"]:visible');
+    await expect(loading).toHaveAttribute('data-layout', 'balances');
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading balances…' }),
+    ).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(1);
+    await expect(
+      page.locator('[data-ui="workspace-navigation-pending"][data-pending]'),
+    ).toHaveCount(0);
+    await expect(loading.locator('[aria-busy="true"]')).toHaveCount(1);
+    await expect(
+      loading.locator('[aria-busy="true"] [role="status"]'),
+    ).toHaveCount(0);
+    await expect(balances).toBeFocused();
+    await expect(balances).toHaveAttribute('aria-current', 'page');
+    expect(await balances.boundingBox()).toEqual(before);
+    await expect(page.locator('[data-ui~="group-balances"]')).toHaveCount(0);
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toBeVisible({ timeout: 10_000 });
+    expect(reads()).toBe(baseline + 1);
+    await pending.release();
+    await expect(loading).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Try again', exact: true }),
+    ).toBeVisible();
+    const retry = app.hold('journeyWorkspaceQuery');
+    await page.getByRole('button', { name: 'Try again', exact: true }).click();
+    await retry.started;
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading balances…' }),
+    ).toBeVisible();
+    await expect(page.getByRole('status')).toHaveCount(1);
+    expect(reads()).toBe(baseline + 2);
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toBeVisible({ timeout: 10_000 });
+    expect(reads()).toBe(baseline + 2);
+    await retry.release();
+    await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+    await expect(loading).toHaveCount(0);
+    await page.waitForTimeout(200);
+    expect(reads()).toBe(baseline + 2);
+  } finally {
+    routeReleased.resolve();
+  }
+});
+
+test('rapid destinations: the latest balance view survives an older expense reply and navigation away', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=overview');
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  const tabs = page.locator('[data-ui~="workspace-tabs"]');
+  const readyTabBounds = await tabs.boundingBox();
+  const expenses = app.hold('journeyWorkspaceQuery');
+  await tabs.getByRole('link', { name: 'Expenses', exact: true }).click();
+  await expenses.started;
+  await expect(
+    page.locator('[data-ui="content-loading"]:visible'),
+  ).toHaveAttribute('data-layout', 'expenses');
+  expect(await tabs.boundingBox()).toEqual(readyTabBounds);
+  const balances = app.hold('journeyWorkspaceQuery');
+  await tabs.getByRole('link', { name: 'Balances', exact: true }).click();
+  await balances.started;
+  await expect(
+    page.locator('[data-ui="content-loading"]:visible'),
+  ).toHaveAttribute('data-layout', 'balances');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Loading balances…' }),
+  ).toBeVisible();
+  await expect(page.getByRole('status')).toHaveCount(1);
+  await expect(
+    page.locator('[data-ui="workspace-navigation-pending"][data-pending]'),
+  ).toHaveCount(0);
+  await balances.release();
+  await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+  await expenses.release();
+  await expect(page).toHaveURL('/trips/T?tab=balances');
+  await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(page.locator('[data-ui="content-loading"]:visible')).toHaveCount(
+    0,
+  );
+  const abandoned = app.hold('expensesHouseholdInitialQuery');
+  await page.getByRole('link', { name: 'Household', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  await page
+    .locator('[data-ui~="workspace-tabs"]')
+    .getByRole('link', { name: 'Expenses', exact: true })
+    .click();
+  await abandoned.started;
+  await page.getByRole('link', { name: 'Account', exact: true }).click();
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await abandoned.release();
+  await expect(page).toHaveURL('/account');
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-ui="content-loading"]:visible')).toHaveCount(
+    0,
+  );
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+});
+
+test('loading layout: reduced motion, both themes, narrow screens and doubled text keep content below reachable tabs', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const pending = app.hold('expensesHouseholdInitialQuery');
+  await page.goto('/household/expenses');
+  await pending.started;
+  const loading = page.locator('[data-ui="content-loading"]:visible');
+  await expect(
+    page.getByText('Loading expenses…', { exact: true }),
+  ).toBeVisible();
+  await expect(loading).toHaveAttribute('data-layout', 'expenses');
+  await page.addScriptTag({ path: axePath });
+  expect(
+    await loading.evaluate(async (element) =>
+      (await globalThis.axe.run(element)).violations.map(
+        ({ id, description, nodes }) => ({
+          id,
+          description,
+          targets: nodes.map(({ target }) => target),
+        }),
+      ),
+    ),
+  ).toEqual([]);
+  for (const width of [320, 390, 1280]) {
+    for (const theme of ['light', 'dark']) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.fontSize = '200%';
+      }, theme);
+      await page.waitForTimeout(100);
+      const geometry = await loading.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const tabs = document
+          .querySelector('[data-ui~="workspace-tabs"]')
+          .getBoundingClientRect();
+        const shapes = [
+          ...element.querySelectorAll(
+            '[aria-hidden="true"], [aria-hidden="true"] *',
+          ),
+        ];
+        return {
+          top: rect.top,
+          bottomOfTabs: tabs.bottom,
+          left: rect.left,
+          right: rect.right,
+          viewport: innerWidth,
+          rootText: getComputedStyle(document.documentElement).fontSize,
+          overflow: document.documentElement.scrollWidth - innerWidth,
+          animations: shapes.map(
+            (shape) => getComputedStyle(shape).animationName,
+          ),
+        };
+      });
+      expect(geometry.rootText).toBe('32px');
+      expect(geometry.top).toBeGreaterThanOrEqual(geometry.bottomOfTabs);
+      expect(geometry.left).toBeGreaterThanOrEqual(0);
+      expect(geometry.right).toBeLessThanOrEqual(geometry.viewport + 1);
+      expect(geometry.overflow).toBeLessThanOrEqual(1);
+      expect(geometry.animations.every((name) => name === 'none')).toBe(true);
+      await expect(page.getByRole('status')).toHaveCount(1);
+      await expect(page.locator('[data-ui="screen-loading"]')).toHaveCount(0);
+      await page.screenshot({
+        path: testInfo.outputPath(`loading-${width}-${theme}-200pct.png`),
+        fullPage: true,
+      });
+    }
+  }
+  await pending.release();
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await expect(loading).toHaveCount(0);
+});
+
+test('fresh navigation: warm destination reads display without visible loading feedback', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/groups/F?tab=overview');
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  const tabs = page.locator('[data-ui~="workspace-tabs"]');
+  const overview = tabs.getByRole('link', { name: 'Overview', exact: true });
+  const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
+  await balances.click();
+  await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+  const before = app.requests.length;
+  await page.evaluate(() => {
+    globalThis.loadingFrames = [];
+    globalThis.watchLoading = true;
+    const frame = () => {
+      for (const surface of document.querySelectorAll(
+        '[data-ui="content-loading"], [data-ui="workspace-navigation-pending"]',
+      )) {
+        if (
+          !surface.getBoundingClientRect().height ||
+          !surface.getBoundingClientRect().width
+        )
+          continue;
+        if (
+          surface.textContent.trim() ||
+          [...surface.querySelectorAll('[data-ui="skeleton"], span')].some(
+            (shape) => shape.getBoundingClientRect().height > 0,
+          )
+        )
+          globalThis.loadingFrames.push(surface.textContent);
+      }
+      if (globalThis.watchLoading) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  await overview.click();
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  await balances.click();
+  await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+  await page.waitForTimeout(200);
+  const flashes = await page.evaluate(() => {
+    globalThis.watchLoading = false;
+    return globalThis.loadingFrames;
+  });
+  expect(flashes).toEqual([]);
+  expect(app.requests).toHaveLength(before);
+});
+
+test('rapid route destinations: abandoned link feedback clears before its late route response', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const started = Promise.withResolvers();
+  const released = Promise.withResolvers();
+  let held = false;
+  await page.route('**/groups/F?*', async (route) => {
+    if (
+      !held &&
+      new URL(route.request().url()).searchParams.get('tab') === 'expenses' &&
+      route.request().headers().rsc === '1'
+    ) {
+      held = true;
+      started.resolve();
+      await released.promise;
+    }
+    await route.fallback();
+  });
+  try {
+    await page.goto('/groups/F?tab=overview');
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    const tabs = page.locator('[data-ui~="workspace-tabs"]');
+    const expenseLink = tabs.getByRole('link', {
+      name: 'Expenses',
+      exact: true,
+    });
+    const balanceLink = tabs.getByRole('link', {
+      name: 'Balances',
+      exact: true,
+    });
+    await expenseLink.click();
+    await started.promise;
+    await expect(
+      expenseLink.locator('[data-ui="workspace-navigation-pending"]'),
+    ).toHaveAttribute('data-pending', 'true');
+    const balances = app.hold('journeyWorkspaceQuery');
+    await balanceLink.click();
+    await balances.started;
+    await expect(
+      page.getByText('Loading balances…', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      expenseLink.locator('[data-ui="workspace-navigation-pending"]'),
+    ).not.toHaveAttribute('data-pending', 'true');
+    await expect(balanceLink).toHaveAttribute('aria-current', 'page');
+    released.resolve();
+    await balances.release();
+    await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+    await page.waitForTimeout(200);
+    await expect(page).toHaveURL('/groups/F?tab=balances');
+    expect(
+      app.requests.filter(
+        (request) =>
+          request.operation === 'journeyWorkspaceQuery' &&
+          request.variables.ledger,
+      ),
+    ).toEqual([]);
+    await expect(
+      page.locator('[data-ui="workspace-navigation-pending"][data-pending]'),
+    ).toHaveCount(0);
+  } finally {
+    released.resolve();
+  }
+});
+
+test('account resolution: the slow opening screen stays public and accessible at enlarged mobile and desktop sizes', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const started = Promise.withResolvers();
+  const released = Promise.withResolvers();
+  await page.route('**/auth/v1/user', async (route) => {
+    started.resolve();
+    await released.promise;
+    await route.fallback();
+  });
+  try {
+    await page.goto('/account');
+    await started.promise;
+    const screen = page.locator('[data-ui="screen-loading"]');
+    await expect(
+      page.getByRole('heading', { name: 'Getting things ready', exact: true }),
+    ).toBeVisible();
+    await expect(page.locator(forbidden)).toHaveCount(0);
+    await expect(page.getByText('Private synthetic person')).toHaveCount(0);
+    await expect(page.getByRole('status')).toHaveCount(1);
+    await expect(
+      page.getByRole('region', { name: 'Account content' }),
+    ).toHaveAttribute('aria-busy', 'true');
+    await page.addScriptTag({ path: axePath });
+    expect(
+      await screen.evaluate(async (element) =>
+        (await globalThis.axe.run(element)).violations.map(({ id }) => id),
+      ),
+    ).toEqual([]);
+    for (const width of [320, 390, 1280]) {
+      for (const theme of ['light', 'dark']) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.fontSize = '200%';
+        }, theme);
+        const layout = await screen.evaluate((element) => ({
+          overflow: document.documentElement.scrollWidth - innerWidth,
+          animation: [
+            ...element.querySelectorAll('[aria-hidden="true"] span'),
+          ].map((dot) => getComputedStyle(dot).animationName),
+        }));
+        expect(layout.overflow).toBeLessThanOrEqual(1);
+        expect(layout.animation.every((name) => name === 'none')).toBe(true);
+        await page.screenshot({
+          path: testInfo.outputPath(`opening-${width}-${theme}-200pct.png`),
+          fullPage: true,
+        });
+      }
+    }
+    await expect(
+      page.getByRole('heading', {
+        name: 'Still getting things ready',
+        exact: true,
+      }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(forbidden)).toHaveCount(0);
+    released.resolve();
+    await expect(page.getByLabel('Display name', { exact: true })).toHaveValue(
+      'Private synthetic person',
+    );
+    await expect(screen).toHaveCount(0);
+  } finally {
+    released.resolve();
+  }
 });

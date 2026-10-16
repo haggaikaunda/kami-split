@@ -5,6 +5,7 @@ import { cx } from '../ui/classnames';
 import Link, { useLinkStatus } from 'next/link';
 import type { ReactNode } from 'react';
 import { AppIcon } from '../workspace-identity';
+import { useLoadingPhase } from '../ui/loading';
 
 /** Context belongs in the header; financial data stays on a plain surface. */
 export function WorkspaceHeader({
@@ -117,15 +118,23 @@ export function WorkspaceTabs({
 
 function NavigationPending() {
   const { pending } = useLinkStatus();
-  return pending ? (
+  return (
     <span
       data-ui="workspace-navigation-pending"
       className={workspaceStyles['workspace-navigation-pending']}
-      role="status"
+      data-pending={pending || undefined}
+      aria-hidden="true"
     >
-      Opening…
+      {pending && <PendingDot />}
     </span>
-  ) : null;
+  );
+}
+
+function PendingDot() {
+  const phase = useLoadingPhase();
+  return phase === 'quiet' ? null : (
+    <span className={workspaceStyles['navigation-dot']} />
+  );
 }
 
 export function SpaceChip({ children }: { children: ReactNode }) {

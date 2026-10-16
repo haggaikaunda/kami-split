@@ -1,4 +1,5 @@
 'use client';
+import { ContentLoading } from '../ui/loading';
 
 import { cx } from '../ui/classnames';
 
@@ -13,7 +14,7 @@ import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { workspaceFetchPolicy, NetworkQuery } from '@/lib/relay/query';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
-import { Button, Skeleton } from '../ui/primitives';
+import { Button } from '../ui/primitives';
 import { Money } from '../financial/presentation';
 import { WorkspaceHeader, WorkspaceTabs } from '../workspace/patterns';
 import type { FinancialScope } from '@/lib/relay/environment';
@@ -72,7 +73,7 @@ export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
         }
       />
       {access.loading ? (
-        <p role="status">Loading workspace…</p>
+        <ContentLoading layout="activity" />
       ) : access.error ? (
         <p role="alert">{access.error}</p>
       ) : !access.scope ? (
@@ -264,7 +265,12 @@ export function ActivityFeed({
       )}
     >
       {!managedRefresh && (
-        <WorkspaceRefresh busy={loading} error={error} onRefresh={reset} />
+        <WorkspaceRefresh
+          contentPending
+          busy={loading}
+          error={error}
+          onRefresh={reset}
+        />
       )}
       <section
         data-ui="activity-feed-panel form-region"
@@ -299,7 +305,7 @@ export function ActivityFeed({
           </div>
         </header>
         {loading ? (
-          <Skeleton size="workspace" label="Loading activity" />
+          <ContentLoading layout="activity" />
         ) : error ? (
           <p role="alert">{error}</p>
         ) : page && page.edges.length === 0 ? (

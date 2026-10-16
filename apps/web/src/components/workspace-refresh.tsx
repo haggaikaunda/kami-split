@@ -2,16 +2,20 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import refreshFeatureStyles from './workspace-refresh.module.css';
+import { Button } from './ui/primitives';
 
 /** One gesture/status owner per network read. Browser reload remains available. */
 export function WorkspaceRefresh({
   busy,
   error,
   onRefresh,
+  contentPending = false,
 }: {
   busy: boolean;
   error?: string;
   onRefresh: () => void;
+  /** The content presentation owns the pending announcement. */
+  contentPending?: boolean;
 }) {
   const [pull, setPull] = useState(0);
   const [requested, setRequested] = useState(false);
@@ -23,13 +27,14 @@ export function WorkspaceRefresh({
     if (busy) setRequested(true);
   }
   const locked = useRef(false);
-  const refresh = useEffectEvent(() => {
+  const refresh = () => {
     if (busy || locked.current) return;
     locked.current = true;
     setRequested(true);
     window.dispatchEvent(new Event('workspace-refresh-request'));
     onRefresh();
-  });
+  };
+  const gestureRefresh = useEffectEvent(refresh);
   useEffect(() => {
     if (!busy) locked.current = false;
   }, [busy, error]);
@@ -91,7 +96,7 @@ export function WorkspaceRefresh({
     const end = () => {
       const ready = distance >= 80;
       cancel();
-      if (ready) refresh();
+      if (ready) gestureRefresh();
     };
     document.addEventListener('touchstart', begin, { passive: true });
     document.addEventListener('touchmove', move, { passive: false });
@@ -106,7 +111,9 @@ export function WorkspaceRefresh({
     };
   }, []);
   const status = busy
-    ? 'Updating…'
+    ? contentPending
+      ? ''
+      : 'Updating…'
     : error
       ? 'Couldn’t refresh. Try again.'
       : pull >= 80
@@ -121,9 +128,16 @@ export function WorkspaceRefresh({
       data-ui="workspace-refresh"
       className={refreshFeatureStyles['workspace-refresh']}
     >
-      <span role="status" aria-live="polite">
-        {status}
-      </span>
+      {status && (
+        <span role="status" aria-live="polite">
+          {status}
+        </span>
+      )}
+      {error && !busy && (
+        <Button tone="secondary" onClick={() => refresh()}>
+          Try again
+        </Button>
+      )}
     </div>
   );
 }
