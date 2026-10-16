@@ -12,7 +12,7 @@
   .workspace-header--compact
 ) {
   --banner-art: url('/art/household.png');
-  min-height: 10.25rem;
+  min-height: max(10.25rem, var(--workspace-header-height, 0px));
   padding: 1.6875rem 1.5rem;
   border-radius: var(--radius-card);
   color: var(--color-banner-title);
@@ -177,7 +177,7 @@
     .workspace-header--group,
     .workspace-header--compact
   ) {
-    min-height: 11rem;
+    min-height: max(11rem, var(--workspace-header-height, 0px));
     padding: 21px 16px 17px;
     gap: 0.625rem;
     align-items: flex-start;

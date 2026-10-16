@@ -6,6 +6,7 @@ import { useExpenseEntry } from '@/components/expenses/entry';
 
 import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
+import { useLayoutEffect, useRef } from 'react';
 import {
   overviewDate,
   overviewPeriod,
@@ -123,6 +124,23 @@ export function GroupWorkspaceContent({
   onDenied: () => void;
 }) {
   const params = useSearchParams();
+  const header = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (!headerTarget || !showHeader) return;
+    headerTarget.style.removeProperty('--workspace-header-height');
+    headerTarget.style.minHeight = '';
+    return () => {
+      // Layout cleanup runs before React hides/removes the private header.
+      // Keep only geometry in the stable host, including its bottom margin.
+      const height = header.current?.getBoundingClientRect().height;
+      if (!height) return;
+      headerTarget.style.minHeight = `${headerTarget.getBoundingClientRect().height}px`;
+      headerTarget.style.setProperty(
+        '--workspace-header-height',
+        `${height}px`,
+      );
+    };
+  }, [headerTarget, showHeader]);
   const expenseEntry = useExpenseEntry();
   const requested = params.get('tab');
   const current: WorkspaceSection =
@@ -141,6 +159,7 @@ export function GroupWorkspaceContent({
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
   const workspaceHeader = (
     <WorkspaceHeader
+      ref={header}
       title={group.name}
       appearance={
         group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'

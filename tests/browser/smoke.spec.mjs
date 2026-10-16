@@ -5,6 +5,145 @@ const axePath = createRequire(
   new URL('../../apps/web/package.json', import.meta.url),
 ).resolve('axe-core/axe.min.js');
 
+for (const workspace of [
+  { name: 'Group', path: '/groups/F', privateName: 'Friends' },
+  {
+    name: 'Trip',
+    path: '/trips/T',
+    privateName: 'Maui 2026 with a very long friendly space name',
+  },
+]) {
+  for (const width of [320, 390]) {
+    test(`${workspace.name} enlarged header geometry at ${width}px stays stable during a protected read`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await app.authenticate();
+      await page.goto(`${workspace.path}?tab=overview`);
+      await expect(
+        page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+      ).toBeVisible();
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '200%';
+      });
+      const tabs = page.locator('[data-ui~="workspace-tabs"]');
+      const balances = tabs.getByRole('link', {
+        name: 'Balances',
+        exact: true,
+      });
+      await balances.scrollIntoViewIfNeeded();
+      const geometry = () =>
+        page.evaluate(() => {
+          const box = (selector) => {
+            const element = [...document.querySelectorAll(selector)].find(
+              (element) => element.getClientRects().length > 0,
+            );
+            if (!element) return null;
+            const { x, y, width, height } = element.getBoundingClientRect();
+            return { x, top: y + scrollY, width, height };
+          };
+          return {
+            header: box('[data-ui~="workspace-header"]'),
+            tabs: box('[data-ui~="workspace-tabs"]'),
+            font: getComputedStyle(document.documentElement).fontSize,
+            scrollY,
+          };
+        });
+      const ready = await geometry();
+      const reads = () =>
+        app.requests.filter(
+          (request) => request.operation === 'journeyWorkspaceQuery',
+        ).length;
+      const initialReads = reads();
+      await page.screenshot({
+        path: testInfo.outputPath('ready-200pct.png'),
+        fullPage: true,
+      });
+      const response = app.hold('journeyWorkspaceQuery', undefined, {
+        status: 503,
+      });
+      await balances.click();
+      await response.started;
+      await expect(
+        page.getByText('Loading balances…', { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(workspace.privateName, { exact: true }),
+      ).toHaveCount(0);
+      const pending = await geometry();
+      await page.screenshot({
+        path: testInfo.outputPath('pending-200pct.png'),
+        fullPage: true,
+      });
+      expect(ready.font).toBe('32px');
+      expect(pending.font).toBe('32px');
+      expect
+        .soft(pending.header.height, 'Pending header preserves ready height')
+        .toBeCloseTo(ready.header.height, 0);
+      expect
+        .soft(pending.tabs.top, 'Pending tabs preserve document position')
+        .toBeCloseTo(ready.tabs.top, 0);
+      await response.release();
+      const retryButton = page.getByRole('button', {
+        name: 'Try again',
+        exact: true,
+      });
+      await expect(retryButton).toBeVisible();
+      const failure = await geometry();
+      expect
+        .soft(failure.tabs.top, 'Error keeps tabs at their ready position')
+        .toBeCloseTo(ready.tabs.top, 0);
+      await expect(
+        page.getByText(workspace.privateName, { exact: true }),
+      ).toHaveCount(0);
+      const retry = app.hold('journeyWorkspaceQuery');
+      await retryButton.click();
+      await retry.started;
+      await expect(
+        page.getByText('Loading balances…', { exact: true }),
+      ).toBeVisible();
+      const retryPending = await geometry();
+      expect
+        .soft(retryPending.header.height, 'Retry preserves ready header height')
+        .toBeCloseTo(ready.header.height, 0);
+      expect
+        .soft(retryPending.tabs.top, 'Retry keeps tabs at their ready position')
+        .toBeCloseTo(ready.tabs.top, 0);
+      await expect(
+        page.getByText(workspace.privateName, { exact: true }),
+      ).toHaveCount(0);
+      expect(reads()).toBe(initialReads + 2);
+      await retry.release();
+      await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+      const completed = await geometry();
+      expect
+        .soft(
+          completed.tabs.top,
+          'Ready content restores the same tab position',
+        )
+        .toBeCloseTo(ready.tabs.top, 0);
+      expect(reads()).toBe(initialReads + 2);
+      await testInfo.attach('header-geometry', {
+        body: JSON.stringify(
+          {
+            workspace: workspace.name,
+            width,
+            ready,
+            pending,
+            failure,
+            retryPending,
+            completed,
+          },
+          null,
+          2,
+        ),
+        contentType: 'application/json',
+      });
+    });
+  }
+}
+
 const forbidden =
   '[data-ui~="workspace-navigation"],[data-ui~="workspace-header"],[data-ui~="workspace-tabs"],[data-ui~="account-heading"]';
 async function signedOut(page) {

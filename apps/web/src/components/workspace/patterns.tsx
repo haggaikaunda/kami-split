@@ -3,18 +3,20 @@ import workspaceStyles from './patterns.module.css';
 import { cx } from '../ui/classnames';
 
 import Link, { useLinkStatus } from 'next/link';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { AppIcon } from '../workspace-identity';
 import { useLoadingPhase } from '../ui/loading';
 
 /** Context belongs in the header; financial data stays on a plain surface. */
 export function WorkspaceHeader({
+  ref,
   title,
   context,
   children,
   appearance,
   compact = false,
 }: {
+  ref?: Ref<HTMLElement>;
   title: string;
   context?: ReactNode;
   children?: ReactNode;
@@ -23,6 +25,7 @@ export function WorkspaceHeader({
 }) {
   return (
     <header
+      ref={ref}
       data-ui={
         `workspace-header ${appearance ? `workspace-header--${appearance}` : ''}${compact ? ' workspace-header--compact' : ''}` +
         ' form-region'

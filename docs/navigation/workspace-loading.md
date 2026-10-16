@@ -13,7 +13,11 @@ The signed-in Group navigation remains outside the financial destination reader.
 Household's signed-in header/navigation live in a shared layout across Overview,
 Expenses, Balances, Activity and Members. The [shared auth boundary](../application/web-auth-routing.md) verifies every page request before rendering and suppresses the entire shell during browser session resolution or logout; only `/sign-in` is public. Private Group names/member fields are
 removed with the private reader on tab changes or invalidation; a generic public
-Group/Trip banner preserves the header area while the read is pending. Private
+Group/Trip banner preserves the header area while the read is pending. Before
+removing the authorized header, its layout cleanup stores only measured heights
+in the stable header host. This preserves enlarged/wrapped header geometry and
+tab position through pending/error states, and releases the reservation when an
+authorized header mounts again. Private
 fields are never used as public loading placeholders. Tabs retain the committed route's current
 state while Next is pending. A destination never displays the previous tab's
 financial content.

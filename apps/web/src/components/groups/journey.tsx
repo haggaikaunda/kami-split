@@ -177,7 +177,10 @@ export function GroupJourney({
                   <SourceReturn scope={access.scope} />
                 </div>
               )}
-              <div ref={setHeaderTarget} />
+              <div
+                ref={setHeaderTarget}
+                className={workspaceFeatureStyles['workspace-header-host']}
+              />
               <WorkspaceTabs
                 current={repayment ? 'Balances' : currentTab}
                 label={trips ? 'Trip workspace' : 'Group workspace'}
