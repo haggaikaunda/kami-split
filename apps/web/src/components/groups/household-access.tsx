@@ -14,7 +14,9 @@ export function HouseholdAccess({
   children,
   onDenied,
   onState,
+  reuse = true,
 }: {
+  reuse?: boolean;
   scope: FinancialScope;
   fallback: ReactNode;
   failure: ReactNode;
@@ -24,6 +26,7 @@ export function HouseholdAccess({
 }) {
   return (
     <NetworkQuery<householdAccessQuery>
+      reuse={reuse}
       scope={scope}
       document={document}
       variables={{}}

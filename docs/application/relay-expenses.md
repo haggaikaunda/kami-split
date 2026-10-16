@@ -18,7 +18,7 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated network-only financial reads at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
+[Activity workspaces](activity.md) also use authenticated financial reads with bounded first-page Relay reuse at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
@@ -106,7 +106,7 @@ verification with tested commit and explicit limitations.
 
 A normal card/expense activation captures an actor-session source visit with its
 filter URL, scroll and logical focus. Modified clicks use canonical standalone
-URLs. Back to source restores after a fresh authorized read; missing records focus
+URLs. Back to source restores after an eligible bounded Relay read or fresh authorized read; missing records focus
 the heading. Unknown visits fall back to Groups. Session replacement clears these
 private visits alongside financial drafts. Drafts continue to retain their original
 group. UTC midnight and foregrounding refresh discovery and temporarily hide stale
@@ -173,15 +173,16 @@ the shared [Expenses ledger](expenses-ledger.md) at `/household/expenses`; the
 Expenses tab opens it and legacy `?tab=expenses` links preserve their filters on
 redirect. Its navigation destination is distinct from Overview.
 
-Account changes, foreground revalidation, refresh and route changes remove prior
-private data before network-only reads. Failed/incomplete reads never fabricate
+Account changes, foreground revalidation and refresh remove prior private data
+before fresh reads. Read-only route returns may reuse complete Relay operations
+within the documented 30-second window. Failed/incomplete reads never fabricate
 zeros. Membership-based Household discovery uses the [ADR-010 common-member scope](decisions/010-household-membership-sharing.md). Legacy unavailable service states expose only the server-authorized ledger fallback
 without a partner identity or suspension reason. Source return and browser Back
 restore focus/scroll after fresh authorization; a missing row uses the heading.
 
 ## Navigation and read ownership (#193)
 
-The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent signed-in Household/Group navigation, separately owned private visits, route prefetching without speculative financial reads, cancellation and fresh activation reads. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.
+The [workspace loading contract](../navigation/workspace-loading.md) documents destination-sized operations, the persistent signed-in Household/Group navigation, separately owned private visits, route prefetching without speculative financial reads, cancellation and bounded read-only navigation reuse. Household Expenses composes its initial context and ledger reads and validates server context versions before revealing either; GraphQL composition does not imply a transaction.
 
 ## Household and Trip navigation
 

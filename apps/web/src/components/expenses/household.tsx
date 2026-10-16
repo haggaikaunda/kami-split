@@ -1,4 +1,5 @@
 'use client';
+import { workspaceFetchPolicy } from '@/lib/relay/query';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { useEffect, useRef, useState } from 'react';
@@ -54,6 +55,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const generation = useRef(0);
   const invalidate = () => {
+    scope.invalidate?.();
     generation.current++;
     request.current?.unsubscribe();
     setContext(undefined);
@@ -73,7 +75,14 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
       scope.environment,
       initialDocument,
       { filter: expenseFilter(filters) },
-      { fetchPolicy: 'network-only' },
+      {
+        fetchPolicy:
+          version === 0 && !params.has('create')
+            ? workspaceFetchPolicy(scope.environment, initialDocument, {
+                filter: expenseFilter(filters),
+              })
+            : 'network-only',
+      },
     ).subscribe({
       next: (result) => {
         if (!live()) return;

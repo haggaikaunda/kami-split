@@ -49,6 +49,7 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
     next.delete(key);
   return active ? (
     <HouseholdAccess
+      reuse={version === 0}
       key={version}
       scope={scope}
       fallback={disabled(false)}

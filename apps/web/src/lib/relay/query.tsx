@@ -13,11 +13,18 @@ import {
   useRelayEnvironment,
   type PreloadedQuery,
 } from 'react-relay';
-import type { GraphQLTaggedNode, OperationType } from 'relay-runtime';
+import {
+  createOperationDescriptor,
+  getRequest,
+  type Environment,
+  type Variables,
+  type GraphQLTaggedNode,
+  type OperationType,
+} from 'relay-runtime';
 import type { FinancialScope } from './environment';
 
 type ReadState = { busy: boolean; error: boolean };
-/** A mounted, freshly authorized read. Owners unmount this boundary before
+/** A mounted read with explicit bounded-reuse eligibility. Owners unmount this boundary before
  * revalidation; Relay retains only its query reference and disposes on unmount.
  * Children receive the variables captured by this reference, even if later URL
  * props change. The feature validates domain unions and owns loading/error UI. */
@@ -30,7 +37,9 @@ export function NetworkQuery<T extends OperationType>({
   children,
   onState,
   onError,
+  reuse = false,
 }: {
+  reuse?: boolean;
   document: GraphQLTaggedNode;
   scope: FinancialScope;
   variables: T['variables'];
@@ -47,7 +56,9 @@ export function NetworkQuery<T extends OperationType>({
     if (!scope.isLive()) return;
     state({ busy: true, error: false });
     const query = loadQuery<T>(environment, document, variables, {
-      fetchPolicy: 'network-only',
+      fetchPolicy: reuse
+        ? workspaceFetchPolicy(environment, document, variables)
+        : 'network-only',
     });
     // The effect owns the public reference even if a request-start access event
     // removes the owner before this state update commits. dispose cancels the
@@ -55,7 +66,7 @@ export function NetworkQuery<T extends OperationType>({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReference(query);
     return () => query.dispose();
-    // Query variables are captured for one keyed authorization visit. URL-only
+    // Query variables are captured for one keyed read visit. URL-only
     // panel changes must not reset a retained traversal or durable form draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [environment, document]);
@@ -121,4 +132,21 @@ class QueryFailure extends Component<
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
+}
+
+/** Complete overlapping records without a retained fetch timestamp cannot prove
+ * bounded freshness. Relay remains the sole owner of both records and age. */
+export function workspaceFetchPolicy(
+  environment: Environment,
+  document: GraphQLTaggedNode,
+  variables: Variables,
+) {
+  const status = environment.check(
+    createOperationDescriptor(getRequest(document), variables),
+  );
+  return status.status === 'available' &&
+    status.fetchTime != null &&
+    Date.now() - status.fetchTime < 30_000
+    ? ('store-or-network' as const)
+    : ('network-only' as const);
 }

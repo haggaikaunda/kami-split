@@ -10,7 +10,7 @@ import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
-import { NetworkQuery } from '@/lib/relay/query';
+import { workspaceFetchPolicy, NetworkQuery } from '@/lib/relay/query';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import { Button, Skeleton } from '../ui/primitives';
@@ -136,6 +136,7 @@ export function ActivityFeed({
   const [selected, setSelected] =
     useState<Pick<Event, 'id' | 'groupId' | 'recordId'>>();
   const invalidate = () => {
+    scope.invalidate?.();
     generation.current++;
     request.current?.unsubscribe();
     setPage(undefined);
@@ -197,7 +198,16 @@ export function ActivityFeed({
           scope.environment,
           groupDocument,
           { groupId, after, filter },
-          { fetchPolicy: 'network-only' },
+          {
+            fetchPolicy:
+              after || version > 0
+                ? 'network-only'
+                : workspaceFetchPolicy(scope.environment, groupDocument, {
+                    groupId,
+                    after,
+                    filter,
+                  }),
+          },
         ).subscribe({
           next: (result) => accept(result.groupActivity),
           error: fail,
@@ -206,7 +216,15 @@ export function ActivityFeed({
           scope.environment,
           householdDocument,
           { after, filter },
-          { fetchPolicy: 'network-only' },
+          {
+            fetchPolicy:
+              after || version > 0
+                ? 'network-only'
+                : workspaceFetchPolicy(scope.environment, householdDocument, {
+                    after,
+                    filter,
+                  }),
+          },
         ).subscribe({
           next: (result) => accept(result.householdActivity),
           error: fail,
