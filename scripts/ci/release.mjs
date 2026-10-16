@@ -1,6 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { compare, conservative, git, output } from './changes.mjs';
+import {
+  compare,
+  decisionKeys,
+  diagnostics,
+  fallback,
+  git,
+  output,
+  validDecisions,
+} from './changes.mjs';
 import { validResult } from './verify.mjs';
 
 export const context = 'kami-split/api-release';
@@ -36,25 +44,28 @@ export function releaseResult({ plan, apiRequired, webRequired, api, web }) {
 // Include every transition since the successful baseline, not just the net
 // diff: an unsuccessful release may already have promoted one service. A later
 // revert must actively restore that service even when its final files match base.
-export function compareReleases(base, head, cwd) {
+export function compareReleases(base, head, cwd, report = () => {}) {
   try {
+    if (
+      ![base, head].every(
+        (sha) => /^[a-f0-9]{40}$/.test(sha ?? '') && !/^0+$/.test(sha),
+      )
+    )
+      throw new Error('Missing release identity');
     git(['merge-base', '--is-ancestor', base, head], cwd);
     const commits = git(['rev-list', '--first-parent', `${base}..${head}`], cwd)
       .split('\n')
       .filter(Boolean);
-    if (!commits.length) return conservative();
+    if (!commits.length) return fallback('empty-release-range', report);
+    report({ releaseRange: { base, head, transitions: commits.length } });
     const changes = commits.map((commit) =>
-      compare(git(['rev-parse', `${commit}^`], cwd), commit, cwd),
+      compare(git(['rev-parse', `${commit}^`], cwd), commit, cwd, report),
     );
-    return {
-      web_changed: changes.some((change) => change.web_changed),
-      api_changed: changes.some((change) => change.api_changed),
-      shared_changed: changes.some((change) => change.shared_changed),
-      deployment_changed: changes.some((change) => change.deployment_changed),
-      docs_only: changes.every((change) => change.docs_only),
-    };
+    return Object.fromEntries(
+      decisionKeys.map((key) => [key, changes.some((change) => change[key])]),
+    );
   } catch {
-    return conservative();
+    return fallback('unavailable-release-history', report);
   }
 }
 
@@ -63,15 +74,25 @@ export function planRelease({
   ancestors,
   statuses,
   diff = compareReleases,
+  report = () => {},
 }) {
   try {
     // Bounded search: no authenticated baseline is a full release, never a skip.
     const base = ancestors.find((ancestor) =>
       successfulBaseline(statuses(ancestor)),
     );
-    return base ? diff(base, sha) : conservative();
+    if (!base) return fallback('no-authenticated-successful-baseline', report);
+    report({
+      baseline: base,
+      target: sha,
+      reason: 'carry-forward-all-transitions-since-success',
+    });
+    const result = diff(base, sha, undefined, report);
+    return validDecisions(result)
+      ? result
+      : fallback('malformed-release-decisions', report);
   } catch {
-    return conservative();
+    return fallback('baseline-status-lookup-failed', report);
   }
 }
 
@@ -120,6 +141,8 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
       throw new Error(
         'Superseded main commit; release the newest verified main instead',
       );
+    const diagnostic = diagnostics();
+    diagnostic.report({ target: sha, source: 'workflow_run.head_sha' });
     let result;
     try {
       const ancestors = git([
@@ -131,13 +154,14 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
       result = planRelease({
         sha,
         ancestors,
+        report: diagnostic.report,
         statuses: (ancestor) =>
           api(`repos/${repository}/commits/${ancestor}/statuses?per_page=100`),
       });
     } catch {
-      result = conservative();
+      result = fallback('unavailable-release-ancestors', diagnostic.report);
     }
-    output(result);
+    output(result, diagnostic);
   } else if (process.argv[2] === 'finish') {
     const e = process.env;
     const result = releaseResult({

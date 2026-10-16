@@ -48,9 +48,9 @@ for (const [paths, web, api] of [
     true,
   ],
   [['docs/example.tsx'], true, true],
-  [['playwright.config.mjs'], true, true],
-  [['tests/browser/smoke.spec.mjs'], true, true],
-  [['scripts/browser/auth-server.mjs'], true, true],
+  [['playwright.config.mjs'], true, false],
+  [['tests/browser/smoke.spec.mjs'], true, false],
+  [['scripts/browser/auth-server.mjs'], true, false],
   [['new-unknown-package/input.txt'], true, true],
   [
     [
@@ -66,9 +66,8 @@ for (const [paths, web, api] of [
 ])
   test(`path contract: ${paths.join(', ')}`, () => {
     const actual = classify(paths);
-    assert.equal(actual.web_changed, web);
-    assert.equal(actual.api_changed, api);
-    assert.equal(actual.docs_only, !web && !api);
+    assert.equal(actual.verify_web, web);
+    assert.equal(actual.verify_api, api);
   });
 
 test('real history: PR merge base, multi-commit push, deletions, renames and unusual filenames', (t) => {
@@ -95,16 +94,16 @@ test('real history: PR merge base, multi-commit push, deletions, renames and unu
     { pull_request: { base: { sha: main }, head: { sha: head } } },
     cwd,
   );
-  assert.equal(pr.web_changed, true);
-  assert.equal(pr.api_changed, false);
+  assert.equal(pr.verify_web, true);
+  assert.equal(pr.verify_api, false);
   const after = commit('docs/new.md');
   assert.equal(
-    classifyEvent('push', { before: base, after }, cwd).api_changed,
+    classifyEvent('push', { before: base, after }, cwd).verify_api,
     true,
   );
   g('mv', 'apps/api/new.go', 'docs/moved.md');
   g('commit', '-m', 'rename');
-  assert.equal(compare(after, g('rev-parse', 'HEAD'), cwd).api_changed, true);
+  assert.equal(compare(after, g('rev-parse', 'HEAD'), cwd).verify_api, true);
   assert.deepEqual(compare('0'.repeat(40), after, cwd), conservative());
   assert.deepEqual(compare('a'.repeat(40), after, cwd), conservative());
   assert.deepEqual(compare(head, after, cwd), conservative());
@@ -172,9 +171,7 @@ test('closely spaced releases include failed API and failed legacy-web changes',
       },
     });
     assert.equal(
-      failedPath.includes('/api/')
-        ? decision.api_changed
-        : decision.web_changed,
+      failedPath.includes('/api/') ? decision.verify_api : decision.verify_web,
       true,
     );
   }
@@ -257,7 +254,7 @@ test('release restoration includes reverted partially promoted changes', (t) => 
   g('add', '.');
   g('commit', '-m', 'docs');
   const head = g('rev-parse', 'HEAD');
-  assert.equal(compare(base, head, cwd).api_changed, false);
-  assert.equal(compareReleases(base, head, cwd).api_changed, true);
-  assert.equal(compareReleases(base, head, cwd).web_changed, false);
+  assert.equal(compare(base, head, cwd).verify_api, false);
+  assert.equal(compareReleases(base, head, cwd).verify_api, true);
+  assert.equal(compareReleases(base, head, cwd).verify_web, false);
 });

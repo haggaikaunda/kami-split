@@ -110,8 +110,8 @@ test('CLI plan and finish bind status to selected SHA; docs select no service', 
   const { run, sha } = fixture(t);
   const plan = run('plan');
   assert.equal(plan.status, 0, plan.stderr);
-  assert.equal(plan.outputs.api_changed, 'false');
-  assert.equal(plan.outputs.web_changed, 'false');
+  assert.equal(plan.outputs.deploy_api, 'false');
+  assert.equal(plan.outputs.deploy_web, 'false');
   assert.equal(plan.requests[0].path, `repos/owner/repo/statuses/${sha}`);
   assert.equal(plan.requests[0].body.state, 'pending');
   const finish = run('finish', {

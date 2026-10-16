@@ -16,7 +16,10 @@ There is one `Production` environment and no staging environment. Merges to
 `main` may deploy only after the existing required `Verify` gate succeeds.
 The [change-aware CI/release contract](../agents/change-aware-ci.md) selects
 applicable release branches and publishes the exact-commit API release status.
-Unchanged services are skipped; outstanding failed releases remain in scope.
+Production consumes `deploy_web` / `deploy_api`, separately from CI verification.
+Proven test-only changes deploy neither service when the successful baseline is
+settled; outstanding deploy-affecting transitions after failed or partial releases
+remain in scope, including restoration after reverts.
 The GitHub-owned web path remains active pending issue #161.
 Pull-request runs cancel superseded CI work. Runs for `main` are non-canceling,
 and the standalone deployment workflow uses a non-canceling `production` concurrency
