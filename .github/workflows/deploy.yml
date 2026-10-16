@@ -31,8 +31,8 @@ jobs:
       contents: read
       statuses: write
     outputs:
-      api_changed: ${{ steps.changes.outputs.api_changed }}
-      web_changed: ${{ steps.changes.outputs.web_changed }}
+      deploy_api: ${{ steps.changes.outputs.deploy_api }}
+      deploy_web: ${{ steps.changes.outputs.deploy_web }}
     steps:
       # Never execute classification from a candidate or an uploaded CI artifact.
       - uses: actions/checkout@v7
@@ -48,7 +48,7 @@ jobs:
 
   api:
     needs: plan
-    if: ${{ needs.plan.outputs.api_changed == 'true' }}
+    if: ${{ needs.plan.outputs.deploy_api == 'true' }}
     uses: ./.github/workflows/api-deploy.yml
     with:
       mode: release
@@ -60,9 +60,9 @@ jobs:
     needs: [plan, api]
     if: >-
       ${{ !cancelled() && needs.plan.result == 'success' &&
-          needs.plan.outputs.web_changed == 'true' &&
-          ((needs.plan.outputs.api_changed == 'true' && needs.api.result == 'success') ||
-           (needs.plan.outputs.api_changed == 'false' && needs.api.result == 'skipped')) }}
+          needs.plan.outputs.deploy_web == 'true' &&
+          ((needs.plan.outputs.deploy_api == 'true' && needs.api.result == 'success') ||
+           (needs.plan.outputs.deploy_api == 'false' && needs.api.result == 'skipped')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: Production
@@ -219,8 +219,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PLAN_RESULT: ${{ needs.plan.result }}
-          API_REQUIRED: ${{ needs.plan.outputs.api_changed }}
-          WEB_REQUIRED: ${{ needs.plan.outputs.web_changed }}
+          API_REQUIRED: ${{ needs.plan.outputs.deploy_api }}
+          WEB_REQUIRED: ${{ needs.plan.outputs.deploy_web }}
           API_RESULT: ${{ needs.api.result }}
           WEB_RESULT: ${{ needs.web.result }}
         run: node scripts/ci/release.mjs finish

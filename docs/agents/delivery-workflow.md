@@ -40,7 +40,9 @@ A PR may merge while its linked issue remains open. Merging a partial, design, o
 `.github/workflows/ci.yml` owns pull-request and main-push triggers, read-only
 permissions, cancellation of superseded runs, and the single required **Verify**
 check. It runs repository validation and the centralized change classifier, then calls
-`web.yml` and/or `api.yml` only for affected consumers. See the
+`web.yml` and/or `api.yml` using `verify_web` / `verify_api`. Production selection
+uses the same classifier's separate `deploy_web` / `deploy_api` decisions over the
+cumulative unreleased range; verification-only tests do not require deployment. See the
 [affected-path contract](change-aware-ci.md) for comparison identities, conservative
 fallbacks, and selective release semantics. Both reusable workflows use only
 `workflow_call`; their caller owns selection and concurrency.
