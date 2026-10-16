@@ -99,21 +99,26 @@ for (const workspace of [
 
     const beforeRevisit = reads();
     await overview.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
     await balances.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
     await expect(privateBalances).toBeVisible();
     await page.goBack();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
     await page.goForward();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
     await expect(privateBalances).toBeVisible();
     await page.waitForTimeout(250);
     expect(reads()).toBe(beforeRevisit);
 
     await overview.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=overview`);
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
@@ -134,6 +139,7 @@ for (const workspace of [
           },
     );
     await balances.click();
+    await expect(page).toHaveURL(`${workspace.base}?tab=balances`);
     await denied.started;
     expect(reads()).toBe(beforeRevisit + 1);
     await expect(privateBalances).toHaveCount(0);
@@ -361,6 +367,7 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
   const tabs = page.locator('[data-ui~="workspace-tabs"]');
   await expect(row).toBeVisible();
   await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
+  await expect(page).toHaveURL('/household/activity');
   await expect(empty).toBeVisible();
   const operations = [
     'expensesHouseholdInitialQuery',
@@ -375,8 +382,10 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
   const firstVisits = counts();
   expect(firstVisits).toEqual([1, 1]);
   await tabs.getByRole('link', { name: 'Expenses', exact: true }).click();
+  await expect(page).toHaveURL('/household/expenses');
   await expect(row).toBeVisible();
   await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
+  await expect(page).toHaveURL('/household/activity');
   await expect(empty).toBeVisible();
   await page.goBack();
   await expect(row).toBeVisible();
