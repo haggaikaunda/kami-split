@@ -63,7 +63,7 @@ module.exports = async function verifyRefresh({
     window.dispatchEvent(new Event('focus'));
     window.dispatchEvent(new Event('focus'));
   });
-  await page.getByText('Updating…', { exact: true }).waitFor();
+  await page.getByText('Loading expenses…', { exact: true }).waitFor();
   const loadingHeight = (await surface.boundingBox()).height;
   assert(
     loadingHeight >= previousHeight,
@@ -150,7 +150,7 @@ module.exports = async function verifyRefresh({
   touchX = point.x;
   before = count();
   await drag(point.y, 120);
-  await page.getByText('Updating…', { exact: true }).waitFor();
+  await page.getByText('Loading expenses…', { exact: true }).waitFor();
   await page.locator('#ledger-expense-e1').waitFor();
   assert.equal(count(), before + 1, 'top pull starts one app refresh');
   assert.equal(documentCount(), docs, 'custom pull does not reload document');

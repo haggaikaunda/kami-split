@@ -107,7 +107,11 @@ async function click(label: string) {
 }
 it('distinguishes loading, empty, filtered empty and unavailable without retaining rows', async () => {
   await render();
-  expect(host.textContent).toContain('Loading activity');
+  expect(
+    host.querySelector(
+      '[data-ui="content-loading"][data-layout="activity"] [aria-busy="true"]',
+    ),
+  ).not.toBeNull();
   await respond(connection([]));
   expect(host.textContent).toContain('No activity yet');
   const select = host.querySelector('select')!;
@@ -290,7 +294,11 @@ it('focus refresh recovers from an unavailable response with freshly authorized 
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
   expect(host.querySelector('[role="alert"]')).toBeNull();
-  expect(host.textContent).toContain('Loading activity');
+  expect(
+    host.querySelector(
+      '[data-ui="content-loading"][data-layout="activity"] [aria-busy="true"]',
+    ),
+  ).not.toBeNull();
   await respond(connection());
   expect(host.textContent).toContain('Alice');
   expect(host.querySelector('[role="alert"]')).toBeNull();

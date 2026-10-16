@@ -34,7 +34,7 @@ export const test = base.extend({
       // Model an asynchronous service, as in the retained navigation fixture.
       await delay(100);
       try {
-        await route.fulfill({ json: { data } });
+        await route.fulfill({ json: { data }, status: hold?.status ?? 200 });
       } catch (error) {
         // Disposed account requests can be canceled while deliberately held.
         if (!hold) throw error;
@@ -68,10 +68,11 @@ export const test = base.extend({
             .getByRole('button', { name: 'Sign in', exact: true })
             .click();
         },
-        hold(operation, data) {
+        hold(operation, data, { status = 200 } = {}) {
           const item = {
             operation,
             data,
+            status,
             started: Promise.withResolvers(),
             released: Promise.withResolvers(),
             finished: Promise.withResolvers(),

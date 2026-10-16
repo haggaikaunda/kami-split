@@ -14,7 +14,7 @@ import card, {
 } from '@/lib/relay/__generated__/discoveryCard.graphql';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { Skeleton } from '../ui/primitives';
+import { ContentLoading } from '../ui/loading';
 
 import { cx } from '../ui/classnames';
 import { tripState } from '@/lib/relay/discovery';
@@ -60,14 +60,12 @@ export function ViewerJourney(props: Props) {
     return () => clearTimeout(timer);
   }, [version]);
   const loading = (
-    <Skeleton
-      size="workspace"
-      label={props.trips ? 'Loading trips' : 'Loading groups'}
-    />
+    <ContentLoading layout="cards" label={props.trips ? 'trips' : 'groups'} />
   );
   return (
     <WorkspaceLoading busy={state.busy}>
       <WorkspaceRefresh
+        contentPending
         busy={state.busy}
         error={domainError || (state.error ? unavailable : '')}
         onRefresh={refresh}

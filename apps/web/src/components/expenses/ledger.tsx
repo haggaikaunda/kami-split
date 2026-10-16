@@ -1,4 +1,5 @@
 'use client';
+import { ContentLoading } from '../ui/loading';
 import { useExpenseEntry } from './entry';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
@@ -36,7 +37,7 @@ import groupDocument, {
 import householdDocument, {
   type expensesHouseholdQuery,
 } from '@/lib/relay/__generated__/expensesHouseholdQuery.graphql';
-import { Button, containDialogFocus, Skeleton } from '../ui/primitives';
+import { Button, containDialogFocus } from '../ui/primitives';
 import { Money } from '../financial/presentation';
 import { AuthorizedDetail } from './authorized-detail';
 import { ExpenseForm } from '@/components/groups/expense-form';
@@ -497,7 +498,12 @@ function LedgerContent({
       style={restoring ? { minHeight: reservedHeight } : undefined}
     >
       {!managedRefresh && (
-        <WorkspaceRefresh busy={loading} error={error} onRefresh={refresh} />
+        <WorkspaceRefresh
+          contentPending={!page}
+          busy={loading}
+          error={error}
+          onRefresh={refresh}
+        />
       )}
       {navigationPending && <p role="status">Opening expense view…</p>}
       <div
@@ -627,13 +633,11 @@ function LedgerContent({
             {filterText && ' · All filters combined'}
           </span>
         ) : (
-          <span>{loading ? 'Loading totals…' : 'Total unavailable'}</span>
+          !loading && <span>Total unavailable</span>
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
-      {loading && !page && (
-        <Skeleton size="workspace" label="Loading expenses" />
-      )}
+      {loading && !page && <ContentLoading layout="expenses" />}
       {error ? (
         <p role="alert">{error}</p>
       ) : (

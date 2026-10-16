@@ -46,7 +46,8 @@ async function render() {
 }
 it('renders neutral loading only until a verified scope exists', async () => {
   await render();
-  expect(host.textContent).toBe('Checking account access…');
+  expect(host.textContent).toBe('Kami Grow');
+  expect(host.querySelector('[aria-busy="true"]')).not.toBeNull();
   expect(host.querySelector('nav')).toBeNull();
   state.access = { loading: false, scope: {} };
   await render();
@@ -71,6 +72,8 @@ it('immediately removes a previously rendered shell on expiry, refresh resolutio
   state.access = { loading: true, scope: state.access.scope };
   await render();
   expect(host.querySelector('nav')).toBeNull();
+  expect(host.textContent).not.toContain('Private');
+  expect(host.querySelector('[data-ui="skeleton"]')).toBeNull();
   state.access = { loading: false };
   await render();
   expect(host.querySelector('h1')).toBeNull();

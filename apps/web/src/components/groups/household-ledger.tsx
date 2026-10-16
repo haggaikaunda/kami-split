@@ -7,7 +7,8 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { useFinancialSession } from './session';
 import { GroupJourney } from './journey';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { Skeleton } from '../ui/primitives';
+import { ContentLoading, type LoadingLayout } from '../ui/loading';
+import { workspaceSections } from '../workspace/patterns';
 import { useForegroundRefresh } from './foreground';
 /** Resolve the original ledger from fresh authorized metadata, never a supplied ID. */
 export function HouseholdLedger() {
@@ -16,8 +17,7 @@ export function HouseholdLedger() {
   const next = new URLSearchParams(params);
   next.delete('source');
   next.delete('restore');
-  if (access.loading)
-    return <Skeleton size="workspace" label="Loading Household" />;
+  if (access.loading) return <ContentLoading layout="overview" />;
   if (access.error) return <p role="alert">{access.error}</p>;
   if (!access.scope)
     return (
@@ -54,7 +54,15 @@ function LedgerRead({ scope }: { scope: FinancialScope }) {
     </>
   );
   const loading = (
-    <Skeleton size="workspace" label="Loading Household ledger" />
+    <ContentLoading
+      layout={
+        (
+          workspaceSections.find(
+            (section) => section.toLowerCase() === params.get('tab'),
+          ) ?? 'Overview'
+        ).toLowerCase() as LoadingLayout
+      }
+    />
   );
   return active ? (
     <HouseholdAccess

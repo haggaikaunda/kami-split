@@ -12,7 +12,7 @@
   .workspace-header--compact
 ) {
   --banner-art: url('/art/household.png');
-  min-height: 10.25rem;
+  min-height: max(10.25rem, var(--workspace-header-height, 0px));
   padding: 1.6875rem 1.5rem;
   border-radius: var(--radius-card);
   color: var(--color-banner-title);
@@ -117,8 +117,38 @@
   background: var(--color-primary);
 }
 .workspace-navigation-pending {
-  font-size: 0.875rem;
-  margin-inline-start: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-start: 0.125rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.workspace-navigation-pending[data-pending] {
+  background: var(--color-subtle);
+}
+.navigation-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: navigation-pulse 1.5s ease-in-out infinite;
+}
+@keyframes navigation-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navigation-dot {
+    animation: none;
+  }
 }
 .space-chip {
   display: inline-block;
@@ -147,7 +177,7 @@
     .workspace-header--group,
     .workspace-header--compact
   ) {
-    min-height: 11rem;
+    min-height: max(11rem, var(--workspace-header-height, 0px));
     padding: 21px 16px 17px;
     gap: 0.625rem;
     align-items: flex-start;

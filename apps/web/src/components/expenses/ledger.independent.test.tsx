@@ -429,7 +429,11 @@ it('manual household refresh replaces expense rows and eligible-space snapshot f
   expect(host.textContent).toContain('Dinner one');
   await foregroundRefresh();
   expect(host.textContent).not.toContain('Dinner one');
-  expect(host.textContent).toContain('Loading expenses');
+  expect(
+    host.querySelector(
+      '[data-ui="content-loading"][data-layout="expenses"] [aria-busy="true"]',
+    ),
+  ).not.toBeNull();
   await respondContext(context('205', 'New eligible space'));
   await respond(page([]));
   expect(host.textContent).not.toContain('Dinner one');
@@ -476,7 +480,11 @@ it('successful persisted creation refreshes owning household totals and eligible
   await respondContext(context('-101'));
   await respond(page());
   await click('Commit persisted expense');
-  expect(host.textContent).toContain('Loading expenses');
+  expect(
+    host.querySelector(
+      '[data-ui="content-loading"][data-layout="expenses"] [aria-busy="true"]',
+    ),
+  ).not.toBeNull();
   expect(state.replace).toHaveBeenCalledWith('/household/expenses?', {
     scroll: false,
   });

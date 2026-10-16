@@ -287,6 +287,17 @@ export function ErrorSummary({
   );
 }
 
+/** Decorative neutral geometry shared by loading compositions. */
+export function SkeletonBlock({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-ui="skeleton"
+      className={cx(uiStyles.skeleton, className)}
+    />
+  );
+}
+
 export function Skeleton({
   label = 'Loading expenses',
   size = 'default',
@@ -304,21 +315,9 @@ export function Skeleton({
       )}
     >
       <span>{label}…</span>
-      <span
-        aria-hidden="true"
-        data-ui="skeleton"
-        className={uiStyles['skeleton']}
-      />
-      <span
-        aria-hidden="true"
-        data-ui="skeleton"
-        className={uiStyles['skeleton']}
-      />
-      <span
-        aria-hidden="true"
-        data-ui="skeleton"
-        className={uiStyles['skeleton']}
-      />
+      <SkeletonBlock />
+      <SkeletonBlock />
+      <SkeletonBlock />
     </div>
   );
 }

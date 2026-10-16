@@ -66,3 +66,43 @@ Rich help is anchored and keyboard accessible with explicit dismissal, focus res
 ## Verification
 
 Check narrow layouts, actual doubled text, long exact amounts/names, Light/System/Dark, keyboard/focus and reduced motion on the rendered application. Synthetic fixtures establish client behavior only; API/database tests establish authorization and durability. Store outputs outside tracked documentation and record limits on the delivery PR. See [browser verification](../browser-verification.md).
+
+## Loading presentations
+
+`components/ui/loading` provides `ScreenLoading` for initial account/session
+resolution and `ContentLoading` for a pending destination below the workspace
+tabs. The screen accepts no private data: public Kami Grow branding, three quiet
+dots, “Getting things ready” and “Opening your account…” are its entire content.
+Content layouts are `overview` (summary metrics and recent rows), `expenses`
+(total placeholder and rows), `balances` (summary cards and positions), `activity`
+(event rows), `members` (avatar/name rows), and `cards` (discovery). A caller may
+supply a specific public label such as `groups`; never pass a private name, amount
+or inferred count. Shapes reuse the neutral `SkeletonBlock` primitive.
+
+Both compositions delay visible status/geometry by 150 ms and change to “Still
+getting things ready” or “Still loading …” after eight seconds. These are
+presentation timers, not request timeouts or minimum display durations. Mount
+only while the owning read is pending; immediately replace with ready content,
+the owner's error/retry, or access denial. The status is one atomic polite live
+region outside the busy content region; all shapes/dots are decorative. Timers
+never move focus. Reduced motion makes dots and skeletons fully static; theme
+tokens supply contrast. The shell remains the document scroll/safe-area owner.
+
+Workspace route links reserve a fixed cue beside each label. Next's
+`useLinkStatus` marks only the latest pending link, keeps `aria-current` on the
+committed route, and clears the cue when navigation commits. The reserved surface
+responds immediately; its small dot waits 150 ms. This decorative route cue does not add a
+second spoken loading message. The destination's content presentation then owns
+data-pending feedback. Public shell/navigation persists; private Group/Trip
+headers stay inside their authorized query and are replaced with a generic
+Group/Trip banner during that query's pending state.
+
+Read owners retain all Relay caching, request, cancellation and authorization
+responsibilities. `WorkspaceLoading` preserves only measured layout height across
+refresh, never previous private values. A foreground/access invalidation removes
+protected content immediately, including during the 150 ms quiet interval. No
+new cached-display or background-refresh policy is implied by these components.
+`WorkspaceRefresh contentPending` leaves the pending announcement to the content
+loader and retains refresh completion/failure feedback. Its explicit error retry
+coalesces with the existing pull gesture and invokes the owner's read callback;
+it does not retry a mutation or manufacture a timeout.
