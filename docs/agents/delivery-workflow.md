@@ -10,10 +10,10 @@ Write run outputs to ignored `test-results/` or an external temporary directory.
 
 ## Pull request lifecycle
 
-1. **Ready issue:** scope, acceptance criteria, exclusions, and test notes are clear. Perform the task-start synchronization below and record the observed SHA or blocker.
+1. **Ready issue:** scope, stable acceptance IDs, exclusions, preserved behavior, authoritative inputs, approval/scope revision and verification notes are clear under the [outcome contract](outcome-verification.md). Perform the task-start synchronization below and record the observed SHA or blocker.
 2. **Builder:** implements the smallest complete solution in a worktree, opens a draft PR, and records the convention self-check below before requesting final review.
 3. **CI:** deterministic formatting, linting, type checking, unit tests, and build checks pass.
-4. **Tester:** independently compares the behavior and tests with the issue. The tester may add test-only commits; production changes return to the builder.
+4. **Tester:** independently compares observed behavior and tests with the approved issue revision, mapping criteria to scenarios, evidence and limitations under the [outcome contract](outcome-verification.md). The tester may add test-only commits; production changes return to the builder.
 5. **Reviewer:** reviews the whole final diff with fresh context and records prioritized findings and convention evidence below.
 6. **Resolution:** findings are fixed or explicitly resolved; CI reruns after all changes.
 7. **Merge:** an agent may squash-merge only when every gate below is satisfied.
@@ -49,7 +49,7 @@ fallbacks, and selective release semantics. Both reusable workflows use only
 
 `web.yml` owns pnpm/Node setup, the root-lockfile cache, lint, type checking, web tests, the Next.js build, and the required Playwright Chromium smoke suite, in order. The browser suite reuses that build with one worker on the same runner and uploads failure artifacts for seven days.
 Repository-wide formatting runs exactly once in the repository validation job,
-alongside classifier/gate tests, even for documentation-only changes.
+alongside classifier/gate tests and pinned skill/resource validation, even for documentation-only changes.
 `api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted
 runner with a 15-minute limit:
 

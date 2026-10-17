@@ -26,3 +26,14 @@ body:
     attributes:
       label: Impact and risk
       description: Note any financial, privacy, authorization, or data-loss impact.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance and regression coverage
+      description: Use stable IDs for observable corrected behavior, preserved behavior and relevant failure cases. Map each to a verification scenario; see docs/agents/outcome-verification.md.
+      placeholder: '- [ ] AC1 — Given ..., when ..., then ...'
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, references and approval
+      description: Record exclusions/dependencies, authoritative versus illustrative inputs, scope revision and existing approval provenance. Otherwise mark proposed; an issue report does not self-approve implementation.
