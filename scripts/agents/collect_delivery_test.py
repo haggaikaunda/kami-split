@@ -193,7 +193,8 @@ class RetrievalTests(unittest.TestCase):
         check = json.loads(EXAMPLE.read_text())["evidence"]["checks"][0]
         check.update(check_id="7", run_id="8", attempt=2, source=ROOT + "/actions/runs/8/attempts/1", workflow="CI")
         fresh = {"id": 8, "run_attempt": 2, "head_sha": check["head"], "name": "CI"}
-        routes = {"check-runs/7": {"id": 7, "name": check["name"], "head_sha": check["head"], "conclusion": check["conclusion"]},
+        routes = {"check-runs/7": {"id": 7, "name": check["name"], "head_sha": check["head"], "conclusion": check["conclusion"],
+                                    "details_url": ROOT + "/actions/runs/8/attempts/1"},
                   "actions/runs/8": fresh, "actions/runs/8/attempts/1": {**fresh, "run_attempt": 1},
                   "actions/runs/8/attempts/2": fresh,
                   "actions/runs/8/attempts/1/jobs?per_page=100&page=1": {"jobs": []},
@@ -239,7 +240,8 @@ class RetrievalTests(unittest.TestCase):
         fresh = {"id": 8, "run_attempt": 1, "head_sha": check["head"], "name": "CI",
                  "path": ".github/workflows/ci.yml", "workflow_id": 42}
         routes = {"check-runs/7": {"id": 7, "name": check["name"], "head_sha": check["head"],
-                                   "conclusion": check["conclusion"]},
+                                   "conclusion": check["conclusion"],
+                                    "details_url": ROOT + "/actions/runs/8/attempts/1"},
                   "actions/runs/8": fresh, "actions/runs/8/attempts/1": fresh,
                   "actions/runs/8/attempts/1/jobs?per_page=100&page=1": {"jobs": []}}
         for description in [".github/workflows/ci.yml (workflow ID 42)",
@@ -291,7 +293,7 @@ class RetrievalTests(unittest.TestCase):
         del routes["actions/jobs/9"]["run_attempt"]
         observed = Collector("example/project", Fake(routes)).observe_check(check)
         self.assertEqual(observed["status"], "unverified")
-        self.assertIn("source_identity_not_established", observed["limitations"])
+        self.assertIn("subject_attempt_relation_unavailable", observed["limitations"])
 
     def test_source_check_query_is_reconciled_when_retained_check_id_is_unknown(self):
         check, routes = job_evidence()
@@ -344,6 +346,161 @@ class RetrievalTests(unittest.TestCase):
             run.return_value = subprocess.CompletedProcess([], 1, "", "private token HTTP 404")
             with self.assertRaisesRegex(ReadFailure, "^missing_or_expired$"):
                 GitHub("example/project").get(PREFIX + "issues/1")
+
+
+class SubjectTests(unittest.TestCase):
+    def observe(self, check, routes):
+        adapter = Fake(routes)
+        result = Collector("example/project", adapter).observe_check(check)
+        return result, adapter.calls
+
+    def test_historical_job_selects_its_attempt_after_latest_run_advances(self):
+        for check_id in [None, "7"]:
+            for run_id in [None, "8"]:
+                with self.subTest(check_id=check_id, run_id=run_id):
+                    check, routes = job_evidence()
+                    check.update(check_id=check_id, run_id=run_id, attempt=None, source=ROOT + "/actions/runs/8/job/9")
+                    latest = dict(routes["actions/runs/8"], run_attempt=2, conclusion="cancelled")
+                    routes["actions/runs/8"] = latest
+                    routes["actions/runs/8/attempts/2"] = latest
+                    routes["actions/runs/8/attempts/2/jobs?per_page=100&page=1"] = {"jobs": []}
+                    observed, _ = self.observe(check, routes)
+                    self.assertEqual(observed["status"], "observed_fields_consistent")
+                    self.assertEqual(observed["subject"]["kind"], "job")
+                    self.assertEqual(observed["subject"]["attempt"], 1)
+                    self.assertEqual(observed["fresh"]["run_attempt"]["run_attempt"], 1)
+                    self.assertTrue(observed["relationships"]["subject_attempt"])
+                    del routes["actions/runs/8/attempts/1"]
+                    expired, _ = self.observe(check, routes)
+                    self.assertEqual(expired["status"], "unverified")
+                    self.assertIsNone(expired["fresh"]["run_attempt"])
+                    self.assertEqual(expired["subject"]["attempt"], 1)
+
+    def test_check_links_select_job_and_establish_run_attempt_relationship(self):
+        for source in [ROOT + "/pull/3/checks?check_run_id=7", ROOT + "/actions/runs/8"]:
+            for link_field in ["details_url", "html_url"]:
+                with self.subTest(source=source, link_field=link_field):
+                    check, routes = job_evidence()
+                    check["source"] = source
+                    link = routes["check-runs/7"].pop("details_url")
+                    routes["check-runs/7"][link_field] = link
+                    observed, calls = self.observe(check, routes)
+                    self.assertEqual(observed["status"], "observed_fields_consistent")
+                    self.assertIn(PREFIX + "actions/jobs/9", calls)
+                    self.assertTrue(observed["relationships"]["check_job"])
+                    for field, value, finding in [("run_attempt", 2, "identity_attempt"),
+                                                   ("run_id", 99, "identity_run_id"),
+                                                   ("check_run_url", "https://api.github.com/repos/example/project/check-runs/77", "identity_check_id")]:
+                        changed = deepcopy(routes)
+                        changed["actions/jobs/9"][field] = value
+                        failed, _ = self.observe(check, changed)
+                        self.assertEqual(failed["status"], "inconsistent")
+                        self.assertIn(finding, failed["mismatches"])
+                    del routes["actions/jobs/9"]
+                    self.assertEqual(self.observe(check, routes)[0]["status"], "unverified")
+                    del routes["check-runs/7"][link_field]
+                    unlinked, _ = self.observe(check, routes)
+                    self.assertEqual(unlinked["status"], "unverified")
+                    self.assertIn("subject_attempt_relation_unavailable", unlinked["limitations"])
+        # A standalone check needs no invented run/attempt relationship.
+        check, routes = job_evidence()
+        check.update(source=ROOT + "/pull/3/checks?check_run_id=7", run_id=None, attempt=None, workflow=None)
+        del routes["check-runs/7"]["details_url"]
+        self.assertEqual(self.observe(check, routes)[0]["status"], "observed_fields_consistent")
+
+    def test_run_subject_uses_source_identity_and_its_own_observed_fields(self):
+        check, routes = job_evidence()
+        check.update(check_id=None, run_id=None, attempt=None, source=ROOT + "/actions/runs/8/attempts/1",
+                     name="CI", conclusion="failure")
+        observed, _ = self.observe(check, routes)
+        self.assertEqual(observed["status"], "observed_fields_consistent")
+        self.assertEqual(observed["subject"]["kind"], "run_attempt")
+        for field, value in [("name", "wrong"), ("head", "b" * 40), ("conclusion", "success")]:
+            with self.subTest(field=field):
+                changed = dict(check, **{field: value})
+                failed, _ = self.observe(changed, routes)
+                self.assertEqual(failed["status"], "inconsistent")
+                self.assertIn(field, failed["mismatches"])
+        check["source"] = ROOT + "/actions/runs/8"
+        unknown, _ = self.observe(check, routes)
+        self.assertEqual(unknown["status"], "unverified")
+        self.assertNotIn("run_attempt", unknown["fresh"])
+
+    def test_workflow_context_is_checked_with_null_redundant_run_id(self):
+        check, routes = job_evidence()
+        check.update(run_id=None, attempt=None, workflow=".github/workflows/ci.yml (workflow ID 42)")
+        routes["actions/runs/8/attempts/1"].update(path=".github/workflows/ci.yml", workflow_id=42)
+        self.assertEqual(self.observe(check, routes)[0]["status"], "observed_fields_consistent")
+        for field, value in [("path", ".github/workflows/wrong.yml"), ("workflow_id", 99)]:
+            with self.subTest(field=field):
+                changed = deepcopy(routes)
+                changed["actions/runs/8/attempts/1"][field] = value
+                self.assertEqual(self.observe(check, changed)[0]["status"], "inconsistent")
+                del changed["actions/runs/8/attempts/1"][field]
+                self.assertEqual(self.observe(check, changed)[0]["status"], "unverified")
+        check["workflow"] = "unstructured description"
+        self.assertEqual(self.observe(check, routes)[0]["status"], "unverified")
+
+    def test_missing_live_fields_are_unknown_not_contradictions_or_evidence(self):
+        for endpoint, fields in [("actions/jobs/9", ["id", "run_id", "run_attempt", "name", "head_sha", "conclusion"]),
+                                 ("check-runs/7", ["id", "name", "head_sha", "conclusion"]),
+                                 ("actions/runs/8/attempts/1", ["id", "run_attempt", "head_sha"])]:
+            for field in fields:
+                with self.subTest(endpoint=endpoint, field=field):
+                    check, routes = job_evidence()
+                    del routes[endpoint][field]
+                    observed, _ = self.observe(check, routes)
+                    self.assertEqual(observed["status"], "unverified")
+                    self.assertNotIn("mismatches", observed)
+        check, routes = job_evidence()
+        del routes["actions/jobs/9"]["check_run_url"]
+        # The check's explicit job link is sufficient in the other direction.
+        self.assertEqual(self.observe(check, routes)[0]["status"], "observed_fields_consistent")
+        del routes["check-runs/7"]["details_url"]
+        self.assertEqual(self.observe(check, routes)[0]["status"], "unverified")
+
+    def test_conclusion_ownership_and_explicit_identity_conflicts_are_preserved(self):
+        check, routes = job_evidence()
+        check["check_id"] = None
+        observed, _ = self.observe(check, routes)
+        self.assertEqual(observed["status"], "observed_fields_consistent")
+        self.assertEqual(observed["fresh"]["source_job"]["conclusion"], "success")
+        self.assertEqual(observed["fresh"]["run_attempt"]["conclusion"], "failure")
+        for source, finding in [(ROOT + "/actions/runs/999/attempts/1/job/9", "identity_run_id"),
+                                (ROOT + "/actions/runs/8/attempts/2/job/9", "identity_attempt"),
+                                (ROOT + "/actions/runs/8/attempts/1/job/9?check_run_id=77", "identity_check_id")]:
+            with self.subTest(source=source):
+                check.update(run_id=None, attempt=None, source=source)
+                observed, _ = self.observe(check, routes)
+                self.assertEqual(observed["status"], "inconsistent")
+                self.assertIn(finding, observed["mismatches"])
+
+    def test_report_coverage_and_acceptance_require_subject_consistency(self):
+        for state in ["consistent", "unlinked", "conflicting"]:
+            with self.subTest(state=state):
+                check, job_routes = job_evidence()
+                check["source"] = ROOT + "/actions/runs/8"
+                if state == "unlinked":
+                    del job_routes["check-runs/7"]["details_url"]
+                elif state == "conflicting":
+                    job_routes["actions/jobs/9"]["run_attempt"] = 2
+                accepted = event(stage="goal", outcome="passed", evidence={"sources": [], "checks": [check]})
+                accepted["revision"].update(repository=ROOT, head=check["head"], tested=check["head"])
+                routes = {**base_routes(), **job_routes}
+                routes["issues/1"].update(state="closed")
+                routes["issues/1/comments?per_page=100&page=1"] = [comment(1, fenced(accepted))]
+                sha = check["head"]
+                routes.update({f"commits/{sha}/check-runs?filter=all&per_page=100&page=1": {"check_runs": []},
+                               f"commits/{sha}/statuses?per_page=100&page=1": [],
+                               f"actions/runs?head_sha={sha}&per_page=100&page=1": {"workflow_runs": []}})
+                report = Collector("example/project", Fake(routes)).collect([1])
+                self.assertTrue(report["retrieval_complete"])
+                self.assertTrue(report["record_coverage_complete"])
+                self.assertEqual(report["evidence_coverage_complete"], state == "consistent")
+                merged = {3: {"head": {"sha": sha}, "merged_at": "date", "state": "closed"}}
+                score = score_goal(ROOT + "/issues/1", {"state": "closed"}, report["reconciliation"],
+                                   merged, report["check_observations"], True)
+                self.assertEqual(score["acceptance"], "recorded_with_live_consistency" if state == "consistent" else "unverified")
 
 
 class ReconciliationTests(unittest.TestCase):

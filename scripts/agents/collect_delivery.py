@@ -271,131 +271,185 @@ class Collector:
                     self.diagnostic("evidence_reference_not_expanded", source)
 
     def observe_check(self, check):
-        """Retained assertions and fresh API identities are separate observations."""
+        """Resolve one subject before comparing retained claims with API observations."""
         result = {"retained": check, "fresh": {}, "status": "unverified", "limitations": []}
-        mismatch = []
+        mismatch, limits = set(), set()
         identities = {field: [] for field in ["run_id", "attempt", "job_id", "check_id"]}
 
         def identity(field, value, origin):
             if value is not None:
-                identities[field].append((str(value), origin))
+                if not str(value).isdigit() or int(value) < 1:
+                    (mismatch if origin == "retained" else limits).add("invalid_" + field)
+                else:
+                    identities[field].append((str(value), origin))
 
-        def run_link(url, origin):
-            if not url.startswith((self.root + "/", f"https://api.github.com/repos/{self.repository}/")):
-                return None
-            query_check = re.search(r"[?&]check_run_id=(\d+)", url)
-            if query_check:
-                identity("check_id", query_check[1], origin)
-            parsed = re.search(
-                r"/actions/runs/(\d+)(?:/attempts/(\d+))?(?:/job/(\d+))?/?(?=$|[?#])", url)
-            if parsed:
-                for field, value in zip(["run_id", "attempt", "job_id"], parsed.groups()):
-                    identity(field, value, origin)
-            return parsed
+        def resolved(field):
+            values = {value for value, _origin in identities[field]}
+            if len(values) > 1:
+                mismatch.add("identity_" + field)
+            return next(iter(values)) if len(values) == 1 else None
 
+        def reference(url):
+            """Recognize bounded repository references, not arbitrary integrator URLs."""
+            prefixes = [self.root + "/", f"https://api.github.com/repos/{self.repository}/"]
+            tail = next((url[len(prefix):] for prefix in prefixes if url.startswith(prefix)), "")
+            values = {}
+            run = re.fullmatch(r"actions/runs/(\d+)(?:/attempts/(\d+))?(?:/job/(\d+))?/?(?:[?#].*)?", tail)
+            if run:
+                values.update((k, v) for k, v in zip(["run_id", "attempt", "job_id"], run.groups()) if v)
+            direct = re.fullmatch(r"(check-runs|actions/jobs)/(\d+)/?(?:[?#].*)?", tail)
+            if direct:
+                values["check_id" if direct[1] == "check-runs" else "job_id"] = direct[2]
+            query = re.search(r"[?&]check_run_id=(\d+)(?=$|[&#])", tail)
+            if query and (run or re.match(r"pull/\d+/checks[?#]", tail)):
+                values["check_id"] = query[1]
+            return values
+
+        def add_reference(values, origin):
+            for field, value in values.items():
+                identity(field, value, origin)
+
+        def observed_id(data, field, remote, origin):
+            value = data.get(remote)
+            if value is None:
+                limits.add(origin + "_" + field + "_unavailable")
+            identity(field, value, origin)
+
+        def compare(data, fields):
+            for field, remote in fields:
+                if check[field] is not None:
+                    if data.get(remote) is None:
+                        limits.add(field + "_unavailable")
+                    elif str(check[field]) != str(data[remote]):
+                        mismatch.add(field)
+
+        source = reference(check["source"])
+        if not source:
+            limits.add("check_source_not_verified")
         for field in ["run_id", "attempt", "check_id"]:
             identity(field, check[field], "retained")
-        for key in ["check_id", "run_id"]:
-            if check[key] is not None and not check[key].isdigit():
-                mismatch.append(key)
-        if not check["source"].startswith(self.root + "/"):
-            result["limitations"].append("external_check_source_not_verified")
-        source_ids = run_link(check["source"], "source")
-        source_attempt = int(source_ids[2]) if source_ids and source_ids[2] else None
-        if source_attempt is not None and check["attempt"] is not None and source_attempt != check["attempt"]:
-            mismatch.append("source_attempt")
-        source_check = re.search(r"[?&]check_run_id=(\d+)", check["source"])
-        if source_check:
-            identity("check_id", source_check[1], "source")
-        if source_check and check["check_id"] and source_check[1] != check["check_id"]:
-            mismatch.append("source_check_id")
-        if source_ids and check["run_id"] and source_ids[1] != check["run_id"]:
-            mismatch.append("source_run_id")
-        check_identity = check["check_id"] or (source_check[1] if source_check else None)
-        details = None
-        if check_identity and check_identity.isdigit():
-            fresh = self.get(f"check-runs/{check_identity}")
-            result["fresh"]["check"] = fresh
-            if fresh:
-                identity("check_id", fresh.get("id"), "fresh_check")
-                for field, remote in [("check_id", "id"), ("name", "name"), ("head", "head_sha"), ("conclusion", "conclusion")]:
-                    if check[field] is not None and str(check[field]) != str(fresh.get(remote)):
-                        mismatch.append(field)
-                details = run_link(fresh.get("details_url") or "", "fresh_check")
-                run_link(fresh.get("html_url") or "", "fresh_check")
-                if details and check["run_id"] and details[1] != check["run_id"]:
-                    mismatch.append("check_run_relation")
-        if check["run_id"] and check["run_id"].isdigit():
-            run = self.run(check["run_id"])
-            attempt = check["attempt"] if check["attempt"] is not None else source_attempt
-            fresh = self.get(f"actions/runs/{check['run_id']}/attempts/{attempt}") if attempt else run
-            result["fresh"]["run_attempt"] = fresh
-            if fresh:
-                identity("run_id", fresh.get("id"), "fresh_run")
-                identity("attempt", fresh.get("run_attempt"), "fresh_run")
-                if source_attempt is not None and source_attempt != fresh.get("run_attempt"):
-                    mismatch.append("source_attempt")
-                for field, remote in [("run_id", "id"), ("head", "head_sha"), ("attempt", "run_attempt")]:
-                    if check[field] is not None and str(check[field]) != str(fresh.get(remote)):
-                        mismatch.append(field)
-                workflow = check["workflow"]
-                if workflow is not None:
-                    path = re.search(r"\.github/workflows/[A-Za-z0-9_.-]+", workflow)
-                    workflow_identity = re.search(r"(?:workflow\s+ID\s*|^)(\d+)(?=:|\))", workflow)
-                    if path:
-                        if path[0] != fresh.get("path"):
-                            mismatch.append("workflow_path")
-                        if workflow_identity and workflow_identity[1] != str(fresh.get("workflow_id")):
-                            mismatch.append("workflow_id")
-                    elif workflow != fresh.get("name"):
-                        result["limitations"].append("workflow_description_not_machine_comparable")
-                # A job conclusion need not equal the aggregate run conclusion.
-                if not check_identity and not (source_ids and source_ids[3]) and check["conclusion"] != fresh.get("conclusion"):
-                    mismatch.append("conclusion")
-        if check["workflow_revision"]:
-            result["limitations"].append("workflow_revision_not_attested_by_run_API")
-        if source_ids and source_ids[3]:
-            job = self.get(f"actions/jobs/{source_ids[3]}")
+            if field in source and check[field] is not None and str(check[field]) != source[field]:
+                mismatch.add("source_" + field)
+        add_reference(source, "source")
+        check_id = resolved("check_id")
+        kind = "job" if source.get("job_id") else "check" if check_id else "run_attempt"
+        fresh_check, job, run_attempt = None, None, None
+        check_links = []
+        if check_id:
+            fresh_check = self.get(f"check-runs/{check_id}")
+            result["fresh"]["check"] = fresh_check
+            if fresh_check:
+                observed_id(fresh_check, "check_id", "id", "fresh_check")
+                compare(fresh_check, [("name", "name"), ("head", "head_sha"), ("conclusion", "conclusion")])
+                for key in ["details_url", "html_url"]:
+                    link = reference(fresh_check.get(key) or "")
+                    check_links.append(link)
+                    add_reference(link, "fresh_check_link")
+            else:
+                limits.add("check_unavailable")
+
+        # A precise check link can identify the job even when source is a check
+        # query or run URL. No job/check ID equivalence or name-based join is used.
+        job_id = resolved("job_id")
+        job_check = None
+        if job_id:
+            job = self.get(f"actions/jobs/{job_id}")
             result["fresh"]["source_job"] = job
             if job:
-                run_link(job.get("html_url") or "", "fresh_job")
-                run_link(job.get("run_url") or "", "fresh_job")
                 for field, remote in [("job_id", "id"), ("run_id", "run_id"), ("attempt", "run_attempt")]:
-                    identity(field, job.get(remote), "fresh_job")
-                for field, remote in [("run_id", "run_id"), ("attempt", "run_attempt"),
-                                      ("head", "head_sha"), ("name", "name"), ("conclusion", "conclusion")]:
-                    if check[field] is not None and str(check[field]) != str(job.get(remote)):
-                        mismatch.append("job_" + field)
-                job_check = re.fullmatch(
-                    re.escape(f"https://api.github.com/repos/{self.repository}/check-runs/") + r"(\d+)",
-                    job.get("check_run_url") or "")
-                if job_check:
-                    identity("check_id", job_check[1], "fresh_job")
-                if job_check and check["check_id"] and job_check[1] != check["check_id"]:
-                    mismatch.append("job_check_relation")
-                if check_identity and not job_check and not (details and details[3]):
-                    result["limitations"].append("job_check_relation_unavailable")
-        for field, claims in identities.items():
-            if len({value for value, _origin in claims}) > 1:
-                mismatch.append("identity_" + field)
-            if any(origin == "source" for _value, origin in claims) and not any(
-                origin.startswith("fresh_") for _value, origin in claims
-            ):
-                result["limitations"].append("source_identity_not_established")
+                    observed_id(job, field, remote, "fresh_job")
+                compare(job, [("name", "name"), ("head", "head_sha"), ("conclusion", "conclusion")])
+                for key in ["html_url", "run_url"]:
+                    add_reference(reference(job.get(key) or ""), "fresh_job_link")
+                job_check = reference(job.get("check_run_url") or "").get("check_id")
+                identity("check_id", job_check, "fresh_job")
+                if check_id and job_check and check_id != job_check:
+                    mismatch.add("job_check_relation")
+            else:
+                limits.add("job_unavailable")
+
+        run_id, attempt = resolved("run_id"), resolved("attempt")
+        result["subject"] = {"kind": kind, "check_id": check_id, "job_id": job_id,
+                             "run_id": run_id, "attempt": int(attempt) if attempt else None}
+        check_job = bool(fresh_check and job and (
+            job_check == check_id or any(link.get("job_id") == job_id for link in check_links)))
+        if check_id and job_id and not check_job:
+            limits.add("job_check_relation_unavailable")
+        job_run = bool(job and run_id and str(job.get("run_id")) == run_id)
+        job_attempt = bool(job_run and attempt and str(job.get("run_attempt")) == attempt)
+        if kind == "check":
+            subject_run = (check_job and job_run) or any(link.get("run_id") == run_id for link in check_links if run_id)
+            subject_attempt = (check_job and job_attempt) or any(
+                link.get("run_id") == run_id and link.get("attempt") == attempt
+                for link in check_links if run_id and attempt)
+        elif kind == "job":
+            subject_run, subject_attempt = job_run, job_attempt
+        else:
+            subject_run, subject_attempt = False, False
+
+        # Latest-run retrieval is history/context only. It must never select the
+        # historical subject's attempt or provide a fallback for an expired one.
+        if run_id:
+            self.run(run_id)
+            if attempt:
+                run_attempt = self.get(f"actions/runs/{run_id}/attempts/{attempt}")
+                result["fresh"]["run_attempt"] = run_attempt
+                if run_attempt:
+                    observed_id(run_attempt, "run_id", "id", "fresh_run")
+                    observed_id(run_attempt, "attempt", "run_attempt", "fresh_run")
+                    compare(run_attempt, [("head", "head_sha")])
+                    if kind == "run_attempt":
+                        subject_run = str(run_attempt.get("id")) == run_id
+                        subject_attempt = subject_run and str(run_attempt.get("run_attempt")) == attempt
+                        compare(run_attempt, [("name", "name"), ("conclusion", "conclusion")])
+                else:
+                    limits.add("run_attempt_unavailable")
+        if kind == "run_attempt" and not (run_id and attempt):
+            limits.add("run_attempt_identity_unavailable")
+        if (run_id or check["run_id"] is not None or source.get("run_id")) and not subject_run:
+            limits.add("subject_run_relation_unavailable")
+        if (attempt or check["attempt"] is not None or source.get("attempt")) and not subject_attempt:
+            limits.add("subject_attempt_relation_unavailable")
+        result["relationships"] = {"check_job": check_job, "subject_run": bool(subject_run),
+                                   "subject_attempt": bool(subject_attempt)}
+
+        workflow = check["workflow"]
+        if workflow is not None:
+            if not run_attempt or not subject_attempt:
+                limits.add("workflow_context_unavailable")
+            else:
+                path = re.search(r"\.github/workflows/[A-Za-z0-9_.-]+", workflow)
+                workflow_id = re.search(r"(?:workflow\s+ID\s*|^)(\d+)(?=:|\))", workflow)
+                fields = [("workflow_path", path[0], "path")] if path else []
+                if workflow_id:
+                    fields.append(("workflow_id", workflow_id[1], "workflow_id"))
+                if not fields:
+                    if workflow != run_attempt.get("name"):
+                        limits.add("workflow_description_not_machine_comparable")
+                for field, value, remote in fields:
+                    if run_attempt.get(remote) is None:
+                        limits.add(field + "_unavailable")
+                    elif str(run_attempt[remote]) != value:
+                        mismatch.add(field)
+        for field in identities:
+            resolved(field)
+        # Source claims must be corroborated, not merely used to select an API
+        # request. Relationship checks above additionally bind check/job to run.
+        for field in source:
+            if not any(origin.startswith("fresh_") for _value, origin in identities[field]):
+                limits.add("source_identity_not_established")
+        result["identities"] = {field: [{"value": value, "origin": origin} for value, origin in claims]
+                                for field, claims in identities.items() if claims}
         if mismatch:
             result["status"] = "inconsistent"
-            result["mismatches"] = sorted(set(mismatch))
-        elif any(l in result["limitations"] for l in ["workflow_description_not_machine_comparable",
-                                                      "external_check_source_not_verified", "job_check_relation_unavailable",
-                                                      "source_identity_not_established"]):
-            pass
-        elif result["fresh"] and all(result["fresh"].values()) and (
-            check_identity is not None or (source_ids and source_ids[3]) or
-            (check["run_id"] is not None and check["attempt"] is not None)
-        ):
+            result["mismatches"] = sorted(mismatch)
+        elif not limits and (fresh_check or job or run_attempt):
             result["status"] = "observed_fields_consistent"
         else:
-            result["limitations"].append("missing_identity_or_unavailable_fresh_source")
+            limits.add("missing_identity_or_unavailable_fresh_source")
+        result["limitations"] = sorted(limits)
+        if check["workflow_revision"]:
+            result["limitations"].append("workflow_revision_not_attested_by_run_API")
         return result
 
     def collect(self, issue_numbers, previous=None):

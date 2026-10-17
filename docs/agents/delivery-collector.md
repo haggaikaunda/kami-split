@@ -65,15 +65,27 @@ are used to infer rework or interventions, and scoped `none_observed` assertions
 do not establish whole-goal zero.
 
 Retained check assertions and fresh API observations are separate. The collector
-compares available run/check IDs, attempts embedded in source URLs, retained
-attempts, head, name, conclusion and workflow
-identity; unavailable or expired sources remain unverified, and mismatches remain
-inconsistent. Source and live identities are reconciled even when redundant
-retained IDs are unknown; an unestablished relationship stays unverified. Job
-conclusions are compared with the job, while aggregate run conclusions apply to
-run-level evidence. A job ID is not assumed to be a check-run ID. The run API does not
-attest the workflow source revision; retained synthetic-merge relations remain
-assertions. Historical checks are not relabelled as fresh after expiry.
+resolves a job, check run, or specific workflow run attempt from supported
+same-repository source references and retained IDs. Exact job links in a fetched
+check's details/HTML can establish the job and its owning attempt. Source-derived
+IDs are usable when redundant retained fields are null. Each observation exposes
+its selected subject, identity provenance and established relationships.
+
+A bare run's latest metadata remains retrieval context; it never selects a
+historical job/check's attempt or substitutes for an expired specific attempt.
+Run-only outcome evidence needs an explicit attempt. Matching names or SHAs do
+not establish a check/job/run relationship. Missing endpoints, needed fields,
+relationships or unsupported source formats remain unverified; known conflicting
+identities or comparable field values remain inconsistent. A standalone check
+without run/attempt/workflow claims needs no invented run relationship.
+
+Name and conclusion are compared on the selected check/job or run-attempt
+subject. A successful job can belong to a failed aggregate run. Workflow metadata
+is compared only through the subject's established run-attempt relationship.
+A job ID is not assumed to be a check-run ID. Unknown relationships never count
+as consistent evidence coverage or acceptance-check consistency. The run API does
+not attest the workflow source revision; retained synthetic-merge relations
+remain assertions. Historical checks are not relabelled as fresh after expiry.
 
 Edited-source timestamps warn that earlier content is unavailable. Add
 `--previous /tmp/older-snapshot.json` to compare retained source-body digests;

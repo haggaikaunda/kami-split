@@ -37,19 +37,19 @@ The fixed `record_type: "kami_split.delivery_stage"` marker distinguishes these
 events from unrelated fenced JSON. The collector reports marked invalid
 records and unsupported versions rather than silently excluding them.
 
-| Field                                             | Meaning                                                                                                                                                          |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `record_type`                                     | Fixed discriminator `kami_split.delivery_stage`                                                                                                                  |
-| `schema_version`, `event_id`, `supersedes`        | Version `1`; globally unique stable event ID (for example a UUID); IDs corrected by this replacement event                                                       |
-| `goal`, `attempt_id`, `scope`                     | Owning issue URL, stable attempt ID, approved scope revision and approval/source links                                                                           |
-| `stage`, `role`, `outcome`                        | Boundary and responsible role; `started`, `ongoing`, `passed`, `failed`, `blocked`, `cancelled` or `not_applicable`                                              |
-| `revision`                                        | Repository, exact relevant base/head/tested SHA or null with a limitation; resource/branch identities belong in the human handoff                                |
-| `execution`                                       | Configured model/effort, observed model/effort or null, available context ID or null, fresh/inherited/unknown context, routing reason                            |
-| `evidence`                                        | Source links and compact observed checks: run ID, check-run/job ID, attempt, name, conclusion, workflow identity/revision, head SHA and synthetic-merge relation |
-| `findings`, `limitations`, `owner`, `next_action` | Actionable outcome, honest unknowns and who continues; empty findings means none observed in stated coverage                                                     |
-| `intervention`                                    | `planned_decision`, `rescue`, `none_observed`, `unknown` or `not_applicable`, reason/source links and observation coverage                                       |
-| `correction_cycle` (optional)                     | Null/absent makes no assertion; declare `{id, source_stage, cause}` once, then reference the same cycle with `{id}`                                              |
-| `timing`, `cost`                                  | Observed start/end and elapsed seconds or null; attributable cost with currency/source or null                                                                   |
+| Field                                             | Meaning                                                                                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `record_type`                                     | Fixed discriminator `kami_split.delivery_stage`                                                                                                              |
+| `schema_version`, `event_id`, `supersedes`        | Version `1`; globally unique stable event ID (for example a UUID); IDs corrected by this replacement event                                                   |
+| `goal`, `attempt_id`, `scope`                     | Owning issue URL, stable attempt ID, approved scope revision and approval/source links                                                                       |
+| `stage`, `role`, `outcome`                        | Boundary and responsible role; `started`, `ongoing`, `passed`, `failed`, `blocked`, `cancelled` or `not_applicable`                                          |
+| `revision`                                        | Repository, exact relevant base/head/tested SHA or null with a limitation; resource/branch identities belong in the human handoff                            |
+| `execution`                                       | Configured model/effort, observed model/effort or null, available context ID or null, fresh/inherited/unknown context, routing reason                        |
+| `evidence`                                        | Source links and compact observed checks: run ID, check-run ID, attempt, name, conclusion, workflow identity/revision, head SHA and synthetic-merge relation |
+| `findings`, `limitations`, `owner`, `next_action` | Actionable outcome, honest unknowns and who continues; empty findings means none observed in stated coverage                                                 |
+| `intervention`                                    | `planned_decision`, `rescue`, `none_observed`, `unknown` or `not_applicable`, reason/source links and observation coverage                                   |
+| `correction_cycle` (optional)                     | Null/absent makes no assertion; declare `{id, source_stage, cause}` once, then reference the same cycle with `{id}`                                          |
+| `timing`, `cost`                                  | Observed start/end and elapsed seconds or null; attributable cost with currency/source or null                                                               |
 
 Use a new attempt ID for a restarted delivery attempt; keep it stable across its
 stages and link the previous attempt in evidence. Stage retries remain the same
@@ -67,6 +67,10 @@ available, including rerun attempt and actual workflow/check identities, source
 URL, SHA and relation to PR base/head. A familiar check name alone is insufficient.
 Explain synthetic merge SHAs rather than requiring equality to the PR head.
 Retained observations after source expiry are historical, not fresh verification.
+`check_id` identifies a check run; an Actions job ID belongs in its job source
+URL. These ID namespaces are distinct even when their numeric values coincide.
+For check/job evidence, `name` and `conclusion` describe that check/job. For
+run-only evidence, they describe the selected workflow run attempt.
 
 Scope sources and evidence sources use the same HTTPS URL contract. Link the
 authoritative issue/scope record even when approval originated in chat; describe
