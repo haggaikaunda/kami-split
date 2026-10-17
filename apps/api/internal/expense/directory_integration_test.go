@@ -201,8 +201,12 @@ func TestDirectoryOneAggregateStatementForManyGroups(t *testing.T) {
 
 func TestDirectoryQueryFailureReturnsProblemWithoutEntries(t *testing.T) {
 	f := newExpenseFixture(t)
-	f.exec(`REVOKE SELECT ON app.repayments FROM kami_api`)
-	t.Cleanup(func() { f.exec(`GRANT SELECT ON app.repayments TO kami_api`) })
+	f.exec(`SET ROLE kami_migrator; REVOKE SELECT ON app.repayments FROM kami_api; RESET ROLE`)
+	t.Cleanup(func() { f.exec(`SET ROLE kami_migrator; GRANT SELECT ON app.repayments TO kami_api; RESET ROLE`) })
+	var canRead bool
+	if err := f.admin.QueryRow(f.ctx, `SELECT has_table_privilege('kami_api', 'app.repayments', 'SELECT')`).Scan(&canRead); err != nil || canRead {
+		t.Fatalf("permission failure was not injected: canRead=%t err=%v", canRead, err)
+	}
 	got := groupRequest(t, f, 1, directoryQuery, nil, "groupDirectory", "Problem")
 	if got["code"] != "NOT_FOUND" {
 		t.Fatal(got)
