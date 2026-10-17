@@ -1,0 +1,40 @@
+.section {
+  min-width: 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+.section > summary {
+  min-height: var(--target-size);
+  padding-block: 1rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.section > summary > h3 {
+  display: inline;
+  font-size: 1rem;
+}
+.section > summary:focus-visible,
+.obligation:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-control);
+}
+.content {
+  padding-bottom: 1rem;
+  min-width: 0;
+}
+.obligation {
+  display: block;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.obligation:hover {
+  background: var(--color-subtle);
+}
+:is(.obligation, .ineligible) [data-ui~='repayment-row'] > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.obligation [data-ui~='money'] {
+  overflow-x: auto;
+}

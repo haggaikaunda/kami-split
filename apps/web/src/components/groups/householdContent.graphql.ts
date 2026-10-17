@@ -38,10 +38,12 @@ export const householdContentDashboard = graphql`
             from {
               id
               displayName
+              canParticipate
             }
             to {
               id
               displayName
+              canParticipate
             }
             amountMinor
           }

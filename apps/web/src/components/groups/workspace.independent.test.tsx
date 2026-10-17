@@ -145,7 +145,7 @@ it('uses the shared direct and More workspace routes for ordinary groups and tri
 it('exposes every one-to-many obligation with exact group, sender, recipient and cents, only in balance details', async () => {
   nav.search = 'tab=balances';
   await render(fixture('-1000'));
-  const links = [...host.querySelectorAll('a[href*="repayments/new"]')];
+  const links = [...host.querySelectorAll('a[href*="repayments/new?sender="]')];
   expect(links).toHaveLength(2);
   expect(links.map((a) => a.getAttribute('href'))).toEqual([
     '/groups/G/repayments/new?sender=a&recipient=b&amount=401',
@@ -166,7 +166,9 @@ it('states positive means owed and distinguishes zero viewer from unsettled grou
   nav.search = 'tab=balances';
   await render(fixture('0'));
   expect(host.textContent).toContain('This group has outstanding balances');
-  expect(host.querySelectorAll('a[href*="repayments/new"]')).toHaveLength(2);
+  expect(
+    host.querySelectorAll('a[href*="repayments/new?sender="]'),
+  ).toHaveLength(2);
 });
 
 it('shows complete viewer expense allocations and payer amount without deriving either from repayment-adjusted net', async () => {
@@ -307,8 +309,8 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
       ?.textContent,
   ).toContain('$60.00 − $20.00 + $0.00 − $40.00 = $0.00 USD');
   expect(
-    [...host.querySelectorAll('a[href*="repayments/new"]')].map((node) =>
-      node.getAttribute('href'),
+    [...host.querySelectorAll('a[href*="repayments/new?sender="]')].map(
+      (node) => node.getAttribute('href'),
     ),
   ).toEqual(['/groups/G/repayments/new?sender=c&recipient=b&amount=1000']);
   await render({
@@ -330,7 +332,7 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
     'Everyone in this space is settled: each member’s balance is zero.',
   );
   expect(host.textContent).toContain('No repayments are needed in this space.');
-  expect(host.querySelector('a[href*="repayments/new"]')).toBeNull();
+  expect(host.querySelector('a[href*="repayments/new?sender="]')).toBeNull();
   await render({
     ...group,
     balances: { __typename: 'Problem', code: 'UNAVAILABLE' },

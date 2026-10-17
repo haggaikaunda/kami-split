@@ -1714,3 +1714,313 @@ test('expense Escape cannot restore private rows when the current first page is 
     'A denied first page cannot authorize replay',
   ).toBe(false);
 });
+
+function sourceDashboard() {
+  const dashboard = structuredClone(
+    responseFor('householdWorkspaceQuery', {}).householdDashboard,
+  );
+  const home = dashboard.spaces[0];
+  const trip = structuredClone(
+    responseFor('journeyWorkspaceQuery', { id: 'T' }).group,
+  );
+  const [viewer, other, third] = trip.members;
+  dashboard.totals.viewerNetMinor = '0';
+  dashboard.totals.openBalanceCount = '2';
+  dashboard.totals.activeSpaceCount = '14';
+  dashboard.spaces.push({
+    ...home,
+    ...trip,
+    groupId: 'T',
+    viewerNetMinor: '-8420',
+    balances: {
+      __typename: 'GroupBalances',
+      settled: false,
+      obligations: [{ from: viewer, to: other, amountMinor: '8420' }],
+    },
+  });
+  dashboard.spaces.push(
+    ...Array.from({ length: 12 }, (_, i) => ({
+      ...home,
+      groupId: `source-${i}`,
+      name: `Shared source ${i} with a long readable name`,
+      isHousehold: false,
+      viewerNetMinor: '0',
+      balances: {
+        __typename: 'GroupBalances',
+        settled: false,
+        obligations: [
+          { from: other, to: third, amountMinor: '9007199254740993' },
+        ],
+      },
+    })),
+  );
+  return { householdDashboard: dashboard };
+}
+
+test('Household balances: independent compact sources, both repayment directions and exact return focus', async ({
+  page,
+  app,
+}) => {
+  const fixture = sourceDashboard();
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    fixture,
+  );
+  response.release();
+  await app.authenticate();
+  await page.goto('/household?tab=balances');
+  const sources = page.locator(
+    '[data-ui~="household-balances"] > li > details',
+  );
+  await expect(sources).toHaveCount(14);
+  await expect(sources.locator(':scope[open]')).toHaveCount(0);
+  await expect(page.locator('[data-ui~="signed-balance"]')).toContainText(
+    'Payments still to settle',
+  );
+  const last = sources.last().locator('summary').first();
+  await last.focus();
+  await page.keyboard.press('Enter');
+  await expect(last).toHaveAttribute('aria-expanded', 'true');
+  await expect(last).toContainText('Other members still owe each other');
+  await expect(sources.first()).not.toHaveAttribute('open');
+  await page.keyboard.press('Enter');
+  await expect(last).toHaveAttribute('aria-expanded', 'false');
+
+  for (const direction of [
+    {
+      source: 'H',
+      sender: 'M1',
+      recipient: 'M0',
+      path: /\/household\/ledger/,
+      name: 'Home',
+    },
+    {
+      source: 'T',
+      sender: 'M0',
+      recipient: 'M1',
+      path: /\/trips\/T\/repayments\/new/,
+      name: 'Maui 2026',
+    },
+  ]) {
+    const summary = page.locator(
+      `#balance-section-household-${direction.source}`,
+    );
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    const id = `repay-${direction.source}-${direction.sender}-${direction.recipient}`;
+    const row = page.locator(`#${id}`);
+    await expect(row).toBeVisible();
+    await expect(row.locator('a, button, [tabindex="0"]')).toHaveCount(0);
+    await row.focus();
+    const beforeScroll = await page.evaluate(() => scrollY);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(direction.path);
+    await expect(
+      page.getByRole('heading', { name: /Record repayment/ }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Sender', { exact: true })).toHaveValue(
+      direction.sender,
+    );
+    await expect(page.getByLabel('Recipient', { exact: true })).toHaveValue(
+      direction.recipient,
+    );
+    await expect(page.getByLabel('Amount (USD)', { exact: true })).toHaveValue(
+      '84.20',
+    );
+    await expect(page.getByLabel('Transfer to record')).toContainText(
+      direction.name,
+    );
+    await page
+      .getByRole('link', { name: 'Back to source', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/household\?tab=balances&restore=/);
+    await expect(page.locator(`#${id}`)).toBeFocused();
+    await expect(
+      page.locator(`#balance-section-household-${direction.source}`),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      Math.abs((await page.evaluate(() => scrollY)) - beforeScroll),
+    ).toBeLessThan(4);
+  }
+  await expect(
+    sources.filter({ has: page.locator('summary[aria-expanded="true"]') }),
+  ).toHaveCount(2);
+});
+
+test('Group balances: another recorder, overpayment, duplicate activation and fresh authorized history', async ({
+  page,
+  app,
+}) => {
+  const fixture = structuredClone(
+    responseFor('journeyWorkspaceQuery', { id: 'T' }),
+  );
+  const group = fixture.group;
+  const [viewer, other, third] = group.members;
+  group.balances.obligations = [
+    { from: other, to: third, amountMinor: '8420' },
+  ];
+  const reads = app.holdMatching('journeyWorkspaceQuery', () => true, fixture);
+  reads.release();
+  let submissions = 0;
+  await page.route('**/api/graphql', async (route) => {
+    const { query, variables } = route.request().postDataJSON();
+    if (!query.includes('mutation journeyRepaymentMutation'))
+      return route.fallback();
+    submissions++;
+    const input = variables.input;
+    expect(input).toMatchObject({
+      groupId: 'T',
+      senderId: other.id,
+      recipientId: third.id,
+      amountMinor: '10000',
+      note: 'Actual transfer receipt',
+    });
+    expect(input.senderId).not.toBe(viewer.id);
+    group.balances.obligations = [
+      { from: third, to: other, amountMinor: '1580' },
+    ];
+    group.repayments.edges = [
+      {
+        node: {
+          id: 'repayment-test',
+          groupId: 'T',
+          amountMinor: '10000',
+          effectiveDate: input.effectiveDate,
+          note: input.note,
+          sender: other,
+          recipient: third,
+        },
+      },
+    ];
+    await route.fulfill({
+      json: {
+        data: {
+          recordRepayment: {
+            __typename: 'RepaymentCommitted',
+            key: input.key,
+            record: {
+              repaymentId: 'repayment-test',
+              groupId: 'T',
+              senderMembershipId: input.senderId,
+              recipientMembershipId: input.recipientId,
+              amountMinor: input.amountMinor,
+              currency: 'USD',
+              effectiveDate: input.effectiveDate,
+              note: input.note,
+            },
+          },
+        },
+      },
+    });
+  });
+  await app.authenticate();
+  await page.goto('/trips/T?tab=balances');
+  await page.locator('#repay-T-M1-M2').click();
+  await expect(page.getByLabel('Amount (USD)', { exact: true })).toHaveValue(
+    '84.20',
+  );
+  await page.getByLabel('Amount (USD)', { exact: true }).fill('100.00');
+  await page
+    .getByLabel('Optional note', { exact: true })
+    .fill('Actual transfer receipt');
+  await expect(page.getByLabel('Transfer to record')).toContainText(
+    'Brian paid Casey · $100.00 USD',
+  );
+  const readCount = app.requests.filter(
+    (request) => request.operation === 'journeyWorkspaceQuery',
+  ).length;
+  await page
+    .getByRole('button', { name: 'Record repayment', exact: true })
+    .evaluate((button) => {
+      button.click();
+      button.click();
+    });
+  await expect(
+    page.getByRole('heading', {
+      name: 'Recent recorded repayments',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Actual transfer receipt', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('#repay-T-M2-M1')).toContainText('$15.80');
+  expect(submissions).toBe(1);
+  expect(
+    app.requests.filter(
+      (request) => request.operation === 'journeyWorkspaceQuery',
+    ).length,
+  ).toBeGreaterThan(readCount);
+  expect(group.balances.totalExpenseMinor).toBe('300');
+  await page
+    .getByRole('link', { name: 'Record an actual transfer', exact: true })
+    .click();
+  await expect(page.getByLabel('Sender', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Recipient', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Amount (USD)', { exact: true })).toHaveValue(
+    '',
+  );
+});
+
+test('Balance layout: long names and amounts, keyboard details, ineligible parties and unavailable sources', async ({
+  page,
+  app,
+}, testInfo) => {
+  const fixture = sourceDashboard();
+  fixture.householdDashboard.spaces[0].balances.obligations[0].from.canParticipate = false;
+  fixture.householdDashboard.spaces[1].balances = {
+    __typename: 'Problem',
+    code: 'UNAVAILABLE',
+  };
+  fixture.householdDashboard.spaces[1].viewerNetMinor = null;
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    fixture,
+  );
+  response.release();
+  await app.authenticate();
+  for (const width of [320, 390, 440, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/household?tab=balances');
+    await expect(page.locator('[data-ui~="household-balances"]')).toBeVisible();
+    for (const textScale of ['100%', '200%']) {
+      await page.evaluate((value) => {
+        document.documentElement.style.fontSize = value;
+      }, textScale);
+      const summary = page.locator('#balance-section-household-source-11');
+      await summary.focus();
+      if ((await summary.getAttribute('aria-expanded')) !== 'true')
+        await page.keyboard.press('Enter');
+      const row = page.locator('#repay-source-11-M1-M2');
+      await expect(row).toBeVisible();
+      await row.focus();
+      await expect(row).toBeFocused();
+      const geometry = await page.evaluate(() => ({
+        width: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+        font: getComputedStyle(document.documentElement).fontSize,
+      }));
+      expect(geometry.scroll).toBeLessThanOrEqual(geometry.width + 1);
+      expect(geometry.font).toBe(textScale === '200%' ? '32px' : '16px');
+      await page.screenshot({
+        path: testInfo.outputPath(`balances-${width}-${textScale}.png`),
+        fullPage: true,
+      });
+    }
+  }
+  const home = page.locator('#balance-section-household-H');
+  await home.click();
+  await expect(home.locator('..')).toContainText(
+    'Recording requires two currently eligible members.',
+  );
+  await expect(page.locator('#repay-H-M1-M0')).toHaveCount(0);
+  const unavailable = page.locator('#balance-section-household-T');
+  await expect(unavailable).toContainText('Balance unavailable');
+  await expect(unavailable).not.toContainText('$0.00');
+  await unavailable.click();
+  await expect(unavailable.locator('..')).toContainText(
+    'This space cannot be shown as settled.',
+  );
+});

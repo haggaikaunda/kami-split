@@ -59,13 +59,23 @@
   padding: 0;
 }
 .balance-position details {
-  padding-left: 2.6875rem;
   font-size: 0.875rem;
   color: var(--color-muted);
 }
 .balance-position summary {
   cursor: pointer;
-  margin-top: 0.375rem;
+  min-height: var(--target-size);
+}
+.balance-position summary:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.balance-position summary > [data-ui~='row-detail'] {
+  flex-basis: 100%;
+}
+.balance-position summary [data-ui~='money'] {
+  max-width: 100%;
+  overflow-x: auto;
 }
 .balance-position-facts {
   display: flex;

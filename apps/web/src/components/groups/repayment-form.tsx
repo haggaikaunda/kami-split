@@ -74,7 +74,9 @@ export function RepaymentForm({
   const [notice, setNotice] = useState(
     initial.error
       ? 'Saved repayment cannot be safely read. Submission is blocked to preserve any unresolved attempt. Restore tab storage and reload.'
-      : '',
+      : initial.value
+        ? 'Restored your saved repayment for this space. Review its people and amount; the selected balance is only a suggestion.'
+        : '',
   );
   const alive = useRef(true),
     pending = useRef(false),
@@ -229,6 +231,19 @@ export function RepaymentForm({
       <p>
         Record money already transferred in this group. Recording does not move
         money. Partial repayments and overpayments are allowed.
+      </p>
+      <p aria-label="Transfer to record">
+        {members.find((member) => member.id === draft.sender)?.displayName ??
+          'Choose sender'}
+        {' paid '}
+        {members.find((member) => member.id === draft.recipient)?.displayName ??
+          'choose recipient'}
+        {' · '}
+        {!checked.errors.amount
+          ? money(checked.amount) + ' USD'
+          : 'Enter a valid amount'}
+        {' · Original group: '}
+        {name}
       </p>
       <p ref={status} role="status" tabIndex={-1}>
         {busy ? 'Working…' : notice}

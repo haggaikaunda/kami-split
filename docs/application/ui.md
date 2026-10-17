@@ -61,6 +61,18 @@ Creation/editing preserves exact Equal, Exact and Percentage intent, dirty draft
 
 Balance copy distinguishes what a person owes/is owed from expense spending. Repayments record transfers without moving money and never affect spending totals. Household net zero can contain offsetting source balances; retain the explicit warning and original-space explanation. Every individual must be zero within a source group for that group to be settled. Failed or incomplete reads cannot imply zero.
 
+Household Balances initially collapses each source independently, keeping its name,
+kind, exact personal balance and truthful settlement/unavailable copy visible.
+Expanded sources expose explicit obligations and links to complete member positions
+and repayment history. Group/Trip Balances separates member positions from
+who-owes-whom suggestions with the same native keyboard disclosures. Selecting a
+member position opens its expense/repayment calculation; it never infers a
+counterparty from a net. Eligible obligation rows are one native link with explicit
+parties, exact suggested amount and source; ineligible rows explain why recording
+is unavailable. General actual transfers remain a separate source-owned entry.
+Expansion metadata belongs to the account's financial scope and is erased on
+scope disposal. It contains no balances or member payloads.
+
 Rich help is anchored and keyboard accessible with explicit dismissal, focus restoration and viewport bounds. Routine Refresh buttons are absent; pull-to-refresh, foreground reauthorization and actionable error retries preserve continuity. See [workspace loading](../navigation/workspace-loading.md) for request ownership and refresh behavior.
 
 ## Verification

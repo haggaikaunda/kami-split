@@ -1,6 +1,3 @@
-.household-balances a {
-  color: var(--color-ink);
-}
 .household-space-copy {
   flex: 1;
 }
@@ -8,28 +5,40 @@
   list-style: none;
   padding: 0 !important;
 }
-.household-balances a {
-  display: flex;
-  justify-content: space-between;
+.household-balance > details > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
-  width: 100%;
-  border-bottom: 1px solid var(--color-separator);
-  padding-block: 1rem;
-  text-decoration: none;
 }
-.household-balances a > span {
+.household-balance > details > summary::before {
+  content: '+';
+  color: var(--color-muted);
+}
+.household-balance > details[open] > summary::before {
+  content: '−';
+}
+.household-balance > details > summary > span {
   min-width: 0;
-  overflow-wrap: break-word;
 }
-.household-balances a > span:last-child {
+.household-balance > details > summary > span:last-child {
   text-align: right;
-  flex: 0 0 auto;
 }
-.household-balance[data-position='positive'] [data-ui~='money'] {
+.household-balance > details > summary [data-ui~='money'] {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.household-balance[data-position='positive']
+  > details
+  > summary
+  [data-ui~='money'] {
   color: var(--color-primary);
 }
-.household-balance[data-position='negative'] [data-ui~='money'] {
+.household-balance[data-position='negative']
+  > details
+  > summary
+  [data-ui~='money'] {
   color: var(--color-owes);
 }
 
@@ -77,11 +86,11 @@
 }
 
 @container (max-width: 28rem) {
-  .household-balances .household-balance > a {
-    flex-direction: column;
-    align-items: stretch;
+  .household-balance > details > summary {
+    grid-template-columns: auto minmax(0, 1fr);
   }
-  .household-balances .household-balance > a > span:last-child {
+  .household-balance > details > summary > span:last-child {
+    grid-column: 2;
     text-align: left;
   }
 }

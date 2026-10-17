@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c1b1b3934b90c8889e6df858c2813334>>
+ * @generated SignedSource<<915a486cbbceba13a9c2a0b148656833>>
  * @lightSyntaxTransform
  */
 
@@ -255,6 +255,13 @@ v21 = [
     "args": null,
     "kind": "ScalarField",
     "name": "displayName",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "canParticipate",
     "storageKey": null
   }
 ];
@@ -643,12 +650,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "d28f8b4c26762b16116cff6a1c38199f",
+    "cacheID": "bb41574e576a1cd17e287da0f29c87b9",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      ...householdContentDashboard_4qorL8\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n\nfragment householdContentDashboard_4qorL8 on HouseholdDashboard {\n  state\n  totals {\n    __typename\n    ... on HouseholdDashboardTotals {\n      viewerShareMinor\n      viewerPaidMinor\n      viewerNetMinor\n      openBalanceCount\n      activeSpaceCount\n      totalSharedExpenseMinor\n      totalSharedExpenseCount\n    }\n    ... on Problem {\n      code\n    }\n  }\n  spaces {\n    groupId\n    name\n    kind\n    isHousehold\n    currency\n    viewerNetMinor\n    sharedExpenseCount\n    viewerMembership {\n      id\n      role\n    }\n    balances @include(if: $balances) {\n      __typename\n      ... on GroupBalances {\n        settled\n        obligations {\n          from {\n            id\n            displayName\n          }\n          to {\n            id\n            displayName\n          }\n          amountMinor\n        }\n      }\n      ... on Problem {\n        code\n      }\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      ...householdContentDashboard_4qorL8\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n\nfragment householdContentDashboard_4qorL8 on HouseholdDashboard {\n  state\n  totals {\n    __typename\n    ... on HouseholdDashboardTotals {\n      viewerShareMinor\n      viewerPaidMinor\n      viewerNetMinor\n      openBalanceCount\n      activeSpaceCount\n      totalSharedExpenseMinor\n      totalSharedExpenseCount\n    }\n    ... on Problem {\n      code\n    }\n  }\n  spaces {\n    groupId\n    name\n    kind\n    isHousehold\n    currency\n    viewerNetMinor\n    sharedExpenseCount\n    viewerMembership {\n      id\n      role\n    }\n    balances @include(if: $balances) {\n      __typename\n      ... on GroupBalances {\n        settled\n        obligations {\n          from {\n            id\n            displayName\n            canParticipate\n          }\n          to {\n            id\n            displayName\n            canParticipate\n          }\n          amountMinor\n        }\n      }\n      ... on Problem {\n        code\n      }\n    }\n  }\n}\n"
   }
 };
 })();
