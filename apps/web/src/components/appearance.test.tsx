@@ -4,6 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { AppearanceProvider, useApplyAppearance } from './appearance';
 import { appearanceBootstrap, appearanceCacheKey } from '@/lib/appearance';
+import { AppearanceEditor } from './onboarding/appearance';
+import type { OnboardingController } from './onboarding/controller';
 import type { FinancialScope } from '@/lib/relay/environment';
 const requests = vi.hoisted(
   () => [] as { next(value: unknown): void; error(): void }[],
@@ -336,3 +338,78 @@ it('never promotes an unknown bootstrap paint into another verified actor bindin
   await render(scope('bob'));
   expect(document.documentElement.dataset.theme).toBe('light');
 });
+
+it.each(['success', 'conflict', 'transport'])(
+  'releases an editor preview across loading and reconciles a late %s without draining old intent',
+  async (outcome) => {
+    dark = false;
+    const current = scope('alice');
+    const pending = Promise.withResolvers<unknown>();
+    let remote = 'LIGHT';
+    const call = vi.fn().mockImplementation((_path, input) => {
+      if (input.query.includes('mutation')) return pending.promise;
+      return Promise.resolve({ data: result(remote) });
+    });
+    const state = {
+      call,
+      session: { user: { id: 'alice' } },
+    } as unknown as OnboardingController;
+    const view = async (loading: boolean) => {
+      await act(async () =>
+        root.render(
+          <AppearanceProvider scope={current} loading={loading}>
+            {loading ? (
+              <p>Checking account</p>
+            ) : (
+              <AppearanceEditor state={state} />
+            )}
+          </AppearanceProvider>,
+        ),
+      );
+      act(() => vi.runOnlyPendingTimers());
+    };
+    await view(false);
+    await act(async () =>
+      (host.querySelector('input[value="DARK"]') as HTMLInputElement).click(),
+    );
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    await view(true);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    await act(async () => {
+      if (outcome === 'transport')
+        pending.reject(new Error('Synthetic failure'));
+      else
+        pending.resolve(
+          outcome === 'success'
+            ? {
+                data: {
+                  updateMyAppearance: {
+                    __typename: 'Profile',
+                    appearance: 'DARK',
+                  },
+                },
+              }
+            : {
+                data: {
+                  updateMyAppearance: {
+                    __typename: 'ProfileProblem',
+                    code: 'CONFLICT',
+                  },
+                },
+              },
+        );
+    });
+    expect(document.documentElement.dataset.theme).toBe('light');
+    remote = outcome === 'success' ? 'DARK' : 'LIGHT';
+    await view(false);
+    expect(document.documentElement.dataset.theme).toBe(
+      remote === 'DARK' ? 'dark' : 'light',
+    );
+    expect(requests).toHaveLength(2); // Editor unmount released the optimistic read gate.
+    expect(
+      call.mock.calls.filter(([, input]) => input.query.includes('mutation')),
+    ).toHaveLength(1);
+    requests[0].next(result('SYSTEM'));
+    expect(document.documentElement.dataset.appearance).toBe(remote);
+  },
+);

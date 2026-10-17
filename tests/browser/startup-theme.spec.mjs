@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures.mjs';
-import { user } from '../../scripts/browser/session.mjs';
+import { user, session } from '../../scripts/browser/session.mjs';
+import { origin } from '../../scripts/browser/settings.mjs';
 
 // Existing dark --color-canvas token is #0b111b; assert actual painted RGB.
 const profile = (appearance) => ({
@@ -238,23 +239,29 @@ for (const status of [503, 401]) {
     await expect(
       page.getByRole('heading', { name: 'Groups', exact: true }),
     ).toBeVisible();
-    await context.route('**/auth/v1/user', (route) =>
-      route.fulfill({
+    const verification = Promise.withResolvers();
+    await context.route('**/auth/v1/user', async (route) => {
+      await verification.promise;
+      await route.fulfill({
         status,
         json: {
           message: 'Synthetic verification failure',
           code: 'unexpected_failure',
         },
-      }),
-    );
+      });
+    });
     await page.evaluate(() => {
       window.dispatchEvent(new PageTransitionEvent('pagehide'));
       window.dispatchEvent(new PageTransitionEvent('pageshow'));
     });
-    await expect(page.locator('[data-ui="screen-loading"]')).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Groups', exact: true }),
-    ).toHaveCount(0);
+    try {
+      await expect(page.locator('[data-ui="screen-loading"]')).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Groups', exact: true }),
+      ).toHaveCount(0);
+    } finally {
+      verification.resolve();
+    }
     await expect(page).toHaveURL(/\/sign-in/, { timeout: 20000 });
     await expect(page.locator('html')).toHaveAttribute(
       'data-theme',
@@ -265,3 +272,78 @@ for (const status of [503, 401]) {
     ).toHaveCount(0);
   });
 }
+
+test('a verified account switch replaces paint ownership and rejects an old profile reply', async ({
+  page,
+  context,
+  app,
+}) => {
+  await app.authenticate();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await observe(page, 'DARK');
+  const initial = app.hold('appearanceQuery', profile('DARK'));
+  await page.goto('/groups');
+  await initial.started;
+  await initial.release();
+  await expect(
+    page.getByRole('heading', { name: 'Groups', exact: true }),
+  ).toBeVisible();
+  const old = app.hold('appearanceQuery', profile('LIGHT'));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await old.started;
+  const next = app.holdMatching(
+    'appearanceQuery',
+    () => true,
+    profile('SYSTEM'),
+  );
+  const other = {
+    ...user,
+    id: '22222222-2222-4222-8222-222222222222',
+    email: 'other@example.test',
+  };
+  const nextSession = { ...session(), user: other };
+  nextSession.access_token = [
+    { alg: 'HS256', typ: 'JWT' },
+    { sub: other.id, exp: nextSession.expires_at, aud: 'authenticated' },
+    'synthetic',
+  ]
+    .map((part) => Buffer.from(JSON.stringify(part)).toString('base64url'))
+    .join('.');
+  await context.addCookies([
+    {
+      name: 'kami-auth',
+      value:
+        'base64-' +
+        Buffer.from(JSON.stringify(nextSession)).toString('base64url'),
+      url: origin,
+      sameSite: 'Lax',
+    },
+  ]);
+  await context.route('**/auth/v1/user', (route) =>
+    route.fulfill({ json: other }),
+  );
+  await page.evaluate((nextSession) => {
+    const channel = new BroadcastChannel('kami-auth');
+    channel.postMessage({ event: 'SIGNED_IN', session: nextSession });
+    channel.close();
+  }, nextSession);
+  await next.started;
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  next.release();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem('kami-appearance') ?? 'null')?.actor,
+      ),
+    )
+    .toBe(other.id);
+  await old.release();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('kami-appearance')),
+    ),
+  ).toEqual({ actor: other.id, value: 'SYSTEM' });
+});
