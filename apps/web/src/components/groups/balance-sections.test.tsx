@@ -121,12 +121,17 @@ it.each([
     expect(
       links[0].querySelector('[data-ui~="repayment-row"]')?.textContent,
     ).toContain('You (You Person) pays Long Counterparty Name');
-    expect(links[1].getAttribute('aria-label')).toContain(
-      'Another Counterparty paid You Person, $5.99 USD, Original source',
+    expect(links[1].textContent).toContain('Record repayment:');
+    expect(links[1].textContent).toContain(
+      'Another Counterparty pays You (You Person)',
     );
+    expect(links[1].textContent).toContain('Original source');
+    expect(links[1].textContent).toContain('$5.99');
     for (const link of links) {
       expect(link.querySelector('a, button, input, [tabindex="0"]')).toBeNull();
-      expect(link.textContent).not.toContain('Record repayment');
+      expect(
+        link.querySelector('[data-ui~="repayment-row"]')?.textContent,
+      ).not.toContain('Record repayment');
     }
   },
 );

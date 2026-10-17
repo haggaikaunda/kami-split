@@ -153,10 +153,7 @@ function Examples() {
         </MemberBalanceRow>
         <details>
           <summary>A week in Maui · You owe 30.00 USD</summary>
-          <a
-            href="#example-detail"
-            aria-label="Record repayment: Sam paid Alex, 30.00 USD, A week in Maui"
-          >
+          <a href="#example-detail" title="Record repayment example">
             <RecommendedRepaymentRow
               linked
               group="A week in Maui"

@@ -104,8 +104,8 @@ export function ObligationRows({
             amount: amountMinor,
           }),
         )}
-        aria-label={`Record repayment: ${from.displayName} paid ${to.displayName}, ${money(amountMinor)} ${space.currency}, ${space.name}`}
       >
+        <span className={styles['action-label']}>Record repayment: </span>
         {row}
       </ScopedLink>
     ) : (

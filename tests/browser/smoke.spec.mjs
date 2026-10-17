@@ -1819,6 +1819,11 @@ test('Household balances: independent compact sources, both repayment directions
     const id = `repay-${direction.source}-${direction.sender}-${direction.recipient}`;
     const row = page.locator(`#${id}`);
     await expect(row).toBeVisible();
+    await expect(row).toHaveAccessibleName(
+      direction.source === 'H'
+        ? /Record repayment: Brian pays You \(Alex\).*Home.*\$84\.20 USD/
+        : /Record repayment: You \(Alex\) pays Brian.*Maui.*\$84\.20 USD/,
+    );
     await expect(row.locator('a, button, [tabindex="0"]')).toHaveCount(0);
     await row.focus();
     const beforeScroll = await page.evaluate(() => scrollY);
