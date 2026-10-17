@@ -31,6 +31,7 @@ type Snapshot struct {
 	HasPrevious, HasNext                   bool
 	Balance                                ledger.Balance
 	BalanceError                           string
+	FinancialSummary                       FinancialSummary
 }
 
 // Viewer is the caller's self-only identity and currently visible groups.
@@ -202,6 +203,7 @@ func decodeSnapshot(payload []byte, page PageRequest) (Snapshot, error) {
 		return result, Failure("INVALID_CURSOR")
 	}
 	result = Snapshot{ID: ledger.PublicID("Group", data.ID), Name: data.Name, Currency: data.Currency, Trip: data.Trip, IsHousehold: data.IsHousehold, ViewerMembershipID: ledger.PublicID("Membership", data.ViewerMembershipID), Members: data.Members, Records: data.Records, Revision: data.Revision, HasPrevious: data.HasPrevious, Positions: []ledger.Position{}}
+	result.FinancialSummary = FinancialSummary{Error: "UNAVAILABLE"}
 	total, ok := new(big.Int).SetString(data.Total, 10)
 	if !ok || !total.IsInt64() || total.Sign() < 0 {
 		result.BalanceError = "AMOUNT_OVERFLOW"
@@ -212,6 +214,9 @@ func decodeSnapshot(payload []byte, page PageRequest) (Snapshot, error) {
 		result.Members[i].ID = ledger.PublicID("Membership", result.Members[i].ID)
 	}
 	for _, p := range data.Positions {
+		if p.MemberID == data.ViewerMembershipID {
+			result.FinancialSummary = financialSummary(data.Total, p.Paid, p.Owed, p.Sent, p.Received)
+		}
 		paid, ok1 := new(big.Int).SetString(p.Paid, 10)
 		owed, ok2 := new(big.Int).SetString(p.Owed, 10)
 		sent, ok3 := new(big.Int).SetString(p.Sent, 10)

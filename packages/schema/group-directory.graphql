@@ -1,0 +1,62 @@
+"""
+Complete authorized discovery metadata and compact finances, excluding the designated Household.
+"""
+type GroupDirectory {
+  """
+  All currently accessible ordinary groups and trips, ordered by canonical group ID.
+  """
+  entries: [GroupDirectoryEntry!]!
+}
+"""
+One source's metadata, active membership count and finances from the same database snapshot.
+"""
+type GroupDirectoryEntry {
+  """
+  Current authorized name, currency, classification and optional trip metadata.
+  """
+  group: GroupSummary!
+  """
+  Active memberships only; excludes inactive history and pending invitations.
+  """
+  activeMemberCount: Int!
+  """
+  Complete current amounts, or an explicit problem; failure never becomes zero.
+  """
+  financialSummary: GroupFinancialSummaryResult!
+}
+"""
+Complete directory or safe access/unavailable problem, never a partial successful directory.
+"""
+union GroupDirectoryResult = GroupDirectory | Problem
+"""
+Exact source-local spend and personal net, or an explicit financial problem.
+"""
+union GroupFinancialSummaryResult = GroupFinancialSummary | Problem
+"""
+Complete current expense spending and the authenticated viewer's personal position.
+Amounts use canonical exact MinorUnits strings in the source group's currency.
+"""
+type GroupFinancialSummary {
+  """
+  Complete current expense face-value total, independent of pages, filters and trip dates; excludes repayments.
+  """
+  totalSpendMinor: MinorUnits!
+  """
+  Paid minus owed plus repayments sent minus received. Positive means being owed;
+  negative means owing. Zero describes only the viewer, never every member being settled.
+  """
+  viewerNetMinor: MinorUnits!
+}
+extend type Query {
+  """
+  Self-only current directory in one bounded aggregate read; returns no expense pages or member identities.
+  """
+  groupDirectory: GroupDirectoryResult!
+}
+extend type Group {
+  """
+  Complete current expense-only spend and personal net from this Group's authorized snapshot.
+  Independent of the selected expense connection's page and filters.
+  """
+  financialSummary: GroupFinancialSummaryResult!
+}

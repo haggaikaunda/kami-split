@@ -33,6 +33,16 @@ metadata and immutable financial/audit/recovery records remain unchanged.
 
 ## Responsibilities
 
+The additive `groupDirectory` read returns compact authorized ordinary/trip
+metadata, active membership counts and complete expense-only spend/personal net,
+excluding the designated Household. It aggregates in one RLS-protected statement
+with a five-second deadline, without transferring expense pages or membership
+identities. `Group.financialSummary` reuses its current authorized snapshot and the
+same exact-money calculation; paging, expense filters and trip dates do not affect
+these totals. Per-source overflow is an explicit financial problem, while failed
+discovery returns no entries. See the [schema contract](../../packages/schema/README.md#compact-group-directory-and-financial-summaries)
+for bounds, snapshot semantics and API-before-consumer deployment.
+
 - GraphQL resolvers translate transport inputs and outputs and invoke application operations. They do not become the sole home of authorization or financial rules.
 - Application operations authenticate their actor context, authorize group access, validate commands, and own transaction boundaries. Future imports use these same operations.
 - Pure financial code validates exact amounts, splits, and settlement effects without importing gqlgen or database libraries.
