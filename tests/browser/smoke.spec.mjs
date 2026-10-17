@@ -1388,25 +1388,45 @@ test('compact identity and navigation remain readable across responsive themes a
   app,
 }, testInfo) => {
   await app.authenticate();
-  await page.goto('/trips/T?tab=overview');
-  await expect(
-    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
-  ).toBeVisible();
-  for (const width of [320, 390, 440, 1440]) {
-    for (const scale of [1, 2]) {
-      for (const theme of ['light', 'dark', 'system']) {
+  // Select the real preference so foreground reads cannot reset a nominal Dark
+  // capture to the fixture's default Light. System also exercises the provider.
+  for (const theme of ['light', 'dark', 'system']) {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/account');
+    const choice = page.getByRole('radio', {
+      name: theme[0].toUpperCase() + theme.slice(1),
+      exact: true,
+    });
+    await expect(choice).toBeVisible();
+    if (!(await choice.isChecked())) {
+      await page
+        .locator('[data-ui~="appearance-choice"]')
+        .filter({ has: choice })
+        .click();
+      await expect(
+        page.getByText('Appearance saved for your account.', { exact: true }),
+      ).toBeVisible();
+    }
+    await page.goto('/trips/T?tab=overview');
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    for (const width of [320, 390, 440, 1440]) {
+      for (const scale of [1, 2]) {
         await page.setViewportSize({ width, height: 900 });
-        await page.emulateMedia({
-          colorScheme: theme === 'system' ? 'dark' : theme,
-        });
-        await page.evaluate(
-          ({ theme, scale }) => {
-            document.documentElement.dataset.theme =
-              theme === 'system' ? 'dark' : theme;
-            document.documentElement.style.fontSize = `${scale * 100}%`;
-          },
-          { theme, scale },
+        await page.evaluate((scale) => {
+          document.documentElement.style.fontSize = `${scale * 100}%`;
+        }, scale);
+        const resolvedTheme = theme === 'system' ? 'dark' : theme;
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-theme',
+          resolvedTheme,
         );
+        expect(
+          await page
+            .locator('body')
+            .evaluate((element) => getComputedStyle(element).colorScheme),
+        ).toBe(resolvedTheme);
         const header = page.locator('[data-ui~="workspace-navigation-brand"]');
         const title = header.getByRole('heading', {
           name: 'Maui 2026 with a very long friendly space name',
@@ -1433,7 +1453,57 @@ test('compact identity and navigation remain readable across responsive themes a
         await page.screenshot({
           path: testInfo.outputPath(`shell-${width}-${scale}-${theme}.png`),
         });
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-theme',
+          resolvedTheme,
+        );
       }
     }
   }
+});
+
+test('Profile return reauthorizes an expired source and cannot restore denied private rows', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const now = Date.now();
+  await page.clock.setFixedTime(now);
+  await page.goto(
+    '/trips/T?tab=expenses&categories=GROCERIES&sort=AMOUNT_DESC',
+  );
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await profileFor(page).click();
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await page.clock.setFixedTime(now + 30_001);
+  const denied = app.hold('journeyWorkspaceQuery', {
+    viewer: { __typename: 'Viewer', today: '2026-10-05' },
+    group: {
+      __typename: 'Problem',
+      code: 'FORBIDDEN',
+      message: 'Access denied',
+    },
+  });
+  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await denied.started;
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Maui 2026 with a very long friendly space name',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await denied.release();
+  await expect(
+    page
+      .getByText(
+        'Financial access is unavailable. Reload to check current access.',
+        { exact: true },
+      )
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(page.getByText('Private lunch 1', { exact: true })).toHaveCount(
+    0,
+  );
 });

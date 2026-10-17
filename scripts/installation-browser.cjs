@@ -52,7 +52,13 @@ module.exports = async function verifyInstallation({
       '/auth/confirm': 'confirm',
       '/auth/password': 'password',
     }[route];
-    const expectedURL = origin + (flow ? '/sign-in?flow=' + flow : route);
+    const expectedURL =
+      origin +
+      (flow
+        ? '/sign-in?flow=' + flow
+        : route === '/trips'
+          ? '/groups?kind=trips'
+          : route);
     assert.equal(
       documentResponse.url(),
       expectedURL,
@@ -94,9 +100,8 @@ module.exports = async function verifyInstallation({
   // Exercise the same links after entry from each reported installation page.
   for (const [label, route] of [
     ['Groups', '/groups'],
-    ['Trips', '/trips'],
     ['Household', '/household'],
-    ['Account', '/account'],
+    ['Profile', '/account'],
   ]) {
     const link = page
       .getByRole('navigation', { name: 'Financial navigation' })
@@ -104,7 +109,7 @@ module.exports = async function verifyInstallation({
     assert.equal(await link.getAttribute('target'), null);
     await link.focus();
     await page.keyboard.press('Enter');
-    await page.waitForURL(origin + route);
+    await page.waitForURL((url) => url.pathname === route);
     await page
       .getByRole('navigation', { name: 'Financial navigation' })
       .getByRole('link', { name: label, exact: true })
@@ -115,6 +120,30 @@ module.exports = async function verifyInstallation({
     );
     assert.equal(page.context().pages().length, 1);
   }
+  // Trips remains a native keyboard destination inside the unified directory.
+  await page
+    .getByRole('navigation', { name: 'Financial navigation' })
+    .getByRole('link', { name: 'Groups', exact: true })
+    .click();
+  const trips = page
+    .getByRole('navigation', { name: 'Group type' })
+    .getByRole('link', { name: 'Trips', exact: true });
+  assert.equal(await trips.getAttribute('target'), null);
+  await trips.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForURL(origin + '/groups?kind=trips');
+  assert.equal(
+    await page
+      .getByRole('navigation', { name: 'Financial navigation' })
+      .getByRole('link', { name: 'Groups', exact: true })
+      .getAttribute('aria-current'),
+    'page',
+  );
+  assert.equal(page.context().pages().length, 1);
+  assert.equal(
+    await page.locator('link[rel="manifest"]').getAttribute('href'),
+    manifestURL,
+  );
   // Next can stream the page redirect after the authenticated layout starts.
   await page.goto(origin + '/');
   await page.waitForURL(origin + '/groups');

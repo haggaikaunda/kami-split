@@ -9,6 +9,7 @@ export const test = base.extend({
   // Each test has its own context, route state, request log and pending responses.
   app: async ({ context }, runTest) => {
     const requests = [];
+    let appearance = 'LIGHT';
     const errors = [];
     const holds = [];
     const observe = (page) =>
@@ -25,7 +26,16 @@ export const test = base.extend({
       const hold = holds.find(
         (item) => !item.claimed && item.operation === operation,
       );
-      const data = hold?.data ?? responseFor(operation, variables);
+      let data;
+      if (!hold && operation === 'appearanceMutation') {
+        expect(variables.expectedAppearance).toBe(appearance);
+        appearance = variables.appearance;
+        data = { updateMyAppearance: { __typename: 'Profile', appearance } };
+      } else {
+        data = hold?.data ?? responseFor(operation, variables);
+        if (!hold && data.currentProfile)
+          data.currentProfile.appearance = appearance;
+      }
       if (hold) {
         hold.claimed = true;
         hold.started.resolve();
