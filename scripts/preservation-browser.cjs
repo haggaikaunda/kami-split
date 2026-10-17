@@ -17,7 +17,7 @@ module.exports = async function preservation({
         ? '/household?tab=overview'
         : '/trips/T?tab=overview'),
   );
-  const header = page.locator('[data-ui~="workspace-header"]');
+  const header = page.locator('[data-ui~="workspace-navigation-brand"]');
   await header.waitFor();
   const banner = await header.evaluate((el) => {
     const style = getComputedStyle(el);

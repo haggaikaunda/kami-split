@@ -251,11 +251,17 @@ module.exports = async function verifyLedger({
   );
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });
+  await dialog.locator('summary').filter({ hasText: 'Categories' }).click();
   await dialog.getByLabel('Groceries', { exact: true }).check();
   await dialog.getByLabel('Dining', { exact: true }).check();
+  await dialog.locator('summary').filter({ hasText: 'Paid by' }).click();
   await dialog.locator('input[name="paidByIds"]').first().check();
+  await dialog.locator('summary').filter({ hasText: 'Involving' }).click();
   await dialog.locator('input[name="memberIds"]').first().check();
-  await dialog.getByLabel(/^Date preset/).selectOption('last7');
+  await dialog.locator('summary').filter({ hasText: 'Dates' }).click();
+  await dialog
+    .getByRole('combobox', { name: 'Date range', exact: true })
+    .selectOption('last7');
   assert.equal(
     await dialog.locator('input[name="from"]').inputValue(),
     '2026-09-29',
@@ -264,7 +270,9 @@ module.exports = async function verifyLedger({
     await dialog.locator('input[name="to"]').inputValue(),
     '2026-10-05',
   );
-  await dialog.getByLabel(/^Sort/).selectOption('AMOUNT_DESC');
+  await dialog
+    .getByRole('combobox', { name: 'Sort', exact: true })
+    .selectOption('AMOUNT_DESC');
   await dialog.getByRole('button', { name: 'Apply filters' }).click();
   await page.waitForURL(
     (url) => url.searchParams.get('sort') === 'AMOUNT_DESC',

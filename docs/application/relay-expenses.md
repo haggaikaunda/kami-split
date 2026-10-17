@@ -6,8 +6,8 @@ and expenses** from the account navigation. Groups is the unified authorized
 directory with All / Groups / Trips selection, excluding the designated Household.
 The Trips selection retains All / Upcoming / Past filtering by server UTC date.
 Native cards show complete expense-only spend and separate personal net balances.
-The existing Household and Trips shell entries remain; `/trips` redirects to the
-directory's Trips selection. The shared navigation links to Household aggregation
+The Household shell entry remains; trips are reached through Groups, and `/trips`
+redirects to the directory's Trips selection. The shared navigation links to Household aggregation
 without inferring eligibility.
 Discovery cards open only the groups returned for the current authorized actor.
 Canonical ordinary-group `/groups/:groupId`, Trip `/trips/:groupId`, and original Household `/household/ledger` routes
@@ -271,7 +271,8 @@ ResizeObserver measures header and navigation heights for content clearance and
 document scroll padding. Global navigation does not read visualViewport or set
 viewport-derived offsets, even during keyboard focus, toolbar changes or pinch
 zoom. The document remains the scroll owner for source-return restoration;
-workspace banners and tabs continue scrolling normally. Expense sheets retain
+query-owned identity remains in the compact sticky header while workspace tabs
+continue scrolling normally. Expense sheets retain
 their own focused-form keyboard accommodation. Browser-owned zoom and rubber
 banding are not suppressed.
 
@@ -283,7 +284,8 @@ those device behaviors.
 
 The content wrapper owns container queries and centers lists/tables within a
 72rem maximum width; Account uses 46rem and existing form cards use 42rem.
-Under #269 below, every tab retains the illustrated workspace banner and its Add expense action. Filter dates use the same bounded native
+The compact shared identity retains the approved artwork across tabs; its global
+Add expense action uses an authorized workspace source or explicit source choice. Filter dates use the same bounded native
 date styling as expense forms, and the filter grid stacks when enlarged text or
 a narrow dialog leaves insufficient width. These changes supersede the scrolling
 chrome and working-tab banner layout in the historical #227 visual evidence.
@@ -306,12 +308,13 @@ owing. “Who owes whom” lists suggested repayments within that source, withou
 counting original expenses again. Activity and its expense before/after history
 remain linked. Under #269, optional explanations appear on summary and Balances surfaces; Expenses no longer has a Balance details disclosure.
 
-## Workspace summaries and banner (#269)
+## Workspace summaries and rich help
 
-All workspace tabs retain their identity banner and existing background image, with
-a single labeled Add expense action targeting an authorized original source.
-Household uses “Shared spending, at home and away.” and optional What’s included
-help; balance/share definitions are optional rich help with explicit dismissal.
+Compact shared chrome retains workspace artwork as a decorative accent and names
+the current destination. Add expense lives in the shared navigation, using the
+authorized Group/Trip source or an explicit eligible-source choice from global
+destinations. Household scope and balance/share definitions remain available through
+optional rich help with explicit dismissal.
 Your balance shows “Payments still to settle” for offsetting nonzero source balances
 and “Nothing to pay or collect” only for personal zero in every included source.
 Incomplete/unavailable reads remain errors. Detailed member contributions, repayment

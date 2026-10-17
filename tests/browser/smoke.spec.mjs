@@ -195,6 +195,7 @@ for (const workspace of [
       'Activity',
       'Members',
     ];
+    await tabs.getByRole('button', { name: 'More', exact: true }).click();
     for (const section of sections) {
       const tab = tabs.getByRole('link', { name: section, exact: true });
       const href =
@@ -213,7 +214,15 @@ for (const workspace of [
       await expect(
         tabs.getByRole('link', { name: section, exact: true }),
       ).toBeFocused();
-      if (section !== 'Members') await page.keyboard.press('Tab');
+      if (section !== 'Members') {
+        await page.keyboard.press('Tab');
+        if (section === 'Balances') {
+          await expect(
+            tabs.getByRole('button', { name: 'More', exact: true }),
+          ).toBeFocused();
+          await page.keyboard.press('Tab');
+        }
+      }
     }
     await page.waitForTimeout(250);
     expect(app.requests).toHaveLength(beforeIntent);
@@ -508,6 +517,7 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
   const empty = page.getByText('No activity yet.', { exact: true });
   const tabs = page.locator('[data-ui~="workspace-tabs"]');
   await expect(row).toBeVisible();
+  await tabs.getByRole('button', { name: /^More/ }).click();
   await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
   await expect(page).toHaveURL('/household/activity');
   await expect(empty).toBeVisible();
@@ -526,6 +536,7 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
   await tabs.getByRole('link', { name: 'Expenses', exact: true }).click();
   await expect(page).toHaveURL('/household/expenses');
   await expect(row).toBeVisible();
+  await tabs.getByRole('button', { name: /^More/ }).click();
   await tabs.getByRole('link', { name: 'Activity', exact: true }).click();
   await expect(page).toHaveURL('/household/activity');
   await expect(empty).toBeVisible();
@@ -683,10 +694,10 @@ test('rapid destinations: the latest balance view survives an older expense repl
     .getByRole('link', { name: 'Expenses', exact: true })
     .click();
   await abandoned.started;
-  await page.getByRole('link', { name: 'Account', exact: true }).click();
+  await page.getByRole('link', { name: 'Profile', exact: true }).click();
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await abandoned.release();
-  await expect(page).toHaveURL('/account');
+  await expect(page).toHaveURL(/\/account(?:\?|$)/);
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await expect(page.locator('[data-ui="content-loading"]:visible')).toHaveCount(
     0,
@@ -1209,4 +1220,425 @@ test('fresh directory reads reflect expense corrections and repayment-only balan
   await repayment.release();
   await expect(group).toContainText('Total spend · USD$9.75');
   await expect(group).toContainText('Nothing for you to pay or collect');
+});
+
+const tabsFor = (page) => page.locator('[data-ui~="workspace-tabs"]');
+const profileFor = (page) =>
+  page.getByRole('link', { name: 'Profile', exact: true });
+
+test('compact shell keeps native More destinations and keyboard dismissal without financial intent reads', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=overview');
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  const tabs = tabsFor(page);
+  const more = tabs.getByRole('button', { name: /^More/ });
+  await expect(
+    page.locator('[data-ui~="workspace-navigation"] a[href="/groups"]'),
+  ).toHaveAttribute('aria-current', 'page');
+  const before = app.requests.length;
+  await more.focus();
+  await page.keyboard.press('ArrowDown');
+  const activity = tabs.getByRole('link', { name: 'Activity', exact: true });
+  await expect(activity).toBeFocused();
+  await expect(activity).toHaveAttribute('href', '/trips/T?tab=activity');
+  await activity.hover();
+  await page.waitForTimeout(200);
+  expect(app.requests).toHaveLength(before);
+  await page.keyboard.press('Escape');
+  await expect(more).toBeFocused();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await page.locator('[data-ui~="workspace-brand"]').click();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await tabs.getByRole('link', { name: 'Members', exact: true }).click();
+  await expect(page).toHaveURL('/trips/T?tab=members');
+  await expect(more).toHaveText(/More · Members/);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(
+    tabs.getByRole('link', { name: 'Members', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
+  await page.keyboard.press('Escape');
+});
+
+test('Profile returns a filtered late-page ledger with its loaded extent, scroll and avatar focus', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto(
+    '/trips/T?tab=expenses&categories=GROCERIES&sort=AMOUNT_DESC',
+  );
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
+  await expect(page.locator('#ledger-expense-e8')).toBeVisible();
+  const source = page.url();
+  const profile = profileFor(page);
+  await profile.focus();
+  const scroll = await page.evaluate(() => scrollY);
+  const firstReads = app.requests.filter(
+    (r) => r.operation === 'journeyWorkspaceQuery',
+  ).length;
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(profileFor(page)).toHaveAttribute('aria-current', 'page');
+  await expect(
+    page.locator('[data-ui~="workspace-navigation-links"] [aria-current]'),
+  ).toHaveCount(0);
+  await expect(
+    page.getByLabel('Email address', { exact: true }),
+  ).toHaveAttribute('readonly', '');
+  expect(
+    app.requests.filter((r) => r.operation === 'journeyWorkspaceQuery'),
+  ).toHaveLength(firstReads);
+  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await expect(page).toHaveURL(
+    new RegExp('categories=GROCERIES.*sort=AMOUNT_DESC'),
+  );
+  await expect(page.locator('#ledger-expense-e8')).toBeAttached();
+  await expect(profileFor(page)).toBeFocused();
+  await expect
+    .poll(async () => Math.abs((await page.evaluate(() => scrollY)) - scroll))
+    .toBeLessThan(4);
+  expect(new URL(page.url()).pathname).toBe(new URL(source).pathname);
+  expect(
+    app.requests.some(
+      (r) => r.operation === 'expensesGroupQuery' && r.variables.after,
+    ),
+  ).toBe(true);
+  await profileFor(page).click();
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('#ledger-expense-e8')).toBeAttached();
+  await expect(profileFor(page)).toBeFocused();
+});
+
+test('global Add expense requires an explicit eligible source and cancel restores Profile', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/account');
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Back to Groups', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Add expense', exact: true }).click();
+  const source = page.getByRole('combobox', {
+    name: 'Source space',
+    exact: true,
+  });
+  await expect(source).toHaveValue('');
+  await expect(page.locator('#expense-description')).toHaveCount(0);
+  await source.selectOption('H');
+  await expect(page.locator('#expense-description')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL(/\/account(?:\?|$)/);
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Add expense', exact: true }),
+  ).toBeFocused();
+});
+
+test('no eligible expense source and failed group discovery leave Profile usable', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const empty = responseFor('expensesHouseholdInitialQuery', {});
+  empty.householdDashboard.spaces = [];
+  empty.householdDashboard.totals.activeSpaceCount = '0';
+  empty.householdExpenses.edges = [];
+  const request = app.hold('expensesHouseholdInitialQuery', empty);
+  await page.goto('/household/expenses?create=choose');
+  await request.started;
+  await request.release();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'No eligible source spaces' }),
+  ).toBeVisible();
+  await expect(page.locator('#expense-description')).toHaveCount(0);
+  const afterClose = app.hold('expensesHouseholdQuery', {
+    householdExpenses: empty.householdExpenses,
+  });
+  await page
+    .getByRole('button', { name: 'Close expense', exact: true })
+    .click();
+  await afterClose.started;
+  await afterClose.release();
+  const failure = app.hold('journeyViewerQuery', undefined, { status: 503 });
+  await page.getByRole('link', { name: 'Groups', exact: true }).click();
+  await failure.started;
+  await failure.release();
+  await expect(page.getByRole('alert').first()).toBeVisible();
+  await profileFor(page).click();
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Household', exact: true }),
+  ).toBeVisible();
+});
+
+test('compact identity and navigation remain readable across responsive themes and doubled text', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  // Select the real preference so foreground reads cannot reset a nominal Dark
+  // capture to the fixture's default Light. System also exercises the provider.
+  for (const theme of ['light', 'dark', 'system']) {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/account');
+    const choice = page.getByRole('radio', {
+      name: theme[0].toUpperCase() + theme.slice(1),
+      exact: true,
+    });
+    await expect(choice).toBeVisible();
+    if (!(await choice.isChecked())) {
+      await page
+        .locator('[data-ui~="appearance-choice"]')
+        .filter({ has: choice })
+        .click();
+      await expect(
+        page.getByText('Appearance saved for your account.', { exact: true }),
+      ).toBeVisible();
+    }
+    await page.goto('/trips/T?tab=overview');
+    await expect(
+      page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+    ).toBeVisible();
+    for (const width of [320, 390, 440, 1440]) {
+      for (const scale of [1, 2]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate((scale) => {
+          document.documentElement.style.fontSize = `${scale * 100}%`;
+        }, scale);
+        const resolvedTheme = theme === 'system' ? 'dark' : theme;
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-theme',
+          resolvedTheme,
+        );
+        expect(
+          await page
+            .locator('body')
+            .evaluate((element) => getComputedStyle(element).colorScheme),
+        ).toBe(resolvedTheme);
+        const header = page.locator('[data-ui~="workspace-navigation-brand"]');
+        const title = header.getByRole('heading', {
+          name: 'Maui 2026 with a very long friendly space name',
+          exact: true,
+        });
+        await expect(title).toBeVisible();
+        const bounds = await header.boundingBox();
+        expect(bounds.height).toBeLessThan(420);
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - innerWidth,
+        );
+        expect(overflow).toBeLessThanOrEqual(1);
+        const add = page.getByRole('link', {
+          name: 'Add expense',
+          exact: true,
+        });
+        await expect(add).toBeInViewport();
+        await tabsFor(page)
+          .getByRole('link', { name: 'Balances', exact: true })
+          .focus();
+        await expect(
+          tabsFor(page).getByRole('link', { name: 'Balances', exact: true }),
+        ).toBeInViewport();
+        await page.screenshot({
+          path: testInfo.outputPath(`shell-${width}-${scale}-${theme}.png`),
+        });
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-theme',
+          resolvedTheme,
+        );
+      }
+    }
+  }
+});
+
+test('Profile return reauthorizes an expired source and cannot restore denied private rows', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const now = Date.now();
+  await page.clock.setFixedTime(now);
+  await page.goto(
+    '/trips/T?tab=expenses&categories=GROCERIES&sort=AMOUNT_DESC',
+  );
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await profileFor(page).click();
+  await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await page.clock.setFixedTime(now + 30_001);
+  const denied = app.hold('journeyWorkspaceQuery', {
+    viewer: { __typename: 'Viewer', today: '2026-10-05' },
+    group: {
+      __typename: 'Problem',
+      code: 'FORBIDDEN',
+      message: 'Access denied',
+    },
+  });
+  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await denied.started;
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Maui 2026 with a very long friendly space name',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await denied.release();
+  await expect(
+    page
+      .getByText(
+        'Financial access is unavailable. Reload to check current access.',
+        { exact: true },
+      )
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(page.getByText('Private lunch 1', { exact: true })).toHaveCount(
+    0,
+  );
+});
+
+test('expense Escape consumes a fresh first page before completing the restored traversal', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=expenses');
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
+  const origin = page.locator('#ledger-expense-e8');
+  await expect(origin).toBeVisible();
+  await origin.click();
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toBeVisible();
+  const updated = responseFor('expensesGroupQuery', { after: null });
+  updated.groupExpenses.id = 'ExpenseView:independent-post-detail';
+  updated.groupExpenses.pageInfo.endCursor = 'fresh-e6';
+  updated.groupExpenses.edges[0].node = {
+    ...updated.groupExpenses.edges[0].node,
+    id: 'ExpenseSnapshot:e1:2',
+    version: '2',
+    description: 'Fresh expense after detail return',
+  };
+  const filter = app.requests.find(
+    (request) =>
+      request.operation === 'journeyWorkspaceQuery' && request.variables.ledger,
+  ).variables.filter;
+  const fresh = app.holdMatching(
+    'expensesGroupQuery',
+    (variables) =>
+      variables.groupId === 'T' &&
+      variables.after == null &&
+      JSON.stringify(variables.filter) === JSON.stringify(filter),
+    updated,
+  );
+  const returnRequests = app.requests.length;
+  await page.keyboard.press('Escape');
+  await fresh.started;
+  // Every replacement first page stays pending; canceled generations need not
+  // apply, but completed restoration cannot use the previous server anchor.
+  await page.waitForTimeout(300);
+  const prematureFocus = await page.evaluate(
+    () => document.activeElement?.id === 'ledger-expense-e8',
+  );
+  const prematureContinuation = app.requests
+    .slice(returnRequests)
+    .some(
+      (request) =>
+        request.operation === 'expensesGroupQuery' && request.variables.after,
+    );
+  await fresh.release();
+  await expect(page.locator('#ledger-expense-e1')).toContainText(
+    'Fresh expense after detail return',
+  );
+  expect(prematureFocus, 'Restored focus waits for the fresh traversal').toBe(
+    false,
+  );
+  expect(
+    prematureContinuation,
+    'Replay waits for the fresh first-page anchor',
+  ).toBe(false);
+  expect(
+    app.requests
+      .slice(returnRequests)
+      .some(
+        (request) =>
+          request.operation === 'expensesGroupQuery' &&
+          request.variables.after === 'fresh-e6',
+      ),
+    'Continuation uses the new first-page anchor',
+  ).toBe(true);
+  await expect(origin).toBeAttached();
+  await expect(origin).toBeFocused();
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(9);
+});
+
+test('expense Escape cannot restore private rows when the current first page is denied', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=expenses');
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
+  await page.locator('#ledger-expense-e8').click();
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toBeVisible();
+  const filter = app.requests.find(
+    (request) =>
+      request.operation === 'journeyWorkspaceQuery' && request.variables.ledger,
+  ).variables.filter;
+  const denied = app.holdMatching(
+    'expensesGroupQuery',
+    (variables) =>
+      variables.groupId === 'T' &&
+      variables.after == null &&
+      JSON.stringify(variables.filter) === JSON.stringify(filter),
+    { groupExpenses: { __typename: 'Problem', code: 'FORBIDDEN' } },
+  );
+  const returnRequests = app.requests.length;
+  await page.keyboard.press('Escape');
+  await denied.started;
+  await page.waitForTimeout(300);
+  const prematureContinuation = app.requests
+    .slice(returnRequests)
+    .some(
+      (request) =>
+        request.operation === 'expensesGroupQuery' && request.variables.after,
+    );
+  denied.release();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Account verification is unavailable.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'retry account access', exact: true }),
+  ).toHaveAttribute('href', '/trips/T?tab=expenses');
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Maui 2026 with a very long friendly space name',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(
+    prematureContinuation,
+    'A denied first page cannot authorize replay',
+  ).toBe(false);
 });

@@ -286,6 +286,8 @@ function LedgerContent({
     if (prepared) onInitialConsumed();
     if (
       prepared &&
+      // A saved visit survives reader remounts; its return must start a fresh anchor.
+      !savedPosition &&
       prepared.filterText === filterText &&
       !after &&
       version === 0
@@ -434,9 +436,10 @@ function LedgerContent({
           document.getElementById(`ledger-expense-${nearest.node.expenseId}`));
       (target || summary.current)?.focus({ preventScroll: true });
       if (saved) {
-        const top = target
-          ? window.scrollY + target.getBoundingClientRect().top - saved.offset
-          : saved.scroll;
+        const top =
+          target && !target.closest('[data-ui~="workspace-navigation"]')
+            ? window.scrollY + target.getBoundingClientRect().top - saved.offset
+            : saved.scroll;
         window.scrollTo(0, Math.max(0, top));
       }
       // Keep the source anchor for a Forward entry that remounts the ledger.
@@ -479,14 +482,25 @@ function LedgerContent({
   useEffect(() => {
     if (selected || create) return;
     return expenseEntry?.register({}, ({ source, focus }) => {
-      if (spaces.some((space) => space.groupId === source)) remember(focus);
+      if (!source || spaces.some((space) => space.groupId === source))
+        remember(focus);
     });
     // Snapshot the current authorized rows only for this workspace's banner.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expenseEntry, selected, create, rows, visitKey, spaces]);
   const close = () => {
     if (origin.current) router.back();
-    else change({ expense: null, expenseGroup: null, create: null }, true);
+    else {
+      const token = params.get('source');
+      const visit = token ? scope.visits.get(token) : undefined;
+      if (create && visit) {
+        scope.restored.delete(token!);
+        router.replace(
+          `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${token}`,
+          { scroll: false },
+        );
+      } else change({ expense: null, expenseGroup: null, create: null }, true);
+    }
   };
   const createSpace = spaces.find((s) => s.groupId === create);
   return (
@@ -997,6 +1011,33 @@ function LedgerContent({
                 close();
               }}
             />
+          ) : create === 'choose' && !groupId ? (
+            <label data-ui="form-label">
+              Source space
+              {spaces.length ? (
+                <select
+                  data-ui="form-control"
+                  value=""
+                  onChange={(event) =>
+                    change({ create: event.target.value }, true)
+                  }
+                >
+                  <option value="" disabled>
+                    Choose a space
+                  </option>
+                  {spaces.map((space) => (
+                    <option key={space.groupId} value={space.groupId}>
+                      {space.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p role="alert">
+                  No eligible source spaces are available. Return to Groups to
+                  check your access.
+                </p>
+              )}
+            </label>
           ) : createSpace ? (
             <>
               {!groupId && (

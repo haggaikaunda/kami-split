@@ -246,7 +246,7 @@ withAuthFixture(origin, session, async () => {
         assert.equal(
           await page
             .getByRole('navigation', { name: 'Financial navigation' })
-            .getByRole('link', { name: 'Account' })
+            .getByRole('link', { name: 'Profile', exact: true })
             .getAttribute('aria-current'),
           'page',
         );
@@ -340,6 +340,10 @@ withAuthFixture(origin, session, async () => {
         await page.getByText(/Current saved name:/).waitFor();
         await page
           .getByRole('link', { name: 'Household', exact: true })
+          .click();
+        await page
+          .getByRole('navigation', { name: 'Household workspace' })
+          .getByRole('button', { name: /^More/ })
           .click();
         await page
           .getByRole('navigation', { name: 'Household workspace' })

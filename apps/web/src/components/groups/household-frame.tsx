@@ -2,9 +2,10 @@
 import { ExpenseEntryProvider } from '@/components/expenses/entry';
 
 import { useFinancialSession } from './session';
-import { HouseholdBannerAction } from './household-banner-action';
 import { RichHelp, householdScopeHelp } from '@/components/rich-help';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { WorkspaceNavigation } from '@/components/workspace-identity';
 import {
   WorkspaceHeader,
@@ -30,7 +31,7 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
   const access = useFinancialSession();
   const pathname = usePathname(),
     params = useSearchParams();
-  const visit = pathname + '?' + params.toString();
+  const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
   const ledger = pathname === '/household/ledger';
   const current =
     params.get('repayment') === '1'
@@ -49,37 +50,24 @@ export function HouseholdFrame({ children }: { children: React.ReactNode }) {
         className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
         id="page-content"
       >
-        <WorkspaceNavigation />
+        <WorkspaceNavigation headerRef={setHeaderTarget} />
         <div
           data-ui="workspace-content"
           className={shellStyles['workspace-content']}
         >
-          <p
-            data-ui="workspace-crumb"
-            className={shellStyles['workspace-crumb']}
-          >
-            Your household
-          </p>
-          <WorkspaceHeader
-            title="Household"
-            context={
-              <>
-                <span>Shared spending, at home and away.</span>
-                <br />
-                <RichHelp label="What’s included">
-                  {householdScopeHelp}
-                </RichHelp>
-              </>
-            }
-            appearance="household"
-          >
-            {access.scope && (
-              <HouseholdBannerAction
-                key={`${access.scope.id}:${visit}`}
-                scope={access.scope}
-              />
+          {headerTarget &&
+            createPortal(
+              <WorkspaceHeader
+                title="Household"
+                appearance="household"
+                context={
+                  <RichHelp label="What’s included">
+                    {householdScopeHelp}
+                  </RichHelp>
+                }
+              />,
+              headerTarget,
             )}
-          </WorkspaceHeader>
           <WorkspaceTabs
             current={current}
             hrefFor={

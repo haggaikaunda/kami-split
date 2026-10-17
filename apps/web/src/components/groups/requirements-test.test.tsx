@@ -275,7 +275,7 @@ it('hides records on access refresh and restores full history after readmission'
   expect(host.textContent).not.toContain('Pre-trip booking');
   await resolveGroup({ group: { __typename: 'Problem', code: 'NOT_FOUND' } });
   expect(host.textContent).not.toContain('Pre-trip booking');
-  expect(host.textContent).not.toContain('Add expense');
+  expect(host.querySelector('[data-ui~="workspace-add-slot"] a')).toBeNull();
   await foregroundRefresh();
   await resolveGroup(groupResult('T'));
   expect(host.textContent).toContain('Pre-trip booking');
@@ -719,6 +719,11 @@ it('resolves the original Household ledger from authorized discovery and keeps o
       '[data-ui~="workspace-navigation"] a[aria-current="page"]',
     )?.textContent,
   ).toBe('Household');
+  act(() =>
+    host
+      .querySelector<HTMLButtonElement>('[data-ui~="workspace-tabs"] button')!
+      .click(),
+  );
   expect(
     [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map((a) =>
       a.getAttribute('href'),

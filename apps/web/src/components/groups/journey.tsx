@@ -6,7 +6,7 @@ import { financialReadMessage as message } from '@/lib/relay/read-error';
 import { NetworkQuery } from '@/lib/relay/query';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { WorkspaceNavigation } from '@/components/workspace-identity';
+import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import Link from 'next/link';
 import { expenseFilter, expenseFilterText } from '@/lib/relay/expense-filter';
 import {
@@ -30,7 +30,7 @@ import groupDocument, {
   type journeyWorkspaceQuery,
 } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { RestoreSource, SourceReturn } from './navigation';
+import { RestoreSource, ScopedLink, SourceReturn } from './navigation';
 import { householdLedgerHref, spaceHref } from '@/lib/relay/space-routes';
 import { routeId } from '@/lib/relay/discovery';
 import { ExpensePresentation } from '@/components/expenses/presentation';
@@ -69,6 +69,7 @@ export function GroupJourney({
     expense = routeId(pathExpense);
   const access = useFinancialSession();
   const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
+  const [actionTarget, setActionTarget] = useState<HTMLDivElement | null>(null);
   const params = useSearchParams(),
     pathname = usePathname();
   const groupBase = `${pathname.startsWith('/trips/') ? '/trips' : '/groups'}/${encodeURIComponent(initialGroup)}`;
@@ -121,6 +122,7 @@ export function GroupJourney({
         scope={access.scope}
         household={household}
         headerTarget={headerTarget}
+        actionTarget={actionTarget}
         id={initialGroup}
         expense={expense}
         repayment={repayment}
@@ -147,7 +149,10 @@ export function GroupJourney({
         className={cx(formLayoutStyles['form-scope'], shellStyles.shell)}
         id="page-content"
       >
-        <WorkspaceNavigation />
+        <WorkspaceNavigation
+          headerRef={initialGroup ? setHeaderTarget : undefined}
+          actionRef={initialGroup ? setActionTarget : undefined}
+        />
         <div
           data-ui="workspace-content"
           className={shellStyles['workspace-content']}
@@ -176,10 +181,6 @@ export function GroupJourney({
                   <SourceReturn scope={access.scope} />
                 </div>
               )}
-              <div
-                ref={setHeaderTarget}
-                className={workspaceFeatureStyles['workspace-header-host']}
-              />
               <WorkspaceTabs
                 current={repayment ? 'Balances' : currentTab}
                 label={trips ? 'Trip workspace' : 'Group workspace'}
@@ -198,6 +199,7 @@ export function GroupJourney({
 }
 function GroupDetails({
   headerTarget,
+  actionTarget,
   scope,
   id,
   expense,
@@ -206,6 +208,7 @@ function GroupDetails({
 }: {
   household?: boolean;
   headerTarget: HTMLDivElement | null;
+  actionTarget: HTMLDivElement | null;
   scope: FinancialScope;
   id: string;
   expense: string;
@@ -348,6 +351,7 @@ function GroupDetails({
               setSaved={setSaved}
               read={read}
               headerTarget={headerTarget}
+              actionTarget={actionTarget}
               setActivityRead={setActivityRead}
               onError={(error, heading) => {
                 setHeading(heading);
@@ -414,6 +418,7 @@ function GroupDestination({
   setSaved,
   read,
   headerTarget,
+  actionTarget,
   setActivityRead,
   onError,
   onDenied,
@@ -431,6 +436,7 @@ function GroupDestination({
   setSaved: (message: string) => void;
   read: () => Promise<void>;
   headerTarget: HTMLDivElement | null;
+  actionTarget: HTMLDivElement | null;
   setActivityRead: (state: { busy: boolean; error: string }) => void;
   onError: (error: string, heading: string) => void;
   onDenied: () => void;
@@ -536,6 +542,28 @@ function GroupDestination({
       <RestoreSource scope={scope} allowed={[id]} />
       {expense ? (
         <>
+          {!household &&
+            headerTarget &&
+            createPortal(
+              <WorkspaceHeader
+                title={group.name}
+                appearance={group.kind === 'TRIP' ? 'trip' : 'group'}
+              />,
+              headerTarget,
+            )}
+          {!household &&
+            actionTarget &&
+            createPortal(
+              <ScopedLink
+                scope={scope}
+                id="workspace-add"
+                href={`${spaceHref(group)}?tab=expenses&create=${encodeURIComponent(group.id)}`}
+              >
+                <AppIcon name="plus" />
+                <span>Add expense</span>
+              </ScopedLink>,
+              actionTarget,
+            )}
           {!household && (
             <h1 data-page-heading tabIndex={-1}>
               {group.name}
@@ -581,6 +609,7 @@ function GroupDestination({
           }
           showTabs={false}
           headerTarget={headerTarget}
+          actionTarget={actionTarget}
           showHeader={!household}
           initialView={
             // The request may finish after Back/Forward changes the URL. Only

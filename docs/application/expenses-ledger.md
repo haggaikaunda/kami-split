@@ -42,12 +42,12 @@ invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
 replacement disposes the entire financial scope and cancels pending requests.
 
-**Add expense** in the persistent workspace banner opens the existing persisted `ExpenseForm` in a centered desktop
+**Add expense** in the shared navigation opens the existing persisted `ExpenseForm` in a centered desktop
 dialog or an inset phone dialog, including original-key recovery, draft storage
 and duplicate suppression. The same form remains mounted across responsive
 changes. Detail and in-place editing retain the desktop panel/full-screen phone
-presentation. Household selects an original
-authorized source; success returns to the originating URL and refreshes spending
+presentation. Global entry requires an explicit eligible original
+source, while Group/Trip entry supplies its currently authorized source; success returns to the originating URL and refreshes spending
 and context. No receipt, category expansion, edit/delete or repayment command is
 added here. Free-text search remains deferred to #177.
 
@@ -150,12 +150,12 @@ authorization; the unchanged server authorization/database suites own that bound
 
 ## Shared workspace shell (#269)
 
-The identity banner and its existing background art remain above the tabs on every
-workspace tab. Add expense appears only in that banner, retaining the original
-source creation form and source selection. Expenses has List/Breakdown and Filters
+The compact identity header retains its existing background art on every
+workspace tab. The shared navigation owns Add expense, retaining the original
+source creation form and explicit eligible source selection. Expenses has List/Breakdown and Filters
 on one toolbar row at ordinary phone widths; its balance disclosure is removed.
 Balance and share explanations live behind labeled rich help on summary surfaces,
-and the Household scope explanation appears once in its banner. By group or trip
+and the Household scope explanation appears once in its compact header. By group or trip
 and optional balance explanations retain access to source balances and member detail.
 Spending by category and Overview Recent expenses are unchanged. Routine Refresh
 controls are removed while pull gestures, foreground reauthorization and browser

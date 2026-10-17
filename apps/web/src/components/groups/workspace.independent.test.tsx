@@ -103,9 +103,15 @@ async function render(group: WorkspaceGroup) {
     ),
   );
 }
-it('uses the same five shared workspace tabs for ordinary groups and trips, with informational exact summary metrics', async () => {
+it('uses the shared direct and More workspace routes for ordinary groups and trips, with informational exact summary metrics', async () => {
   for (const trip of [false, true]) {
     await render(fixture('-1000', trip));
+    act(() => {
+      const more = host.querySelector<HTMLButtonElement>(
+        '[data-ui~="workspace-tabs"] button',
+      )!;
+      if (more.getAttribute('aria-expanded') === 'false') more.click();
+    });
     expect(
       [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map(
         (a) => a.textContent,

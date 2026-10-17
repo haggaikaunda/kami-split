@@ -26,16 +26,22 @@ module.exports = async function verifyIssue269({
     'members',
   ]) {
     await page.goto(origin + route(tab));
-    const header = page.locator('[data-ui~="workspace-header"]');
-    await header
-      .getByRole('link', { name: 'Add expense', exact: true })
-      .waitFor();
+    const header = page.locator('[data-ui~="workspace-navigation-brand"]');
+    const add = page.getByRole('link', { name: 'Add expense', exact: true });
+    await add.waitFor();
     await page
       .locator('[data-ui="content-loading"]:visible')
       .waitFor({ state: 'hidden' });
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
-    assert.equal(await page.locator('[data-ui~="banner-action"]').count(), 1);
+    assert.equal(await add.count(), 1);
+    assert.equal(
+      await header
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .count(),
+      0,
+      'Creation lives in shared navigation rather than the identity header',
+    );
     assert.equal(
       await page.locator('[data-ui~="workspace-refresh"] button').count(),
       0,
@@ -45,7 +51,9 @@ module.exports = async function verifyIssue269({
       0,
     );
     const geometry = await page.evaluate(() => {
-      const header = document.querySelector('[data-ui~="workspace-header"]');
+      const header = document.querySelector(
+        '[data-ui~="workspace-navigation-brand"]',
+      );
       return {
         image: getComputedStyle(header).backgroundImage,
         bottom: header.getBoundingClientRect().bottom,
@@ -70,9 +78,8 @@ module.exports = async function verifyIssue269({
     assert(!geometry.overflow, `${workspace} ${tab} must fit viewport`);
     if (workspace === 'household') {
       assert.equal(await header.getByRole('heading').innerText(), 'Household');
-      assert.match(
-        await header.innerText(),
-        /Shared spending, at home and away/,
+      assert(
+        !/Shared spending, at home and away/.test(await header.innerText()),
       );
       const trigger = header.getByRole('button', { name: 'What’s included' });
       await trigger.scrollIntoViewIfNeeded();
@@ -110,7 +117,7 @@ module.exports = async function verifyIssue269({
       assert.equal(await help.count(), 0);
       assert(
         await header
-          .getByRole('link', { name: 'Add expense' })
+          .getByRole('link', { name: 'Profile', exact: true })
           .evaluate((el) => document.activeElement === el),
         'Forward Tab resumes next control after help trigger',
       );
@@ -183,7 +190,7 @@ module.exports = async function verifyIssue269({
     });
     return;
   }
-  // Check banner creation against a paginated list, then return to fresh pages and banner focus.
+  // Check shared creation against a paginated list, then return to fresh pages and chrome focus.
   await page.goto(origin + route('expenses'));
   await page.locator('#ledger-expense-e1').waitFor();
   await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
@@ -192,6 +199,18 @@ module.exports = async function verifyIssue269({
   await page.locator('#ledger-expense-e9').waitFor();
   const add = page.getByRole('link', { name: 'Add expense', exact: true });
   await add.click();
+  if (workspace === 'household') {
+    const source = page.getByRole('combobox', {
+      name: 'Source space',
+      exact: true,
+    });
+    assert.equal(
+      await source.inputValue(),
+      '',
+      'Global creation requires an explicit source',
+    );
+    await source.selectOption('H');
+  }
   await page.getByLabel('Description', { exact: true }).waitFor();
   const freshResponse = page.waitForResponse((r) => {
     if (!r.request().url().endsWith('/api/graphql')) return false;
@@ -210,7 +229,7 @@ module.exports = async function verifyIssue269({
   );
   assert(
     await add.evaluate((el) => document.activeElement === el),
-    'Creation returns focus to banner trigger',
+    'Creation returns focus to shared chrome trigger',
   );
   assert.equal(
     await page.locator('[data-ui~="ledger-month"] li').count(),

@@ -30,7 +30,13 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
     if (replaceDraft) setName(value.displayName);
     // Membership IDs differ from Viewer IDs. Invalidate all current projections;
     // subsequent workspace reads fetch current names without disposing drafts.
-    if (scope && scope.actor === c.session?.user.id && scope.isLive())
+    if (
+      savedName !== undefined &&
+      value.displayName !== savedName &&
+      scope &&
+      scope.actor === c.session?.user.id &&
+      scope.isLive()
+    )
       commitLocalUpdate(scope.environment, (store) => store.invalidateStore());
   };
   const read = async (preserveDraft = false) => {

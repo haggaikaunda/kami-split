@@ -295,9 +295,9 @@ it('rapid Activity to Members to Activity navigation rejects out-of-order privat
   expect(host.textContent).not.toContain('No activity');
   expect(host.querySelector('[data-ui~="workspace-tabs"]')).toBe(shell);
   expect(
-    host.querySelector('[data-ui~="workspace-tabs"] a[aria-current="page"]')
+    host.querySelector('[data-ui~="workspace-tabs"] button[data-current]')
       ?.textContent,
-  ).toBe('Activity');
+  ).toContain('More · Activity');
 });
 it.each([
   ['category=TRANSPORT', { categories: ['TRANSPORT'] }],

@@ -57,8 +57,12 @@ OS-wide and Account-only dark palettes have been removed.
 
 ## Browser editing and navigation
 
-`/account` is a personal destination inside the existing shared navigation; it
-loads no group list or financial overview. Profile loading and failure leave
+`/account` is the full-page Profile destination, reached through the shared header
+avatar on phones and desktop. It loads no group list or financial overview. Its
+Back link uses the actor-scoped source visit; direct entry falls back to Groups.
+Source restoration waits for current authorized content and preserves ledger
+filters, loaded extent, scroll and logical focus. Opening Profile alone does not
+invalidate valid financial projections; a confirmed display-name change does. Profile loading and failure leave
 navigation available. Save requires an actual server-confirmed profile; entered
 text survives failures. An uncertain or conflicting save requires **Check current
 profile** before another explicit save. The reread preserves edits and supplies
