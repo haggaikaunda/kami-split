@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 try:
+    import strictyaml
     from markdown_it import MarkdownIt
     from skills_ref.parser import parse_frontmatter
     from skills_ref.validator import validate
@@ -61,10 +62,13 @@ def check(root):
             errors.extend(f"{label}: {problem}" for problem in problems)
             if problems:
                 continue
-            metadata, body = parse_frontmatter(source.read_text())
+            content = source.read_text()
+            metadata, body = parse_frontmatter(content)
             if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", metadata["name"]):
                 errors.append(f"{label}: use a portable ASCII hyphenated name")
-            extra = metadata.get("metadata", {})
+            # The pinned upstream parser stringifies nested metadata values.
+            # Inspect the original parsed structure before that coercion.
+            extra = strictyaml.load(content.split("---", 2)[1]).data.get("metadata", {})
             if not isinstance(extra, dict) or any(
                 not isinstance(k, str) or not isinstance(v, str) for k, v in extra.items()
             ):

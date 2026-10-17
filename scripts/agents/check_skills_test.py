@@ -75,6 +75,21 @@ class SkillValidationTests(unittest.TestCase):
         self.skill.rmdir()
         self.assertTrue(check(self.root))
 
+    def test_metadata_must_preserve_scalar_values_before_upstream_coercion(self):
+        for entry in (
+            "  settings:\n    nested: value",
+            "  settings:\n    - value",
+        ):
+            with self.subTest(entry=entry):
+                self.source.write_text(self.valid.replace(
+                    "description:", f"metadata:\n{entry}\ndescription:",
+                ))
+                self.assertTrue(check(self.root))
+        self.source.write_text(self.valid.replace(
+            "description:", "metadata:\n  owner: repository-maintainers\ndescription:",
+        ))
+        self.assertEqual(check(self.root), [])
+
 
 if __name__ == "__main__":
     unittest.main()
