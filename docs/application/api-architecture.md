@@ -78,6 +78,15 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with a Go worker is selected for future imports, but is not installed or provisioned.
 
+The [planned Personal banking contract](personal-banking.md) defines owner-only
+source/binding/annotation boundaries, exact posted-date spending, saved reporting
+preferences, durable lifecycle fencing and explicit exchange uncertainty. The
+lifecycle slice owns the minimum queue consumer and verified ingress; transaction
+sync extends it. The proposed replacement-history policy still needs its owner
+decision, and live provider recovery/backup capabilities require verification.
+This design does not add runtime SDL, grant banking access through groups or
+claim implemented connectivity.
+
 See the [Go engineering guide](../agents/go-guidelines.md) for code and testing expectations. Extensions to schema, authentication and persistence, and hosted deployment and worker implementation require separately approved issues.
 
 ## Accepted decisions and open questions
