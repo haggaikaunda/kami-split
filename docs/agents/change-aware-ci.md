@@ -42,9 +42,10 @@ loaders, aliases, generators, embed conventions or runtime imports require an au
 and appropriate boundary coverage before keeping an exemption.
 
 The exact known skill Markdown/template, native role TOML, stage-event JSON and
-Python validator/requirements files in `agent-validation-resource` require only
+Python validator/collector/requirements files in `agent-validation-resource` require only
 repository validation. Skills/profiles are agent-runtime inputs; Python validation
-reads the skills, schema and example, and its tests run in the repository job.
+reads the skills, schema and example; the on-demand GET-only collector reads GitHub
+and the same schema. Their synthetic tests run in the repository job.
 None is imported by Next, Relay generation, the Go server or release tooling.
 `agent-execution-tooling` selects web verification for the two JavaScript helper
 files because root ESLint consumes them; their deterministic tests also run in

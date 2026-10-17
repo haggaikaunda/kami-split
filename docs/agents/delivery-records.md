@@ -34,7 +34,7 @@ human outcome. Use the [schema](records/stage-event.schema.json) and
 [synthetic example](records/stage-event.example.json). The example is non-live;
 replace its identifiers and observations, never publish it as delivery evidence.
 The fixed `record_type: "kami_split.delivery_stage"` marker distinguishes these
-events from unrelated fenced JSON. The later collector must report marked invalid
+events from unrelated fenced JSON. The collector reports marked invalid
 records and unsupported versions rather than silently excluding them.
 
 | Field                                             | Meaning                                                                                                                                                          |
@@ -117,11 +117,10 @@ waiting and is not active effort. Link confirmed regressions without inventing
 causation. Missing cost remains unknown and never gates delivery. Keep secrets,
 financial/authentication data and raw private conversations out of records.
 
-The later read-only collector must retrieve the complete declared issue/PR/comment/
+The [on-demand read-only collector](delivery-collector.md) retrieves the complete declared issue/PR/comment/
 review/check history with pagination and cross-links, retaining source identities
 and diagnosing missing, expired, edited, duplicate, conflicting or superseded
-records and partial/API failures. This contract does not implement that collector,
-authenticate roles, or add a merge gate; #305 owns enforcement separately.
+records and partial/API failures. The collector does not authenticate roles or add a merge gate; #305 owns enforcement separately.
 
 ## Objective validation
 

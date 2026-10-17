@@ -2,6 +2,7 @@
 
 Start with the repository [agent instructions](../../AGENTS.md) and [delivery workflow](delivery-workflow.md). GitHub issues define approved scope; independent testing and final-diff review remain required.
 
+- [Read-only delivery reconstruction](delivery-collector.md): bounded cohorts, sourced records and coverage limits.
 - [Role prompts](prompts/builder.md): [builder](prompts/builder.md), [tester](prompts/tester.md), and [reviewer](prompts/reviewer.md).
 - [Web instructions](../../apps/web/AGENTS.md): Next.js conventions and browser verification.
 - [Go API instructions](../../apps/api/AGENTS.md): API, financial, security and database verification requirements.

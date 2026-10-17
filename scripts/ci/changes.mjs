@@ -82,6 +82,8 @@ const agentResources = new Set([
   'scripts/agents/check_skills_test.py',
   'scripts/agents/check_stage_event.py',
   'scripts/agents/check_stage_event_test.py',
+  'scripts/agents/collect_delivery.py',
+  'scripts/agents/collect_delivery_test.py',
 ]);
 
 export function pathRule(path) {

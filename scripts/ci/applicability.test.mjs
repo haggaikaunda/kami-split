@@ -64,6 +64,8 @@ for (const [paths, expected] of [
       '.codex/agents/kami-builder.toml',
       'docs/agents/records/stage-event.schema.json',
       'scripts/agents/check_stage_event.py',
+      'scripts/agents/collect_delivery.py',
+      'scripts/agents/collect_delivery_test.py',
       'scripts/agents/requirements.txt',
     ],
     choices(false, false, false, false),
