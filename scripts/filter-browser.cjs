@@ -69,13 +69,27 @@ module.exports = async function verifyFilters({
       metrics.dialog.y >= -1 && metrics.dialog.bottom <= metrics.height + 1,
       'dialog vertical bounds',
     );
-    assert(
-      Math.abs(
-        metrics.dialog.y -
-          (metrics.height - (metrics.dialog.bottom - metrics.dialog.y)) / 2,
-      ) <= 1,
-      'compact filter dialog stays vertically centered within the viewport',
-    );
+    if (metrics.width <= 600) {
+      assert(
+        Math.abs(metrics.dialog.bottom - metrics.height) <= 1,
+        'filter sheet anchored to visible bottom',
+      );
+      assert(
+        metrics.dialog.x <= 1 && metrics.dialog.right >= metrics.width - 1,
+        'phone sheet uses available width',
+      );
+    } else {
+      assert(
+        Math.abs(metrics.dialog.right - metrics.width) <= 1 &&
+          metrics.dialog.x > 0,
+        'filter drawer anchored right',
+      );
+      assert(
+        Math.abs(metrics.dialog.y) <= 1 &&
+          Math.abs(metrics.dialog.bottom - metrics.height) <= 1,
+        'desktop drawer spans visible height',
+      );
+    }
     assert(
       metrics.bodyOverflow <= 1 && metrics.pageOverflow <= 1,
       'no horizontal overflow',
@@ -233,8 +247,12 @@ module.exports = async function verifyFilters({
   await summary('Categories').click();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await page.setViewportSize({ width: width < 600 ? 1280 : 320, height: 640 });
+  assert.equal(
+    await page.getByRole('dialog', { name: 'Expense filters' }).count(),
+    1,
+  );
   await geometry('resized');
-  await page.setViewportSize({ width: 320, height: 640 });
+  await page.setViewportSize({ width: 320, height: 480 });
   await geometry('short-narrow-screen');
   await page.screenshot({
     path: path.join(output, `filters-${workspace}-${width}-${scale}-short.png`),

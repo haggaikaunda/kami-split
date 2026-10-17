@@ -168,7 +168,6 @@ function LedgerContent({
   const automaticArmed = useRef(true);
   const generation = useRef(0);
   const requestRef = useRef<{ unsubscribe(): void } | undefined>(undefined);
-  const summary = useRef<HTMLDivElement>(null);
   const change = (
     patch: Record<string, string | string[] | null>,
     replace = false,
@@ -434,7 +433,7 @@ function LedgerContent({
         (saved && document.getElementById(saved.id)) ||
         (nearest &&
           document.getElementById(`ledger-expense-${nearest.node.expenseId}`));
-      (target || summary.current)?.focus({ preventScroll: true });
+      (target || container.current)?.focus({ preventScroll: true });
       if (saved) {
         const top =
           target && !target.closest('[data-ui~="workspace-navigation"]')
@@ -509,6 +508,7 @@ function LedgerContent({
       className={ledgerFeatureStyles['expense-ledger']}
       aria-label="Expenses"
       ref={container}
+      tabIndex={-1}
       style={restoring ? { minHeight: reservedHeight } : undefined}
     >
       {!managedRefresh && (
@@ -628,28 +628,6 @@ function LedgerContent({
           </Button>
         </div>
       )}
-      <div
-        data-ui="ledger-summary"
-        className={ledgerFeatureStyles['ledger-summary']}
-        ref={summary}
-        tabIndex={-1}
-      >
-        {page && !error ? (
-          <span>
-            {page.expenseCount}{' '}
-            {page.expenseCount === '1' ? 'expense' : 'expenses'} ·{' '}
-            <span aria-label="Total expenses">
-              <Money value={money(page.totalExpenseMinor)} currency="USD" />{' '}
-              total
-            </span>{' '}
-            · <Money value={money(page.viewerShareMinor)} currency="USD" /> your
-            share
-            {filterText && ' · All filters combined'}
-          </span>
-        ) : (
-          !loading && <span>Total unavailable</span>
-        )}
-      </div>
       {notice && <p role="status">{notice}</p>}
       {loading && !page && <ContentLoading layout="expenses" />}
       {error ? (
@@ -1103,18 +1081,50 @@ export function LedgerDialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const outsideStart = useRef(false);
   useEffect(() => {
     const dialog = ref.current!;
     const trigger =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     dialog.showModal();
     return () => {
       dialog.close();
+      document.body.style.overflow = overflow;
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
   }, []);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      if (viewport.scale !== 1) return;
+      ref.current?.style.setProperty(
+        '--filter-viewport-height',
+        `${viewport.height}px`,
+      );
+      ref.current?.style.setProperty(
+        '--filter-viewport-top',
+        `${viewport.offsetTop}px`,
+      );
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  }, []);
+  const outside = (x: number, y: number) => {
+    const bounds = ref.current!.getBoundingClientRect();
+    return (
+      x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom
+    );
+  };
   return (
     <dialog
       data-ui="ledger-dialog ledger-dialog--filters"
@@ -1124,8 +1134,23 @@ export function LedgerDialog({
       )}
       ref={ref}
       aria-label={title}
+      aria-modal="true"
       tabIndex={-1}
       onKeyDown={(event) => containDialogFocus(event, ref.current)}
+      onPointerDown={(event) => {
+        outsideStart.current =
+          event.target === event.currentTarget &&
+          outside(event.clientX, event.clientY);
+      }}
+      onClick={(event) => {
+        if (
+          outsideStart.current &&
+          event.target === event.currentTarget &&
+          outside(event.clientX, event.clientY)
+        )
+          onClose();
+        outsideStart.current = false;
+      }}
       onCancel={(e) => {
         e.preventDefault();
         onClose();

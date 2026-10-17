@@ -361,7 +361,9 @@ it.each(['UNAUTHENTICATED', 'SESSION_CHANGED'])(
       ),
     );
     expect(host.textContent).not.toContain('Dinner private');
-    expect(host.textContent).toContain('Total unavailable');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      'Expenses unavailable',
+    );
     await scroll();
     await intersect();
     expect(state.requests).toHaveLength(2);

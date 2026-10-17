@@ -19,7 +19,7 @@ including zero shares. No search control or client filtering is provided. A
 filter change starts a new traversal. Initial requests and subsequent pages request six
 rows; approaching the list end automatically appends the next ordered server page,
 with a manual Load more fallback;
-headline count/total and month subtotals always use server aggregates rather
+month counts/totals always use server aggregates rather
 than sums of loaded rows. Under #239, each displayed month header immediately
 shows its complete filtered total and count. Desktop records align description,
 category/source/date, payer and right-aligned amounts. Under #269, ordinary
@@ -36,7 +36,7 @@ The list retains its query and session-owned row/position metadata across detail
 Back/Forward and edit-triggered parent remounts. Returning rebuilds the previously
 loaded extent from freshly authorized pages and restores trigger focus and viewport
 offset. If a row moved outside that extent or disappeared, the nearest surviving
-row by prior ordinal is used; direct URLs fall back to the list summary. Every detail first rechecks source eligibility, then reads the stable
+row by prior ordinal is used; direct URLs fall back to the Expenses region. Every detail first rechecks source eligibility, then reads the stable
 expense node and verifies both expense and group identity. Refresh/foreground
 invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
@@ -58,7 +58,7 @@ The delivery PR records actual Chrome layout/navigation tests at 320/390/768/128
 and 100%/200% root text. Synthetic browser service responses demonstrate browser
 behavior; server authorization remains covered by #169 and real database checks.
 
-The filter dialog uses a single column with expandable Categories, Paid by, Involving and Dates sections. Collapsed sections summarize the current draft; member options are grouped under their source-space name. Only the body scrolls, keeping the close control and Reset/Apply footer reachable. Closing or pressing Escape discards unapplied edits; Reset clears the draft, including the date preset and sort.
+The filter dialog is a bottom sheet at phone widths (600px and below), and a full-height right-side drawer on desktop, consistent with expense detail. One mounted form preserves unapplied choices across resizing; its height follows the unscaled visual viewport when the phone keyboard opens. The filter dialog uses a single column with expandable Categories, Paid by, Involving and Dates sections. Collapsed sections summarize the current draft; member options are grouped under their source-space name. The redundant top-level count/total/share strip is omitted; complete monthly aggregates and per-expense amounts/share remain visible. Only the filter body scrolls, keeping the close control and Reset/Apply footer reachable. Closing or pressing Escape discards unapplied edits; Reset clears the draft, including the date preset and sort.
 
 Presentation follows the [current UI guide](ui.md). Category identity and structured filter behavior remain: Reset changes the draft; Apply updates the URL. Search, saved filters and unsupported status controls remain absent.
 

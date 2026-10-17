@@ -110,10 +110,10 @@ The supported [Supabase generateLink contract](https://supabase.com/docs/referen
 
 ## Members and invitation presentation (#240)
 
-Group, Trip and Household Members pages show one people list with Active and
-Inactive membership labels; inactive people have no access and retain authorized
-historical context. Owners additionally see Pending email invitations in that
-list, explicitly labelled as invitations without access. Accepted invitations
+Group, Trip and Household Members pages show a clean membership list with names, roles and explicit Active and
+Inactive state badges, with a count of only active memberships; inactive people have no access and retain authorized
+historical context. Owners additionally see Pending email invitations in a separate Invitations section,
+explicitly labelled as invitations without access and excluded from the active count. Accepted invitations
 appear only in collapsed invitation history, so they do not create another
 person row or replace the server's membership identity. Non-owners see only the
 authorized membership read and are directed to ask their owner to add someone.
