@@ -157,7 +157,7 @@ it('keeps general navigation static while limiting source discovery to authorize
     host.querySelector(
       '[data-ui~="workspace-navigation"] a[aria-current="page"]',
     )?.textContent,
-  ).toBe('Trips');
+  ).toBe('Groups');
   expect(host.textContent).not.toContain('Friends · Group');
 });
 it('keeps in-progress trips in All only and distinguishes a filtered empty list from no groups', async () => {
@@ -228,7 +228,7 @@ it.each([[groups[0]], [groups[1]], [groups[0], groups[1]]])(
     expect(host.textContent).not.toContain('Private household');
     expect(host.textContent).not.toContain('Trip with friends');
     expect(host.querySelector('a[href="/household"]')).not.toBeNull();
-    expect(host.querySelector('a[href="/trips"]')).not.toBeNull();
+    expect(host.querySelector('a[href="/groups"]')).not.toBeNull();
   },
 );
 it('does not infer Household identity from an ordinary group name', async () => {

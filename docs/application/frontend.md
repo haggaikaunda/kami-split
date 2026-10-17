@@ -35,9 +35,9 @@ operation inputs retain their existing actor/group/operation storage and recover
 protocols. Shared presentation accepts explicit ordinary props and does not own
 application reads or operation recovery.
 
-`ExpenseEntryProvider` scopes the banner-to-ledger handoff to the current account and
-workspace visit. Its typed callback passes the authorized source and logical focus
-identifier so the mounted ledger can record return geometry for its current signed
+`ExpenseEntryProvider` scopes the shared chrome-to-ledger handoff to the current account and
+workspace visit. Its typed callback passes the authorized source (or an empty source for a
+Profile/global departure) and logical focus identifier so the mounted ledger can record return geometry for its current signed
 traversal. The ledger checks source membership; a removed ledger unregisters. Normal
 link navigation still owns the destination, and modified clicks retain native browser
 behavior. Components must not rediscover this relationship through document-level

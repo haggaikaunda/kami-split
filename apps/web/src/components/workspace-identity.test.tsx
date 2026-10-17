@@ -14,7 +14,8 @@ it('keeps canonical navigation available and current across source routes withou
     for (const [pathname, current] of [
       ['/household/expenses', '/household'],
       ['/groups/source/expenses/record', '/groups'],
-      ['/trips', '/trips'],
+      ['/trips', '/groups'],
+      ['/trips/summer', '/groups'],
       ['/account', '/account'],
     ]) {
       route.pathname = pathname;
@@ -23,7 +24,12 @@ it('keeps canonical navigation available and current across source routes withou
         Array.from(container.querySelectorAll('a')).map((a) =>
           a.getAttribute('href'),
         ),
-      ).toEqual(['/household', '/groups', '/trips', '/account']);
+      ).toEqual([
+        '/account',
+        '/household',
+        '/household/expenses?create=choose',
+        '/groups',
+      ]);
       expect(container.querySelectorAll('[aria-current="page"]')).toHaveLength(
         1,
       );

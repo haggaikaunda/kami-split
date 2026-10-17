@@ -51,8 +51,8 @@ only recent rows; complete money still comes from server projections. Under #227
 Group/Trip and Household Overview request four recent expenses. Structured
 Expenses operations request six rows initially and on each Load more; their
 complete totals and signed cursor/anchor semantics remain unchanged. The signed-in
-shell presents Household → Groups → Trips → Account through the shared desktop
-app bar/rail and phone bottom navigation; its layout does not change private read
+shell presents Household and Groups (including trips), a labeled Add expense action
+and the Profile avatar through shared desktop and phone chrome; its layout does not change private read
 ownership. See the [persistent navigation contract](../application/relay-expenses.md#persistent-navigation-and-content-widths-238) and the historical [visual implementation note](https://github.com/haggaikaunda/kami-split/issues/227).
 
 The composed Group operation supplies the initial ledger/feed reference directly
@@ -164,8 +164,7 @@ filter bounds, account navigation and Back. Run at 320/390/1440 CSS pixels and
 ## Canonical workspace routes (#201)
 
 Groups is the unified authorized directory with All / Groups / Trips selection,
-excluding the designated Household. The existing Household and Trips shell entries
-remain; `/trips` redirects to the directory's Trips selection. Canonical workspace
+excluding the designated Household. The Household shell entry remains; Trips is reached through Groups and `/trips` redirects to the directory's Trips selection. Canonical workspace
 route families remain unchanged. The shared Household overview is `/household`; its original
 ledger is `/household/ledger` with the same single Household frame/tabs. Expenses
 and repayments there keep the original Household Group ID and operation/recovery

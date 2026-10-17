@@ -15,8 +15,9 @@ type Handoff = {
 };
 const Context = createContext<Handoff | undefined>(undefined);
 
-/** Coordinates only a workspace banner and its mounted ledger. Native navigation
- * still owns the link; the ledger records its return geometry before activation. */
+/** Coordinates shared chrome departures and its mounted ledger. Native navigation
+ * still owns the link; the ledger records its return geometry before activation. An empty source
+ * records a Profile/global departure without selecting an expense source. */
 export function ExpenseEntryProvider({
   scope,
   visit,

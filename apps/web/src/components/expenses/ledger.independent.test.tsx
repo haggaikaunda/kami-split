@@ -503,6 +503,11 @@ it('returns from Expenses to canonical Household workspace tabs instead of group
   await renderHousehold();
   await respondContext(context('0'));
   await respond(page([]));
+  act(() =>
+    host
+      .querySelector<HTMLButtonElement>('[data-ui~="workspace-tabs"] button')!
+      .click(),
+  );
   expect(
     [...host.querySelectorAll('[data-ui~="workspace-tabs"] a')].map((a) =>
       a.getAttribute('href'),

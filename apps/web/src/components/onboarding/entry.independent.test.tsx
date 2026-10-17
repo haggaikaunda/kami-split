@@ -825,7 +825,7 @@ it('keeps Account personal with shared active navigation and no group discovery 
   expect(
     container.querySelector('a[href="/account"]')?.getAttribute('aria-current'),
   ).toBe('page');
-  for (const href of ['/household', '/groups', '/trips', '/account'])
+  for (const href of ['/household', '/groups', '/account'])
     expect(container.querySelector(`nav a[href="${href}"]`)).not.toBeNull();
   expect(button('Refresh groups')).toBeUndefined();
   expect(container.textContent).not.toContain('Manage invitations');
@@ -1509,7 +1509,7 @@ it('leaves untargeted legacy invitations as navigation guidance instead of choos
   expect(
     requests.some((r) => String(r.body.query).includes('ownerInvitations')),
   ).toBe(false);
-  for (const href of ['/household', '/groups', '/trips'])
+  for (const href of ['/household', '/groups'])
     expect(container.querySelector(`a[href="${href}"]`)).not.toBeNull();
 });
 

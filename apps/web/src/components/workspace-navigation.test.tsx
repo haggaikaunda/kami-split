@@ -52,7 +52,7 @@ it('measures chrome without repositioning it during viewport, focus or zoom chan
     expect(main.style.getPropertyValue('--chrome-header')).toBe('70px');
     expect(main.style.getPropertyValue('--chrome-footer')).toBe('90px');
     expect(main.querySelector('[aria-current="page"]')?.textContent).toBe(
-      'Trips',
+      'Groups',
     );
     barHeight = 140;
     act(() => resized?.([], {} as ResizeObserver));

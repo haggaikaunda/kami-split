@@ -1,6 +1,8 @@
 'use client';
 
 import { cx } from '../ui/classnames';
+import { useFinancialSession } from '../groups/session';
+import { SourceReturn } from '../groups/navigation';
 
 import {
   AppIcon,
@@ -81,6 +83,7 @@ function OnboardingVisit({
     }
   }, [c.step, c.loading, c.wrongAccount]);
   const account = mode === 'account' || mode === 'invitations';
+  const { scope } = useFinancialSession();
   return (
     <main
       data-ui={account ? 'form-scope account-workspace' : 'onboarding'}
@@ -142,18 +145,15 @@ function OnboardingVisit({
               </>
             ) : account ? (
               <>
-                <div
-                  data-ui="workspace-crumb"
-                  className={shellStyles['workspace-crumb']}
-                >
-                  Account
+                <div data-ui="profile-return">
+                  {scope && <SourceReturn scope={scope} />}
                 </div>
                 <header
                   data-ui="account-heading form-region"
                   className={accountStyles['account-heading']}
                 >
                   <h1>
-                    {mode === 'account' ? 'Your account' : 'Manage invitations'}
+                    {mode === 'account' ? 'Profile' : 'Manage invitations'}
                   </h1>
                   <p>Profile and preferences, all in one place.</p>
                 </header>

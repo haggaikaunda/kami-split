@@ -3,7 +3,10 @@
 import { cx } from './ui/classnames';
 
 import Link from 'next/link';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, type ReactNode, type Ref } from 'react';
+import { useFinancialSession } from './groups/session';
+import { ScopedLink } from './groups/navigation';
+import { useExpenseEntry } from './expenses/entry';
 import { usePathname } from 'next/navigation';
 import uiStyles from './ui/primitives.module.css';
 import shellStyles from './workspace/shell.module.css';
@@ -285,7 +288,17 @@ export function Brand() {
   );
 }
 /** Static navigation never reads or retains private group data. */
-export function WorkspaceNavigation() {
+export function WorkspaceNavigation({
+  headerRef,
+  actionRef,
+  destination,
+}: {
+  headerRef?: Ref<HTMLDivElement>;
+  actionRef?: Ref<HTMLDivElement>;
+  destination?: ReactNode;
+} = {}) {
+  const { scope } = useFinancialSession();
+  const expenseEntry = useExpenseEntry();
   const pathname = usePathname();
   const navigation = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -323,12 +336,28 @@ export function WorkspaceNavigation() {
       root.style.removeProperty('--chrome-footer');
     };
   }, []);
-  const items = [
-    { href: '/household', label: 'Household', icon: 'home' },
-    { href: '/groups', label: 'Groups', icon: 'groups' },
-    { href: '/trips', label: 'Trips', icon: 'trip' },
-    { href: '/account', label: 'Account', icon: 'account' },
-  ] as const;
+  const household = pathname.startsWith('/household');
+  const profile = pathname.startsWith('/account');
+  const trip = pathname.startsWith('/trips/');
+  const subtitle =
+    destination ?? (profile ? 'Profile' : household ? 'Household' : 'Groups');
+  const add = scope ? (
+    <ScopedLink
+      scope={scope}
+      id="workspace-add"
+      href="/household/expenses?create=choose"
+      aria-label="Add expense"
+      onClick={(event) => expenseEntry?.activate(event, '')}
+    >
+      <AppIcon name="plus" />
+      <span>Add expense</span>
+    </ScopedLink>
+  ) : (
+    <Link href="/household/expenses?create=choose">
+      <AppIcon name="plus" />
+      <span>Add expense</span>
+    </Link>
+  );
   return (
     <nav
       ref={navigation}
@@ -336,35 +365,88 @@ export function WorkspaceNavigation() {
       className={shellStyles['workspace-navigation']}
       aria-label="Financial navigation"
     >
-      <span
+      <div
         data-ui="workspace-navigation-brand"
-        className={shellStyles['workspace-navigation-brand']}
+        className={cx(
+          shellStyles['workspace-navigation-brand'],
+          trip && shellStyles['workspace-navigation-brand--trip'],
+        )}
       >
-        <Brand />
-      </span>
+        <div className={shellStyles['workspace-navigation-identity']}>
+          <Brand />
+          <div
+            ref={headerRef}
+            data-destination={trip ? 'Trip' : 'Group'}
+            className={shellStyles['workspace-navigation-destination']}
+          >
+            {!headerRef && subtitle}
+          </div>
+        </div>
+        <div className={shellStyles['workspace-navigation-avatar']}>
+          {scope && !profile ? (
+            <ScopedLink
+              scope={scope}
+              id="header-profile"
+              href="/account"
+              aria-label="Profile"
+              aria-current={profile ? 'page' : undefined}
+              onClick={(event) => expenseEntry?.activate(event, '')}
+            >
+              <AppIcon name="account" />
+            </ScopedLink>
+          ) : (
+            <Link
+              href="/account"
+              aria-label="Profile"
+              aria-current={profile ? 'page' : undefined}
+            >
+              <AppIcon name="account" />
+            </Link>
+          )}
+        </div>
+      </div>
       <div
         data-ui="workspace-navigation-links"
         className={shellStyles['workspace-navigation-links']}
       >
-        {items.map(({ href, label, icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-current={
-              pathname === href || pathname.startsWith(href + '/')
-                ? 'page'
-                : undefined
-            }
+        <Link href="/household" aria-current={household ? 'page' : undefined}>
+          <span
+            data-ui="workspace-navigation-icon"
+            className={shellStyles['workspace-navigation-icon']}
           >
+            <AppIcon name="home" />
+          </span>
+          <span>Household</span>
+        </Link>
+        <div
+          ref={actionRef}
+          data-ui="workspace-add-slot"
+          className={shellStyles['workspace-add-slot']}
+        >
+          {actionRef ? (
             <span
-              data-ui="workspace-navigation-icon"
-              className={shellStyles['workspace-navigation-icon']}
+              aria-disabled="true"
+              className={shellStyles['workspace-add-pending']}
             >
-              <AppIcon name={icon} />
+              <AppIcon name="plus" />
+              <span>Add expense</span>
             </span>
-            <span>{label}</span>
-          </Link>
-        ))}
+          ) : (
+            add
+          )}
+        </div>
+        <Link
+          href="/groups"
+          aria-current={!profile && !household ? 'page' : undefined}
+        >
+          <span
+            data-ui="workspace-navigation-icon"
+            className={shellStyles['workspace-navigation-icon']}
+          >
+            <AppIcon name="groups" />
+          </span>
+          <span>Groups</span>
+        </Link>
       </div>
     </nav>
   );

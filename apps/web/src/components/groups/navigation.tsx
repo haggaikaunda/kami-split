@@ -2,7 +2,7 @@
 import { createSessionId } from '@/lib/session-id';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, type MouseEventHandler } from 'react';
 import type { FinancialScope } from '@/lib/relay/environment';
 export type SourceVisit = {
   href: string;
@@ -16,7 +16,13 @@ export function ScopedLink({
   id,
   children,
   sourceFocus,
+  onClick,
+  ...attributes
 }: {
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+  'aria-label'?: string;
+  'aria-current'?: 'page';
+  className?: string;
   scope: FinancialScope;
   href: string;
   id: string;
@@ -26,6 +32,8 @@ export function ScopedLink({
   const router = useRouter();
   return (
     <Link
+      {...attributes}
+      onClick={onClick}
       id={id}
       href={href}
       onNavigate={(event) => {

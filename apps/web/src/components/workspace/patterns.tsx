@@ -3,7 +3,14 @@ import workspaceStyles from './patterns.module.css';
 import { cx } from '../ui/classnames';
 
 import Link, { useLinkStatus } from 'next/link';
-import type { ReactNode, Ref } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { AppIcon } from '../workspace-identity';
 import { useLoadingPhase } from '../ui/loading';
 
@@ -104,7 +111,7 @@ export function WorkspaceTabs({
       className={workspaceStyles['workspace-tabs']}
       aria-label={label}
     >
-      {workspaceSections.map((section) => (
+      {workspaceSections.slice(0, 3).map((section) => (
         <Link
           scroll={false}
           key={section}
@@ -115,7 +122,91 @@ export function WorkspaceTabs({
           <NavigationPending />
         </Link>
       ))}
+      <MoreNavigation key={current} current={current} hrefFor={hrefFor} />
     </nav>
+  );
+}
+
+function MoreNavigation({
+  current,
+  hrefFor,
+}: {
+  current: WorkspaceSection;
+  hrefFor: (section: WorkspaceSection) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const selected = current === 'Activity' || current === 'Members';
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !container.current?.contains(event.target)
+      )
+        setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open]);
+  return (
+    <div ref={container} className={workspaceStyles['workspace-more']}>
+      <button
+        ref={trigger}
+        type="button"
+        aria-label={selected ? `More, current view: ${current}` : 'More'}
+        aria-expanded={open}
+        aria-controls={id}
+        data-current={selected || undefined}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            setOpen(true);
+            requestAnimationFrame(() =>
+              container.current?.querySelector('a')?.focus(),
+            );
+          }
+        }}
+      >
+        {selected ? `More · ${current}` : 'More'}{' '}
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div id={id} className={workspaceStyles['workspace-more-panel']}>
+          {(['Activity', 'Members'] as const).map((section) => (
+            <Link
+              key={section}
+              scroll={false}
+              href={hrefFor(section)}
+              aria-current={current === section ? 'page' : undefined}
+              onClick={() => {
+                if (current === section) {
+                  setOpen(false);
+                  trigger.current?.focus();
+                }
+              }}
+            >
+              {section}
+              <NavigationPending />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

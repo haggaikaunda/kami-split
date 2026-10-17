@@ -97,6 +97,7 @@ export function GroupWorkspaceContent({
   showTabs = true,
   showHeader = true,
   headerTarget,
+  actionTarget,
   initialView,
   initialFeed,
   completed = false,
@@ -115,6 +116,7 @@ export function GroupWorkspaceContent({
   showTabs?: boolean;
   showHeader?: boolean;
   headerTarget?: HTMLDivElement | null;
+  actionTarget?: HTMLDivElement | null;
   initialView?: { filterText: string; reference: expensesView$key };
   initialFeed?: activityFeed$key;
   completed?: boolean;
@@ -159,6 +161,18 @@ export function GroupWorkspaceContent({
   addParams.set('tab', 'expenses');
   addParams.set('create', group.id);
   const activeMembers = group.members.filter((m) => m.status === 'ACTIVE');
+  const addAction = (
+    <Link
+      onClick={(event) => expenseEntry?.activate(event, group.id)}
+      id="workspace-add"
+      scroll={false}
+      data-ui="banner-action"
+      className={workspaceStyles['banner-action']}
+      href={`${base}?${addParams}`}
+    >
+      <AppIcon name="plus" /> Add expense
+    </Link>
+  );
   const workspaceHeader = (
     <WorkspaceHeader
       ref={header}
@@ -167,7 +181,7 @@ export function GroupWorkspaceContent({
         group.trip ? 'trip' : group.isHousehold ? 'household' : 'group'
       }
       context={
-        <>
+        <RichHelp label="About this space">
           <Link
             data-ui="banner-members-link"
             className={workspaceFeatureStyles['banner-members-link']}
@@ -182,23 +196,15 @@ export function GroupWorkspaceContent({
               ? 'Household expenses'
               : 'Group'}{' '}
           · {group.currency}
-        </>
+        </RichHelp>
       }
     >
-      <Link
-        onClick={(event) => expenseEntry?.activate(event, group.id)}
-        id="workspace-add"
-        scroll={false}
-        data-ui="banner-action"
-        className={workspaceStyles['banner-action']}
-        href={`${base}?${addParams}`}
-      >
-        <AppIcon name="plus" /> Add expense
-      </Link>
+      {!actionTarget && addAction}
     </WorkspaceHeader>
   );
   return (
     <div>
+      {actionTarget && createPortal(addAction, actionTarget)}
       {showHeader &&
         (headerTarget
           ? createPortal(workspaceHeader, headerTarget)

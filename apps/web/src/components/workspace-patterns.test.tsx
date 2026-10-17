@@ -68,6 +68,9 @@ it('exposes consistent workspace route links and specific expense/repayment cont
         </>,
       ),
     );
+    act(() =>
+      container.querySelector<HTMLButtonElement>('nav button')!.click(),
+    );
     const links = Array.from(container.querySelectorAll('nav a'));
     expect(links.map((link) => link.textContent)).toEqual([
       'Overview',
