@@ -12,6 +12,7 @@ export const test = base.extend({
     let appearance = 'LIGHT';
     const errors = [];
     const holds = [];
+    const responses = [];
     const observe = (page) =>
       page.on('pageerror', (error) => errors.push(error.message));
     context.on('page', observe);
@@ -23,11 +24,18 @@ export const test = base.extend({
       const { query, variables } = route.request().postDataJSON();
       const operation = query.match(/(?:query|mutation) (\w+)/)?.[1];
       requests.push({ operation, variables });
+      const response = responses.find(
+        (item) => item.operation === operation && item.matches(variables),
+      );
       const hold = holds.find(
         (item) => !item.claimed && item.operation === operation,
       );
       let data;
-      if (!hold && operation === 'appearanceMutation') {
+      if (response) {
+        data = response.data;
+        response.started.resolve();
+        await response.released.promise;
+      } else if (!hold && operation === 'appearanceMutation') {
         expect(variables.expectedAppearance).toBe(appearance);
         appearance = variables.appearance;
         data = { updateMyAppearance: { __typename: 'Profile', appearance } };
@@ -44,10 +52,13 @@ export const test = base.extend({
       // Model an asynchronous service, as in the retained navigation fixture.
       await delay(100);
       try {
-        await route.fulfill({ json: { data }, status: hold?.status ?? 200 });
+        await route.fulfill({
+          json: { data },
+          status: response?.status ?? hold?.status ?? 200,
+        });
       } catch (error) {
         // Disposed account requests can be canceled while deliberately held.
-        if (!hold) throw error;
+        if (!hold && !response) throw error;
       } finally {
         hold?.finished.resolve();
       }
@@ -96,9 +107,29 @@ export const test = base.extend({
             },
           };
         },
+        // Model persistent server state across canceled/replacement requests.
+        // Every matching read waits for release, then receives the same state.
+        holdMatching(operation, matches, data, { status = 200 } = {}) {
+          const item = {
+            operation,
+            matches,
+            data,
+            status,
+            started: Promise.withResolvers(),
+            released: Promise.withResolvers(),
+          };
+          responses.push(item);
+          return {
+            started: item.started.promise,
+            release() {
+              item.released.resolve();
+            },
+          };
+        },
       });
     } finally {
       for (const hold of holds) hold.released.resolve();
+      for (const response of responses) response.released.resolve();
       await context.unrouteAll({ behavior: 'wait' });
     }
     expect(errors, 'Uncaught browser errors').toEqual([]);

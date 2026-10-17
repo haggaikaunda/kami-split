@@ -1531,16 +1531,33 @@ test('expense Escape consumes a fresh first page before completing the restored 
     version: '2',
     description: 'Fresh expense after detail return',
   };
-  const fresh = app.hold('expensesGroupQuery', updated);
+  const filter = app.requests.find(
+    (request) =>
+      request.operation === 'journeyWorkspaceQuery' && request.variables.ledger,
+  ).variables.filter;
+  const fresh = app.holdMatching(
+    'expensesGroupQuery',
+    (variables) =>
+      variables.groupId === 'T' &&
+      variables.after == null &&
+      JSON.stringify(variables.filter) === JSON.stringify(filter),
+    updated,
+  );
   const returnRequests = app.requests.length;
   await page.keyboard.press('Escape');
   await fresh.started;
-  // Let an obsolete continuation expose premature restoration while the fresh
-  // first page is held. Its changed data and cursor must still be consumed.
+  // Every replacement first page stays pending; canceled generations need not
+  // apply, but completed restoration cannot use the previous server anchor.
   await page.waitForTimeout(300);
   const prematureFocus = await page.evaluate(
     () => document.activeElement?.id === 'ledger-expense-e8',
   );
+  const prematureContinuation = app.requests
+    .slice(returnRequests)
+    .some(
+      (request) =>
+        request.operation === 'expensesGroupQuery' && request.variables.after,
+    );
   await fresh.release();
   await expect(page.locator('#ledger-expense-e1')).toContainText(
     'Fresh expense after detail return',
@@ -1548,6 +1565,10 @@ test('expense Escape consumes a fresh first page before completing the restored 
   expect(prematureFocus, 'Restored focus waits for the fresh traversal').toBe(
     false,
   );
+  expect(
+    prematureContinuation,
+    'Replay waits for the fresh first-page anchor',
+  ).toBe(false);
   expect(
     app.requests
       .slice(returnRequests)
@@ -1561,4 +1582,63 @@ test('expense Escape consumes a fresh first page before completing the restored 
   await expect(origin).toBeAttached();
   await expect(origin).toBeFocused();
   await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(9);
+});
+
+test('expense Escape cannot restore private rows when the current first page is denied', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=expenses');
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
+  await page.locator('#ledger-expense-e8').click();
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toBeVisible();
+  const filter = app.requests.find(
+    (request) =>
+      request.operation === 'journeyWorkspaceQuery' && request.variables.ledger,
+  ).variables.filter;
+  const denied = app.holdMatching(
+    'expensesGroupQuery',
+    (variables) =>
+      variables.groupId === 'T' &&
+      variables.after == null &&
+      JSON.stringify(variables.filter) === JSON.stringify(filter),
+    { groupExpenses: { __typename: 'Problem', code: 'FORBIDDEN' } },
+  );
+  const returnRequests = app.requests.length;
+  await page.keyboard.press('Escape');
+  await denied.started;
+  await page.waitForTimeout(300);
+  const prematureContinuation = app.requests
+    .slice(returnRequests)
+    .some(
+      (request) =>
+        request.operation === 'expensesGroupQuery' && request.variables.after,
+    );
+  denied.release();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Account verification is unavailable.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'retry account access', exact: true }),
+  ).toHaveAttribute('href', '/trips/T?tab=expenses');
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', {
+      name: 'Maui 2026 with a very long friendly space name',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(
+    prematureContinuation,
+    'A denied first page cannot authorize replay',
+  ).toBe(false);
 });
