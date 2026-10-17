@@ -25,4 +25,4 @@
 
 Production configuration in the runbook is an approved operating contract, not a fresh provider audit. Vercel-native deployment migration remains [#161](https://github.com/haggaikaunda/kami-split/issues/161). Production operations require separate authorization.
 
-Deletion, imports, ownership transfer, free-text search and broader Personal/Plaid features remain unimplemented. The [planned Personal banking contract](personal-banking.md) and [interface handoff](../design/personal-banking.md) distinguish approved M1 product decisions from the remaining recovery choice and live-release gates; delivery status stays on GitHub. The retired seeded runtime must not be restored from old design examples.
+Deletion, imports, ownership transfer, free-text search and broader Personal/Plaid features remain unimplemented. The [planned Personal banking contract](personal-banking.md) and [interface handoff](../design/personal-banking.md) distinguish approved M1 product decisions from the provider capability and live-release gates; delivery status stays on GitHub. The retired seeded runtime must not be restored from old design examples.

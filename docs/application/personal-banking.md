@@ -5,11 +5,12 @@ The [application guide](README.md) remains the current-state authority.
 Product decisions are approved in [C1](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230836850),
 [C2](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230848166),
 [C3](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230994616) and
-[C4](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6231114646).
+[C4](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6231114646) and
+[C5](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6231199839).
 The [visual handoff](../design/personal-banking.md) maps the approved R2 design to
 production components. [#249](https://github.com/haggaikaunda/kami-split/issues/249)
-owns remaining design acceptance; the replacement-history choice below is still
-proposed. No speculative runtime SDL, bank connection or live release is created
+owns remaining independent design acceptance. The replacement-history policy
+below is owner-approved in C5. No speculative runtime SDL, bank connection or live release is created
 by this document.
 
 ## Product boundary
@@ -264,9 +265,15 @@ or financial recovery protocols with a new generic framework.
 Webhooks require the current Plaid signature/body verification, expected algorithm,
 bounded key cache and timestamp validation. Unverified bodies, unknown environments
 or mismatched Items cannot write. Acknowledge only durable acceptance; duplicates
-and out-of-order notifications cannot undo a terminal generation. Queue claims
-have bounded leases, retry with jitter/rate-limit handling, and a visible
-needs-attention state after bounded automatic retries. A reconciliation sweep
+and out-of-order notifications cannot undo a terminal generation. Initial worker defaults are a two-minute claim lease with renewal, provider
+request timeout of 30 seconds, and at most ten automatic attempts with exponential
+backoff from one minute to one hour plus jitter. Respect provider retry guidance;
+never exceed its allowed rate to meet a local target. Exhaustion produces a
+visible needs-attention state with durable intent retained; an authorized
+operator can resume a repaired operation without changing its identity. Poll
+due work at one-minute intervals and reconcile healthy bindings at least daily
+for missed notifications; these are local scheduling defaults, not bank freshness
+promises. A reconciliation sweep
 finds due operations/missed notifications without enabling stopped bindings.
 Operational retry must recheck lifecycle; poison-message replay is not permission.
 
@@ -290,7 +297,10 @@ Reenabling an identity does not silently restore revoked banking permission.
 
 The provider documents one-use public-token exchange, not a universal exactly-once
 replay guarantee. Persisted local intent cannot make a remote success followed by
-response loss atomic. Disable transport/SDK automatic exchange retries.
+response loss atomic. Disable transport/SDK automatic exchange retries. Permit one unfinished new-Link
+attempt per actor/environment; healthy existing Items remain usable. Expire
+unconsumed temporary-token material with the provider lifetime, while retaining
+minimal unresolved operation/correlation metadata until verified cleanup.
 
 | Operation state  | Recovery boundary                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -322,7 +332,7 @@ or deleted connection. Retry permission must not forget unresolved prior effects
 Do not use broad user-product termination to clean a single uncertain Item.
 Unexpected recovery states need safe owning diagnostics without raw bank payloads.
 
-## Replacement history: proposal awaiting owner decision
+## Replacement history and retained archives
 
 Prefer repair/update mode on the existing connection. A new Item or changed
 account binding can have new identifiers. Names/masks and amount/date/merchant
@@ -331,7 +341,7 @@ Different account, or Cancel; only show the actor's own accounts. Distinct login
 at one bank remain possible. Known exact duplicate binding evidence rejects
 duplicate enrollment; do not claim universal duplicate detection.
 
-The proposed M1 replacement stages new history without contributing to standard
+The approved M1 replacement stages new history without contributing to standard
 reads. Preserve the old reporting dataset until a usable import and explicit
 preview/confirmation. Atomically switch one account to exactly one whole binding's
 dataset. Old history/annotations remain accessible as an archive outside current
@@ -340,10 +350,17 @@ The preview must explain lost current coverage and annotation effects. Cancel
 retains old history, but cannot promise the bank has left old OAuth permission
 unchanged. Do not remove an old Item serving other selected accounts.
 
-This tradeoff requires owner acceptance: older data the bank does not return and
-prior annotations no longer affect current totals. Combined-history/annotation
-reconciliation is a larger alternative. Until selected, this proposal is not an
-implementation requirement.
+C5 accepts this tradeoff: older data the bank does not return and prior
+annotations no longer affect current totals. Combined-history/annotation
+reconciliation is deferred. Archived rows remain readable with their provenance,
+original notes and a clear archive label, but do not enter the standard dataset
+or review counts. Explicit history deletion includes affected archives.
+
+For example, an old $100 purchase excluded by the owner contributes $0. A new
+binding returns that purchase and $50 without the old annotations. Confirmation
+switches current spending to $150, never $250; the old note/exclusion remains
+visible in archived history. The preview explains this change. A binding with
+unknown or failed import cannot replace a usable current dataset.
 
 ## Deletion, backup and live rollout
 
@@ -366,7 +383,8 @@ recovery objectives.
 
 Use Sandbox and synthetic evidence first. Live rollout requires explicitly
 approved participants, provider/institution eligibility, Transactions-only
-configuration, cost/connection limits, consent/privacy text compatible with
+configuration, cost/connection limits (new enrollment stays disabled if unset),
+consent/privacy text compatible with
 retention after revocation, verified backup/restore and unknown-exchange cleanup,
 environment/secret isolation, monitoring ownership and disable procedures.
 New-enrollment disable and sync stop controls are separate from retained-history

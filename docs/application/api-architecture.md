@@ -82,8 +82,9 @@ The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
-sync extends it. The proposed replacement-history policy still needs its owner
-decision, and live provider recovery/backup capabilities require verification.
+sync extends it. Replacement preserves old history/annotations in an archive and activates one
+current reporting dataset. Live provider recovery/backup capabilities require
+verification.
 This design does not add runtime SDL, grant banking access through groups or
 claim implemented connectivity.
 
