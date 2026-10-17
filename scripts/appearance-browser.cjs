@@ -371,6 +371,20 @@ withAuthFixture(origin, session, async () => {
       };
     else if (op === 'journeyViewerQuery')
       data = {
+        groupDirectory: {
+          __typename: 'GroupDirectory',
+          entries: groups
+            .filter((g) => !g.isHousehold)
+            .map((group) => ({
+              group,
+              activeMemberCount: 3,
+              financialSummary: {
+                __typename: 'GroupFinancialSummary',
+                totalSpendMinor: '300',
+                viewerNetMinor: '8420',
+              },
+            })),
+        },
         viewer: {
           __typename: 'Viewer',
           id: 'v',

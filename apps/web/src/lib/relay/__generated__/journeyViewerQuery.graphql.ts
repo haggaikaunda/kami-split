@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<51f2eaf3f5f9c4313e006be594b00b14>>
+ * @generated SignedSource<<9f62c44d019ac554c8a602243e563ebb>>
  * @lightSyntaxTransform
  */
 
@@ -10,11 +10,32 @@
 import { ConcreteRequest } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type AccessState = "DISABLED" | "UNPROVISIONED" | "%future added value";
-export type Currency = "USD" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
 export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 export type journeyViewerQuery$variables = Record<PropertyKey, never>;
 export type journeyViewerQuery$data = {
+  readonly groupDirectory: {
+    readonly __typename: "GroupDirectory";
+    readonly entries: ReadonlyArray<{
+      readonly group: {
+        readonly id: string;
+        readonly isHousehold: boolean;
+        readonly kind: GroupKind;
+        readonly trip: {
+          readonly endDate: string;
+          readonly startDate: string;
+        } | null | undefined;
+      };
+      readonly " $fragmentSpreads": FragmentRefs<"discoveryCard">;
+    }>;
+  } | {
+    readonly __typename: "Problem";
+    readonly code: ProblemCode;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
+  };
   readonly viewer: {
     readonly __typename: "Problem";
     readonly code: ProblemCode;
@@ -23,17 +44,6 @@ export type journeyViewerQuery$data = {
     readonly __typename: "Viewer";
     readonly canCreateGroups: boolean;
     readonly displayName: string;
-    readonly groups: ReadonlyArray<{
-      readonly currency: Currency;
-      readonly id: string;
-      readonly isHousehold: boolean;
-      readonly kind: GroupKind;
-      readonly trip: {
-        readonly endDate: string;
-        readonly startDate: string;
-      } | null | undefined;
-      readonly " $fragmentSpreads": FragmentRefs<"discoveryCard">;
-    }>;
     readonly id: string;
     readonly today: string;
   } | {
@@ -69,59 +79,75 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "displayName",
+  "name": "kind",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "today",
+  "name": "isHousehold",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "canCreateGroups",
+  "name": "startDate",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "currency",
+  "name": "endDate",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "kind",
+  "name": "code",
   "storageKey": null
 },
 v7 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "isHousehold",
-  "storageKey": null
+  "kind": "InlineFragment",
+  "selections": [
+    (v6/*:: as any*/)
+  ],
+  "type": "Problem",
+  "abstractKey": null
 },
 v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "startDate",
-  "storageKey": null
+  "kind": "InlineFragment",
+  "selections": [
+    (v1/*:: as any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "displayName",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "today",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "canCreateGroups",
+      "storageKey": null
+    }
+  ],
+  "type": "Viewer",
+  "abstractKey": null
 },
 v9 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "endDate",
-  "storageKey": null
-},
-v10 = {
   "kind": "InlineFragment",
   "selections": [
     {
@@ -135,16 +161,10 @@ v10 = {
   "type": "ViewerAccess",
   "abstractKey": null
 },
-v11 = {
+v10 = {
   "kind": "InlineFragment",
   "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "code",
-      "storageKey": null
-    },
+    (v6/*:: as any*/),
     {
       "alias": null,
       "args": null,
@@ -168,23 +188,19 @@ return {
         "args": null,
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "viewer",
+        "name": "groupDirectory",
         "plural": false,
         "selections": [
           (v0/*:: as any*/),
           {
             "kind": "InlineFragment",
             "selections": [
-              (v1/*:: as any*/),
-              (v2/*:: as any*/),
-              (v3/*:: as any*/),
-              (v4/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "GroupSummary",
+                "concreteType": "GroupDirectoryEntry",
                 "kind": "LinkedField",
-                "name": "groups",
+                "name": "entries",
                 "plural": true,
                 "selections": [
                   {
@@ -192,20 +208,30 @@ return {
                     "kind": "FragmentSpread",
                     "name": "discoveryCard"
                   },
-                  (v1/*:: as any*/),
-                  (v5/*:: as any*/),
-                  (v6/*:: as any*/),
-                  (v7/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
-                    "concreteType": "GroupTrip",
+                    "concreteType": "GroupSummary",
                     "kind": "LinkedField",
-                    "name": "trip",
+                    "name": "group",
                     "plural": false,
                     "selections": [
-                      (v8/*:: as any*/),
-                      (v9/*:: as any*/)
+                      (v1/*:: as any*/),
+                      (v2/*:: as any*/),
+                      (v3/*:: as any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "concreteType": "GroupTrip",
+                        "kind": "LinkedField",
+                        "name": "trip",
+                        "plural": false,
+                        "selections": [
+                          (v4/*:: as any*/),
+                          (v5/*:: as any*/)
+                        ],
+                        "storageKey": null
+                      }
                     ],
                     "storageKey": null
                   }
@@ -213,11 +239,25 @@ return {
                 "storageKey": null
               }
             ],
-            "type": "Viewer",
+            "type": "GroupDirectory",
             "abstractKey": null
           },
-          (v10/*:: as any*/),
-          (v11/*:: as any*/)
+          (v7/*:: as any*/)
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "viewer",
+        "plural": false,
+        "selections": [
+          (v0/*:: as any*/),
+          (v8/*:: as any*/),
+          (v9/*:: as any*/),
+          (v10/*:: as any*/)
         ],
         "storageKey": null
       }
@@ -236,65 +276,133 @@ return {
         "args": null,
         "concreteType": null,
         "kind": "LinkedField",
-        "name": "viewer",
+        "name": "groupDirectory",
         "plural": false,
         "selections": [
           (v0/*:: as any*/),
           {
             "kind": "InlineFragment",
             "selections": [
-              (v1/*:: as any*/),
-              (v2/*:: as any*/),
-              (v3/*:: as any*/),
-              (v4/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
-                "concreteType": "GroupSummary",
+                "concreteType": "GroupDirectoryEntry",
                 "kind": "LinkedField",
-                "name": "groups",
+                "name": "entries",
                 "plural": true,
                 "selections": [
-                  (v1/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
                     "kind": "ScalarField",
-                    "name": "name",
+                    "name": "activeMemberCount",
                     "storageKey": null
                   },
-                  (v6/*:: as any*/),
-                  (v7/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
-                    "concreteType": "GroupTrip",
+                    "concreteType": null,
                     "kind": "LinkedField",
-                    "name": "trip",
+                    "name": "financialSummary",
                     "plural": false,
                     "selections": [
+                      (v0/*:: as any*/),
+                      {
+                        "kind": "InlineFragment",
+                        "selections": [
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "totalSpendMinor",
+                            "storageKey": null
+                          },
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "viewerNetMinor",
+                            "storageKey": null
+                          }
+                        ],
+                        "type": "GroupFinancialSummary",
+                        "abstractKey": null
+                      },
+                      (v7/*:: as any*/)
+                    ],
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "concreteType": "GroupSummary",
+                    "kind": "LinkedField",
+                    "name": "group",
+                    "plural": false,
+                    "selections": [
+                      (v1/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
                         "kind": "ScalarField",
-                        "name": "destination",
+                        "name": "name",
                         "storageKey": null
                       },
-                      (v8/*:: as any*/),
-                      (v9/*:: as any*/)
+                      (v2/*:: as any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "kind": "ScalarField",
+                        "name": "currency",
+                        "storageKey": null
+                      },
+                      (v3/*:: as any*/),
+                      {
+                        "alias": null,
+                        "args": null,
+                        "concreteType": "GroupTrip",
+                        "kind": "LinkedField",
+                        "name": "trip",
+                        "plural": false,
+                        "selections": [
+                          {
+                            "alias": null,
+                            "args": null,
+                            "kind": "ScalarField",
+                            "name": "destination",
+                            "storageKey": null
+                          },
+                          (v4/*:: as any*/),
+                          (v5/*:: as any*/)
+                        ],
+                        "storageKey": null
+                      }
                     ],
                     "storageKey": null
-                  },
-                  (v5/*:: as any*/)
+                  }
                 ],
                 "storageKey": null
               }
             ],
-            "type": "Viewer",
+            "type": "GroupDirectory",
             "abstractKey": null
           },
+          (v7/*:: as any*/)
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": null,
+        "kind": "LinkedField",
+        "name": "viewer",
+        "plural": false,
+        "selections": [
+          (v0/*:: as any*/),
+          (v8/*:: as any*/),
+          (v9/*:: as any*/),
           (v10/*:: as any*/),
-          (v11/*:: as any*/),
           {
             "kind": "InlineFragment",
             "selections": [
@@ -309,16 +417,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "3bc8da38375a6a7ba99c20047da8c848",
+    "cacheID": "fb6f8e9047c2c6258ed7e25fe4be2ec5",
     "id": null,
     "metadata": {},
     "name": "journeyViewerQuery",
     "operationKind": "query",
-    "text": "query journeyViewerQuery {\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n      today\n      canCreateGroups\n      groups {\n        ...discoveryCard\n        id\n        currency\n        kind\n        isHousehold\n        trip {\n          startDate\n          endDate\n        }\n      }\n    }\n    ... on ViewerAccess {\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n\nfragment discoveryCard on GroupSummary {\n  id\n  name\n  kind\n  isHousehold\n  trip {\n    destination\n    startDate\n    endDate\n  }\n}\n"
+    "text": "query journeyViewerQuery {\n  groupDirectory {\n    __typename\n    ... on GroupDirectory {\n      entries {\n        ...discoveryCard\n        group {\n          id\n          kind\n          isHousehold\n          trip {\n            startDate\n            endDate\n          }\n        }\n      }\n    }\n    ... on Problem {\n      code\n    }\n  }\n  viewer {\n    __typename\n    ... on Viewer {\n      id\n      displayName\n      today\n      canCreateGroups\n    }\n    ... on ViewerAccess {\n      state\n    }\n    ... on Problem {\n      code\n      message\n    }\n    ... on Node {\n      __isNode: __typename\n      id\n    }\n  }\n}\n\nfragment discoveryCard on GroupDirectoryEntry {\n  activeMemberCount\n  financialSummary {\n    __typename\n    ... on GroupFinancialSummary {\n      totalSpendMinor\n      viewerNetMinor\n    }\n    ... on Problem {\n      code\n    }\n  }\n  group {\n    id\n    name\n    kind\n    currency\n    isHousehold\n    trip {\n      destination\n      startDate\n      endDate\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "27d51f3b3fe64bec7e0b06fa7bac8aaf";
+(node as any).hash = "6ee3708ab5c4c8587731892eaf369ce4";
 
 export default node;

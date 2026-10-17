@@ -2,8 +2,13 @@
 
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
-and expenses** from the account navigation. Groups lists ordinary authorized groups; Household and Trips have dedicated entries. Trips filters authorized Trip groups by metadata
-and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility.
+and expenses** from the account navigation. Groups is the unified authorized
+directory with All / Groups / Trips selection, excluding the designated Household.
+The Trips selection retains All / Upcoming / Past filtering by server UTC date.
+Native cards show complete expense-only spend and separate personal net balances.
+The existing Household and Trips shell entries remain; `/trips` redirects to the
+directory's Trips selection. The shared navigation links to Household aggregation
+without inferring eligibility.
 Discovery cards open only the groups returned for the current authorized actor.
 Canonical ordinary-group `/groups/:groupId`, Trip `/trips/:groupId`, and original Household `/household/ledger` routes
 recheck access and expense ownership. Select an admitted group to read a
@@ -18,7 +23,7 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated financial reads with bounded first-page Relay reuse at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
+[Activity workspaces](activity.md) also use authenticated financial reads with bounded first-page Relay reuse at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` redirects to the unified Groups directory’s Trips selection. Collaborative expense editing is implemented under #212; deletion remains deferred.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
@@ -104,6 +109,29 @@ verification with tested commit and explicit limitations.
 
 ## Discovery and return navigation (#105)
 
+Groups lists all admitted ordinary groups and trips, excluding the designated
+Household, with URL-backed All / Groups / Trips filters. Trips keeps its UTC
+All / Upcoming / Past classification without hiding past trips automatically.
+The one retained `journeyViewerQuery` selects self-only `groupDirectory` alongside
+minimal Viewer identity, UTC date and creator capability. Its single bounded API
+aggregate read returns source-coherent metadata, active-member counts (excluding
+pending/inactive memberships), complete expense-only spend and viewer net; the
+browser fetches neither per-card summaries nor full ledgers. Directory size grows
+with accessible sources, not expense count. Explicit source financial Problems
+render unavailable amounts, while a directory/access failure renders no cards.
+Canonical minor-unit strings pass through exact formatting without Number coercion.
+Zero net describes the viewer only, never all members being settled.
+
+Group/Trip Overview uses the existing complete authorized
+`Group.balances.totalExpenseMinor` for Total spend, with the same expense-only
+definition as the directory summary. This keeps its combined operation within the
+finite transport complexity budget. Neither value depends on recent rows,
+selected ledger filters or trip dates.
+Repayments affect net balances but never spend. Every mutation outcome invalidates
+the account store; workspace refresh recomputes the source and a directory visit
+performs a new authorized read. Foregrounding, explicit refresh and UTC midnight
+also replace the private directory owner. No archive lifecycle is introduced.
+
 A normal card/expense activation captures an actor-session source visit with its
 filter URL, scroll and logical focus. Modified clicks use canonical standalone
 URLs. Back to source restores after an eligible bounded Relay read or fresh authorized read; missing records focus
@@ -120,8 +148,9 @@ without preview household trip pickers or repayment shortcuts.
 
 ## Group creation (#106)
 
-Enabled designated creators can open `/groups/new` from Groups (ordinary by
-default) or Create trip from Trips (trip by default). USD is read-only; trip
+Enabled designated creators use Create in the directory to choose Group
+(`/groups/new`) or Trip (`/trips/new`). Direct creation links remain available.
+The source visit retains directory filters, scroll and Create focus for return. USD is read-only; trip
 dates initially use the fresh server UTC date. Names use ASCII trimming and
 Unicode scalar limits; destinations preserve whitespace. There is no member
 picker or household inheritance: the server atomically creates a sole owner
@@ -186,9 +215,10 @@ The [workspace loading contract](../navigation/workspace-loading.md) documents d
 
 ## Household and Trip navigation
 
-Household is absent from Groups discovery and its original ledger/details/forms
-use `/household/ledger` within the dedicated Household frame. Trips are absent
-from Groups and use `/trips/<Group ID>` plus original expense/repayment subroutes.
+The designated Household is absent from Groups discovery and its original
+ledger/details/forms use `/household/ledger` within the dedicated Household frame.
+Trips appear in the unified Groups directory and use `/trips/<Group ID>` plus
+original expense/repayment subroutes.
 Legacy group paths canonicalize after authorized metadata resolution. All reads,
 writes and recoveries retain the original group IDs and server authorization.
 See [workspace loading](../navigation/workspace-loading.md) for route and exact

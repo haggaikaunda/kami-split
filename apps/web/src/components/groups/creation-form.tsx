@@ -31,12 +31,16 @@ type Outcome =
   | journeyGroupCreationMutation['response']['createGroup']
   | journeyGroupCreationRecoveryQuery['response']['groupCreationOperation'];
 export function CreationForm({
+  source,
+  returnHref,
   scope,
   actor,
   today,
   kind,
   onDenied,
 }: {
+  source?: string;
+  returnHref?: string;
   scope: FinancialScope;
   actor: string;
   today: string;
@@ -162,7 +166,7 @@ export function CreationForm({
       // No state/focus updates after route transition; leaving this visit suppresses late responses.
       navigating.current = true;
       router.push(
-        `${kind === 'TRIP' ? '/trips' : '/groups'}/${encodeURIComponent(outcome.groupId)}`,
+        `${kind === 'TRIP' ? '/trips' : '/groups'}/${encodeURIComponent(outcome.groupId)}${source ? `?source=${encodeURIComponent(source)}` : ''}`,
       );
     } else if (outcome.__typename === 'GroupCreationRejected') {
       persist({ version: 1, actor, draft });
@@ -261,7 +265,7 @@ export function CreationForm({
       <p ref={status} role="status" tabIndex={-1}>
         {busy ? 'Working…' : notice}
       </p>
-      <Link href={kind === 'TRIP' ? '/trips' : '/groups'}>
+      <Link href={returnHref ?? (kind === 'TRIP' ? '/trips' : '/groups')}>
         Inspect your {kind === 'TRIP' ? 'trips' : 'groups'}
       </Link>
       {attempt && (

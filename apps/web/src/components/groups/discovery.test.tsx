@@ -79,6 +79,20 @@ const groups = [
 ];
 function viewer(items = groups) {
   return {
+    groupDirectory: {
+      __typename: 'GroupDirectory',
+      entries: items
+        .filter((item) => !item.isHousehold)
+        .map((group) => ({
+          group: { currency: 'USD', ...group },
+          activeMemberCount: 3,
+          financialSummary: {
+            __typename: 'GroupFinancialSummary',
+            totalSpendMinor: '9007199254740993',
+            viewerNetMinor: group.kind === 'TRIP' ? '-500' : '0',
+          },
+        })),
+    },
     viewer: {
       __typename: 'Viewer',
       id: 'A',
@@ -128,7 +142,7 @@ it('keeps general navigation static while limiting source discovery to authorize
   expect(host.querySelector('a[href="/groups/F"]')?.textContent).toContain(
     'Friends',
   );
-  expect(host.textContent).not.toContain('Trip with friends');
+  expect(host.textContent).toContain('Trip with friends');
   mock.path = '/trips';
   await render(<GroupJourney trips />);
   await respond(viewer([groups[1], groups[2]]));
@@ -153,7 +167,7 @@ it('keeps in-progress trips in All only and distinguishes a filtered empty list 
   expect(host.textContent).not.toContain('Trip with friends');
   await render(<GroupJourney trips filter="past" />);
   await respond(viewer([]));
-  expect(host.textContent).toContain('no admitted trips or groups');
+  expect(host.textContent).toContain('no admitted groups or trips');
   expect(host.textContent).not.toContain('No trips match');
 });
 it('hides old group fields immediately and ignores a delayed previous group read', async () => {
@@ -194,17 +208,22 @@ it('distinguishes failed discovery from no groups and ignores old-account result
   await render(<GroupJourney />);
   await act(async () => old.next(viewer()));
   expect(host.textContent).not.toContain('Private household');
+  expect(host.textContent).not.toContain('$90,071,992,547,409.93');
   await act(async () => mock.requests.at(-1)!.error(new Error('UNAVAILABLE')));
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
-  expect(host.textContent).not.toContain('No ordinary groups yet');
+  expect(host.textContent).not.toContain('No groups match this filter');
 });
 
 it.each([[groups[0]], [groups[1]], [groups[0], groups[1]]])(
   'shows a genuine ordinary Groups empty state when only dedicated spaces are authorized (%j)',
   async (...items) => {
-    await render(<GroupJourney />);
+    await render(<GroupJourney selection="groups" />);
     await respond(viewer(items));
-    expect(host.textContent).toContain('No ordinary groups yet');
+    expect(host.textContent).toContain(
+      items.some((item) => item.kind === 'TRIP')
+        ? 'No groups match this filter'
+        : 'no admitted groups or trips',
+    );
     expect(host.querySelector('.group-selection a')).toBeNull();
     expect(host.textContent).not.toContain('Private household');
     expect(host.textContent).not.toContain('Trip with friends');
@@ -218,18 +237,24 @@ it('does not infer Household identity from an ordinary group name', async () => 
   expect(host.querySelector('a[href="/groups/F"]')?.textContent).toContain(
     'Household',
   );
-  expect(host.textContent).not.toContain('No ordinary groups yet');
+  expect(host.textContent).not.toContain('No groups match this filter');
 });
-it('offers the dedicated Trip creation route while preserving the separate creator capability', async () => {
-  mock.path = '/trips';
-  await render(<GroupJourney trips />);
-  const data = viewer([groups[1]]);
+it('offers authorized Group and Trip choices from the shared Create entry', async () => {
+  Object.assign(HTMLDialogElement.prototype, { showModal() {}, close() {} });
+  await render(<GroupJourney />);
+  const data = viewer();
   data.viewer.canCreateGroups = true;
   await respond(data);
+  const create = [...host.querySelectorAll('button')].find(
+    (button) => button.textContent === 'Create',
+  )!;
+  await act(async () => create.click());
   expect(host.querySelector('a[href="/trips/new"]')?.textContent).toBe(
     'Create trip',
   );
-  expect(host.querySelector('a[href="/groups/new"]')).toBeNull();
+  expect(host.querySelector('a[href="/groups/new"]')?.textContent).toBe(
+    'Create group',
+  );
 });
 
 it.each([
@@ -281,4 +306,97 @@ it('renders the card fragment from its retained store record without a copied se
     'Renamed friends',
   );
   expect(mock.requests).toHaveLength(count);
+});
+
+it('renders complete exact spend and personal positions without using ledger rows or claiming everyone settled', async () => {
+  await render(<GroupJourney />);
+  await respond(viewer());
+  const cards = host.querySelector('[data-ui="discovery-cards"]')!;
+  expect(cards.textContent).toContain(
+    'Total spend · USD$90,071,992,547,409.93',
+  );
+  expect(cards.textContent).toContain('3 active members');
+  expect(cards.textContent).toContain('You owe');
+  expect(cards.textContent).toContain('Nothing for you to pay or collect');
+  expect(cards.textContent).not.toContain('Settled');
+  expect(mock.requests).toHaveLength(1);
+});
+
+it('distinguishes authorized zero from a failed financial aggregate and an inaccessible directory', async () => {
+  await render(<GroupJourney />);
+  const data = viewer();
+  data.groupDirectory.entries[0].financialSummary = {
+    __typename: 'Problem',
+    code: 'UNAVAILABLE',
+  } as never;
+  data.groupDirectory.entries[1].financialSummary.totalSpendMinor = '0';
+  await respond(data);
+  expect(host.querySelector('a[href="/trips/T"]')?.textContent).toContain(
+    'Unavailable',
+  );
+  expect(host.querySelector('a[href="/trips/T"]')?.textContent).not.toContain(
+    '$0.00',
+  );
+  expect(host.querySelector('a[href="/groups/F"]')?.textContent).toContain(
+    '$0.00',
+  );
+  await act(async () =>
+    scope.environment.commitPayload(
+      createOperationDescriptor(viewerDocument, {}),
+      { ...data, groupDirectory: { __typename: 'Problem', code: 'NOT_FOUND' } },
+    ),
+  );
+  expect(host.querySelector('[data-ui="discovery-cards"]')).toBeNull();
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+it('reads a large directory in one operation and subscribes to corrected aggregate and active-member facts', async () => {
+  const items = Array.from({ length: 75 }, (_, index) => ({
+    ...groups[2],
+    id: `G${index}`,
+    name: `Group ${index}`,
+  }));
+  await render(<GroupJourney />);
+  const data = viewer(items);
+  await respond(data);
+  expect(
+    host.querySelectorAll('[data-ui="discovery-cards"] > li'),
+  ).toHaveLength(75);
+  expect(mock.requests.map((request) => request.name)).toEqual([
+    'journeyViewerQuery',
+  ]);
+  data.groupDirectory.entries[0].activeMemberCount = 1;
+  data.groupDirectory.entries[0].financialSummary = {
+    __typename: 'GroupFinancialSummary',
+    totalSpendMinor: '12345',
+    viewerNetMinor: '321',
+  };
+  await act(async () =>
+    scope.environment.commitPayload(
+      createOperationDescriptor(viewerDocument, {}),
+      data,
+    ),
+  );
+  const first = host.querySelector('a[href="/groups/G0"]')!;
+  expect(first.textContent).toContain('1 active member');
+  expect(first.textContent).toContain('$123.45');
+  expect(first.textContent).toContain('You’re owed');
+  expect(mock.requests).toHaveLength(1);
+});
+
+it('reports a transient complete-directory failure as unavailable with retry rather than an empty or access-denied result', async () => {
+  await render(<GroupJourney />);
+  await respond({
+    ...viewer(),
+    groupDirectory: { __typename: 'Problem', code: 'UNAVAILABLE' },
+  });
+  expect(host.querySelector('[data-ui="discovery-cards"]')).toBeNull();
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    'Financial data is unavailable',
+  );
+  expect(
+    host.querySelector('[data-ui~="workspace-refresh"]')?.textContent,
+  ).toContain('Couldn’t refresh');
+  expect(host.textContent).not.toContain('no admitted groups');
+  expect(host.textContent).not.toContain('$0.00');
 });

@@ -485,7 +485,7 @@ function OverviewMetrics({
   return (
     <div data-ui="summary-row" className={financialStyles['summary-row']}>
       <SummaryMetric
-        label="Total expenses"
+        label="Total spend"
         tone="total"
         detail={
           group.isHousehold
@@ -500,7 +500,7 @@ function OverviewMetrics({
             currency={group.currency}
           />
         ) : (
-          <span role="alert">Expense total unavailable</span>
+          <span role="alert">Total spend unavailable</span>
         )}
       </SummaryMetric>
       <ViewerMetric scope={scope} group={group} />

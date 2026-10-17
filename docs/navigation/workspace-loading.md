@@ -30,18 +30,18 @@ activation; a complete recent repeat of the same operation and variables needs n
 financial request. Next code/RSC and session requests, later filters, details and
 pages are separate:
 
-| Destination        | Before #193                             | Current activation                   | Requested data                                                                                        |
-| ------------------ | --------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Group Overview     | viewer discovery → broad group          | one workspace operation              | minimal viewer date, authorized group/header/members, complete balances for metrics, four recent rows |
-| Group Expenses     | viewer discovery → broad group → ledger | one workspace operation              | authorized group/member context, complete position, structured first page/months/totals               |
-| Group Balances     | viewer discovery → broad group          | one workspace operation              | authorized group context, complete positions/obligations, five repayments                             |
-| Group Members      | viewer discovery → broad group          | one workspace operation              | authorized identity/header and membership; no expense, repayment or balance fields                    |
-| Group Activity     | viewer discovery → broad group → feed   | one workspace operation              | authorized identity/header plus dedicated feed; no expense page or balances                           |
-| Household Overview | dashboard + recent rows                 | one operation                        | complete dashboard metrics plus four recent rows, without obligation detail                           |
-| Household Balances | dashboard                               | one operation                        | complete source balances/obligations and dashboard totals                                             |
-| Household Members  | broad dashboard → members               | minimal Household identity → members | authorized Household identifier, then actual membership; no financial fields                          |
-| Household Activity | dashboard → feed                        | one feed operation                   | dedicated authorized feed                                                                             |
-| Household Expenses | context → first page                    | one composed initial operation       | independent context and first-page fields, joined only after context-version validation               |
+| Destination        | Before #193                             | Current activation                   | Requested data                                                                                                                        |
+| ------------------ | --------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Group Overview     | viewer discovery → broad group          | one workspace operation              | minimal viewer date, authorized group/header/members, complete expense-only financial summary, balances for metrics, four recent rows |
+| Group Expenses     | viewer discovery → broad group → ledger | one workspace operation              | authorized group/member context, complete position, structured first page/months/totals                                               |
+| Group Balances     | viewer discovery → broad group          | one workspace operation              | authorized group context, complete positions/obligations, five repayments                                                             |
+| Group Members      | viewer discovery → broad group          | one workspace operation              | authorized identity/header and membership; no expense, repayment or balance fields                                                    |
+| Group Activity     | viewer discovery → broad group → feed   | one workspace operation              | authorized identity/header plus dedicated feed; no expense page or balances                                                           |
+| Household Overview | dashboard + recent rows                 | one operation                        | complete dashboard metrics plus four recent rows, without obligation detail                                                           |
+| Household Balances | dashboard                               | one operation                        | complete source balances/obligations and dashboard totals                                                                             |
+| Household Members  | broad dashboard → members               | minimal Household identity → members | authorized Household identifier, then actual membership; no financial fields                                                          |
+| Household Activity | dashboard → feed                        | one feed operation                   | dedicated authorized feed                                                                                                             |
+| Household Expenses | context → first page                    | one composed initial operation       | independent context and first-page fields, joined only after context-version validation                                               |
 
 The schema's existing resolver implementations may still calculate fields beyond
 those selected; this change reduces client payloads and request dependencies, not
@@ -163,8 +163,10 @@ filter bounds, account navigation and Back. Run at 320/390/1440 CSS pixels and
 
 ## Canonical workspace routes (#201)
 
-Groups lists ordinary groups only. Household and Trips each use their own primary
-navigation. The shared Household overview remains `/household`; its original
+Groups is the unified authorized directory with All / Groups / Trips selection,
+excluding the designated Household. The existing Household and Trips shell entries
+remain; `/trips` redirects to the directory's Trips selection. Canonical workspace
+route families remain unchanged. The shared Household overview is `/household`; its original
 ledger is `/household/ledger` with the same single Household frame/tabs. Expenses
 and repayments there keep the original Household Group ID and operation/recovery
 scope. Shared source navigation never creates an aggregate repayment target.

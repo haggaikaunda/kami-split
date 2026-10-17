@@ -45,7 +45,7 @@ If the page fails, verify both the server connection and the rendered applicatio
 
 `/` goes directly to `/sign-in` for signed-out visitors; verified sessions retain `/groups` as home. Only sign-in is public. All application routes require a server-verified cookie session before rendering, and protected UI stays hidden during browser session checks. See [web authentication routing](docs/application/web-auth-routing.md).
 
-`/trips` lists authorized independent Trip groups. `/household` provides Overview, Expenses, Balances, Activity and Members. Ordinary Groups use `/groups/:groupId`, Trips use `/trips/:groupId`, and the original Household ledger uses `/household/ledger`. Expense details and repayment entry retain their original financial source. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
+`/groups` is the unified authorized directory with All / Groups / Trips selection, excluding the designated Household; legacy `/trips` redirects to its Trips selection. The existing Household and Trips shell entries remain. `/household` provides Overview, Expenses, Balances, Activity and Members. Ordinary Groups use `/groups/:groupId`, Trips use `/trips/:groupId`, and the original Household ledger uses `/household/ledger`. Expense details and repayment entry retain their original financial source. For authenticated visitors, retired preview URLs return normal not-found responses and never reinterpret preview IDs as real resources.
 
 The [frozen prototype](docs/design/README.md) and [primitive gallery](docs/primitives-preview/README.md) remain separate development references.
 

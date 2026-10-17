@@ -15,7 +15,7 @@ import (
 
 const directoryFinancialFields = `__typename ... on Problem { code } ... on GroupFinancialSummary { totalSpendMinor viewerNetMinor }`
 const directoryQuery = `{ groupDirectory { __typename ... on Problem { code } ... on GroupDirectory { entries { group { id name kind currency isHousehold trip { destination startDate endDate } } activeMemberCount financialSummary { ` + directoryFinancialFields + ` } } } } }`
-const directoryGroupQuery = `query($id:ID!){group(id:$id){__typename ... on Problem{code} ... on Group{financialSummary{` + directoryFinancialFields + `} expenses(first:1,filter:{from:"2020-01-01",to:"2020-01-01"}){edges{node{id}}} balances{... on GroupBalances{settled}}}}}`
+const directoryGroupQuery = `query($id:ID!){group(id:$id){__typename ... on Problem{code} ... on Group{financialSummary{` + directoryFinancialFields + `} expenses(first:1,filter:{from:"2020-01-01",to:"2020-01-01"}){edges{node{id}}} balances{... on GroupBalances{settled totalExpenseMinor}}}}}`
 
 func readDirectory(t *testing.T, f *expenseFixture, actor int) []any {
 	t.Helper()
@@ -58,6 +58,9 @@ func TestDirectoryCompleteSpendCurrentEditsRepaymentsAndFilteredOverview(t *test
 		assertDirectoryFinancials(t, entry["financialSummary"], spend, net)
 		group := groupRequest(t, f, 1, directoryGroupQuery, map[string]any{"id": f.input.GroupID}, "group", "Group")
 		assertDirectoryFinancials(t, group["financialSummary"], spend, net)
+		if got := group["balances"].(map[string]any)["totalExpenseMinor"]; got != spend {
+			t.Fatalf("complete Overview spend=%v, want directory spend=%s", got, spend)
+		}
 		if len(group["expenses"].(map[string]any)["edges"].([]any)) != 0 {
 			t.Fatal("expense filter should exclude every row", group)
 		}

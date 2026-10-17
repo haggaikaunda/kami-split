@@ -15,11 +15,13 @@ export function ScopedLink({
   href,
   id,
   children,
+  sourceFocus,
 }: {
   scope: FinancialScope;
   href: string;
   id: string;
   children: React.ReactNode;
+  sourceFocus?: string;
 }) {
   const router = useRouter();
   return (
@@ -33,7 +35,7 @@ export function ScopedLink({
         const match = url.pathname.match(/^\/(?:groups|trips)\/([^/]+)$/);
         scope.visits.set(token, {
           href: url.pathname + url.search,
-          focus: id,
+          focus: sourceFocus ?? id,
           scroll: window.scrollY,
           group: match ? decodeURIComponent(match[1]) : undefined,
         });

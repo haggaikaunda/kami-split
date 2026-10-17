@@ -80,7 +80,7 @@ identity, deadline and diagnostic boundaries also apply to these operations.
 
 ## Authenticated workspace entry (#171)
 
-Overview shows complete Total expenses and one signed viewer balance, with no
+Overview shows complete Total spend and one signed viewer balance, with no
 settlement controls. Balances shows complete member positions and simplified
 obligations. A specific eligible sender/recipient row opens
 `/groups/:groupId/repayments/new` (ordinary), `/trips/:groupId/repayments/new` (Trip), or `/household/ledger?tab=balances&repayment=1` (original Household) with its suggested cents. The form preserves the
