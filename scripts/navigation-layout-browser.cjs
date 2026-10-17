@@ -57,6 +57,14 @@ module.exports = async function verifyLayout({
       };
       return {
         header: box('[data-ui~="workspace-navigation-brand"]'),
+        headerPosition: getComputedStyle(
+          document.querySelector('[data-ui~="workspace-navigation-brand"]'),
+        ).position,
+        releasedHeader: matchMedia('(max-width: 600px) and (max-height: 40rem)')
+          .matches,
+        occupiedHeader: parseFloat(
+          document.documentElement.style.getPropertyValue('--chrome-header'),
+        ),
         nav: box('[data-ui~="workspace-navigation-links"]'),
         last: box('#ledger-expense-e40'),
         content: box('[data-ui~="workspace-content"]'),
@@ -67,10 +75,26 @@ module.exports = async function verifyLayout({
       };
     });
     assert(!metrics.overflow, `${label}: horizontal page overflow`);
-    assert(
-      Math.abs(metrics.header.y) <= 1 && metrics.header.bottom < metrics.height,
-      `${label}: header unavailable`,
-    );
+    if (metrics.releasedHeader) {
+      assert.equal(
+        metrics.headerPosition,
+        'relative',
+        `${label}: short phone identity stays in document flow`,
+      );
+      assert.equal(
+        metrics.occupiedHeader,
+        0,
+        `${label}: released header adds no sticky clearance`,
+      );
+      assert(metrics.header.height > 0, `${label}: identity is retained`);
+    } else {
+      assert.equal(metrics.headerPosition, 'sticky');
+      assert(
+        Math.abs(metrics.header.y) <= 1 &&
+          metrics.header.bottom < metrics.height,
+        `${label}: sticky header unavailable`,
+      );
+    }
     assert(
       metrics.nav.y >= -1 && metrics.nav.bottom <= metrics.height + 1,
       `${label}: navigation unavailable`,
@@ -123,7 +147,7 @@ module.exports = async function verifyLayout({
     .evaluate((row) => row.scrollIntoView({ block: 'start' }));
   const lastTop = await page.locator('#ledger-expense-e40').boundingBox();
   assert(
-    lastTop.y >= metrics.header.bottom - 1,
+    lastTop.y >= (metrics.releasedHeader ? 0 : metrics.header.bottom) - 1,
     'Final row top reachable below header',
   );
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
@@ -144,7 +168,13 @@ module.exports = async function verifyLayout({
     return {
       top: r.top,
       bottom: r.bottom,
-      headerBottom: header.bottom,
+      headerBottom: ['sticky', 'fixed'].includes(
+        getComputedStyle(
+          document.querySelector('[data-ui~="workspace-navigation-brand"]'),
+        ).position,
+      )
+        ? header.bottom
+        : 0,
       navTop: innerWidth <= 600 ? nav.top : innerHeight,
     };
   });
@@ -176,6 +206,7 @@ module.exports = async function verifyLayout({
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Expense filters' });
   await dialog.waitFor();
+  await dialog.locator('summary').filter({ hasText: 'Dates' }).click();
   const dateBounds = await dialog.evaluate((el) => {
     const d = el.getBoundingClientRect();
     return [...el.querySelectorAll('input[type=date]')].map((i) => {

@@ -170,14 +170,29 @@ export function InvitationPanel({
                 </Button>
               </form>
             </details>
-            <PeopleList members={members}>
-              {invites
-                .filter(
-                  (item) =>
-                    item.kind !== 'SHARED' && item.lifecycle === 'PENDING',
-                )
-                .map((item) => renderInvitation(item, true))}
-            </PeopleList>
+            <PeopleList members={members} />
+            {invites.some(
+              (item) => item.kind !== 'SHARED' && item.lifecycle === 'PENDING',
+            ) && (
+              <section aria-label="Pending invitations" data-ui="form-region">
+                <h3>Invitations</h3>
+                <p>
+                  Pending invitations do not count as active members. Access
+                  starts only after acceptance.
+                </p>
+                <ul
+                  data-ui="account-rows"
+                  className={invitationStyles['account-rows']}
+                >
+                  {invites
+                    .filter(
+                      (item) =>
+                        item.kind !== 'SHARED' && item.lifecycle === 'PENDING',
+                    )
+                    .map((item) => renderInvitation(item, true))}
+                </ul>
+              </section>
+            )}
             {invites.some(
               (item) => item.kind === 'SHARED' && item.lifecycle === 'PENDING',
             ) && (

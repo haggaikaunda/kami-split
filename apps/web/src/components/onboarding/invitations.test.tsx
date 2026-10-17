@@ -44,7 +44,7 @@ function controller(invites: OnboardingController['invites']) {
     send: vi.fn(),
   } as unknown as OnboardingController;
 }
-it('keeps membership identities and pending recipients together, with terminal records only in collapsed history', async () => {
+it('separates membership identities from pending recipients, with terminal records only in collapsed history', async () => {
   const c = controller([
     invitation('carol', 'PENDING'),
     invitation('alice', 'ACCEPTED'),
@@ -57,15 +57,25 @@ it('keeps membership identities and pending recipients together, with terminal r
     root.render(<InvitationPanel state={c} members={members} />),
   );
   const people = host.querySelector('[aria-label="People"]')!;
-  expect(people.children).toHaveLength(3);
+  expect(people.children).toHaveLength(2);
   expect(people.textContent).toContain('Alice');
-  expect(people.textContent).toContain('Owner · Active');
+  expect(people.querySelector('[data-ui="member-detail"]')?.textContent).toBe(
+    'Owner',
+  );
+  expect(people.querySelector('[data-ui="member-state"]')?.textContent).toBe(
+    'Active',
+  );
+  expect(host.querySelector('[data-ui="member-count"]')?.textContent).toBe(
+    '1 active member',
+  );
   expect(people.textContent).toContain('Bob');
   expect(people.textContent).toContain(
-    'Inactive · No access; retained in history',
+    'Member · No access; retained in history',
   );
-  expect(people.textContent).toContain('carol@example.test');
-  expect(people.textContent).toContain('Pending · Invitation only; no access');
+  expect(people.textContent).not.toContain('carol@example.test');
+  const pending = host.querySelector('[aria-label="Pending invitations"]')!;
+  expect(pending.textContent).toContain('carol@example.test');
+  expect(pending.textContent).toContain('Pending · Invitation only; no access');
   expect(people.textContent).not.toContain('alice@example.test');
   expect(people.textContent).not.toContain('Shared group link');
   const history = host.querySelector(
@@ -116,7 +126,10 @@ it('an accepted reactivation uses the returned member identity rather than addin
   await act(async () =>
     root.render(<InvitationPanel state={c} members={members} />),
   );
-  expect(host.querySelector('[aria-label="People"]')?.children).toHaveLength(3);
+  expect(host.querySelector('[aria-label="People"]')?.children).toHaveLength(2);
+  expect(
+    host.querySelector('[aria-label="Pending invitations"]'),
+  ).not.toBeNull();
   c.invites = [invitation('bob', 'ACCEPTED')];
   await act(async () =>
     root.render(
@@ -131,4 +144,8 @@ it('an accepted reactivation uses the returned member identity rather than addin
   expect(people.textContent).toContain('Bob');
   expect(people.textContent).not.toContain('Inactive');
   expect(people.textContent).not.toContain('bob@example.test');
+  expect(host.querySelector('[aria-label="Pending invitations"]')).toBeNull();
+  expect(host.querySelector('[data-ui="member-count"]')?.textContent).toBe(
+    '2 active members',
+  );
 });

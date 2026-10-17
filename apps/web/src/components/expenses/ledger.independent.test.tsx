@@ -251,9 +251,10 @@ it('identifies household sources and omits redundant group sources and space fil
   expect(
     host.querySelector('[data-ui~="ledger-description"]')?.textContent,
   ).not.toContain('Home');
+  expect(host.querySelector('[data-ui~="ledger-summary"]')).toBeNull();
   expect(
-    host.querySelector('[aria-label="Total expenses"]')?.textContent,
-  ).toContain('total');
+    host.querySelector('[data-ui~="ledger-month-total"]')?.textContent,
+  ).toContain('$90,071,992,547,409.94');
   expect(host.textContent).not.toContain('Active spaces');
   expect(host.querySelector('input[type="search"]')).toBeNull();
 });
@@ -265,7 +266,9 @@ it('removes stale rows immediately and rejects late responses and unavailable to
   await respond(page(), 0);
   expect(host.textContent).not.toContain('Dinner one');
   await respond({ __typename: 'Problem', code: 'NOT_FOUND' });
-  expect(host.textContent).toContain('Total unavailable');
+  expect(host.querySelector('[role="alert"]')?.textContent).toMatch(
+    /unavailable|NOT_FOUND/i,
+  );
   expect(host.textContent).not.toContain('90,071,992');
 });
 it('distinguishes filtered empty and forwards payer/member filters to server', async () => {
@@ -495,8 +498,9 @@ it('successful persisted creation refreshes owning household totals and eligible
   });
   expect(host.textContent).toContain('Dinner created');
   expect(
-    host.querySelector('[aria-label="Total expenses"]')?.textContent,
+    host.querySelector('[data-ui~="ledger-money"]')?.textContent,
   ).toContain('$3.02');
+  expect(host.querySelector('[data-ui~="ledger-summary"]')).toBeNull();
   expect(host.textContent).toContain('Updated home');
 });
 it('returns from Expenses to canonical Household workspace tabs instead of group discovery', async () => {
@@ -693,7 +697,9 @@ it('shows complete filtered month totals before later pages and keeps payer and 
   expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
   await act(async () => state.requests.at(-1)?.error?.());
   expect(host.querySelector('[data-ui~="ledger-month"]')).toBeNull();
-  expect(host.textContent).toContain('Total unavailable');
+  expect(host.querySelector('[role="alert"]')?.textContent).toMatch(
+    /unavailable|NOT_FOUND/i,
+  );
   expect(host.textContent).not.toContain('Paid by Bob');
 });
 

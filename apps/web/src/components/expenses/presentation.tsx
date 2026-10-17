@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { containDialogFocus } from '../ui/primitives';
+import { acquireBodyScrollLock } from '../ui/scroll-lock';
 
 import { AppIcon } from '@/components/workspace-identity';
 import { cx } from '../ui/classnames';
@@ -40,13 +41,12 @@ export function ExpensePresentation({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = acquireBodyScrollLock(document.body);
     dialog.showModal();
     heading.current?.focus({ preventScroll: true });
     return () => {
       dialog.close();
-      document.body.style.overflow = overflow;
+      releaseScroll();
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
   }, []);

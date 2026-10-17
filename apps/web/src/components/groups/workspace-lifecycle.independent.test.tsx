@@ -73,6 +73,40 @@ const group = {
   members: [member],
 };
 const viewer = { __typename: 'Viewer', today: '2026-10-05' };
+// Complete aggregates and a matching saved row make stale-read assertions
+// observable through retained ledger behavior after removing the summary strip.
+const expenseView = (amount: string, contextVersion: string | null = null) => ({
+  __typename: 'ExpenseView',
+  id: `view:${amount}:${contextVersion ?? 'group'}`,
+  viewerShareMinor: amount,
+  viewerPaidMinor: amount,
+  categories: [],
+  contextVersion,
+  totalExpenseMinor: amount,
+  expenseCount: '1',
+  months: [{ month: '2026-10', totalExpenseMinor: amount, expenseCount: '1' }],
+  edges: [
+    {
+      cursor: 'saved',
+      source: { name: 'Private group', currency: 'USD' },
+      node: {
+        __typename: 'ExpenseSnapshot',
+        id: `saved:${amount}`,
+        expenseId: 'saved',
+        groupId: 'G',
+        version: '1',
+        description: 'Private saved expense',
+        effectiveDate: '2026-10-05',
+        category: new URLSearchParams(search).get('category') || 'GROCERIES',
+        totalMinor: amount,
+        payer: member,
+        allocations: [{ participant: member, amountMinor: amount }],
+      },
+    },
+  ],
+  pageInfo: { hasNextPage: false, endCursor: 'saved' },
+});
+
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.stubGlobal('CSS', { supports: () => true });
@@ -305,18 +339,7 @@ it.each([
 ])(
   'does not relabel an in-flight workspace expense result after URL filters change to %s',
   async (nextFilter, expectedFilter) => {
-    const view = (amount: string) => ({
-      __typename: 'ExpenseView',
-      viewerShareMinor: '0',
-      viewerPaidMinor: '0',
-      categories: [],
-      contextVersion: null,
-      totalExpenseMinor: amount,
-      expenseCount: '0',
-      months: [],
-      edges: [],
-      pageInfo: { hasNextPage: false, endCursor: null },
-    });
+    const view = expenseView;
     search = 'tab=expenses&category=GROCERIES';
     await act(async () => root.render(<GroupJourney initialGroup="G" />));
     expect(requests[0].variables.filter).toMatchObject({
@@ -351,18 +374,7 @@ it.each([
   },
 );
 it('returning to the original expense filter reads fresh authorization instead of resurrecting its consumed initial result', async () => {
-  const view = (amount: string) => ({
-    __typename: 'ExpenseView',
-    viewerShareMinor: '0',
-    viewerPaidMinor: '0',
-    categories: [],
-    contextVersion: null,
-    totalExpenseMinor: amount,
-    expenseCount: '0',
-    months: [],
-    edges: [],
-    pageInfo: { hasNextPage: false, endCursor: null },
-  });
+  const view = expenseView;
   search = 'tab=expenses&category=GROCERIES';
   await act(async () => root.render(<GroupJourney initialGroup="G" />));
   await act(async () =>
@@ -405,18 +417,7 @@ it('returning to the original expense filter reads fresh authorization instead o
   expect(host.textContent).not.toContain('$123.45');
 });
 it('Household returning to the initial filter cannot revive previously authorized amounts after eligibility revocation', async () => {
-  const view = (amount: string) => ({
-    __typename: 'ExpenseView',
-    viewerShareMinor: '0',
-    viewerPaidMinor: '0',
-    categories: [],
-    contextVersion: 'eligible-v1',
-    totalExpenseMinor: amount,
-    expenseCount: '0',
-    months: [],
-    edges: [],
-    pageInfo: { hasNextPage: false, endCursor: null },
-  });
+  const view = (amount: string) => expenseView(amount, 'eligible-v1');
   search = 'category=GROCERIES';
   await act(async () => root.render(<HouseholdLedger scope={scope} />));
   await act(async () =>

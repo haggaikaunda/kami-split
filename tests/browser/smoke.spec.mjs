@@ -1351,7 +1351,9 @@ test('no eligible expense source and failed group discovery leave Profile usable
   app,
 }) => {
   await app.authenticate();
-  const empty = responseFor('expensesHouseholdInitialQuery', {});
+  const empty = structuredClone(
+    responseFor('expensesHouseholdInitialQuery', {}),
+  );
   empty.householdDashboard.spaces = [];
   empty.householdDashboard.totals.activeSpaceCount = '0';
   empty.householdExpenses.edges = [];
@@ -1714,3 +1716,258 @@ test('expense Escape cannot restore private rows when the current first page is 
     'A denied first page cannot authorize replay',
   ).toBe(false);
 });
+
+for (const source of [
+  { name: 'Trip', path: '/trips/T?tab=expenses' },
+  { name: 'Household', path: '/household/expenses' },
+]) {
+  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 480 });
+    await app.authenticate();
+    await page.goto(source.path);
+    await page.locator('#ledger-expense-e1').waitFor();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
+    const brand = page.locator('[data-ui~="workspace-navigation-brand"]');
+    await expect(brand).toHaveCSS('position', 'relative');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue('--chrome-header'),
+        ),
+      )
+      .toBe('0px');
+    const filters = page.getByRole('button', { name: 'Filters', exact: true });
+    // Real pointer activation must work after the browser scrolls the control;
+    // keyboard activation alone cannot establish that fixed chrome clears it.
+    await filters.click();
+    const dialog = page.getByRole('dialog', { name: 'Expense filters' });
+    await expect(dialog).toHaveCount(1);
+    const close = dialog.getByRole('button', { name: 'Back to expenses' });
+    await expect(close).toBeInViewport({ ratio: 1 });
+    await expect(
+      dialog.getByRole('button', { name: 'Reset filters' }),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(
+      dialog.getByRole('button', { name: 'Apply filters' }),
+    ).toBeInViewport({ ratio: 1 });
+    await dialog.locator('summary').filter({ hasText: 'Categories' }).click();
+    await dialog.getByLabel('Dining', { exact: true }).check();
+    await dialog.getByLabel('Groceries', { exact: true }).check();
+    await page.screenshot({
+      path: testInfo.outputPath('short-enlarged-filters.png'),
+    });
+    await page.keyboard.press('Escape');
+    await expect(filters).toBeFocused();
+    await filters.click();
+    await expect(
+      dialog.locator('summary').filter({ hasText: 'Categories' }),
+    ).toContainText('All categories');
+    await close.click();
+    const breakdown = page.getByRole('button', {
+      name: 'Breakdown',
+      exact: true,
+    });
+    await breakdown.click();
+    await expect(breakdown).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      page.getByRole('region', { name: 'Spending by category' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'List', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'List', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await page.setViewportSize({ width: 320, height: 900 });
+    await expect(brand).toHaveCSS('position', 'sticky');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          parseFloat(
+            document.documentElement.style.getPropertyValue('--chrome-header'),
+          ),
+        ),
+      )
+      .toBeGreaterThan(0);
+    await page.setViewportSize({ width: 320, height: 480 });
+    await expect(brand).toHaveCSS('position', 'relative');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue('--chrome-header'),
+        ),
+      )
+      .toBe('0px');
+    await filters.click();
+    await expect(dialog).toHaveCount(1);
+    await close.click();
+    await expect(filters).toBeFocused();
+  });
+}
+
+for (const overlay of ['detail', 'create']) {
+  test(`history ${overlay} above Filters releases document scrolling after dismissal and access disposal`, async ({
+    page,
+    app,
+  }) => {
+    const width = page.viewportSize().width;
+    await page.setViewportSize({ width, height: 600 });
+    await app.authenticate();
+    await page.goto('/trips/T?tab=expenses');
+    await page.locator('#ledger-expense-e1').waitFor();
+    const originalOverflow = await page.evaluate(
+      () => document.body.style.overflow,
+    );
+    if (overlay === 'detail') {
+      await page.locator('#ledger-expense-e1').click();
+      await expect(
+        page.getByText('Private fixture note', { exact: true }),
+      ).toBeVisible();
+    } else {
+      await page
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .click();
+      await page
+        .locator('#expense-description')
+        .fill('Creation draft retained through history');
+    }
+    const overlayURL = page.url();
+    await page.goBack();
+    await page.locator('#ledger-expense-e1').waitFor();
+    const filters = page.getByRole('dialog', { name: 'Expense filters' });
+    const presentation = page.locator('[data-ui~="expense-presentation"]');
+    const openDraft = async () => {
+      await page.getByRole('button', { name: 'Filters', exact: true }).click();
+      await filters
+        .locator('summary')
+        .filter({ hasText: 'Categories' })
+        .click();
+      await filters.getByLabel('Dining', { exact: true }).check();
+      await filters.getByLabel('Groceries', { exact: true }).check();
+      await page.evaluate(() => {
+        window.expenseModalPeak = 1;
+        window.expenseModalObserver?.disconnect();
+        window.expenseModalObserver = new MutationObserver(() => {
+          window.expenseModalPeak = Math.max(
+            window.expenseModalPeak,
+            document.querySelectorAll('dialog[open]').length,
+          );
+        });
+        window.expenseModalObserver.observe(document.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ['open'],
+        });
+      });
+    };
+    const forward = async () => {
+      await page.goForward();
+      await page.waitForURL(overlayURL);
+      await expect(presentation).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => window.expenseModalPeak))
+        .toBe(2);
+      if (overlay === 'create')
+        await expect(page.locator('#expense-description')).toHaveValue(
+          'Creation draft retained through history',
+        );
+      await expect
+        .poll(() => page.evaluate(() => document.body.style.overflow))
+        .toBe('hidden');
+    };
+    await openDraft();
+    await forward();
+    await page.goBack();
+    await expect(presentation).toHaveCount(0);
+    await page.locator('#ledger-expense-e1').waitFor();
+    // A protected history read may dispose and recreate the ledger. When the
+    // original owner survives, its unapplied draft remains until dismissed.
+    if (await filters.count()) {
+      await expect(filters.getByLabel('Dining', { exact: true })).toBeChecked();
+      await expect(
+        filters.getByLabel('Groceries', { exact: true }),
+      ).toBeChecked();
+      await page.keyboard.press('Escape');
+    }
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe(originalOverflow);
+    // Exercise actual wheel input on the authorized long document after release.
+    await page
+      .locator('[data-ui~="ledger-pagination"]')
+      .scrollIntoViewIfNeeded();
+    await page.locator('#ledger-expense-e8').waitFor();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.mouse.move(width / 2, 250);
+    await page.mouse.wheel(0, 240);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    // History can mount the same two owners again; access loss disposes both.
+    await openDraft();
+    const denial = responseFor('journeyWorkspaceQuery', {
+      id: 'T',
+      ledger: true,
+    });
+    denial.group = {
+      __typename: 'Problem',
+      code: 'NOT_FOUND',
+      message: 'Denied',
+    };
+    denial.groupExpenses = {
+      __typename: 'Problem',
+      code: 'NOT_FOUND',
+      message: 'Denied',
+    };
+    // These normal background reads can be canceled when denial disposes their
+    // owners. Keep them under the fixture's explicit replacement-read contract.
+    const collateral = [
+      app.holdMatching(
+        'expensesGroupQuery',
+        () => true,
+        responseFor('expensesGroupQuery', { groupId: 'T' }),
+      ),
+      app.holdMatching(
+        'journeyExpenseQuery',
+        () => true,
+        responseFor('journeyExpenseQuery', { id: 'e1' }),
+      ),
+      app.holdMatching(
+        'appearanceQuery',
+        () => true,
+        responseFor('appearanceQuery', {}),
+      ),
+    ];
+    for (const read of collateral) read.release();
+    const denied = app.holdMatching(
+      'journeyWorkspaceQuery',
+      () => true,
+      denial,
+    );
+    await page.goForward();
+    await page.waitForURL(overlayURL);
+    await expect
+      .poll(() => page.evaluate(() => window.expenseModalPeak))
+      .toBe(2);
+    // Detail history may reuse fresh workspace data; foregrounding still checks
+    // the current server permission. Hold every replacement read until denied.
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await denied.started;
+    await denied.release();
+    await expect(page.getByRole('alert').first()).toBeVisible();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+    await expect(
+      page.getByText('Private fixture note', { exact: true }),
+    ).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe(originalOverflow);
+    // Finish synthetic response callbacks before the fixture removes routes;
+    // denied owner disposal deliberately cancels overlapping protected reads.
+    await page.waitForLoadState('networkidle');
+  });
+}

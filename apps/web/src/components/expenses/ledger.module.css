@@ -3,6 +3,7 @@
 }
 .ledger-toolbar {
   position: relative;
+  margin-bottom: 1.25rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -50,15 +51,6 @@
 .ledger-toolbar .ledger-filter-button {
   margin-left: auto;
   color: var(--color-ink);
-}
-.ledger-summary {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.25rem;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  margin: 0.8125rem 0 1.25rem;
 }
 .ledger-active-filters {
   display: flex;
@@ -168,9 +160,6 @@
   }
   .ledger-toolbar .ledger-filter-button {
     padding-inline: 0.75rem;
-  }
-  .ledger-summary {
-    margin-bottom: 1rem;
   }
   .ledger-month > header {
     padding: 1.0625rem 0.9375rem 0.625rem;

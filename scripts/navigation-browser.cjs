@@ -602,7 +602,11 @@ withAuthFixture(origin, session, async () => {
       assert.equal(await page.locator('a[href="/groups/H"]').count(), 0);
       await page.goto(origin + '/groups/H?tab=members');
       await page.waitForURL('**/household/ledger?tab=members');
-      await page.getByText('Owner · Active').waitFor();
+      const ownerRow = page
+        .getByRole('list', { name: 'People', exact: true })
+        .locator('li')
+        .filter({ has: page.getByText('Owner', { exact: true }) });
+      await ownerRow.getByText('Active', { exact: true }).waitFor();
       assert.equal(
         await page.locator('main').count(),
         1,
@@ -836,7 +840,17 @@ withAuthFixture(origin, session, async () => {
               e.textContent.includes('added an expense'),
             );
           if (tab === 'Members')
-            return document.body.textContent.includes('Owner · Active');
+            return [
+              ...document.querySelectorAll(
+                '[data-ui~="group-members-list"] li',
+              ),
+            ].some(
+              (row) =>
+                row.querySelector('[data-ui~="member-detail"]')?.textContent ===
+                  'Owner' &&
+                row.querySelector('[data-ui~="member-state"]')?.textContent ===
+                  'Active',
+            );
           return [...document.querySelectorAll('h2')].some(
             (e) => e.textContent === 'Recent expenses',
           );

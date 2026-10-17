@@ -323,3 +323,11 @@
     padding: 0.5rem 1rem;
   }
 }
+
+/* Let enlarged content pass the identity when short phones cannot accommodate
+   both fixed navigation and a sticky header. The identity remains in flow. */
+@media (max-width: 600px) and (max-height: 40rem) {
+  .workspace-navigation-brand {
+    position: relative;
+  }
+}

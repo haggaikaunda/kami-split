@@ -257,21 +257,24 @@ an iOS simulator must separately verify focus zoom and the software keyboard.
 
 ## Persistent navigation and content widths (#238)
 
-Global navigation keeps the app header and desktop rail or mobile bottom bar
+Global navigation keeps the desktop rail or mobile bottom bar
 available while the document scrolls. The shared navigation measures its rendered
 height so wrapped/enlarged labels and safe-area padding reserve real content space.
 Under #267, the global brand bar is in normal document flow with `position:
 sticky; top: 0`; its navigation wrapper uses `display: contents` so the full-height
 page shell supplies the sticky boundary. The shell reserves only the gap after
-the header, not a second header height. The mobile navigation is fixed with
+the header, not a second header height. At phone widths and viewport heights up to 40rem,
+the identity scrolls naturally with the document so enlarged controls remain reachable. The mobile navigation is fixed with
 `top: auto; bottom: 0`, including safe-area padding. The desktop rail remains
-fixed below the measured header and can scroll at short desktop heights.
+fixed below the measured header and can scroll at short desktop heights. A header
+released into document flow contributes zero sticky scroll clearance; resizing back
+restores its measured clearance.
 
-ResizeObserver measures header and navigation heights for content clearance and
+ResizeObserver measures occupied header and navigation heights for content clearance and
 document scroll padding. Global navigation does not read visualViewport or set
 viewport-derived offsets, even during keyboard focus, toolbar changes or pinch
 zoom. The document remains the scroll owner for source-return restoration;
-query-owned identity remains in the compact sticky header while workspace tabs
+query-owned identity remains in the compact header while workspace tabs
 continue scrolling normally. Expense sheets retain
 their own focused-form keyboard accommodation. Browser-owned zoom and rubber
 banding are not suppressed.
