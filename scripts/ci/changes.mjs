@@ -61,8 +61,43 @@ const gallery = new Set([
   'docs/primitives-preview/preview.css',
   'docs/primitives-preview/vite.config.ts',
 ]);
+// Repository validation reads these exact inputs. Neither production build nor
+// release tooling imports them; unknown neighbors remain conservative.
+const agentResources = new Set([
+  '.agents/skills/author-repository-skill/SKILL.md',
+  '.agents/skills/author-repository-skill/assets/skill-template.md',
+  '.agents/skills/prepare-issue/SKILL.md',
+  '.agents/skills/verify-requirements/SKILL.md',
+  '.codex/agents/kami-builder.toml',
+  '.codex/agents/kami-tester.toml',
+  '.codex/agents/kami-reviewer.toml',
+  '.codex/agents/kami-difficult-reviewer.toml',
+  '.codex/agents/kami-narrow-assistant.toml',
+  'docs/agents/records/stage-event.schema.json',
+  'docs/agents/records/stage-event.example.json',
+  'scripts/agents/requirements.txt',
+  'scripts/agents/check_skills.py',
+  'scripts/agents/check_skills_test.py',
+  'scripts/agents/check_stage_event.py',
+  'scripts/agents/check_stage_event_test.py',
+]);
 
 export function pathRule(path) {
+  if (agentResources.has(path))
+    return {
+      rule: 'agent-validation-resource',
+      ...decision(false, false, false, false),
+    };
+  if (
+    [
+      'scripts/agents/execution.mjs',
+      'scripts/agents/execution.test.mjs',
+    ].includes(path)
+  )
+    return {
+      rule: 'agent-execution-tooling',
+      ...decision(true, false, false, false),
+    };
   if (
     /(^|\/)AGENTS\.md$/.test(path) ||
     /^(README|CONTRIBUTING)\.md$/.test(path) ||
