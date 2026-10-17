@@ -117,8 +117,11 @@ render unavailable amounts, while a directory/access failure renders no cards.
 Canonical minor-unit strings pass through exact formatting without Number coercion.
 Zero net describes the viewer only, never all members being settled.
 
-Group/Trip Overview selects the same additive `Group.financialSummary` for Total
-spend, independently of its recent rows, selected ledger filters and trip dates.
+Group/Trip Overview uses the existing complete authorized
+`Group.balances.totalExpenseMinor` for Total spend, with the same expense-only
+definition as the directory summary. This keeps its combined operation within the
+finite transport complexity budget. Neither value depends on recent rows,
+selected ledger filters or trip dates.
 Repayments affect net balances but never spend. Every mutation outcome invalidates
 the account store; workspace refresh recomputes the source and a directory visit
 performs a new authorized read. Foregrounding, explicit refresh and UTC midnight

@@ -39,11 +39,6 @@ const groups = [
 function group(id) {
   return {
     __typename: 'Group',
-    financialSummary: {
-      __typename: 'GroupFinancialSummary',
-      totalSpendMinor: '300',
-      viewerNetMinor: '8420',
-    },
     ...groups.find((g) => g.id === id),
     viewerMembership: members[0],
     members,

@@ -6,16 +6,6 @@ export const workspaceGroup = graphql`
     balances: { type: "Boolean!" }
     summary: { type: "Boolean!" }
   ) {
-    financialSummary @include(if: $overview) {
-      __typename
-      ... on GroupFinancialSummary {
-        totalSpendMinor
-        viewerNetMinor
-      }
-      ... on Problem {
-        code
-      }
-    }
     currency
     trip {
       destination

@@ -43,11 +43,6 @@ function fixture(net: string, trip = false): WorkspaceGroup {
     id: 'G',
     name: 'Shared space',
     currency: 'USD',
-    financialSummary: {
-      __typename: 'GroupFinancialSummary',
-      totalSpendMinor: '9007199254740993',
-      viewerNetMinor: net,
-    },
     kind: trip ? 'TRIP' : 'ORDINARY',
     isHousehold: false,
     trip: trip

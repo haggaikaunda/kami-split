@@ -494,9 +494,9 @@ function OverviewMetrics({
         }
         icon={<AppIcon name="expense" />}
       >
-        {group.financialSummary?.__typename === 'GroupFinancialSummary' ? (
+        {group.balances?.__typename === 'GroupBalances' ? (
           <Money
-            value={money(group.financialSummary.totalSpendMinor)}
+            value={money(group.balances.totalExpenseMinor)}
             currency={group.currency}
           />
         ) : (
