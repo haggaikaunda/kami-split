@@ -22,17 +22,20 @@ export function AppearanceProvider({
   scope,
   loading,
   discardAppearance = true,
+  appearanceActor,
   children,
 }: {
   scope?: FinancialScope;
   loading: boolean;
   discardAppearance?: boolean;
+  appearanceActor?: string;
   children: React.ReactNode;
 }) {
   const accept = useRef<
     (actor: string, value: Appearance, confirmed?: boolean) => void
   >(() => {});
-  // Only a verified scope establishes the actor binding. Retain confirmed paint
+  // Only verified session identity establishes the actor binding, including when
+  // private storage prevents a financial scope. Retain confirmed paint
   // across fail-closed scope replacement; an unmounted editor cannot keep an
   // unconfirmed preview alive when its old scope rejects cleanup.
   const retained = useRef<{ actor: string; value: Appearance } | undefined>(
@@ -48,13 +51,14 @@ export function AppearanceProvider({
     let live = true,
       revision = 0,
       optimistic = false;
-    let value = scope
-      ? retained.current?.actor === scope.actor
+    const owner = scope?.actor ?? appearanceActor;
+    let value = owner
+      ? retained.current?.actor === owner
         ? retained.current.value
-        : cachedAppearance(scope.actor)
+        : cachedAppearance(owner)
       : (retained.current?.value ??
         appearance(document.documentElement.dataset.appearance));
-    if (scope) retained.current = { actor: scope.actor, value };
+    if (owner) retained.current = { actor: owner, value };
     const apply = () => {
       applyAppearance(value);
     };
@@ -127,7 +131,7 @@ export function AppearanceProvider({
       window.removeEventListener('pageshow', foreground);
       document.removeEventListener('visibilitychange', foreground);
     };
-  }, [scope]);
+  }, [scope, appearanceActor]);
   useEffect(() => {
     if (loading) return;
     if (!scope) {

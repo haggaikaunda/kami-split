@@ -453,3 +453,23 @@ it('releases an unconfirmed editor preview when temporary access failure dispose
   expect(document.documentElement.dataset.theme).toBe('light');
   expect(requests).toHaveLength(2);
 });
+
+it('a verified different actor replaces retained paint even when private storage prevents its scope', async () => {
+  dark = false;
+  await render(scope('alice'));
+  requests[0].next(result('DARK'));
+  await act(async () =>
+    root.render(
+      <AppearanceProvider
+        appearanceActor="bob"
+        loading={false}
+        discardAppearance={false}
+      >
+        <Probe />
+      </AppearanceProvider>,
+    ),
+  );
+  expect(document.documentElement.dataset.theme).toBe('light');
+  requests[0].next(result('DARK'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+});

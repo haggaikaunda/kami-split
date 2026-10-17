@@ -271,80 +271,102 @@ for (const status of [503, 401]) {
   });
 }
 
-test('a verified account switch replaces paint ownership and rejects an old profile reply', async ({
-  page,
-  context,
-  app,
-}) => {
-  await app.authenticate();
-  await page.emulateMedia({ colorScheme: 'light' });
-  await observe(page, 'DARK');
-  const initial = app.hold('appearanceQuery', profile('DARK'));
-  await page.goto('/groups');
-  await initial.started;
-  await initial.release();
-  await expect(
-    page.getByRole('heading', { name: 'Groups', exact: true }),
-  ).toBeVisible();
-  const old = app.hold('appearanceQuery', profile('LIGHT'));
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await old.started;
-  const next = app.holdMatching(
-    'appearanceQuery',
-    () => true,
-    profile('SYSTEM'),
-  );
-  const other = {
-    ...user,
-    id: '22222222-2222-4222-8222-222222222222',
-    email: 'other@example.test',
-  };
-  const nextSession = { ...session(), user: other };
-  nextSession.access_token = [
-    { alg: 'HS256', typ: 'JWT' },
-    { sub: other.id, exp: nextSession.expires_at, aud: 'authenticated' },
-    'synthetic',
-  ]
-    .map((part) => Buffer.from(JSON.stringify(part)).toString('base64url'))
-    .join('.');
-  await context.addCookies([
-    {
-      name: 'kami-auth',
-      value:
-        'base64-' +
-        Buffer.from(JSON.stringify(nextSession)).toString('base64url'),
-      url: origin,
-      sameSite: 'Lax',
-    },
-  ]);
-  await context.route('**/auth/v1/user', (route) =>
-    route.fulfill({ json: other }),
-  );
-  await page.evaluate((nextSession) => {
-    const channel = new BroadcastChannel('kami-auth');
-    channel.postMessage({ event: 'SIGNED_IN', session: nextSession });
-    channel.close();
-  }, nextSession);
-  await next.started;
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  next.release();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          JSON.parse(localStorage.getItem('kami-appearance') ?? 'null')?.actor,
+for (const storageFailure of [false, true])
+  test(`a verified account switch ${storageFailure ? 'with blocked private storage ' : ''}replaces paint ownership and rejects an old profile reply`, async ({
+    page,
+    context,
+    app,
+  }) => {
+    await app.authenticate();
+    await page.emulateMedia({ colorScheme: 'light' });
+    await observe(page, 'DARK');
+    const initial = app.hold('appearanceQuery', profile('DARK'));
+    await page.goto('/groups');
+    await initial.started;
+    await initial.release();
+    await expect(
+      page.getByRole('heading', { name: 'Groups', exact: true }),
+    ).toBeVisible();
+    const old = app.hold('appearanceQuery', profile('LIGHT'));
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await old.started;
+    const next = app.holdMatching(
+      'appearanceQuery',
+      () => true,
+      profile('SYSTEM'),
+    );
+    const other = {
+      ...user,
+      id: '22222222-2222-4222-8222-222222222222',
+      email: 'other@example.test',
+    };
+    const nextSession = { ...session(), user: other };
+    nextSession.access_token = [
+      { alg: 'HS256', typ: 'JWT' },
+      { sub: other.id, exp: nextSession.expires_at, aud: 'authenticated' },
+      'synthetic',
+    ]
+      .map((part) => Buffer.from(JSON.stringify(part)).toString('base64url'))
+      .join('.');
+    await context.addCookies([
+      {
+        name: 'kami-auth',
+        value:
+          'base64-' +
+          Buffer.from(JSON.stringify(nextSession)).toString('base64url'),
+        url: origin,
+        sameSite: 'Lax',
+      },
+    ]);
+    await context.route('**/auth/v1/user', (route) =>
+      route.fulfill({ json: other }),
+    );
+    if (storageFailure)
+      await page.evaluate(() => {
+        window.themeStorageGet = Storage.prototype.getItem;
+        Storage.prototype.getItem = function (key) {
+          if (this === sessionStorage)
+            throw new DOMException('Synthetic unavailable', 'SecurityError');
+          return window.themeStorageGet.call(this, key);
+        };
+      });
+    await page.evaluate((nextSession) => {
+      const channel = new BroadcastChannel('kami-auth');
+      channel.postMessage({ event: 'SIGNED_IN', session: nextSession });
+      channel.close();
+    }, nextSession);
+    if (storageFailure) {
+      await expect(page).toHaveURL(/\/sign-in/);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+      await expect(
+        page.getByRole('heading', { name: 'Groups', exact: true }),
+      ).toHaveCount(0);
+      await page.evaluate(() => {
+        Storage.prototype.getItem = window.themeStorageGet;
+        window.dispatchEvent(new PageTransitionEvent('pageshow'));
+      });
+    }
+    await next.started;
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    next.release();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            JSON.parse(localStorage.getItem('kami-appearance') ?? 'null')
+              ?.actor,
+        ),
+      )
+      .toBe(other.id);
+    await old.release();
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(
+      await page.evaluate(() =>
+        JSON.parse(localStorage.getItem('kami-appearance')),
       ),
-    )
-    .toBe(other.id);
-  await old.release();
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  expect(
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('kami-appearance')),
-    ),
-  ).toEqual({ actor: other.id, value: 'SYSTEM' });
-});
+    ).toEqual({ actor: other.id, value: 'SYSTEM' });
+  });
 
 test('a save committing after the resumed read converges on a fresh read without replaying the mutation', async ({
   page,

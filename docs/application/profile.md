@@ -60,7 +60,11 @@ System rechecks the device on foreground return. A temporary verification
 transport/server failure still disposes private access, but retains the verified
 actor’s confirmed paint preference in memory. An unconfirmed editor preview
 is released on unmount or private-scope replacement. Same-actor recovery preserves it even when
-presentation storage is unavailable; a verified different actor replaces it. Confirmed sign-out/access loss
+presentation storage is unavailable; a verified different actor replaces it.
+Verified presentation identity is also conveyed when private storage prevents a
+financial scope, so the new actor cannot inherit the prior actor’s paint. That
+identity has no authorization role and starts no profile read without a live
+private scope. Confirmed sign-out still discards paint when storage cleanup fails. Confirmed sign-out/access loss
 removes the departing paint cache and follows System. A different account applies
 only its own matching cache or System; old responses cannot recolor that account.
 Document/body/loading surfaces and browser theme-color use shared semantic tokens.

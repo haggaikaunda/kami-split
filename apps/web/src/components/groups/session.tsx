@@ -12,6 +12,8 @@ type Access = {
   scope?: FinancialScope;
   error?: string;
   discardAppearance?: boolean;
+  // Presentation identity never grants private access or starts a profile read.
+  appearanceActor?: string;
 };
 const Context = createContext<Access>({ loading: true });
 export const useFinancialSession = () => useContext(Context);
@@ -61,12 +63,19 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
                     'Financial access is unavailable. Reload to check current access.',
                 });
               });
-            setAccess({ loading: false, client, scope });
+            setAccess({
+              loading: false,
+              client,
+              scope,
+              appearanceActor: actor,
+            });
           } catch {
             scope?.dispose();
             scope = undefined;
             setAccess({
               loading: false,
+              appearanceActor: actor,
+              discardAppearance: signedOut || !actor,
               error:
                 'Private storage is unavailable. Financial access is blocked. Restore browser storage access and reload.',
             });
@@ -186,6 +195,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
       <AppearanceProvider
         scope={access.scope}
         loading={access.loading}
+        appearanceActor={access.appearanceActor}
         discardAppearance={!access.error || access.discardAppearance === true}
       >
         {access.scope ? (

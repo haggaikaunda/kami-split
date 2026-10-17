@@ -100,6 +100,7 @@ it('disposes private memory even when logout storage cleanup throws', async () =
   expect(current.scope).toBeUndefined();
   expect(host.textContent).not.toContain('Private alice');
   expect(host.textContent).toContain('Private storage is unavailable');
+  expect(current.discardAppearance).toBe(true);
   vi.restoreAllMocks();
   await act(async () => {
     sdk.changed('SIGNED_IN', { user: { id: 'alice' } });
@@ -268,3 +269,19 @@ it.each([503, 401, 403])(
     expect(current.discardAppearance).toBe(status === 401 || status === 403);
   },
 );
+
+it('reports the verified presentation actor when a different account cannot open private storage', async () => {
+  await render();
+  const original = current.scope;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Blocked');
+  });
+  await act(async () => {
+    sdk.changed('SIGNED_IN', { user: { id: 'bob' } });
+    await vi.runAllTimersAsync();
+  });
+  expect(current.scope).toBeUndefined();
+  expect(original?.isLive()).toBe(false);
+  expect(current.error).toContain('Private storage is unavailable');
+  expect(current.appearanceActor).toBe('bob');
+});
