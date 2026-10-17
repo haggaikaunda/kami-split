@@ -1351,7 +1351,9 @@ test('no eligible expense source and failed group discovery leave Profile usable
   app,
 }) => {
   await app.authenticate();
-  const empty = responseFor('expensesHouseholdInitialQuery', {});
+  const empty = structuredClone(
+    responseFor('expensesHouseholdInitialQuery', {}),
+  );
   empty.householdDashboard.spaces = [];
   empty.householdDashboard.totals.activeSpaceCount = '0';
   empty.householdExpenses.edges = [];
@@ -1749,10 +1751,10 @@ for (const source of [
     await expect(close).toBeInViewport({ ratio: 1 });
     await expect(
       dialog.getByRole('button', { name: 'Reset filters' }),
-    ).toBeInViewport();
+    ).toBeInViewport({ ratio: 1 });
     await expect(
       dialog.getByRole('button', { name: 'Apply filters' }),
-    ).toBeInViewport();
+    ).toBeInViewport({ ratio: 1 });
     await dialog.locator('summary').filter({ hasText: 'Categories' }).click();
     await dialog.getByLabel('Dining', { exact: true }).check();
     await dialog.getByLabel('Groceries', { exact: true }).check();
