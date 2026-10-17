@@ -29,10 +29,13 @@ for (const workspace of [
         const tabs = document
           .querySelector('[data-ui~="workspace-tabs"]')
           .getBoundingClientRect();
-        const content = refresh.nextElementSibling.getBoundingClientRect();
+        let content = refresh.nextElementSibling;
+        while (content && !content.getClientRects().length)
+          content = content.nextElementSibling;
+        if (!content) throw new Error('Visible workspace content is missing');
         return {
           refreshHeight: refresh.getBoundingClientRect().height,
-          gap: content.top - tabs.bottom,
+          gap: content.getBoundingClientRect().top - tabs.bottom,
         };
       });
     const idle = await geometry();
@@ -57,6 +60,14 @@ for (const workspace of [
     expect
       .soft(pending.refreshHeight, 'Content-owned loading adds no blank row')
       .toBe(0);
+    expect(
+      pending.gap,
+      'Visible loader follows the compact tab margin',
+    ).toBeLessThanOrEqual(32);
+    expect(
+      pending.gap,
+      'Visible loader does not overlap tabs',
+    ).toBeGreaterThanOrEqual(0);
     await failed.release();
     const retry = refresh.getByRole('button', {
       name: 'Try again',
