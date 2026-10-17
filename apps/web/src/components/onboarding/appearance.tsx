@@ -19,7 +19,7 @@ export function AppearanceEditor({
 }) {
   const apply = useApplyAppearance();
   const [saved, setSaved] = useState<Appearance>();
-  const [selected, setSelected] = useState<Appearance>('LIGHT');
+  const [selected, setSelected] = useState<Appearance>('SYSTEM');
   const [working, setWorking] = useState(true);
   const [uncertain, setUncertain] = useState(false);
   const [message, setMessage] = useState('');
@@ -27,7 +27,7 @@ export function AppearanceEditor({
   const active = useRef(true);
   const lock = useRef(false);
   const confirmed = useRef<Appearance>(undefined);
-  const intent = useRef<Appearance>('LIGHT');
+  const intent = useRef<Appearance>('SYSTEM');
   const paint = (value: Appearance, persisted: boolean) => {
     if (c.session) apply(c.session.user.id, value, persisted);
   };

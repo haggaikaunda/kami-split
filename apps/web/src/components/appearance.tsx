@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { fetchQuery } from 'relay-runtime';
 import type { FinancialScope } from '@/lib/relay/environment';
-import document, {
+import queryDocument, {
   type appearanceQuery,
 } from '@/lib/relay/__generated__/appearanceQuery.graphql';
 import {
@@ -10,6 +10,7 @@ import {
   applyAppearance,
   cacheAppearance,
   cachedAppearance,
+  clearAppearanceCache,
   type Appearance,
 } from '@/lib/appearance';
 const Context = createContext<
@@ -29,22 +30,32 @@ export function AppearanceProvider({
   const accept = useRef<
     (actor: string, value: Appearance, confirmed?: boolean) => void
   >(() => {});
+  const ready = useRef<() => void>(() => {});
+  const reset = useRef<() => void>(() => {});
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
   useEffect(() => {
-    if (loading) return;
-    if (!scope) {
-      applyAppearance('LIGHT');
-      return;
-    }
     let live = true,
       revision = 0,
       optimistic = false;
-    let value = cachedAppearance(scope.actor);
-    const apply = () => applyAppearance(value);
+    let value = scope
+      ? cachedAppearance(scope.actor)
+      : appearance(document.documentElement.dataset.appearance);
+    const apply = () => {
+      applyAppearance(value);
+    };
+    reset.current = () => {
+      value = 'SYSTEM';
+      apply();
+    };
     apply();
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    media.addEventListener('change', apply);
+    const media =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)')
+        : undefined;
+    media?.addEventListener('change', apply);
     accept.current = (actor, next, confirmed = true) => {
-      if (!live || !scope.isLive() || actor !== scope.actor) return;
+      if (!live || !scope?.isLive() || actor !== scope.actor) return;
       revision++;
       value = next;
       optimistic = !confirmed;
@@ -53,12 +64,12 @@ export function AppearanceProvider({
     };
     let pending: { unsubscribe(): void } | undefined;
     const refresh = () => {
-      if (optimistic) return;
+      if (!scope?.isLive() || optimistic || loadingRef.current) return;
       pending?.unsubscribe();
       const started = ++revision;
       pending = fetchQuery<appearanceQuery>(
         scope.environment,
-        document,
+        queryDocument,
         {},
         { fetchPolicy: 'network-only' },
       ).subscribe({
@@ -74,16 +85,35 @@ export function AppearanceProvider({
         error() {},
       });
     };
-    refresh();
-    window.addEventListener('focus', refresh);
+    let scheduled: ReturnType<typeof setTimeout> | undefined;
+    const foreground = () => {
+      apply();
+      if (document.visibilityState === 'hidden') return;
+      clearTimeout(scheduled);
+      scheduled = setTimeout(refresh, 0);
+    };
+    ready.current = foreground;
+    window.addEventListener('focus', foreground);
+    window.addEventListener('pageshow', foreground);
+    document.addEventListener('visibilitychange', foreground);
     return () => {
       live = false;
       accept.current = () => {};
       pending?.unsubscribe();
-      media.removeEventListener('change', apply);
-      window.removeEventListener('focus', refresh);
-      applyAppearance('LIGHT');
+      clearTimeout(scheduled);
+      ready.current = reset.current = () => {};
+      media?.removeEventListener('change', apply);
+      window.removeEventListener('focus', foreground);
+      window.removeEventListener('pageshow', foreground);
+      document.removeEventListener('visibilitychange', foreground);
     };
+  }, [scope]);
+  useEffect(() => {
+    if (loading) return;
+    if (!scope) {
+      clearAppearanceCache();
+      reset.current();
+    } else ready.current();
   }, [scope, loading]);
   return (
     <Context.Provider

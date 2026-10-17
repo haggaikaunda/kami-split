@@ -34,8 +34,8 @@ func TestAppearancePersistenceIsolationAndConcurrency(t *testing.T) {
 	update := func(actor int, value, expected, kind string) map[string]any {
 		return groupRequest(t, f, actor, mutation, map[string]any{"value": value, "expected": expected}, "updateMyAppearance", kind)
 	}
-	if read(2)["appearance"] != "LIGHT" {
-		t.Fatal("new account must default to light")
+	if read(2)["appearance"] != "SYSTEM" {
+		t.Fatal("new account must default to system")
 	}
 	for _, value := range []string{"DARK", "SYSTEM", "LIGHT"} {
 		expected := read(2)["appearance"].(string)
@@ -52,7 +52,7 @@ func TestAppearancePersistenceIsolationAndConcurrency(t *testing.T) {
 	if stale := update(2, "SYSTEM", "LIGHT", "ProfileProblem"); stale["code"] != "CONFLICT" {
 		t.Fatal(stale)
 	}
-	if read(1)["appearance"] != "LIGHT" {
+	if read(1)["appearance"] != "SYSTEM" {
 		t.Fatal("another user's preference changed")
 	}
 	name := groupRequest(t, f, 2, `mutation {

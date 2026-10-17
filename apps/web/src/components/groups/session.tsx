@@ -24,6 +24,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
     let scope: FinancialScope | undefined;
     let unsubscribe: (() => void) | undefined;
     let stopEvents: (() => void) | undefined;
+    let foregroundTimer: ReturnType<typeof setTimeout> | undefined;
     let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     void loadClient()
       .then(async (client) => {
@@ -127,12 +128,19 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
         });
         unsubscribe = () => subscription.data.subscription.unsubscribe();
         const hide = () => {
+          clearTimeout(foregroundTimer);
           ticket++;
           setAccess((current) => ({ ...current, loading: true }));
         };
         const foreground = () => {
           if (document.visibilityState === 'hidden') hide();
-          else void verify();
+          else {
+            // One verification for a synchronous pageshow/popstate/visibility burst.
+            // Hide private content immediately, even before the scheduled read.
+            setAccess((current) => ({ ...current, loading: true }));
+            clearTimeout(foregroundTimer);
+            foregroundTimer = setTimeout(() => void verify(), 0);
+          }
         };
         window.addEventListener('pagehide', hide);
         window.addEventListener('pageshow', foreground);
@@ -160,25 +168,24 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
       unsubscribe?.();
       stopEvents?.();
       clearTimeout(expiryTimer);
+      clearTimeout(foregroundTimer);
       scope?.dispose();
     };
   }, []);
   return (
     <Context.Provider value={access}>
-      {access.scope ? (
-        <RelayEnvironmentProvider
-          key={access.scope.id}
-          environment={access.scope.environment}
-        >
-          <AppearanceProvider scope={access.scope} loading={access.loading}>
+      <AppearanceProvider scope={access.scope} loading={access.loading}>
+        {access.scope ? (
+          <RelayEnvironmentProvider
+            key={access.scope.id}
+            environment={access.scope.environment}
+          >
             {children}
-          </AppearanceProvider>
-        </RelayEnvironmentProvider>
-      ) : (
-        <AppearanceProvider loading={access.loading}>
-          {children}
-        </AppearanceProvider>
-      )}
+          </RelayEnvironmentProvider>
+        ) : (
+          children
+        )}
+      </AppearanceProvider>
     </Context.Provider>
   );
 }

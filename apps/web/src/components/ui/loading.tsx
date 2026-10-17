@@ -9,11 +9,32 @@ import styles from './loading.module.css';
 export function useLoadingPhase() {
   const [phase, setPhase] = useState<'quiet' | 'loading' | 'slow'>('quiet');
   useEffect(() => {
-    const show = setTimeout(() => setPhase('loading'), 150);
-    const slow = setTimeout(() => setPhase('slow'), 8_000);
-    return () => {
+    let show: ReturnType<typeof setTimeout>,
+      slow: ReturnType<typeof setTimeout>;
+    const stop = () => {
       clearTimeout(show);
       clearTimeout(slow);
+    };
+    const start = () => {
+      stop();
+      setPhase('quiet');
+      if (document.visibilityState === 'hidden') return;
+      show = setTimeout(() => setPhase('loading'), 150);
+      slow = setTimeout(() => setPhase('slow'), 8_000);
+    };
+    const hide = () => {
+      stop();
+      setPhase('quiet');
+    };
+    start();
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('pageshow', start);
+    document.addEventListener('visibilitychange', start);
+    return () => {
+      stop();
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('pageshow', start);
+      document.removeEventListener('visibilitychange', start);
     };
   }, []);
   return phase;
