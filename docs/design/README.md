@@ -8,6 +8,7 @@ Approved design inputs explain visual intent; they do not prove implementation, 
 - [Original Board A/B](references/approved-ui/README.md): owner-supplied provenance; current tokens/navigation supersede their earlier styling.
 - [Exact Material reference](https://github.com/haggaikaunda/kami-split/issues/227): externally preserved approved interactive pack and checksum provenance. Current system-font and workspace refinements take precedence.
 - [Primitive gallery](../primitives-preview/README.md): executable development examples, separate from the application.
+- [Personal banking handoff](personal-banking.md): planned R2 shell/component/token mapping, private activity states and responsive/accessibility requirements; implementation and release remain separately gated.
 
 The [original UX specification](ux-spec.md), [screen flows](screen-flows.md), [design decisions](decisions.md), [seeded data design](data-access.md), [asset provenance](assets/README.md), and [standalone prototype](prototype/index.html) remain design inputs for interpreting the original interaction model. They are superseded wherever current application contracts differ; they are not requirements to restore deleted seeded code or deferred features. Run the prototype with `python3 -m http.server 4300 --bind 127.0.0.1 --directory docs/design/prototype`. It has no real authentication, persistence or financial authority.
 
