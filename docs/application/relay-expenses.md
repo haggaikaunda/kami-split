@@ -308,12 +308,13 @@ owing. “Who owes whom” lists suggested repayments within that source, withou
 counting original expenses again. Activity and its expense before/after history
 remain linked. Under #269, optional explanations appear on summary and Balances surfaces; Expenses no longer has a Balance details disclosure.
 
-## Workspace summaries and banner (#269)
+## Workspace summaries and rich help
 
-All workspace tabs retain their identity banner and existing background image, with
-a single labeled Add expense action targeting an authorized original source.
-Household uses “Shared spending, at home and away.” and optional What’s included
-help; balance/share definitions are optional rich help with explicit dismissal.
+Compact shared chrome retains workspace artwork as a decorative accent and names
+the current destination. Add expense lives in the shared navigation, using the
+authorized Group/Trip source or an explicit eligible-source choice from global
+destinations. Household scope and balance/share definitions remain available through
+optional rich help with explicit dismissal.
 Your balance shows “Payments still to settle” for offsetting nonzero source balances
 and “Nothing to pay or collect” only for personal zero in every included source.
 Incomplete/unavailable reads remain errors. Detailed member contributions, repayment
