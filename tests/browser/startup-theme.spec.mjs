@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures.mjs';
 import { user } from '../../scripts/browser/session.mjs';
 
+// Existing dark --color-canvas token is #0b111b; assert actual painted RGB.
 const profile = (appearance) => ({
   currentProfile: {
     __typename: 'Profile',
@@ -74,7 +75,7 @@ for (const [value, os, expected] of [
       before.every(
         (frame) =>
           frame.canvas ===
-          (expected === 'dark' ? 'rgb(11, 18, 32)' : 'rgb(242, 245, 247)'),
+          (expected === 'dark' ? 'rgb(11, 17, 27)' : 'rgb(242, 245, 247)'),
       ),
     ).toBe(true);
     await expect(page.locator('html')).toHaveAttribute(
@@ -85,7 +86,7 @@ for (const [value, os, expected] of [
   });
 }
 
-test('saved Dark survives repeated background, delayed verification, history and profile failure', async ({
+test('saved Dark survives repeated background, delayed verification, history', async ({
   page,
   context,
   app,
@@ -136,7 +137,7 @@ test('saved Dark survives repeated background, delayed verification, history and
     expect(
       frames.every(
         (frame) =>
-          frame.canvas === 'rgb(11, 18, 32)' && frame.body === frame.canvas,
+          frame.canvas === 'rgb(11, 17, 27)' && frame.body === frame.canvas,
       ),
     ).toBe(true);
     await expect(
@@ -202,10 +203,12 @@ test('profile failure preserves cached Dark and logout discards its binding', as
   await pending.started;
   pending.release();
   await expect(
-    page.getByRole('button', { name: 'Sign out', exact: true }),
+    page.getByRole('button', { name: 'Sign out of this session', exact: true }),
   ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Sign out of this session', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/sign-in/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(
@@ -215,3 +218,50 @@ test('profile failure preserves cached Dark and logout discards its binding', as
     page.getByText('Private synthetic person', { exact: true }),
   ).toHaveCount(0);
 });
+
+for (const status of [503, 401]) {
+  test(`verification ${status} suppresses private content with the correct retained or discarded paint`, async ({
+    page,
+    context,
+    app,
+  }) => {
+    await app.authenticate();
+    await page.emulateMedia({ colorScheme: 'light' });
+    await observe(page, 'DARK');
+    const pending = app.holdMatching(
+      'appearanceQuery',
+      () => true,
+      profile('DARK'),
+    );
+    await page.goto('/groups');
+    pending.release();
+    await expect(
+      page.getByRole('heading', { name: 'Groups', exact: true }),
+    ).toBeVisible();
+    await context.route('**/auth/v1/user', (route) =>
+      route.fulfill({
+        status,
+        json: {
+          message: 'Synthetic verification failure',
+          code: 'unexpected_failure',
+        },
+      }),
+    );
+    await page.evaluate(() => {
+      window.dispatchEvent(new PageTransitionEvent('pagehide'));
+      window.dispatchEvent(new PageTransitionEvent('pageshow'));
+    });
+    await expect(page.locator('[data-ui="screen-loading"]')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Groups', exact: true }),
+    ).toHaveCount(0);
+    await expect(page).toHaveURL(/\/sign-in/, { timeout: 20000 });
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-theme',
+      status === 503 ? 'dark' : 'light',
+    );
+    await expect(
+      page.getByText('Private synthetic person', { exact: true }),
+    ).toHaveCount(0);
+  });
+}

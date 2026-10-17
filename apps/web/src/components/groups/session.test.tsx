@@ -246,3 +246,25 @@ it('rejects an old verification resolved between foreground invalidation and its
   );
   expect(current.loading).toBe(false);
 });
+
+it.each([503, 401, 403])(
+  'disposes private access on verification %s, discarding appearance only for confirmed denial',
+  async (status) => {
+    await render();
+    const original = current.scope;
+    sessionStorage.setItem(privateStorageKey, '{}');
+    sdk.checked.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthApiError', status },
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('pageshow'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(current.scope).toBeUndefined();
+    expect(original?.isLive()).toBe(false);
+    expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
+    expect(current.error).toContain('Account verification failed');
+    expect(current.discardAppearance).toBe(status === 401 || status === 403);
+  },
+);

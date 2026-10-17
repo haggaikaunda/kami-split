@@ -57,10 +57,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
-async function render(current?: FinancialScope, loading = false) {
+async function render(
+  current?: FinancialScope,
+  loading = false,
+  discardAppearance = true,
+) {
   await act(async () =>
     root.render(
-      <AppearanceProvider scope={current} loading={loading}>
+      <AppearanceProvider
+        scope={current}
+        loading={loading}
+        discardAppearance={discardAppearance}
+      >
         <Probe />
       </AppearanceProvider>,
     ),
@@ -280,4 +288,51 @@ it('uses the technical Light fallback when device detection is unavailable', asy
   expect(document.documentElement.dataset.theme).toBe('light');
   requests[0].next(result('DARK'));
   expect(document.documentElement.dataset.theme).toBe('dark');
+});
+
+it('retains a verified actor mode through temporary failure and same-actor scope recovery without storage', async () => {
+  dark = false;
+  await render(scope('alice'));
+  requests[0].next(result('DARK'));
+  await render(undefined, false, false);
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Unavailable');
+  });
+  await render(scope('alice'));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  requests[0].next(result('LIGHT'));
+  requests.at(-1)!.error();
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  await render(scope('bob'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  requests[0].next(result('DARK'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  vi.restoreAllMocks();
+});
+it('confirmed denial forgets the in-memory binding even when paint storage cannot be removed', async () => {
+  dark = false;
+  await render(scope('alice'));
+  requests[0].next(result('DARK'));
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+    throw new Error('Unavailable');
+  });
+  await render(undefined, false, true);
+  expect(document.documentElement.dataset.theme).toBe('light');
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Unavailable');
+  });
+  await render(scope('alice'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  vi.restoreAllMocks();
+});
+
+it('never promotes an unknown bootstrap paint into another verified actor binding', async () => {
+  dark = false;
+  document.documentElement.dataset.appearance = 'DARK';
+  await render(undefined, true, false);
+  await render(undefined, false, false);
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  await render(scope('bob'));
+  expect(document.documentElement.dataset.theme).toBe('light');
 });

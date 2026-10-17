@@ -11,6 +11,7 @@ type Access = {
   client?: SupabaseClient;
   scope?: FinancialScope;
   error?: string;
+  discardAppearance?: boolean;
 };
 const Context = createContext<Access>({ loading: true });
 export const useFinancialSession = () => useContext(Context);
@@ -55,6 +56,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
                 setAccess({
                   loading: false,
                   client,
+                  discardAppearance: true,
                   error:
                     'Financial access is unavailable. Reload to check current access.',
                 });
@@ -81,6 +83,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
               setAccess({
                 loading: false,
                 client,
+                discardAppearance: error.status === 401 || error.status === 403,
                 error:
                   'Account verification failed. Sign in or reload to try again.',
               });
@@ -180,7 +183,11 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
   }, []);
   return (
     <Context.Provider value={access}>
-      <AppearanceProvider scope={access.scope} loading={access.loading}>
+      <AppearanceProvider
+        scope={access.scope}
+        loading={access.loading}
+        discardAppearance={!access.error || access.discardAppearance === true}
+      >
         {access.scope ? (
           <RelayEnvironmentProvider
             key={access.scope.id}

@@ -56,7 +56,10 @@ preference arrives; this fallback never writes a preference to the server.
 
 Theme subscriptions live for the account scope, independently of transient session
 loading. Background verification and failed profile reads retain known appearance;
-System rechecks the device on foreground return. Confirmed sign-out/access loss
+System rechecks the device on foreground return. A temporary verification
+transport/server failure still disposes private access, but retains the verified
+actor’s paint preference in memory. Same-actor recovery preserves it even when
+presentation storage is unavailable; a verified different actor replaces it. Confirmed sign-out/access loss
 removes the departing paint cache and follows System. A different account applies
 only its own matching cache or System; old responses cannot recolor that account.
 Document/body/loading surfaces and browser theme-color use shared semantic tokens.

@@ -21,15 +21,22 @@ export const useApplyAppearance = () => useContext(Context);
 export function AppearanceProvider({
   scope,
   loading,
+  discardAppearance = true,
   children,
 }: {
   scope?: FinancialScope;
   loading: boolean;
+  discardAppearance?: boolean;
   children: React.ReactNode;
 }) {
   const accept = useRef<
     (actor: string, value: Appearance, confirmed?: boolean) => void
   >(() => {});
+  // Only a verified scope establishes the actor binding. Keep this small paint
+  // value across fail-closed scope replacement, including unavailable storage.
+  const retained = useRef<{ actor: string; value: Appearance } | undefined>(
+    undefined,
+  );
   const ready = useRef<() => void>(() => {});
   const reset = useRef<() => void>(() => {});
   const loadingRef = useRef(loading);
@@ -41,12 +48,17 @@ export function AppearanceProvider({
       revision = 0,
       optimistic = false;
     let value = scope
-      ? cachedAppearance(scope.actor)
-      : appearance(document.documentElement.dataset.appearance);
+      ? retained.current?.actor === scope.actor
+        ? retained.current.value
+        : cachedAppearance(scope.actor)
+      : (retained.current?.value ??
+        appearance(document.documentElement.dataset.appearance));
+    if (scope) retained.current = { actor: scope.actor, value };
     const apply = () => {
       applyAppearance(value);
     };
     reset.current = () => {
+      retained.current = undefined;
       value = 'SYSTEM';
       apply();
     };
@@ -62,6 +74,7 @@ export function AppearanceProvider({
       if (!live || !scope?.isLive() || actor !== scope.actor) return;
       revision++;
       value = next;
+      retained.current = { actor, value };
       optimistic = !confirmed;
       if (confirmed) cacheAppearance(actor, value);
       apply();
@@ -115,10 +128,11 @@ export function AppearanceProvider({
   useEffect(() => {
     if (loading) return;
     if (!scope) {
+      if (!discardAppearance) return;
       clearAppearanceCache();
       reset.current();
     } else ready.current();
-  }, [scope, loading]);
+  }, [scope, loading, discardAppearance]);
   return (
     <Context.Provider
       value={(actor, value, confirmed) =>
