@@ -70,6 +70,7 @@ const agentResources = new Set([
   '.agents/skills/verify-requirements/SKILL.md',
   '.agents/skills/start-task/SKILL.md',
   '.agents/skills/close-delivery/SKILL.md',
+  '.agents/skills/evaluate-deliveries/SKILL.md',
   '.codex/agents/kami-builder.toml',
   '.codex/agents/kami-tester.toml',
   '.codex/agents/kami-reviewer.toml',

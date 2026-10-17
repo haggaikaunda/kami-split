@@ -1,10 +1,20 @@
 # GitHub delivery records
 
-Use concise records at meaningful boundaries under the [delivery workflow](delivery-workflow.md):
+Use concise human-readable records at meaningful boundaries under the [delivery workflow](delivery-workflow.md):
 attempt start, stage outcome, material blocker/intervention, ownership transfer,
 merge and closeout. The issue owns the goal/current handoff; the PR description
 is the current evidence index. Detailed outcomes live in issue/PR comments.
-Do not record every tool call or commit actual run ledgers to source.
+Do not record every tool call or commit actual run ledgers to source. Ordinary
+issue/PR discussions with exact revisions, outcomes and source links are the
+default. A separate JSON ledger is not required. Keep one current evidence index
+and link detailed results instead of copying them into multiple reports.
+
+For a bounded retrospective, use
+[evaluate-deliveries](../../.agents/skills/evaluate-deliveries/SKILL.md) to collect
+existing discussions and assess outcomes, friction and adoption. It reads both
+ordinary prose and existing structured records, with explicit coverage and
+unknowns. Evaluation does not replace independent requirements testing, final-diff
+review or the coordinator's current merge/closeout checks.
 
 ## Current handoff and evidence index
 
@@ -25,17 +35,21 @@ Refresh the live issue, PR, relevant decisions and recent comments before every
 shared update. One coordinator serializes edits and ownership transfers. Reconcile
 concurrent additions; if the premise changed, reread rather than overwrite. A
 timestamp/label is not a lock or permission to reclaim someone else's resources.
-After an uncertain write, search for the stable event ID before retrying.
+After an uncertain write, check whether that outcome was already published before
+retrying; use its source link or stable event ID when one exists.
 
-## Version 1 stage event
+## Optional version 1 stage event
 
-Post one JSON object per fenced `json` block in a comment, preceded by a brief
-human outcome. Use the [schema](records/stage-event.schema.json) and
+Existing versioned records remain valid historical evidence. Use this optional
+format when explicitly requested or when an identified consumer needs it; do not
+backfill ordinary discussions merely to support an evaluation. For this format,
+post one JSON object per fenced `json` block, preceded by a brief human outcome.
+Use the [schema](records/stage-event.schema.json) and
 [synthetic example](records/stage-event.example.json). The example is non-live;
 replace its identifiers and observations, never publish it as delivery evidence.
 The fixed `record_type: "kami_split.delivery_stage"` marker distinguishes these
-events from unrelated fenced JSON. The later collector must report marked invalid
-records and unsupported versions rather than silently excluding them.
+events from unrelated fenced JSON. When using structured history, report marked
+invalid records and unsupported versions rather than silently excluding them.
 
 | Field                                             | Meaning                                                                                                                                                          |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -74,7 +88,7 @@ that provenance on the linked record rather than inventing an approval URL.
 
 ## Substantive correction cycles
 
-Declare a cycle only when observed testing, review or CI findings require a
+In structured records, declare a cycle only when observed testing, review or CI findings require a
 substantive correction round and subsequent verification. Use a globally stable
 ASCII token ID (for example a UUID), `source_stage: testing | review | ci`, and a
 short cause; link the finding through `evidence.sources`. Declare it once on the
@@ -84,8 +98,9 @@ findings do not create new cycles. A new substantive finding after correction ma
 start a new cycle. Setup/billing failures, routine CI reruns, planned product
 decisions and corrections to record wording are not substantive rework cycles.
 
-The collector can count distinct declared IDs, reconcile supersessions and flag
-conflicting declarations or references without a declaration; it must not infer
+An evaluator can use declared IDs to reconcile repeated reports and distinguish
+substantive rounds. Ordinary prose can establish a round through the original
+finding, correction and verification links; an ID is not required. Do not infer
 counts from comments/commits. Null/absent means unknown/no assertion, not zero.
 Record the observation coverage in limitations or linked testing/review evidence.
 Even a complete set of retrieved comments cannot establish zero cycles without
@@ -93,9 +108,9 @@ explicit coverage of the relevant work; partial coverage remains unknown.
 
 ## Corrections, cohorts and limits
 
-Append immutable outcome comments. Correct an error with a new event ID that lists
-the superseded IDs, explains the correction and links the original comment; do
-not silently edit/delete history. An index may change, but it must retain links to
+Append outcome comments. Correct a material error with a linked explanation that
+identifies the replaced claim; for structured records use a new event ID listing
+the superseded IDs. Do not silently edit/delete history. An index may change, but it must retain links to
 attempts and corrections. Duplicate identical IDs are duplicate publication, not
 extra work; different payloads for one ID are a conflict to resolve explicitly,
 never last-write-wins. A superseding record replaces the whole event, not selected
@@ -117,15 +132,17 @@ waiting and is not active effort. Link confirmed regressions without inventing
 causation. Missing cost remains unknown and never gates delivery. Keep secrets,
 financial/authentication data and raw private conversations out of records.
 
-The later read-only collector must retrieve the complete declared issue/PR/comment/
-review/check history with pagination and cross-links, retaining source identities
-and diagnosing missing, expired, edited, duplicate, conflicting or superseded
-records and partial/API failures. This contract does not implement that collector,
-authenticate roles, or add a merge gate; #305 owns enforcement separately.
+The evaluation skill retrieves the relevant issue/PR discussions and reviews with
+pagination, then follows precise check/run or supporting links needed to assess
+the requested outcomes. Record retrieval gaps, edits, duplicates, contradictions
+and unavailable sources; do not turn an incomplete observation into proof of
+failure or success. No generic crawler or exhaustive historical-check sweep is
+required. These records do not authenticate roles or add a merge gate; #305 owns
+enforcement separately.
 
 ## Objective validation
 
-Using the ignored environment from [skill validation](skill-authoring.md):
+For optional structured records, use the ignored environment from [skill validation](skill-authoring.md):
 
 ```sh
 .tools/skills-validator/bin/python scripts/agents/check_stage_event.py /tmp/event.json

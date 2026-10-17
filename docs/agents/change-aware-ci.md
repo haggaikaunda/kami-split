@@ -41,7 +41,7 @@ These guards cover current loaders, not arbitrary dependency analysis: new dynam
 loaders, aliases, generators, embed conventions or runtime imports require an audit
 and appropriate boundary coverage before keeping an exemption.
 
-The exact known skill Markdown/template, native role TOML, stage-event JSON and
+The exact known skill Markdown/template (including `evaluate-deliveries`), native role TOML, optional stage-event JSON and
 Python validator/requirements files in `agent-validation-resource` require only
 repository validation. Skills/profiles are agent-runtime inputs; Python validation
 reads the skills, schema and example, and its tests run in the repository job.

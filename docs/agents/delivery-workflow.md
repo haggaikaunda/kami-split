@@ -94,8 +94,9 @@ Builder, tester, and reviewer are independent roles with separate agent/task con
 The coordinator uses [model routing and compact fresh assignments](model-routing.md)
 throughout delivery. Keep the user's coordinator model; explicitly select supported
 model/effort for delegated roles. Cross-model and independent roles use fresh
-contexts. Use [GitHub stage records and the current handoff](delivery-records.md)
-at meaningful boundaries, including blocked/incomplete attempts. These records
+contexts. Use [concise GitHub evidence and the current handoff](delivery-records.md)
+at meaningful boundaries, including blocked/incomplete attempts; ordinary
+human-readable outcomes are sufficient and structured events are optional. These records
 support the existing trusted workflow; they do not authenticate separate credentials
 or add a routine human approval. Enforcement work in
 [#305](https://github.com/haggaikaunda/kami-split/issues/305) is non-blocking.
