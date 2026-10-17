@@ -12,6 +12,13 @@ const profile = (appearance) => ({
   },
 });
 
+test.afterEach(async ({ page }, info) => {
+  // These transitions can cancel held profile/auth reads. Close a successful
+  // case before fixture unrouteAll(wait); retain failed pages for screenshots.
+  if (info.status === info.expectedStatus && !page.isClosed())
+    await page.close();
+});
+
 // Observe every animation frame, including intermediate loading, rather than
 // inferring absence of a flash from the final screenshot.
 async function observe(page, value) {
@@ -265,9 +272,6 @@ for (const status of [503, 401]) {
     await expect(
       page.getByText('Private synthetic person', { exact: true }),
     ).toHaveCount(0);
-    // Close the document before fixture route teardown: canceled protected reads
-    // must settle instead of keeping unrouteAll(wait) alive after access loss.
-    await page.close();
   });
 }
 
