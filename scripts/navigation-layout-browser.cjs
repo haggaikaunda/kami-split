@@ -238,7 +238,7 @@ module.exports = async function verifyLayout({
     await page
       .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
       .getAttribute('href'),
-    workspace === 'group' ? '/trips' : '/household',
+    workspace === 'group' ? '/groups' : '/household',
   );
   results.push({
     workspace,

@@ -35,7 +35,13 @@ module.exports = async function verifyIssue269({
     if (scale === 2)
       await page.addStyleTag({ content: 'html{font-size:200% !important}' });
     assert.equal(await add.count(), 1);
-    assert.equal(await page.locator('[data-ui~="banner-action"]').count(), 0);
+    assert.equal(
+      await header
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .count(),
+      0,
+      'Creation lives in shared navigation rather than the identity header',
+    );
     assert.equal(
       await page.locator('[data-ui~="workspace-refresh"] button').count(),
       0,

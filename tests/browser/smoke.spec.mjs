@@ -1507,3 +1507,58 @@ test('Profile return reauthorizes an expired source and cannot restore denied pr
     0,
   );
 });
+
+test('expense Escape consumes a fresh first page before completing the restored traversal', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.goto('/trips/T?tab=expenses');
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+  await page.locator('[data-ui~="ledger-pagination"]').scrollIntoViewIfNeeded();
+  const origin = page.locator('#ledger-expense-e8');
+  await expect(origin).toBeVisible();
+  await origin.click();
+  await expect(
+    page.getByText('Private fixture note', { exact: true }),
+  ).toBeVisible();
+  const updated = responseFor('expensesGroupQuery', { after: null });
+  updated.groupExpenses.id = 'ExpenseView:independent-post-detail';
+  updated.groupExpenses.pageInfo.endCursor = 'fresh-e6';
+  updated.groupExpenses.edges[0].node = {
+    ...updated.groupExpenses.edges[0].node,
+    id: 'ExpenseSnapshot:e1:2',
+    version: '2',
+    description: 'Fresh expense after detail return',
+  };
+  const fresh = app.hold('expensesGroupQuery', updated);
+  const returnRequests = app.requests.length;
+  await page.keyboard.press('Escape');
+  await fresh.started;
+  // Let an obsolete continuation expose premature restoration while the fresh
+  // first page is held. Its changed data and cursor must still be consumed.
+  await page.waitForTimeout(300);
+  const prematureFocus = await page.evaluate(
+    () => document.activeElement?.id === 'ledger-expense-e8',
+  );
+  await fresh.release();
+  await expect(page.locator('#ledger-expense-e1')).toContainText(
+    'Fresh expense after detail return',
+  );
+  expect(prematureFocus, 'Restored focus waits for the fresh traversal').toBe(
+    false,
+  );
+  expect(
+    app.requests
+      .slice(returnRequests)
+      .some(
+        (request) =>
+          request.operation === 'expensesGroupQuery' &&
+          request.variables.after === 'fresh-e6',
+      ),
+    'Continuation uses the new first-page anchor',
+  ).toBe(true);
+  await expect(origin).toBeAttached();
+  await expect(origin).toBeFocused();
+  await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(9);
+});
