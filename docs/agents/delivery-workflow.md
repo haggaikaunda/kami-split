@@ -27,6 +27,12 @@ Before updating issue bodies, PR descriptions, decision records, or equivalent c
 
 A PR may merge while its linked issue remains open. Merging a partial, design, or foundation PR does not by itself close the issue: use a non-closing issue reference and explicitly record remaining work on the issue. Close an issue only when its full acceptance criteria and required gates are satisfied.
 
+Use `Refs #number` for partial delivery. GitHub closing-keyword syntax can act
+even inside negated prose, so avoid pairing a closing keyword with the issue
+reference anywhere in that PR description or commit message. After merge,
+verify the issue remains open; reconcile accidental closure with the approved
+remaining scope before updating the handoff.
+
 ## Merge gates
 
 - The PR is linked to an approved issue and is not a draft.

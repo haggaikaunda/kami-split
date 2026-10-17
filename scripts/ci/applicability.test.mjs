@@ -58,6 +58,8 @@ for (const [paths, expected] of [
     [
       '.agents/skills/prepare-issue/SKILL.md',
       '.agents/skills/verify-requirements/SKILL.md',
+      '.agents/skills/start-task/SKILL.md',
+      '.agents/skills/close-delivery/SKILL.md',
       '.agents/skills/author-repository-skill/assets/skill-template.md',
       '.codex/agents/kami-builder.toml',
       'docs/agents/records/stage-event.schema.json',

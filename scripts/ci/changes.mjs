@@ -68,6 +68,8 @@ const agentResources = new Set([
   '.agents/skills/author-repository-skill/assets/skill-template.md',
   '.agents/skills/prepare-issue/SKILL.md',
   '.agents/skills/verify-requirements/SKILL.md',
+  '.agents/skills/start-task/SKILL.md',
+  '.agents/skills/close-delivery/SKILL.md',
   '.codex/agents/kami-builder.toml',
   '.codex/agents/kami-tester.toml',
   '.codex/agents/kami-reviewer.toml',
