@@ -98,5 +98,6 @@ review where practical. After relevant changes, rerun affected checks and obtain
 a whole updated final-diff review. Add roles only for a concrete benefit, avoid
 duplicate investigation and concurrent writes to shared resources, and use compact
 results and bounded waits. Record routing, fallback/escalation and unknown usage
-in the [GitHub stage records](delivery-records.md). Cost per accepted goal is
+in [concise GitHub evidence](delivery-records.md), without requiring a JSON ledger.
+Cost per accepted goal is
 unknown unless attributable measurements include coordination and failed attempts.
