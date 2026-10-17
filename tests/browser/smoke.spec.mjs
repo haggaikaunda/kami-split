@@ -2018,6 +2018,15 @@ test('Balance layout: long names and amounts, keyboard details, ineligible parti
       }));
       expect(geometry.scroll).toBeLessThanOrEqual(geometry.width + 1);
       expect(geometry.font).toBe(textScale === '200%' ? '32px' : '16px');
+      if (width === 320 && textScale === '200%') {
+        const label = await summary
+          .locator('[data-ui~="household-source-label"]')
+          .boundingBox();
+        expect(
+          label.width,
+          'Source names retain a readable text column at doubled text',
+        ).toBeGreaterThanOrEqual(120);
+      }
       await page.screenshot({
         path: testInfo.outputPath(`balances-${width}-${textScale}.png`),
         fullPage: true,

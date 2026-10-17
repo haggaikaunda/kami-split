@@ -56,6 +56,18 @@
   background: var(--color-violet-surface);
   color: var(--color-violet);
 }
+.household-source-label {
+  min-width: 0;
+}
+@container (max-width: 14rem) {
+  .household-source-name {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .household-source-label {
+    width: 100%;
+  }
+}
 
 .household-empty {
   display: grid;

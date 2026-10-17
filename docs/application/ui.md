@@ -63,6 +63,8 @@ Balance copy distinguishes what a person owes/is owed from expense spending. Rep
 
 Household Balances initially collapses each source independently, keeping its name,
 kind, exact personal balance and truthful settlement/unavailable copy visible.
+Source icons stack above names in narrow text-relative containers so long names
+retain a readable text column at enlarged sizes.
 Expanded sources expose explicit obligations and links to complete member positions
 and repayment history. Group/Trip Balances separates member positions from
 who-owes-whom suggestions with the same native keyboard disclosures. Selecting a

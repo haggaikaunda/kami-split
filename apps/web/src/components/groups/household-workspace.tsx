@@ -559,12 +559,21 @@ export function HouseholdContent({
                                       : 'groups'
                                 }
                               />
-                              {space.name} ·{' '}
-                              {space.isHousehold
-                                ? 'Household expenses'
-                                : space.kind === 'TRIP'
-                                  ? 'Trip'
-                                  : 'Group'}
+                              <span
+                                data-ui="household-source-label"
+                                className={
+                                  householdFeatureStyles[
+                                    'household-source-label'
+                                  ]
+                                }
+                              >
+                                {space.name} ·{' '}
+                                {space.isHousehold
+                                  ? 'Household expenses'
+                                  : space.kind === 'TRIP'
+                                    ? 'Trip'
+                                    : 'Group'}
+                              </span>
                             </strong>
                             <span
                               data-ui="row-detail"
