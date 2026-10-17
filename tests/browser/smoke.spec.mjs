@@ -1126,15 +1126,50 @@ test('directory cards contain long exact amounts across responsive themes and en
         const geometry = await directory(page).evaluate((element) => ({
           doc: document.documentElement.scrollWidth,
           viewport: innerWidth,
-          cards: [...element.querySelectorAll('a')].map((card) => ({
-            width: card.clientWidth,
-            scroll: card.scrollWidth,
-          })),
+          cards: [...element.querySelectorAll('a')].map((card) => {
+            const name = card.querySelector('strong');
+            const metadata = name.parentElement.lastElementChild;
+            const splitWords = [];
+            for (const text of [name, metadata]) {
+              const nodes = document.createTreeWalker(
+                text,
+                NodeFilter.SHOW_TEXT,
+              );
+              let node;
+              while ((node = nodes.nextNode())) {
+                for (const word of node.textContent.matchAll(/[A-Za-z0-9]+/g)) {
+                  const range = document.createRange();
+                  range.setStart(node, word.index);
+                  range.setEnd(node, word.index + word[0].length);
+                  if (range.getClientRects().length > 1)
+                    splitWords.push(word[0]);
+                }
+              }
+            }
+            return {
+              width: card.clientWidth,
+              scroll: card.scrollWidth,
+              name: name.textContent,
+              nameLines: Math.round(
+                name.getBoundingClientRect().height /
+                  Number.parseFloat(getComputedStyle(name).lineHeight),
+              ),
+              splitWords,
+            };
+          }),
         }));
         expect(geometry.doc).toBeLessThanOrEqual(width + 1);
         expect(
           geometry.cards.every((card) => card.scroll <= card.width + 1),
         ).toBe(true);
+        expect(
+          geometry.cards.flatMap((card) => card.splitWords),
+          'Natural-language names and active-member labels keep their words intact',
+        ).toEqual([]);
+        expect(
+          geometry.cards.find((card) => card.name === 'Friends').nameLines,
+        ).toBe(1);
+        expect(geometry.cards[0].nameLines).toBeLessThanOrEqual(8);
         await expect(directory(page).getByRole('link').first()).toContainText(
           '$92,233,720,368,547,758.07',
         );

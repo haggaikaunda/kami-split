@@ -39,6 +39,7 @@
   list-style: none;
 }
 [data-ui~='form-scope'] .discovery-cards > li {
+  container: directory-card / inline-size;
   min-width: 0;
   margin: 0;
   background: var(--color-surface);
@@ -113,4 +114,13 @@
 }
 .card-finances [data-position='negative'] > strong {
   color: var(--color-owes);
+}
+
+@container directory-card (max-width: 15em) {
+  .card-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card-icon {
+    grid-row: auto;
+  }
 }

@@ -113,7 +113,9 @@ Groups presents native card links with source identity, active-member count and
 trip destination/dates. Complete Total spend and Your balance are separate labeled
 values in the source currency. Positive, negative and zero balances use explicit
 words; zero never labels the entire source settled. Names and exact amounts wrap
-within shrinkable card columns at narrow widths and enlarged text. The directory
+within shrinkable card columns at narrow widths and enlarged text. When a card
+is narrow relative to its text size, its icon stacks above the name and member
+label so ordinary words retain usable line width. The directory
 uses the shared cards loading presentation, URL-backed type/date links and the
 existing native Dialog for the authorized Group/Trip creation choices. Current
 Group and Trip workspaces also expose complete Total spend in Overview.
