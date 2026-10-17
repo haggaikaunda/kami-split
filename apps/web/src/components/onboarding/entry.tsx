@@ -2,7 +2,7 @@
 
 import { cx } from '../ui/classnames';
 import { useFinancialSession } from '../groups/session';
-import { SourceReturn } from '../groups/navigation';
+import { RestoreSource, SourceReturn } from '../groups/navigation';
 
 import {
   AppIcon,
@@ -159,6 +159,9 @@ function OnboardingVisit({
                 </header>
                 {c.session ? (
                   <>
+                    {scope?.actor === c.session.user.id && (
+                      <RestoreSource scope={scope} allowed={[]} />
+                    )}
                     <ProfileEditor key={c.session.user.id} state={c} />
                     <AppearanceEditor
                       key={`appearance:${c.session.user.id}`}

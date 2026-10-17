@@ -1341,6 +1341,9 @@ test('global Add expense requires an explicit eligible source and cancel restore
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page).toHaveURL(/\/account(?:\?|$)/);
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Add expense', exact: true }),
+  ).toBeFocused();
 });
 
 test('no eligible expense source and failed group discovery leave Profile usable', async ({
