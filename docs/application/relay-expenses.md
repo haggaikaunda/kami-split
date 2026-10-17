@@ -18,7 +18,7 @@ providers or mock household snapshot. Its form consumes current authorized
 membership IDs and eligibility, and its balance panel consumes `GroupBalances`.
 A whole-household snapshot adapter would incorrectly treat one expense page as a
 complete ledger and retain preview-only membership and trip assumptions.
-[Activity workspaces](activity.md) also use authenticated financial reads with bounded first-page Relay reuse at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` lists independent authenticated Trip groups. Collaborative expense editing is implemented under #212; deletion remains deferred.
+[Activity workspaces](activity.md) also use authenticated financial reads with bounded first-page Relay reuse at workspace `?tab=activity` routes for `/groups/:groupId`, `/trips/:groupId`, `/household/ledger`, and aggregated `/household/activity`, with fresh feed and node authorization on details. The legacy seeded routes and provider stack were removed in #184; `/` enters real `/groups` discovery after server-verified authentication (signed-out requests go to `/sign-in`) and `/trips` redirects to the unified Groups directory’s Trips selection. Collaborative expense editing is implemented under #212; deletion remains deferred.
 #171 adds shared Group/Trip workspace tabs, overview and balance details, members,
 and persisted group-local repayment entry. #170 adds the shared
 [production Expenses workspaces](expenses-ledger.md), including the complete
@@ -104,6 +104,26 @@ verification with tested commit and explicit limitations.
 
 ## Discovery and return navigation (#105)
 
+Groups lists all admitted ordinary groups and trips, excluding the designated
+Household, with URL-backed All / Groups / Trips filters. Trips keeps its UTC
+All / Upcoming / Past classification without hiding past trips automatically.
+The one retained `journeyViewerQuery` selects self-only `groupDirectory` alongside
+minimal Viewer identity, UTC date and creator capability. Its single bounded API
+aggregate read returns source-coherent metadata, active-member counts (excluding
+pending/inactive memberships), complete expense-only spend and viewer net; the
+browser fetches neither per-card summaries nor full ledgers. Directory size grows
+with accessible sources, not expense count. Explicit source financial Problems
+render unavailable amounts, while a directory/access failure renders no cards.
+Canonical minor-unit strings pass through exact formatting without Number coercion.
+Zero net describes the viewer only, never all members being settled.
+
+Group/Trip Overview selects the same additive `Group.financialSummary` for Total
+spend, independently of its recent rows, selected ledger filters and trip dates.
+Repayments affect net balances but never spend. Every mutation outcome invalidates
+the account store; workspace refresh recomputes the source and a directory visit
+performs a new authorized read. Foregrounding, explicit refresh and UTC midnight
+also replace the private directory owner. No archive lifecycle is introduced.
+
 A normal card/expense activation captures an actor-session source visit with its
 filter URL, scroll and logical focus. Modified clicks use canonical standalone
 URLs. Back to source restores after an eligible bounded Relay read or fresh authorized read; missing records focus
@@ -120,8 +140,9 @@ without preview household trip pickers or repayment shortcuts.
 
 ## Group creation (#106)
 
-Enabled designated creators can open `/groups/new` from Groups (ordinary by
-default) or Create trip from Trips (trip by default). USD is read-only; trip
+Enabled designated creators use Create in the directory to choose Group
+(`/groups/new`) or Trip (`/trips/new`). Direct creation links remain available.
+The source visit retains directory filters, scroll and Create focus for return. USD is read-only; trip
 dates initially use the fresh server UTC date. Names use ASCII trimming and
 Unicode scalar limits; destinations preserve whitespace. There is no member
 picker or household inheritance: the server atomically creates a sole owner

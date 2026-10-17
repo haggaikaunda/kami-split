@@ -43,6 +43,11 @@ function fixture(net: string, trip = false): WorkspaceGroup {
     id: 'G',
     name: 'Shared space',
     currency: 'USD',
+    financialSummary: {
+      __typename: 'GroupFinancialSummary',
+      totalSpendMinor: '9007199254740993',
+      viewerNetMinor: net,
+    },
     kind: trip ? 'TRIP' : 'ORDINARY',
     isHousehold: false,
     trip: trip
@@ -190,7 +195,7 @@ it('shows complete viewer expense allocations and payer amount without deriving 
     [...summary.querySelectorAll('[data-ui~="metric-label"]')].map((n) =>
       n.textContent?.replace('ⓘ', ''),
     ),
-  ).toEqual(['Total expenses', 'Your balance', 'Your share']);
+  ).toEqual(['Total spend', 'Your balance', 'Your share']);
   expect(summary.textContent).toContain('3.75');
   expect(summary.textContent).toContain('You paid $90,071,992,547,409.93 USD');
   expect(summary.textContent).toContain('Other members still owe each other');

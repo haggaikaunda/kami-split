@@ -125,6 +125,7 @@ const groups = [
 ];
 function viewer(items = groups) {
   return {
+    groupDirectory: { __typename: 'GroupDirectory', entries: [] },
     viewer: {
       __typename: 'Viewer',
       id: 'A',

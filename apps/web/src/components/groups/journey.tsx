@@ -52,6 +52,7 @@ export function GroupJourney({
   repayment = false,
   trips = false,
   filter = 'all',
+  selection = 'all',
   creation,
   household = false,
 }: {
@@ -62,6 +63,7 @@ export function GroupJourney({
   repayment?: boolean;
   trips?: boolean;
   filter?: string;
+  selection?: string;
 }) {
   const initialGroup = routeId(pathGroup),
     expense = routeId(pathExpense);
@@ -126,9 +128,10 @@ export function GroupJourney({
     </>
   ) : (
     <ViewerJourney
-      key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${filter}:${pathname}:${visitParams.toString()}`}
+      key={`${access.scope.id}:${initialGroup}:${expense}:${repayment}:${trips}:${selection}:${filter}:${pathname}:${visitParams.toString()}`}
       scope={access.scope}
       trips={trips}
+      selection={trips ? 'trips' : selection}
       filter={filter}
       creation={creation}
     />
@@ -159,11 +162,7 @@ export function GroupJourney({
                   ? creation === 'TRIP'
                     ? 'New trip'
                     : 'New group'
-                  : trips
-                    ? 'Your trips'
-                    : initialGroup
-                      ? 'Your group'
-                      : 'Your groups'}
+                  : 'Groups'}
               </h1>
             )}
           </header>

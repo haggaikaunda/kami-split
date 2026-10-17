@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4ff8bf341c9c1089b28215a317eacdf4>>
+ * @generated SignedSource<<bb1c841a9b2461b44445b2466b785f62>>
  * @lightSyntaxTransform
  */
 
@@ -8,18 +8,36 @@
 // @ts-nocheck
 
 import { ReaderFragment } from 'relay-runtime';
+export type Currency = "USD" | "%future added value";
 export type GroupKind = "ORDINARY" | "TRIP" | "%future added value";
+export type ProblemCode = "AMOUNT_OVERFLOW" | "FORBIDDEN" | "INVALID_CURSOR" | "INVALID_INPUT" | "NOT_FOUND" | "UNAVAILABLE" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type discoveryCard$data = {
-  readonly id: string;
-  readonly isHousehold: boolean;
-  readonly kind: GroupKind;
-  readonly name: string;
-  readonly trip: {
-    readonly destination: string;
-    readonly endDate: string;
-    readonly startDate: string;
-  } | null | undefined;
+  readonly activeMemberCount: number;
+  readonly financialSummary: {
+    readonly __typename: "GroupFinancialSummary";
+    readonly totalSpendMinor: string;
+    readonly viewerNetMinor: string;
+  } | {
+    readonly __typename: "Problem";
+    readonly code: ProblemCode;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
+  };
+  readonly group: {
+    readonly currency: Currency;
+    readonly id: string;
+    readonly isHousehold: boolean;
+    readonly kind: GroupKind;
+    readonly name: string;
+    readonly trip: {
+      readonly destination: string;
+      readonly endDate: string;
+      readonly startDate: string;
+    } | null | undefined;
+  };
   readonly " $fragmentType": "discoveryCard";
 };
 export type discoveryCard$key = {
@@ -37,67 +55,145 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
-      "name": "id",
+      "name": "activeMemberCount",
       "storageKey": null
     },
     {
       "alias": null,
       "args": null,
-      "kind": "ScalarField",
-      "name": "name",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "kind",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "isHousehold",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "GroupTrip",
+      "concreteType": null,
       "kind": "LinkedField",
-      "name": "trip",
+      "name": "financialSummary",
       "plural": false,
       "selections": [
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "destination",
+          "name": "__typename",
+          "storageKey": null
+        },
+        {
+          "kind": "InlineFragment",
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "totalSpendMinor",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "viewerNetMinor",
+              "storageKey": null
+            }
+          ],
+          "type": "GroupFinancialSummary",
+          "abstractKey": null
+        },
+        {
+          "kind": "InlineFragment",
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "code",
+              "storageKey": null
+            }
+          ],
+          "type": "Problem",
+          "abstractKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "GroupSummary",
+      "kind": "LinkedField",
+      "name": "group",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "id",
           "storageKey": null
         },
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "startDate",
+          "name": "name",
           "storageKey": null
         },
         {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "endDate",
+          "name": "kind",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "currency",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "isHousehold",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "GroupTrip",
+          "kind": "LinkedField",
+          "name": "trip",
+          "plural": false,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "destination",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "startDate",
+              "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "endDate",
+              "storageKey": null
+            }
+          ],
           "storageKey": null
         }
       ],
       "storageKey": null
     }
   ],
-  "type": "GroupSummary",
+  "type": "GroupDirectoryEntry",
   "abstractKey": null
 };
 
-(node as any).hash = "36d6f8d91a31e18e6788be257cc40c41";
+(node as any).hash = "847b0d0533bb3fd40b35a3b03711c69c";
 
 export default node;

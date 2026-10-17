@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { useFragment } from 'react-relay';
 import { calendarDate } from '@/lib/dates';
@@ -15,15 +16,16 @@ import card, {
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { ContentLoading } from '../ui/loading';
+import { Button, Dialog } from '../ui/primitives';
+import { AppIcon } from '@/components/workspace-identity';
+import { minor, money } from '@/lib/relay/money';
 
-import { cx } from '../ui/classnames';
 import { tripState } from '@/lib/relay/discovery';
 import { spaceHref } from '@/lib/relay/space-routes';
 import { CreationForm } from './creation-form';
 import { ScopedLink, RestoreSource } from './navigation';
 import { useForegroundRefresh } from './foreground';
 
-import uiStyles from '../ui/primitives.module.css';
 import discoveryFeatureStyles from './discovery.module.css';
 
 type Viewer = Extract<
@@ -34,6 +36,7 @@ type Props = {
   scope: FinancialScope;
   trips: boolean;
   filter: string;
+  selection: string;
   creation?: 'ORDINARY' | 'TRIP';
 };
 const unavailable =
@@ -86,6 +89,8 @@ export function ViewerJourney(props: Props) {
               <DiscoveryResults
                 {...props}
                 viewer={result.viewer}
+                directory={result.groupDirectory}
+                onError={setDomainError}
                 onDenied={() => {
                   setActive(false);
                   setState({ busy: false, error: true });
@@ -111,21 +116,36 @@ export function ViewerJourney(props: Props) {
 }
 function DiscoveryResults({
   scope,
-  trips,
   filter,
+  selection,
   creation,
   viewer,
+  directory,
+  onError,
   onDenied,
-}: Props & { viewer: Viewer; onDenied: () => void }) {
-  const groups = viewer.groups.filter(
-    (item) =>
+}: Props & {
+  viewer: Viewer;
+  directory: journeyViewerQuery['response']['groupDirectory'];
+  onError: (error: string) => void;
+  onDenied: () => void;
+}) {
+  const [creating, setCreating] = useState(false);
+  const params = useSearchParams();
+  const source = params.get('source');
+  const visit = source ? scope.visits.get(source) : undefined;
+  const entries =
+    directory.__typename === 'GroupDirectory' ? directory.entries : [];
+  const groups = entries.filter(
+    ({ group: item }) =>
       !item.isHousehold &&
-      (trips
+      (selection === 'trips'
         ? item.kind === 'TRIP' &&
           !!item.trip &&
           (filter === 'all' ||
             tripState(item.trip, viewer.today).toLowerCase() === filter)
-        : item.kind === 'ORDINARY'),
+        : selection === 'groups'
+          ? item.kind === 'ORDINARY'
+          : true),
   );
 
   return (
@@ -139,6 +159,12 @@ function DiscoveryResults({
       {creation &&
         (viewer.canCreateGroups ? (
           <CreationForm
+            source={source ?? undefined}
+            returnHref={
+              visit
+                ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${source}`
+                : undefined
+            }
             scope={scope}
             actor={viewer.id}
             today={viewer.today}
@@ -155,20 +181,60 @@ function DiscoveryResults({
         ))}
       {!creation && (
         <>
-          {viewer.canCreateGroups && (
-            <Link
-              data-ui="button button--primary"
-              className={cx(
-                uiStyles.button,
-                uiStyles['button--primary'],
-                discoveryFeatureStyles['discovery-create'],
-              )}
-              href={trips ? '/trips/new' : '/groups/new'}
+          <div className={discoveryFeatureStyles['directory-toolbar']}>
+            <nav
+              className={discoveryFeatureStyles['discovery-filters']}
+              aria-label="Group type"
             >
-              {trips ? 'Create trip' : 'Create group'}
-            </Link>
+              {['all', 'groups', 'trips'].map((value) => (
+                <Link
+                  key={value}
+                  href={value === 'all' ? '/groups' : `/groups?kind=${value}`}
+                  aria-current={selection === value ? 'page' : undefined}
+                >
+                  {value === 'all'
+                    ? 'All'
+                    : value === 'groups'
+                      ? 'Groups'
+                      : 'Trips'}
+                </Link>
+              ))}
+            </nav>
+            {viewer.canCreateGroups && (
+              <Button id="directory-create" onClick={() => setCreating(true)}>
+                Create
+              </Button>
+            )}
+          </div>
+          {creating && (
+            <Dialog
+              open
+              title="Create a shared space"
+              onClose={() => setCreating(false)}
+            >
+              <p>
+                <ScopedLink
+                  scope={scope}
+                  id="create-group"
+                  sourceFocus="directory-create"
+                  href="/groups/new"
+                >
+                  Create group
+                </ScopedLink>
+              </p>
+              <p>
+                <ScopedLink
+                  scope={scope}
+                  id="create-trip"
+                  sourceFocus="directory-create"
+                  href="/trips/new"
+                >
+                  Create trip
+                </ScopedLink>
+              </p>
+            </Dialog>
           )}
-          {trips && (
+          {selection === 'trips' && (
             <nav
               data-ui="discovery-filters"
               className={discoveryFeatureStyles['discovery-filters']}
@@ -178,7 +244,7 @@ function DiscoveryResults({
                 <Link
                   key={value}
                   aria-current={filter === value ? 'page' : undefined}
-                  href={`/trips?filter=${value}`}
+                  href={`/groups?kind=trips&filter=${value}`}
                 >
                   {value === 'all'
                     ? 'All'
@@ -189,17 +255,17 @@ function DiscoveryResults({
               ))}
             </nav>
           )}
-          {!groups.length ? (
+          {directory.__typename !== 'GroupDirectory' && !creation ? (
+            <DiscoveryFailure result={directory} onError={onError} />
+          ) : !groups.length ? (
             <p>
-              {trips
-                ? viewer.groups.length
+              {entries.filter((item) => !item.group.isHousehold).length
+                ? selection === 'trips'
                   ? 'No trips match this filter.'
-                  : 'You have no admitted trips or groups.'
-                : viewer.groups.length > 0
-                  ? 'No ordinary groups yet. Household and Trips are available in the main navigation.'
-                  : 'You have no admitted groups.'}{' '}
+                  : 'No groups match this filter.'
+                : 'You have no admitted groups or trips.'}{' '}
               {viewer.canCreateGroups
-                ? 'Create a group to begin.'
+                ? 'Create a group or trip to begin.'
                 : 'Open your invitation and explicitly join to continue.'}
             </p>
           ) : (
@@ -209,7 +275,7 @@ function DiscoveryResults({
             >
               {groups.map((item) => (
                 <DiscoveryCard
-                  key={item.id}
+                  key={item.group.id}
                   scope={scope}
                   reference={item}
                   today={viewer.today}
@@ -217,10 +283,12 @@ function DiscoveryResults({
               ))}
             </ul>
           )}
-          <RestoreSource
-            scope={scope}
-            allowed={groups.map((item) => item.id)}
-          />
+          {directory.__typename === 'GroupDirectory' && (
+            <RestoreSource
+              scope={scope}
+              allowed={groups.map((item) => item.group.id)}
+            />
+          )}
         </>
       )}
     </>
@@ -236,33 +304,81 @@ function DiscoveryCard({
   reference: discoveryCard$key;
   today: string;
 }) {
-  const item = useFragment(card, reference);
+  const entry = useFragment(card, reference);
+  const item = entry.group;
+  const summary = entry.financialSummary;
+  const net =
+    summary.__typename === 'GroupFinancialSummary'
+      ? minor(summary.viewerNetMinor)
+      : null;
   return (
     <li>
-      <div
-        data-ui={`financial-cover ${item.trip ? 'financial-cover--trip' : ''}`}
-        className={cx(
-          discoveryFeatureStyles['financial-cover'],
-          item.trip ? discoveryFeatureStyles['financial-cover--trip'] : '',
-        )}
-        aria-hidden="true"
-      />
       <ScopedLink scope={scope} id={`group-${item.id}`} href={spaceHref(item)}>
-        {item.name} · {item.kind === 'TRIP' ? 'Trip' : 'Group'}
+        <span className={discoveryFeatureStyles['card-heading']}>
+          <span
+            aria-hidden="true"
+            className={discoveryFeatureStyles['card-icon']}
+          >
+            <AppIcon name={item.kind === 'TRIP' ? 'trip' : 'groups'} />
+          </span>
+          <strong>{item.name}</strong>
+          <span>
+            {item.kind === 'TRIP' ? 'Trip' : 'Group'} ·{' '}
+            {entry.activeMemberCount} active{' '}
+            {entry.activeMemberCount === 1 ? 'member' : 'members'}
+          </span>
+        </span>
+        {item.trip && (
+          <span className={discoveryFeatureStyles['card-meta']}>
+            {item.trip.destination} ·{' '}
+            <time dateTime={item.trip.startDate}>
+              {calendarDate(item.trip.startDate)}
+            </time>{' '}
+            –{' '}
+            <time dateTime={item.trip.endDate}>
+              {calendarDate(item.trip.endDate)}
+            </time>{' '}
+            · {tripState(item.trip, today)}
+          </span>
+        )}
+        <span className={discoveryFeatureStyles['card-finances']}>
+          <span>
+            <span>Total spend · {item.currency}</span>
+            <strong>
+              {summary.__typename === 'GroupFinancialSummary'
+                ? money(summary.totalSpendMinor)
+                : 'Unavailable'}
+            </strong>
+          </span>
+          <span
+            data-position={
+              net === null
+                ? undefined
+                : net > 0n
+                  ? 'positive'
+                  : net < 0n
+                    ? 'negative'
+                    : 'zero'
+            }
+          >
+            <span>Your balance · {item.currency}</span>
+            <strong>
+              {summary.__typename === 'GroupFinancialSummary'
+                ? money(summary.viewerNetMinor)
+                : 'Unavailable'}
+            </strong>
+            <span>
+              {net === null
+                ? 'Refresh to try again'
+                : net > 0n
+                  ? 'You’re owed'
+                  : net < 0n
+                    ? 'You owe'
+                    : 'Nothing for you to pay or collect'}
+            </span>
+          </span>
+        </span>
       </ScopedLink>
-      {item.trip && (
-        <p>
-          {item.trip.destination} ·{' '}
-          <time dateTime={item.trip.startDate}>
-            {calendarDate(item.trip.startDate)}
-          </time>{' '}
-          –{' '}
-          <time dateTime={item.trip.endDate}>
-            {calendarDate(item.trip.endDate)}
-          </time>{' '}
-          · {tripState(item.trip, today)}
-        </p>
-      )}
     </li>
   );
 }
@@ -271,7 +387,9 @@ function DiscoveryFailure({
   result,
   onError,
 }: {
-  result: journeyViewerQuery['response']['viewer'];
+  result:
+    | journeyViewerQuery['response']['viewer']
+    | journeyViewerQuery['response']['groupDirectory'];
   onError: (error: string) => void;
 }) {
   const error = message(

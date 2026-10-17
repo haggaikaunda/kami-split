@@ -106,3 +106,14 @@ new cached-display or background-refresh policy is implied by these components.
 loader and retains refresh completion/failure feedback. Its explicit error retry
 coalesces with the existing pull gesture and invokes the owner's read callback;
 it does not retry a mutation or manufacture a timeout.
+
+## Unified directory
+
+Groups presents native card links with source identity, active-member count and
+trip destination/dates. Complete Total spend and Your balance are separate labeled
+values in the source currency. Positive, negative and zero balances use explicit
+words; zero never labels the entire source settled. Names and exact amounts wrap
+within shrinkable card columns at narrow widths and enlarged text. The directory
+uses the shared cards loading presentation, URL-backed type/date links and the
+existing native Dialog for the authorized Group/Trip creation choices. Current
+Group and Trip workspaces also expose complete Total spend in Overview.
