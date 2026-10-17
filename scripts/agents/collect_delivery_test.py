@@ -58,6 +58,22 @@ def base_routes():
             "actions/runs?head_sha=" + "2" * 40 + "&per_page=100&page=1": {"workflow_runs": []}}
 
 
+def job_evidence():
+    """A successful Verify job can belong to a failed aggregate workflow run."""
+    check = json.loads(EXAMPLE.read_text())["evidence"]["checks"][0]
+    check.update(check_id="7", run_id="8", attempt=1, source=ROOT + "/actions/runs/8/attempts/1/job/9",
+                 workflow="CI", workflow_revision=None, head="a" * 40, conclusion="success")
+    run = {"id": 8, "run_attempt": 1, "head_sha": check["head"], "name": "CI", "conclusion": "failure"}
+    routes = {"check-runs/7": {"id": 7, "name": check["name"], "head_sha": check["head"],
+                                "conclusion": "success", "details_url": ROOT + "/actions/runs/8/job/9"},
+              "actions/runs/8": run, "actions/runs/8/attempts/1": run,
+              "actions/runs/8/attempts/1/jobs?per_page=100&page=1": {"jobs": []},
+              "actions/jobs/9": {"id": 9, "run_id": 8, "run_attempt": 1, "head_sha": check["head"],
+                                  "name": check["name"], "conclusion": "success",
+                                  "check_run_url": "https://api.github.com/repos/example/project/check-runs/7"}}
+    return check, routes
+
+
 class RetrievalTests(unittest.TestCase):
     def test_multi_page_comments_ongoing_denominator_and_precise_cross_link(self):
         routes = base_routes()
@@ -252,6 +268,69 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(collector.observe_check(check)["status"], "observed_fields_consistent")
         routes["actions/jobs/9"]["check_run_url"] = "https://api.github.com/repos/example/project/check-runs/77"
         self.assertIn("job_check_relation", Collector("example/project", Fake(routes)).observe_check(check)["mismatches"])
+
+    def test_nullable_retained_ids_do_not_hide_conflicting_source_and_live_identities(self):
+        for field, value, conflict in [("run_id", "999", "identity_run_id"),
+                                       ("attempt", 2, "identity_attempt"),
+                                       ("job_id", "99", "identity_job_id")]:
+            with self.subTest(field=field):
+                check, routes = job_evidence()
+                check.update(run_id=None, attempt=None, workflow=None)
+                if field == "run_id":
+                    check["source"] = ROOT + "/actions/runs/999/attempts/1/job/9"
+                elif field == "attempt":
+                    check["source"] = ROOT + "/actions/runs/8/attempts/2/job/9"
+                else:
+                    routes["check-runs/7"]["details_url"] = ROOT + "/actions/runs/8/job/99"
+                observed = Collector("example/project", Fake(routes)).observe_check(check)
+                self.assertEqual(observed["status"], "inconsistent")
+                self.assertIn(conflict, observed["mismatches"])
+        check, routes = job_evidence()
+        check.update(run_id=None, attempt=None, workflow=None)
+        self.assertEqual(Collector("example/project", Fake(routes)).observe_check(check)["status"], "observed_fields_consistent")
+        del routes["actions/jobs/9"]["run_attempt"]
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "unverified")
+        self.assertIn("source_identity_not_established", observed["limitations"])
+
+    def test_source_check_query_is_reconciled_when_retained_check_id_is_unknown(self):
+        check, routes = job_evidence()
+        check.update(check_id=None, run_id=None, attempt=None, workflow=None,
+                     source=ROOT + "/pull/3/checks?check_run_id=7")
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "observed_fields_consistent")
+        routes["check-runs/7"]["id"] = 77
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "inconsistent")
+        self.assertIn("identity_check_id", observed["mismatches"])
+        check, routes = job_evidence()
+        check.update(check_id=None, source=ROOT + "/actions/runs/8/attempts/1/job/9?check_run_id=7")
+        routes["actions/jobs/9"]["check_run_url"] = "https://api.github.com/repos/example/project/check-runs/77"
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertIn("identity_check_id", observed["mismatches"])
+        check, routes = job_evidence()
+        check.update(run_id=None, attempt=None, workflow=None)
+        routes["check-runs/7"]["details_url"] = ROOT + "/pull/3/checks?check_run_id=77"
+        self.assertIn("identity_check_id", Collector("example/project", Fake(routes)).observe_check(check)["mismatches"])
+
+    def test_job_and_run_conclusions_use_their_own_subject_with_unknown_check_id(self):
+        check, routes = job_evidence()
+        check["check_id"] = None
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "observed_fields_consistent")
+        for field, value in [("conclusion", "failure"), ("run_id", 999), ("run_attempt", 2)]:
+            with self.subTest(field=field):
+                changed = deepcopy(routes)
+                changed["actions/jobs/9"][field] = value
+                self.assertEqual(Collector("example/project", Fake(changed)).observe_check(check)["status"], "inconsistent")
+        check.update(run_id=None, attempt=None, workflow=None)
+        self.assertEqual(Collector("example/project", Fake(routes)).observe_check(check)["status"], "observed_fields_consistent")
+        check.update(run_id="8", attempt=1, source=ROOT + "/actions/runs/8/attempts/1", name="CI")
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "inconsistent")
+        self.assertIn("conclusion", observed["mismatches"])
+        check["conclusion"] = "failure"
+        self.assertEqual(Collector("example/project", Fake(routes)).observe_check(check)["status"], "observed_fields_consistent")
 
     def test_adapter_only_uses_fixed_host_get_and_never_echoes_stderr(self):
         with patch("collect_delivery.subprocess.run") as run:

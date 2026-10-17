@@ -274,29 +274,55 @@ class Collector:
         """Retained assertions and fresh API identities are separate observations."""
         result = {"retained": check, "fresh": {}, "status": "unverified", "limitations": []}
         mismatch = []
+        identities = {field: [] for field in ["run_id", "attempt", "job_id", "check_id"]}
+
+        def identity(field, value, origin):
+            if value is not None:
+                identities[field].append((str(value), origin))
+
+        def run_link(url, origin):
+            if not url.startswith((self.root + "/", f"https://api.github.com/repos/{self.repository}/")):
+                return None
+            query_check = re.search(r"[?&]check_run_id=(\d+)", url)
+            if query_check:
+                identity("check_id", query_check[1], origin)
+            parsed = re.search(
+                r"/actions/runs/(\d+)(?:/attempts/(\d+))?(?:/job/(\d+))?/?(?=$|[?#])", url)
+            if parsed:
+                for field, value in zip(["run_id", "attempt", "job_id"], parsed.groups()):
+                    identity(field, value, origin)
+            return parsed
+
+        for field in ["run_id", "attempt", "check_id"]:
+            identity(field, check[field], "retained")
         for key in ["check_id", "run_id"]:
             if check[key] is not None and not check[key].isdigit():
                 mismatch.append(key)
         if not check["source"].startswith(self.root + "/"):
             result["limitations"].append("external_check_source_not_verified")
-        source_ids = re.search(
-            r"/actions/runs/(\d+)(?:/attempts/(\d+))?(?:/job/(\d+))?/?(?=$|[?#])", check["source"])
+        source_ids = run_link(check["source"], "source")
         source_attempt = int(source_ids[2]) if source_ids and source_ids[2] else None
         if source_attempt is not None and check["attempt"] is not None and source_attempt != check["attempt"]:
             mismatch.append("source_attempt")
         source_check = re.search(r"[?&]check_run_id=(\d+)", check["source"])
+        if source_check:
+            identity("check_id", source_check[1], "source")
         if source_check and check["check_id"] and source_check[1] != check["check_id"]:
             mismatch.append("source_check_id")
         if source_ids and check["run_id"] and source_ids[1] != check["run_id"]:
             mismatch.append("source_run_id")
-        if check["check_id"] and check["check_id"].isdigit():
-            fresh = self.get(f"check-runs/{check['check_id']}")
+        check_identity = check["check_id"] or (source_check[1] if source_check else None)
+        details = None
+        if check_identity and check_identity.isdigit():
+            fresh = self.get(f"check-runs/{check_identity}")
             result["fresh"]["check"] = fresh
             if fresh:
+                identity("check_id", fresh.get("id"), "fresh_check")
                 for field, remote in [("check_id", "id"), ("name", "name"), ("head", "head_sha"), ("conclusion", "conclusion")]:
                     if check[field] is not None and str(check[field]) != str(fresh.get(remote)):
                         mismatch.append(field)
-                details = re.search(r"/actions/runs/(\d+)", fresh.get("details_url") or "")
+                details = run_link(fresh.get("details_url") or "", "fresh_check")
+                run_link(fresh.get("html_url") or "", "fresh_check")
                 if details and check["run_id"] and details[1] != check["run_id"]:
                     mismatch.append("check_run_relation")
         if check["run_id"] and check["run_id"].isdigit():
@@ -305,6 +331,8 @@ class Collector:
             fresh = self.get(f"actions/runs/{check['run_id']}/attempts/{attempt}") if attempt else run
             result["fresh"]["run_attempt"] = fresh
             if fresh:
+                identity("run_id", fresh.get("id"), "fresh_run")
+                identity("attempt", fresh.get("run_attempt"), "fresh_run")
                 if source_attempt is not None and source_attempt != fresh.get("run_attempt"):
                     mismatch.append("source_attempt")
                 for field, remote in [("run_id", "id"), ("head", "head_sha"), ("attempt", "run_attempt")]:
@@ -313,16 +341,16 @@ class Collector:
                 workflow = check["workflow"]
                 if workflow is not None:
                     path = re.search(r"\.github/workflows/[A-Za-z0-9_.-]+", workflow)
-                    identity = re.search(r"(?:workflow\s+ID\s*|^)(\d+)(?=:|\))", workflow)
+                    workflow_identity = re.search(r"(?:workflow\s+ID\s*|^)(\d+)(?=:|\))", workflow)
                     if path:
                         if path[0] != fresh.get("path"):
                             mismatch.append("workflow_path")
-                        if identity and identity[1] != str(fresh.get("workflow_id")):
+                        if workflow_identity and workflow_identity[1] != str(fresh.get("workflow_id")):
                             mismatch.append("workflow_id")
                     elif workflow != fresh.get("name"):
                         result["limitations"].append("workflow_description_not_machine_comparable")
                 # A job conclusion need not equal the aggregate run conclusion.
-                if not check["check_id"] and check["conclusion"] != fresh.get("conclusion"):
+                if not check_identity and not (source_ids and source_ids[3]) and check["conclusion"] != fresh.get("conclusion"):
                     mismatch.append("conclusion")
         if check["workflow_revision"]:
             result["limitations"].append("workflow_revision_not_attested_by_run_API")
@@ -330,23 +358,40 @@ class Collector:
             job = self.get(f"actions/jobs/{source_ids[3]}")
             result["fresh"]["source_job"] = job
             if job:
+                run_link(job.get("html_url") or "", "fresh_job")
+                run_link(job.get("run_url") or "", "fresh_job")
+                for field, remote in [("job_id", "id"), ("run_id", "run_id"), ("attempt", "run_attempt")]:
+                    identity(field, job.get(remote), "fresh_job")
                 for field, remote in [("run_id", "run_id"), ("attempt", "run_attempt"),
                                       ("head", "head_sha"), ("name", "name"), ("conclusion", "conclusion")]:
                     if check[field] is not None and str(check[field]) != str(job.get(remote)):
                         mismatch.append("job_" + field)
-                job_check = re.search(r"/check-runs/(\d+)$", job.get("check_run_url") or "")
+                job_check = re.fullmatch(
+                    re.escape(f"https://api.github.com/repos/{self.repository}/check-runs/") + r"(\d+)",
+                    job.get("check_run_url") or "")
+                if job_check:
+                    identity("check_id", job_check[1], "fresh_job")
                 if job_check and check["check_id"] and job_check[1] != check["check_id"]:
                     mismatch.append("job_check_relation")
-                if check["check_id"] and not job_check:
+                if check_identity and not job_check and not (details and details[3]):
                     result["limitations"].append("job_check_relation_unavailable")
+        for field, claims in identities.items():
+            if len({value for value, _origin in claims}) > 1:
+                mismatch.append("identity_" + field)
+            if any(origin == "source" for _value, origin in claims) and not any(
+                origin.startswith("fresh_") for _value, origin in claims
+            ):
+                result["limitations"].append("source_identity_not_established")
         if mismatch:
             result["status"] = "inconsistent"
             result["mismatches"] = sorted(set(mismatch))
         elif any(l in result["limitations"] for l in ["workflow_description_not_machine_comparable",
-                                                      "external_check_source_not_verified", "job_check_relation_unavailable"]):
+                                                      "external_check_source_not_verified", "job_check_relation_unavailable",
+                                                      "source_identity_not_established"]):
             pass
         elif result["fresh"] and all(result["fresh"].values()) and (
-            check["check_id"] is not None or (check["run_id"] is not None and check["attempt"] is not None)
+            check_identity is not None or (source_ids and source_ids[3]) or
+            (check["run_id"] is not None and check["attempt"] is not None)
         ):
             result["status"] = "observed_fields_consistent"
         else:

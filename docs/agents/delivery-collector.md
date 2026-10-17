@@ -68,7 +68,10 @@ Retained check assertions and fresh API observations are separate. The collector
 compares available run/check IDs, attempts embedded in source URLs, retained
 attempts, head, name, conclusion and workflow
 identity; unavailable or expired sources remain unverified, and mismatches remain
-inconsistent. A job ID is not assumed to be a check-run ID. The run API does not
+inconsistent. Source and live identities are reconciled even when redundant
+retained IDs are unknown; an unestablished relationship stays unverified. Job
+conclusions are compared with the job, while aggregate run conclusions apply to
+run-level evidence. A job ID is not assumed to be a check-run ID. The run API does not
 attest the workflow source revision; retained synthetic-merge relations remain
 assertions. Historical checks are not relabelled as fresh after expiry.
 
