@@ -57,6 +57,38 @@ class StageEventTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validate_file(self.write(event))
 
+    def test_marker_required_and_distinct_from_unrelated_json(self):
+        for marker in (None, "unrelated.record", 1):
+            with self.subTest(marker=marker):
+                event = copy.deepcopy(self.event)
+                if marker is None:
+                    del event["record_type"]
+                else:
+                    event["record_type"] = marker
+                with self.assertRaises(ValidationError):
+                    validate_file(self.write(event))
+
+    def test_optional_cycle_declaration_and_reference_shapes(self):
+        self.event.pop("correction_cycle", None)
+        validate_file(self.write(self.event))
+        for cycle in (
+            None, {"id": "example-cycle-001"},
+            {"id": "example-cycle-001", "source_stage": "review", "cause": "Observed defect"},
+        ):
+            with self.subTest(cycle=cycle):
+                self.event["correction_cycle"] = cycle
+                validate_file(self.write(self.event))
+        for cycle in (
+            {}, {"id": ""}, {"id": "has spaces"}, {"id": 1},
+            {"id": "example-cycle-001", "source_stage": "review"},
+            {"id": "example-cycle-001", "cause": "Observed defect"},
+            {"id": "example-cycle-001", "source_stage": "setup", "cause": "Observed defect"},
+        ):
+            with self.subTest(cycle=cycle):
+                self.event["correction_cycle"] = cycle
+                with self.assertRaises(ValidationError):
+                    validate_file(self.write(self.event))
+
     def test_check_attempt_and_unrecognized_data(self):
         for attempt in (0, -1, "2"):
             with self.subTest(attempt=attempt):

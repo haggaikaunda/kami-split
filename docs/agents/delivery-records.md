@@ -33,9 +33,13 @@ Post one JSON object per fenced `json` block in a comment, preceded by a brief
 human outcome. Use the [schema](records/stage-event.schema.json) and
 [synthetic example](records/stage-event.example.json). The example is non-live;
 replace its identifiers and observations, never publish it as delivery evidence.
+The fixed `record_type: "kami_split.delivery_stage"` marker distinguishes these
+events from unrelated fenced JSON. The later collector must report marked invalid
+records and unsupported versions rather than silently excluding them.
 
 | Field                                             | Meaning                                                                                                                                                          |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `record_type`                                     | Fixed discriminator `kami_split.delivery_stage`                                                                                                                  |
 | `schema_version`, `event_id`, `supersedes`        | Version `1`; globally unique stable event ID (for example a UUID); IDs corrected by this replacement event                                                       |
 | `goal`, `attempt_id`, `scope`                     | Owning issue URL, stable attempt ID, approved scope revision and approval/source links                                                                           |
 | `stage`, `role`, `outcome`                        | Boundary and responsible role; `started`, `ongoing`, `passed`, `failed`, `blocked`, `cancelled` or `not_applicable`                                              |
@@ -44,6 +48,7 @@ replace its identifiers and observations, never publish it as delivery evidence.
 | `evidence`                                        | Source links and compact observed checks: run ID, check-run/job ID, attempt, name, conclusion, workflow identity/revision, head SHA and synthetic-merge relation |
 | `findings`, `limitations`, `owner`, `next_action` | Actionable outcome, honest unknowns and who continues; empty findings means none observed in stated coverage                                                     |
 | `intervention`                                    | `planned_decision`, `rescue`, `none_observed`, `unknown` or `not_applicable`, reason/source links and observation coverage                                       |
+| `correction_cycle` (optional)                     | Null/absent makes no assertion; declare `{id, source_stage, cause}` once, then reference the same cycle with `{id}`                                              |
 | `timing`, `cost`                                  | Observed start/end and elapsed seconds or null; attributable cost with currency/source or null                                                                   |
 
 Use a new attempt ID for a restarted delivery attempt; keep it stable across its
@@ -62,6 +67,29 @@ available, including rerun attempt and actual workflow/check identities, source
 URL, SHA and relation to PR base/head. A familiar check name alone is insufficient.
 Explain synthetic merge SHAs rather than requiring equality to the PR head.
 Retained observations after source expiry are historical, not fresh verification.
+
+Scope sources and evidence sources use the same HTTPS URL contract. Link the
+authoritative issue/scope record even when approval originated in chat; describe
+that provenance on the linked record rather than inventing an approval URL.
+
+## Substantive correction cycles
+
+Declare a cycle only when observed testing, review or CI findings require a
+substantive correction round and subsequent verification. Use a globally stable
+ASCII token ID (for example a UUID), `source_stage: testing | review | ci`, and a
+short cause; link the finding through `evidence.sources`. Declare it once on the
+owning attempt, then use `{id}` in later fix/retest/review reports for that same
+round. Repeated reports, multiple commits and continuing work on unresolved
+findings do not create new cycles. A new substantive finding after correction may
+start a new cycle. Setup/billing failures, routine CI reruns, planned product
+decisions and corrections to record wording are not substantive rework cycles.
+
+The collector can count distinct declared IDs, reconcile supersessions and flag
+conflicting declarations or references without a declaration; it must not infer
+counts from comments/commits. Null/absent means unknown/no assertion, not zero.
+Record the observation coverage in limitations or linked testing/review evidence.
+Even a complete set of retrieved comments cannot establish zero cycles without
+explicit coverage of the relevant work; partial coverage remains unknown.
 
 ## Corrections, cohorts and limits
 

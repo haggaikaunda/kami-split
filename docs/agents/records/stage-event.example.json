@@ -1,4 +1,5 @@
 {
+  "record_type": "kami_split.delivery_stage",
   "schema_version": 1,
   "event_id": "example-event-001",
   "supersedes": [],
@@ -63,5 +64,6 @@
     "ended_at": null,
     "elapsed_seconds": null
   },
-  "cost": null
+  "cost": null,
+  "correction_cycle": null
 }

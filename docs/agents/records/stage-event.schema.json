@@ -3,6 +3,7 @@
   "title": "Kami Split GitHub stage event v1",
   "type": "object",
   "required": [
+    "record_type",
     "schema_version",
     "event_id",
     "supersedes",
@@ -25,6 +26,9 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "record_type": {
+      "const": "kami_split.delivery_stage"
+    },
     "schema_version": {
       "const": 1
     },
@@ -253,6 +257,34 @@
         },
         {
           "type": "null"
+        }
+      ]
+    },
+    "correction_cycle": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": ["id"],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "source_stage": {
+              "enum": ["testing", "review", "ci"]
+            },
+            "cause": {
+              "$ref": "#/$defs/text"
+            }
+          },
+          "dependentRequired": {
+            "source_stage": ["cause"],
+            "cause": ["source_stage"]
+          }
         }
       ]
     }
