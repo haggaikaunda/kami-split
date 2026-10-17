@@ -181,18 +181,16 @@
   z-index: -1;
   inset-block: 0;
   right: 0;
-  width: min(100%, 32rem);
+  width: 100%;
   pointer-events: none;
   background:
     linear-gradient(
       90deg,
-      var(--color-banner-start) 0%,
-      var(--color-banner-mid) 55%,
-      var(--color-banner-end) 100%
+      var(--color-banner-phone-start) 0%,
+      var(--color-banner-phone-mid) 46%,
+      var(--color-banner-phone-end) 100%
     ),
     var(--banner-art) right center / cover no-repeat;
-  opacity: 0.72;
-  mask-image: linear-gradient(90deg, transparent, #000);
 }
 .workspace-navigation-brand--trip {
   --banner-art: url('/art/trip.png');
