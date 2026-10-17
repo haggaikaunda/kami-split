@@ -33,7 +33,6 @@ import { minor, money } from '@/lib/relay/money';
 import { Member } from '../ui/primitives';
 import {
   Money,
-  RecommendedRepaymentRow,
   SignedBalanceMetric,
   SummaryMetric,
 } from '../financial/presentation';
@@ -51,6 +50,7 @@ import { ExpenseLedger } from '@/components/expenses/ledger';
 import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
+import { BalanceSection, ObligationRows } from './balance-sections';
 import {
   RichHelp,
   BalanceExplanation,
@@ -642,6 +642,11 @@ export function GroupBalances({
         <p role="alert">
           Balances are unavailable. This group cannot be shown as settled.
         </p>
+        <Link href={`${spaceHref(group)}?tab=activity`}>
+          View Activity and expense before/after history
+        </Link>
+        <GeneralRepaymentEntry scope={scope} group={group} />
+        <RecentRepayments group={group} />
       </section>
     );
   return (
@@ -663,113 +668,128 @@ export function GroupBalances({
       <Link href={`${spaceHref(group)}?tab=activity`}>
         View Activity and expense before/after history
       </Link>
-      <h3>Each member’s balance</h3>
-      <div
-        data-ui="workspace-member-balances"
-        className={cx(
-          overviewFeatureStyles['workspace-member-balances'],
-          financialPaletteStyles['member-palette'],
-        )}
+      <BalanceSection
+        scope={scope}
+        identity={`group-${group.id}-positions`}
+        summary={<h3>Each member’s balance · {b.positions.length} members</h3>}
       >
-        {b.positions.map((p) => (
-          <div
-            data-ui="balance-position"
-            className={workspaceFeatureStyles['balance-position']}
-            key={p.member.id}
-          >
+        <div
+          data-ui="workspace-member-balances"
+          className={cx(
+            overviewFeatureStyles['workspace-member-balances'],
+            financialPaletteStyles['member-palette'],
+          )}
+        >
+          {b.positions.map((p) => (
             <div
-              data-ui="balance-row"
-              className={financialStyles['balance-row']}
+              data-ui="balance-position"
+              className={workspaceFeatureStyles['balance-position']}
+              key={p.member.id}
             >
-              <Member
-                name={p.member.displayName}
-                detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
-              />
-              <Money
-                value={money(p.netMinor).replace(/^-/, '')}
-                currency={group.currency}
-              />
-            </div>
-            <details>
-              <summary>Position details for {p.member.displayName}</summary>
-              <dl
-                data-ui="balance-position-facts"
-                className={workspaceFeatureStyles['balance-position-facts']}
-              >
-                {[
-                  ['Paid for expenses (+)', p.paidMinor],
-                  ['Expense share (−)', p.owedMinor],
-                  ['Repayments sent (+)', p.sentMinor],
-                  ['Repayments received (−)', p.receivedMinor],
-                ].map(([label, value]) => (
-                  <div key={label}>
-                    <dt>{label}</dt>
-                    <dd>
-                      <Money value={money(value)} currency={group.currency} />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              <p aria-label={`Balance calculation for ${p.member.displayName}`}>
-                {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
-                {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
-                {money(p.netMinor)} {group.currency}
-              </p>
-            </details>
-          </div>
-        ))}
-      </div>
-      <h3>Who owes whom</h3>
-      {!b.obligations?.length && (
-        <p>
-          {b.settled
-            ? 'No repayments are needed in this space.'
-            : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
-        </p>
-      )}
-      {(b.obligations ?? []).map((o) => {
-        const eligible = [o.from.id, o.to.id].every((id) =>
-          group.members.some((m) => m.id === id && m.canParticipate),
-        );
-        const query = new URLSearchParams({
-          sender: o.from.id,
-          recipient: o.to.id,
-          amount: o.amountMinor,
-        });
-        return (
-          <RecommendedRepaymentRow
-            key={`${o.from.id}:${o.to.id}`}
-            group={group.name}
-            sender={
-              o.from.id === group.viewerMembership.id
-                ? `You (${o.from.displayName})`
-                : o.from.displayName
-            }
-            recipient={
-              o.to.id === group.viewerMembership.id
-                ? `You (${o.to.displayName})`
-                : o.to.displayName
-            }
-            value={money(o.amountMinor)}
-            currency={group.currency}
-            action={
-              eligible ? (
-                <ScopedLink
-                  scope={scope}
-                  id={`repay-${o.from.id}-${o.to.id}`}
-                  href={spaceRepaymentHref(group, query)}
+              <details>
+                <summary
+                  data-ui="balance-row"
+                  className={financialStyles['balance-row']}
                 >
-                  Record {o.from.displayName} → {o.to.displayName} repayment
-                </ScopedLink>
-              ) : (
-                <span>Recording requires two currently eligible members.</span>
-              )
-            }
-          />
-        );
-      })}
+                  <Member
+                    name={p.member.displayName}
+                    detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
+                  />
+                  <Money
+                    value={money(p.netMinor).replace(/^-/, '')}
+                    currency={group.currency}
+                    focusable={false}
+                  />
+                  <span data-ui="row-detail">
+                    Position details for {p.member.displayName}
+                  </span>
+                </summary>
+                <dl
+                  data-ui="balance-position-facts"
+                  className={workspaceFeatureStyles['balance-position-facts']}
+                >
+                  {[
+                    ['Paid for expenses (+)', p.paidMinor],
+                    ['Expense share (−)', p.owedMinor],
+                    ['Repayments sent (+)', p.sentMinor],
+                    ['Repayments received (−)', p.receivedMinor],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>
+                        <Money value={money(value)} currency={group.currency} />
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p
+                  aria-label={`Balance calculation for ${p.member.displayName}`}
+                >
+                  {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
+                  {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
+                  {money(p.netMinor)} {group.currency}
+                </p>
+              </details>
+            </div>
+          ))}
+        </div>
+      </BalanceSection>
+      <BalanceSection
+        scope={scope}
+        identity={`group-${group.id}-obligations`}
+        initiallyOpen
+        summary={
+          <>
+            <h3>Who owes whom</h3>
+            <span> · {b.obligations?.length ?? 0} suggestions</span>
+          </>
+        }
+      >
+        {!b.obligations?.length && (
+          <p>
+            {b.settled
+              ? 'No repayments are needed in this space.'
+              : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+          </p>
+        )}
+        <ObligationRows
+          scope={scope}
+          space={group}
+          viewer={group.viewerMembership.id}
+          obligations={b.obligations ?? []}
+          eligible={(id) =>
+            group.members.some(
+              (member) => member.id === id && member.canParticipate,
+            )
+          }
+        />
+      </BalanceSection>
+      <GeneralRepaymentEntry scope={scope} group={group} />
       <RecentRepayments group={group} />
     </section>
+  );
+}
+function GeneralRepaymentEntry({
+  scope,
+  group,
+}: {
+  scope: FinancialScope;
+  group: WorkspaceGroup;
+}) {
+  return (
+    <>
+      <ScopedLink
+        scope={scope}
+        id={`repay-general-${group.id}`}
+        href={spaceRepaymentHref(group, new URLSearchParams())}
+      >
+        Record an actual transfer
+      </ScopedLink>
+      <p>
+        Choose the people and amount for money already transferred, including
+        partial repayments, overpayments or transfers without a suggestion.
+      </p>
+    </>
   );
 }
 function RecentRepayments({ group }: { group: WorkspaceGroup }) {

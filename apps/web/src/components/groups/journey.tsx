@@ -176,7 +176,11 @@ export function GroupJourney({
               {access.scope && (
                 <div
                   data-ui="workspace-crumb"
-                  className={shellStyles['workspace-crumb']}
+                  className={
+                    repayment
+                      ? workspaceFeatureStyles['repayment-return']
+                      : shellStyles['workspace-crumb']
+                  }
                 >
                   <SourceReturn scope={access.scope} />
                 </div>

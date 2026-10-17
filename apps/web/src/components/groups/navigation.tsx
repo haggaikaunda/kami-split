@@ -70,11 +70,15 @@ export function SourceReturn({
   const trip = usePathname().startsWith('/trips/');
   const token = params.get('source');
   const visit = token ? scope.visits.get(token) : undefined;
+  const destination = visit
+    ? new URL(visit.href, 'https://workspace.invalid')
+    : undefined;
+  if (destination && token) destination.searchParams.set('restore', token);
   return (
     <Link
       href={
-        visit
-          ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${token}`
+        destination
+          ? destination.pathname + destination.search
           : household
             ? '/household'
             : trip

@@ -81,8 +81,14 @@ identity, deadline and diagnostic boundaries also apply to these operations.
 ## Authenticated workspace entry (#171)
 
 Overview shows complete Total spend and one signed viewer balance, with no
-settlement controls. Balances shows complete member positions and simplified
-obligations. A specific eligible sender/recipient row opens
+settlement controls. Balances keeps member positions and simplified obligations
+in independent native disclosures. Household sources start collapsed with visible
+personal balances; personal zero is separate from all-members settlement, and
+unavailable sources never imply zero. Expanded sources expose the actual
+obligation choices and retain access to complete positions, calculations and history.
+A member net is never used to choose a transfer counterparty.
+
+A specific eligible sender/recipient row is one coherent link that opens
 `/groups/:groupId/repayments/new` (ordinary), `/trips/:groupId/repayments/new` (Trip), or `/household/ledger?tab=balances&repayment=1` (original Household) with its suggested cents. The form preserves the
 original group/participants and freezes its operation key/input before sending;
 unknown outcomes can recover or retry only that original intent. Navigation and
@@ -90,8 +96,20 @@ reload retain tab storage, while logout/account replacement clears it. Current
 server access remains required, including original-result recovery.
 
 Partial/overpayment and unmatched actual transfers retain the implemented server
-contract; no preview opposite-direction acknowledgment policy is imported. Success
+contract; no preview opposite-direction acknowledgment policy is imported. The
+source's **Record an actual transfer** entry supports transfers without a suggested
+edge and does not prefill parties or an amount. The form visibly identifies who
+paid whom, source, exact amount and currency before the explicit recording action;
+date and note remain part of the original input. Saved drafts take precedence over
+new row suggestions and are labeled as restored drafts. Success
 requests fresh complete balances and recent recorded repayments without changing
 expense totals. Records completing after navigation do not redirect that visit.
 The Activity tab uses the complete authenticated feed from #172; recent repayment
 history is separately labeled and does not claim to be the whole activity feed.
+
+Normal obligation activation records the source URL, focus target and scroll through
+the existing account-scoped visit protocol. Source disclosure state survives that
+visit's remount so Back to source and browser Back can restore the selected row
+after an authorized read. If the row no longer exists, restoration safely uses the
+page heading. Modified clicks and direct links retain the full-page form. No
+financial data is persisted with disclosure state, and scope disposal clears it.

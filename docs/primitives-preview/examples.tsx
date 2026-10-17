@@ -151,18 +151,20 @@ function Examples() {
         <MemberBalanceRow name="Sam">
           <SignedBalanceMetric position="zero" value="0.00" currency="USD" />
         </MemberBalanceRow>
-        <RecommendedRepaymentRow
-          group="A week in Maui"
-          sender="Sam"
-          recipient="Alex"
-          value="30.00"
-          currency="USD"
-          action={
-            <Button tone="secondary" onClick={() => setDialog(true)}>
-              Record repayment example
-            </Button>
-          }
-        />
+        <details>
+          <summary>A week in Maui · You owe 30.00 USD</summary>
+          <a href="#example-detail" title="Record repayment example">
+            <RecommendedRepaymentRow
+              linked
+              group="A week in Maui"
+              sender="Sam"
+              recipient="Alex"
+              value="30.00"
+              currency="USD"
+              action={<span aria-hidden="true">→</span>}
+            />
+          </a>
+        </details>
       </section>
       <p>
         Gallery links are illustrative; production consumers own real routes.

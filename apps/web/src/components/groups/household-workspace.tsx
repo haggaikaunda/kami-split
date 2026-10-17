@@ -47,6 +47,7 @@ import {
 import { ActivityFeed } from '@/components/activity/feed';
 import { useFinancialSession } from './session';
 import { ScopedLink, RestoreSource } from './navigation';
+import { BalanceSection, ObligationRows } from './balance-sections';
 
 import { useForegroundRefresh } from './foreground';
 
@@ -534,56 +535,112 @@ export function HouseholdContent({
                     data-position={state}
                     className={householdFeatureStyles['household-balance']}
                   >
-                    <ScopedLink
+                    <BalanceSection
                       scope={scope}
-                      id={`household-source-${space.groupId}`}
-                      href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                      identity={`household-${space.groupId}`}
+                      summary={
+                        <>
+                          <span>
+                            <strong
+                              data-ui={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
+                              className={cx(
+                                householdFeatureStyles['household-source-name'],
+                                householdFeatureStyles[
+                                  `household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`
+                                ],
+                              )}
+                            >
+                              <AppIcon
+                                name={
+                                  space.isHousehold
+                                    ? 'home'
+                                    : space.kind === 'TRIP'
+                                      ? 'trip'
+                                      : 'groups'
+                                }
+                              />
+                              <span
+                                data-ui="household-source-label"
+                                className={
+                                  householdFeatureStyles[
+                                    'household-source-label'
+                                  ]
+                                }
+                              >
+                                {space.name} ·{' '}
+                                {space.isHousehold
+                                  ? 'Household expenses'
+                                  : space.kind === 'TRIP'
+                                    ? 'Trip'
+                                    : 'Group'}
+                              </span>
+                            </strong>
+                            <span
+                              data-ui="row-detail"
+                              className={financialStyles['row-detail']}
+                            >
+                              {detail}
+                            </span>
+                          </span>
+                          <span>
+                            {net === undefined ? (
+                              'Unavailable'
+                            ) : (
+                              <Money
+                                value={`${net > 0n ? '+' : ''}${money(space.viewerNetMinor!)}`}
+                                currency={space.currency}
+                                focusable={false}
+                              />
+                            )}
+                          </span>
+                        </>
+                      }
                     >
-                      <span>
-                        <strong
-                          data-ui={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
-                          className={cx(
-                            householdFeatureStyles['household-source-name'],
-                            householdFeatureStyles[
-                              `household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`
-                            ],
+                      {balances?.__typename === 'GroupBalances' ? (
+                        <>
+                          <p>
+                            {balances.settled
+                              ? 'Everyone in this space is settled.'
+                              : 'This space has outstanding balances.'}
+                          </p>
+                          <h4>Who owes whom</h4>
+                          {balances.obligations.length ? (
+                            <ObligationRows
+                              scope={scope}
+                              space={{ ...space, id: space.groupId }}
+                              viewer={viewer}
+                              obligations={balances.obligations}
+                              eligible={(id) =>
+                                balances.obligations.some((obligation) =>
+                                  [obligation.from, obligation.to].some(
+                                    (member) =>
+                                      member.id === id && member.canParticipate,
+                                  ),
+                                )
+                              }
+                            />
+                          ) : (
+                            <p>
+                              {balances.settled
+                                ? 'No repayments are needed in this space.'
+                                : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+                            </p>
                           )}
-                        >
-                          <AppIcon
-                            name={
-                              space.isHousehold
-                                ? 'home'
-                                : space.kind === 'TRIP'
-                                  ? 'trip'
-                                  : 'groups'
-                            }
-                          />
-                          {space.name} ·{' '}
-                          {space.isHousehold
-                            ? 'Household expenses'
-                            : space.kind === 'TRIP'
-                              ? 'Trip'
-                              : 'Group'}
-                        </strong>
-                        <span
-                          data-ui="row-detail"
-                          className={financialStyles['row-detail']}
-                        >
-                          {detail}
-                        </span>
-                      </span>
-                      <span>
-                        {net === undefined ? (
-                          'Unavailable'
-                        ) : (
-                          <Money
-                            value={`${net > 0n ? '+' : ''}${money(space.viewerNetMinor!)}`}
-                            currency={space.currency}
-                          />
-                        )}
-                        <span aria-hidden="true"> →</span>
-                      </span>
-                    </ScopedLink>
+                        </>
+                      ) : (
+                        <p role="alert">
+                          Balances are unavailable. This space cannot be shown
+                          as settled.
+                        </p>
+                      )}
+                      <ScopedLink
+                        scope={scope}
+                        id={`household-source-${space.groupId}`}
+                        href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                      >
+                        Complete member positions and recorded repayments
+                      </ScopedLink>
+                    </BalanceSection>
                   </li>
                 );
               })}

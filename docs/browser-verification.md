@@ -16,6 +16,13 @@ pnpm test:browser
 
 The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
 
+The suite also exercises collapsed Household balance sources, explicit repayment
+rows in both directions, return focus/scroll, another authorized recorder,
+overpayment confirmation, duplicate activation and fresh balances/history. Its
+balance layout cases cover 320/390/440px and desktop with actual 200% root text,
+ineligible parties, unavailable sources and exact long values. These fixture
+transfers demonstrate client behavior, not server financial authorization.
+
 The suite covers cold HTML/Flight denial, sign-in continuation and logout/history, filtered multi-page expense detail/create restoration with fresh reads and focus, and a held private response across sign-out. Workspace-tab journeys also cover no financial requests on hover or keyboard focus, cold authorized activation, bounded recent-repeat and Back/Forward reuse, expiry and foreground denial, and native modified-click navigation. Each test owns a fresh browser context, cookies, request log and GraphQL fixture state. Auth requests from both Next and the browser reach the same synthetic service; there is no production bypass. Test tokens, profiles, groups and money are synthetic. Startup appearance cases sample root theme and rendered canvas/body on every animation frame while profile/Auth responses are held, capture before/after screenshots, and cover explicit Light/Dark overrides, System fallback, repeated foreground/history events, corrupt/unavailable presentation storage and logout. This proves frontend/Next behavior, not provider authentication, API authorization or persistence. Browser emulation does not establish native installed-iOS launch/snapshot behavior.
 
 Ports default to 3295 (Next) and 3296 (Auth). Existing servers are never reused. For simultaneous runs in **separate worktrees**, choose a distinct pair of ports and output location in each:
