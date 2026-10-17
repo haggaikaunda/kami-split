@@ -28,6 +28,8 @@ export function createScope(
   let live = true;
   let generation = 0;
   const restored = new Set<string>();
+  // UI expansion metadata only. Never retain financial projections here.
+  const balanceExpansions = new Map<string, boolean>();
   const visits = new Map<
     string,
     { href: string; focus: string; scroll: number; group?: string }
@@ -65,6 +67,7 @@ export function createScope(
     visits.clear();
     expensePositions.clear();
     restored.clear();
+    balanceExpansions.clear();
     for (const request of requests) request.abort();
     requests.clear();
     // Erase normalized records as well as preventing all late normalization.
@@ -170,6 +173,7 @@ export function createScope(
     visits,
     expensePositions,
     restored,
+    balanceExpansions,
     id: createSessionId(),
     environment,
     isLive: () => live,

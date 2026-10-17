@@ -12,9 +12,11 @@ import { SpaceChip } from '../workspace/patterns';
 export function Money({
   value,
   currency,
+  focusable = true,
 }: {
   value: string;
   currency: string;
+  focusable?: boolean;
 }) {
   return (
     <span
@@ -24,7 +26,7 @@ export function Money({
         value.length > 14 && financialStyles['money--long'],
       )}
       role={value.length > 14 ? 'group' : undefined}
-      tabIndex={value.length > 14 ? 0 : undefined}
+      tabIndex={value.length > 14 && focusable ? 0 : undefined}
       aria-label={value.length > 14 ? `${value} ${currency}` : undefined}
     >
       <span data-ui="money-value" className={financialStyles['money-value']}>
@@ -348,6 +350,7 @@ export function RecommendedRepaymentRow({
   value,
   currency,
   action,
+  linked = false,
 }: {
   group: string;
   sender: string;
@@ -355,6 +358,7 @@ export function RecommendedRepaymentRow({
   value: string;
   currency: string;
   action?: ReactNode;
+  linked?: boolean;
 }) {
   return (
     <div data-ui="repayment-row" className={financialStyles['repayment-row']}>
@@ -366,7 +370,7 @@ export function RecommendedRepaymentRow({
           {group}
         </span>
       </div>
-      <Money value={value} currency={currency} />
+      <Money value={value} currency={currency} focusable={!linked} />
       {action}
     </div>
   );

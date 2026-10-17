@@ -350,6 +350,20 @@ it('returns to the original filtered source and group expense cursor', async () 
     overview: false,
   });
 });
+it('replaces a prior return marker for sequential source visits while retaining filters', async () => {
+  scope.visits.set('new-visit', {
+    href: '/household?tab=balances&restore=old-visit',
+    focus: 'repay-T-a-b',
+    scroll: 120,
+  });
+  mock.search = 'source=new-visit';
+  await render(<SourceReturn scope={scope as never} />);
+  const href = host.querySelector('a')!.getAttribute('href')!;
+  expect(href).toBe('/household?tab=balances&restore=new-visit');
+  expect(
+    new URL(href, 'https://workspace.invalid').searchParams.getAll('restore'),
+  ).toEqual(['new-visit']);
+});
 it('restores logical focus and scroll only for an authorized source; missing source focuses heading', async () => {
   const frames: FrameRequestCallback[] = [];
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {

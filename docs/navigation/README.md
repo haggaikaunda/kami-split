@@ -11,3 +11,13 @@ The seeded global shell, preview providers, intercepting `@detail` slot and its 
 See [authorized workspace loading](workspace-loading.md) for the destination request matrix, persistent frames, intent ownership, foreground invalidation and Household compatibility contract introduced by #193.
 
 On phone viewports up to 40rem tall, the identity header scrolls with the document so enlarged expense controls remain reachable above the fixed bottom navigation; sticky header clearance is removed until the taller layout resumes. The compact shared header retains the approved Household/Trip artwork and shows Kami Grow above the current destination. Household and Groups flank the mobile Add expense action; trips stay under Groups. The Profile avatar opens `/account` and records the exact actor-scoped source visit. Profile Back and browser Back restore authorized source state, including ledger filters, loaded extent, scroll and logical focus. Direct Profile entry returns safely to Groups. Workspace More discloses Activity and Members with native links, current selection, keyboard access and Escape focus restoration. Global expense entry opens the existing Household ledger source chooser without selecting the first space; a Group/Trip uses its freshly authorized source. The later Personal-enabled navigation extension remains owned by #253.
+
+Balance sources use native independent disclosures with account-scoped expansion
+metadata. An eligible obligation's whole row opens its original source's repayment
+route with explicit sender, recipient and exact suggested minor units, in either
+direction. Multiple obligations remain separate choices; a member net cannot select
+a counterparty. The source-owned general transfer entry remains available even
+when no obligation is suggested. Normal row activation uses the existing source
+visit token, restoring URL, expansion, focus and scroll after authorized return;
+modified clicks keep their canonical standalone behavior. Repayment drafts and
+unconfirmed input continue to belong to the single original form owner.

@@ -242,3 +242,15 @@ it('ignores a delayed committed response after the actor financial scope is disp
   expect(committed).not.toHaveBeenCalled();
   expect(readRepayment('actor-a', 'G')?.attempt).toEqual(a);
 });
+
+it('shows the restored intent rather than a new row suggestion in the transfer review', async () => {
+  frozen();
+  await render('G', 'c', 'a', '9999');
+  expect(
+    host.querySelector('[aria-label="Transfer to record"]')?.textContent,
+  ).toContain('Alice paid Bob · $10.01 USD · Original group: G');
+  expect(host.textContent).toContain(
+    'Restored your saved repayment for this space',
+  );
+  expect(host.textContent).toContain('selected balance is only a suggestion');
+});

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<321f4c7f8a4ab641b5c24e55a1204637>>
+ * @generated SignedSource<<1bc2524993b423f72f07a560d68ae26a>>
  * @lightSyntaxTransform
  */
 
@@ -21,10 +21,12 @@ export type householdContentDashboard$data = {
       readonly obligations: ReadonlyArray<{
         readonly amountMinor: string;
         readonly from: {
+          readonly canParticipate: boolean;
           readonly displayName: string;
           readonly id: string;
         };
         readonly to: {
+          readonly canParticipate: boolean;
           readonly displayName: string;
           readonly id: string;
         };
@@ -118,6 +120,13 @@ v4 = [
     "args": null,
     "kind": "ScalarField",
     "name": "displayName",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "canParticipate",
     "storageKey": null
   }
 ];
@@ -354,6 +363,6 @@ return {
 };
 })();
 
-(node as any).hash = "9526ef7eebd5e08cf32b4037228dd194";
+(node as any).hash = "ce487ec0814972769804afc50c00944a";
 
 export default node;

@@ -11,7 +11,8 @@ export function spaceExpenseHref(space: SpaceRoute, expense: string) {
     : `${spaceHref(space)}/expenses/${encodeURIComponent(expense)}`;
 }
 export function spaceRepaymentHref(space: SpaceRoute, query: URLSearchParams) {
-  if (!space.isHousehold) return `${spaceHref(space)}/repayments/new?${query}`;
+  if (!space.isHousehold)
+    return `${spaceHref(space)}/repayments/new${query.size ? `?${query}` : ''}`;
   return `/household/ledger?${new URLSearchParams({ tab: 'balances', repayment: '1', ...Object.fromEntries(query) })}`;
 }
 /** Preserve a legacy visit's ledger scope and panels during canonical replacement. */

@@ -22,14 +22,14 @@ Account and appearance presentation belongs to `onboarding/account.module.css`; 
 
 The remaining production owners are:
 
-| Presentation                                                                 | Colocated owner                                                                               |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Discovery and group/trip cards                                               | `groups/discovery.module.css`                                                                 |
-| Workspace panels/settings/balances, overview rows, Household source balances | `groups/workspace.module.css`, `overview.module.css`, `household-workspace.module.css`        |
-| Expense/repayment and group/trip creation forms                              | `groups/forms.module.css`; current expense facts use `groups/expense-detail.module.css`       |
-| Ledger rows, responsive filters and Breakdown                                | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                |
-| Native expense/filter dialog frame and expense viewport behavior             | `expenses/dialog.module.css` and `presentation.module.css`; neither imports ledger row styles |
-| Category artwork and refresh feedback                                        | `financial/category.tsx` with `category.module.css`, and `workspace-refresh.module.css`       |
+| Presentation                                                                 | Colocated owner                                                                                                       |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Discovery and group/trip cards                                               | `groups/discovery.module.css`                                                                                         |
+| Workspace panels/settings/balances, overview rows, Household source balances | `groups/workspace.module.css`, `overview.module.css`, `household-workspace.module.css`, `balance-sections.module.css` |
+| Expense/repayment and group/trip creation forms                              | `groups/forms.module.css`; current expense facts use `groups/expense-detail.module.css`                               |
+| Ledger rows, responsive filters and Breakdown                                | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                                        |
+| Native expense/filter dialog frame and expense viewport behavior             | `expenses/dialog.module.css` and `presentation.module.css`; neither imports ledger row styles                         |
+| Category artwork and refresh feedback                                        | `financial/category.tsx` with `category.module.css`, and `workspace-refresh.module.css`                               |
 
 `ui/form-layout.module.css` provides the opt-in neutral `form-scope` layout class. Existing native controls declare `form-label`, `form-control`, `form-checkbox`, `form-radio`, `form-fieldset` or `form-button` slots; `form-region` declares a shrinkable region. Field's existing `field-label`/`field-control` slots also participate. A scope no longer styles arbitrary descendant controls. The shared sheet is anchored before feature overrides, and can be used without importing financial styles. Native expense presentation composes the scope itself. Feature form classes own their floating labels, split controls, recovery content and sticky action rows. `Skeleton size="workspace"` owns the taller workspace loading geometry, independently of a feature wrapper.
 
@@ -60,6 +60,20 @@ Creation/editing preserves exact Equal, Exact and Percentage intent, dirty draft
 ## Balances, help and refresh
 
 Balance copy distinguishes what a person owes/is owed from expense spending. Repayments record transfers without moving money and never affect spending totals. Household net zero can contain offsetting source balances; retain the explicit warning and original-space explanation. Every individual must be zero within a source group for that group to be settled. Failed or incomplete reads cannot imply zero.
+
+Household Balances initially collapses each source independently, keeping its name,
+kind, exact personal balance and truthful settlement/unavailable copy visible.
+Source icons stack above names in narrow text-relative containers so long names
+retain a readable text column at enlarged sizes.
+Expanded sources expose explicit obligations and links to complete member positions
+and repayment history. Group/Trip Balances separates member positions from
+who-owes-whom suggestions with the same native keyboard disclosures. Selecting a
+member position opens its expense/repayment calculation; it never infers a
+counterparty from a net. Eligible obligation rows are one native link with explicit
+parties, exact suggested amount and source; ineligible rows explain why recording
+is unavailable. General actual transfers remain a separate source-owned entry.
+Expansion metadata belongs to the account's financial scope and is erased on
+scope disposal. It contains no balances or member payloads.
 
 Rich help is anchored and keyboard accessible with explicit dismissal, focus restoration and viewport bounds. Routine Refresh buttons are absent; pull-to-refresh, foreground reauthorization and actionable error retries preserve continuity. See [workspace loading](../navigation/workspace-loading.md) for request ownership and refresh behavior.
 
