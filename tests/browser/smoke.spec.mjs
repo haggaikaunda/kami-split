@@ -1383,6 +1383,74 @@ test('no eligible expense source and failed group discovery leave Profile usable
   ).toBeVisible();
 });
 
+async function expectAlignedIdentity(page, title, helpLabel) {
+  const header = page.locator('[data-ui~="workspace-navigation-brand"]');
+  const brand = header.getByText('Kami Grow', { exact: true });
+  const leaf = header.locator('[data-ui~="workspace-brand"] [data-ui~="icon"]');
+  const destination = header.getByText(title, { exact: true });
+  const avatar = header.getByRole('link', { name: 'Profile', exact: true });
+  const [brandBox, leafBox, destinationBox, avatarBox] = await Promise.all(
+    [brand, leaf, destination, avatar].map((item) => item.boundingBox()),
+  );
+  expect(Math.abs(brandBox.x - destinationBox.x)).toBeLessThanOrEqual(1);
+  expect(leafBox.x + leafBox.width).toBeLessThan(brandBox.x);
+  expect(destinationBox.x + destinationBox.width).toBeLessThan(avatarBox.x);
+  if (helpLabel) {
+    const helpBox = await header
+      .getByRole('button', { name: helpLabel, exact: true })
+      .boundingBox();
+    expect(Math.abs(brandBox.x - helpBox.x)).toBeLessThanOrEqual(1);
+  }
+}
+
+test('shared header aligns Household help and every destination with unavailable artwork', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.route('**/art/*.png', (route) => route.abort());
+  for (const destination of [
+    { path: '/household', title: 'Household', help: 'What’s included' },
+    { path: '/groups/F?tab=overview', title: 'Friends' },
+    { path: '/groups', title: 'Groups' },
+    { path: '/account', title: 'Profile' },
+  ]) {
+    await page.goto(destination.path);
+    const header = page.locator('[data-ui~="workspace-navigation-brand"]');
+    await expect(
+      header.getByText(destination.title, { exact: true }),
+    ).toBeVisible();
+    for (const width of [320, 390, 440, 1440]) {
+      for (const scale of [1, 2]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate((scale) => {
+          document.documentElement.style.fontSize = `${scale * 100}%`;
+        }, scale);
+        await expectAlignedIdentity(page, destination.title, destination.help);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth - innerWidth,
+          ),
+        ).toBeLessThanOrEqual(1);
+        if (scale === 1)
+          expect((await header.boundingBox()).height).toBeLessThan(110);
+      }
+    }
+    if (destination.help) {
+      const help = header.getByRole('button', {
+        name: destination.help,
+        exact: true,
+      });
+      await help.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(help).toBeFocused();
+    }
+  }
+});
+
 test('compact identity and navigation remain readable across responsive themes and doubled text', async ({
   page,
   app,
@@ -1433,6 +1501,10 @@ test('compact identity and navigation remain readable across responsive themes a
           exact: true,
         });
         await expect(title).toBeVisible();
+        await expectAlignedIdentity(
+          page,
+          'Maui 2026 with a very long friendly space name',
+        );
         const bounds = await header.boundingBox();
         expect(bounds.height).toBeLessThan(420);
         const overflow = await page.evaluate(
