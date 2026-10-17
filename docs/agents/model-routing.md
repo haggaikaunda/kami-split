@@ -93,10 +93,10 @@ question. Ask the owner only for an unresolved product/authority/budget decision
 model unavailability is not a routine approval gate. Exhausted budget leaves an
 actionable handoff; missing required testing/review/CI never becomes success.
 
-Batch substantive fixes after builder checks and independent testing before final
-review where practical. After relevant changes, rerun affected checks and obtain
-a whole updated final-diff review. Add roles only for a concrete benefit, avoid
-duplicate investigation and concurrent writes to shared resources, and use compact
+Follow the [verification and final-review sequence](delivery-workflow.md#plan-verification-before-final-review);
+finish affected testing and batch substantive fixes before the final reviewer starts.
+Early diagnostic consultation does not satisfy that gate. Add roles only for a
+concrete benefit, avoid duplicate investigation and concurrent writes to shared resources, and use compact
 results and bounded waits. Record routing, fallback/escalation and unknown usage
 in [concise GitHub evidence](delivery-records.md), without requiring a JSON ledger.
 Cost per accepted goal is

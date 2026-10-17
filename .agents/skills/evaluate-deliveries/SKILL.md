@@ -8,6 +8,8 @@ Use the [delivery workflow](../../../docs/agents/delivery-workflow.md),
 [GitHub evidence guidance](../../../docs/agents/delivery-records.md).
 Ordinary issue/PR discussions are sufficient; structured events are optional
 historical inputs, not a prerequisite or a request to backfill a ledger.
+Use this skill when there is a concrete evaluation question and bounded cohort;
+ordinary deliveries do not need a separate retrospective or evaluation report.
 
 ## Collect within the requested boundary
 

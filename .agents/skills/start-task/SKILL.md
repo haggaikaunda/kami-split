@@ -23,9 +23,10 @@ and [current handoff contract](../../../docs/agents/delivery-records.md).
    and applicable area checks before substantive work. Missing tools or
    configuration need actionable setup, not fabricated success. Do not reveal
    configuration values or reclaim unowned resources; a worktree isolates files.
-4. Inspect relevant source, state a short plan and route only useful independent
-   roles. Verify actual launch support, explicitly select model/effort and supply
-   compact authoritative assignments with resource boundaries. Keep the original
+4. Inspect relevant source and state a short plan including
+   [affected journeys, checks and runner maintenance](../../../docs/agents/delivery-workflow.md#plan-verification-before-final-review).
+   Route only useful independent roles. Verify actual launch support, explicitly
+   select model/effort and supply compact authoritative assignments with resource boundaries. Keep the original
    coordinator selected; record unavailable optional capabilities honestly.
 5. Publish one concise start/current handoff on the owning issue/PR: scope,
    attempt, owner, branch/base/head, resource ownership, preflight observations,
