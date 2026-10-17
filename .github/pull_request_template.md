@@ -8,7 +8,11 @@ Refs #
 
 ## Acceptance criteria
 
-- [ ] Criteria are satisfied and traced to tests or appropriate documentation verification
+- Approved issue / scope revision / approval provenance:
+- Criteria covered by this PR and criteria remaining on the issue:
+- [ ] Covered criteria are traced to observed evidence, including meaningful negative cases and limitations
+
+<!-- Use docs/agents/outcome-verification.md. Link the independent criterion → scenario → observed result → status table below. A passing command, fixture success or written checklist alone does not prove the outcome. Refresh affected evidence after relevant scope/code changes. -->
 
 ## Verification
 
@@ -36,6 +40,9 @@ Refs #
 - [ ] Independent whole-final-diff review and convention evidence recorded, with findings and final commit/base examined
 - [ ] Substantive findings and blocking conversations resolved; affected checks and reviews rerun
 - [ ] Required CI passes on the current head
+
+- Independent acceptance evidence (scope revision, tested SHA, coverage / limitations):
+- Final-head CI (run/check identity, attempt, conclusion and head/base or synthetic-merge relationship):
 
 <!-- Before merging: remove draft status and satisfy required GitHub approvals and branch protections. -->
 

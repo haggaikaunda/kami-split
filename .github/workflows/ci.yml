@@ -39,6 +39,17 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm format:check
       - run: node --test scripts/ci/*.test.mjs
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Validate repository skills and resources
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 -m venv .tools/skills-validator
+          .tools/skills-validator/bin/python -m pip install -r scripts/agents/requirements.txt
+          .tools/skills-validator/bin/python scripts/agents/check_skills.py
+          .tools/skills-validator/bin/python -m unittest discover -s scripts/agents -p '*_test.py'
   web:
     name: Web
     needs: repository

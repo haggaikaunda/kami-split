@@ -14,19 +14,25 @@ body:
     id: scope
     attributes:
       label: Scope
-      description: Describe the smallest complete solution and explicit exclusions.
+      description: Describe the smallest complete solution, exclusions, dependencies and behavior to preserve.
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: Provide observable, testable criteria.
-      placeholder: '- [ ] Given ..., when ..., then ...'
+      description: Use stable IDs and observable outcomes; see docs/agents/outcome-verification.md.
+      placeholder: '- [ ] AC1 — Given ..., when ..., then ...'
     validations:
       required: true
   - type: textarea
     id: test_notes
     attributes:
       label: Test and risk notes
-      description: Include edge cases, authorization, failure, duplicate, concurrency, or financial concerns.
+      description: Map each criterion to a practical scenario/test surface and meaningful failure or regression case. Note missing tools/evidence and relevant financial, authorization, duplicate or concurrency risks.
+  - type: textarea
+    id: authority
+    attributes:
+      label: References and scope approval
+      description: Distinguish authoritative contracts/designs from examples. Record a scope revision and approval provenance if already approved; otherwise mark proposed. Do not self-approve or request existing authorization again.
+      placeholder: 'Scope v1 — proposed. Authoritative inputs: ... Illustrative inputs: ... Approval source or outstanding decision: ...'
