@@ -15,6 +15,11 @@ Tests demonstrate current behavior rather than mirror implementation. The web ha
 
 ## Required commands
 
+The [local execution entry point](agents/execution.md) checks prerequisites and
+runs these commands serially, adding classifier-selected browser/API checks and
+always retaining repository validation. It does not replace isolated container CI
+or independent acceptance testing/review.
+
 Use Node 24 and the pnpm version pinned in `package.json`, then run sequentially:
 
 ```bash

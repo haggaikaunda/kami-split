@@ -3,12 +3,18 @@ import { readFileSync } from 'node:fs';
 import { posix, matchesGlob } from 'node:path';
 import { test } from 'node:test';
 import ts from 'typescript';
-import { classify, git } from './changes.mjs';
+import { classify, git, pathRule } from './changes.mjs';
 
 // These are objective guards for the classifier's exemptions, not a general
 // dependency analyzer. New loaders/generators require a fresh rule audit.
 function referencedPaths(file, literal) {
   if (literal.startsWith('@/')) return [`apps/web/src/${literal.slice(2)}`];
+  if (
+    /^(\.agents\/|\.codex\/|scripts\/agents\/|docs\/agents\/records\/)/.test(
+      literal,
+    )
+  )
+    return [literal];
   if (!literal.startsWith('.')) return [];
   return [posix.normalize(posix.join(posix.dirname(file), literal))];
 }
@@ -101,7 +107,9 @@ test('current runtime and Relay inputs respect non-deploying test/tooling bounda
   for (const file of files.filter(
     (file) =>
       /^apps\/web\/.*\.tsx?$/.test(file) ||
-      file === 'scripts/relay/generate.mjs',
+      file === 'scripts/relay/generate.mjs' ||
+      /^scripts\/deployment\/.*\.mjs$/.test(file) ||
+      file === 'package.json',
   )) {
     assert.deepEqual(
       webBoundaryViolations(file, readFileSync(file, 'utf8'), nonDeploying),
@@ -130,6 +138,30 @@ test('current runtime and Relay inputs respect non-deploying test/tooling bounda
           `${file} embeds non-deploying ${candidate}`,
         );
       }
+    }
+  }
+});
+
+test('agent resources remain outside production image COPY inputs', () => {
+  const files = git(['ls-files', '-z']).split('\0').filter(Boolean);
+  const resources = files.filter((file) => /^agent-/.test(pathRule(file).rule));
+  assert.ok(resources.length > 0);
+  const source = readFileSync('apps/api/Dockerfile', 'utf8');
+  for (const copy of source.matchAll(/^COPY\s+(?!\-\-from)(.+)$/gm)) {
+    // Current Dockerfile uses simple whitespace-separated COPY sources; audit
+    // any new syntax rather than silently assuming its build context is safe.
+    assert.ok(!/[\["*?]/.test(copy[1]), 'Audit new Docker COPY syntax');
+    const inputs = copy[1].trim().split(/\s+/).slice(0, -1);
+    for (const input of inputs) {
+      const path = input.replace(/^\.\//, '').replace(/\/$/, '');
+      for (const file of resources)
+        assert.ok(
+          path !== '.' &&
+            path !== '' &&
+            file !== path &&
+            !file.startsWith(`${path}/`),
+          `${input} copies agent resource ${file}`,
+        );
     }
   }
 });

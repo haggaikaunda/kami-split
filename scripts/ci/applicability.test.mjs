@@ -55,6 +55,27 @@ for (const [paths, expected] of [
   ],
   [['docs/agents/change-aware-ci.md'], choices(false, false, false, false)],
   [
+    [
+      '.agents/skills/prepare-issue/SKILL.md',
+      '.agents/skills/verify-requirements/SKILL.md',
+      '.agents/skills/author-repository-skill/assets/skill-template.md',
+      '.codex/agents/kami-builder.toml',
+      'docs/agents/records/stage-event.schema.json',
+      'scripts/agents/check_stage_event.py',
+      'scripts/agents/requirements.txt',
+    ],
+    choices(false, false, false, false),
+  ],
+  [
+    ['scripts/agents/execution.mjs', 'scripts/agents/execution.test.mjs'],
+    choices(true, false, false, false),
+  ],
+  [['.agents/new-input.json'], conservative()],
+  [['.agents/skills/prepare-issue/new-helper.mjs'], conservative()],
+  [['.codex/agents/new-role.toml'], conservative()],
+  [['scripts/agents/new-helper.py'], conservative()],
+  [['docs/agents/records/new-schema.json'], conservative()],
+  [
     ['apps/api/internal/expense/read_sql.go', 'supabase/schemas/001.sql'],
     choices(false, true, false, true),
   ],
