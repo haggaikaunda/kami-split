@@ -50,6 +50,7 @@ func mapGroup(ctx context.Context, s expense.Snapshot) *model.Group {
 	m := members(s)
 	kind, trip := mapTrip(s.Trip)
 	g := &model.Group{Kind: kind, Trip: trip, IsHousehold: s.IsHousehold, ID: s.ID, Name: s.Name, Currency: model.Currency(s.Currency), ViewerMembership: m[s.ViewerMembershipID], Members: []*model.Membership{}, Snapshot: s}
+	g.FinancialSummary = mapFinancialSummary(ctx, s.FinancialSummary)
 	for _, member := range s.Members {
 		g.Members = append(g.Members, m[member.ID])
 	}

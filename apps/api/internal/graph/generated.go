@@ -230,6 +230,7 @@ type ComplexityRoot struct {
 		Balances         func(childComplexity int) int
 		Currency         func(childComplexity int) int
 		Expenses         func(childComplexity int, first int, after *string, filter *model.ExpenseFilter) int
+		FinancialSummary func(childComplexity int) int
 		ID               func(childComplexity int) int
 		IsHousehold      func(childComplexity int) int
 		Kind             func(childComplexity int) int
@@ -268,6 +269,21 @@ type ComplexityRoot struct {
 	GroupCreationRejected struct {
 		Fields       func(childComplexity int) int
 		OperationKey func(childComplexity int) int
+	}
+
+	GroupDirectory struct {
+		Entries func(childComplexity int) int
+	}
+
+	GroupDirectoryEntry struct {
+		ActiveMemberCount func(childComplexity int) int
+		FinancialSummary  func(childComplexity int) int
+		Group             func(childComplexity int) int
+	}
+
+	GroupFinancialSummary struct {
+		TotalSpendMinor func(childComplexity int) int
+		ViewerNetMinor  func(childComplexity int) int
 	}
 
 	GroupSummary struct {
@@ -445,6 +461,7 @@ type ComplexityRoot struct {
 		Group                  func(childComplexity int, id string) int
 		GroupActivity          func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
 		GroupCreationOperation func(childComplexity int, operationKey ledger.OperationKey) int
+		GroupDirectory         func(childComplexity int) int
 		GroupExpenses          func(childComplexity int, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) int
 		Health                 func(childComplexity int) int
 		HouseholdActivity      func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
@@ -555,6 +572,7 @@ type QueryResolver interface {
 	GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
 	UpdateExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.ExpenseEditResult, error)
 	ActivityEvent(ctx context.Context, eventID string, groupID *string) (model.ActivityEventResult, error)
+	GroupDirectory(ctx context.Context) (model.GroupDirectoryResult, error)
 	GroupCreationOperation(ctx context.Context, operationKey ledger.OperationKey) (model.GroupCreationOperationResult, error)
 	HouseholdDashboard(ctx context.Context) (model.HouseholdDashboardResult, error)
 	PreviewInvitation(ctx context.Context, token string) (model.InvitationPreviewResult, error)
@@ -1377,6 +1395,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Group.Expenses(childComplexity, args["first"].(int), args["after"].(*string), args["filter"].(*model.ExpenseFilter)), true
+	case "Group.financialSummary":
+		if e.ComplexityRoot.Group.FinancialSummary == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Group.FinancialSummary(childComplexity), true
 	case "Group.id":
 		if e.ComplexityRoot.Group.ID == nil {
 			break
@@ -1525,6 +1549,45 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.GroupCreationRejected.OperationKey(childComplexity), true
+
+	case "GroupDirectory.entries":
+		if e.ComplexityRoot.GroupDirectory.Entries == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupDirectory.Entries(childComplexity), true
+
+	case "GroupDirectoryEntry.activeMemberCount":
+		if e.ComplexityRoot.GroupDirectoryEntry.ActiveMemberCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupDirectoryEntry.ActiveMemberCount(childComplexity), true
+	case "GroupDirectoryEntry.financialSummary":
+		if e.ComplexityRoot.GroupDirectoryEntry.FinancialSummary == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupDirectoryEntry.FinancialSummary(childComplexity), true
+	case "GroupDirectoryEntry.group":
+		if e.ComplexityRoot.GroupDirectoryEntry.Group == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupDirectoryEntry.Group(childComplexity), true
+
+	case "GroupFinancialSummary.totalSpendMinor":
+		if e.ComplexityRoot.GroupFinancialSummary.TotalSpendMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupFinancialSummary.TotalSpendMinor(childComplexity), true
+	case "GroupFinancialSummary.viewerNetMinor":
+		if e.ComplexityRoot.GroupFinancialSummary.ViewerNetMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GroupFinancialSummary.ViewerNetMinor(childComplexity), true
 
 	case "GroupSummary.currency":
 		if e.ComplexityRoot.GroupSummary.Currency == nil {
@@ -2269,6 +2332,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GroupCreationOperation(childComplexity, args["operationKey"].(ledger.OperationKey)), true
+	case "Query.groupDirectory":
+		if e.ComplexityRoot.Query.GroupDirectory == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.GroupDirectory(childComplexity), true
 	case "Query.groupExpenses":
 		if e.ComplexityRoot.Query.GroupExpenses == nil {
 			break
@@ -4162,6 +4231,69 @@ extend type Query {
   ): ActivityEventResult!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/group-directory.graphql", Input: `"""
+Complete authorized discovery metadata and compact finances, excluding the designated Household.
+"""
+type GroupDirectory {
+  """
+  All currently accessible ordinary groups and trips, ordered by canonical group ID.
+  """
+  entries: [GroupDirectoryEntry!]!
+}
+"""
+One source's metadata, active membership count and finances from the same database snapshot.
+"""
+type GroupDirectoryEntry {
+  """
+  Current authorized name, currency, classification and optional trip metadata.
+  """
+  group: GroupSummary!
+  """
+  Active memberships only; excludes inactive history and pending invitations.
+  """
+  activeMemberCount: Int!
+  """
+  Complete current amounts, or an explicit problem; failure never becomes zero.
+  """
+  financialSummary: GroupFinancialSummaryResult!
+}
+"""
+Complete directory or safe access/unavailable problem, never a partial successful directory.
+"""
+union GroupDirectoryResult = GroupDirectory | Problem
+"""
+Exact source-local spend and personal net, or an explicit financial problem.
+"""
+union GroupFinancialSummaryResult = GroupFinancialSummary | Problem
+"""
+Complete current expense spending and the authenticated viewer's personal position.
+Amounts use canonical exact MinorUnits strings in the source group's currency.
+"""
+type GroupFinancialSummary {
+  """
+  Complete current expense face-value total, independent of pages, filters and trip dates; excludes repayments.
+  """
+  totalSpendMinor: MinorUnits!
+  """
+  Paid minus owed plus repayments sent minus received. Positive means being owed;
+  negative means owing. Zero describes only the viewer, never every member being settled.
+  """
+  viewerNetMinor: MinorUnits!
+}
+extend type Query {
+  """
+  Self-only current directory in one bounded aggregate read; returns no expense pages or member identities.
+  """
+  groupDirectory: GroupDirectoryResult!
+}
+extend type Group {
+  """
+  Complete current expense-only spend and personal net from this Group's authorized snapshot.
+  Independent of the selected expense connection's page and filters.
+  """
+  financialSummary: GroupFinancialSummaryResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/groups.graphql", Input: `"""
 Classification derived from the optional trip extension; access and ledgers remain group-local.
 """
@@ -5666,6 +5798,18 @@ func (ec *executionContext) childFields_FieldProblem(ctx context.Context, field 
 		return ec.fieldContext_FieldProblem_message(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type FieldProblem", field.Name)
+}
+
+func (ec *executionContext) childFields_GroupDirectoryEntry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "group":
+		return ec.fieldContext_GroupDirectoryEntry_group(ctx, field)
+	case "activeMemberCount":
+		return ec.fieldContext_GroupDirectoryEntry_activeMemberCount(ctx, field)
+	case "financialSummary":
+		return ec.fieldContext_GroupDirectoryEntry_financialSummary(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type GroupDirectoryEntry", field.Name)
 }
 
 func (ec *executionContext) childFields_GroupSummary(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -10206,6 +10350,29 @@ func (ec *executionContext) fieldContext_Group_balances(_ context.Context, field
 	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type BalanceResult does not have child fields"))
 }
 
+func (ec *executionContext) _Group_financialSummary(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Group_financialSummary(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FinancialSummary, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupFinancialSummaryResult) graphql.Marshaler {
+			return ec.marshalNGroupFinancialSummaryResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupFinancialSummaryResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Group_financialSummary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type GroupFinancialSummaryResult does not have child fields"))
+}
+
 func (ec *executionContext) _Group_repayments(ctx context.Context, field graphql.CollectedField, obj *model.Group) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10620,6 +10787,162 @@ func (ec *executionContext) fieldContext_GroupCreationRejected_fields(_ context.
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _GroupDirectory_entries(ctx context.Context, field graphql.CollectedField, obj *model.GroupDirectory) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupDirectory_entries(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Entries, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.GroupDirectoryEntry) graphql.Marshaler {
+			return ec.marshalNGroupDirectoryEntry2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupDirectory_entries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupDirectory",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GroupDirectoryEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupDirectoryEntry_group(ctx context.Context, field graphql.CollectedField, obj *model.GroupDirectoryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupDirectoryEntry_group(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Group, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.GroupSummary) graphql.Marshaler {
+			return ec.marshalNGroupSummary2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupSummary(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupDirectoryEntry_group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GroupDirectoryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GroupSummary(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GroupDirectoryEntry_activeMemberCount(ctx context.Context, field graphql.CollectedField, obj *model.GroupDirectoryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupDirectoryEntry_activeMemberCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActiveMemberCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupDirectoryEntry_activeMemberCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupDirectoryEntry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _GroupDirectoryEntry_financialSummary(ctx context.Context, field graphql.CollectedField, obj *model.GroupDirectoryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupDirectoryEntry_financialSummary(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FinancialSummary, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupFinancialSummaryResult) graphql.Marshaler {
+			return ec.marshalNGroupFinancialSummaryResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupFinancialSummaryResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupDirectoryEntry_financialSummary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupDirectoryEntry", field, false, false, errors.New("field of type GroupFinancialSummaryResult does not have child fields"))
+}
+
+func (ec *executionContext) _GroupFinancialSummary_totalSpendMinor(ctx context.Context, field graphql.CollectedField, obj *model.GroupFinancialSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupFinancialSummary_totalSpendMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TotalSpendMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupFinancialSummary_totalSpendMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupFinancialSummary", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
+}
+
+func (ec *executionContext) _GroupFinancialSummary_viewerNetMinor(ctx context.Context, field graphql.CollectedField, obj *model.GroupFinancialSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GroupFinancialSummary_viewerNetMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewerNetMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ledger.MinorUnits) graphql.Marshaler {
+			return ec.marshalNMinorUnits2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐMinorUnits(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GroupFinancialSummary_viewerNetMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("GroupFinancialSummary", field, false, false, errors.New("field of type MinorUnits does not have child fields"))
 }
 
 func (ec *executionContext) _GroupSummary_kind(ctx context.Context, field graphql.CollectedField, obj *model.GroupSummary) (ret graphql.Marshaler) {
@@ -13670,6 +13993,29 @@ func (ec *executionContext) fieldContext_Query_activityEvent(ctx context.Context
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _Query_groupDirectory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_groupDirectory(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().GroupDirectory(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.GroupDirectoryResult) graphql.Marshaler {
+			return ec.marshalNGroupDirectoryResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_groupDirectory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type GroupDirectoryResult does not have child fields"))
 }
 
 func (ec *executionContext) _Query_groupCreationOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -16994,6 +17340,60 @@ func (ec *executionContext) _GroupCreationOperationResult(ctx context.Context, s
 	}
 }
 
+func (ec *executionContext) _GroupDirectoryResult(ctx context.Context, sel ast.SelectionSet, obj model.GroupDirectoryResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.GroupDirectory:
+		return ec._GroupDirectory(ctx, sel, &obj)
+	case *model.GroupDirectory:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupDirectory(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of GroupDirectoryResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _GroupFinancialSummaryResult(ctx context.Context, sel ast.SelectionSet, obj model.GroupFinancialSummaryResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.Problem:
+		return ec._Problem(ctx, sel, &obj)
+	case *model.Problem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Problem(ctx, sel, obj)
+	case model.GroupFinancialSummary:
+		return ec._GroupFinancialSummary(ctx, sel, &obj)
+	case *model.GroupFinancialSummary:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._GroupFinancialSummary(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of GroupFinancialSummaryResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
 func (ec *executionContext) _GroupResult(ctx context.Context, sel ast.SelectionSet, obj model.GroupResult) graphql.Marshaler {
 	switch obj := (obj).(type) {
 	case nil:
@@ -18839,6 +19239,11 @@ func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "financialSummary":
+			out.Values[i] = ec._Group_financialSummary(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "repayments":
 			field := field
 
@@ -19114,6 +19519,135 @@ func (ec *executionContext) _GroupCreationRejected(ctx context.Context, sel ast.
 			}
 		case "fields":
 			out.Values[i] = ec._GroupCreationRejected_fields(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupDirectoryImplementors = []string{"GroupDirectory", "GroupDirectoryResult"}
+
+func (ec *executionContext) _GroupDirectory(ctx context.Context, sel ast.SelectionSet, obj *model.GroupDirectory) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupDirectoryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupDirectory")
+		case "entries":
+			out.Values[i] = ec._GroupDirectory_entries(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupDirectoryEntryImplementors = []string{"GroupDirectoryEntry"}
+
+func (ec *executionContext) _GroupDirectoryEntry(ctx context.Context, sel ast.SelectionSet, obj *model.GroupDirectoryEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupDirectoryEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupDirectoryEntry")
+		case "group":
+			out.Values[i] = ec._GroupDirectoryEntry_group(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "activeMemberCount":
+			out.Values[i] = ec._GroupDirectoryEntry_activeMemberCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "financialSummary":
+			out.Values[i] = ec._GroupDirectoryEntry_financialSummary(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var groupFinancialSummaryImplementors = []string{"GroupFinancialSummary", "GroupFinancialSummaryResult"}
+
+func (ec *executionContext) _GroupFinancialSummary(ctx context.Context, sel ast.SelectionSet, obj *model.GroupFinancialSummary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupFinancialSummaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupFinancialSummary")
+		case "totalSpendMinor":
+			out.Values[i] = ec._GroupFinancialSummary_totalSpendMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewerNetMinor":
+			out.Values[i] = ec._GroupFinancialSummary_viewerNetMinor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -20292,7 +20826,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var problemImplementors = []string{"Problem", "ExpenseEditResult", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "ActivityResult", "ActivityEventResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult", "ExpenseViewResult"}
+var problemImplementors = []string{"Problem", "ExpenseEditResult", "ViewerResult", "GroupResult", "BalanceResult", "CreateExpenseResult", "OperationResult", "ActivityResult", "ActivityEventResult", "GroupDirectoryResult", "GroupFinancialSummaryResult", "CreateGroupResult", "GroupCreationOperationResult", "HouseholdDashboardResult", "HouseholdDashboardTotalsResult", "RecordRepaymentResult", "RepaymentOperationResult", "ExpenseViewResult"}
 
 func (ec *executionContext) _Problem(ctx context.Context, sel ast.SelectionSet, obj *model.Problem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, problemImplementors)
@@ -20654,6 +21188,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_activityEvent(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "groupDirectory":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_groupDirectory(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -22160,6 +22716,52 @@ func (ec *executionContext) marshalNGroupCreationOperationResult2githubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._GroupCreationOperationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGroupDirectoryEntry2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GroupDirectoryEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNGroupDirectoryEntry2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryEntry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGroupDirectoryEntry2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryEntry(ctx context.Context, sel ast.SelectionSet, v *model.GroupDirectoryEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GroupDirectoryEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGroupDirectoryResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupDirectoryResult(ctx context.Context, sel ast.SelectionSet, v model.GroupDirectoryResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GroupDirectoryResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGroupFinancialSummaryResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupFinancialSummaryResult(ctx context.Context, sel ast.SelectionSet, v model.GroupFinancialSummaryResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GroupFinancialSummaryResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNGroupKind2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐGroupKind(ctx context.Context, v any) (model.GroupKind, error) {

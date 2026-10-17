@@ -52,6 +52,16 @@ type GroupCreationOperationResult interface {
 	IsGroupCreationOperationResult()
 }
 
+// Complete directory or safe access/unavailable problem, never a partial successful directory.
+type GroupDirectoryResult interface {
+	IsGroupDirectoryResult()
+}
+
+// Exact source-local spend and personal net, or an explicit financial problem.
+type GroupFinancialSummaryResult interface {
+	IsGroupFinancialSummaryResult()
+}
+
 // An authorized complete group projection or safe problem.
 type GroupResult interface {
 	IsGroupResult()
@@ -577,6 +587,9 @@ type Group struct {
 	Expenses *ExpenseConnection `json:"expenses,omitempty"`
 	// Complete current group positions and simplified obligations, never inferred from the expense page.
 	Balances BalanceResult `json:"balances"`
+	// Complete current expense-only spend and personal net from this Group's authorized snapshot.
+	// Independent of the selected expense connection's page and filters.
+	FinancialSummary GroupFinancialSummaryResult `json:"financialSummary"`
 	// Authorized append-only transfer history ordered by date, commit timestamp and ID descending. A page's inclusion revision can be older than separately refreshed balances. Pagination failures return null with a safe field error.
 	Repayments     *RepaymentConnection `json:"repayments,omitempty"`
 	Filter         ledger.Filter        `json:"-"`
@@ -656,6 +669,36 @@ type GroupCreationRejected struct {
 func (GroupCreationRejected) IsCreateGroupResult() {}
 
 func (GroupCreationRejected) IsGroupCreationOperationResult() {}
+
+// Complete authorized discovery metadata and compact finances, excluding the designated Household.
+type GroupDirectory struct {
+	// All currently accessible ordinary groups and trips, ordered by canonical group ID.
+	Entries []*GroupDirectoryEntry `json:"entries"`
+}
+
+func (GroupDirectory) IsGroupDirectoryResult() {}
+
+// One source's metadata, active membership count and finances from the same database snapshot.
+type GroupDirectoryEntry struct {
+	// Current authorized name, currency, classification and optional trip metadata.
+	Group *GroupSummary `json:"group"`
+	// Active memberships only; excludes inactive history and pending invitations.
+	ActiveMemberCount int `json:"activeMemberCount"`
+	// Complete current amounts, or an explicit problem; failure never becomes zero.
+	FinancialSummary GroupFinancialSummaryResult `json:"financialSummary"`
+}
+
+// Complete current expense spending and the authenticated viewer's personal position.
+// Amounts use canonical exact MinorUnits strings in the source group's currency.
+type GroupFinancialSummary struct {
+	// Complete current expense face-value total, independent of pages, filters and trip dates; excludes repayments.
+	TotalSpendMinor ledger.MinorUnits `json:"totalSpendMinor"`
+	// Paid minus owed plus repayments sent minus received. Positive means being owed;
+	// negative means owing. Zero describes only the viewer, never every member being settled.
+	ViewerNetMinor ledger.MinorUnits `json:"viewerNetMinor"`
+}
+
+func (GroupFinancialSummary) IsGroupFinancialSummaryResult() {}
 
 // One currently accessible group; no cross-group financial aggregation.
 type GroupSummary struct {
@@ -977,6 +1020,10 @@ func (Problem) IsOperationResult() {}
 func (Problem) IsActivityResult() {}
 
 func (Problem) IsActivityEventResult() {}
+
+func (Problem) IsGroupDirectoryResult() {}
+
+func (Problem) IsGroupFinancialSummaryResult() {}
 
 func (Problem) IsCreateGroupResult() {}
 

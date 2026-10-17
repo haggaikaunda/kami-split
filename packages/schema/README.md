@@ -1,6 +1,6 @@
 # GraphQL contract
 
-`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `household.graphql`, `financial-activity.graphql`, `structured-expenses.graphql`, `onboarding.graphql` and `profile.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose authenticated self-profile editing, [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, ordinary/trip group creation, financial activity, and structured cross-space spending reads. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
+`schema.graphql`, `expenses.graphql`, `repayments.graphql`, `groups.graphql`, `group-directory.graphql`, `household.graphql`, `financial-activity.graphql`, `structured-expenses.graphql`, `onboarding.graphql` and `profile.graphql` are the authoritative SDL for the Go + gqlgen backend. They expose authenticated self-profile editing, [targeted onboarding](../../docs/application/onboarding.md), public health, authorized group/member reads, expenses and complete balances, actual group repayments and history, ordinary/trip group creation, financial activity, and structured cross-space spending reads. Financial and group-creation operations support same-attempt recovery. See [persisted expenses](../../docs/application/persisted-expenses.md) and [persisted repayments](../../docs/application/persisted-repayments.md) for money, access, recovery and pagination semantics.
 
 Run `make api-generate` from root to regenerate committed API execution/model code using the pinned gqlgen tool. CI rejects generation drift. Pinned Relay tooling consumes the same authoritative SDL through `pnpm relay:generate`; `pnpm relay:check` verifies committed web artifact drift. The generator resolves server SDL extensions into a complete schema before compilation, so Relay emits executable server operations rather than client-only extension fields. Wire-operation tests validate compiled requests against the authoritative SDL.
 
@@ -45,11 +45,53 @@ rejections are durable and corrections need a new key. Receipts do not expire.
 
 Viewer groups remain ordered by canonical group ID and filtered by current active
 access. `kind` derives from nullable `trip`; `isHousehold` reveals designation
-only for an already accessible group. No installation ID or group directory is
-exposed. `Viewer.today` is sampled once per response in UTC, including aliases and
+only for an already accessible group. No installation ID or other users' group
+directory is exposed. `Viewer.today` is sampled once per response in UTC, including aliases and
 node lookups. Clients derive trip status from inclusive dates and this value;
 trip dates never restrict expense history or writes. Metadata editing and
 classification conversion have no public endpoint.
+
+## Compact group directory and financial summaries
+
+`groupDirectory` is an additive self-only read of every currently accessible
+ordinary group and trip except the designated Household. Existing `Viewer.groups`
+remains unchanged. Each entry returns `GroupSummary` metadata, an
+`activeMemberCount` based on active memberships (including an active membership
+whose account cannot currently participate), and `financialSummary`. Pending
+invitations and inactive memberships never contribute to that labeled count;
+inactive members' financial history remains in the totals.
+
+`GroupFinancialSummary.totalSpendMinor` is the complete current expense face-value
+total, independent of ledger pages, filters and trip dates. Repayments are excluded.
+`viewerNetMinor` is paid minus owed plus repayments sent minus received, for only
+the authenticated viewer's source membership. Positive means being owed, negative
+means owing, and zero says nothing about peers being settled. Both values use
+exact `MinorUnits` strings; `GroupSummary.currency` supplies their source currency.
+`Group.financialSummary` uses the same calculation over its existing coherent
+current snapshot, including when an expense connection selects an empty page.
+
+Financial overflow returns a per-source `Problem(AMOUNT_OVERFLOW)` with no money
+fields. An authorized empty ledger returns explicit zero amounts. Authentication,
+discovery, database or decoding failures return a whole-directory `Problem`, never
+a successful empty or partial directory. Requests always recheck account and group
+access; clients must continue clearing protected data on access loss/account
+replacement and ignore responses from an abandoned session.
+
+The read uses one aggregate SQL statement after the existing transaction-local
+identity check, with a five-second application deadline. Eligibility, group/trip
+metadata, active counts and current financial aggregates share that statement's
+snapshot under unchanged runtime RLS. Separate grouped expense, allocation,
+repayment and membership projections avoid join multiplication. The result grows
+with accessible groups; financial history stays in PostgreSQL, with no expense
+pages or per-member positions transferred and no query per card. Database work
+still grows with relevant history: this is a bounded query/deadline strategy, not
+a constant-time claim or a silently truncated directory. Repeated reads after
+expense creation/editing reflect current projections; repayments change net only.
+
+Deploy this additive API before any web operation selects these fields. This API
+foundation does not change existing browser invalidation/freshness policies;
+consumers must refresh the affected directory and workspace summaries under the
+account-scoped Relay policy when financial mutations commit or refresh is requested.
 
 ## Activity
 
