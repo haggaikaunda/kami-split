@@ -95,7 +95,9 @@ or inferred count. Shapes reuse the neutral `SkeletonBlock` primitive.
 
 Both compositions delay visible status/geometry by 150 ms and change to “Still
 getting things ready” or “Still loading …” after eight seconds. These are
-presentation timers, not request timeouts or minimum display durations. Mount
+presentation timers, not request timeouts or minimum display durations. Page hide
+cancels them and foreground return starts a fresh wait, so time spent away does
+not immediately trigger slow copy. Mount
 only while the owning read is pending; immediately replace with ready content,
 the owner's error/retry, or access denial. The status is one atomic polite live
 region outside the busy content region; all shapes/dots are decorative. Timers

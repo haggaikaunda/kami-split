@@ -561,9 +561,8 @@ withAuthFixture(origin, session, async () => {
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
-  // The supported fixture authenticates with cookies. The existing synchronous
-  // bootstrap does not trust a cached preference without legacy local identity;
-  // preserve its Light frame, then require the authorized Dark profile below.
+  // The supported cookie binds the paint cache before the profile read.
+  // Assert the first application frame as well as the authoritative result.
   assert.equal(
     await page.evaluate(() => localStorage.getItem('kami-auth')),
     null,
@@ -572,8 +571,8 @@ withAuthFixture(origin, session, async () => {
   await theme('dark');
   assert.equal(
     await page.evaluate(() => window.__firstTheme),
-    'light',
-    'cookie-only startup preserves the existing Light first frame',
+    'dark',
+    'cookie-only startup paints the matching saved Dark preference',
   );
   await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
   assert(
@@ -593,7 +592,7 @@ withAuthFixture(origin, session, async () => {
   results.push({
     serverPreferenceWithoutLocalCache: true,
     reloadPersistence: true,
-    cookieBootstrapLight: true,
+    cookieBootstrapDark: true,
     authorizedDarkAfterReload: true,
   });
   await checkContrast(page);

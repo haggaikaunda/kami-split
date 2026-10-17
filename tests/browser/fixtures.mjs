@@ -66,6 +66,9 @@ export const test = base.extend({
     try {
       await runTest({
         requests,
+        setAppearance(value) {
+          appearance = value;
+        },
         async authenticate() {
           await context.addCookies([
             {

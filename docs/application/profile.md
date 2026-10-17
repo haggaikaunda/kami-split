@@ -24,8 +24,9 @@ them from Auth metadata.
 
 ## Appearance preference
 
-`Profile.appearance` is `LIGHT`, `SYSTEM`, or `DARK`; existing and new accounts
-default to `LIGHT`. `updateMyAppearance(appearance, expectedAppearance)` changes
+`Profile.appearance` is `LIGHT`, `SYSTEM`, or `DARK`; newly created accounts
+default to `SYSTEM`. Existing saved values remain unchanged, including legacy
+Light defaults that cannot be distinguished from explicit choices. `updateMyAppearance(appearance, expectedAppearance)` changes
 only the enabled caller's preference through a narrowly granted SQL function.
 The actor row lock serializes concurrent edits. A stale expected preference returns
 `CONFLICT`, while a same-value retry succeeds. Display-name and appearance guards
@@ -43,15 +44,34 @@ the saved value before explicitly applying the retained selection again; rereadi
 never automatically overwrites a concurrent change. Other devices read the account preference at
 startup and when their window regains focus.
 
-A small local presentation cache is bound to the Auth session's account ID; it is
-not an identity or authorization source. The document-head bootstrap currently
-requires matching legacy `kami-auth` local storage before applying that cache.
-Supported cookie-only sessions therefore begin with Light even when the account
-has a cached Dark or System preference. Once the authenticated account scope
-resolves, the provider applies its matching cache and refreshes the preference
-from the API. A device without a cache remains Light until that read completes.
-Failed background reads retain the last known theme, while sign-out and account
-switching reset presentation to the new account's cache or Light.
+A small local presentation cache stores the confirmed preference mode, bound to
+the supported Auth session cookie's account ID (including chunked cookies). It is
+not an identity or authorization source. The synchronous document-head bootstrap
+validates that binding before applying the cache; missing, malformed, inaccessible
+or mismatched values follow System. Explicit Light/Dark override the current OS.
+Light is only the technical fallback when device color preference is unavailable.
+The authenticated account scope then applies its matching cache and refreshes the
+preference from the API. A new device follows System until its actual saved remote
+preference arrives; this fallback never writes a preference to the server.
+
+Theme subscriptions live for the account scope, independently of transient session
+loading. Background verification and failed profile reads retain known appearance;
+System rechecks the device on foreground return. A temporary verification
+transport/server failure still disposes private access, but retains the verified
+actor’s confirmed paint preference in memory. An unconfirmed editor preview
+is released on unmount or private-scope replacement. Same-actor recovery preserves it even when
+presentation storage is unavailable; a verified different actor replaces it.
+Verified presentation identity is also conveyed when private storage prevents a
+financial scope, so the new actor cannot inherit the prior actor’s paint. That
+identity has no authorization role and starts no profile read without a live
+private scope. Confirmed sign-out still discards paint when storage cleanup fails. Confirmed sign-out/access loss
+removes the departing paint cache and follows System. A different account applies
+only its own matching cache or System; old responses cannot recolor that account.
+Document/body/loading surfaces and browser theme-color use shared semantic tokens.
+The static manifest remains public installation metadata: native OS launch screens
+and captured snapshots run before account-aware application code and cannot be
+promised to match a local preference. Installed iOS launch/resume needs separate
+physical-device verification from browser first-paint checks.
 The approved dark palette is defined once in shared semantic tokens; automatic
 OS-wide and Account-only dark palettes have been removed.
 

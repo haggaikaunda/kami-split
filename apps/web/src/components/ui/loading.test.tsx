@@ -77,3 +77,17 @@ it('uses only public startup copy, progresses to truthful slow feedback, and res
   tick(150);
   expect(host.textContent).not.toContain('Still');
 });
+
+it('background time does not count as a foreground slow wait', () => {
+  act(() => root.render(<ScreenLoading />));
+  tick(4000);
+  act(() => window.dispatchEvent(new Event('pagehide')));
+  tick(60000);
+  expect(host.textContent).toBe('Kami Grow');
+  act(() => window.dispatchEvent(new Event('pageshow')));
+  tick(150);
+  expect(host.textContent).toContain('Getting things ready');
+  expect(host.textContent).not.toContain('Still');
+  tick(7850);
+  expect(host.textContent).toContain('Still getting things ready');
+});
