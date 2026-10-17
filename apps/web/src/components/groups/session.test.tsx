@@ -100,6 +100,7 @@ it('disposes private memory even when logout storage cleanup throws', async () =
   expect(current.scope).toBeUndefined();
   expect(host.textContent).not.toContain('Private alice');
   expect(host.textContent).toContain('Private storage is unavailable');
+  expect(current.discardAppearance).toBe(true);
   vi.restoreAllMocks();
   await act(async () => {
     sdk.changed('SIGNED_IN', { user: { id: 'alice' } });
@@ -183,11 +184,104 @@ it('ignores a late verified response after cross-tab logout', async () => {
         finish = done;
       }),
   );
-  await act(async () => window.dispatchEvent(new Event('popstate')));
+  await act(async () => {
+    window.dispatchEvent(new Event('popstate'));
+    await vi.advanceTimersByTimeAsync(0);
+  });
   await act(async () => sdk.changed('SIGNED_OUT', null));
   await act(async () =>
     finish({ data: { user: { id: 'alice' } }, error: null }),
   );
   expect(current.scope).toBeUndefined();
   expect(original.isLive()).toBe(false);
+});
+
+it('coalesces overlapping foreground events but cancels queued verification on logout', async () => {
+  await render();
+  const original = current.scope;
+  sdk.checked.mockClear();
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    window.dispatchEvent(new Event('popstate'));
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(current.loading).toBe(true);
+  expect(sdk.checked).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(sdk.checked).toHaveBeenCalledTimes(1);
+  expect(current.scope).toBe(original);
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    sdk.changed('SIGNED_OUT', null);
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(sdk.checked).toHaveBeenCalledTimes(1);
+  expect(current.scope).toBeUndefined();
+  expect(original?.isLive()).toBe(false);
+});
+
+it('rejects an old verification resolved between foreground invalidation and its queued replacement', async () => {
+  await render();
+  const completions: ((value: unknown) => void)[] = [];
+  sdk.checked.mockImplementation(
+    () => new Promise((resolve) => completions.push(resolve)),
+  );
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(completions).toHaveLength(1);
+  await act(async () => {
+    window.dispatchEvent(new Event('popstate'));
+    completions[0]({ data: { user: { id: 'alice' } }, error: null });
+  });
+  expect(current.loading).toBe(true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(completions).toHaveLength(2);
+  await act(async () =>
+    completions[1]({ data: { user: { id: 'alice' } }, error: null }),
+  );
+  expect(current.loading).toBe(false);
+});
+
+it.each([503, 401, 403])(
+  'disposes private access on verification %s, discarding appearance only for confirmed denial',
+  async (status) => {
+    await render();
+    const original = current.scope;
+    sessionStorage.setItem(privateStorageKey, '{}');
+    sdk.checked.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthApiError', status },
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('pageshow'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(current.scope).toBeUndefined();
+    expect(original?.isLive()).toBe(false);
+    expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
+    expect(current.error).toContain('Account verification failed');
+    expect(current.discardAppearance).toBe(status === 401 || status === 403);
+  },
+);
+
+it('reports the verified presentation actor when a different account cannot open private storage', async () => {
+  await render();
+  const original = current.scope;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Blocked');
+  });
+  await act(async () => {
+    sdk.changed('SIGNED_IN', { user: { id: 'bob' } });
+    await vi.runAllTimersAsync();
+  });
+  expect(current.scope).toBeUndefined();
+  expect(original?.isLive()).toBe(false);
+  expect(current.error).toContain('Private storage is unavailable');
+  expect(current.appearanceActor).toBe('bob');
 });

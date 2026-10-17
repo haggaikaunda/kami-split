@@ -11,6 +11,9 @@ type Access = {
   client?: SupabaseClient;
   scope?: FinancialScope;
   error?: string;
+  discardAppearance?: boolean;
+  // Presentation identity never grants private access or starts a profile read.
+  appearanceActor?: string;
 };
 const Context = createContext<Access>({ loading: true });
 export const useFinancialSession = () => useContext(Context);
@@ -24,6 +27,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
     let scope: FinancialScope | undefined;
     let unsubscribe: (() => void) | undefined;
     let stopEvents: (() => void) | undefined;
+    let foregroundTimer: ReturnType<typeof setTimeout> | undefined;
     let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     void loadClient()
       .then(async (client) => {
@@ -54,16 +58,24 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
                 setAccess({
                   loading: false,
                   client,
+                  discardAppearance: true,
                   error:
                     'Financial access is unavailable. Reload to check current access.',
                 });
               });
-            setAccess({ loading: false, client, scope });
+            setAccess({
+              loading: false,
+              client,
+              scope,
+              appearanceActor: actor,
+            });
           } catch {
             scope?.dispose();
             scope = undefined;
             setAccess({
               loading: false,
+              appearanceActor: actor,
+              discardAppearance: signedOut || !actor,
               error:
                 'Private storage is unavailable. Financial access is blocked. Restore browser storage access and reload.',
             });
@@ -80,6 +92,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
               setAccess({
                 loading: false,
                 client,
+                discardAppearance: error.status === 401 || error.status === 403,
                 error:
                   'Account verification failed. Sign in or reload to try again.',
               });
@@ -94,6 +107,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
               if (expires)
                 expiryTimer = setTimeout(
                   () => {
+                    clearTimeout(foregroundTimer);
                     scope?.dispose();
                     scope = undefined;
                     void verify();
@@ -115,24 +129,36 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
         const subscription = client.auth.onAuthStateChange((event, session) => {
           ticket++;
           if (event === 'SIGNED_OUT' || !session) {
+            clearTimeout(foregroundTimer);
             clearTimeout(expiryTimer);
             update(undefined, true);
           } else {
             setAccess((current) => ({ ...current, loading: true }));
             // Do not await another SDK call inside its locked auth callback.
-            window.setTimeout(() => {
+            clearTimeout(foregroundTimer);
+            foregroundTimer = setTimeout(() => {
               if (active) void verify();
             }, 0);
           }
         });
         unsubscribe = () => subscription.data.subscription.unsubscribe();
         const hide = () => {
+          clearTimeout(foregroundTimer);
           ticket++;
           setAccess((current) => ({ ...current, loading: true }));
         };
         const foreground = () => {
           if (document.visibilityState === 'hidden') hide();
-          else void verify();
+          else {
+            // Reject responses begun before this invalidation, including the
+            // interval before the coalesced replacement verification starts.
+            ticket++;
+            // One verification for a synchronous pageshow/popstate/visibility burst.
+            // Hide private content immediately, even before the scheduled read.
+            setAccess((current) => ({ ...current, loading: true }));
+            clearTimeout(foregroundTimer);
+            foregroundTimer = setTimeout(() => void verify(), 0);
+          }
         };
         window.addEventListener('pagehide', hide);
         window.addEventListener('pageshow', foreground);
@@ -160,25 +186,29 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
       unsubscribe?.();
       stopEvents?.();
       clearTimeout(expiryTimer);
+      clearTimeout(foregroundTimer);
       scope?.dispose();
     };
   }, []);
   return (
     <Context.Provider value={access}>
-      {access.scope ? (
-        <RelayEnvironmentProvider
-          key={access.scope.id}
-          environment={access.scope.environment}
-        >
-          <AppearanceProvider scope={access.scope} loading={access.loading}>
+      <AppearanceProvider
+        scope={access.scope}
+        loading={access.loading}
+        appearanceActor={access.appearanceActor}
+        discardAppearance={!access.error || access.discardAppearance === true}
+      >
+        {access.scope ? (
+          <RelayEnvironmentProvider
+            key={access.scope.id}
+            environment={access.scope.environment}
+          >
             {children}
-          </AppearanceProvider>
-        </RelayEnvironmentProvider>
-      ) : (
-        <AppearanceProvider loading={access.loading}>
-          {children}
-        </AppearanceProvider>
-      )}
+          </RelayEnvironmentProvider>
+        ) : (
+          children
+        )}
+      </AppearanceProvider>
     </Context.Provider>
   );
 }
