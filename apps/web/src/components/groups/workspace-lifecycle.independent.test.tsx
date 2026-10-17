@@ -77,6 +77,7 @@ const viewer = { __typename: 'Viewer', today: '2026-10-05' };
 // observable through retained ledger behavior after removing the summary strip.
 const expenseView = (amount: string, contextVersion: string | null = null) => ({
   __typename: 'ExpenseView',
+  id: `view:${amount}:${contextVersion ?? 'group'}`,
   viewerShareMinor: amount,
   viewerPaidMinor: amount,
   categories: [],
@@ -87,7 +88,7 @@ const expenseView = (amount: string, contextVersion: string | null = null) => ({
   edges: [
     {
       cursor: 'saved',
-      source: { id: 'G', name: 'Private group', currency: 'USD' },
+      source: { name: 'Private group', currency: 'USD' },
       node: {
         __typename: 'ExpenseSnapshot',
         id: `saved:${amount}`,
