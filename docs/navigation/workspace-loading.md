@@ -163,8 +163,10 @@ filter bounds, account navigation and Back. Run at 320/390/1440 CSS pixels and
 
 ## Canonical workspace routes (#201)
 
-Groups lists ordinary groups only. Household and Trips each use their own primary
-navigation. The shared Household overview remains `/household`; its original
+Groups is the unified authorized directory with All / Groups / Trips selection,
+excluding the designated Household. The existing Household and Trips shell entries
+remain; `/trips` redirects to the directory's Trips selection. Canonical workspace
+route families remain unchanged. The shared Household overview is `/household`; its original
 ledger is `/household/ledger` with the same single Household frame/tabs. Expenses
 and repayments there keep the original Household Group ID and operation/recovery
 scope. Shared source navigation never creates an aggregate repayment target.

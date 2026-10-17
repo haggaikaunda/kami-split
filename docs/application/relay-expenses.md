@@ -2,8 +2,13 @@
 
 Issue #83 connects `/groups` to the implemented GraphQL schema through pinned
 Relay 21.0.1 tooling. After [onboarding](onboarding.md), choose **Open your groups
-and expenses** from the account navigation. Groups lists ordinary authorized groups; Household and Trips have dedicated entries. Trips filters authorized Trip groups by metadata
-and server UTC date, with local decorative scenic covers and no partial-page totals. The shared navigation links to Household aggregation without inferring eligibility.
+and expenses** from the account navigation. Groups is the unified authorized
+directory with All / Groups / Trips selection, excluding the designated Household.
+The Trips selection retains All / Upcoming / Past filtering by server UTC date.
+Native cards show complete expense-only spend and separate personal net balances.
+The existing Household and Trips shell entries remain; `/trips` redirects to the
+directory's Trips selection. The shared navigation links to Household aggregation
+without inferring eligibility.
 Discovery cards open only the groups returned for the current authorized actor.
 Canonical ordinary-group `/groups/:groupId`, Trip `/trips/:groupId`, and original Household `/household/ledger` routes
 recheck access and expense ownership. Select an admitted group to read a
@@ -210,9 +215,10 @@ The [workspace loading contract](../navigation/workspace-loading.md) documents d
 
 ## Household and Trip navigation
 
-Household is absent from Groups discovery and its original ledger/details/forms
-use `/household/ledger` within the dedicated Household frame. Trips are absent
-from Groups and use `/trips/<Group ID>` plus original expense/repayment subroutes.
+The designated Household is absent from Groups discovery and its original
+ledger/details/forms use `/household/ledger` within the dedicated Household frame.
+Trips appear in the unified Groups directory and use `/trips/<Group ID>` plus
+original expense/repayment subroutes.
 Legacy group paths canonicalize after authorized metadata resolution. All reads,
 writes and recoveries retain the original group IDs and server authorization.
 See [workspace loading](../navigation/workspace-loading.md) for route and exact
