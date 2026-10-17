@@ -52,13 +52,9 @@ module.exports = async function verifyInstallation({
       '/auth/confirm': 'confirm',
       '/auth/password': 'password',
     }[route];
-    const expectedURL =
-      origin +
-      (flow
-        ? '/sign-in?flow=' + flow
-        : route === '/trips'
-          ? '/groups?kind=trips'
-          : route);
+    // Authenticated layouts may stream the Trips redirect in the HTML. The
+    // rendered keyboard journey below checks its canonical destination.
+    const expectedURL = origin + (flow ? '/sign-in?flow=' + flow : route);
     assert.equal(
       documentResponse.url(),
       expectedURL,

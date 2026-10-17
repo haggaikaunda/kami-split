@@ -296,6 +296,15 @@ withAuthFixture(origin, session, async () => {
       hasTouch: process.env.REFRESH_TESTS === '1',
       colorScheme: process.env.COLOR_SCHEME === 'dark' ? 'dark' : 'light',
     });
+    const workspaceLink = async (name) => {
+      const tabs = page.locator('[data-ui~="workspace-tabs"]');
+      if (name === 'Members' || name === 'Activity') {
+        const more = tabs.getByRole('button', { name: /^More/ });
+        if ((await more.getAttribute('aria-expanded')) !== 'true')
+          await more.click();
+      }
+      return tabs.getByRole('link', { name, exact: true });
+    };
     let ledgerEdited = false;
     let log = [],
       documents = 0,
@@ -557,10 +566,18 @@ withAuthFixture(origin, session, async () => {
       await page.goto(origin + '/groups');
       await page.getByText('Signed in as Alex').waitFor();
       const cards = page.locator('[data-ui~="discovery-cards"] a');
+      assert.equal(await cards.count(), 2, 'All contains groups and trips');
+      assert.equal(await cards.filter({ hasText: 'Maui' }).count(), 1);
+      await page
+        .getByRole('navigation', { name: 'Group type' })
+        .getByRole('link', { name: 'Groups', exact: true })
+        .click();
+      await page.waitForURL(origin + '/groups?kind=groups');
+      await page.locator('a[href="/groups/F"]').waitFor();
       assert.equal(
         await cards.count(),
         1,
-        'Groups must contain ordinary groups only',
+        'Groups filter must contain ordinary groups only',
       );
       assert.equal(await cards.first().getAttribute('href'), '/groups/F');
       if (process.env.MATERIAL_TESTS === '1') {
@@ -610,10 +627,10 @@ withAuthFixture(origin, session, async () => {
         await page
           .locator('[data-ui~="workspace-navigation"] a[aria-current="page"]')
           .getAttribute('href'),
-        '/trips',
+        '/groups',
       );
       results.push({
-        dedicatedDiscovery: true,
+        unifiedDiscovery: true,
         householdLegacyReplacement: true,
         tripLegacyReplacement: true,
         singleHouseholdFrame: true,
@@ -771,9 +788,7 @@ withAuthFixture(origin, session, async () => {
       'Overview',
       'Members',
     ]) {
-      const link = page
-        .locator('[data-ui~="workspace-tabs"]')
-        .getByRole('link', { name: tab, exact: true });
+      const link = await workspaceLink(tab);
       await link.waitFor();
       log = [];
       documents = 0;
@@ -1171,12 +1186,11 @@ withAuthFixture(origin, session, async () => {
     });
     const beforePopup = page.url();
     const popupReady = page.context().waitForEvent('page');
-    await page
-      .locator('[data-ui~="workspace-tabs"]')
-      .getByRole('link', { name: 'Members', exact: true })
-      .click({
-        modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'],
-      });
+    await (
+      await workspaceLink('Members')
+    ).click({
+      modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'],
+    });
     const popup = await popupReady;
     await popup.waitForURL((url) => url.searchParams.get('tab') === 'members');
     await popup.locator('[data-ui~="workspace-tabs"]').waitFor();
@@ -1192,9 +1206,7 @@ withAuthFixture(origin, session, async () => {
       directWorkspaceEntry: true,
     });
     if (workspace === 'group') {
-      const membersLink = page
-        .locator('[data-ui~="workspace-tabs"]')
-        .getByRole('link', { name: 'Members', exact: true });
+      const membersLink = await workspaceLink('Members');
       await membersLink.hover();
       await page.waitForTimeout(delay + 80);
       denied = true;

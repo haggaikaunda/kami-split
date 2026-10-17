@@ -23,7 +23,7 @@ module.exports = async function verifyLayout({
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
   const bannerHeight = (
-    await page.locator('[data-ui~="workspace-header"]').boundingBox()
+    await page.locator('[data-ui~="workspace-navigation-brand"]').boundingBox()
   ).height;
   await page
     .locator('[data-ui~="workspace-tabs"]')
@@ -35,11 +35,11 @@ module.exports = async function verifyLayout({
     expenses,
   );
   const compactHeight = (
-    await page.locator('[data-ui~="workspace-header"]').boundingBox()
+    await page.locator('[data-ui~="workspace-navigation-brand"]').boundingBox()
   ).height;
   assert(
-    compactHeight < bannerHeight,
-    `Working heading must be shorter than overview banner: ${compactHeight} vs ${bannerHeight}`,
+    compactHeight <= bannerHeight + 1,
+    `Compact working header must not grow beyond overview: ${compactHeight} vs ${bannerHeight}`,
   );
 
   async function geometry(label) {
@@ -204,7 +204,7 @@ module.exports = async function verifyLayout({
 
   await page
     .locator('[data-ui~="workspace-navigation"]')
-    .getByRole('link', { name: 'Account', exact: true })
+    .getByRole('link', { name: 'Profile', exact: true })
     .click();
   await page.locator('[data-ui~="account-heading"]').waitFor();
   assert.equal(

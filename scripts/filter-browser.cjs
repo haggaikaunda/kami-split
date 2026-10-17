@@ -251,7 +251,11 @@ module.exports = async function verifyFilters({
       name: 'Financial navigation',
       exact: true,
     });
-    await navigation.getByRole('link', { name: 'Trips', exact: true }).click();
+    await navigation.getByRole('link', { name: 'Groups', exact: true }).click();
+    await page
+      .getByRole('navigation', { name: 'Group type' })
+      .getByRole('link', { name: 'Trips', exact: true })
+      .click();
     await page.locator('a[href="/trips/T"]').click();
     await page
       .getByRole('navigation', { name: /workspace/i })
