@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 try:
+    from markdown_it import MarkdownIt
     from skills_ref.parser import parse_frontmatter
     from skills_ref.validator import validate
 except ImportError:
@@ -13,10 +14,17 @@ except ImportError:
 
 
 def local_links(path, root):
-    """Check inline Markdown file destinations; anchors/network stay manual."""
+    """Check parsed Markdown file destinations; anchors/network stay manual."""
     errors = []
-    for raw in re.findall(r"\]\(([^\s)]+)\)", path.read_text()):
-        target = urlsplit(raw.strip("<>"))
+    destinations = []
+    for block in MarkdownIt().parse(path.read_text()):
+        for token in block.children or []:
+            if token.type == "link_open":
+                destinations.append(token.attrGet("href"))
+            elif token.type == "image":
+                destinations.append(token.attrGet("src"))
+    for raw in destinations:
+        target = urlsplit(raw)
         if target.scheme or target.netloc or not target.path:
             continue
         destination = (path.parent / unquote(target.path)).resolve()

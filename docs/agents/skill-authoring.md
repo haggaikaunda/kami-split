@@ -78,7 +78,8 @@ python3 -m venv .tools/skills-validator
 
 The upstream validator owns portable frontmatter checks; the small local wrapper
 checks ASCII names, string metadata, nonempty body, contained resources and local
-inline Markdown file links in live skills and their Markdown resources. It checks
+Markdown file links/images in live skills and their Markdown resources using a
+pinned CommonMark parser (including titles, spaces and reference links). It checks
 file existence, not heading anchors or network freshness. Manual inspection owns
 those, plus trigger precision, safety and usefulness. Templates/examples are
 non-live assets, not extra installed skills. Tests exercise invalid input and
