@@ -67,8 +67,10 @@ PR comparisons use the event's actual base/head merge base; pushes use the actua
 history supplies the objects; missing history falls back to both consumers.
 PR code runs only in unprivileged CI, never in `pull_request_target`.
 
-The repository job classifies changes, checks repository-wide formatting, and
-runs classifier/gate tests. It installs pinned workspace dependencies with scripts
+The repository job classifies changes, checks repository-wide formatting, runs
+classifier/gate tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
+Skill validation uses an isolated Python environment; it does not execute skill
+procedures. It installs pinned workspace dependencies with scripts
 disabled; it does not build the web application or start Go, Docker, or databases.
 The Web and API reusable workflows consume `verify_web` / `verify_api` in caller-level conditions, so an unaffected
 branch never allocates its expensive runner jobs. The API source/database/runtime
