@@ -85,6 +85,15 @@ to accommodate this layout.
 
 Builder, tester, and reviewer are independent roles with separate agent/task contexts and role-specific prompts. Testing begins from the issue requirements, not the builder's summary. Review evaluates the actual final diff.
 
+The coordinator uses [model routing and compact fresh assignments](model-routing.md)
+throughout delivery. Keep the user's coordinator model; explicitly select supported
+model/effort for delegated roles. Cross-model and independent roles use fresh
+contexts. Use [GitHub stage records and the current handoff](delivery-records.md)
+at meaningful boundaries, including blocked/incomplete attempts. These records
+support the existing trusted workflow; they do not authenticate separate credentials
+or add a routine human approval. Enforcement work in
+[#305](https://github.com/haggaikaunda/kami-split/issues/305) is non-blocking.
+
 ## Role prompts and evidence
 
 Use separate contexts with the [builder](prompts/builder.md), [tester](prompts/tester.md), and [reviewer](prompts/reviewer.md) prompts. Record the tested/reviewed commit, requirements coverage, commands and outcomes, findings, and limitations on the PR. After changes, rerun affected checks and obtain independent re-testing or re-review as appropriate so the evidence covers the final diff.

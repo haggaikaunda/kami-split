@@ -5,6 +5,8 @@ description: Prepare or refresh an authorized Kami Split goal as an executable G
 
 Use [outcome verification](../../../docs/agents/outcome-verification.md) and
 the [delivery workflow](../../../docs/agents/delivery-workflow.md).
+The coordinator applies [model routing](../../../docs/agents/model-routing.md)
+and [stage records](../../../docs/agents/delivery-records.md) across the delivery.
 
 1. Read the user's current intent, live issue/comments, related decisions and
    relevant source. Search existing issues before creating one. Reconcile

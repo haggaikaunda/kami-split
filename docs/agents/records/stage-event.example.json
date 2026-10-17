@@ -1,0 +1,69 @@
+{
+  "record_type": "kami_split.delivery_stage",
+  "schema_version": 1,
+  "event_id": "example-event-001",
+  "supersedes": [],
+  "goal": "https://github.com/example/project/issues/42",
+  "attempt_id": "example-attempt-001",
+  "scope": {
+    "revision": "example-scope-v1",
+    "sources": ["https://github.com/example/project/issues/42#issuecomment-100"]
+  },
+  "stage": "testing",
+  "role": "tester",
+  "outcome": "blocked",
+  "revision": {
+    "repository": "https://github.com/example/project",
+    "base": "1111111111111111111111111111111111111111",
+    "head": "2222222222222222222222222222222222222222",
+    "tested": "2222222222222222222222222222222222222222"
+  },
+  "execution": {
+    "configured_model": "gpt-6.1-sol",
+    "configured_effort": "high",
+    "observed_model": null,
+    "observed_effort": null,
+    "context_id": "example-context",
+    "context": "fresh",
+    "reason": "Independent requirements test under ordinary role routing; launch configuration only."
+  },
+  "evidence": {
+    "sources": ["https://github.com/example/project/pull/43#issuecomment-101"],
+    "checks": [
+      {
+        "source": "https://github.com/example/project/actions/runs/123/attempts/2",
+        "run_id": "123",
+        "check_id": null,
+        "attempt": 2,
+        "name": "Verify",
+        "conclusion": "unavailable",
+        "workflow": ".github/workflows/ci.yml",
+        "workflow_revision": null,
+        "head": null,
+        "revision_relation": "Scheduling failed before jobs ran; no synthetic merge SHA observed."
+      }
+    ]
+  },
+  "findings": [
+    "AC2 remains unverified: required disposable database is unavailable."
+  ],
+  "limitations": [
+    "Synthetic non-live example; URLs, IDs and SHAs are illustrative.",
+    "Executor model/effort, check job identity, workflow revision, CI SHA, timing and attributable cost are unavailable."
+  ],
+  "owner": "example-coordinator",
+  "next_action": "Restore the owned disposable database, rerun AC2, then obtain independent whole-final-diff review and final-head CI.",
+  "intervention": {
+    "kind": "unknown",
+    "reason": "No owner-intervention observation was supplied.",
+    "sources": [],
+    "coverage": "Only the current testing stage; earlier coordination was not observed."
+  },
+  "timing": {
+    "started_at": null,
+    "ended_at": null,
+    "elapsed_seconds": null
+  },
+  "cost": null,
+  "correction_cycle": null
+}
