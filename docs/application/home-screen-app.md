@@ -35,9 +35,10 @@ metadata using a fresh installation; removing an existing installation can remov
 its local session or unsaved drafts, so finish pending work and expect to sign in
 again first.
 
-Repeat installation from `/trips` and `/household`. From each, visit all four
-global navigation destinations, a nested workspace and expense detail, Back,
-and sign-in/return flows. Close and relaunch; check portrait/landscape safe areas.
+Repeat installation from `/trips` and `/household`. From each, visit Household,
+Groups and Profile, open a Trip through Groups, and exercise Add expense, nested
+workspace and expense-detail Back navigation, and sign-in/return flows. Close and
+relaunch; check portrait/landscape safe areas.
 Record the iPhone model, iOS version, deployed revision, and results on the PR.
 Server metadata and desktop automation cannot prove the iPhone's installed-app
 presentation or refresh behavior.
