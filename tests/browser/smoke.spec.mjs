@@ -1714,3 +1714,94 @@ test('expense Escape cannot restore private rows when the current first page is 
     'A denied first page cannot authorize replay',
   ).toBe(false);
 });
+
+for (const source of [
+  { name: 'Trip', path: '/trips/T?tab=expenses' },
+  { name: 'Household', path: '/household/expenses' },
+]) {
+  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 480 });
+    await app.authenticate();
+    await page.goto(source.path);
+    await page.locator('#ledger-expense-e1').waitFor();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
+    const brand = page.locator('[data-ui~="workspace-navigation-brand"]');
+    await expect(brand).toHaveCSS('position', 'relative');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue('--chrome-header'),
+        ),
+      )
+      .toBe('0px');
+    const filters = page.getByRole('button', { name: 'Filters', exact: true });
+    // Real pointer activation must work after the browser scrolls the control;
+    // keyboard activation alone cannot establish that fixed chrome clears it.
+    await filters.click();
+    const dialog = page.getByRole('dialog', { name: 'Expense filters' });
+    await expect(dialog).toHaveCount(1);
+    const close = dialog.getByRole('button', { name: 'Back to expenses' });
+    await expect(close).toBeInViewport({ ratio: 1 });
+    await expect(
+      dialog.getByRole('button', { name: 'Reset filters' }),
+    ).toBeInViewport();
+    await expect(
+      dialog.getByRole('button', { name: 'Apply filters' }),
+    ).toBeInViewport();
+    await dialog.locator('summary').filter({ hasText: 'Categories' }).click();
+    await dialog.getByLabel('Dining', { exact: true }).check();
+    await dialog.getByLabel('Groceries', { exact: true }).check();
+    await page.screenshot({
+      path: testInfo.outputPath('short-enlarged-filters.png'),
+    });
+    await page.keyboard.press('Escape');
+    await expect(filters).toBeFocused();
+    await filters.click();
+    await expect(
+      dialog.locator('summary').filter({ hasText: 'Categories' }),
+    ).toContainText('All categories');
+    await close.click();
+    const breakdown = page.getByRole('button', {
+      name: 'Breakdown',
+      exact: true,
+    });
+    await breakdown.click();
+    await expect(breakdown).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      page.getByRole('region', { name: 'Spending by category' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'List', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'List', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await page.setViewportSize({ width: 320, height: 900 });
+    await expect(brand).toHaveCSS('position', 'sticky');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          parseFloat(
+            document.documentElement.style.getPropertyValue('--chrome-header'),
+          ),
+        ),
+      )
+      .toBeGreaterThan(0);
+    await page.setViewportSize({ width: 320, height: 480 });
+    await expect(brand).toHaveCSS('position', 'relative');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue('--chrome-header'),
+        ),
+      )
+      .toBe('0px');
+    await filters.click();
+    await expect(dialog).toHaveCount(1);
+    await close.click();
+    await expect(filters).toBeFocused();
+  });
+}
