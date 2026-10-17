@@ -195,7 +195,11 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
 });
-async function render(groupId = '', account = scope) {
+async function render(
+  groupId = '',
+  account = scope,
+  initialView?: Parameters<typeof ExpenseLedger>[0]['initialView'],
+) {
   await act(async () =>
     root.render(
       <ExpenseLedger
@@ -204,6 +208,7 @@ async function render(groupId = '', account = scope) {
         spaces={spaces}
         today="2026-09-03"
         onDenied={vi.fn()}
+        initialView={initialView}
       />,
     ),
   );
@@ -559,3 +564,35 @@ it('replays fresh pages and the late-row anchor after repeated history remounts'
     expect(document.activeElement?.id).toBe('ledger-expense-late');
   }
 });
+
+it.each(['', 'home'])(
+  'rejects the composed cached seed after a saved %s ledger remount and keeps a denied fresh first page private',
+  async (groupId) => {
+    const prepared = {
+      filterText: '',
+      reference: result(
+        ['one', 'a', 'b', 'c', 'd', 'e'],
+        'cached-first',
+      ) as never,
+    };
+    await render(groupId, scope, prepared);
+    // An ordinary activation may consume the composed page without a duplicate read.
+    expect(state.requests).toHaveLength(0);
+    await act(async () =>
+      host.querySelector<HTMLAnchorElement>('#ledger-expense-one')!.click(),
+    );
+    await act(async () => root.render(null));
+    await render(groupId, scope, prepared);
+    // Session verification can unmount an in-progress detail return. Its saved
+    // metadata must still require a new first page, rather than replay this seed.
+    expect(state.requests).toHaveLength(1);
+    expect(state.requests[0].variables).toMatchObject({ after: null });
+    expect(host.querySelector('[id^="ledger-expense-"]')).toBeNull();
+    await respond({ __typename: 'Problem', code: 'NOT_FOUND' });
+    expect(host.querySelector('[id^="ledger-expense-"]')).toBeNull();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      'Expenses unavailable',
+    );
+    expect(state.requests).toHaveLength(1);
+  },
+);

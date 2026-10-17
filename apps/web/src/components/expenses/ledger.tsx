@@ -286,6 +286,8 @@ function LedgerContent({
     if (prepared) onInitialConsumed();
     if (
       prepared &&
+      // A saved visit survives reader remounts; its return must start a fresh anchor.
+      !savedPosition &&
       prepared.filterText === filterText &&
       !after &&
       version === 0

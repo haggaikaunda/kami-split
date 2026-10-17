@@ -57,8 +57,11 @@ ownership. See the [persistent navigation contract](../application/relay-expense
 
 The composed Group operation supplies the initial ledger/feed reference directly
 to the child reader; it does not start the same first page again after mounting.
-A ledger accepts an initial reference only for its original filter identity.
-Later filters and pages use their dedicated operations. Explicit group/account,
+A ledger accepts an initial reference only for its original filter identity and
+when no saved ledger return is pending. Saved detail or shared-chrome returns
+start a dedicated network-only first page even if session verification remounted
+the reader with a cached composed result, then replay the saved extent from that
+fresh anchor. Later filters and pages use their dedicated operations. Explicit group/account,
 source-return, destination, filter and traversal boundaries reject late responses.
 Panel-only parameters preserve the ledger traversal and original draft recovery.
 
