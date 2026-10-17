@@ -82,8 +82,15 @@ The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
-sync extends it. Replacement preserves old history/annotations in an archive and activates one
-current reporting dataset. Live provider recovery/backup capabilities require
+sync extends it. C5-v2 replacement publishes a versioned reporting plan: preserve
+the entire prior canonical history and original annotations through confirmed
+posted-bank date D inclusive, and use the new binding strictly after D. Repeated
+transitions retain earlier intervals. A separate recovery archive adds no second
+reporting contribution; recovery explicitly publishes a new plan revision without
+restoring provider permission or deleted data. Activation/recovery compare-and-swap
+plan/import/data/annotation/lifecycle revisions and fence only the affected account.
+The lifecycle slice can verify persisted activation with controlled import fixtures
+before real sync exists. Live provider recovery/backup capabilities require
 verification.
 This design does not add runtime SDL, grant banking access through groups or
 claim implemented connectivity.
