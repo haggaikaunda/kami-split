@@ -229,13 +229,8 @@ for (const status of [503, 401]) {
     await app.authenticate();
     await page.emulateMedia({ colorScheme: 'light' });
     await observe(page, 'DARK');
-    const pending = app.holdMatching(
-      'appearanceQuery',
-      () => true,
-      profile('DARK'),
-    );
+    app.setAppearance('DARK');
     await page.goto('/groups');
-    pending.release();
     await expect(
       page.getByRole('heading', { name: 'Groups', exact: true }),
     ).toBeVisible();
@@ -270,6 +265,9 @@ for (const status of [503, 401]) {
     await expect(
       page.getByText('Private synthetic person', { exact: true }),
     ).toHaveCount(0);
+    // Close the document before fixture route teardown: canceled protected reads
+    // must settle instead of keeping unrouteAll(wait) alive after access loss.
+    await page.close();
   });
 }
 
@@ -346,4 +344,44 @@ test('a verified account switch replaces paint ownership and rejects an old prof
       JSON.parse(localStorage.getItem('kami-appearance')),
     ),
   ).toEqual({ actor: other.id, value: 'SYSTEM' });
+});
+
+test('a save committing after the resumed read converges on a fresh read without replaying the mutation', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/account');
+  await expect(
+    page.getByRole('radio', { name: 'Light', exact: true }),
+  ).toBeChecked();
+  const save = app.hold('appearanceMutation', {
+    updateMyAppearance: { __typename: 'Profile', appearance: 'DARK' },
+  });
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await save.started;
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.evaluate(() => {
+    window.dispatchEvent(new PageTransitionEvent('pagehide'));
+    window.dispatchEvent(new PageTransitionEvent('pageshow'));
+  });
+  await expect(
+    page.getByRole('radio', { name: 'Light', exact: true }),
+  ).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  // An aborted response cannot prove the server canceled its commit. Model it
+  // after the resumed read, then require a new authoritative read to converge.
+  app.setAppearance('DARK');
+  await save.release();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(
+    app.requests.filter(({ operation }) => operation === 'appearanceMutation'),
+  ).toHaveLength(1);
+  await page.reload();
+  await expect(
+    page.getByRole('radio', { name: 'Dark', exact: true }),
+  ).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });

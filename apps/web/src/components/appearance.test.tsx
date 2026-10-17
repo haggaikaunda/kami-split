@@ -413,3 +413,40 @@ it.each(['success', 'conflict', 'transport'])(
     expect(document.documentElement.dataset.appearance).toBe(remote);
   },
 );
+
+it('releases an unconfirmed editor preview when temporary access failure disposes the scope first', async () => {
+  dark = false;
+  let live = true;
+  const current = { ...scope('alice'), isLive: () => live };
+  const pending = Promise.withResolvers<unknown>();
+  const call = vi
+    .fn()
+    .mockImplementation((_path, input) =>
+      input.query.includes('mutation')
+        ? pending.promise
+        : Promise.resolve({ data: result('LIGHT') }),
+    );
+  const state = {
+    call,
+    session: { user: { id: 'alice' } },
+  } as unknown as OnboardingController;
+  await act(async () =>
+    root.render(
+      <AppearanceProvider scope={current} loading={false}>
+        <AppearanceEditor state={state} />
+      </AppearanceProvider>,
+    ),
+  );
+  act(() => vi.runOnlyPendingTimers());
+  await act(async () =>
+    (host.querySelector('input[value="DARK"]') as HTMLInputElement).click(),
+  );
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  live = false;
+  await render(undefined, false, false);
+  expect(document.documentElement.dataset.theme).toBe('light');
+  await act(async () => pending.reject(new Error('Synthetic late failure')));
+  await render(scope('alice'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  expect(requests).toHaveLength(2);
+});

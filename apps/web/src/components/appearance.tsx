@@ -32,8 +32,9 @@ export function AppearanceProvider({
   const accept = useRef<
     (actor: string, value: Appearance, confirmed?: boolean) => void
   >(() => {});
-  // Only a verified scope establishes the actor binding. Keep this small paint
-  // value across fail-closed scope replacement, including unavailable storage.
+  // Only a verified scope establishes the actor binding. Retain confirmed paint
+  // across fail-closed scope replacement; an unmounted editor cannot keep an
+  // unconfirmed preview alive when its old scope rejects cleanup.
   const retained = useRef<{ actor: string; value: Appearance } | undefined>(
     undefined,
   );
@@ -74,9 +75,11 @@ export function AppearanceProvider({
       if (!live || !scope?.isLive() || actor !== scope.actor) return;
       revision++;
       value = next;
-      retained.current = { actor, value };
       optimistic = !confirmed;
-      if (confirmed) cacheAppearance(actor, value);
+      if (confirmed) {
+        retained.current = { actor, value };
+        cacheAppearance(actor, value);
+      }
       apply();
     };
     let pending: { unsubscribe(): void } | undefined;

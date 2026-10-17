@@ -58,7 +58,8 @@ Theme subscriptions live for the account scope, independently of transient sessi
 loading. Background verification and failed profile reads retain known appearance;
 System rechecks the device on foreground return. A temporary verification
 transport/server failure still disposes private access, but retains the verified
-actor’s paint preference in memory. Same-actor recovery preserves it even when
+actor’s confirmed paint preference in memory. An unconfirmed editor preview
+is released on unmount or private-scope replacement. Same-actor recovery preserves it even when
 presentation storage is unavailable; a verified different actor replaces it. Confirmed sign-out/access loss
 removes the departing paint cache and follows System. A different account applies
 only its own matching cache or System; old responses cannot recolor that account.
