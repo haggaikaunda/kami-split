@@ -1807,3 +1807,115 @@ for (const source of [
     await expect(filters).toBeFocused();
   });
 }
+
+for (const overlay of ['detail', 'create']) {
+  test(`history ${overlay} above Filters releases document scrolling after dismissal and access disposal`, async ({
+    page,
+    app,
+  }) => {
+    const width = page.viewportSize().width;
+    await page.setViewportSize({ width, height: 600 });
+    await app.authenticate();
+    await page.goto('/trips/T?tab=expenses');
+    await page.locator('#ledger-expense-e1').waitFor();
+    const originalOverflow = await page.evaluate(
+      () => document.body.style.overflow,
+    );
+    if (overlay === 'detail') {
+      await page.locator('#ledger-expense-e1').click();
+      await expect(
+        page.getByText('Private fixture note', { exact: true }),
+      ).toBeVisible();
+    } else {
+      await page
+        .getByRole('link', { name: 'Add expense', exact: true })
+        .click();
+      await page
+        .locator('#expense-description')
+        .fill('Creation draft retained through history');
+    }
+    const overlayURL = page.url();
+    await page.goBack();
+    await page.locator('#ledger-expense-e1').waitFor();
+    const filters = page.getByRole('dialog', { name: 'Expense filters' });
+    const presentation = page.locator('[data-ui~="expense-presentation"]');
+    const openDraft = async () => {
+      await page.getByRole('button', { name: 'Filters', exact: true }).click();
+      await filters
+        .locator('summary')
+        .filter({ hasText: 'Categories' })
+        .click();
+      await filters.getByLabel('Dining', { exact: true }).check();
+      await filters.getByLabel('Groceries', { exact: true }).check();
+    };
+    const forward = async () => {
+      await page.goForward();
+      await page.waitForURL(overlayURL);
+      await expect(presentation).toBeVisible();
+      await expect(page.locator('dialog[open]')).toHaveCount(2);
+      if (overlay === 'create')
+        await expect(page.locator('#expense-description')).toHaveValue(
+          'Creation draft retained through history',
+        );
+      await expect
+        .poll(() => page.evaluate(() => document.body.style.overflow))
+        .toBe('hidden');
+    };
+    await openDraft();
+    await forward();
+    await page.keyboard.press('Escape');
+    await expect(presentation).toHaveCount(0);
+    await expect(filters).toBeVisible();
+    await expect(filters.getByLabel('Dining', { exact: true })).toBeChecked();
+    await expect(
+      filters.getByLabel('Groceries', { exact: true }),
+    ).toBeChecked();
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe('hidden');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe(originalOverflow);
+    // Exercise actual wheel input on the authorized long document after release.
+    await page
+      .locator('[data-ui~="ledger-pagination"]')
+      .scrollIntoViewIfNeeded();
+    await page.locator('#ledger-expense-e8').waitFor();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.mouse.move(width / 2, 250);
+    await page.mouse.wheel(0, 240);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    // History can mount the same two owners again; access loss disposes both.
+    await openDraft();
+    await forward();
+    const denial = responseFor('journeyWorkspaceQuery', {
+      id: 'T',
+      ledger: true,
+    });
+    denial.group = {
+      __typename: 'Problem',
+      code: 'NOT_FOUND',
+      message: 'Denied',
+    };
+    denial.groupExpenses = {
+      __typename: 'Problem',
+      code: 'NOT_FOUND',
+      message: 'Denied',
+    };
+    const denied = app.hold('journeyWorkspaceQuery', denial);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await denied.started;
+    await denied.release();
+    await expect(page.getByRole('alert').first()).toBeVisible();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
+    await expect(
+      page.getByText('Private fixture note', { exact: true }),
+    ).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.body.style.overflow))
+      .toBe(originalOverflow);
+  });
+}

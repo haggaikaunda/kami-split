@@ -1,5 +1,6 @@
 'use client';
 import { ContentLoading } from '../ui/loading';
+import { acquireBodyScrollLock } from '../ui/scroll-lock';
 import { useExpenseEntry } from './entry';
 import { useForegroundRefresh } from '@/components/groups/foreground';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
@@ -1088,12 +1089,11 @@ export function LedgerDialog({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = acquireBodyScrollLock(document.body);
     dialog.showModal();
     return () => {
       dialog.close();
-      document.body.style.overflow = overflow;
+      releaseScroll();
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
   }, []);
