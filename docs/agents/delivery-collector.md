@@ -26,7 +26,11 @@ not an independent proof of every criterion or authenticated role identity.
 
 Retrieval paginates issue comments/timelines, directly linked same-repository PRs,
 PR comments/reviews/review comments/commits, each retrieved commit's checks and
-statuses, workflow runs and every reported attempt's metadata/jobs. It follows
+statuses, workflow runs and every reported attempt's metadata/jobs. The same CI
+history retrieval covers every valid record's head/tested SHA, including failed
+or superseded candidates absent from the current PR commit list, with duplicate
+SHA requests shared. Unknown or out-of-repository record revisions remain
+explicit evidence-coverage gaps. It follows
 precise structured evidence references to same-repository comments, reviews, PRs
 and runs. It does not expand background issue bodies or external evidence.
 Unexpanded references are explicit diagnostics. Scope/approval links remain
@@ -42,7 +46,9 @@ bounded retrieval/record checks completed, never that a goal passed. Reports
 separately expose endpoint retrieval, record validity and evidence coverage, with
 item counts, source IDs, timestamps and raw observed resources. An unexpanded
 external/background reference or unavailable check leaves evidence coverage
-incomplete even when the bounded endpoints were fully retrieved.
+incomplete even when the bounded endpoints were fully retrieved. Missing/capped
+history or invalid records also prevent complete evidence coverage; an empty
+set of observed checks cannot establish coverage of unretrieved history.
 They may contain private repository text; keep them in ignored `test-results/`
 or external temporary storage and inspect before sharing. Never commit live
 reports or use a capped report as a repository census.
@@ -59,7 +65,8 @@ are used to infer rework or interventions, and scoped `none_observed` assertions
 do not establish whole-goal zero.
 
 Retained check assertions and fresh API observations are separate. The collector
-compares available run/check IDs, attempt, head, name, conclusion and workflow
+compares available run/check IDs, attempts embedded in source URLs, retained
+attempts, head, name, conclusion and workflow
 identity; unavailable or expired sources remain unverified, and mismatches remain
 inconsistent. A job ID is not assumed to be a check-run ID. The run API does not
 attest the workflow source revision; retained synthetic-merge relations remain

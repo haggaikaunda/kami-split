@@ -52,7 +52,10 @@ def base_routes():
     return {"issues/1": {"id": 1, "html_url": ROOT + "/issues/1", "state": "open", "body": ""},
             "issues/2": {"id": 2, "html_url": ROOT + "/issues/2", "state": "open", "body": ""},
             "issues/1/comments?per_page=100&page=1": [], "issues/1/timeline?per_page=100&page=1": [],
-            "issues/2/comments?per_page=100&page=1": [], "issues/2/timeline?per_page=100&page=1": []}
+            "issues/2/comments?per_page=100&page=1": [], "issues/2/timeline?per_page=100&page=1": [],
+            "commits/" + "2" * 40 + "/check-runs?filter=all&per_page=100&page=1": {"check_runs": []},
+            "commits/" + "2" * 40 + "/statuses?per_page=100&page=1": [],
+            "actions/runs?head_sha=" + "2" * 40 + "&per_page=100&page=1": {"workflow_runs": []}}
 
 
 class RetrievalTests(unittest.TestCase):
@@ -130,6 +133,66 @@ class RetrievalTests(unittest.TestCase):
         report = Collector("example/project", Fake(routes)).collect([1])
         self.assertFalse(report["retrieval_complete"])
         self.assertIn("invalid_api_shape", {d["code"] for d in report["diagnostics"]})
+
+    def test_failed_or_capped_comment_history_cannot_establish_evidence_coverage(self):
+        routes = base_routes()
+        del routes["issues/1/comments?per_page=100&page=1"]
+        report = Collector("example/project", Fake(routes)).collect([1])
+        self.assertFalse(report["retrieval_complete"])
+        self.assertFalse(report["evidence_coverage_complete"])
+        routes["issues/1/comments?per_page=100&page=1"] = [comment(i) for i in range(100)]
+        report = Collector("example/project", Fake(routes), max_pages=1).collect([1])
+        self.assertFalse(report["evidence_coverage_complete"])
+
+    def test_historical_record_revisions_discover_paginated_ci_without_check_ids(self):
+        routes = base_routes()
+        head, tested = "b" * 40, "c" * 40
+        record = event(outcome="failed")
+        record["revision"].update(head=head, tested=tested)
+        routes["issues/1/comments?per_page=100&page=1"] = [comment(1, fenced(record))]
+        for sha in [head, tested]:
+            routes[f"commits/{sha}/check-runs?filter=all&per_page=100&page=1"] = {"check_runs": []}
+            routes[f"commits/{sha}/statuses?per_page=100&page=1"] = []
+            routes[f"actions/runs?head_sha={sha}&per_page=100&page=1"] = {"workflow_runs": []}
+        routes[f"commits/{head}/check-runs?filter=all&per_page=100&page=1"] = {"check_runs": [{"id": i} for i in range(100)]}
+        routes[f"commits/{head}/check-runs?filter=all&per_page=100&page=2"] = {"check_runs": [{"id": 101}]}
+        routes[f"actions/runs?head_sha={head}&per_page=100&page=1"] = {"workflow_runs": [{"id": 8}]}
+        routes["actions/runs/8"] = {"id": 8, "run_attempt": 2}
+        for attempt in [1, 2]:
+            routes[f"actions/runs/8/attempts/{attempt}"] = {"id": 8, "run_attempt": attempt}
+            routes[f"actions/runs/8/attempts/{attempt}/jobs?per_page=100&page=1"] = {"jobs": []}
+        adapter = Fake(routes)
+        report = Collector("example/project", adapter).collect([1])
+        self.assertTrue(report["retrieval_complete"])
+        self.assertTrue(report["evidence_coverage_complete"])
+        self.assertIn(PREFIX + f"commits/{head}/check-runs?filter=all&per_page=100&page=2", adapter.calls)
+        self.assertIn(PREFIX + f"commits/{tested}/statuses?per_page=100&page=1", adapter.calls)
+        self.assertIn(PREFIX + "actions/runs/8/attempts/1/jobs?per_page=100&page=1", adapter.calls)
+        del routes[f"commits/{tested}/statuses?per_page=100&page=1"]
+        failed = Collector("example/project", Fake(routes)).collect([1])
+        self.assertFalse(failed["retrieval_complete"])
+        self.assertFalse(failed["evidence_coverage_complete"])
+
+    def test_source_attempt_is_reconciled_with_retained_and_live_attempts(self):
+        check = json.loads(EXAMPLE.read_text())["evidence"]["checks"][0]
+        check.update(check_id="7", run_id="8", attempt=2, source=ROOT + "/actions/runs/8/attempts/1", workflow="CI")
+        fresh = {"id": 8, "run_attempt": 2, "head_sha": check["head"], "name": "CI"}
+        routes = {"check-runs/7": {"id": 7, "name": check["name"], "head_sha": check["head"], "conclusion": check["conclusion"]},
+                  "actions/runs/8": fresh, "actions/runs/8/attempts/1": {**fresh, "run_attempt": 1},
+                  "actions/runs/8/attempts/2": fresh,
+                  "actions/runs/8/attempts/1/jobs?per_page=100&page=1": {"jobs": []},
+                  "actions/runs/8/attempts/2/jobs?per_page=100&page=1": {"jobs": []}}
+        for suffix in ["", "/", "?view=logs", "#summary"]:
+            check["source"] = ROOT + "/actions/runs/8/attempts/1" + suffix
+            observed = Collector("example/project", Fake(routes)).observe_check(check)
+            self.assertEqual(observed["status"], "inconsistent")
+            self.assertIn("source_attempt", observed["mismatches"])
+        check["attempt"] = None
+        observed = Collector("example/project", Fake(routes)).observe_check(check)
+        self.assertEqual(observed["status"], "observed_fields_consistent")
+        self.assertEqual(observed["fresh"]["run_attempt"]["run_attempt"], 1)
+        del routes["actions/runs/8/attempts/1"]
+        self.assertEqual(Collector("example/project", Fake(routes)).observe_check(check)["status"], "unverified")
 
     def test_retained_check_does_not_become_fresh_after_expiry_or_wrong_id(self):
         collector = Collector("example/project", Fake({}))

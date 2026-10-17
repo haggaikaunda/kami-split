@@ -80,6 +80,7 @@ class Collector:
         self.prs = {}
         self.issues = {}
         self.issue_prs = {}
+        self.revision_histories = set()
         self.validator = Draft202012Validator(decode(SCHEMA.read_text()))
 
     def diagnostic(self, code, source, **details):
@@ -182,10 +183,17 @@ class Collector:
         shas = {item.get("sha") for item in commits}
         shas.update([data.get("head", {}).get("sha"), data.get("merge_commit_sha")])
         for sha in sorted(s for s in shas if isinstance(s, str) and re.fullmatch(r"[a-f0-9]{40}", s)):
-            self.pages(f"commits/{sha}/check-runs?filter=all", "check_runs")
-            self.pages(f"commits/{sha}/statuses")
-            for run in self.pages(f"actions/runs?head_sha={sha}", "workflow_runs"):
-                self.run(run.get("id"))
+            self.revision_history(sha)
+
+    def revision_history(self, sha):
+        """Discover CI even for failed/removed heads with no retained check IDs."""
+        if sha in self.revision_histories:
+            return
+        self.revision_histories.add(sha)
+        self.pages(f"commits/{sha}/check-runs?filter=all", "check_runs")
+        self.pages(f"commits/{sha}/statuses")
+        for run in self.pages(f"actions/runs?head_sha={sha}", "workflow_runs"):
+            self.run(run.get("id"))
 
     def run(self, run_id):
         if not str(run_id).isdigit():
@@ -271,7 +279,11 @@ class Collector:
                 mismatch.append(key)
         if not check["source"].startswith(self.root + "/"):
             result["limitations"].append("external_check_source_not_verified")
-        source_ids = re.search(r"/actions/runs/(\d+)(?:/job/(\d+))?", check["source"])
+        source_ids = re.search(
+            r"/actions/runs/(\d+)(?:/attempts/(\d+))?(?:/job/(\d+))?/?(?=$|[?#])", check["source"])
+        source_attempt = int(source_ids[2]) if source_ids and source_ids[2] else None
+        if source_attempt is not None and check["attempt"] is not None and source_attempt != check["attempt"]:
+            mismatch.append("source_attempt")
         source_check = re.search(r"[?&]check_run_id=(\d+)", check["source"])
         if source_check and check["check_id"] and source_check[1] != check["check_id"]:
             mismatch.append("source_check_id")
@@ -289,10 +301,12 @@ class Collector:
                     mismatch.append("check_run_relation")
         if check["run_id"] and check["run_id"].isdigit():
             run = self.run(check["run_id"])
-            attempt = check["attempt"]
+            attempt = check["attempt"] if check["attempt"] is not None else source_attempt
             fresh = self.get(f"actions/runs/{check['run_id']}/attempts/{attempt}") if attempt else run
             result["fresh"]["run_attempt"] = fresh
             if fresh:
+                if source_attempt is not None and source_attempt != fresh.get("run_attempt"):
+                    mismatch.append("source_attempt")
                 for field, remote in [("run_id", "id"), ("head", "head_sha"), ("attempt", "run_attempt")]:
                     if check[field] is not None and str(check[field]) != str(fresh.get(remote)):
                         mismatch.append(field)
@@ -312,8 +326,8 @@ class Collector:
                     mismatch.append("conclusion")
         if check["workflow_revision"]:
             result["limitations"].append("workflow_revision_not_attested_by_run_API")
-        if source_ids and source_ids[2]:
-            job = self.get(f"actions/jobs/{source_ids[2]}")
+        if source_ids and source_ids[3]:
+            job = self.get(f"actions/jobs/{source_ids[3]}")
             result["fresh"]["source_job"] = job
             if job:
                 for field, remote in [("run_id", "run_id"), ("attempt", "run_attempt"),
@@ -360,6 +374,16 @@ class Collector:
             followed.update((r["source"], r["block"]) for r in pending)
             self.follow_evidence(pending)
         records = self.extract()
+        for record in records:
+            revision = record["event"]["revision"]
+            if revision["repository"] != self.root:
+                self.diagnostic("record_revision_repository_not_retrieved", record["source"])
+                continue
+            for field in ["head", "tested"]:
+                if revision[field] is None:
+                    self.diagnostic("record_revision_unknown", record["source"], field=field)
+                else:
+                    self.revision_history(revision[field])
         resolved = reconcile(records)
         self.diagnostics.extend(resolved["diagnostics"])
         checks = [{"event_id": r["event"]["event_id"], "source": r["source"],
@@ -386,8 +410,9 @@ class Collector:
             "report_version": 1, "repository": self.repository, "started_at": self.started_at, "observed_at": now(),
             "declared_issues": issue_numbers, "denominator": len(issue_numbers),
             "retrieval_complete": retrieval_complete, "record_coverage_complete": record_coverage_complete,
-            "evidence_coverage_complete": not any(d["code"] in [
+            "evidence_coverage_complete": retrieval_complete and record_coverage_complete and not any(d["code"] in [
                 "external_evidence_not_retrieved", "evidence_reference_not_expanded",
+                "record_revision_repository_not_retrieved", "record_revision_unknown",
             ] for d in self.diagnostics) and all(c["status"] == "observed_fields_consistent" for c in checks),
             "coverage": self.coverage,
             "diagnostics": self.diagnostics, "goals": goals, "reconciliation": resolved,
