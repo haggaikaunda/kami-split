@@ -33,7 +33,9 @@ The coordinator retains [routing responsibility](../../../docs/agents/model-rout
    missing upstream or squash-head ancestry.
 5. Publish actual outcomes or blockers with owners/next actions and retained check
    identities. Refresh the current index without rewriting valid prior attempts.
-   Close the issue only after all its criteria and delivery/closeout obligations
+   Verify partial-delivery issues remain open after merge; reconcile accidental
+   automatic closure with the approved remaining scope. Close the issue only
+   after all its criteria and delivery/closeout obligations
    are satisfied; leave parent/remaining scopes open. Record deployment outcome
    when the owning issue requires it; a merged PR alone does not prove release.
 

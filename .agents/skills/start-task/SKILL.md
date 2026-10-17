@@ -19,8 +19,8 @@ and [current handoff contract](../../../docs/agents/delivery-records.md).
    Wrong repository identity blocks dependent operations; never reset or stash
    someone's work to obtain a clean start.
 3. Establish a feature branch and explicit owners for its checkout, build output,
-   ports, services and disposable database. Check the current task-map preflight
-   and area verification entry points before substantive work. Missing tools or
+   ports, services and disposable database. Use the [execution preflight](../../../docs/agents/execution.md)
+   and applicable area checks before substantive work. Missing tools or
    configuration need actionable setup, not fabricated success. Do not reveal
    configuration values or reclaim unowned resources; a worktree isolates files.
 4. Inspect relevant source, state a short plan and route only useful independent
