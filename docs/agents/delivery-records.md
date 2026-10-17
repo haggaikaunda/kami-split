@@ -9,6 +9,12 @@ issue/PR discussions with exact revisions, outcomes and source links are the
 default. A separate JSON ledger is not required. Keep one current evidence index
 and link detailed results instead of copying them into multiple reports.
 
+For a retest or resumed stage, record the changed revision/scope, new observations,
+finding disposition and next action. Link the earlier report and explain which
+evidence remains applicable; do not republish the whole report or relabel retained
+observations as new execution. Keep detailed logs/artifacts behind the concise
+outcome and source links, preserving useful failure history.
+
 For a bounded retrospective, use
 [evaluate-deliveries](../../.agents/skills/evaluate-deliveries/SKILL.md) to collect
 existing discussions and assess outcomes, friction and adoption. It reads both
@@ -28,7 +34,7 @@ Evidence: links to builder checks, independent criteria coverage, whole-final-di
   review and observed final-head CI; tested revisions and material limitations
 Open findings / blockers: owner, exact affected action and next action
 Next: next stage or explicit transfer; merge/closeout status and remaining work
-Records: attempt-start and latest stage/correction comment links; cohort link
+Records: attempt-start and latest stage/correction links; cohort only if evaluating
 ```
 
 Refresh the live issue, PR, relevant decisions and recent comments before every

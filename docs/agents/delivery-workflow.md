@@ -14,10 +14,28 @@ Write run outputs to ignored `test-results/` or an external temporary directory.
 2. **Builder:** implements the smallest complete solution in a worktree, opens a draft PR, and records the convention self-check below before requesting final review.
 3. **CI:** deterministic formatting, linting, type checking, unit tests, and build checks pass.
 4. **Tester:** independently compares observed behavior and tests with the approved issue revision, mapping criteria to scenarios, evidence and limitations under the [outcome contract](outcome-verification.md). The tester may add test-only commits; production changes return to the builder.
-5. **Reviewer:** reviews the whole final diff with fresh context and records prioritized findings and convention evidence below.
+5. **Reviewer:** after testing and resolution/retesting of substantive tester findings, reviews the whole final diff with fresh context and records prioritized findings and convention evidence below.
 6. **Resolution:** findings are fixed or explicitly resolved; CI reruns after all changes.
 7. **Merge:** an agent may squash-merge only when every gate below is satisfied.
 8. **Closeout:** the delivery/merge coordinator executes the post-merge closeout below and records outcomes or blockers. Each agent owns its own disposable worktrees. If another session merges, explicitly hand off cleanup to the agent with access to the original checkout.
+
+## Plan verification before final review
+
+At task start, include affected user journeys/contracts and their existing checks
+in the short implementation plan. Identify required checks and any opt-in runners
+needed to demonstrate the issue's acceptance criteria, with resource ownership.
+For UI changes, inspect relevant navigation, accessible names, control state and
+fixture assumptions early; batch related runner maintenance with the change while
+preserving observable assertions. Use the existing area guidance and classifier;
+this plan neither requires every optional runner nor permits skipping required checks.
+
+Finish builder checks, independent requirements testing and substantive tester
+fixes/retests before requesting the final whole-diff review. This includes selected
+opt-in checks needed for acceptance; an opt-in command is not a reason to leave an
+affected criterion unverified. Early diagnostic consultation may help resolve a
+specific problem, but it is not the final review gate. CI may run earlier; merge
+still requires passing final-head CI. Relevant changes after review require the
+affected verification and a whole updated final-diff review.
 
 ## Shared source-of-truth updates
 

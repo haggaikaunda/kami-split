@@ -17,6 +17,12 @@ publish outcomes using [stage records](../../../docs/agents/delivery-records.md)
    failure and regression scenarios in an owned disposable environment. Identify
    fixtures' limits. Do not use production data or take over another agent's
    checkout, database or ports. Missing tools/evidence mean blocked, not pass.
+   Include the [affected checks selected for acceptance](../../../docs/agents/delivery-workflow.md#plan-verification-before-final-review).
+   Diagnose a failed runner against current contracts and observed behavior before
+   changing assertions: distinguish a product defect from stale selectors or
+   fixture behavior. For freshness/concurrency cases, inspect requests and accepted
+   state as well as the rendered result. Batch related test maintenance, preserve
+   observable and negative-case assertions, and record fixture limits honestly.
 3. Publish the contract's criterion/scenario/observed-evidence/limitation table
    on the PR, bound to exact tested revision and approved scope. Report actual
    commands, findings, residual risks and available context identity honestly.
