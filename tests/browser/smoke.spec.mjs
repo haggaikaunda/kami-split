@@ -1908,7 +1908,6 @@ for (const overlay of ['detail', 'create']) {
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
     // History can mount the same two owners again; access loss disposes both.
     await openDraft();
-    await forward();
     const denial = responseFor('journeyWorkspaceQuery', {
       id: 'T',
       ledger: true,
@@ -1923,7 +1922,38 @@ for (const overlay of ['detail', 'create']) {
       code: 'NOT_FOUND',
       message: 'Denied',
     };
-    const denied = app.hold('journeyWorkspaceQuery', denial);
+    // These normal background reads can be canceled when denial disposes their
+    // owners. Keep them under the fixture's explicit replacement-read contract.
+    const collateral = [
+      app.holdMatching(
+        'expensesGroupQuery',
+        () => true,
+        responseFor('expensesGroupQuery', { groupId: 'T' }),
+      ),
+      app.holdMatching(
+        'journeyExpenseQuery',
+        () => true,
+        responseFor('journeyExpenseQuery', { id: 'e1' }),
+      ),
+      app.holdMatching(
+        'appearanceQuery',
+        () => true,
+        responseFor('appearanceQuery', {}),
+      ),
+    ];
+    for (const read of collateral) read.release();
+    const denied = app.holdMatching(
+      'journeyWorkspaceQuery',
+      () => true,
+      denial,
+    );
+    await page.goForward();
+    await page.waitForURL(overlayURL);
+    await expect
+      .poll(() => page.evaluate(() => window.expenseModalPeak))
+      .toBe(2);
+    // Detail history may reuse fresh workspace data; foregrounding still checks
+    // the current server permission. Hold every replacement read until denied.
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await denied.started;
     await denied.release();
@@ -1936,5 +1966,8 @@ for (const overlay of ['detail', 'create']) {
     await expect
       .poll(() => page.evaluate(() => document.body.style.overflow))
       .toBe(originalOverflow);
+    // Finish synthetic response callbacks before the fixture removes routes;
+    // denied owner disposal deliberately cancels overlapping protected reads.
+    await page.waitForLoadState('networkidle');
   });
 }
