@@ -269,3 +269,15 @@ it('bootstrap accepts supported base64 chunked cookies and rejects unknown cache
   document.cookie = 'kami-auth.0=; max-age=0; path=/';
   document.cookie = 'kami-auth.1=; max-age=0; path=/';
 });
+
+it('uses the technical Light fallback when device detection is unavailable', async () => {
+  vi.stubGlobal('matchMedia', () => {
+    throw new Error('Unavailable');
+  });
+  window.eval(appearanceBootstrap);
+  expect(document.documentElement.dataset.theme).toBe('light');
+  await render(scope('alice'));
+  expect(document.documentElement.dataset.theme).toBe('light');
+  requests[0].next(result('DARK'));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+});

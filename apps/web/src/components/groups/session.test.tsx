@@ -220,3 +220,29 @@ it('coalesces overlapping foreground events but cancels queued verification on l
   expect(current.scope).toBeUndefined();
   expect(original?.isLive()).toBe(false);
 });
+
+it('rejects an old verification resolved between foreground invalidation and its queued replacement', async () => {
+  await render();
+  const completions: ((value: unknown) => void)[] = [];
+  sdk.checked.mockImplementation(
+    () => new Promise((resolve) => completions.push(resolve)),
+  );
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(completions).toHaveLength(1);
+  await act(async () => {
+    window.dispatchEvent(new Event('popstate'));
+    completions[0]({ data: { user: { id: 'alice' } }, error: null });
+  });
+  expect(current.loading).toBe(true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(completions).toHaveLength(2);
+  await act(async () =>
+    completions[1]({ data: { user: { id: 'alice' } }, error: null }),
+  );
+  expect(current.loading).toBe(false);
+});

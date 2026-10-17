@@ -125,17 +125,20 @@ test('saved Dark survives repeated background, delayed verification, history and
     });
     await page.waitForTimeout(350);
     const observedAuthReads = authReads;
-    release();
     await page.screenshot({ path: info.outputPath(`resume-${turn}.png`) });
     const frames = await page.evaluate(() => window.themeFrames);
+    release();
     await info.attach(`resume-${turn}-frames`, {
       body: JSON.stringify(frames),
       contentType: 'application/json',
     });
     expect([...new Set(frames.map((frame) => frame.theme))]).toEqual(['dark']);
-    expect(frames.every((frame) => frame.canvas === 'rgb(11, 18, 32)')).toBe(
-      true,
-    );
+    expect(
+      frames.every(
+        (frame) =>
+          frame.canvas === 'rgb(11, 18, 32)' && frame.body === frame.canvas,
+      ),
+    ).toBe(true);
     await expect(
       page.getByText('Still getting things ready', { exact: true }),
     ).toHaveCount(0);

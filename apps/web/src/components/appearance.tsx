@@ -51,10 +51,12 @@ export function AppearanceProvider({
       apply();
     };
     apply();
-    const media =
-      typeof window.matchMedia === 'function'
-        ? window.matchMedia('(prefers-color-scheme: dark)')
-        : undefined;
+    let media: MediaQueryList | undefined;
+    try {
+      media = window.matchMedia('(prefers-color-scheme: dark)');
+    } catch {
+      // Device detection is optional; applyAppearance has a Light fallback.
+    }
     media?.addEventListener('change', apply);
     accept.current = (actor, next, confirmed = true) => {
       if (!live || !scope?.isLive() || actor !== scope.actor) return;

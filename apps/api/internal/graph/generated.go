@@ -4967,7 +4967,8 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/profile.graphql", Input: `"""
-Account appearance preference. LIGHT is the default; SYSTEM follows the device.
+Account appearance preference. SYSTEM is the new-account default and follows the device.
+Existing saved preferences are preserved.
 """
 enum Appearance {
   """

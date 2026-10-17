@@ -95,6 +95,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
               if (expires)
                 expiryTimer = setTimeout(
                   () => {
+                    clearTimeout(foregroundTimer);
                     scope?.dispose();
                     scope = undefined;
                     void verify();
@@ -122,7 +123,8 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
           } else {
             setAccess((current) => ({ ...current, loading: true }));
             // Do not await another SDK call inside its locked auth callback.
-            window.setTimeout(() => {
+            clearTimeout(foregroundTimer);
+            foregroundTimer = window.setTimeout(() => {
               if (active) void verify();
             }, 0);
           }
@@ -136,6 +138,9 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
         const foreground = () => {
           if (document.visibilityState === 'hidden') hide();
           else {
+            // Reject responses begun before this invalidation, including the
+            // interval before the coalesced replacement verification starts.
+            ticket++;
             // One verification for a synchronous pageshow/popstate/visibility burst.
             // Hide private content immediately, even before the scheduled read.
             setAccess((current) => ({ ...current, loading: true }));
