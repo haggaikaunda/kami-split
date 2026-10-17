@@ -181,9 +181,13 @@ Balances, Activity and Members navigation uses `tab` in the URL, preserving dire
 entry and history. Ordinary groups use neutral contextual art; trips add travel
 metadata/abstract illustration. Complete server totals and viewer positions drive
 three tonal overview metrics (total, viewer net, and complete viewer share); a zero viewer position does not imply every
-member is settled. Balance details identify each simplified obligation and offer
-repayment entry only on an explicit eligible sender/recipient row. Summary cards
-only disclose balance details. See [persisted repayments](persisted-repayments.md)
+member is settled. Balance details identify each simplified obligation; an eligible
+row opens the original source's repayment form with explicit parties and an exact
+suggested amount. A separate **Record an actual transfer** entry supports actual
+same-source transfers without a current suggestion, including when balances are
+settled or unavailable. Existing form validation and current server authorization
+and participant eligibility still apply. Overview summaries remain informational.
+See [persisted repayments](persisted-repayments.md)
 for actual-transfer validation, frozen recovery scope and browser integration.
 Owner settings disclose current metadata; metadata editing remains unavailable.
 
@@ -193,8 +197,12 @@ Owner settings disclose current metadata; metadata editing remains unavailable.
 Overview shows expense face-value total/count, exact signed viewer net/open-space
 count, and complete viewer share with expense-payer amount in a tonal row, followed by at most four
 source-attributed expenses from `householdExpenses`. Balances uses the complete
-server source set and never derives totals from the recent page. No Household
-settlement action exists: each row opens its original group's Balances surface.
+server source set and never derives totals from the recent page. Sources collapse
+independently. When available, their expanded obligations link eligible parties to
+the repayment form in the explicit original source. A separate source detail link
+retains access to complete member positions and recorded repayment history.
+The Household aggregate is informational and never supplies a cross-source
+settlement target.
 Zero aggregate with open sources stays open. Members first reads minimal Household identity, then the actual
 Household `Group.members`, including more than two members and historical profiles;
 only owners see existing invitation management. Activity reuses #172. #170 adds
