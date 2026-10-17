@@ -124,7 +124,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
             setAccess((current) => ({ ...current, loading: true }));
             // Do not await another SDK call inside its locked auth callback.
             clearTimeout(foregroundTimer);
-            foregroundTimer = window.setTimeout(() => {
+            foregroundTimer = setTimeout(() => {
               if (active) void verify();
             }, 0);
           }

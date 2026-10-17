@@ -1,6 +1,6 @@
 -- Account appearance is private profile metadata; no arbitrary table grants.
 SET ROLE kami_migrator;
-ALTER TABLE app.users ADD COLUMN appearance text NOT NULL DEFAULT 'LIGHT'
+ALTER TABLE app.users ADD COLUMN appearance text NOT NULL DEFAULT 'SYSTEM'
   CHECK (appearance IN ('LIGHT', 'SYSTEM', 'DARK'));
 
 CREATE FUNCTION app.my_profile()
