@@ -1,6 +1,7 @@
 """Validate one local stage event without publishing it or echoing its contents."""
 
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -26,6 +27,14 @@ def reject_constant(_value):
     raise ValueError("Non-JSON number")
 
 
+def finite_float(value):
+    """Reject legal JSON exponents that overflow Python's numeric representation."""
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("Non-finite JSON number")
+    return parsed
+
+
 def validate_file(path):
     """Check syntax and the versioned contract; never establish evidence truth."""
     schema = json.loads(SCHEMA.read_text())
@@ -33,6 +42,7 @@ def validate_file(path):
     event = json.loads(
         Path(path).read_text(), object_pairs_hook=unique_object,
         parse_constant=reject_constant,
+        parse_float=finite_float,
     )
     Draft202012Validator(schema).validate(event)
     if event["event_id"] in event["supersedes"]:

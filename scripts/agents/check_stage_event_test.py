@@ -129,6 +129,18 @@ class StageEventTests(unittest.TestCase):
         with self.assertRaises(OSError):
             validate_file(self.path)
 
+    def test_raw_exponents_preserve_finite_timing_or_fail_safely(self):
+        template = json.dumps(self.event)
+        for number, expected in (("1e400", 1), ("-1e400", 1), ("1e300", 0), ("1.25", 0)):
+            with self.subTest(number=number):
+                self.path.write_text(template.replace('"elapsed_seconds": null', f'"elapsed_seconds": {number}'))
+                result = subprocess.run(
+                    [sys.executable, str(Path(__file__).with_name("check_stage_event.py")), str(self.path)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, expected)
+                self.assertNotIn(number, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
