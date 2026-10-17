@@ -30,3 +30,5 @@ for the current domain contract. Root financial/privacy invariants always apply.
 Run commands from the repository root with the pinned toolchain. The map routes
 work; it does not replace area-specific checks or authorize skipping checks.
 Do not run Next type checking and builds concurrently against shared output.
+Use the [local execution preflight and serial verification entry point](execution.md)
+to diagnose checkout/tool/resource blockers and run the supported command sequence.

@@ -41,6 +41,23 @@ These guards cover current loaders, not arbitrary dependency analysis: new dynam
 loaders, aliases, generators, embed conventions or runtime imports require an audit
 and appropriate boundary coverage before keeping an exemption.
 
+The exact known skill Markdown/template, native role TOML, stage-event JSON and
+Python validator/requirements files in `agent-validation-resource` require only
+repository validation. Skills/profiles are agent-runtime inputs; Python validation
+reads the skills, schema and example, and its tests run in the repository job.
+None is imported by Next, Relay generation, the Go server or release tooling.
+`agent-execution-tooling` selects web verification for the two JavaScript helper
+files because root ESLint consumes them; their deterministic tests also run in
+the always-on repository job. Neither rule selects deployment. Unknown adjacent
+files stay conservative, including new skills, profile names and executable
+resources. There is no blanket `.agents/**` exemption.
+
+The API Dockerfile copies only API/schema source before compiling the server;
+the root `.dockerignore` excludes agent tooling. Boundary tests guard actual
+production references and Docker COPY inputs. New copy syntax/loaders require
+review before preserving these exemptions. Changes to the classifier, workflows
+or deployment scripts themselves still select all checks and deployments.
+
 Deletions and both sides of renames are classified (`--no-renames`, NUL-delimited).
 Empty comparisons, unavailable commits, non-ancestor push history, first pushes,
 and classification exceptions select all four decisions. No GitHub API file-list
@@ -68,7 +85,7 @@ history supplies the objects; missing history falls back to both consumers.
 PR code runs only in unprivileged CI, never in `pull_request_target`.
 
 The repository job classifies changes, checks repository-wide formatting, runs
-classifier/gate tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
+classifier/gate and execution-helper tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
 Skill validation uses an isolated Python environment; it does not execute skill
 procedures. It installs pinned workspace dependencies with scripts
 disabled; it does not build the web application or start Go, Docker, or databases.
