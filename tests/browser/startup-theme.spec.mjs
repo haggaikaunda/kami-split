@@ -359,7 +359,8 @@ test('a save committing after the resumed read converges on a fresh read without
   const save = app.hold('appearanceMutation', {
     updateMyAppearance: { __typename: 'Profile', appearance: 'DARK' },
   });
-  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).focus();
+  await page.keyboard.press('Space');
   await save.started;
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.evaluate(() => {
