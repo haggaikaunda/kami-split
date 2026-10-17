@@ -1754,6 +1754,12 @@ function sourceDashboard() {
       },
     })),
   );
+  // HouseholdDashboardSpace has no Node id. Extra Group fixture IDs would alias
+  // separate sources in Relay, unlike a real response to this wire operation.
+  for (const space of dashboard.spaces) {
+    delete space.id;
+    delete space.__typename;
+  }
   return { householdDashboard: dashboard };
 }
 
@@ -1968,7 +1974,13 @@ test('Balance layout: long names and amounts, keyboard details, ineligible parti
   app,
 }, testInfo) => {
   const fixture = sourceDashboard();
-  fixture.householdDashboard.spaces[0].balances.obligations[0].from.canParticipate = false;
+  const retainedParty =
+    fixture.householdDashboard.spaces[0].balances.obligations[0].from;
+  // Membership IDs belong to one source. Do not let another source's current
+  // member record overwrite the retained party's eligibility in Relay.
+  retainedParty.id = 'inactive-home-member';
+  retainedParty.displayName = 'Former household member';
+  retainedParty.canParticipate = false;
   fixture.householdDashboard.spaces[1].balances = {
     __typename: 'Problem',
     code: 'UNAVAILABLE',

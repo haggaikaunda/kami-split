@@ -100,3 +100,13 @@
 .workspace-header-host {
   display: flow-root;
 }
+
+.repayment-return {
+  margin-bottom: 0.875rem;
+  font-size: 0.875rem;
+}
+.repayment-return a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+}

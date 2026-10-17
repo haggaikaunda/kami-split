@@ -232,7 +232,7 @@ export function RepaymentForm({
         Record money already transferred in this group. Recording does not move
         money. Partial repayments and overpayments are allowed.
       </p>
-      <p aria-label="Transfer to record">
+      <p role="note" aria-label="Transfer to record">
         {members.find((member) => member.id === draft.sender)?.displayName ??
           'Choose sender'}
         {' paid '}
