@@ -27,6 +27,11 @@ anchors; rows and summaries share the anchored dataset, while every request chec
 current access. Repayments never contribute to spending. Free-text search remains
 separate #177 scope; these reads introduce no search field or SQL text search.
 
+The internal [banking storage foundation](../../docs/application/banking-storage.md)
+provides owner-private persistence, a separate credential keyring, durable attempts
+and lifecycle fences. Enrollment, worker runtime, banking transport and replacement
+activation remain deferred.
+
 ## Design and implementation
 
 - Document every exported handwritten package declaration with its caller-visible contract. Preserve GraphQL descriptions on all public SDL declarations; do not manually document generated gqlgen/sqlc output.
