@@ -78,7 +78,10 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with a Go worker is selected for future imports, but is not installed or provisioned.
 
-The [planned Personal banking contract](personal-banking.md) defines owner-only
+The internal [private banking storage](banking-storage.md) foundation implements
+owner-only persistence, protected credential storage, durable attempts and lifecycle
+fences. Provider adapters, worker privileges/runtime and banking transport remain
+deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
