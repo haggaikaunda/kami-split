@@ -33,7 +33,9 @@ export function AppearanceProvider({
   const ready = useRef<() => void>(() => {});
   const reset = useRef<() => void>(() => {});
   const loadingRef = useRef(loading);
-  loadingRef.current = loading;
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
   useEffect(() => {
     let live = true,
       revision = 0,

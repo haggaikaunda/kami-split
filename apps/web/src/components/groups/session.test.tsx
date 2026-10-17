@@ -183,11 +183,40 @@ it('ignores a late verified response after cross-tab logout', async () => {
         finish = done;
       }),
   );
-  await act(async () => window.dispatchEvent(new Event('popstate')));
+  await act(async () => {
+    window.dispatchEvent(new Event('popstate'));
+    await vi.advanceTimersByTimeAsync(0);
+  });
   await act(async () => sdk.changed('SIGNED_OUT', null));
   await act(async () =>
     finish({ data: { user: { id: 'alice' } }, error: null }),
   );
   expect(current.scope).toBeUndefined();
   expect(original.isLive()).toBe(false);
+});
+
+it('coalesces overlapping foreground events but cancels queued verification on logout', async () => {
+  await render();
+  const original = current.scope;
+  sdk.checked.mockClear();
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    window.dispatchEvent(new Event('popstate'));
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect(current.loading).toBe(true);
+  expect(sdk.checked).not.toHaveBeenCalled();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(sdk.checked).toHaveBeenCalledTimes(1);
+  expect(current.scope).toBe(original);
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'));
+    sdk.changed('SIGNED_OUT', null);
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(sdk.checked).toHaveBeenCalledTimes(1);
+  expect(current.scope).toBeUndefined();
+  expect(original?.isLive()).toBe(false);
 });

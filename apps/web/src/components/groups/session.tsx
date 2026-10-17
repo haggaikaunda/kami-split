@@ -116,6 +116,7 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
         const subscription = client.auth.onAuthStateChange((event, session) => {
           ticket++;
           if (event === 'SIGNED_OUT' || !session) {
+            clearTimeout(foregroundTimer);
             clearTimeout(expiryTimer);
             update(undefined, true);
           } else {
