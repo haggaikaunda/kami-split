@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kami Split GitHub stage event v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "supersedes",
+    "goal",
+    "attempt_id",
+    "scope",
+    "stage",
+    "role",
+    "outcome",
+    "revision",
+    "execution",
+    "evidence",
+    "findings",
+    "limitations",
+    "owner",
+    "next_action",
+    "intervention",
+    "timing",
+    "cost"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "event_id": {
+      "$ref": "#/$defs/text"
+    },
+    "supersedes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "goal": {
+      "$ref": "#/$defs/url"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/text"
+    },
+    "scope": {
+      "type": "object",
+      "required": ["revision", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "$ref": "#/$defs/text"
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/url"
+          }
+        }
+      }
+    },
+    "stage": {
+      "enum": [
+        "attempt",
+        "preparation",
+        "implementation",
+        "testing",
+        "review",
+        "ci",
+        "merge",
+        "closeout",
+        "goal"
+      ]
+    },
+    "role": {
+      "enum": ["coordinator", "builder", "tester", "reviewer", "assistant"]
+    },
+    "outcome": {
+      "enum": [
+        "started",
+        "ongoing",
+        "passed",
+        "failed",
+        "blocked",
+        "cancelled",
+        "not_applicable"
+      ]
+    },
+    "revision": {
+      "type": "object",
+      "required": ["repository", "base", "head", "tested"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "$ref": "#/$defs/url"
+        },
+        "base": {
+          "$ref": "#/$defs/sha"
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "tested": {
+          "$ref": "#/$defs/sha"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "configured_model",
+        "configured_effort",
+        "observed_model",
+        "observed_effort",
+        "context_id",
+        "context",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "configured_model": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "configured_effort": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "observed_model": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "observed_effort": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "context_id": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "context": {
+          "enum": ["fresh", "inherited", "unknown"]
+        },
+        "reason": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["sources", "checks"],
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/url"
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "owner": {
+      "$ref": "#/$defs/text"
+    },
+    "next_action": {
+      "$ref": "#/$defs/text"
+    },
+    "intervention": {
+      "type": "object",
+      "required": ["kind", "reason", "sources", "coverage"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "planned_decision",
+            "rescue",
+            "none_observed",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/text"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/url"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["started_at", "ended_at", "elapsed_seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "started_at": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "elapsed_seconds": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "cost": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["amount", "currency", "source"],
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?$"
+            },
+            "currency": {
+              "$ref": "#/$defs/text"
+            },
+            "source": {
+              "$ref": "#/$defs/url"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https://[^\\s]+$"
+    },
+    "optional_text": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sha": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "required": [
+        "source",
+        "run_id",
+        "check_id",
+        "attempt",
+        "name",
+        "conclusion",
+        "workflow",
+        "workflow_revision",
+        "head",
+        "revision_relation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/url"
+        },
+        "run_id": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "check_id": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "attempt": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/text"
+        },
+        "conclusion": {
+          "$ref": "#/$defs/text"
+        },
+        "workflow": {
+          "$ref": "#/$defs/optional_text"
+        },
+        "workflow_revision": {
+          "$ref": "#/$defs/sha"
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "revision_relation": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    }
+  }
+}

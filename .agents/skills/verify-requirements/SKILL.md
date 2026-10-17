@@ -6,6 +6,8 @@ description: Independently test a Kami Split candidate against its approved issu
 Use the [tester role](../../../docs/agents/prompts/tester.md) and
 [outcome verification contract](../../../docs/agents/outcome-verification.md).
 Only an independent context may provide this gate for a builder's work.
+Launch it using the coordinator's [fresh assignment and routing](../../../docs/agents/model-routing.md);
+publish outcomes using [stage records](../../../docs/agents/delivery-records.md).
 
 1. Refresh the issue, scope revision, PR head/base, existing evidence and resource
    ownership. Read requirements first; derive scenarios before relying on the
