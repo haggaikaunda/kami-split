@@ -54,6 +54,7 @@ module.exports = async function verifyLedger({
   };
   if (scale === 2)
     await page.addStyleTag({ content: 'html{font-size:200% !important}' });
+  assert.equal(await page.locator('[data-ui~="ledger-summary"]').count(), 0);
   const header = page.locator('[data-ui~="ledger-month"] > header').first();
   assert.match(await header.innerText(), /October 2026/);
   assert.match(await header.innerText(), /8 expenses\s*\$24.00\s+USD/);

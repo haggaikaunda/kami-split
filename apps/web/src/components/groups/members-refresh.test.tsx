@@ -92,7 +92,13 @@ it('foreground refresh reauthorizes membership and reconciles accepted reactivat
     await act(async () => requests[0].next(access));
     await act(async () => requests[1].next(membership('INACTIVE')));
     expect(host.querySelector('[aria-label="People"]')?.children).toHaveLength(
-      3,
+      2,
+    );
+    expect(
+      host.querySelector('[aria-label="Pending invitations"]')?.textContent,
+    ).toContain('bob@example.test');
+    expect(host.querySelector('[data-ui="member-count"]')?.textContent).toBe(
+      '1 active member',
     );
     expect(host.textContent).toContain('Inactive');
     state.current = {
@@ -110,6 +116,10 @@ it('foreground refresh reauthorizes membership and reconciles accepted reactivat
     expect(people.textContent).toContain('Bob');
     expect(people.textContent).not.toContain('Inactive');
     expect(people.textContent).not.toContain('bob@example.test');
+    expect(host.querySelector('[aria-label="Pending invitations"]')).toBeNull();
+    expect(host.querySelector('[data-ui="member-count"]')?.textContent).toBe(
+      '2 active members',
+    );
     expect(
       host.querySelector('[data-ui~="invitation-history"]')?.textContent,
     ).toContain('Accepted');

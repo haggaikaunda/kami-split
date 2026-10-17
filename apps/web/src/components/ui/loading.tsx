@@ -123,8 +123,17 @@ function LoadingShapes({ layout }: { layout: LoadingLayout }) {
       )}
       {layout !== 'cards' && (
         <div className={styles.list}>
-          <SkeletonBlock className={styles.short} />
-          {layout === 'expenses' && <SkeletonBlock className={styles.value} />}
+          {layout === 'expenses' ? (
+            <div className={styles.month}>
+              <div className={styles.copy}>
+                <SkeletonBlock className={styles.short} />
+                <SkeletonBlock className={styles.detail} />
+              </div>
+              <SkeletonBlock className={styles.amount} />
+            </div>
+          ) : (
+            <SkeletonBlock className={styles.short} />
+          )}
           {Array.from({ length: layout === 'overview' ? 4 : 3 }, (_, index) => (
             <div className={styles.row} key={index}>
               <SkeletonBlock className={styles.avatar} />
@@ -132,7 +141,7 @@ function LoadingShapes({ layout }: { layout: LoadingLayout }) {
                 <SkeletonBlock className={styles.line} />
                 <SkeletonBlock className={styles.detail} />
               </div>
-              {layout !== 'members' && layout !== 'activity' && (
+              {layout !== 'activity' && (
                 <SkeletonBlock className={styles.amount} />
               )}
             </div>

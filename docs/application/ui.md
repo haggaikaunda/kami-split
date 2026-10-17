@@ -27,7 +27,7 @@ The remaining production owners are:
 | Discovery and group/trip cards                                               | `groups/discovery.module.css`                                                                 |
 | Workspace panels/settings/balances, overview rows, Household source balances | `groups/workspace.module.css`, `overview.module.css`, `household-workspace.module.css`        |
 | Expense/repayment and group/trip creation forms                              | `groups/forms.module.css`; current expense facts use `groups/expense-detail.module.css`       |
-| Ledger rows, compact filters and Breakdown                                   | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                |
+| Ledger rows, responsive filters and Breakdown                                | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                |
 | Native expense/filter dialog frame and expense viewport behavior             | `expenses/dialog.module.css` and `presentation.module.css`; neither imports ledger row styles |
 | Category artwork and refresh feedback                                        | `financial/category.tsx` with `category.module.css`, and `workspace-refresh.module.css`       |
 
@@ -41,7 +41,7 @@ Filter presentation uses an explicit `filterLayout` contract: Group/Trip retains
 
 Use viewport queries for application chrome and modal presentation, and container queries for the width available to ledger rows, charts or panel contents. Preserve content-specific thresholds: the shell and expense presentation change at 600 CSS pixels (matching their JavaScript measurements), generic Dialog changes between 759/760px, and ledger rows use the `workspace` container at 48em with a 16em fallback. Breakdown has a 760px content-stack transition and a `breakdown-chart` container fallback at 14em; overview columns retain their 820px content threshold. Measure the actual named container when checking its boundary, because navigation and padding reduce available width. `rem`/`em` support enlarged text where the existing layout intends it; retain approved fixed pixel values when they encode artwork, geometry or target sizes. Do not normalize every breakpoint to one value.
 
-Safe-area padding remains with the owning shell/dialog. The expense presentation follows the unscaled visual viewport for the keyboard, keeps one mounted form, and releases sticky actions for a short viewport or enlarged text. The document remains the scroll owner for source restoration. Shared CSS does not create a second scroll container or replace that navigation contract.
+Safe-area padding remains with the owning shell/dialog. At phone widths and viewports no taller than 40rem, the identity header scrolls in document flow so enlarged controls remain reachable above the fixed navigation. Measured header scroll clearance becomes zero while it is in flow, and returns to its occupied height when sticky positioning resumes. The expense presentation follows the unscaled visual viewport for the keyboard, keeps one mounted form, and releases sticky actions for a short viewport or enlarged text. The document remains the scroll owner for source restoration. Shared CSS does not create a second scroll container or replace that navigation contract.
 
 ## Appearance and navigation
 
@@ -53,7 +53,7 @@ Persistent navigation links Household and Groups, which includes ordinary groups
 
 The compact illustrated header places bold Kami Grow above the current destination, with query-owned Group/Trip names, readable wrapping and a softly shaded illustrated background. Household and Group/Trip scope help remains labeled and dismissible. The global Add expense action uses a currently authorized workspace source; global contexts open an explicit eligible-source chooser. Original Household ledger access remains distinct from the cross-space Household summary. Do not invent a source for a write. Current summaries use complete server totals; visible or loaded rows cannot establish totals or settlement.
 
-Expense lists use compact rows with payer at left and amount at right, description/category context, and counts below month/year headings. Filters sit beside List/Breakdown. Structured filters combine scope, category, dates, Involving and Paid by; exact date/amount sorting, incremental scrolling, and authorized source restoration preserve URL state. Breakdown's Spending by category retains the server's complete dataset. See [ledger behavior](expenses-ledger.md).
+Expense lists use compact rows with payer at left and amount at right, description/category context, and counts below month/year headings. Filters sit beside List/Breakdown. Their single mounted modal uses a mobile bottom sheet and desktop right drawer, with an independently scrolling body and reachable header/footer. Filters and expense presentations share document scroll-lock ownership through overlapping browser-history transitions and access loss; only the final owner restores the document’s prior overflow when closing or being disposed. The redundant summary strip above the ledger is absent; monthly totals/counts and per-row share remain. Structured filters combine scope, category, dates, Involving and Paid by; exact date/amount sorting, incremental scrolling, and authorized source restoration preserve URL state. Breakdown's Spending by category retains the server's complete dataset. See [ledger behavior](expenses-ledger.md).
 
 Creation/editing preserves exact Equal, Exact and Percentage intent, dirty drafts and frozen recovery attempts. The responsive form/detail presentation keeps actions reachable with long content and larger text. Activity distinguishes original creation, later edits and repayments, with immutable before/after facts.
 
@@ -86,8 +86,8 @@ resolution and `ContentLoading` for a pending destination below the workspace
 tabs. The screen accepts no private data: public Kami Grow branding, three quiet
 dots, “Getting things ready” and “Opening your account…” are its entire content.
 Content layouts are `overview` (summary metrics and recent rows), `expenses`
-(total placeholder and rows), `balances` (summary cards and positions), `activity`
-(event rows), `members` (avatar/name rows), and `cards` (discovery). A caller may
+(month/count/amount placeholders and rows), `balances` (summary cards and positions), `activity`
+(event rows), `members` (avatar/name rows and state placeholders), and `cards` (discovery). A caller may
 supply a specific public label such as `groups`; never pass a private name, amount
 or inferred count. Shapes reuse the neutral `SkeletonBlock` primitive.
 

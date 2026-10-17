@@ -315,7 +315,11 @@ export function WorkspaceNavigation({
     // Measure occupied space only. CSS owns positioning; visual-viewport
     // panning, browser toolbars and pinch zoom must not move global chrome.
     const update = () => {
-      const header = brand.getBoundingClientRect().height;
+      const header = ['sticky', 'fixed'].includes(
+        getComputedStyle(brand).position,
+      )
+        ? brand.getBoundingClientRect().height
+        : 0;
       const footer =
         window.innerWidth <= 600 ? links.getBoundingClientRect().height : 0;
       frame.style.setProperty('--chrome-header', `${header}px`);

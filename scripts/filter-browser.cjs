@@ -41,6 +41,19 @@ module.exports = async function verifyFilters({
   );
 
   async function geometry(label) {
+    // A real resize dispatches visualViewport separately from layout resizing.
+    await page.waitForFunction(() => {
+      const viewport = window.visualViewport;
+      const dialog = document.querySelector(
+        '[data-ui~="ledger-dialog--filters"]',
+      );
+      return (
+        !viewport ||
+        viewport.scale !== 1 ||
+        dialog?.style.getPropertyValue('--filter-viewport-height') ===
+          `${viewport.height}px`
+      );
+    });
     const metrics = await dialog.evaluate((el) => {
       const rect = (node) => {
         const r = node.getBoundingClientRect();
@@ -67,15 +80,29 @@ module.exports = async function verifyFilters({
     );
     assert(
       metrics.dialog.y >= -1 && metrics.dialog.bottom <= metrics.height + 1,
-      'dialog vertical bounds',
+      `dialog vertical bounds: ${JSON.stringify(metrics)}`,
     );
-    assert(
-      Math.abs(
-        metrics.dialog.y -
-          (metrics.height - (metrics.dialog.bottom - metrics.dialog.y)) / 2,
-      ) <= 1,
-      'compact filter dialog stays vertically centered within the viewport',
-    );
+    if (metrics.width <= 600) {
+      assert(
+        Math.abs(metrics.dialog.bottom - metrics.height) <= 1,
+        'filter sheet anchored to visible bottom',
+      );
+      assert(
+        metrics.dialog.x <= 1 && metrics.dialog.right >= metrics.width - 1,
+        'phone sheet uses available width',
+      );
+    } else {
+      assert(
+        Math.abs(metrics.dialog.right - metrics.width) <= 1 &&
+          metrics.dialog.x > 0,
+        'filter drawer anchored right',
+      );
+      assert(
+        Math.abs(metrics.dialog.y) <= 1 &&
+          Math.abs(metrics.dialog.bottom - metrics.height) <= 1,
+        'desktop drawer spans visible height',
+      );
+    }
     assert(
       metrics.bodyOverflow <= 1 && metrics.pageOverflow <= 1,
       'no horizontal overflow',
@@ -130,7 +157,7 @@ module.exports = async function verifyFilters({
       Math.abs(
         metrics.checkbox - metrics.rem * (workspace === 'group' ? 1.25 : 1.125),
       ) < 0.1,
-      'workspace checkbox size is preserved',
+      `workspace checkbox size is preserved: ${JSON.stringify(metrics)}`,
     );
     assert(
       Math.abs(metrics.inset - (workspace === 'group' ? metrics.rem + 1 : 0)) <
@@ -232,9 +259,16 @@ module.exports = async function verifyFilters({
   await page.locator('[data-ui~="ledger-filter-button"]').click();
   await summary('Categories').click();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
+  await section('Categories').getByLabel('Groceries', { exact: true }).check();
   await page.setViewportSize({ width: width < 600 ? 1280 : 320, height: 640 });
+  assert.equal(
+    await page.getByRole('dialog', { name: 'Expense filters' }).count(),
+    1,
+  );
+  assert.equal(await section('Categories').getAttribute('open'), '');
+  assert.match(await summary('Categories').innerText(), /2 selected/);
   await geometry('resized');
-  await page.setViewportSize({ width: 320, height: 640 });
+  await page.setViewportSize({ width: 320, height: 480 });
   await geometry('short-narrow-screen');
   await page.screenshot({
     path: path.join(output, `filters-${workspace}-${width}-${scale}-short.png`),
@@ -244,7 +278,30 @@ module.exports = async function verifyFilters({
       .getByLabel('Dining', { exact: true })
       .isChecked(),
   );
+  assert(
+    await section('Categories')
+      .getByLabel('Groceries', { exact: true })
+      .isChecked(),
+  );
   await page.keyboard.press('Escape');
+  await page.waitForFunction(() =>
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
+  );
+  // The artificial keyboard-sized viewport remains short after Escape; reopen
+  // through the restored keyboard focus before returning to the normal viewport.
+  await page.keyboard.press('Enter');
+  assert.match(await summary('Categories').innerText(), /All categories/);
+  await dialog.getByRole('button', { name: 'Back to expenses' }).click();
+  await page.waitForFunction(() =>
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.keyboard.press('Enter');
+  await page.mouse.click(8, 8);
+  await dialog.waitFor({ state: 'detached' });
+  await page.waitForFunction(() =>
+    document.activeElement?.matches('[data-ui~="ledger-filter-button"]'),
+  );
   if (workspace === 'household') {
     // Retained Group styles must not change the same Household controls.
     const navigation = page.getByRole('navigation', {
@@ -257,6 +314,7 @@ module.exports = async function verifyFilters({
       .getByRole('link', { name: 'Trips', exact: true })
       .click();
     await page.locator('a[href="/trips/T"]').click();
+    await page.waitForURL((url) => url.pathname === '/trips/T');
     await page
       .getByRole('navigation', { name: /workspace/i })
       .getByRole('link', { name: 'Expenses', exact: true })
@@ -265,12 +323,17 @@ module.exports = async function verifyFilters({
     await navigation
       .getByRole('link', { name: 'Household', exact: true })
       .click();
+    await page.waitForURL((url) => url.pathname === '/household');
     await page
       .getByRole('navigation', { name: /workspace/i })
       .getByRole('link', { name: 'Expenses', exact: true })
       .click();
     await page.locator('#ledger-expense-e1').waitFor();
+    await page.waitForURL((url) => url.pathname === '/household/expenses');
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await dialog
+      .locator('[data-ui~="ledger-filters"][data-scope="household"]')
+      .waitFor();
     await summary('Categories').click();
     await workspaceGeometry();
     await geometry('Household after Group navigation');

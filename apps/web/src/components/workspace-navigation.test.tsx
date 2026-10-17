@@ -32,6 +32,14 @@ it('measures chrome without repositioning it during viewport, focus or zoom chan
       disconnect = disconnect;
     },
   );
+  let headerPosition = 'sticky';
+  const computed = window.getComputedStyle;
+  vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+    const style = computed(element);
+    if (element.getAttribute('data-ui')?.includes('workspace-navigation-brand'))
+      Object.defineProperty(style, 'position', { value: headerPosition });
+    return style;
+  });
   let barHeight = 90;
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: HTMLElement) {
@@ -98,6 +106,15 @@ it('measures chrome without repositioning it during viewport, focus or zoom chan
     viewport.height = 640;
     act(() => viewport.dispatchEvent(new Event('resize')));
     assertMeasuredClearance();
+    // Releasing the header into normal flow must release its focus clearance.
+    headerPosition = 'relative';
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(main.style.getPropertyValue('--chrome-header')).toBe('0px');
+    expect(
+      document.documentElement.style.getPropertyValue('--chrome-header'),
+    ).toBe('0px');
+    expect(main.style.getPropertyValue('--chrome-footer')).toBe('140px');
+    headerPosition = 'sticky';
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
     act(() => window.dispatchEvent(new Event('resize')));
     expect(main.style.getPropertyValue('--chrome-footer')).toBe('0px');
