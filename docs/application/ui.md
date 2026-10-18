@@ -71,6 +71,10 @@ disclosures. Group/Trip starts with one expanded source card containing explicit
 obligations, member calculations, history, Activity and general actual-transfer access.
 Personal zero does not declare the source settled while other members owe each other.
 
+Overview retains a bounded, source-labeled preview of up to two explicit viewer
+obligations in its balance area. It uses the same authorized operation and row
+presentation as Balances, including both directions and source restoration.
+
 Eligible obligation rows are one native link with explicit parties, exact suggested
 amount and source; ineligible rows explain why recording is unavailable. An
 in-account source visit presents its existing repayment form in a mobile bottom

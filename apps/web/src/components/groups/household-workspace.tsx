@@ -49,6 +49,7 @@ import {
   SourceSummary,
   BalanceSection,
   ObligationRows,
+  ObligationPreview,
 } from './balance-sections';
 
 import { useForegroundRefresh } from './foreground';
@@ -335,7 +336,7 @@ function HouseholdSummaryRead({
           document={document}
           variables={{
             recent: current === 'Overview',
-            balances: current === 'Balances',
+            balances: current === 'Balances' || current === 'Overview',
           }}
           fallback={loading}
           failure={
@@ -674,6 +675,26 @@ export function HouseholdContent({
                 <Money value={money(totals.viewerShareMinor)} currency="USD" />
               </SummaryMetric>
             </div>
+          )}
+          {totals && (
+            <ObligationPreview
+              scope={scope}
+              sources={dashboard.spaces.map((space) => ({
+                space: { ...space, id: space.groupId },
+                viewer: space.viewerMembership.id,
+                obligations:
+                  space.balances?.__typename === 'GroupBalances'
+                    ? space.balances.obligations
+                    : undefined,
+                eligible: (id) =>
+                  space.balances?.__typename === 'GroupBalances' &&
+                  space.balances.obligations.some((edge) =>
+                    [edge.from, edge.to].some(
+                      (member) => member.id === id && member.canParticipate,
+                    ),
+                  ),
+              }))}
+            />
           )}
           {totals && (
             <div

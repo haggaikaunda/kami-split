@@ -124,7 +124,9 @@ it('uses the shared direct and More workspace routes for ordinary groups and tri
     expect(summaries.querySelectorAll('a')).toHaveLength(0);
     expect(
       host
-        .querySelector('[data-ui~="workspace-overview-balances"] a')
+        .querySelector(
+          '[data-ui~="workspace-overview-balances"] a[href$="?tab=balances"]',
+        )
         ?.getAttribute('href'),
     ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
     expect(
@@ -345,4 +347,16 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
   expect(host.querySelector('[data-ui~="balance-position"]')).toBeNull();
   expect(host.textContent).not.toContain('Everyone in this space is settled');
   expect(host.textContent).not.toContain('$0.00');
+});
+
+it('displays a valid minimum signed source position without overflowing its magnitude', async () => {
+  nav.search = 'tab=balances';
+  const group = fixture('-9223372036854775808');
+  await render(group);
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('You owe$92,233,720,368,547,758.08');
+  expect(
+    host.querySelector('#balance-section-group-G-source')?.textContent,
+  ).toContain('You owe $92,233,720,368,547,758.08');
 });

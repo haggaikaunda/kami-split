@@ -80,8 +80,10 @@ identity, deadline and diagnostic boundaries also apply to these operations.
 
 ## Authenticated workspace entry (#171)
 
-Overview shows complete Total spend and one signed viewer balance, with no
-settlement controls. Balances shows separate owe/owed amounts above source cards;
+Overview shows complete Total spend and one signed viewer balance, plus at most
+two explicit viewer obligation options from its complete authorized projection.
+Those source-labeled rows open the same contextual repayment owner as Balances;
+no counterparty is inferred from a member net. Balances shows separate owe/owed amounts above source cards;
 Household sums each complete source direction independently rather than canceling
 across spaces. Group/Trip starts with one expanded source containing obligations,
 member calculations and history. Household sources start collapsed with visible

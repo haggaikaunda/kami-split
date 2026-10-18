@@ -57,6 +57,7 @@ import {
   SourceSummary,
   BalanceSection,
   ObligationRows,
+  ObligationPreview,
 } from './balance-sections';
 import { RichHelp, balanceHelp, shareHelp } from '@/components/rich-help';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
@@ -297,6 +298,23 @@ export function GroupWorkspaceContent({
       ) : current === 'Overview' ? (
         <>
           <OverviewMetrics scope={scope} group={group} />
+          <ObligationPreview
+            scope={scope}
+            sources={[
+              {
+                space: group,
+                viewer: group.viewerMembership.id,
+                obligations:
+                  group.balances?.__typename === 'GroupBalances'
+                    ? group.balances.obligations
+                    : undefined,
+                eligible: (id) =>
+                  group.members.some(
+                    (member) => member.id === id && member.canParticipate,
+                  ),
+              },
+            ]}
+          />
           <div
             data-ui="workspace-overview-columns"
             className={overviewFeatureStyles['workspace-overview-columns']}
@@ -345,12 +363,7 @@ export function GroupWorkspaceContent({
                         }
                       />
                       <Money
-                        value={money(
-                          (minor(p.netMinor) < 0n
-                            ? -minor(p.netMinor)
-                            : minor(p.netMinor)
-                          ).toString(),
-                        )}
+                        value={money(p.netMinor).replace(/^-/, '')}
                         currency={group.currency}
                       />
                     </div>
@@ -691,7 +704,7 @@ export function GroupBalances({
     viewerNet === undefined
       ? 'Your balance is unavailable'
       : viewerNet < 0n
-        ? `You owe ${money((-viewerNet).toString())}`
+        ? `You owe ${money(viewerPosition!.netMinor).replace(/^-/, '')}`
         : viewerNet > 0n
           ? `You're owed ${money(viewerNet.toString())}`
           : b.settled

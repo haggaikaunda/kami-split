@@ -205,6 +205,61 @@ export function BalanceSources({
   );
 }
 
+type ObligationSource = {
+  space: SpaceRoute & { name: string; currency: string };
+  viewer: string;
+  obligations: readonly BalanceObligation[] | undefined;
+  eligible: (id: string) => boolean;
+};
+
+/** A bounded preview uses explicit complete server edges, never a net-derived party. */
+export function ObligationPreview({
+  scope,
+  sources,
+}: {
+  scope: FinancialScope;
+  sources: readonly ObligationSource[];
+}) {
+  const rows = sources
+    .flatMap((source) =>
+      (source.obligations ?? [])
+        .filter(
+          (edge) =>
+            edge.from.id === source.viewer || edge.to.id === source.viewer,
+        )
+        .map((edge) => ({ source, edge })),
+    )
+    .slice(0, 2);
+  const unavailable = sources.some(
+    (source) => source.obligations === undefined,
+  );
+  if (!rows.length && !unavailable) return null;
+  return (
+    <section
+      data-ui="obligation-preview"
+      className={styles.preview}
+      aria-label="Repayment options"
+    >
+      <h3>Repayment options</h3>
+      {unavailable && (
+        <p>
+          Some repayment options are unavailable. Open Balances for current
+          source details.
+        </p>
+      )}
+      {rows.map(({ source, edge }) => (
+        <ObligationRows
+          key={`${source.space.id}-${edge.from.id}-${edge.to.id}`}
+          scope={scope}
+          {...source}
+          obligations={[edge]}
+          showSource
+        />
+      ))}
+    </section>
+  );
+}
+
 type Party = { id: string; displayName: string };
 export type BalanceObligation = {
   from: Party;
@@ -219,7 +274,9 @@ export function ObligationRows({
   viewer,
   obligations,
   eligible,
+  showSource = false,
 }: {
+  showSource?: boolean;
   scope: FinancialScope;
   space: SpaceRoute & { name: string; currency: string };
   viewer: string;
@@ -244,13 +301,7 @@ export function ObligationRows({
                 ? from.displayName
                 : `${from.displayName} → ${to.displayName}`
           }
-          detail={
-            from.id === viewer
-              ? 'You owe'
-              : to.id === viewer
-                ? 'Owes you'
-                : 'Between other members'
-          }
+          detail={`${from.id === viewer ? 'You owe' : to.id === viewer ? 'Owes you' : 'Between other members'}${showSource ? ` · ${space.name}` : ''}`}
         />
         <Money
           value={money(amountMinor)}

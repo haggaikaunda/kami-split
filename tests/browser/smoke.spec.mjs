@@ -1005,7 +1005,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   if (page.viewportSize().width <= 600) await page.goBack();
   else
     await page
-      .getByRole('button', { name: 'Close repayment', exact: true })
+      .getByRole('link', { name: 'Back to source', exact: true })
       .click();
   await expect(trip).toBeFocused();
   await expect(
@@ -2670,3 +2670,129 @@ test('balance and repayment layout retains readable controls across appearance, 
     }
   }
 });
+
+for (const source of [
+  {
+    name: 'Household',
+    path: '/household',
+    id: 'H',
+    operation: 'householdWorkspaceQuery',
+  },
+  {
+    name: 'Group',
+    path: '/groups/F?tab=overview',
+    id: 'F',
+    operation: 'journeyWorkspaceQuery',
+  },
+  {
+    name: 'Trip',
+    path: '/trips/T?tab=overview',
+    id: 'T',
+    operation: 'journeyWorkspaceQuery',
+  },
+])
+  for (const direction of ['sent', 'received']) {
+    test(`Overview ${source.name} ${direction} obligation opens the original repayment owner and restores the preview`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      const fixture =
+        source.id === 'H'
+          ? manySources()
+          : structuredClone(
+              responseFor('journeyWorkspaceQuery', { id: source.id }),
+            );
+      const group = responseFor('journeyWorkspaceQuery', {
+        id: source.id,
+      }).group;
+      const [viewer, other] = group.members;
+      const edge = {
+        from: direction === 'sent' ? viewer : other,
+        to: direction === 'sent' ? other : viewer,
+        amountMinor: '8420',
+      };
+      if (source.id === 'H') {
+        fixture.householdDashboard.spaces[0].balances.obligations = [edge];
+        fixture.householdDashboard.spaces[0].viewerNetMinor =
+          direction === 'sent' ? '-8420' : '8420';
+        fixture.householdDashboard.totals.viewerNetMinor =
+          direction === 'sent' ? '-16840' : '0';
+      } else {
+        fixture.group.balances.obligations = [edge];
+        fixture.group.balances.positions = fixture.group.balances.positions.map(
+          (position) => ({
+            ...position,
+            netMinor:
+              position.member.id === viewer.id
+                ? direction === 'sent'
+                  ? '-8420'
+                  : '8420'
+                : position.member.id === other.id
+                  ? direction === 'sent'
+                    ? '8420'
+                    : '-8420'
+                  : '0',
+          }),
+        );
+      }
+      const response = app.holdMatching(source.operation, () => true, fixture);
+      response.release();
+      await app.authenticate();
+      await page.goto(source.path);
+      const preview = page.getByRole('region', { name: 'Repayment options' });
+      const trigger = preview.locator(
+        `#repay-${source.id}-${edge.from.id}-${edge.to.id}`,
+      );
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toContainText(
+        source.id === 'H' ? 'Home' : group.name,
+      );
+      expect(
+        app.requests.find((request) => request.operation === source.operation)
+          ?.variables.balances,
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath('overview-preview.png'),
+        fullPage: true,
+      });
+      await trigger.focus();
+      const scroll = await page.evaluate(() => scrollY);
+      await page.keyboard.press('Enter');
+      const dialog = page.locator('[data-ui~="repayment-presentation"]');
+      await expect(dialog).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath('overview-repayment.png'),
+      });
+      await expect(dialog.getByLabel('Sender', { exact: true })).toHaveValue(
+        edge.from.id,
+      );
+      await expect(dialog.getByLabel('Recipient', { exact: true })).toHaveValue(
+        edge.to.id,
+      );
+      await expect(
+        dialog.getByLabel('Amount (USD)', { exact: true }),
+      ).toHaveValue('84.20');
+      const close = dialog.getByRole('button', { name: 'Close repayment' });
+      await close.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(
+        dialog.getByRole('button', { name: 'Record repayment', exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(close).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(trigger).toBeFocused();
+      expect(new URL(page.url()).pathname).toBe(
+        new URL(source.path, 'https://fixture.invalid').pathname,
+      );
+      expect(new URL(page.url()).searchParams.get('tab')).not.toBe('balances');
+      expect(
+        Math.abs((await page.evaluate(() => scrollY)) - scroll),
+      ).toBeLessThan(4);
+      expect(
+        app.requests.some(
+          (request) => request.operation === 'journeyRepaymentMutation',
+        ),
+      ).toBe(false);
+    });
+  }

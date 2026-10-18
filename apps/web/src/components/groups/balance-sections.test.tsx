@@ -257,3 +257,66 @@ it('formats exact directional totals beyond a single signed wire value without N
   expect(host.textContent).toContain('You’re owed$184,467,440,737,095,516.14');
   expect(host.textContent).toContain('Net $92,233,720,368,547,758.06');
 });
+
+it('bounds Overview options to explicit viewer edges and retains source identity and unavailable distinctions', async () => {
+  const { ObligationPreview } = await import('./balance-sections');
+  const viewer = { id: 'viewer', displayName: 'Viewer' };
+  const party = (index: number) => ({
+    id: `party-${index}`,
+    displayName: `Person ${index}`,
+  });
+  const space = {
+    id: 'G',
+    name: 'Original source',
+    currency: 'USD',
+    isHousehold: false,
+  };
+  await act(async () =>
+    root.render(
+      <ObligationPreview
+        scope={scope}
+        sources={[
+          {
+            space,
+            viewer: viewer.id,
+            eligible: () => true,
+            obligations: [
+              { from: party(0), to: party(1), amountMinor: '999' },
+              ...Array.from({ length: 4 }, (_, index) => ({
+                from: index % 2 ? viewer : party(index),
+                to: index % 2 ? party(index) : viewer,
+                amountMinor: String(101 + index),
+              })),
+            ],
+          },
+          {
+            space: { ...space, id: 'missing' },
+            viewer: viewer.id,
+            eligible: () => false,
+            obligations: undefined,
+          },
+        ]}
+      />,
+    ),
+  );
+  const links = [...host.querySelectorAll('a')];
+  expect(links).toHaveLength(2);
+  expect(
+    links.map((link) =>
+      new URL(
+        link.getAttribute('href')!,
+        'https://fixture.invalid',
+      ).searchParams.get('amount'),
+    ),
+  ).toEqual(['101', '102']);
+  expect(
+    links.every((link) => link.textContent?.includes('Original source')),
+  ).toBe(true);
+  expect(links[0].getAttribute('aria-label')).toContain(
+    'Person 0 pays You (Viewer)',
+  );
+  expect(links[1].getAttribute('aria-label')).toContain(
+    'You (Viewer) pays Person 1',
+  );
+  expect(host.textContent).toContain('Some repayment options are unavailable');
+});
