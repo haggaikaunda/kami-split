@@ -421,9 +421,15 @@
 /* Creation keeps its recovery guidance readable when text outgrows the canvas. */
 @container workspace (max-width: 20em) {
   [data-ui~='form-scope'] .creation-form {
-    padding: 0.5rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
-  .creation-form .financial-recovery {
-    padding: 0.5rem;
+  .creation-form .financial-recovery,
+  .creation-form [data-ui~='status'] {
+    padding: 0.125rem;
+  }
+  .creation-form [data-ui~='status'] ul {
+    padding-inline-start: 1em;
   }
 }

@@ -2440,7 +2440,7 @@ test('creation recovery and validation stay readable at 320px with doubled text'
   await expect(recovery).toContainText(
     'a new key cannot deduplicate a lost attempt',
   );
-  const geometry = await recovery.evaluate((element) => {
+  const textGeometry = (element) => {
     const splitWords = [];
     const nodes = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     let node;
@@ -2457,17 +2457,38 @@ test('creation recovery and validation stay readable at 320px with doubled text'
       pageWidth: document.documentElement.scrollWidth,
       viewport: innerWidth,
       font: getComputedStyle(document.documentElement).fontSize,
+      family: getComputedStyle(element).fontFamily,
     };
-  });
-  expect(geometry.font).toBe('32px');
-  expect(geometry.splitWords).toEqual([]);
-  expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
+  };
+  // Arial models the wider sans fallback used outside macOS; monospace is
+  // a deliberate width stress case, not an application font override.
+  for (const family of ['system', 'Arial, sans-serif', 'monospace']) {
+    await page.evaluate((family) => {
+      if (family === 'system')
+        document.documentElement.style.removeProperty('--font-body');
+      else document.documentElement.style.setProperty('--font-body', family);
+    }, family);
+    const geometry = await recovery.evaluate(textGeometry);
+    expect(geometry.font).toBe('32px');
+    expect(geometry.splitWords, `${family} recovery words`).toEqual([]);
+    expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
+    await testInfo.attach(
+      `creation-${family.replace(/[^a-z]+/gi, '-')}-geometry`,
+      {
+        body: JSON.stringify(geometry),
+        contentType: 'application/json',
+      },
+    );
+  }
   await page
     .getByLabel('I have checked my groups and want a new creation.')
     .check();
   await form.getByRole('button', { name: 'Create trip', exact: true }).click();
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
   await expect(form.getByRole('alert')).toContainText('name');
+  expect(
+    (await form.getByRole('alert').evaluate(textGeometry)).splitWords,
+  ).toEqual([]);
   await page
     .getByLabel('Destination (optional)', { exact: true })
     .fill('Synthetic destination');
