@@ -24,14 +24,20 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
     Boolean(visit?.group),
   );
   const fallback = <SourceReturn scope={scope} authorizedGroups={[]} />;
-  if (!visit?.group || !active) return fallback;
+  const pending = (
+    <span data-ui="source-return-pending" role="status">
+      Checking return destination…
+    </span>
+  );
+  if (!visit?.group) return fallback;
+  if (!active) return pending;
   return (
     <NetworkQuery<profileReturnQuery>
       key={`${scope.id}:${token}:${version}`}
       scope={scope}
       document={document}
       variables={{}}
-      fallback={fallback}
+      fallback={pending}
       failure={fallback}
     >
       {(data) => (

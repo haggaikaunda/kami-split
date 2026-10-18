@@ -22,7 +22,8 @@
 .profile-return {
   margin: -10px 0 14px;
 }
-.profile-return a {
+.profile-return a,
+.profile-return [data-ui~='source-return-pending'] {
   display: inline-flex;
   align-items: center;
   min-height: 44px;

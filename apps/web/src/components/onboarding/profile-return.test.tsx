@@ -67,8 +67,8 @@ const response = (groups: { id: string; name: string }[]) => ({
 });
 it('uses only freshly authorized names and preserves the exact return query', async () => {
   await act(async () => root.render(<ProfileReturn scope={scope} />));
-  expect(host.textContent).toContain('Back to Groups');
-  expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
+  expect(host.textContent).toContain('Checking return destination…');
+  expect(host.querySelector('a')).toBeNull();
   await act(async () =>
     requests[0].next(response([{ id: 'T', name: 'Actual trip <name>' }])),
   );
@@ -78,7 +78,8 @@ it('uses only freshly authorized names and preserves the exact return query', as
   );
   expect(host.querySelector('name')).toBeNull();
   await act(async () => window.dispatchEvent(new Event('focus')));
-  expect(host.textContent).toContain('Back to Groups');
+  expect(host.textContent).toContain('Checking return destination…');
+  expect(host.querySelector('a')).toBeNull();
   expect(requests[0].unsubscribe).toHaveBeenCalled();
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
