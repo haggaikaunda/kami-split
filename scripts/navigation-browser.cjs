@@ -1240,8 +1240,16 @@ withAuthFixture(origin, session, async () => {
         document.dispatchEvent(new Event('visibilitychange')),
       );
       await deniedRead;
+      // A typed access denial disposes the account scope. The auth boundary
+      // routes recovery through sign-in instead of retaining a group heading.
+      await page.waitForURL(
+        (url) =>
+          url.pathname === '/sign-in' &&
+          url.searchParams.get('auth') === 'unavailable',
+      );
       await page
-        .getByRole('heading', { name: 'Group unavailable', exact: true })
+        .getByRole('alert')
+        .filter({ hasText: 'Account verification is unavailable.' })
         .waitFor();
       assert.equal(await page.getByText('Private fixture note').count(), 0);
       assert.equal(
