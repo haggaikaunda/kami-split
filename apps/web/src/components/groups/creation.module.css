@@ -1,0 +1,143 @@
+.choices {
+  container: creation-choices / inline-size;
+  display: grid;
+  gap: 0.5rem;
+}
+.choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.5rem;
+  padding: 0.75rem 0;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-separator);
+}
+.choice:last-child {
+  border-bottom: 0;
+}
+.choice strong {
+  display: block;
+  font-weight: 500;
+}
+.choice small {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin-top: 0.25rem;
+}
+.icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: var(--color-container);
+  color: var(--color-primary);
+}
+.form {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.form h2 {
+  margin: 0 2.5rem 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+.intro {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+}
+.status:empty {
+  display: none;
+}
+.help {
+  margin: 0 0 1.25rem;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+.help summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  display: list-item;
+  align-content: center;
+}
+.help p {
+  margin: 0.5rem 0;
+}
+.help a {
+  display: inline-block;
+  min-height: 2.75rem;
+  padding-block: 0.5rem;
+}
+.form [data-ui~='financial-entry-fields'] {
+  display: grid;
+  padding: 0;
+  border: 0;
+  gap: 1.25rem;
+  margin: 1.5rem 0 0;
+}
+.form legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+.form [data-ui~='financial-field'] {
+  min-width: 0;
+}
+.form [data-ui~='form-control'] {
+  width: 100%;
+  min-width: 0;
+  font-size: max(1rem, 16px);
+}
+.currency {
+  min-width: 0;
+}
+.currency span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  border-top: 1px solid var(--color-separator);
+  padding-top: 1rem;
+}
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--target-size);
+  padding-inline: 0.75rem;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+@container creation-choices (max-width: 14em) {
+  .choice {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .icon {
+    grid-column: 1 / -1;
+  }
+}
+
+.form [data-ui~='financial-field'] [data-ui~='form-control'] {
+  background: var(--color-surface);
+}
+
+.form [data-ui~='status'],
+.form [data-ui~='financial-recovery'] {
+  padding: 0.5rem;
+}
+.form [data-ui~='status'] ul {
+  padding-inline-start: 1em;
+}

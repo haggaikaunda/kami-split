@@ -249,11 +249,17 @@ it('offers authorized Group and Trip choices from the shared Create entry', asyn
     (button) => button.textContent?.trim() === 'Create',
   )!;
   await act(async () => create.click());
-  expect(host.querySelector('a[href="/trips/new"]')?.textContent).toBe(
-    'Create trip',
+  expect(
+    host.querySelector('a[href="/trips/new"]')?.getAttribute('aria-label'),
+  ).toBe('Create trip');
+  expect(host.querySelector('a[href="/trips/new"]')?.textContent).toContain(
+    'Expenses for a journey together',
   );
-  expect(host.querySelector('a[href="/groups/new"]')?.textContent).toBe(
-    'Create group',
+  expect(
+    host.querySelector('a[href="/groups/new"]')?.getAttribute('aria-label'),
+  ).toBe('Create group');
+  expect(host.querySelector('a[href="/groups/new"]')?.textContent).toContain(
+    'Ongoing shared expenses',
   );
 });
 

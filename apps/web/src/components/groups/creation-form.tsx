@@ -23,7 +23,8 @@ import {
 } from '@/lib/relay/group-creation';
 import { createSessionId } from '@/lib/session-id';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { ErrorSummary } from '../ui/primitives';
+import { ErrorSummary, Button } from '../ui/primitives';
+import creationStyles from './creation.module.css';
 
 import formsFeatureStyles from './forms.module.css';
 
@@ -166,7 +167,7 @@ export function CreationForm({
       // No state/focus updates after route transition; leaving this visit suppresses late responses.
       navigating.current = true;
       router.push(
-        `${kind === 'TRIP' ? '/trips' : '/groups'}/${encodeURIComponent(outcome.groupId)}${source ? `?source=${encodeURIComponent(source)}` : ''}`,
+        `${original.kind === 'TRIP' ? '/trips' : '/groups'}/${encodeURIComponent(outcome.groupId)}${source ? `?source=${encodeURIComponent(source)}` : ''}`,
       );
     } else if (outcome.__typename === 'GroupCreationRejected') {
       persist({ version: 1, actor, draft });
@@ -252,22 +253,25 @@ export function CreationForm({
   return (
     <section
       data-ui="financial-form-card creation-form form-region"
-      className={`${formsFeatureStyles['financial-form-card']} ${formsFeatureStyles['creation-form']}`}
+      className={`${formsFeatureStyles['creation-form']} ${creationStyles.form}`}
       aria-labelledby="creation-heading"
     >
       <h2 id="creation-heading" tabIndex={-1}>
         Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
       </h2>
-      <p>
-        Currency: USD. Your new group starts with only you as owner and an empty
-        ledger.
+      <p className={creationStyles.intro}>
+        {draft.kind === 'TRIP'
+          ? 'Expenses for a journey together.'
+          : 'Ongoing shared expenses.'}
       </p>
-      <p ref={status} role="status" tabIndex={-1}>
+      <p
+        className={creationStyles.status}
+        ref={status}
+        role="status"
+        tabIndex={-1}
+      >
         {busy ? 'Working…' : notice}
       </p>
-      <Link href={returnHref ?? (kind === 'TRIP' ? '/trips' : '/groups')}>
-        Inspect your {kind === 'TRIP' ? 'trips' : 'groups'}
-      </Link>
       {attempt && (
         <aside
           data-ui="financial-recovery"
@@ -306,19 +310,20 @@ export function CreationForm({
           </button>
         </aside>
       )}
-      {!attempt && !denied && (
+      {!attempt && !denied && storageFailed && (
         <aside
           data-ui="financial-recovery"
           className={formsFeatureStyles['financial-recovery']}
         >
           <p>
-            {storageFailed
-              ? 'Saved creation cannot be safely read or saved.'
-              : 'No original attempt key is available.'}{' '}
-            If tab storage was lost, an earlier creation may have completed.
-            Inspect your groups before deliberately creating another; a new key
-            cannot deduplicate a lost attempt.
+            Saved creation cannot be safely read or saved. If tab storage was
+            lost, an earlier creation may have completed. Inspect your groups
+            before deliberately creating another; a new key cannot deduplicate a
+            lost attempt.
           </p>
+          <Link href={returnHref ?? '/groups'} scroll={false}>
+            Inspect your groups
+          </Link>
           <label data-ui="form-label">
             <input
               type="checkbox"
@@ -328,39 +333,37 @@ export function CreationForm({
             />
             I have checked my groups and want a new creation.
           </label>
-          {storageFailed && (
-            <button
-              disabled={!acknowledged}
-              onClick={() => {
-                try {
-                  // A valid saved attempt must never be discarded through this storage-loss path.
-                  const saved = readCreation(actor);
-                  if (saved?.attempt) {
-                    setNotice(
-                      'An original attempt is available. Reload to recover it.',
-                    );
-                    return;
-                  }
-                } catch {
-                  /* Explicit acknowledgement permits replacing unreadable lost context. */
-                }
-                try {
-                  saveCreation({ version: 1, actor, draft });
-                  setStorageFailed(false);
+          <button
+            disabled={!acknowledged}
+            onClick={() => {
+              try {
+                // A valid saved attempt must never be discarded through this storage-loss path.
+                const saved = readCreation(actor);
+                if (saved?.attempt) {
                   setNotice(
-                    'Starting a deliberate new draft after storage loss. An earlier group may already exist.',
+                    'An original attempt is available. Reload to recover it.',
                   );
-                } catch {
-                  setNotice(
-                    'Storage remains unavailable. Restore it and reload before submitting.',
-                  );
+                  return;
                 }
-              }}
-              data-ui="form-button"
-            >
-              Start new draft after storage loss
-            </button>
-          )}
+              } catch {
+                /* Explicit acknowledgement permits replacing unreadable lost context. */
+              }
+              try {
+                saveCreation({ version: 1, actor, draft });
+                setStorageFailed(false);
+                setNotice(
+                  'Starting a deliberate new draft after storage loss. An earlier group may already exist.',
+                );
+              } catch {
+                setNotice(
+                  'Storage remains unavailable. Restore it and reload before submitting.',
+                );
+              }
+            }}
+            data-ui="form-button"
+          >
+            Start new draft after storage loss
+          </button>
         </aside>
       )}
       {!denied && (
@@ -368,7 +371,7 @@ export function CreationForm({
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            if (pending.current || disabled || !acknowledged) return;
+            if (pending.current || disabled) return;
             const checked = validateCreation(draft);
             setErrors(checked.errors);
             if (Object.keys(checked.errors).length) {
@@ -455,15 +458,44 @@ export function CreationForm({
                 )}
               </div>
             ))}
-            <button
-              type="submit"
-              disabled={!acknowledged}
-              data-ui="form-button"
-            >
-              Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
-            </button>
+            <div className={creationStyles.currency}>
+              <label htmlFor="creation-currency" data-ui="form-label">
+                Currency
+              </label>
+              <input
+                id="creation-currency"
+                value="USD — US Dollar"
+                readOnly
+                data-ui="form-control"
+              />
+              <span>
+                Currency: USD. Only you are added as owner. Invite others after
+                creation.
+              </span>
+            </div>
+            <div className={creationStyles.actions}>
+              <Link href={returnHref ?? '/groups'} scroll={false}>
+                Cancel
+              </Link>
+              <Button type="submit">
+                Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
+              </Button>
+            </div>
           </fieldset>
         </form>
+      )}
+      {!attempt && !denied && !storageFailed && (
+        <details className={creationStyles.help}>
+          <summary>Missing a previous creation?</summary>
+          <p>
+            If tab storage was lost, an earlier creation may have completed.
+            Inspect your groups before deliberately creating another; a new key
+            cannot deduplicate a lost attempt.
+          </p>
+          <Link href={returnHref ?? '/groups'} scroll={false}>
+            Inspect your groups
+          </Link>
+        </details>
       )}
     </section>
   );

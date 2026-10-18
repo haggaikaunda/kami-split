@@ -1090,9 +1090,7 @@ test('authorized create choices preserve directory selection and return focus', 
     page.getByLabel('Destination (optional)', { exact: true }),
   ).toBeVisible();
   void app.hold('journeyViewerQuery', data).release();
-  await page
-    .getByRole('link', { name: 'Inspect your trips', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Cancel', exact: true }).click();
   await expect(
     typeFilter(page).getByRole('link', { name: 'Trips', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
@@ -3174,7 +3172,8 @@ test('creation recovery and validation stay readable at 320px with doubled text'
     document.documentElement.style.fontSize = '200%';
   });
   const form = page.locator('[data-ui~="creation-form"]');
-  const recovery = form.locator('[data-ui="financial-recovery"]');
+  await form.getByText('Missing a previous creation?', { exact: true }).click();
+  const recovery = form.locator('details');
   await expect(recovery).toContainText(
     'a new key cannot deduplicate a lost attempt',
   );
@@ -3212,7 +3211,7 @@ test('creation recovery and validation stay readable at 320px with doubled text'
     }, family);
     const geometry = await recovery.evaluate(textGeometry);
     expect(geometry.font).toBe('32px');
-    expect(geometry.textSize).toBe('34px');
+    expect(parseFloat(geometry.textSize)).toBeGreaterThanOrEqual(26);
     expect(geometry.splitWords, `${family} recovery words`).toEqual([]);
     expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
     await testInfo.attach(
@@ -3224,9 +3223,6 @@ test('creation recovery and validation stay readable at 320px with doubled text'
     );
   }
   // Keep the widest font for these creation validation/field assertions.
-  await page
-    .getByLabel('I have checked my groups and want a new creation.')
-    .check();
   await form.getByRole('button', { name: 'Create trip', exact: true }).click();
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
   await expect(form.getByRole('alert')).toContainText('name');

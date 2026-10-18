@@ -150,7 +150,7 @@ controls. Current source-owned obligation entries are described below.
 ## Group creation (#106)
 
 Enabled designated creators use Create in the directory to choose Group
-(`/groups/new`) or Trip (`/trips/new`). Direct creation links remain available.
+(`/groups/new`) or Trip (`/trips/new`). Direct creation links remain available. The choices and creation form use a mobile bottom sheet and a narrow desktop right drawer; Cancel or Escape returns to the authorized source with its filter, scroll and focus. A healthy draft submits without a recovery acknowledgement.
 The source visit retains directory filters, scroll and Create focus for return. USD is read-only; trip
 dates initially use the fresh server UTC date. Names use ASCII trimming and
 Unicode scalar limits; destinations preserve whitespace. There is no member
@@ -166,7 +166,7 @@ domain rejection permits correction with a new key. Logout or account switch
 clears creation context alongside financial drafts. Password-session logout also
 continues when the invitation context is already absent or expired. Unreadable/lost storage
 explains that an earlier group may exist and offers group inspection before an
-explicitly acknowledged new creation; unavailable storage blocks dispatch.
+explicitly acknowledged new creation when storage is known to be corrupt or unavailable; unavailable storage blocks dispatch. A collapsed “Missing a previous creation?” disclosure keeps inspection and lost-context guidance available for healthy drafts.
 
 A completed result triggers a separate network-only authorized Group read before
 opening its canonical route. Read failure retains recovery and never asserts a
