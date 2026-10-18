@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   Button,
   Confirmation,
+  containDialogFocus,
   Dialog,
   ErrorSummary,
   Field,
@@ -273,5 +274,104 @@ describe('accessible UI primitives', () => {
     expect(container.querySelector('tbody')!.textContent).toContain(
       '10.01 USD2',
     );
+  });
+});
+
+describe('modal heading and native keyboard containment', () => {
+  const visibleControls = () =>
+    vi
+      .spyOn(HTMLElement.prototype, 'getClientRects')
+      .mockImplementation(function (this: HTMLElement) {
+        return (this.hidden ? [] : [{}]) as unknown as DOMRectList;
+      });
+  const tab = (target: HTMLElement, options: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+      ...options,
+    });
+    act(() => target.dispatchEvent(event));
+    return event;
+  };
+  const renderDialog = () =>
+    act(() =>
+      root.render(
+        <Dialog open title="Heading entry" onClose={vi.fn()}>
+          <Button hidden>Hidden</Button>
+          <Button disabled>Disabled</Button>
+          <Button tabIndex={-1}>Programmatic only</Button>
+          <Field label="Draft" />
+          <Button>Save</Button>
+        </Dialog>,
+      ),
+    );
+
+  it.each([false, true])(
+    'routes Tab from a non-tabbable heading to an eligible edge (reverse: %s)',
+    (shiftKey) => {
+      visibleControls();
+      renderDialog();
+      const heading = container.querySelector('h2')!;
+      const buttons = container.querySelectorAll('button');
+      expect(document.activeElement).toBe(heading);
+      const event = tab(heading, { shiftKey });
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(
+        shiftKey ? buttons[buttons.length - 1] : buttons[0],
+      );
+    },
+  );
+
+  it('leaves native forward Tab from a middle text control alone', () => {
+    visibleControls();
+    renderDialog();
+    const input = container.querySelector('input')!;
+    input.focus();
+    expect(tab(input).defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it.each([{ altKey: true }, { ctrlKey: true }, { metaKey: true }])(
+    'leaves browser Tab shortcuts alone (%j)',
+    (modifier) => {
+      visibleControls();
+      renderDialog();
+      const heading = container.querySelector('h2')!;
+      const buttons = container.querySelectorAll('button');
+      const last = buttons[buttons.length - 1];
+      for (const target of [heading, last]) {
+        target.focus();
+        expect(tab(target, modifier).defaultPrevented).toBe(false);
+        expect(document.activeElement).toBe(target);
+      }
+    },
+  );
+
+  it('retains the contextual fallback for both Tab directions when no controls are eligible', () => {
+    visibleControls();
+    const fallback = createRef<HTMLHeadingElement>();
+    act(() =>
+      root.render(
+        <dialog
+          open
+          tabIndex={-1}
+          onKeyDown={(event) => containDialogFocus(event, fallback.current)}
+        >
+          <h2 ref={fallback} tabIndex={-1}>
+            Unavailable actions
+          </h2>
+          <button disabled>Disabled</button>
+          <button hidden>Hidden</button>
+          <button tabIndex={-1}>Programmatic only</button>
+        </dialog>,
+      ),
+    );
+    const dialog = container.querySelector('dialog')!;
+    for (const shiftKey of [false, true]) {
+      dialog.focus();
+      expect(tab(dialog, { shiftKey }).defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(fallback.current);
+    }
   });
 });

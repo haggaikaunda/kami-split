@@ -51,6 +51,16 @@ Light, System and Dark are private account preferences. A selection applies imme
 
 Persistent navigation links Household and Groups, which includes ordinary groups and trips. Phones place a raised, labeled Add expense action between them; desktop retains a labeled creation action. The Profile avatar opens `/account` as a full page with the same global navigation. Groups stays selected inside trips; Profile uses its avatar selection. Overview, Expenses and Balances are direct workspace links; More discloses native Activity and Members links and visibly identifies either current destination. These are route links, not ARIA tabs. Escape closes More and restores its trigger focus.
 
+Focus destinations and focus presentation have separate owners. `FocusInput`
+recognizes a trusted pointer sequence and clears it immediately for keyboard or
+unknown-origin activation. Only opted-in expense overlay/navigation targets and
+workspace tabs omit the extra author ring in pointer mode; text controls keep
+their indicators and forced-color mode keeps native focus styling. Selected-tab
+accents and theme tokens do not depend on input mode. Filter dialogs receive the
+actual trigger reference. The ledger owns detail/create return after its fresh
+authorized traversal, choosing the saved/nearest row or Filters when empty;
+new input during that wait cancels its pending focus/scroll restoration.
+
 ## Workspaces and expenses
 
 The compact illustrated header places bold Kami Grow above the current destination, with query-owned Group/Trip names, readable wrapping and a softly shaded illustrated background. Household and Group/Trip scope help remains labeled and dismissible. The global Add expense action uses a currently authorized workspace source; global contexts open an explicit eligible-source chooser. Original Household ledger access remains distinct from the cross-space Household summary. Do not invent a source for a write. Current summaries use complete server totals; visible or loaded rows cannot establish totals or settlement.

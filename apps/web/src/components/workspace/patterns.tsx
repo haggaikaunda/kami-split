@@ -1,4 +1,5 @@
 'use client';
+import focusStyles from '../ui/focus.module.css';
 import workspaceStyles from './patterns.module.css';
 import { cx } from '../ui/classnames';
 
@@ -108,7 +109,10 @@ export function WorkspaceTabs({
   return (
     <nav
       data-ui="workspace-tabs"
-      className={workspaceStyles['workspace-tabs']}
+      className={cx(
+        workspaceStyles['workspace-tabs'],
+        focusStyles['pointer-navigation'],
+      )}
       aria-label={label}
     >
       {workspaceSections.slice(0, 3).map((section) => (

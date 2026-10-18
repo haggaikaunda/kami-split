@@ -248,6 +248,8 @@ export function responseFor(operation, variables) {
           pageInfo: { hasNextPage: false, endCursor: null },
         },
       };
+    case 'expensesHouseholdQuery':
+      return { householdExpenses: expensePage(variables.after) };
     case 'expensesGroupQuery':
       return { groupExpenses: expensePage(variables.after) };
     case 'journeyGroupQuery':

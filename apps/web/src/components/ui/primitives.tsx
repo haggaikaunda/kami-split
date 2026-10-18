@@ -342,12 +342,13 @@ export function EmptyState({
   );
 }
 
-/** Wrap visible enabled controls inside a native modal, including reverse Tab. */
+/** Wrap visible enabled controls, including entry from a programmatic heading. */
 export function containDialogFocus(
   event: KeyboardEvent<HTMLDialogElement>,
   fallback: HTMLElement | null,
 ) {
-  if (event.key !== 'Tab') return;
+  if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey)
+    return;
   const dialog = event.currentTarget;
   const controls = Array.from(
     dialog.querySelectorAll<HTMLElement>(
@@ -371,7 +372,11 @@ export function containDialogFocus(
   ) {
     event.preventDefault();
     last?.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (
+    !event.shiftKey &&
+    (!controls.includes(document.activeElement as HTMLElement) ||
+      document.activeElement === last)
+  ) {
     event.preventDefault();
     first.focus();
   }

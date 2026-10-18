@@ -147,3 +147,40 @@ for (const kind of ['detail', 'create'] as const) {
     },
   );
 }
+
+it('returns to its explicit opener when the browser left focus on the ledger', async () => {
+  const trigger = document.createElement('button');
+  const ledger = document.createElement('section');
+  ledger.tabIndex = -1;
+  const host = document.createElement('div');
+  document.body.append(trigger, ledger, host);
+  ledger.focus();
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <LedgerDialog
+          title="Expense filters"
+          returnFocus={{ current: trigger }}
+          onClose={vi.fn()}
+        >
+          <input />
+        </LedgerDialog>,
+      ),
+    );
+    await act(async () => root.render(null));
+    expect(document.activeElement).toBe(trigger);
+    expect(document.activeElement).not.toBe(ledger);
+  } finally {
+    await act(async () => root.unmount());
+    trigger.remove();
+    ledger.remove();
+    host.remove();
+  }
+});
