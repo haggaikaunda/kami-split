@@ -144,7 +144,8 @@ Overview recent expenses and standalone records are bounded reads. The Expenses
 ledger appends authorized structured pages within a visit while retaining complete
 server aggregates; it does not merge data from separate source visits. Failed reads never establish an empty group or settled
 balance. New ordinary/trip groups reuse the same expense form and complete balances,
-without preview household trip pickers or repayment shortcuts.
+without the retired seeded-preview household trip pickers or simulated repayment
+controls. Current source-owned obligation entries are described below.
 
 ## Group creation (#106)
 
@@ -186,23 +187,32 @@ row opens the original source's repayment form with explicit parties and an exac
 suggested amount. A separate **Record an actual transfer** entry supports actual
 same-source transfers without a current suggestion, including when balances are
 settled or unavailable. Existing form validation and current server authorization
-and participant eligibility still apply. Overview summaries remain informational.
-See [persisted repayments](persisted-repayments.md)
-for actual-transfer validation, frozen recovery scope and browser integration.
+and participant eligibility still apply. Overview metric amounts remain
+informational. A separate source-labeled preview below them exposes up to two
+explicit viewer obligations from the complete authorized projection. Eligible
+rows open the same source-owned repayment form as Balances, contextually in a
+mobile bottom sheet or desktop right drawer for an in-account source visit.
+A metric or net never supplies a counterparty. See
+[persisted repayment entry](persisted-repayments.md#authenticated-workspace-entry-171)
+for presentation and full-page fallback, actual-transfer validation, frozen
+recovery scope and browser integration.
 Owner settings disclose current metadata; metadata editing remains unavailable.
 
 ## Household workspace
 
 #112 connects `/household` to the complete authorized `householdDashboard` read.
 Overview shows expense face-value total/count, exact signed viewer net/open-space
-count, and complete viewer share with expense-payer amount in a tonal row, followed by at most four
-source-attributed expenses from `householdExpenses`. Balances uses the complete
+count, and complete viewer share with expense-payer amount in a tonal row, followed
+by a source-labeled preview of up to two explicit viewer obligations, then at most
+four source-attributed expenses from `householdExpenses`. Eligible preview rows
+use the same contextual repayment entry described above, retaining their explicit
+original source. Balances uses the complete
 server source set and never derives totals from the recent page. Sources collapse
 independently. When available, their expanded obligations link eligible parties to
 the repayment form in the explicit original source. A separate source detail link
 retains access to complete member positions and recorded repayment history.
-The Household aggregate is informational and never supplies a cross-source
-settlement target.
+The Household aggregate metrics are informational and never supply a cross-source
+settlement target or infer the preview's parties.
 Zero aggregate with open sources stays open. Members first reads minimal Household identity, then the actual
 Household `Group.members`, including more than two members and historical profiles;
 only owners see existing invitation management. Activity reuses #172. #170 adds
