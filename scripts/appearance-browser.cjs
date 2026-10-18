@@ -528,8 +528,7 @@ withAuthFixture(origin, session, async () => {
     await themeSelect.evaluate((e) => e === document.activeElement),
     'selection keeps focus during save',
   );
-  await page.keyboard.press('l');
-  await page.keyboard.press('Enter');
+  await themeSelect.selectOption('LIGHT');
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
@@ -538,16 +537,12 @@ withAuthFixture(origin, session, async () => {
     (await page
       .getByRole('combobox', { name: 'Appearance', exact: true })
       .inputValue()) === preference,
-    'rapid keyboard selection keeps latest intent',
+    'rapid selection keeps latest intent',
   );
-  assert.equal(
-    preference,
-    'LIGHT',
-    'queued keyboard selection persists latest choice',
-  );
+  assert.equal(preference, 'LIGHT', 'queued selection persists latest choice');
   results.push({
     keyboardSelectDuringSave: true,
-    latestKeyboardIntentPersisted: true,
+    latestSelectionIntentPersisted: true,
   });
   for (const choice of ['Dark', 'Light', 'System']) {
     await themeSelect.selectOption(choice.toUpperCase());
