@@ -970,8 +970,17 @@ withAuthFixture(origin, session, async () => {
               button.querySelector('[data-ui~="breakdown-legend-label"]'),
             ).color,
           );
+          // Match edit-real-browser's painted-ancestor contrast measurement.
+          let painted = button;
+          while (
+            painted.parentElement &&
+            getComputedStyle(painted)
+              .backgroundColor.match(/[\d.]+/g)
+              .map(Number)[3] === 0
+          )
+            painted = painted.parentElement;
           const background = luminance(
-            getComputedStyle(button).backgroundColor,
+            getComputedStyle(painted).backgroundColor,
           );
           return (
             (Math.max(foreground, background) + 0.05) /
