@@ -2418,3 +2418,64 @@ for (const count of [0, 1, 3, 12]) {
     });
   });
 }
+
+test('creation recovery and validation stay readable at 320px with doubled text', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const data = responseFor('journeyViewerQuery', {});
+  data.viewer.canCreateGroups = true;
+  void app.hold('journeyViewerQuery', data).release();
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/trips/new');
+  await expect(
+    page.getByRole('heading', { name: 'Create trip', exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  const form = page.locator('[data-ui~="creation-form"]');
+  const recovery = form.locator('[data-ui="financial-recovery"]');
+  await expect(recovery).toContainText(
+    'a new key cannot deduplicate a lost attempt',
+  );
+  const geometry = await recovery.evaluate((element) => {
+    const splitWords = [];
+    const nodes = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = nodes.nextNode())) {
+      for (const word of node.textContent.matchAll(/[A-Za-z]+/g)) {
+        const range = document.createRange();
+        range.setStart(node, word.index);
+        range.setEnd(node, word.index + word[0].length);
+        if (range.getClientRects().length > 1) splitWords.push(word[0]);
+      }
+    }
+    return {
+      splitWords,
+      pageWidth: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+      font: getComputedStyle(document.documentElement).fontSize,
+    };
+  });
+  expect(geometry.font).toBe('32px');
+  expect(geometry.splitWords).toEqual([]);
+  expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
+  await page
+    .getByLabel('I have checked my groups and want a new creation.')
+    .check();
+  await form.getByRole('button', { name: 'Create trip', exact: true }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await expect(form.getByRole('alert')).toContainText('name');
+  await page
+    .getByLabel('Destination (optional)', { exact: true })
+    .fill('Synthetic destination');
+  await expect(
+    page.getByLabel('Destination (optional)', { exact: true }),
+  ).toHaveValue('Synthetic destination');
+  await page.screenshot({
+    path: testInfo.outputPath('creation-320-200pct.png'),
+    fullPage: true,
+  });
+});
