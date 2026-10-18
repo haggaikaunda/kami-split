@@ -40,7 +40,7 @@ jobs:
       - run: pnpm format:check
       - run: node --test scripts/ci/*.test.mjs
       - run: node --test scripts/agents/*.test.mjs
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
       - name: Validate repository skills and resources
