@@ -3,7 +3,6 @@
 import { commitLocalUpdate } from 'relay-runtime';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Field, Status } from '../ui/primitives';
-import { AppIcon } from '@/components/workspace-identity';
 import { useFinancialSession } from '@/components/groups/session';
 import query from '@/lib/relay/__generated__/profileQuery.graphql';
 import mutation from '@/lib/relay/__generated__/profileMutation.graphql';
@@ -177,16 +176,7 @@ export function ProfileEditor({ state: c }: { state: OnboardingController }) {
           data-ui="account-section-title"
           className={accountStyles['account-section-title']}
         >
-          <AppIcon name="account" />
-          <div>
-            <h2 id="profile-heading">Profile</h2>
-            <p
-              data-ui="account-secondary"
-              className={accountStyles['account-secondary']}
-            >
-              How you appear to people in your spaces.
-            </p>
-          </div>
+          <h2 id="profile-heading">Personal details</h2>
         </div>
         {message && (
           <div

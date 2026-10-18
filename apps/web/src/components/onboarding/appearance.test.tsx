@@ -36,7 +36,15 @@ async function render(call: ReturnType<typeof vi.fn>, actor = 'alice') {
   );
 }
 async function click(label: string) {
-  const element = [...host.querySelectorAll('button, label')].find(
+  const select = host.querySelector('select');
+  if (['Light', 'Dark', 'System'].includes(label)) {
+    await act(async () => {
+      select!.value = label.toUpperCase();
+      select!.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    return;
+  }
+  const element = [...host.querySelectorAll('button')].find(
     (e) => e.textContent === label,
   )!;
   await act(async () => (element as HTMLElement).click());
@@ -57,7 +65,7 @@ it('applies selections immediately, serializes writes and coalesces rapid choice
   expect(host.textContent).not.toContain('Save appearance');
   await click('Dark');
   expect(apply).toHaveBeenLastCalledWith('alice', 'DARK', false);
-  expect(host.querySelector('fieldset')!.disabled).toBe(false);
+  expect(host.querySelector('select')!.disabled).toBe(false);
   await click('Light');
   await click('System');
   expect(call).toHaveBeenCalledTimes(2);
@@ -94,7 +102,7 @@ it.each(['conflict', 'network'])(
     await render(call);
     await click('Dark');
     expect(apply).toHaveBeenLastCalledWith('alice', 'DARK', false);
-    expect(host.querySelector('fieldset')!.disabled).toBe(true);
+    expect(host.querySelector('select')!.disabled).toBe(true);
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       'Save could not be confirmed',
     );
@@ -102,9 +110,7 @@ it.each(['conflict', 'network'])(
       'Appearance saved for your account.',
     );
     await click('Check saved appearance');
-    expect(
-      (host.querySelector('input[value="DARK"]') as HTMLInputElement).checked,
-    ).toBe(true);
+    expect(host.querySelector('select')!.value).toBe('DARK');
     expect(call).toHaveBeenCalledTimes(3);
     await click('Apply selected theme');
     expect(call.mock.calls[3][1].variables).toEqual({
@@ -147,11 +153,9 @@ it('keeps queued intent through an uncertain earlier write and a failed recovery
   await click('System');
   await act(async () => reject(new Error('lost')));
   await click('Check saved appearance');
-  expect(host.querySelector('fieldset')!.disabled).toBe(true);
+  expect(host.querySelector('select')!.disabled).toBe(true);
   await click('Check saved appearance');
-  expect(
-    (host.querySelector('input[value="SYSTEM"]') as HTMLInputElement).checked,
-  ).toBe(true);
+  expect(host.querySelector('select')!.value).toBe('SYSTEM');
   expect(call).toHaveBeenCalledTimes(4);
   await click('Apply selected theme');
   expect(call.mock.calls[4][1].variables).toEqual({
@@ -165,12 +169,10 @@ it('recovers an initial read failure without exposing an editable unconfirmed de
     .mockRejectedValueOnce(new Error('offline'))
     .mockResolvedValueOnce(profile('DARK'));
   await render(call);
-  expect(host.querySelector('input')).toBeNull();
+  expect(host.querySelector('select')).toBeNull();
   expect(apply).not.toHaveBeenCalled();
   await click('Retry appearance');
-  expect(
-    (host.querySelector('input[value="DARK"]') as HTMLInputElement).checked,
-  ).toBe(true);
+  expect(host.querySelector('select')!.value).toBe('DARK');
 });
 it('does not accept a late save belonging to a replaced account', async () => {
   let finish!: (value: unknown) => void;
@@ -190,9 +192,7 @@ it('does not accept a late save belonging to a replaced account', async () => {
   await act(async () => finish(profile('DARK', true)));
   expect(apply).not.toHaveBeenCalled();
   expect(host.textContent).not.toContain('Appearance saved');
-  expect(
-    (host.querySelector('input[value="SYSTEM"]') as HTMLInputElement).checked,
-  ).toBe(true);
+  expect(host.querySelector('select')!.value).toBe('SYSTEM');
 });
 it('persists a return to the original theme after an earlier write confirms', async () => {
   let finish!: (value: unknown) => void;
@@ -246,11 +246,9 @@ it('stops queued writes at a concurrent server conflict and preserves latest int
     appearance: 'SYSTEM',
     expectedAppearance: 'DARK',
   });
-  expect(host.querySelector('fieldset')!.disabled).toBe(true);
+  expect(host.querySelector('select')!.disabled).toBe(true);
   expect(host.textContent).not.toContain('Appearance saved for your account.');
-  expect(
-    (host.querySelector('input[value="SYSTEM"]') as HTMLInputElement).checked,
-  ).toBe(true);
+  expect(host.querySelector('select')!.value).toBe('SYSTEM');
   await click('Check saved appearance');
   expect(call).toHaveBeenCalledTimes(4);
   await click('Apply selected theme');
@@ -292,5 +290,5 @@ it('does not report success when a Profile response fails to confirm the attempt
   );
   expect(host.textContent).not.toContain('Appearance saved for your account.');
   expect(apply).toHaveBeenLastCalledWith('alice', 'DARK', false);
-  expect(host.querySelector('fieldset')!.disabled).toBe(true);
+  expect(host.querySelector('select')!.disabled).toBe(true);
 });

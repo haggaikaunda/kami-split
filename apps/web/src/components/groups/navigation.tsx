@@ -1,5 +1,6 @@
 'use client';
 import { createSessionId } from '@/lib/session-id';
+import { groupRouteId } from '@/lib/relay/discovery';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useEffect, type MouseEventHandler } from 'react';
@@ -40,12 +41,11 @@ export function ScopedLink({
         event.preventDefault();
         const token = createSessionId();
         const url = new URL(window.location.href);
-        const match = url.pathname.match(/^\/(?:groups|trips)\/([^/]+)$/);
         scope.visits.set(token, {
           href: url.pathname + url.search,
           focus: sourceFocus ?? id,
           scroll: window.scrollY,
-          group: match ? decodeURIComponent(match[1]) : undefined,
+          group: groupRouteId(url.pathname),
         });
         // Preserve Next's state while marking the source history entry for browser Back.
         window.history.replaceState(
@@ -62,17 +62,30 @@ export function ScopedLink({
 export function SourceReturn({
   scope,
   household = false,
+  authorizedGroups,
+  fallbackLabel,
 }: {
   scope: FinancialScope;
   household?: boolean;
+  authorizedGroups?: readonly { id: string; name: string }[];
+  fallbackLabel?: string;
 }) {
   const params = useSearchParams();
   const trip = usePathname().startsWith('/trips/');
   const token = params.get('source');
-  const visit = token ? scope.visits.get(token) : undefined;
-  const destination = visit
+  const visit = token && scope.isLive() ? scope.visits.get(token) : undefined;
+  const origin = visit
     ? new URL(visit.href, 'https://workspace.invalid')
     : undefined;
+  const groupId =
+    authorizedGroups !== undefined
+      ? groupRouteId(origin?.pathname ?? '')
+      : visit?.group;
+  const group = groupId
+    ? authorizedGroups?.find((group) => group.id === groupId)
+    : undefined;
+  const valid = visit && (!groupId || authorizedGroups === undefined || group);
+  const destination = valid ? origin : undefined;
   if (destination && token) destination.searchParams.set('restore', token);
   return (
     <Link
@@ -90,15 +103,26 @@ export function SourceReturn({
         if (token) scope.restored.delete(token);
       }}
     >
-      {visit
-        ? 'Back to source'
-        : household
-          ? 'Back to Household'
-          : trip
-            ? 'Back to Trips'
-            : 'Back to Groups'}
+      {destination
+        ? sourceReturnLabel(destination.pathname, group?.name)
+        : (fallbackLabel ??
+          (household
+            ? 'Back to Household'
+            : trip
+              ? 'Back to Trips'
+              : 'Back to Groups'))}
     </Link>
   );
+}
+/** These names describe known routes, never text supplied through a query string. */
+function sourceReturnLabel(pathname: string, groupName?: string) {
+  if (pathname.startsWith('/household')) return 'Back to Household';
+  if (groupName) return `Back to ${groupName}`;
+  if (pathname === '/groups/activity') return 'Back to Activity';
+  if (pathname === '/groups/new') return 'Back to Create group';
+  if (pathname === '/trips/new') return 'Back to Create trip';
+  if (pathname === '/account') return 'Back to Profile';
+  return pathname.startsWith('/trips') ? 'Back to Trips' : 'Back to Groups';
 }
 /** Restore only after a fresh authorized source response has rendered. */
 export function RestoreSource({

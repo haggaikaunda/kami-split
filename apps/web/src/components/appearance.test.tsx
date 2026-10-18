@@ -373,7 +373,11 @@ it.each(['success', 'conflict', 'transport'])(
     };
     await view(false);
     await act(async () =>
-      (host.querySelector('input[value="DARK"]') as HTMLInputElement).click(),
+      (() => {
+        const select = host.querySelector('select')!;
+        select.value = 'DARK';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      })(),
     );
     expect(document.documentElement.dataset.theme).toBe('dark');
     await view(true);
@@ -442,7 +446,11 @@ it('releases an unconfirmed editor preview when temporary access failure dispose
   );
   act(() => vi.runOnlyPendingTimers());
   await act(async () =>
-    (host.querySelector('input[value="DARK"]') as HTMLInputElement).click(),
+    (() => {
+      const select = host.querySelector('select')!;
+      select.value = 'DARK';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })(),
   );
   expect(document.documentElement.dataset.theme).toBe('dark');
   live = false;

@@ -413,7 +413,7 @@ withAuthFixture(origin, session, async () => {
             createdAt: '2026-10-01T12:00:00Z',
           },
         };
-      else if (op === 'householdAccessQuery')
+      else if (op === 'householdAccessQuery' || op === 'profileReturnQuery')
         data = {
           viewer: { __typename: 'Viewer', groups },
         };
