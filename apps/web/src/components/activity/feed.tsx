@@ -5,7 +5,6 @@ import { cx } from '../ui/classnames';
 
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { Timestamp } from '@/components/date-time';
 import { spaceHref } from '@/lib/relay/space-routes';
 import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import { CategoryIcon } from '@/components/financial/category';
@@ -45,6 +44,12 @@ type Connection = Extract<
   { readonly __typename: 'ActivityConnection' }
 >;
 type Event = Connection['edges'][number]['node'];
+const recordedDate = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 export function ActivityWorkspace({ groupId = '' }: { groupId?: string }) {
   const access = useFinancialSession();
   return (
@@ -337,30 +342,36 @@ export function ActivityFeed({
                       }}
                       data-ui="form-button"
                     >
-                      {node.kind === 'EXPENSE_CREATED' && node.after ? (
-                        <CategoryIcon category={node.after.category} />
-                      ) : (
-                        <span
-                          data-ui={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
-                          className={cx(
-                            activityStyles['activity-kind'],
-                            activityStyles[
-                              `activity-kind-${node.kind.toLowerCase()}`
-                            ],
-                          )}
-                          aria-hidden="true"
-                        >
-                          <AppIcon
-                            name={
-                              node.kind === 'EXPENSE_UPDATED'
-                                ? 'edit'
-                                : node.kind === 'EXPENSE_CREATED'
-                                  ? 'expense'
-                                  : 'arrow-up-right'
-                            }
-                          />
-                        </span>
-                      )}
+                      <span
+                        data-ui="activity-row-icon"
+                        className={activityStyles['activity-row-icon']}
+                        aria-hidden="true"
+                      >
+                        {node.kind === 'EXPENSE_CREATED' && node.after ? (
+                          <CategoryIcon category={node.after.category} />
+                        ) : (
+                          <span
+                            data-ui={`activity-kind activity-kind-${node.kind.toLowerCase()}`}
+                            className={cx(
+                              activityStyles['activity-kind'],
+                              activityStyles[
+                                `activity-kind-${node.kind.toLowerCase()}`
+                              ],
+                            )}
+                            aria-hidden="true"
+                          >
+                            <AppIcon
+                              name={
+                                node.kind === 'EXPENSE_UPDATED'
+                                  ? 'edit'
+                                  : node.kind === 'EXPENSE_CREATED'
+                                    ? 'expense'
+                                    : 'arrow-up-right'
+                              }
+                            />
+                          </span>
+                        )}
+                      </span>
                       <span
                         data-ui="activity-row-content"
                         className={activityStyles['activity-row-content']}
@@ -381,34 +392,26 @@ export function ActivityFeed({
                           data-ui="activity-row-metadata"
                           className={activityStyles['activity-row-metadata']}
                         >
-                          <Money
-                            value={money(node.amountMinor)}
-                            currency={node.currency}
-                          />
-                          <span aria-hidden="true">·</span>
                           <span>{node.groupName}</span>
                           <span aria-hidden="true">·</span>
-                          <span>
-                            Recorded <Timestamp value={node.timestamp} />
-                          </span>
-                          {node.payer &&
-                          (node.payer.id !== node.creator.id ||
-                            node.payer.displayName !==
-                              node.creator.displayName) ? (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span>Paid by {node.payer.displayName}</span>
-                            </>
-                          ) : node.sender && node.recipient ? (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span>
-                                {node.sender.displayName} paid{' '}
-                                {node.recipient.displayName}
-                              </span>
-                            </>
-                          ) : null}
+                          <time
+                            dateTime={node.timestamp}
+                            title={node.timestamp}
+                          >
+                            Recorded{' '}
+                            {recordedDate.format(new Date(node.timestamp))}
+                          </time>
                         </span>
+                      </span>
+                      <span
+                        data-ui="activity-row-amount"
+                        className={activityStyles['activity-row-amount']}
+                      >
+                        <Money
+                          value={money(node.amountMinor)}
+                          currency={node.currency}
+                          focusable={false}
+                        />
                       </span>
                     </button>
                   </li>

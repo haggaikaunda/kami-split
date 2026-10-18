@@ -345,3 +345,66 @@ for (const source of [
       groupId: null,
     });
   });
+
+it('separates every event kind from exact money and uses the recorded UTC date', async () => {
+  await render();
+  await respond({
+    ...connection([]),
+    edges: [
+      { ...row, id: 'created', timestamp: '2026-09-02T23:30:00-07:00' },
+      {
+        ...row,
+        id: 'updated',
+        kind: 'EXPENSE_UPDATED',
+        description: 'Revised lunch',
+      },
+      {
+        ...row,
+        id: 'repayment',
+        kind: 'REPAYMENT_RECORDED',
+        description: '',
+        payer: null,
+        sender: { displayName: 'Carol' },
+        recipient: { displayName: 'Dave' },
+        amountMinor: '9007199254740991',
+      },
+    ].map((node) => ({ node })),
+  });
+  const events = [
+    ...host.querySelectorAll('[data-ui~="activity-events"] > li'),
+  ];
+  expect(events).toHaveLength(3);
+  expect(
+    events.map((event) => event.querySelector('strong')?.textContent),
+  ).toEqual([
+    'Alice added Lunch',
+    'Alice updated Revised lunch',
+    'Alice recorded a repayment',
+  ]);
+  expect(events[0].querySelector('time')?.dateTime).toBe(
+    '2026-09-02T23:30:00-07:00',
+  );
+  expect(events[0].querySelector('time')?.textContent).toBe(
+    'Recorded Sep 3, 2026',
+  );
+  for (const event of events) {
+    expect(
+      event.querySelector(
+        '[data-ui~="activity-row-metadata"] [data-ui~="money"]',
+      ),
+    ).toBeNull();
+    expect(
+      event.querySelector(
+        '[data-ui~="activity-row-amount"] [data-ui~="money"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      event.querySelector('[data-ui~="activity-row-icon"]'),
+    ).not.toBeNull();
+    expect(event.querySelector('button [tabindex="0"]')).toBeNull();
+  }
+  expect(
+    events[2].querySelector('[data-ui~="activity-row-amount"]')?.textContent,
+  ).toContain('90,071,992,547,409.91');
+  expect(events[2].querySelector('strong')?.textContent).not.toContain('Carol');
+});
