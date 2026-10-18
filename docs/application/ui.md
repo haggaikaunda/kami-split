@@ -136,8 +136,11 @@ it does not retry a mutation or manufacture a timeout.
 
 ## Unified directory
 
-Groups presents native card links with source identity, active-member count and
-trip destination/dates. Complete Total spend and Your balance are separate labeled
+Groups uses the shared header identity, an accessible body heading and a compact
+segmented All/Groups/Trips toolbar with the authorized Create action. Native card
+links group source identity, active-member count and trip destination/dates beside
+a decorative icon and chevron; a divider separates paired spending and balance
+columns. Desktop keeps two equal columns even for a solitary card. Complete Total spend and Your balance are separate labeled
 values in the source currency. Positive, negative and zero balances use explicit
 words; zero never labels the entire source settled. Names and exact amounts wrap
 within shrinkable card columns at narrow widths and enlarged text. When a card

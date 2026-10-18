@@ -251,8 +251,8 @@ export function CreationForm({
   const disabled = busy || !!attempt || storageFailed || denied;
   return (
     <section
-      data-ui="financial-form-card form-region"
-      className={formsFeatureStyles['financial-form-card']}
+      data-ui="financial-form-card creation-form form-region"
+      className={`${formsFeatureStyles['financial-form-card']} ${formsFeatureStyles['creation-form']}`}
       aria-labelledby="creation-heading"
     >
       <h2 id="creation-heading" tabIndex={-1}>

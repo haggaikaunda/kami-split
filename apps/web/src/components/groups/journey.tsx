@@ -43,6 +43,7 @@ import { workspaceRequest } from '@/lib/relay/workspace-request';
 import { useForegroundRefresh } from './foreground';
 
 import shellStyles from '../workspace/shell.module.css';
+import uiStyles from '../ui/primitives.module.css';
 import formLayoutStyles from '../ui/form-layout.module.css';
 import workspaceFeatureStyles from './workspace.module.css';
 
@@ -159,7 +160,11 @@ export function GroupJourney({
         >
           <header
             data-ui="journey-page-heading form-region"
-            className={workspaceFeatureStyles['journey-page-heading']}
+            className={
+              !initialGroup && !creation
+                ? uiStyles['visually-hidden']
+                : workspaceFeatureStyles['journey-page-heading']
+            }
           >
             {!initialGroup && (
               <h1 data-page-heading tabIndex={-1}>
