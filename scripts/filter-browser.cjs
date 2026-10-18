@@ -57,7 +57,14 @@ module.exports = async function verifyFilters({
     const metrics = await dialog.evaluate((el) => {
       const rect = (node) => {
         const r = node.getBoundingClientRect();
-        return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
+        return {
+          x: r.x,
+          y: r.y,
+          right: r.right,
+          bottom: r.bottom,
+          width: r.width,
+          height: r.height,
+        };
       };
       const body = el.querySelector('[data-ui~="ledger-filter-scroll"]');
       return {
@@ -130,6 +137,26 @@ module.exports = async function verifyFilters({
         'footer action fits',
       );
     }
+    for (const button of metrics.buttons) {
+      assert(button.height >= 44, 'footer retains comfortable touch targets');
+    }
+    if (scale === 1 && label === 'collapsed') {
+      if (metrics.width > 600) {
+        assert(
+          metrics.dialog.width >= 340 && metrics.dialog.width <= 360,
+          'desktop filters use the approved narrow drawer proportion',
+        );
+      }
+      const [reset, apply] = metrics.buttons;
+      assert(
+        apply.width < metrics.dialog.width / 2,
+        'normal-size Apply is compact rather than filling the footer',
+      );
+      assert(
+        apply.x - reset.right > 40,
+        'Reset and Apply remain at opposite footer edges',
+      );
+    }
     results.push({ workspace, width, scale, label, ...metrics });
   }
   await geometry('collapsed');
@@ -140,52 +167,38 @@ module.exports = async function verifyFilters({
     ),
   });
 
-  async function workspaceGeometry() {
-    const metrics = await section('Categories')
-      .getByLabel('Dining', { exact: true })
-      .evaluate((input) => {
-        const checkbox = input.getBoundingClientRect();
-        const label = input.closest('label').getBoundingClientRect();
-        const fieldset = input.closest('fieldset').getBoundingClientRect();
-        return {
-          rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
-          checkbox: checkbox.width,
-          inset: label.x - fieldset.x,
-        };
-      });
+  async function optionReachability() {
+    const option = section('Categories').getByLabel('Other', { exact: true });
+    await option.scrollIntoViewIfNeeded();
+    const metrics = await option.evaluate((input) => {
+      const rect = (node) => {
+        const r = node.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, height: r.height };
+      };
+      const dialog = input.closest('dialog');
+      return {
+        target: rect(input.closest('label')),
+        header: rect(dialog.querySelector('header')),
+        footer: rect(
+          dialog.querySelector('[data-ui~="ledger-filter-actions"]'),
+        ),
+      };
+    });
     assert(
-      Math.abs(
-        metrics.checkbox - metrics.rem * (workspace === 'group' ? 1.25 : 1.125),
-      ) < 0.1,
-      `workspace checkbox size is preserved: ${JSON.stringify(metrics)}`,
+      metrics.target.height >= 44,
+      'options retain a comfortable touch target',
     );
     assert(
-      Math.abs(metrics.inset - (workspace === 'group' ? metrics.rem + 1 : 0)) <
-        0.1,
-      'workspace fieldset content inset is preserved',
+      metrics.target.top >= metrics.header.bottom - 1 &&
+        metrics.target.bottom <= metrics.footer.top + 1,
+      'last category is reachable without being covered by header or actions',
     );
-    if (workspace === 'household') {
-      const gap = await dialog
-        .getByRole('combobox', { name: 'Sort', exact: true })
-        .evaluate(
-          (select) =>
-            select.getBoundingClientRect().top -
-            select
-              .closest('label')
-              .querySelector('span')
-              .getBoundingClientRect().bottom,
-        );
-      assert(
-        Math.abs(gap - metrics.rem * 0.375) < 0.1,
-        'Household field label spacing is preserved',
-      );
-    }
   }
 
   // Native summaries and focus loop work without relying on pointer controls.
   await summary('Categories').focus();
   await page.keyboard.press('Enter');
-  await workspaceGeometry();
+  await optionReachability();
   await section('Categories').getByLabel('Dining', { exact: true }).check();
   await section('Categories').getByLabel('Groceries', { exact: true }).check();
   assert.match(await summary('Categories').innerText(), /2 selected/);
@@ -309,10 +322,6 @@ module.exports = async function verifyFilters({
       exact: true,
     });
     await navigation.getByRole('link', { name: 'Groups', exact: true }).click();
-    await page
-      .getByRole('navigation', { name: 'Group type' })
-      .getByRole('link', { name: 'Trips', exact: true })
-      .click();
     await page.locator('a[href="/trips/T"]').click();
     await page.waitForURL((url) => url.pathname === '/trips/T');
     await page
@@ -335,7 +344,7 @@ module.exports = async function verifyFilters({
       .locator('[data-ui~="ledger-filters"][data-scope="household"]')
       .waitFor();
     await summary('Categories').click();
-    await workspaceGeometry();
+    await optionReachability();
     await geometry('Household after Group navigation');
     await page.keyboard.press('Escape');
   }
