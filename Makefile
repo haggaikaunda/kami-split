@@ -1,4 +1,11 @@
-.PHONY: api-run api-generate api-format api-format-check api-test api-build api-check
+.PHONY: banking-worker-run banking-worker-smoke api-run api-generate api-format api-format-check api-test api-build api-check
+
+banking-worker-run:
+	cd apps/api && go run ./cmd/worker
+
+# Requires an explicitly supplied disposable restricted-role database URL.
+banking-worker-smoke:
+	./scripts/banking-worker-smoke.sh
 
 api-run:
 	cd apps/api && go run ./cmd/server

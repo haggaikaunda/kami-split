@@ -61,6 +61,36 @@ That target runs formatting, vet, race tests, build, and module/generation repro
 
 Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the container. SIGINT/SIGTERM initiate graceful shutdown; timeout forces active connections closed and exits unsuccessfully.
 
+## Banking worker and verified ingress
+
+The [banking lifecycle worker](../../docs/application/banking-worker.md) uses a
+separate `kami_worker` pool for durable cleanup and protected Item observation.
+It runs without enrollment or transaction synchronization. The API's sole verified
+ingress is opt-in; configuring it grants no live enrollment authority.
+
+| Variable                          | Purpose                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `BANKING_ENVIRONMENT`             | Explicit `sandbox` or `production`; absent with all dependent variables absent disables API banking ingress. |
+| `PLAID_CLIENT_ID`, `PLAID_SECRET` | Environment-specific server-only provider credentials.                                                       |
+| `BANKING_KEY_CURRENT`             | Current independent banking key version.                                                                     |
+| `BANKING_KEYS`                    | JSON version-to-padded-base64 map of 32-byte AES keys; retain old versions for unfinished work.              |
+| `WORKER_DATABASE_URL`             | Required separate restricted-worker PostgreSQL URL; API database credentials are ignored.                    |
+| `WORKER_ADDR`                     | Operational listener, default `127.0.0.1:8081`.                                                              |
+| `WORKER_SHUTDOWN_TIMEOUT`         | Graceful shutdown deadline, default `5s`, maximum `1m`.                                                      |
+
+Incomplete/empty configuration fails closed. Secret values never appear in startup
+errors. The worker exposes `/ready` and aggregate `/status`, with a clearly bounded
+100-operation sample prioritized toward incomplete work. Keep operational endpoints
+on an internal/loopback interface. SIGINT/SIGTERM cancel and join the consumer.
+
+Use `make banking-worker-run` with explicit configuration. The production image
+contains both binaries. The optional Compose `banking` profile runs the worker;
+the database override supplies only the synthetic local worker URL. Provide
+banking keys/provider settings explicitly in an owned local environment. CI and
+`make db-test` use `make banking-worker-smoke` against an empty disposable database
+to check the actual executable, private status and graceful shutdown without live
+provider calls. Neither command provisions a hosted worker or enables enrollment.
+
 ## Layout and verification
 
 - `cmd/server`: configuration, explicit dependency wiring, structured logging, and signals.

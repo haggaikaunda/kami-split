@@ -9,6 +9,13 @@ services:
       - default
       - supabase
 
+  worker:
+    environment:
+      WORKER_DATABASE_URL: postgres://kami_worker:kami-worker-local-only@supabase_db_kami-split:5432/postgres?sslmode=disable
+    networks:
+      - default
+      - supabase
+
 networks:
   supabase:
     external: true

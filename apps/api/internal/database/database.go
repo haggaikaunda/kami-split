@@ -103,6 +103,10 @@ type DB struct {
 // Open creates a bounded pool and verifies the restricted runtime role within the
 // configured timeout. On failure it closes the pool; on success the caller owns Close.
 func Open(ctx context.Context, c Config) (*DB, error) {
+	return openRole(ctx, c, "kami_api")
+}
+
+func openRole(ctx context.Context, c Config, role string) (*DB, error) {
 	cfg, err := c.poolConfig()
 	if err != nil {
 		return nil, err
@@ -117,10 +121,10 @@ func Open(ctx context.Context, c Config) (*DB, error) {
 	// SELECT 1 / Ping does not require pg_monitor or privileges on provider internals.
 	// Refuse accidental administrative credentials, including inherited owner access.
 	var safe bool
-	err = pool.QueryRow(probe, `SELECT current_user = 'kami_api'
+	err = pool.QueryRow(probe, `SELECT current_user = $1
  AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
  AND NOT pg_has_role(current_user, 'kami_migrator', 'MEMBER')
- FROM pg_roles WHERE rolname = current_user`).Scan(&safe)
+ FROM pg_roles WHERE rolname = current_user`, role).Scan(&safe)
 	if err != nil {
 		pool.Close()
 		return nil, diagnostic.Wrap(errors.New("database startup or runtime-role validation failed"), err, "database.startup")

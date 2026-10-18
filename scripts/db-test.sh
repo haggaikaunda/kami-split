@@ -67,6 +67,7 @@ mv "$stage/supabase/migrations/20261015000000_expense_editing.sql" "$stage/expen
 mv "$stage/supabase/migrations/20261016000000_appearance.sql" "$stage/appearance.sql"
 mv "$stage/supabase/migrations/20261017000000_system_appearance_default.sql" "$stage/system-appearance-default.sql"
 mv "$stage/supabase/migrations/20261017010000_banking_store.sql" "$stage/banking-store.sql"
+mv "$stage/supabase/migrations/20261018000000_banking_worker.sql" "$stage/banking-worker.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
 mv "$stage/group-creation.sql" "$group_migration"
@@ -116,6 +117,8 @@ scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/system_appearance_upgraded.sql
 mv "$stage/banking-store.sql" "$stage/supabase/migrations/20261017010000_banking_store.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+mv "$stage/banking-worker.sql" "$stage/supabase/migrations/20261018000000_banking_worker.sql"
+scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
@@ -125,7 +128,7 @@ scripts/db-tool.sh supabase db lint --db-url "postgres://postgres:postgres@127.0
 # deployment runner. Managed provider schemas came from the clean template.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
 role_snapshot() {
-  docker exec "$container" psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -c "SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolconnlimit, rolconfig FROM pg_roles WHERE rolname IN ('kami_api','kami_migrator') ORDER BY rolname; SELECT roleid::regrole, member::regrole, admin_option, inherit_option, set_option FROM pg_auth_members WHERE roleid IN ('kami_api'::regrole,'kami_migrator'::regrole) OR member IN ('kami_api'::regrole,'kami_migrator'::regrole) ORDER BY 1,2;"
+  docker exec "$container" psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -c "SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolconnlimit, rolconfig FROM pg_roles WHERE rolname IN ('kami_api','kami_migrator','kami_worker') ORDER BY rolname; SELECT roleid::regrole, member::regrole, admin_option, inherit_option, set_option FROM pg_auth_members WHERE roleid IN ('kami_api'::regrole,'kami_migrator'::regrole,'kami_worker'::regrole) OR member IN ('kami_api'::regrole,'kami_migrator'::regrole,'kami_worker'::regrole) ORDER BY 1,2;"
 }
 role_snapshot > "$stage/migration-roles.txt"
 for file in supabase/schemas/*.sql; do
@@ -160,12 +163,17 @@ diff -u "$stage/postgres.acl" "$stage/fresh.acl"
 # migration replay, followed by real authenticated runtime integration tests.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
 scripts/check-sqlc.sh
+# Exercise the actual binary before integration fixtures create cleanup jobs.
+BANKING_WORKER_SMOKE_DATABASE_URL="postgres://kami_worker:kami-worker-local-only@127.0.0.1:$port/postgres?sslmode=disable" ./scripts/banking-worker-smoke.sh
+# Record installed extension/owner/ACL evidence without private queue payloads.
+docker exec "$container" psql -X -At -U postgres -d postgres -c "SELECT extname,extversion FROM pg_extension WHERE extname='pgmq'; SELECT relname,pg_get_userbyid(relowner),relacl FROM pg_class WHERE relnamespace='pgmq'::regnamespace AND relname IN('q_banking_lifecycle','a_banking_lifecycle');"
 # Keep local synthetic provider credentials out of command output and arguments.
 # The disposable directory is removed by the existing cleanup trap.
 scripts/db-tool.sh supabase status --output json --workdir "$stage" > "$stage/auth-status.json"
 chmod 600 "$stage/auth-status.json"
 cd apps/api
 TEST_DATABASE_URL="postgres://kami_api:kami-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
+TEST_WORKER_DATABASE_URL="postgres://kami_worker:kami-worker-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
 TEST_DATABASE_ADMIN_URL="postgres://postgres:postgres@127.0.0.1:$port/postgres?sslmode=disable" \
   python3 - "$stage/auth-status.json" <<'PROVIDER_TEST'
 import json, os, subprocess, sys

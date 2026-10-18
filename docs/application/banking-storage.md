@@ -2,8 +2,9 @@
 
 The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
-hiding fences. It has no GraphQL transport, provider enrollment, ingestion worker,
-annotation editing or replacement activation. Live enrollment remains disabled;
+hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
+protected Item observations and verified webhook ingress. There is no GraphQL
+transport, provider enrollment, transaction import, annotation editing or replacement activation. Live enrollment remains disabled;
 the [Personal contract](personal-banking.md) describes the planned product.
 
 ## Ownership and privileges
@@ -18,8 +19,10 @@ archive reads. Other-owner and absent identifiers have the same result.
 `kami_migrator` owns DDL and historical fixture construction. Browser roles,
 including `anon`, `authenticated` and `service_role`, receive no banking access.
 The API has read access and narrowly granted mutation functions; credentials
-cannot be selected directly. No worker role or worker credential is introduced;
-the lifecycle worker delivery must define and test its own least privileges.
+cannot be selected directly. The separate `kami_worker` login has only lifecycle wrapper execution, with no
+direct banking/queue table access, source writes or user impersonation. Cleanup
+can finish for a disabled owner; provider observation requires an enabled owner,
+granted permission, selected account and current generation.
 No banking table references expenses or contributes events to shared Activity.
 
 ## Source and historical provenance
@@ -40,13 +43,14 @@ non-overlap; it is not an activation/recovery API. Current/staged source facts,
 plan captures and archive captures remain separately addressable. Archive
 references never create another source or annotation identity.
 
-The later purge can enumerate a connection's bindings and their sources, all
-source revisions (including staged batches), annotations, plan-source references
-and archive captures. Remove referencing captures before source versions, and
-remove or replace affected plan intervals/manifests according to their account
-scope. Do not delete a sibling binding or independent holder's data. Physical
-purge, resumable cleanup and provider teardown are lifecycle-worker work; this
-foundation does not report those actions as complete.
+Deletion fences the affected logical accounts across all their bindings, including
+replacement bindings on another Item. Permanent account barriers immediately hide
+source facts, annotations, plans and archives. The worker's dependency-ordered
+batches remove captures, immutable revisions, annotations, intervals, archives,
+plans, bindings and account payloads while preserving unrelated siblings. A hidden
+source may temporarily have no current revision during bounded purge; the database
+requires a permanent barrier for such a shell. Credentials remain only until
+confirmed narrow teardown; provider and backup retention are separate.
 
 ## Durable attempts and lifecycle fences
 
@@ -63,7 +67,7 @@ binding and source revisions. Stop advances lifecycle generations while retainin
 history. History deletion advances generations, writes a durable opaque deletion
 barrier and immediately hides affected facts, annotation versions and captures.
 A delayed write cannot cross that fence. Credentials remain protected and hidden
-from ordinary reads, pending later teardown; deletion does not claim erasure from
+from ordinary reads, pending durable teardown; deletion does not claim erasure from
 provider systems or backups. Barriers have no invented retention expiry.
 
 ## Banking protection keys
@@ -79,5 +83,6 @@ errors. Ordinary diagnostic formatting redacts keyrings and credentials.
 Rotation adds a new current key while retaining old keys for unmigrated
 ciphertext and canonical-input digests. Removing an old version prematurely
 makes both credential recovery and affected operation retries unavailable.
-A future adapter owns secret provisioning, credential migration and safe token
-consumption; no invitation secret or public operation result carries a bank token.
+The runtime loads only explicit banking key configuration and the protected
+adapter consumes credentials for narrow cleanup/status calls. Deployment owns
+secret provisioning and credential migration; no invitation secret or public operation result carries a bank token.
