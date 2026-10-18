@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -522,16 +523,33 @@ func TestSignedHTTPIngressAcknowledgesOnlyCommittedDatabaseReceipt(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var operations []string
 	send := func(body []byte, signature string) int {
+		operations = nil
 		r := httptest.NewRequest(http.MethodPost, "/banking/webhooks/"+correlation.String(), bytes.NewReader(body))
 		r.Header.Set("Plaid-Verification", signature)
+		r = r.WithContext(diagnostic.WithReporter(r.Context(), func(operation string) {
+			operations = append(operations, operation)
+		}))
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 		return w.Code
 	}
 	body := webhookBody("sandbox", "http-item")
 	signature := signed.sign(t, body, signed.now, nil)
-	if code := send(append(append([]byte{}, body...), ' '), signature); code != 400 {
+	// Verification fails before the real acceptor can write, and its transport
+	// owns one static diagnostic. A later healthy lookup recovers normally.
+	signed.status = http.StatusServiceUnavailable
+	if code := send(body, signature); code != 503 || len(operations) != 1 || operations[0] != "banking.webhook_verify" {
+		t.Fatal("verifier failure diagnostic ownership", code, operations)
+	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_receipts WHERE correlation_id=$1`, correlation) != 0 {
+		t.Fatal("verification outage persisted a receipt")
+	}
+	signed.status = http.StatusOK
+	signed.now = signed.now.Add(time.Minute)
+	signature = signed.sign(t, body, signed.now, nil)
+	if code := send(append(append([]byte{}, body...), ' '), signature); code != 400 || len(operations) != 0 {
 		t.Fatal("tampered body", code)
 	}
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_receipts WHERE correlation_id=$1`, correlation) != 0 {
@@ -539,8 +557,8 @@ func TestSignedHTTPIngressAcknowledgesOnlyCommittedDatabaseReceipt(t *testing.T)
 	}
 	f.exec(`CREATE FUNCTION app.banking_receipt_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic receipt failure'; END $$`)
 	f.exec(`CREATE TRIGGER banking_receipt_test_fail BEFORE INSERT ON app.banking_webhook_receipts FOR EACH ROW EXECUTE FUNCTION app.banking_receipt_test_fail()`)
-	if code := send(body, signature); code != 503 {
-		t.Fatal("storage failure acknowledged", code)
+	if code := send(body, signature); code != 503 || len(operations) != 1 || operations[0] != "banking.webhook_accept" {
+		t.Fatal("storage failure acknowledged or diagnostic repeated", code, operations)
 	}
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_receipts WHERE correlation_id=$1`, correlation) != 0 {
 		t.Fatal("rollback receipt survived")
@@ -548,7 +566,7 @@ func TestSignedHTTPIngressAcknowledgesOnlyCommittedDatabaseReceipt(t *testing.T)
 	f.exec(`DROP TRIGGER banking_receipt_test_fail ON app.banking_webhook_receipts`)
 	f.exec(`DROP FUNCTION app.banking_receipt_test_fail()`)
 	for n := 0; n < 2; n++ {
-		if code := send(body, signature); code != 204 {
+		if code := send(body, signature); code != 204 || len(operations) != 0 {
 			t.Fatal("durable delivery rejected", code)
 		}
 	}
