@@ -65,8 +65,7 @@
   gap: var(--space-4);
   min-width: 0;
   overflow-wrap: break-word;
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
+  background: transparent;
 }
 .scoped-invitations h2,
 .scoped-invitations h3 {
@@ -100,7 +99,6 @@
 .invitation-actions {
   min-width: 0;
 }
-.add-member > summary,
 .invitation-history > summary,
 .invitation-actions > summary {
   cursor: pointer;
@@ -109,13 +107,9 @@
   border-radius: var(--radius-control);
   overflow-wrap: anywhere;
 }
-.add-member > summary {
-  width: fit-content;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-weight: 700;
+.add-member:not([hidden]) {
+  margin-block: 0.75rem 1rem;
 }
-.add-member[open] > :not(summary),
 .invitation-history[open] > :not(summary) {
   margin-top: var(--space-4);
 }
@@ -128,41 +122,26 @@
   outline-offset: 3px;
 }
 
-@container (max-width: 32rem) {
-  [data-ui~='workspace-panel'].members-panel {
-    padding: 16px;
-  }
-  .members-panel .account-rows > li {
-    padding: 12px;
-  }
-  .members-panel .invitation-actions > summary {
-    padding-inline: 0;
-  }
-}
-
-.group-members-list [data-ui~='member-detail'] {
-  font-size: 0.875rem;
-}
-
 .member-count {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 .group-members-list > li {
+  min-height: 4.5rem;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1rem 0;
+  padding: 0.875rem 0;
   border: 0;
   border-bottom: 1px solid var(--color-separator);
   border-radius: 0;
   background: transparent;
 }
 .group-members-list [data-ui~='member'] {
-  flex: 1 1 12rem;
+  flex: 1 1 0;
   min-width: 0;
 }
 .group-members-list [data-ui~='member-copy'] {
@@ -170,15 +149,124 @@
   overflow-wrap: anywhere;
 }
 .member-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
   max-width: 100%;
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--radius-control);
-  background: var(--color-primary-surface);
   color: var(--color-primary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
+.member-state::before {
+  content: '';
+  width: 0.3125rem;
+  height: 0.3125rem;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
 .group-members-list > li[data-state='inactive'] .member-state {
-  background: var(--color-subtle);
   color: var(--color-muted);
+}
+.members-panel {
+  min-width: 0;
+}
+.members-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: var(--target-size);
+  margin-bottom: 0.25rem;
+}
+.members-heading h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+.members-heading [data-ui~='button'] {
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.group-members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.group-members-list [data-ui~='avatar'] {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.75rem;
+}
+.group-members-list [data-ui~='member-name'] {
+  font-size: 0.875rem;
+}
+.group-members-list [data-ui~='member-detail'] {
+  font-size: 0.75rem;
+}
+.members-help {
+  margin-top: 1rem;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.members-help summary {
+  cursor: pointer;
+  min-height: var(--target-size);
+  padding-block: 0.625rem;
+}
+.members-panel summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.scoped-invitations .account-management {
+  gap: 0;
+}
+.scoped-invitations .account-management > section,
+.scoped-invitations .invitation-history {
+  margin-top: 1.5rem;
+}
+.scoped-invitations .account-management > section > p {
+  margin-block: 0.5rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+.invitation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.invitation-list > li {
+  padding-block: 0.875rem;
+  border-bottom: 1px solid var(--color-separator);
+}
+.invitation-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.invitation-identity [data-ui~='member'] {
+  flex: 1;
+  min-width: 0;
+}
+.invitation-identity [data-ui~='member-name'] {
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.invitation-identity [data-ui~='member-detail'],
+.invitation-list p,
+.invitation-list summary {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+.invitation-identity .member-state {
+  color: var(--color-orange);
+}
+
+.scoped-invitations .account-management > section > h3 {
+  font-size: 0.9375rem;
+  font-weight: 500;
 }

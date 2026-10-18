@@ -1,5 +1,6 @@
+import { useId, useState } from 'react';
 import { Timestamp, ExactTimestamp } from '@/components/date-time';
-import { Button, Field } from '../ui/primitives';
+import { Button, Field, Member } from '../ui/primitives';
 import type { OnboardingController } from './controller';
 import { PeopleList, type Person } from './people-list';
 import invitationStyles from './invitations.module.css';
@@ -10,6 +11,8 @@ export function InvitationPanel({
   state: OnboardingController;
   members?: readonly Person[];
 }) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const inviteId = useId();
   const {
     busy,
     run,
@@ -30,25 +33,42 @@ export function InvitationPanel({
     pending = false,
   ) => (
     <li key={item.id}>
-      <strong>
-        {item.kind === 'SHARED'
-          ? 'Shared group link'
-          : (item.recipient ?? 'Recipient removed')}
-      </strong>
-      <p>
-        {pending
-          ? 'Pending · Invitation only; no access'
-          : invitationStatus(item.lifecycle)}{' '}
-        · Expires <Timestamp value={item.expiresAt} />
-      </p>
-      <ExactTimestamp value={item.expiresAt} />
+      <div className={invitationStyles['invitation-identity']}>
+        <Member
+          name={
+            item.kind === 'SHARED'
+              ? 'Shared group link'
+              : (item.recipient ?? 'Recipient removed')
+          }
+          detail={pending ? 'Invited · No access yet' : undefined}
+        />
+        <span className={invitationStyles['member-state']}>
+          {pending ? 'Pending' : invitationStatus(item.lifecycle)}
+        </span>
+      </div>
       {item.kind !== 'SHARED' && <p>{deliveryStatus(item.delivery)}</p>}
+      {!pending && (
+        <>
+          <p>
+            Expires <Timestamp value={item.expiresAt} />
+          </p>
+          <ExactTimestamp value={item.expiresAt} />
+        </>
+      )}
       {!['ACCEPTED', 'REVOKED'].includes(item.lifecycle) && (
         <details
           data-ui="invitation-actions"
           className={invitationStyles['invitation-actions']}
         >
           <summary>Invitation options</summary>
+          {pending && (
+            <>
+              <p>
+                Expires <Timestamp value={item.expiresAt} />
+              </p>
+              <ExactTimestamp value={item.expiresAt} />
+            </>
+          )}
           <div
             data-ui="invitation-buttons"
             className={invitationStyles['invitation-buttons']}
@@ -126,63 +146,73 @@ export function InvitationPanel({
       >
         {group && (
           <>
-            <details
-              data-ui="add-member"
-              className={invitationStyles['add-member']}
-            >
-              <summary>Add member</summary>
-              <p>
-                Joining shares the group’s ledger and full expense history.
-                Household membership also enables the overview of eligible
-                groups and trips shared by all active Household members, without
-                an additional sharing confirmation.
-              </p>
-              <p>
-                Shared links admit verified first-time members who explicitly
-                join. Forwarded links work too. Former members need a new
-                targeted invitation. No application email is sent for shared
-                links.
-              </p>
-              <Button
-                tone="secondary"
-                disabled={busy || !!attempt}
-                onClick={() => void run(() => ownerAction('CREATE_SHARED'))}
-              >
-                Create or retrieve shared link
-              </Button>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void run(() => ownerAction('CREATE'));
-                }}
-              >
-                <Field
-                  label="Invitee email address"
-                  id="invite-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={busy || !!attempt}
-                />
-                <Button type="submit" disabled={busy || !!attempt}>
-                  Create invitation
+            <PeopleList
+              members={members}
+              action={
+                <Button
+                  tone="text"
+                  aria-expanded={inviteOpen}
+                  aria-controls={inviteId}
+                  onClick={() => setInviteOpen(!inviteOpen)}
+                >
+                  Invite
                 </Button>
-              </form>
-            </details>
-            <PeopleList members={members} />
+              }
+            >
+              <div
+                id={inviteId}
+                data-ui="add-member"
+                className={invitationStyles['add-member']}
+                hidden={!inviteOpen}
+              >
+                <p>
+                  Joining shares the group’s ledger and full expense history.
+                  Household membership also enables the overview of eligible
+                  groups and trips shared by all active Household members,
+                  without an additional sharing confirmation.
+                </p>
+                <p>
+                  Shared links admit verified first-time members who explicitly
+                  join. Forwarded links work too. Former members need a new
+                  targeted invitation. No application email is sent for shared
+                  links.
+                </p>
+                <Button
+                  tone="secondary"
+                  disabled={busy || !!attempt}
+                  onClick={() => void run(() => ownerAction('CREATE_SHARED'))}
+                >
+                  Create or retrieve shared link
+                </Button>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void run(() => ownerAction('CREATE'));
+                  }}
+                >
+                  <Field
+                    label="Invitee email address"
+                    id="invite-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={busy || !!attempt}
+                  />
+                  <Button type="submit" disabled={busy || !!attempt}>
+                    Create invitation
+                  </Button>
+                </form>
+              </div>
+            </PeopleList>
             {invites.some(
               (item) => item.kind !== 'SHARED' && item.lifecycle === 'PENDING',
             ) && (
               <section aria-label="Pending invitations" data-ui="form-region">
                 <h3>Invitations</h3>
-                <p>
-                  Pending invitations do not count as active members. Access
-                  starts only after acceptance.
-                </p>
                 <ul
                   data-ui="account-rows"
-                  className={invitationStyles['account-rows']}
+                  className={invitationStyles['invitation-list']}
                 >
                   {invites
                     .filter(
@@ -207,7 +237,7 @@ export function InvitationPanel({
                 </p>
                 <ul
                   data-ui="account-rows"
-                  className={invitationStyles['account-rows']}
+                  className={invitationStyles['invitation-list']}
                 >
                   {invites
                     .filter(

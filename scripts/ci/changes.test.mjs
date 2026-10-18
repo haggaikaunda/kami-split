@@ -272,3 +272,16 @@ test('release restoration includes reverted partially promoted changes', (t) => 
   assert.equal(compareReleases(base, head, cwd).verify_api, true);
   assert.equal(compareReleases(base, head, cwd).verify_web, false);
 });
+
+test('Members browser cases require web verification without deploying; unknown neighbor files remain conservative', () => {
+  assert.deepEqual(classify(['tests/browser/members.spec.mjs']), {
+    verify_web: true,
+    verify_api: false,
+    deploy_web: false,
+    deploy_api: false,
+  });
+  assert.deepEqual(
+    classify(['tests/browser/new-members-runner.mjs']),
+    conservative(),
+  );
+});

@@ -244,16 +244,9 @@ function HouseholdMembers({
 }) {
   return (
     <section
-      data-ui="workspace-panel household-members members-panel form-region"
-      className={cx(
-        cx(workspaceFeatureStyles['workspace-panel'], 'household-members'),
-        invitationStyles['members-panel'],
-      )}
+      data-ui="household-members members-panel form-region"
+      className={invitationStyles['members-panel']}
     >
-      <h2>Household members</h2>
-      <p>
-        Active Household members share this ledger and its full expense history.
-      </p>
       {members.viewerMembership.role === 'OWNER' ? (
         <ScopedInvitations
           scope={scope}
@@ -267,6 +260,13 @@ function HouseholdMembers({
           <p>Ask the owner to invite someone to this Household.</p>
         </>
       )}
+      <details className={invitationStyles['members-help']}>
+        <summary>About Household membership</summary>
+        <p>
+          Active Household members share this ledger and its full expense
+          history.
+        </p>
+      </details>
     </section>
   );
 }

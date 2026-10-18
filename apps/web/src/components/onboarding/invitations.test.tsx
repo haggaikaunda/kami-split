@@ -75,7 +75,8 @@ it('separates membership identities from pending recipients, with terminal recor
   expect(people.textContent).not.toContain('carol@example.test');
   const pending = host.querySelector('[aria-label="Pending invitations"]')!;
   expect(pending.textContent).toContain('carol@example.test');
-  expect(pending.textContent).toContain('Pending · Invitation only; no access');
+  expect(pending.textContent).toContain('Invited · No access yet');
+  expect(pending.textContent).toContain('Pending');
   expect(people.textContent).not.toContain('alice@example.test');
   expect(people.textContent).not.toContain('Shared group link');
   const history = host.querySelector(
@@ -85,6 +86,11 @@ it('separates membership identities from pending recipients, with terminal recor
   expect(history.querySelectorAll('li')).toHaveLength(4);
   expect(history.textContent).toContain('Accepted');
   expect(history.textContent).toContain('Cancelled');
+  for (const row of history.querySelectorAll('li')) {
+    expect(
+      row.querySelector('time[datetime="2026-12-01T00:00:00Z"]'),
+    ).not.toBeNull();
+  }
   expect(history.textContent).toContain('Expired');
   expect(
     host.querySelector('[aria-label="Shared invitation links"]')?.textContent,
@@ -93,8 +99,8 @@ it('separates membership identities from pending recipients, with terminal recor
     /UNKNOWN|PROVIDER_ACCEPTED|REVOKED|NOT_REQUESTED/,
   );
   expect(
-    (host.querySelector('[data-ui~="add-member"]') as HTMLDetailsElement).open,
-  ).toBe(false);
+    (host.querySelector('[data-ui~="add-member"]') as HTMLElement).hidden,
+  ).toBe(true);
 });
 it('retains exact invitation identity for renewal, revocation, email retry and pagination', async () => {
   const c = controller([
@@ -148,4 +154,34 @@ it('an accepted reactivation uses the returned member identity rather than addin
   expect(host.querySelector('[data-ui="member-count"]')?.textContent).toBe(
     '2 active members',
   );
+});
+
+it('reveals invitation help and the original form from the compact heading action', async () => {
+  const c = controller([]);
+  await act(async () =>
+    root.render(<InvitationPanel state={c} members={members} />),
+  );
+  const heading = host.querySelector('[data-ui="members-heading"]')!;
+  expect(heading.querySelector('h2')?.textContent).toBe('Members');
+  const invite = heading.querySelector('button')!;
+  const disclosure = host.querySelector(
+    '[data-ui="add-member"]',
+  ) as HTMLElement;
+  expect(invite.textContent).toBe('Invite');
+  expect(invite.getAttribute('aria-controls')).toBe(disclosure.id);
+  expect(invite.getAttribute('aria-expanded')).toBe('false');
+  expect(disclosure.hidden).toBe(true);
+  await act(async () => invite.click());
+  expect(disclosure.hidden).toBe(false);
+  expect(invite.getAttribute('aria-expanded')).toBe('true');
+  expect(disclosure.textContent).toContain('full expense history');
+  await act(async () =>
+    disclosure
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(c.ownerAction).toHaveBeenCalledWith('CREATE');
+  await act(async () => invite.click());
+  expect(disclosure.hidden).toBe(true);
+  expect(host.querySelector('[aria-label="People"]')?.children).toHaveLength(2);
 });
