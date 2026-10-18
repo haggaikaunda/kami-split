@@ -391,7 +391,7 @@ test('auth boundary: cold denial, safe continuation and logout history', async (
   // Add a protected history entry: sign-in/logout correctly replace their entries.
   await page.goto('/groups');
   await expect(
-    page.getByText('Signed in as Private synthetic person'),
+    page.getByRole('navigation', { name: 'Group type' }),
   ).toBeVisible();
   await page.goto('/account');
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
@@ -405,7 +405,7 @@ test('auth boundary: cold denial, safe continuation and logout history', async (
   await app.signIn(page);
   await expect(page).toHaveURL(/\/groups$/);
   await expect(
-    page.getByText('Signed in as Private synthetic person'),
+    page.getByRole('navigation', { name: 'Group type' }),
   ).toBeVisible();
 });
 
@@ -991,7 +991,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   const trip = directory(page).getByRole('link');
   await expect(trip).toContainText('3 active members');
   await expect(trip).toContainText('Total spend · USD$3.00');
-  await expect(trip).toContainText('Your balance · USD$84.20');
+  await expect(trip).toContainText('Your balance · USDYou’re owed $84.20');
   await trip.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/trips\/T\?source=/);
@@ -1211,7 +1211,7 @@ test('fresh directory reads reflect expense corrections and repayment-only balan
   await expense.started;
   await expense.release();
   await expect(group).toContainText('Total spend · USD$9.75');
-  await expect(group).toContainText('Your balance · USD-$4.50');
+  await expect(group).toContainText('Your balance · USDYou owe $4.50');
   const repaid = structuredClone(corrected);
   repaid.groupDirectory.entries[1].financialSummary.viewerNetMinor = '0';
   const repayment = app.hold('journeyViewerQuery', repaid);
@@ -2307,3 +2307,202 @@ for (const overlay of ['detail', 'create']) {
     await page.waitForLoadState('networkidle');
   });
 }
+
+for (const count of [0, 1, 3, 12]) {
+  test(`compact directory keeps its hierarchy with ${count} cards`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    await app.authenticate();
+    await page.setViewportSize({
+      width: testInfo.project.use.viewport.width,
+      height: 844,
+    });
+    const data = responseFor('journeyViewerQuery', {});
+    const ordinary = data.groupDirectory.entries[1];
+    const trip = data.groupDirectory.entries[0];
+    data.viewer.canCreateGroups = true;
+    data.groupDirectory.entries = Array.from({ length: count }, (_, index) => ({
+      ...structuredClone(index % 3 === 2 ? ordinary : trip),
+      group: {
+        ...(index % 3 === 2 ? ordinary.group : trip.group),
+        id: `directory-${index}`,
+        name: ['Maui', 'City break', 'Book club'][index % 3],
+      },
+    }));
+    void app.hold('journeyViewerQuery', data).release();
+    await page.goto('/groups');
+    const toolbar = page.locator('[data-ui="directory-toolbar"]');
+    await expect(toolbar).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Groups', exact: true }),
+    ).toHaveCount(1);
+    await expect(page.getByText('Signed in as', { exact: false })).toHaveCount(
+      0,
+    );
+    const create = toolbar.getByRole('button', { name: 'Create', exact: true });
+    const filters = toolbar.getByRole('navigation', { name: 'Group type' });
+    const createBox = await create.boundingBox();
+    const filterBox = await filters.boundingBox();
+    expect(Math.abs(createBox.y - filterBox.y)).toBeLessThanOrEqual(3);
+    expect(createBox.x).toBeGreaterThan(filterBox.x + filterBox.width);
+    const cards = page.locator('[data-ui="discovery-cards"] > li');
+    await expect(cards).toHaveCount(count);
+    if (!count) {
+      await expect(
+        page.getByText('You have no admitted groups or trips.', {
+          exact: false,
+        }),
+      ).toBeVisible();
+    } else {
+      const bounds = await page.evaluate(() => {
+        const box = (element) => {
+          const { x, y, width, height, bottom } =
+            element.getBoundingClientRect();
+          return { x, y, width, height, bottom };
+        };
+        const content = document.querySelector(
+          '[data-ui~="workspace-content"]',
+        );
+        const list = document.querySelector('[data-ui="discovery-cards"]');
+        return {
+          viewport: { width: innerWidth, height: innerHeight },
+          content: box(content),
+          toolbar: box(document.querySelector('[data-ui="directory-toolbar"]')),
+          list: box(list),
+          cards: [...list.children].map(box),
+          finances: [
+            ...list.querySelectorAll('[data-ui="directory-finances"]'),
+          ].map((element) => [...element.children].map(box)),
+          navigation: box(
+            document.querySelector('[data-ui~="workspace-navigation-links"]'),
+          ),
+        };
+      });
+      for (const [spend, balance] of bounds.finances) {
+        expect(balance.y).toBe(spend.y);
+        expect(balance.x).toBeGreaterThan(spend.x + spend.width);
+      }
+      await testInfo.attach('directory-bounds', {
+        body: JSON.stringify(bounds, null, 2),
+        contentType: 'application/json',
+      });
+      if (bounds.viewport.width === 390) {
+        expect(bounds.cards[0].y).toBeLessThanOrEqual(200);
+        expect(bounds.cards.every((card) => card.height <= 210)).toBe(true);
+        if (count >= 3) {
+          expect(bounds.cards[1].bottom).toBeLessThan(bounds.navigation.y);
+          expect(bounds.cards[2].y).toBeLessThan(bounds.navigation.y);
+        }
+      } else {
+        expect(bounds.cards[0].width).toBeCloseTo(
+          (bounds.list.width - 15) / 2,
+          0,
+        );
+        if (count >= 3) {
+          expect(bounds.cards[1].y).toBe(bounds.cards[0].y);
+          expect(bounds.cards[2].y).toBeGreaterThan(bounds.cards[0].bottom);
+        }
+      }
+      await expect(cards.first().getByRole('link')).toContainText(
+        'Total spend · USD$3.00Your balance · USDYou’re owed $84.20',
+      );
+      await cards.last().getByRole('link').scrollIntoViewIfNeeded();
+      await cards.last().getByRole('link').focus();
+      await expect(cards.last().getByRole('link')).toBeFocused();
+      await page.evaluate(() => scrollTo(0, 0));
+    }
+    await page.screenshot({
+      path: testInfo.outputPath(`directory-${count}.png`),
+      fullPage: true,
+    });
+  });
+}
+
+test('creation recovery and validation stay readable at 320px with doubled text', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const data = responseFor('journeyViewerQuery', {});
+  data.viewer.canCreateGroups = true;
+  void app.hold('journeyViewerQuery', data).release();
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/trips/new');
+  await expect(
+    page.getByRole('heading', { name: 'Create trip', exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  const form = page.locator('[data-ui~="creation-form"]');
+  const recovery = form.locator('[data-ui="financial-recovery"]');
+  await expect(recovery).toContainText(
+    'a new key cannot deduplicate a lost attempt',
+  );
+  const textGeometry = (element) => {
+    const splitWords = [];
+    const nodes = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = nodes.nextNode())) {
+      for (const word of node.textContent.matchAll(/[A-Za-z]+/g)) {
+        const range = document.createRange();
+        range.setStart(node, word.index);
+        range.setEnd(node, word.index + word[0].length);
+        if (range.getClientRects().length > 1) splitWords.push(word[0]);
+      }
+    }
+    return {
+      splitWords,
+      pageWidth: document.documentElement.scrollWidth,
+      viewport: innerWidth,
+      font: getComputedStyle(document.documentElement).fontSize,
+      family: getComputedStyle(element).fontFamily,
+      textSize: getComputedStyle(element).fontSize,
+    };
+  };
+  // Arial models the wider sans fallback used outside macOS; monospace is
+  // a deliberate width stress case, not an application font override.
+  for (const family of ['system', 'Arial, sans-serif', 'monospace']) {
+    await page.evaluate((family) => {
+      if (family === 'system')
+        document.documentElement.style.removeProperty('--font-body');
+      else document.documentElement.style.setProperty('--font-body', family);
+      // Percentage defaults differ for generic monospace; hold actual doubled
+      // text size constant so the stress case cannot silently shrink it.
+      document.documentElement.style.fontSize = '32px';
+    }, family);
+    const geometry = await recovery.evaluate(textGeometry);
+    expect(geometry.font).toBe('32px');
+    expect(geometry.textSize).toBe('34px');
+    expect(geometry.splitWords, `${family} recovery words`).toEqual([]);
+    expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
+    await testInfo.attach(
+      `creation-${family.replace(/[^a-z]+/gi, '-')}-geometry`,
+      {
+        body: JSON.stringify(geometry),
+        contentType: 'application/json',
+      },
+    );
+  }
+  // Keep the widest font for these creation validation/field assertions.
+  await page
+    .getByLabel('I have checked my groups and want a new creation.')
+    .check();
+  await form.getByRole('button', { name: 'Create trip', exact: true }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await expect(form.getByRole('alert')).toContainText('name');
+  expect(
+    (await form.getByRole('alert').evaluate(textGeometry)).splitWords,
+  ).toEqual([]);
+  await page
+    .getByLabel('Destination (optional)', { exact: true })
+    .fill('Synthetic destination');
+  await expect(
+    page.getByLabel('Destination (optional)', { exact: true }),
+  ).toHaveValue('Synthetic destination');
+  await page.screenshot({
+    path: testInfo.outputPath('creation-320-200pct.png'),
+    fullPage: true,
+  });
+});

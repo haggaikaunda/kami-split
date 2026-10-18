@@ -246,7 +246,7 @@ it('offers authorized Group and Trip choices from the shared Create entry', asyn
   data.viewer.canCreateGroups = true;
   await respond(data);
   const create = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Create',
+    (button) => button.textContent?.trim() === 'Create',
   )!;
   await act(async () => create.click());
   expect(host.querySelector('a[href="/trips/new"]')?.textContent).toBe(
@@ -399,4 +399,24 @@ it('reports a transient complete-directory failure as unavailable with retry rat
   ).toContain('Couldn’t refresh');
   expect(host.textContent).not.toContain('no admitted groups');
   expect(host.textContent).not.toContain('$0.00');
+});
+
+it('keeps directory identity accessible without signed-in body copy and names each balance direction', async () => {
+  await render(<GroupJourney />);
+  const data = viewer();
+  data.groupDirectory.entries[1].financialSummary.viewerNetMinor = '12000';
+  await respond(data);
+  expect(host.querySelector('h1')?.textContent).toBe('Groups');
+  expect(host.textContent).not.toContain('Signed in as');
+  expect(
+    host
+      .querySelector('[data-ui="directory-toolbar"] nav')
+      ?.getAttribute('aria-label'),
+  ).toBe('Group type');
+  expect(host.querySelector('a[href^="/trips/T"]')?.textContent).toContain(
+    'Your balance · USDYou owe $5.00',
+  );
+  expect(host.querySelector('a[href^="/groups/F"]')?.textContent).toContain(
+    'Your balance · USDYou’re owed $120.00',
+  );
 });
