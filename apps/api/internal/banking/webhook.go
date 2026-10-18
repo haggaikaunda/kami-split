@@ -18,6 +18,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
 )
 
 // ErrWebhookMismatch tells ingress that a verified event does not match the
@@ -53,12 +54,15 @@ type verificationKey struct {
 
 // WebhookVerifier is the sole Plaid signature/body verifier, scoped to one
 // provider environment. Its bounded 16-key cache expires after one hour or the
-// provider's explicit expiration, whichever is earlier. Calls are concurrency-safe.
+// provider's explicit expiration, whichever is earlier. Negative lookups have a
+// separate bounded cache and never suppress unrelated key refreshes. Calls are
+// concurrency-safe, with one provider key request in flight per verifier.
 type WebhookVerifier struct {
 	provider *PlaidProvider
 	now      func() time.Time
 	keyLock  chan struct{}
 	keys     map[string]verificationKey
+	rejected map[string]time.Time
 	retryAt  time.Time
 }
 
@@ -71,7 +75,7 @@ func NewWebhookVerifier(provider *PlaidProvider, now func() time.Time) (*Webhook
 	if now == nil {
 		now = time.Now
 	}
-	return &WebhookVerifier{provider: provider, now: now, keys: make(map[string]verificationKey), keyLock: make(chan struct{}, 1)}, nil
+	return &WebhookVerifier{provider: provider, now: now, keys: make(map[string]verificationKey), rejected: make(map[string]time.Time), keyLock: make(chan struct{}, 1)}, nil
 }
 
 type webhookClaims struct {
@@ -89,21 +93,21 @@ func (v *WebhookVerifier) Verify(ctx context.Context, signed string, raw []byte)
 	}
 	claims := new(webhookClaims)
 	now := v.now()
-	var keyFailure bool
+	var keyFailure error
 	token, err := jwt.ParseWithClaims(signed, claims, func(token *jwt.Token) (any, error) {
 		kid, ok := token.Header["kid"].(string)
 		if !ok || kid == "" || len(kid) > 128 || token.Method != jwt.SigningMethodES256 {
 			return nil, ErrWebhookMismatch
 		}
 		key, err := v.key(ctx, kid)
-		if err != nil {
-			keyFailure = !errors.Is(err, ErrWebhookMismatch)
+		if err != nil && !errors.Is(err, ErrWebhookMismatch) {
+			keyFailure = err
 		}
 		return key, err
 	}, jwt.WithValidMethods([]string{"ES256"}), jwt.WithTimeFunc(func() time.Time { return now }), jwt.WithIssuedAt())
 	if err != nil || !token.Valid {
-		if keyFailure {
-			return VerifiedWebhook{}, errors.New("banking webhook verification unavailable")
+		if keyFailure != nil {
+			return VerifiedWebhook{}, keyFailure
 		}
 		return VerifiedWebhook{}, ErrWebhookMismatch
 	}
@@ -137,7 +141,10 @@ func (v *WebhookVerifier) key(ctx context.Context, kid string) (*ecdsa.PublicKey
 	case v.keyLock <- struct{}{}:
 		defer func() { <-v.keyLock }()
 	case <-ctx.Done():
-		return nil, errors.New("banking webhook verification unavailable")
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return nil, ctx.Err()
+		}
+		return nil, webhookVerificationFailure(ctx.Err())
 	}
 	now := v.now()
 	for id, key := range v.keys {
@@ -145,27 +152,44 @@ func (v *WebhookVerifier) key(ctx context.Context, kid string) (*ecdsa.PublicKey
 			delete(v.keys, id)
 		}
 	}
+	for id, until := range v.rejected {
+		if !now.Before(until) {
+			delete(v.rejected, id)
+		}
+	}
 	if key, ok := v.keys[kid]; ok {
 		return key.public, nil
 	}
+	if _, rejected := v.rejected[kid]; rejected {
+		return nil, ErrWebhookMismatch
+	}
 	if now.Before(v.retryAt) {
-		return nil, errors.New("banking webhook verification unavailable")
+		return nil, webhookVerificationFailure(nil)
 	}
 	request, _ := json.Marshal(struct {
 		KeyID string `json:"key_id"`
 	}{kid})
 	response, err := v.provider.post(ctx, "/webhook_verification_key/get", request)
 	if err != nil || response.status != http.StatusOK {
+		// Client cancellation is local to this request, not provider-wide failure.
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return nil, ctx.Err()
+		}
 		delay := time.Minute
 		if response.retryAfter > delay {
 			delay = response.retryAfter
 		}
-		v.retryAt = now.Add(delay)
-		if response.status == http.StatusBadRequest {
+		until := v.now().Add(delay)
+		if err == nil && response.status == http.StatusBadRequest {
+			// An unsigned caller selects kid. Cache only this negative result; a global
+			// cooldown here would let unknown IDs starve cold, expired or rotated keys.
+			v.rejectKey(kid, until)
 			return nil, ErrWebhookMismatch
 		}
-		return nil, errors.New("banking webhook verification unavailable")
+		v.retryAt = until
+		return nil, webhookVerificationFailure(err)
 	}
+
 	now = v.now()
 	var payload struct {
 		Key struct {
@@ -215,6 +239,24 @@ func (v *WebhookVerifier) key(ctx context.Context, kid string) (*ecdsa.PublicKey
 	return public, nil
 }
 
+// rejectKey runs under keyLock. Negative entries cannot evict trusted keys or
+// grow with attacker-selected IDs; Retry-After applies only to this rejected ID.
+func (v *WebhookVerifier) rejectKey(kid string, until time.Time) {
+	if len(v.rejected) >= 16 {
+		var earliest string
+		for id, expires := range v.rejected {
+			if earliest == "" || expires.Before(v.rejected[earliest]) {
+				earliest = id
+			}
+		}
+		delete(v.rejected, earliest)
+	}
+	v.rejected[kid] = until
+}
+func webhookVerificationFailure(cause error) error {
+	return diagnostic.Wrap(errors.New("banking webhook verification unavailable"), cause, "banking.webhook_verify")
+}
+
 // WebhookHandler provides only POST /banking/webhooks/{opaque correlation UUID}.
 // It bounds the body and request context, returns 400 for invalid/mismatched
 // events and 503 for unavailable verification/storage, and ACKs durable acceptance.
@@ -258,7 +300,13 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	event, err := h.verifier.Verify(ctx, r.Header.Get("Plaid-Verification"), raw)
-	if err == nil {
+	if err != nil {
+		// The transport consumes verifier infrastructure failures. Expected
+		// signature/key mismatches have no classification and stay quiet.
+		diagnostic.Report(ctx, err)
+	} else {
+		// The durable acceptor owns its storage diagnostics; do not report the
+		// returned failure again at this boundary.
 		err = h.acceptor.AcceptWebhook(ctx, correlation, event)
 	}
 	if err != nil {

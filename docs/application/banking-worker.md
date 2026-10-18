@@ -50,8 +50,13 @@ with the independent complete deletion journal, before exposing data or workers.
 
 The verifier requires ES256, bounded kid/JWK metadata and cache lifetime, a signed
 iat within five minutes, and constant-time SHA-256 comparison of the exact raw
-body. It checks the configured environment and required Item metadata. The durable
-acceptor separately locks the opaque correlation and compares its expected Item,
+body. It checks the configured environment and required Item metadata. Positive and
+negative signing-key caches are separately bounded to 16 entries each. A rejected unknown key is cached for
+one minute or its longer Retry-After without blocking unrelated key refreshes.
+Only genuine provider unavailability/rate guidance sets a shared cooldown; key
+requests are serialized. Unexpected key infrastructure failures produce one safe
+static diagnostic at the HTTP boundary, while invalid deliveries stay quiet.
+The durable acceptor separately locks the opaque correlation and compares its expected Item,
 environment and generation. Invalid/mismatched events write nothing. Success means
 a committed digest and safe event-routing receipt, including durable duplicates;
 terminal receipts cannot reactivate a generation. Unavailable keys or persistence
