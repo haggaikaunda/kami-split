@@ -391,7 +391,7 @@ test('auth boundary: cold denial, safe continuation and logout history', async (
   // Add a protected history entry: sign-in/logout correctly replace their entries.
   await page.goto('/groups');
   await expect(
-    page.getByText('Signed in as Private synthetic person'),
+    page.getByRole('navigation', { name: 'Group type' }),
   ).toBeVisible();
   await page.goto('/account');
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
@@ -405,7 +405,7 @@ test('auth boundary: cold denial, safe continuation and logout history', async (
   await app.signIn(page);
   await expect(page).toHaveURL(/\/groups$/);
   await expect(
-    page.getByText('Signed in as Private synthetic person'),
+    page.getByRole('navigation', { name: 'Group type' }),
   ).toBeVisible();
 });
 
@@ -2320,13 +2320,14 @@ for (const count of [0, 1, 3, 12]) {
     });
     const data = responseFor('journeyViewerQuery', {});
     const ordinary = data.groupDirectory.entries[1];
+    const trip = data.groupDirectory.entries[0];
     data.viewer.canCreateGroups = true;
     data.groupDirectory.entries = Array.from({ length: count }, (_, index) => ({
-      ...structuredClone(ordinary),
+      ...structuredClone(index % 3 === 2 ? ordinary : trip),
       group: {
-        ...ordinary.group,
+        ...(index % 3 === 2 ? ordinary.group : trip.group),
         id: `directory-${index}`,
-        name: ['Friends', 'City break', 'Weekend away'][index % 3],
+        name: ['Maui', 'City break', 'Book club'][index % 3],
       },
     }));
     void app.hold('journeyViewerQuery', data).release();
@@ -2371,7 +2372,7 @@ for (const count of [0, 1, 3, 12]) {
           list: box(list),
           cards: [...list.children].map(box),
           navigation: box(
-            document.querySelector('[data-ui~="workspace-navigation"]'),
+            document.querySelector('[data-ui~="workspace-navigation-links"]'),
           ),
         };
       });

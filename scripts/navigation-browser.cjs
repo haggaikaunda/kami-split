@@ -564,7 +564,8 @@ withAuthFixture(origin, session, async () => {
     });
     if (workspace === 'group') {
       await page.goto(origin + '/groups');
-      await page.getByText('Signed in as Alex').waitFor();
+      await page.getByRole('navigation', { name: 'Group type' }).waitFor();
+      await page.locator('[data-ui~="discovery-cards"]').waitFor();
       const cards = page.locator('[data-ui~="discovery-cards"] a');
       assert.equal(await cards.count(), 2, 'All contains groups and trips');
       assert.equal(await cards.filter({ hasText: 'Maui' }).count(), 1);
