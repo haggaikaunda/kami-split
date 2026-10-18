@@ -123,10 +123,7 @@ func (w *Worker) ProcessOne(ctx context.Context) (bool, error) {
 	}
 	// Unexpected local attempts retain intent under bounded retry too. Return only
 	// the local error to the owning diagnostic boundary after persistence succeeds.
-	delaySeconds := int(retryDelay(job.Attempts, retryAfter, rand.Float64()).Seconds())
-	if retryAfter < 0 || retryAfter > 7*24*time.Hour {
-		delaySeconds = 0
-	}
+	delaySeconds := retrySeconds(job.Attempts, retryAfter, rand.Float64())
 	_, finishErr := w.db.FinishBankingWork(workCtx, job, confirmed, delaySeconds)
 	if finishErr != nil {
 		return true, finishErr
@@ -162,6 +159,22 @@ func (w *Worker) teardown(ctx context.Context, job database.BankingWork) (bool, 
 	// Provider failures are expected durable operation outcomes, not driver logs.
 	return providerErr == nil && result.Confirmed, result.RetryAfter, nil
 }
+
+// PostgreSQL schedules whole seconds. Round conservatively after checking the
+// supported provider bound, without adding to an untrusted duration (which could
+// overflow). Zero preserves the explicit needs-attention outcome.
+func retrySeconds(attempt int, provider time.Duration, jitter float64) int {
+	if provider < 0 || provider > 7*24*time.Hour {
+		return 0
+	}
+	delay := retryDelay(attempt, provider, jitter)
+	seconds := delay / time.Second
+	if delay%time.Second != 0 {
+		seconds++
+	}
+	return int(seconds)
+}
+
 func retryDelay(attempt int, provider time.Duration, jitter float64) time.Duration {
 	if attempt < 1 {
 		attempt = 1
