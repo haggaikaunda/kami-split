@@ -365,7 +365,7 @@ withAuthFixture(origin, session, async () => {
           createdAt: '2026-10-01T12:00:00Z',
         },
       };
-    else if (op === 'householdAccessQuery')
+    else if (op === 'householdAccessQuery' || op === 'profileReturnQuery')
       data = {
         viewer: { __typename: 'Viewer', groups },
       };
@@ -466,7 +466,9 @@ withAuthFixture(origin, session, async () => {
   if (process.env.TEXT_ONLY === '1') {
     preference = 'DARK';
     await page.goto(origin + '/account');
-    await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+    await page
+      .getByRole('combobox', { name: 'Appearance', exact: true })
+      .waitFor();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';
     });
@@ -502,32 +504,39 @@ withAuthFixture(origin, session, async () => {
   };
   await page.goto(origin + '/account');
   await page
-    .getByRole('heading', { name: 'Appearance', exact: true })
+    .getByRole('heading', { name: 'Preferences', exact: true })
     .waitFor();
-  await page.getByRole('radio', { name: 'Light', exact: true }).waitFor();
+  await page
+    .getByRole('combobox', { name: 'Appearance', exact: true })
+    .waitFor();
   await theme('light');
   assert.equal(
     await page.getByRole('button', { name: 'Save appearance' }).count(),
     0,
   );
   await checkContrast(page);
-  const darkRadio = page.getByRole('radio', { name: 'Dark', exact: true });
-  await darkRadio.focus();
-  await page.keyboard.press('Space');
+  const themeSelect = page.getByRole('combobox', {
+    name: 'Appearance',
+    exact: true,
+  });
+  await themeSelect.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
   await theme('dark');
   await page.getByText('Saving appearance…', { exact: true }).waitFor();
   assert(
-    await darkRadio.evaluate((e) => e === document.activeElement),
+    await themeSelect.evaluate((e) => e === document.activeElement),
     'selection keeps focus during save',
   );
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
+  await themeSelect.selectOption('LIGHT');
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
   await theme('light');
   assert(
-    await page.getByRole('radio', { name: 'Light', exact: true }).isChecked(),
+    (await page
+      .getByRole('combobox', { name: 'Appearance', exact: true })
+      .inputValue()) === preference,
     'rapid keyboard selection keeps latest intent',
   );
   assert.equal(
@@ -536,14 +545,11 @@ withAuthFixture(origin, session, async () => {
     'queued keyboard selection persists latest choice',
   );
   results.push({
-    keyboardRadioDuringSave: true,
+    keyboardSelectDuringSave: true,
     latestKeyboardIntentPersisted: true,
   });
   for (const choice of ['Dark', 'Light', 'System']) {
-    await page
-      .locator('[data-ui~="appearance-choice"]')
-      .filter({ has: page.getByRole('radio', { name: choice, exact: true }) })
-      .click();
+    await themeSelect.selectOption(choice.toUpperCase());
     await page
       .getByText('Appearance saved for your account.', { exact: true })
       .waitFor();
@@ -554,10 +560,7 @@ withAuthFixture(origin, session, async () => {
     await theme(choice === 'Light' ? 'light' : 'dark');
     results.push({ choice, liveOSChange: true });
   }
-  await page
-    .locator('[data-ui~="appearance-choice"]')
-    .filter({ has: page.getByRole('radio', { name: 'Dark', exact: true }) })
-    .click();
+  await themeSelect.selectOption('DARK');
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();
@@ -574,9 +577,13 @@ withAuthFixture(origin, session, async () => {
     'dark',
     'cookie-only startup paints the matching saved Dark preference',
   );
-  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  await page
+    .getByRole('combobox', { name: 'Appearance', exact: true })
+    .waitFor();
   assert(
-    await page.getByRole('radio', { name: 'Dark', exact: true }).isChecked(),
+    (await page
+      .getByRole('combobox', { name: 'Appearance', exact: true })
+      .inputValue()) === preference,
   );
   await page.evaluate(() => {
     for (const key of Object.keys(localStorage))
@@ -584,9 +591,13 @@ withAuthFixture(origin, session, async () => {
   });
   await page.reload();
   await theme('dark');
-  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  await page
+    .getByRole('combobox', { name: 'Appearance', exact: true })
+    .waitFor();
   assert(
-    await page.getByRole('radio', { name: 'Dark', exact: true }).isChecked(),
+    (await page
+      .getByRole('combobox', { name: 'Appearance', exact: true })
+      .inputValue()) === preference,
     'server preference restored without local theme cache',
   );
   results.push({
@@ -625,21 +636,21 @@ withAuthFixture(origin, session, async () => {
     );
     assert.equal(actual.toUpperCase(), expected);
   }
-  await page.getByRole('radio', { name: 'Dark', exact: true }).focus();
+  await page.getByRole('combobox', { name: 'Appearance', exact: true }).focus();
   assert(
     await page
-      .getByRole('radio', { name: 'Dark', exact: true })
+      .getByRole('combobox', { name: 'Appearance', exact: true })
       .evaluate((e) => e === document.activeElement),
   );
   const geometry = await page
-    .getByRole('radio', { name: 'Dark', exact: true })
+    .getByRole('combobox', { name: 'Appearance', exact: true })
     .evaluate((e) => ({
-      input: e.getBoundingClientRect().width,
-      label: e.parentElement.getBoundingClientRect().height,
+      width: e.getBoundingClientRect().width,
+      height: e.getBoundingClientRect().height,
     }));
   assert(
-    geometry.input <= 24 && geometry.label >= 44,
-    'radio intrinsic sizing and label target',
+    geometry.width <= 560 && geometry.height >= 44,
+    'compact select retains an accessible control target',
   );
   await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({
@@ -744,7 +755,9 @@ withAuthFixture(origin, session, async () => {
   preference = 'DARK';
   await page.goto(origin + '/account');
   await theme('dark');
-  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  await page
+    .getByRole('combobox', { name: 'Appearance', exact: true })
+    .waitFor();
   profileDelay = 1500;
   await page.reload();
   await page.getByText('Loading appearance…', { exact: true }).waitFor();
@@ -752,7 +765,9 @@ withAuthFixture(origin, session, async () => {
     path: path.join(output, `account-loading-dark-${width}.png`),
     fullPage: true,
   });
-  await page.getByRole('radio', { name: 'Dark', exact: true }).waitFor();
+  await page
+    .getByRole('combobox', { name: 'Appearance', exact: true })
+    .waitFor();
   profileDelay = 0;
   profileFailure = true;
   await page.reload();

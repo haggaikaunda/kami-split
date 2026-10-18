@@ -380,13 +380,14 @@ test('a save committing after the resumed read converges on a fresh read without
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/account');
   await expect(
-    page.getByRole('radio', { name: 'Light', exact: true }),
-  ).toBeChecked();
+    page.getByRole('combobox', { name: 'Appearance', exact: true }),
+  ).toHaveValue('LIGHT');
   const save = app.hold('appearanceMutation', {
     updateMyAppearance: { __typename: 'Profile', appearance: 'DARK' },
   });
-  await page.getByRole('radio', { name: 'Dark', exact: true }).focus();
-  await page.keyboard.press('Space');
+  await page.getByRole('combobox', { name: 'Appearance', exact: true }).focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
   await save.started;
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.evaluate(() => {
@@ -394,8 +395,8 @@ test('a save committing after the resumed read converges on a fresh read without
     window.dispatchEvent(new PageTransitionEvent('pageshow'));
   });
   await expect(
-    page.getByRole('radio', { name: 'Light', exact: true }),
-  ).toBeChecked();
+    page.getByRole('combobox', { name: 'Appearance', exact: true }),
+  ).toHaveValue('LIGHT');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   // An aborted response cannot prove the server canceled its commit. Model it
   // after the resumed read, then require a new authoritative read to converge.
@@ -408,7 +409,7 @@ test('a save committing after the resumed read converges on a fresh read without
   ).toHaveLength(1);
   await page.reload();
   await expect(
-    page.getByRole('radio', { name: 'Dark', exact: true }),
-  ).toBeChecked();
+    page.getByRole('combobox', { name: 'Appearance', exact: true }),
+  ).toHaveValue('DARK');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });

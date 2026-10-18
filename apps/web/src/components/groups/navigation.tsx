@@ -62,15 +62,22 @@ export function ScopedLink({
 export function SourceReturn({
   scope,
   household = false,
+  authorizedGroups,
 }: {
   scope: FinancialScope;
   household?: boolean;
+  authorizedGroups?: readonly { id: string; name: string }[];
 }) {
   const params = useSearchParams();
   const trip = usePathname().startsWith('/trips/');
   const token = params.get('source');
-  const visit = token ? scope.visits.get(token) : undefined;
-  const destination = visit
+  const visit = token && scope.isLive() ? scope.visits.get(token) : undefined;
+  const group = visit?.group
+    ? authorizedGroups?.find((group) => group.id === visit.group)
+    : undefined;
+  const valid =
+    visit && (!visit.group || authorizedGroups === undefined || group);
+  const destination = valid
     ? new URL(visit.href, 'https://workspace.invalid')
     : undefined;
   if (destination && token) destination.searchParams.set('restore', token);
@@ -90,8 +97,14 @@ export function SourceReturn({
         if (token) scope.restored.delete(token);
       }}
     >
-      {visit
-        ? 'Back to source'
+      {destination
+        ? destination.pathname.startsWith('/household')
+          ? 'Back to Household'
+          : group
+            ? `Back to ${group.name}`
+            : destination.pathname.startsWith('/trips')
+              ? 'Back to Trips'
+              : 'Back to Groups'
         : household
           ? 'Back to Household'
           : trip

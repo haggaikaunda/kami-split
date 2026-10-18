@@ -1005,7 +1005,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   if (page.viewportSize().width <= 600) await page.goBack();
   else
     await page
-      .getByRole('link', { name: 'Back to source', exact: true })
+      .getByRole('link', { name: 'Back to Groups', exact: true })
       .click();
   await expect(trip).toBeFocused();
   await expect(
@@ -1298,7 +1298,12 @@ test('Profile returns a filtered late-page ledger with its loaded extent, scroll
   expect(
     app.requests.filter((r) => r.operation === 'journeyWorkspaceQuery'),
   ).toHaveLength(firstReads);
-  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await page
+    .getByRole('link', {
+      name: 'Back to Maui 2026 with a very long friendly space name',
+      exact: true,
+    })
+    .click();
   await expect(page).toHaveURL(
     new RegExp('categories=GROCERIES.*sort=AMOUNT_DESC'),
   );
@@ -1464,16 +1469,13 @@ test('compact identity and navigation remain readable across responsive themes a
   for (const theme of ['light', 'dark', 'system']) {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/account');
-    const choice = page.getByRole('radio', {
-      name: theme[0].toUpperCase() + theme.slice(1),
+    const choice = page.getByRole('combobox', {
+      name: 'Appearance',
       exact: true,
     });
     await expect(choice).toBeVisible();
-    if (!(await choice.isChecked())) {
-      await page
-        .locator('[data-ui~="appearance-choice"]')
-        .filter({ has: choice })
-        .click();
+    if ((await choice.inputValue()) !== theme.toUpperCase()) {
+      await choice.selectOption(theme.toUpperCase());
       await expect(
         page.getByText('Appearance saved for your account.', { exact: true }),
       ).toBeVisible();
@@ -1559,7 +1561,12 @@ test('Profile return reauthorizes an expired source and cannot restore denied pr
       message: 'Access denied',
     },
   });
-  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await page
+    .getByRole('link', {
+      name: 'Back to Maui 2026 with a very long friendly space name',
+      exact: true,
+    })
+    .click();
   await denied.started;
   await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
   await expect(

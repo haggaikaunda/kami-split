@@ -59,10 +59,10 @@ withAuthFixture(origin, session, async () => {
   });
   const reports = [];
   try {
-    for (const width of [320, 390, 768, 1280])
+    for (const width of [320, 390, 440, 1280])
       for (const scale of [1, 2]) {
         const page = await browser.newPage({
-          viewport: { width, height: 1000 },
+          viewport: { width, height: 844 },
           reducedMotion: 'reduce',
         });
         let name = 'Alex 王小明',
@@ -71,6 +71,7 @@ withAuthFixture(origin, session, async () => {
           failedRead = false,
           failedLogout = false,
           uncertain = false,
+          conflict = false,
           member = false;
         const errors = [],
           requests = [];
@@ -149,6 +150,19 @@ withAuthFixture(origin, session, async () => {
           let data;
           if (query.includes('updateMyProfile')) {
             saveCount++;
+            if (conflict) {
+              conflict = false;
+              return r.fulfill({
+                json: {
+                  data: {
+                    updateMyProfile: {
+                      __typename: 'ProfileProblem',
+                      code: 'CONFLICT',
+                    },
+                  },
+                },
+              });
+            }
             name = variables.displayName;
             if (uncertain) {
               uncertain = false;
@@ -254,6 +268,54 @@ withAuthFixture(origin, session, async () => {
           await page.getByRole('button', { name: 'Refresh groups' }).count(),
           0,
         );
+        assert.equal(
+          await page
+            .getByLabel('Email address', { exact: true })
+            .getAttribute('readonly'),
+          '',
+        );
+        assert.equal(
+          await page
+            .getByRole('heading', { name: 'Profile', exact: true })
+            .count(),
+          1,
+        );
+        assert.equal(
+          await page
+            .getByRole('link', { name: 'Back to Groups', exact: true })
+            .count(),
+          1,
+        );
+        const geometry = await page.evaluate(() => {
+          const box = (selector) => {
+            const { x, y, width, height } = document
+              .querySelector(selector)
+              .getBoundingClientRect();
+            return { x, y, width, height };
+          };
+          return {
+            content: box('[data-content="account"]'),
+            identity: box('[data-ui="account-identity"]'),
+            fields: box('[data-ui="account-profile-fields"]'),
+            name: box('#display-name'),
+            email: box('#account-email'),
+            appearance: box('#account-appearance'),
+            navigation: box('[data-ui="workspace-navigation-links"]'),
+          };
+        });
+        assert.equal(geometry.name.x, geometry.email.x, 'stacked fields align');
+        assert(
+          geometry.email.y >= geometry.name.y + geometry.name.height,
+          'fields remain stacked on desktop',
+        );
+        assert(geometry.content.width <= 560, 'bounded leading form column');
+        if (width === 390 && scale === 1)
+          assert(
+            geometry.appearance.y + geometry.appearance.height <=
+              geometry.navigation.y,
+            'normal Appearance fits above bottom navigation at 390x844',
+          );
+        reports.push({ width, scale, geometry });
         await capture('account');
         const draft = JSON.stringify({
           G: {
@@ -293,6 +355,21 @@ withAuthFixture(origin, session, async () => {
 
         await page
           .getByLabel('Display name', { exact: true })
+          .fill('Unsaved draft');
+        await capture('account-unsaved');
+        await page.getByRole('button', { name: 'Discard edits' }).click();
+        assert.equal(
+          await page.getByLabel('Display name', { exact: true }).inputValue(),
+          name,
+        );
+        assert.equal(saveCount, 0);
+        await page.getByLabel('Display name', { exact: true }).fill('   ');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await page.getByRole('alert').first().waitFor();
+        await capture('account-validation');
+        assert.equal(saveCount, 0);
+        await page
+          .getByLabel('Display name', { exact: true })
           .fill(' María 王小明 🌻 ');
         await page.getByRole('button', { name: 'Save changes' }).click();
         await page.getByText('Changes saved.', { exact: true }).waitFor();
@@ -322,6 +399,23 @@ withAuthFixture(origin, session, async () => {
         assert.equal(
           await page.getByLabel('Display name', { exact: true }).inputValue(),
           name,
+        );
+        conflict = true;
+        await page
+          .getByLabel('Display name', { exact: true })
+          .fill('Conflicting draft');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await page
+          .getByRole('button', { name: 'Check current profile' })
+          .waitFor();
+        await capture('account-conflict');
+        await page
+          .getByRole('button', { name: 'Check current profile' })
+          .click();
+        await page.getByText(/Current saved name:/).waitFor();
+        assert.equal(
+          await page.getByLabel('Display name', { exact: true }).inputValue(),
+          'Conflicting draft',
         );
         uncertain = true;
         await page
@@ -459,7 +553,7 @@ withAuthFixture(origin, session, async () => {
             return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
           };
           const background = getComputedStyle(
-            document.getElementById('profile-heading').closest('section'),
+            document.documentElement,
           ).backgroundColor;
           return {
             canvas: getComputedStyle(document.documentElement).backgroundColor,
@@ -485,6 +579,17 @@ withAuthFixture(origin, session, async () => {
           'Dark inherited profile text must remain readable',
         );
         await capture('account-dark');
+        await page.setViewportSize({ width, height: 568 });
+        await page
+          .getByRole('button', { name: 'Sign out of this session' })
+          .scrollIntoViewIfNeeded();
+        assert(
+          await page
+            .getByRole('button', { name: 'Sign out of this session' })
+            .isVisible(),
+        );
+        await capture('account-short-height');
+        await page.setViewportSize({ width, height: 844 });
         await page.getByLabel('Display name', { exact: true }).focus();
         await page.keyboard.press('Tab');
         assert.equal(

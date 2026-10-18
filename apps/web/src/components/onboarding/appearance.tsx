@@ -1,10 +1,7 @@
 'use client';
 
-import { cx } from '../ui/classnames';
-
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '../ui/primitives';
-import { AppIcon } from '@/components/workspace-identity';
 import { useApplyAppearance } from '@/components/appearance';
 import { appearance, type Appearance } from '@/lib/appearance';
 import query from '@/lib/relay/__generated__/appearanceQuery.graphql';
@@ -135,16 +132,7 @@ export function AppearanceEditor({
         data-ui="account-section-title"
         className={accountStyles['account-section-title']}
       >
-        <AppIcon name="palette" />
-        <div>
-          <h2 id="appearance-heading">Appearance</h2>
-          <p
-            data-ui="account-secondary"
-            className={accountStyles['account-secondary']}
-          >
-            Choose a theme that feels comfortable.
-          </p>
-        </div>
+        <h2 id="appearance-heading">Preferences</h2>
       </div>
       {working && (
         <Status kind="pending">
@@ -158,59 +146,24 @@ export function AppearanceEditor({
       {message && <Status kind={failed ? 'error' : 'info'}>{message}</Status>}
       {saved ? (
         <div>
-          <fieldset
-            data-ui="appearance-options form-fieldset"
-            className={accountStyles['appearance-options']}
-            disabled={uncertain}
+          <label
+            className={accountStyles['appearance-label']}
+            htmlFor="account-appearance"
           >
-            <legend>Theme</legend>
-            {(['LIGHT', 'SYSTEM', 'DARK'] as const).map((value) => (
-              <label
-                data-ui={
-                  `appearance-choice appearance-choice--${value.toLowerCase()}` +
-                  ' form-label'
-                }
-                className={cx(
-                  accountStyles['appearance-choice'],
-                  accountStyles[`appearance-choice--${value.toLowerCase()}`],
-                )}
-                key={value}
-              >
-                <span
-                  data-ui="appearance-preview"
-                  className={accountStyles['appearance-preview']}
-                  aria-hidden="true"
-                >
-                  <span />
-                  <span />
-                  <span />
-                </span>
-                <input
-                  type="radio"
-                  name="appearance"
-                  value={value}
-                  checked={selected === value}
-                  onChange={() => choose(value)}
-                  data-ui="form-radio"
-                />
-                <span
-                  data-ui="appearance-choice-label"
-                  className={accountStyles['appearance-choice-label']}
-                >
-                  <AppIcon
-                    name={
-                      value === 'LIGHT'
-                        ? 'sun'
-                        : value === 'DARK'
-                          ? 'moon'
-                          : 'monitor'
-                    }
-                  />
-                  {value[0] + value.slice(1).toLowerCase()}
-                </span>
-              </label>
-            ))}
-          </fieldset>
+            Appearance
+          </label>
+          <select
+            id="account-appearance"
+            data-ui="appearance-control form-control"
+            className={accountStyles['appearance-control']}
+            disabled={uncertain}
+            value={selected}
+            onChange={(event) => choose(appearance(event.target.value))}
+          >
+            <option value="SYSTEM">Use device setting</option>
+            <option value="LIGHT">Light</option>
+            <option value="DARK">Dark</option>
+          </select>
           <div
             data-ui="appearance-footer"
             className={accountStyles['appearance-footer']}

@@ -78,8 +78,14 @@ OS-wide and Account-only dark palettes have been removed.
 ## Browser editing and navigation
 
 `/account` is the full-page Profile destination, reached through the shared header
-avatar on phones and desktop. It loads no group list or financial overview. Its
-Back link uses the actor-scoped source visit; direct entry falls back to Groups.
+avatar on phones and desktop. The compact content uses an identity divider,
+stacked read-only email and editable display-name fields, and a native Appearance
+selector in a leading column bounded to 560px. Appearance still saves independently
+and immediately. It loads no financial overview. Its Back link uses the actor-scoped
+source visit. Household and directory visits have descriptive labels; a Group/Trip
+origin resolves its name from a fresh, retained authorized group-name query, which
+is revalidated on foreground return. Until confirmed, or after missing access, the
+link safely returns to Groups. Direct entry and missing visits also fall back to Groups.
 Source restoration waits for current authorized content and preserves ledger
 filters, loaded extent, scroll and logical focus. Opening Profile alone does not
 invalidate valid financial projections; a confirmed display-name change does. Profile loading and failure leave

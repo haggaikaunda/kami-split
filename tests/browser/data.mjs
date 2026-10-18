@@ -141,6 +141,8 @@ export function expensePage(after) {
 }
 export function responseFor(operation, variables) {
   switch (operation) {
+    case 'profileReturnQuery':
+      return { viewer: { __typename: 'Viewer', groups } };
     case 'appearanceQuery':
     case 'profileQuery':
       return {

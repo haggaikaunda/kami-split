@@ -2,7 +2,7 @@
 
 import { cx } from '../ui/classnames';
 import { useFinancialSession } from '../groups/session';
-import { RestoreSource, SourceReturn } from '../groups/navigation';
+import { RestoreSource } from '../groups/navigation';
 
 import {
   AppIcon,
@@ -16,6 +16,7 @@ import { useOnboarding, type Mode } from './controller';
 import { HouseIllustration, InvitationScreens, SignIn } from './screens';
 import { AppearanceEditor } from './appearance';
 import { ProfileEditor } from './profile';
+import { ProfileReturn } from './profile-return';
 import { LegacyInvitations } from './legacy-invitations';
 import { ActionRecovery } from './recovery';
 
@@ -145,8 +146,13 @@ function OnboardingVisit({
               </>
             ) : account ? (
               <>
-                <div data-ui="profile-return">
-                  {scope && <SourceReturn scope={scope} />}
+                <div
+                  data-ui="profile-return"
+                  className={accountStyles['profile-return']}
+                >
+                  {scope && scope.actor === c.session?.user.id && (
+                    <ProfileReturn scope={scope} />
+                  )}
                 </div>
                 <header
                   data-ui="account-heading form-region"
@@ -155,7 +161,6 @@ function OnboardingVisit({
                   <h1>
                     {mode === 'account' ? 'Profile' : 'Manage invitations'}
                   </h1>
-                  <p>Profile and preferences, all in one place.</p>
                 </header>
                 {c.session ? (
                   <>
