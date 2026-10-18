@@ -4,11 +4,7 @@ import { cx } from '../ui/classnames';
 
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import {
-  overviewDate,
-  overviewPeriod,
-  overviewSpansYears,
-} from './overview-date';
+import { overviewDate, overviewSpansYears } from './overview-date';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { PeopleList } from '@/components/onboarding/people-list';
@@ -702,12 +698,6 @@ export function HouseholdContent({
                     </div>
                   ) : (
                     <>
-                      <p
-                        data-ui="overview-month"
-                        className={overviewFeatureStyles['overview-month']}
-                      >
-                        {overviewPeriod(recentDates)}
-                      </p>
                       <ul
                         data-ui="group-expense-list"
                         className={overviewFeatureStyles['group-expense-list']}

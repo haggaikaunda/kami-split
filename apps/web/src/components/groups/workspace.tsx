@@ -7,11 +7,7 @@ import { useExpenseEntry } from '@/components/expenses/entry';
 import { calendarDate } from '@/lib/dates';
 import { createPortal } from 'react-dom';
 import { useLayoutEffect, useRef } from 'react';
-import {
-  overviewDate,
-  overviewPeriod,
-  overviewSpansYears,
-} from './overview-date';
+import { overviewDate, overviewSpansYears } from './overview-date';
 import {
   spaceHref,
   spaceExpenseHref,
@@ -524,12 +520,6 @@ function Expenses({
     .map(({ node }) => node.effectiveDate);
   return (
     <>
-      <p
-        data-ui="overview-month"
-        className={overviewFeatureStyles['overview-month']}
-      >
-        {overviewPeriod(dates)}
-      </p>
       <ul
         data-ui="group-expense-list"
         className={overviewFeatureStyles['group-expense-list']}
