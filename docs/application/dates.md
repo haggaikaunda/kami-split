@@ -18,7 +18,9 @@ one explicit UTC display policy: an English abbreviated month, day, year, time
 including seconds, and UTC label. This intentionally replaces mixed browser-local
 and raw-ISO presentation. Offset-bearing input timestamps identify instants and
 are converted to UTC; daylight-saving changes do not create ambiguous recorded
-labels. Date-only financial facts remain separate from the recorded time.
+labels. The compact Activity feed shows only the recorded UTC month, day and
+year; historical detail retains the full readable instant and exact disclosure.
+Date-only financial facts remain separate from the recorded time.
 
 Detail/audit and invitation surfaces expose a keyboard- and touch-operable
 **Exact timestamp** disclosure retaining the original offset/fractional precision.
