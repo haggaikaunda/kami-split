@@ -112,12 +112,20 @@ for (const workspace of [
     const remountedFilters = page.locator('[data-ui~="ledger-filter-button"]');
     await expect(remountedFilters).toBeFocused();
     await noRing(remountedFilters);
+    await expect(row).toBeVisible();
 
     const balances = page
       .locator('[data-ui~="workspace-tabs"]')
       .getByRole('link', { name: 'Balances', exact: true });
     await activate(balances);
     await expect(balances).toHaveAttribute('aria-current', 'page');
+    await expect(
+      page.locator(
+        workspace.name === 'Household'
+          ? '[data-ui~="household-balances"]'
+          : '[data-ui~="group-balances"]',
+      ),
+    ).toBeVisible();
     await noRing(balances);
     await balances.focus();
     // Respect Safari's platform setting for which controls participate in Tab.
