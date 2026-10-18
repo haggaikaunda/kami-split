@@ -623,7 +623,7 @@ withAuthFixture(origin, session, async () => {
       await page.goto(origin + '/groups/T?tab=balances');
       await page.waitForURL('**/trips/T?tab=balances');
       await page
-        .getByRole('heading', { name: 'Who owes whom', exact: true })
+        .getByRole('heading', { name: 'Your balances', exact: true })
         .waitFor();
       assert.equal(
         await page
@@ -966,8 +966,9 @@ withAuthFixture(origin, session, async () => {
                 0,
               );
           const foreground = luminance(
-            getComputedStyle(button.querySelector('span:nth-child(2) > span'))
-              .color,
+            getComputedStyle(
+              button.querySelector('[data-ui~="breakdown-legend-label"]'),
+            ).color,
           );
           const background = luminance(
             getComputedStyle(button).backgroundColor,
