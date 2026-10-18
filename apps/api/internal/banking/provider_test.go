@@ -88,6 +88,7 @@ func TestPlaidRemovalFailureAndUncertainty(t *testing.T) {
 		{name: "invalid token", status: 400, body: `{"error_code":"INVALID_ACCESS_TOKEN","error_message":"secret-private"}`},
 		{name: "rate limited", status: 429, body: `{}`, retry: true},
 		{name: "server error", status: 503, body: `{}`, uncertain: true, retry: true},
+		{name: "server error cannot confirm missing Item", status: 503, body: `{"error_code":"ITEM_NOT_FOUND"}`, uncertain: true, retry: true},
 		{name: "missing confirmation", status: 200, body: `{}`, uncertain: true, retry: true},
 		{name: "not removed", status: 200, body: `{"request_id":"id","removed":false}`, uncertain: true, retry: true},
 		{name: "invalid response", status: 200, body: `unexpected secret-private`, uncertain: true, retry: true},

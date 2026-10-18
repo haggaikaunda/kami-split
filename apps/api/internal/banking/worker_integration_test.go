@@ -242,6 +242,9 @@ func TestPurgeAcrossBindingsIsBoundedHiddenAndPreservesSiblings(t *testing.T) {
 	if job.Kind != "purge" {
 		t.Fatal("expected first purge intent")
 	}
+	if ok, err := db.FinishBankingWork(context.Background(), job, true, 60); err != nil || ok {
+		t.Fatal("unfinished purge claimed complete", err)
+	}
 	if n, err := db.PurgeBankingBatch(context.Background(), job); err != nil || n <= 0 || n > 1100 {
 		t.Fatal("bounded batch", n, err)
 	}
@@ -552,4 +555,44 @@ func TestSignedHTTPIngressAcknowledgesOnlyCommittedDatabaseReceipt(t *testing.T)
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_receipts WHERE correlation_id=$1 AND event_type='ITEM' AND event_code='USER_PERMISSION_REVOKED'`, correlation) != 1 {
 		t.Fatal("receipt routing not durable/deduplicated")
 	}
+}
+
+func TestReconciliationPreparesLegacyPendingDeletionBeforeExecution(t *testing.T) {
+	f, db, _, worker := workerFixture(t)
+	ctx := f.actor(f.owner)
+	old := f.connection(f.owner, "legacy-delete")
+	replacement := f.connection(f.owner, "legacy-replacement")
+	account, _ := f.binding(f.owner, old, "legacy-account")
+	_, sibling := f.binding(f.owner, replacement, "sibling")
+	binding := uuid.New()
+	f.exec(`INSERT INTO app.banking_bindings(id,owner_id,connection_id,account_id,provider_account_id) VALUES($1,$2,$3,$4,'legacy-replacement')`, binding, f.owner, replacement, account)
+	source := f.service.RecordSource(ctx, sourceInput(binding))
+	requireCode(t, source, "READY")
+	siblingSource := f.service.RecordSource(ctx, sourceInput(sibling))
+	requireCode(t, siblingSource, "READY")
+	// This is the exact pre-worker storage shape, with no worker/account mapping.
+	f.exec(`UPDATE app.banking_connections SET state='deleted',generation=2,deletion_generation=1 WHERE id=$1`, old)
+	f.exec(`INSERT INTO app.banking_deletion_barriers(connection_id,owner_id,generation) VALUES($1,$2,1)`, old, f.owner)
+	if err := db.ReconcileBanking(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	_, result := f.service.ReadSource(ctx, source.ID)
+	requireCode(t, result, "NOT_FOUND")
+	for n := 0; n < 100; n++ {
+		worked, err := worker.ProcessOne(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE connection_id=$1 AND kind='purge' AND state='complete'`, old) == 1 {
+			break
+		}
+		if !worked {
+			t.Fatal("legacy purge was not consumed")
+		}
+	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_sources WHERE id=$1`, source.ID) != 0 {
+		t.Fatal("legacy purge falsely completed with an empty scope")
+	}
+	_, result = f.service.ReadSource(ctx, siblingSource.ID)
+	requireCode(t, result, "READY")
 }

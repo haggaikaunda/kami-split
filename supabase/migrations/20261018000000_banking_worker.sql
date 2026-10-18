@@ -105,9 +105,37 @@ BEGIN
   END IF;
   RETURN work_id;
 END $$;
+-- Idempotently extend an existing connection barrier to its logical-account
+-- scope before any purge becomes executable. This also upgrades #328 barriers.
+CREATE FUNCTION app.banking_prepare_deletion(target uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE connection app.banking_connections; peer app.banking_connections; affected uuid[];
+BEGIN
+  SELECT * INTO connection FROM app.banking_connections WHERE id=target AND state='deleted' FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  INSERT INTO app.banking_deletion_accounts(connection_id,account_id)
+    SELECT DISTINCT target,account_id FROM app.banking_bindings WHERE connection_id=target ON CONFLICT DO NOTHING;
+  WITH added AS (
+    INSERT INTO app.banking_account_barriers(account_id,owner_id,connection_id,generation)
+      SELECT d.account_id,connection.owner_id,target,connection.deletion_generation FROM app.banking_deletion_accounts d WHERE d.connection_id=target
+      ON CONFLICT(account_id) DO NOTHING RETURNING account_id
+  ) SELECT array_agg(account_id) INTO affected FROM added;
+  UPDATE app.banking_accounts SET selected=false,generation=generation+1 WHERE id=ANY(affected);
+  UPDATE app.banking_bindings SET generation=generation+1 WHERE account_id=ANY(affected);
+  PERFORM app.banking_enqueue(target,connection.generation,'purge');
+  -- Historical peers that still serve selected siblings must retain access.
+  FOR peer IN SELECT c.* FROM app.banking_connections c WHERE c.owner_id=connection.owner_id AND c.state='active'
+    AND EXISTS(SELECT FROM app.banking_bindings b JOIN app.banking_deletion_accounts d ON d.account_id=b.account_id WHERE b.connection_id=c.id AND d.connection_id=target)
+    AND NOT EXISTS(SELECT FROM app.banking_bindings b JOIN app.banking_accounts account ON account.id=b.account_id WHERE b.connection_id=c.id AND account.selected
+      AND NOT EXISTS(SELECT FROM app.banking_account_barriers d WHERE d.account_id=b.account_id)) ORDER BY c.id FOR UPDATE LOOP
+    UPDATE app.banking_connections SET state='stopped',generation=generation+1 WHERE id=peer.id;
+    UPDATE app.banking_bindings SET generation=generation+1 WHERE connection_id=peer.id;
+    PERFORM app.banking_enqueue(peer.id,peer.generation+1,'teardown');
+  END LOOP;
+END $$;
 CREATE OR REPLACE FUNCTION app.banking_fence(target uuid, expected_generation bigint, erase boolean)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE actor uuid := app.lock_banking_owner(); connection app.banking_connections; peer app.banking_connections;
+DECLARE actor uuid := app.lock_banking_owner(); connection app.banking_connections;
 BEGIN
   SELECT c.* INTO connection FROM app.banking_connections c WHERE c.id=target AND c.owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
@@ -118,26 +146,7 @@ BEGIN
   IF erase THEN
     INSERT INTO app.banking_deletion_barriers(connection_id,owner_id,generation)
       VALUES(target,actor,connection.deletion_generation+1);
-    INSERT INTO app.banking_deletion_accounts(connection_id,account_id)
-      SELECT DISTINCT target,account_id FROM app.banking_bindings WHERE connection_id=target ON CONFLICT DO NOTHING;
-    INSERT INTO app.banking_account_barriers(account_id,owner_id,connection_id,generation)
-      SELECT DISTINCT account_id,actor,target,connection.deletion_generation+1 FROM app.banking_bindings WHERE connection_id=target
-      ON CONFLICT(account_id) DO NOTHING;
-    UPDATE app.banking_accounts SET selected=false,generation=generation+1
-      WHERE id IN(SELECT account_id FROM app.banking_deletion_accounts WHERE connection_id=target);
-    UPDATE app.banking_bindings SET generation=generation+1
-      WHERE account_id IN(SELECT account_id FROM app.banking_deletion_accounts WHERE connection_id=target);
-    PERFORM app.banking_enqueue(target,connection.generation+1,'purge');
-    -- A historical peer Item with no selected surviving siblings needs narrow
-    -- teardown too. Peers serving an unaffected selected account stay active.
-    FOR peer IN SELECT c.* FROM app.banking_connections c WHERE c.owner_id=actor AND c.state='active'
-      AND EXISTS(SELECT FROM app.banking_bindings b JOIN app.banking_deletion_accounts d ON d.account_id=b.account_id WHERE b.connection_id=c.id AND d.connection_id=target)
-      AND NOT EXISTS(SELECT FROM app.banking_bindings b JOIN app.banking_accounts a ON a.id=b.account_id WHERE b.connection_id=c.id AND a.selected
-        AND NOT EXISTS(SELECT FROM app.banking_account_barriers d WHERE d.account_id=b.account_id)) ORDER BY c.id FOR UPDATE LOOP
-      UPDATE app.banking_connections SET state='stopped',generation=generation+1 WHERE id=peer.id;
-      UPDATE app.banking_bindings SET generation=generation+1 WHERE connection_id=peer.id;
-      PERFORM app.banking_enqueue(peer.id,peer.generation+1,'teardown');
-    END LOOP;
+    PERFORM app.banking_prepare_deletion(target);
   ELSE
     UPDATE app.banking_bindings SET generation=generation+1 WHERE connection_id=target;
   END IF;
@@ -259,6 +268,7 @@ BEGIN
   SELECT * INTO job FROM app.banking_work WHERE id=target FOR UPDATE;
   IF job.lease_token IS DISTINCT FROM authority OR job.state<>'running' OR job.lease_until<=clock_timestamp()
     OR NOT app.banking_work_authorized(target) THEN RETURN false; END IF;
+  IF confirmed AND job.kind='purge' AND NOT EXISTS(SELECT FROM app.banking_deletion_barriers d WHERE d.connection_id=c.id AND d.generation=c.deletion_generation AND d.cleanup_state='complete') THEN RETURN false; END IF;
   IF confirmed AND job.kind='teardown' THEN
     DELETE FROM app.banking_credentials WHERE connection_id=c.id;
     UPDATE app.banking_connections SET permission_state='revoked',provider_removed=true,provider_item_id=id::text WHERE id=c.id;
@@ -374,8 +384,8 @@ BEGIN
     AND (NOT EXISTS(SELECT FROM app.banking_work w WHERE w.connection_id=connection.id AND w.generation=connection.generation AND w.kind='teardown')
       OR (state='deleted' AND NOT EXISTS(SELECT FROM app.banking_work w WHERE w.connection_id=connection.id AND w.generation=connection.generation AND w.kind='purge')))
     ORDER BY id LIMIT 100 LOOP
+    IF c.state='deleted' THEN PERFORM app.banking_prepare_deletion(c.id); END IF;
     PERFORM app.banking_enqueue(c.id,c.generation,'teardown');
-    IF c.state='deleted' THEN PERFORM app.banking_enqueue(c.id,c.generation,'purge'); END IF;
   END LOOP;
   -- Enqueue actual protected Item observations. Successful observations alone
   -- advance checked_at; local scheduling is never proof of provider consent.
@@ -406,4 +416,12 @@ $$;
 GRANT EXECUTE ON FUNCTION app.banking_claim(),app.banking_renew(uuid,uuid),app.banking_cleanup_credential(uuid,uuid),
   app.banking_finish(uuid,uuid,boolean,integer),app.banking_purge_batch(uuid,uuid),app.banking_reconcile(),app.banking_work_status() TO kami_worker;
 GRANT EXECUTE ON FUNCTION app.banking_accept_webhook(uuid,text,text,bytea,text,text) TO kami_api;
+-- Existing pending storage-foundation deletions acquire the full scope and
+-- queue atomically with the upgrade, before any worker or reads can observe it.
+DO $$ DECLARE c app.banking_connections; BEGIN
+  FOR c IN SELECT * FROM app.banking_connections WHERE state='deleted' ORDER BY id LOOP
+    PERFORM app.banking_prepare_deletion(c.id);
+    PERFORM app.banking_enqueue(c.id,c.generation,'teardown');
+  END LOOP;
+END $$;
 RESET ROLE;

@@ -13,7 +13,8 @@ under #255; synthetic checks establish no live entitlement or backup capability.
 `banking_fence` advances the terminal connection generation and commits opaque
 cleanup operations and logged queue messages in the same transaction. Deletion
 also fences logical accounts across current and replacement bindings. A rollback
-leaves no executable orphan message. Queue payloads contain only operation UUIDs
+leaves no executable orphan message. Upgrades and reconciliation prepare logical-account
+scope for earlier pending connection barriers before accepting purge work. Queue payloads contain only operation UUIDs
 and generations; operation/receipt storage contains no tokens or financial payloads.
 
 The queue visibility window is two minutes. An independent random lease token,
@@ -75,7 +76,7 @@ invitation keys. No setting enables enrollment. The same production image contai
 synthetic smoke runs the actual binary against a disposable restricted-role database
 and checks readiness, safe bounded status and SIGTERM completion without live calls.
 
-Operational status shows a bounded oldest-100 projection, queue age, attempts,
+Operational status shows a bounded oldest-100 projection that prioritizes incomplete work, queue age, attempts,
 needs-attention and cleanup progress. It must not be represented as an exhaustive
 queue count. Logs use static failure events without request bodies, URLs, Item IDs,
 credentials or raw provider/database errors. Operators inspect `app.banking_work`

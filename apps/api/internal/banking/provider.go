@@ -108,7 +108,7 @@ func (p *PlaidProvider) Remove(ctx context.Context, environment string, credenti
 		var missing struct {
 			Code string `json:"error_code"`
 		}
-		if json.Unmarshal(response.body, &missing) == nil && missing.Code == "ITEM_NOT_FOUND" {
+		if response.status == http.StatusBadRequest && json.Unmarshal(response.body, &missing) == nil && missing.Code == "ITEM_NOT_FOUND" {
 			result.Confirmed = true
 			return result, nil
 		}
