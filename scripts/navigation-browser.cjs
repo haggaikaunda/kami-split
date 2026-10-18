@@ -1223,8 +1223,23 @@ withAuthFixture(origin, session, async () => {
       const membersLink = await workspaceLink('Members');
       await membersLink.hover();
       await page.waitForTimeout(delay + 80);
-      denied = true;
       await membersLink.click();
+      await page.locator('[data-ui~="group-members-list"]').waitFor();
+      // A recent Members activation may reuse authorized data. Foregrounding
+      // invalidates that eligibility and must observe the revoked access.
+      denied = true;
+      const deniedRead = page.waitForResponse(async (response) => {
+        if (!response.url().endsWith('/api/graphql')) return false;
+        const { data } = await response.json();
+        return (
+          data?.group?.__typename === 'Problem' &&
+          data.group.code === 'NOT_FOUND'
+        );
+      });
+      await page.evaluate(() =>
+        document.dispatchEvent(new Event('visibilitychange')),
+      );
+      await deniedRead;
       await page
         .getByRole('heading', { name: 'Group unavailable', exact: true })
         .waitFor();
@@ -1233,7 +1248,7 @@ withAuthFixture(origin, session, async () => {
         await page.getByText(group('T').name, { exact: true }).count(),
         0,
       );
-      results.push({ workspace, tabHoverThenRevocationDenied: true });
+      results.push({ workspace, cachedTabForegroundRevocationDenied: true });
     }
     assert.deepEqual(errors, []);
     await page.close();
