@@ -141,6 +141,17 @@ export function ActivityFeed({
   }, [loading, error]);
   const [selected, setSelected] =
     useState<Pick<Event, 'id' | 'groupId' | 'recordId'>>();
+  const identity = JSON.stringify([scope.id, groupId, kind, after, version]);
+  const [readIdentity, setReadIdentity] = useState(identity);
+  // URL-owned filters can arrive after a foreground response. Adjust this
+  // component's state before committing a different read's presentation.
+  if (readIdentity !== identity) {
+    setReadIdentity(identity);
+    setPage(undefined);
+    setSelected(undefined);
+    setError('');
+    setLoading(true);
+  }
   const invalidate = () => {
     scope.invalidate?.();
     generation.current++;
@@ -162,7 +173,7 @@ export function ActivityFeed({
   );
   useEffect(() => {
     let live = true;
-    const ticket = generation.current;
+    const ticket = ++generation.current;
     const filter = {
       kind: kind
         ? (kind as 'EXPENSE_CREATED' | 'EXPENSE_UPDATED' | 'REPAYMENT_RECORDED')

@@ -241,6 +241,121 @@ for (const workspace of workspaces) {
   });
 }
 
+for (const workspace of workspaces.slice(0, 2)) {
+  test(`${workspace.name} holds only the active filter while replacement responses are pending`, async ({
+    page,
+    app,
+    context,
+  }) => {
+    await fixture(context, workspace);
+    await app.authenticate();
+    await page.goto(workspace.href);
+    const rows = page.locator('[data-ui~="activity-events"] > li > button');
+    await expect(rows).toHaveCount(events.length);
+    const gate = Promise.withResolvers(),
+      started = Promise.withResolvers();
+    await context.route('**/api/graphql', async (route) => {
+      const { query, variables } = route.request().postDataJSON();
+      if (
+        !/query activity(Household|Group)Query/.test(query) ||
+        variables.filter?.kind !== 'EXPENSE_UPDATED'
+      )
+        return route.fallback();
+      started.resolve();
+      await gate.promise;
+      try {
+        await route.fulfill({
+          json: {
+            data: {
+              [workspace.name === 'Household'
+                ? 'householdActivity'
+                : 'groupActivity']: connection([
+                event('late', 'EXPENSE_UPDATED', {
+                  description: 'STALE PRIVATE OLD FILTER',
+                }),
+              ]),
+            },
+          },
+        });
+      } catch {
+        /* Canceled superseded request. */
+      }
+    });
+    try {
+      const select = page.getByRole('combobox', {
+        name: 'Event type',
+        exact: true,
+      });
+      await select.selectOption('EXPENSE_UPDATED');
+      await started.promise;
+      await expect(rows).toHaveCount(0);
+      await select.selectOption('REPAYMENT_RECORDED');
+      await expect(rows).toHaveCount(1);
+      await expect(rows.first()).toContainText('recorded a repayment');
+      gate.resolve();
+      await expect(page.getByText('STALE PRIVATE OLD FILTER')).toHaveCount(0);
+      await expect(rows).toHaveCount(1);
+    } finally {
+      gate.resolve();
+    }
+  });
+  test(`${workspace.name} activates current expense and balances sources and hides a denied destination`, async ({
+    page,
+    app,
+    context,
+  }) => {
+    await fixture(context, workspace);
+    await app.authenticate();
+    await page.goto(workspace.href);
+    const rows = page.locator('[data-ui~="activity-events"] > li > button');
+    await expect(rows).toHaveCount(events.length);
+    await rows.first().click();
+    await page
+      .getByRole('link', { name: 'View current expense', exact: true })
+      .click();
+    await expect(
+      page.getByText('Private fixture note', { exact: true }),
+    ).toBeVisible();
+    await page.goBack();
+    await expect(rows).toHaveCount(events.length);
+    await rows.nth(2).click();
+    await page
+      .getByRole('link', { name: 'View source balances', exact: true })
+      .click();
+    await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
+    await page.goto(workspace.href);
+    await expect(rows).toHaveCount(events.length);
+    await rows.first().click();
+    await context.route('**/api/graphql', (route) => {
+      const { query } = route.request().postDataJSON();
+      if (query.includes('query journeyExpenseQuery'))
+        return route.fulfill({
+          json: {
+            data: {
+              node: {
+                __typename: 'Problem',
+                code: 'FORBIDDEN',
+                message: 'Source denied',
+              },
+            },
+          },
+        });
+      return route.fallback();
+    });
+    await page
+      .getByRole('link', { name: 'View current expense', exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole('alert')
+        .filter({ hasText: 'Account verification is unavailable.' }),
+    ).toBeVisible();
+    await expect(page.getByText('Historical note')).toHaveCount(0);
+    await expect(page.getByText('Private fixture note')).toHaveCount(0);
+    await expect(rows).toHaveCount(0);
+  });
+}
+
 for (const width of [320, 390, 440, 1280, 1440]) {
   test(`activity row composition and enlarged text at ${width}px`, async ({
     page,
@@ -262,6 +377,14 @@ for (const width of [320, 390, 440, 1280, 1440]) {
         await page.goto(workspace.href);
         const rows = page.locator('[data-ui~="activity-events"] > li > button');
         await expect(rows).toHaveCount(events.length);
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-appearance',
+          appearance,
+        );
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-theme',
+          colorScheme,
+        );
         for (const scale of [1, 2]) {
           await page.evaluate((value) => {
             document.documentElement.style.fontSize = `${value * 100}%`;
@@ -283,6 +406,8 @@ for (const width of [320, 390, 440, 1280, 1440]) {
             const rows = [...panel.querySelectorAll('li > button')];
             return {
               width: innerWidth,
+              appearance: document.documentElement.dataset.appearance,
+              theme: document.documentElement.dataset.theme,
               overflow: document.documentElement.scrollWidth > innerWidth,
               panel: {
                 ...box(panel),

@@ -408,3 +408,44 @@ it('separates every event kind from exact money and uses the recorded UTC date',
   ).toContain('90,071,992,547,409.91');
   expect(events[2].querySelector('strong')?.textContent).not.toContain('Carol');
 });
+
+it('clears an accepted foreground page when the URL-controlled filter changes and ignores its late response', async () => {
+  const renderKind = async (kind: string) => {
+    await act(async () =>
+      root.render(
+        <ActivityFeed
+          scope={scope}
+          groupId=""
+          kind={kind}
+          onKindChange={() => {}}
+        />,
+      ),
+    );
+  };
+  await renderKind('');
+  await respond(connection());
+  await foregroundRefresh();
+  await respond(connection());
+  const unfiltered = boundary.requests.length - 1;
+  expect(host.textContent).toContain('Alice');
+  await renderKind('EXPENSE_UPDATED');
+  const updated = boundary.requests.length - 1;
+  expect(boundary.requests[updated].variables).toMatchObject({
+    filter: { kind: 'EXPENSE_UPDATED' },
+  });
+  expect(host.querySelector('[data-ui~="activity-events"]')).toBeNull();
+  await respond(
+    connection([{ ...row, description: 'Late private unfiltered row' }]),
+    unfiltered,
+  );
+  expect(host.textContent).not.toContain('Late private');
+  await renderKind('REPAYMENT_RECORDED');
+  await respond(
+    connection([{ ...row, description: 'Late private updated row' }]),
+    updated,
+  );
+  expect(host.querySelector('[data-ui~="activity-events"]')).toBeNull();
+  expect(host.textContent).not.toContain('Late private');
+  await respond(connection([]));
+  expect(host.textContent).toContain('No activity matches these filters.');
+});
