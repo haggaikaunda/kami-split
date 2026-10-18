@@ -186,7 +186,7 @@ module.exports = async function verifyFilters({
 
   async function optionReachability() {
     const option = section('Categories').getByLabel('Other', { exact: true });
-    await option.scrollIntoViewIfNeeded();
+    await option.locator('..').scrollIntoViewIfNeeded();
     const metrics = await option.evaluate((input) => {
       const rect = (node) => {
         const r = node.getBoundingClientRect();
