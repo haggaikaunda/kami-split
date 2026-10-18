@@ -3,6 +3,7 @@
 }
 .activity-feed-panel {
   min-width: 0;
+  container: activity-feed / inline-size;
 }
 .activity-detail {
   min-width: 0;
@@ -318,5 +319,23 @@
     flex-basis: 1.5rem;
     width: 1.5rem;
     height: 1.875rem;
+  }
+}
+
+@container activity-feed (max-width: 12rem) {
+  .activity-events > li > button {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) fit-content(45%);
+    align-items: center;
+  }
+  .activity-row-icon {
+    grid-column: 1 / -1;
+  }
+  .activity-row-content {
+    grid-column: 1;
+  }
+  .activity-row-amount {
+    grid-column: 2;
+    max-width: 100%;
   }
 }

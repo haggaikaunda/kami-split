@@ -420,6 +420,19 @@ for (const width of [320, 390, 440, 1280, 1440]) {
                 ...box(row),
                 padding: getComputedStyle(row).paddingBlock,
                 font: getComputedStyle(row).fontSize,
+                minimumWordWidth: (() => {
+                  const text = row.querySelector('strong');
+                  const context = document
+                    .createElement('canvas')
+                    .getContext('2d');
+                  context.font = getComputedStyle(text).font;
+                  return Math.max(
+                    ...text.textContent
+                      .trim()
+                      .split(/\s+/)
+                      .map((word) => context.measureText(word).width),
+                  );
+                })(),
                 icon: box(row.querySelector('[data-ui~="activity-row-icon"]')),
                 content: box(
                   row.querySelector('[data-ui~="activity-row-content"]'),
@@ -450,6 +463,12 @@ for (const width of [320, 390, 440, 1280, 1440]) {
               geometry.panel.right + 1,
             );
             expect(row.icon.width).toBe((width <= 380 ? 24 : 30) * scale);
+          }
+          if (scale === 2 && width <= 440) {
+            for (const row of geometry.rows.slice(0, 3))
+              expect(row.content.width).toBeGreaterThanOrEqual(
+                row.minimumWordWidth,
+              );
           }
           if (scale === 1) {
             expect(geometry.rows[0].height).toBeGreaterThanOrEqual(65);
