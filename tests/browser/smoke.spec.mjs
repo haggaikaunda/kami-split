@@ -1330,10 +1330,11 @@ for (const [kind, path] of [
   ['repayment', '/trips/T/repayments/new'],
   ['activity', '/groups/T/activity'],
 ]) {
-  test(`Profile names and reauthorizes a nested ${kind} origin`, async ({
-    page,
-    app,
-  }) => {
+  const title =
+    kind === 'expense'
+      ? 'Profile entry after closing expense preserves modal ownership and workspace return'
+      : `Profile names and reauthorizes a nested ${kind} origin`;
+  test(title, async ({ page, app }) => {
     await app.authenticate();
     await page.goto(path);
     await expect(
@@ -1345,6 +1346,37 @@ for (const [kind, path] of [
           exact: true,
         }),
     ).toBeVisible();
+    if (kind === 'expense') {
+      // Expense detail owns a native modal; the background Profile is inert.
+      const presentation = page.locator(
+        'dialog[data-ui~="expense-presentation"]',
+      );
+      await expect(presentation).toBeVisible();
+      await expect
+        .poll(() => presentation.evaluate((dialog) => dialog.matches(':modal')))
+        .toBe(true);
+      await page.keyboard.press('Tab');
+      await expect
+        .poll(() =>
+          presentation.evaluate((dialog) =>
+            dialog.contains(document.activeElement),
+          ),
+        )
+        .toBe(true);
+      expect(new URL(page.url()).pathname).toBe(path);
+      expect(
+        app.requests.filter(
+          (request) => request.operation === 'profileReturnQuery',
+        ),
+      ).toHaveLength(0);
+      await page
+        .getByRole('button', { name: 'Close expense', exact: true })
+        .click();
+      await expect(presentation).toHaveCount(0);
+      await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe('/trips/T');
+      expect(new URL(page.url()).searchParams.get('tab')).toBe('expenses');
+    }
     const source = new URL(page.url());
     const authorization = app.hold(
       'profileReturnQuery',
