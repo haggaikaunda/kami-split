@@ -320,3 +320,89 @@ it('bounds Overview options to explicit viewer edges and retains source identity
   );
   expect(host.textContent).toContain('Some repayment options are unavailable');
 });
+
+it('selects eligible positive obligations before applying the two-row limit and never invents a net-derived party', async () => {
+  const { ObligationPreview } = await import('./balance-sections');
+  const viewer = { id: 'viewer', displayName: 'Viewer' };
+  const source = {
+    space: { id: 'G', name: 'Original', currency: 'USD', isHousehold: false },
+    viewer: viewer.id,
+    netMinor: '-300',
+    eligible: (id: string) => id !== 'former',
+    obligations: [
+      {
+        from: viewer,
+        to: { id: 'former', displayName: 'Former' },
+        amountMinor: '500',
+      },
+      {
+        from: viewer,
+        to: { id: 'zero', displayName: 'Zero' },
+        amountMinor: '0',
+      },
+      {
+        from: viewer,
+        to: { id: 'one', displayName: 'One' },
+        amountMinor: '100',
+      },
+      {
+        from: viewer,
+        to: { id: 'two', displayName: 'Two' },
+        amountMinor: '200',
+      },
+      {
+        from: viewer,
+        to: { id: 'three', displayName: 'Three' },
+        amountMinor: '300',
+      },
+    ],
+  };
+  await act(async () =>
+    root.render(
+      <ObligationPreview
+        scope={scope}
+        href="/groups/G?tab=balances"
+        sources={[source]}
+      />,
+    ),
+  );
+  expect(
+    [...host.querySelectorAll('[data-ui~="repayment-row"]')].map(
+      (n) => n.textContent,
+    ),
+  ).toEqual([expect.stringContaining('One'), expect.stringContaining('Two')]);
+  expect(host.textContent).not.toContain('Former');
+  await act(async () =>
+    root.render(
+      <ObligationPreview
+        scope={scope}
+        href="/groups/G?tab=balances"
+        sources={[{ ...source, obligations: [] }]}
+      />,
+    ),
+  );
+  expect(host.querySelector('[data-ui~="repayment-row"]')).toBeNull();
+  expect(host.textContent).toContain(
+    'Open Balances for current repayment choices',
+  );
+  expect(host.textContent).not.toContain('Nothing for you to pay');
+  await act(async () =>
+    root.render(
+      <ObligationPreview
+        scope={scope}
+        sources={[{ ...source, netMinor: '0', obligations: [] }]}
+      />,
+    ),
+  );
+  expect(host.textContent).toContain('Nothing for you to pay or collect');
+  await act(async () =>
+    root.render(
+      <ObligationPreview
+        scope={scope}
+        sources={[{ ...source, netMinor: null, obligations: undefined }]}
+      />,
+    ),
+  );
+  expect(host.textContent).toContain('repayment options are unavailable');
+  expect(host.textContent).not.toContain('Nothing for you to pay');
+});

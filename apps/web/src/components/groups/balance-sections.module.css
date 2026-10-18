@@ -265,20 +265,46 @@
 
 .preview {
   min-width: 0;
-  padding: 0.875rem;
-  margin-bottom: 1rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-separator);
-  border-radius: 1rem;
+  margin-top: 1.5rem;
 }
-.preview h3 {
-  margin: 0;
+.preview > .heading {
+  margin-bottom: 0.5rem;
+}
+.preview .heading h2 {
   font-size: 0.875rem;
-  font-weight: 500;
+}
+.preview .heading a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  font-size: 0.8125rem;
+  text-decoration: none;
 }
 .preview p {
   color: var(--color-muted);
   font-size: 0.8125rem;
+}
+.preview .obligation {
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+.preview [data-ui~='repayment-row'] {
+  align-items: center;
+  min-height: 4.25rem;
+  padding-block: 0.75rem;
+}
+.preview [data-ui~='avatar'] {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-basis: 2.25rem;
+  font-size: 0.75rem;
+}
+.preview [data-ui~='member-name'] {
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+.preview [data-ui~='member-detail'] {
+  font-size: 0.75rem;
 }
 
 .section[open] > .content {

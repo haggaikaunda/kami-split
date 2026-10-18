@@ -41,7 +41,7 @@ Filter presentation uses an explicit `filterLayout` contract: both workspaces us
 
 `tokens.css` owns Light defaults and the explicit Dark override. Color roles distinguish document canvas, surfaces, separators, interactive borders, text, actions, exact-balance positions, category geometry, banners and summary metrics. Keep positive/negative financial presentation separate from destructive/error colors. The system font stack owns both body and display text; tabular numerals belong to money. Spacing tokens cover repeated gaps; control/card radii, minimum target size, focus ring and panel shadow describe their own roles. A matching literal value alone is not a reason to merge roles. Unused aliases are removed only after checking production styles, dynamic use, palette tests and the executable gallery.
 
-Use viewport queries for application chrome and modal presentation, and container queries for the width available to ledger rows, charts or panel contents. Preserve content-specific thresholds: the shell and expense presentation change at 600 CSS pixels (matching their JavaScript measurements), generic Dialog changes between 759/760px, and ledger rows use the `workspace` container at 48em with a 16em fallback. Breakdown has a 760px content-stack transition and a `breakdown-chart` container fallback at 14em; overview columns retain their 820px content threshold. Activity uses its own `activity-feed` container: below 12rem of available width, the icon and trailing amount share a row above the full-width summary so enlarged text retains readable words across platform fonts. Historical detail wraps long audit text and stacks the icon above its compact 1rem title below 15rem of detail content width; exact monetary values retain local horizontal access when needed. Measure the actual named container when checking its boundary, because navigation and padding reduce available width. `rem`/`em` support enlarged text where the existing layout intends it; retain approved fixed pixel values when they encode artwork, geometry or target sizes. Do not normalize every breakpoint to one value.
+Use viewport queries for application chrome and modal presentation, and container queries for the width available to ledger rows, charts or panel contents. Preserve content-specific thresholds: the shell and expense presentation change at 600 CSS pixels (matching their JavaScript measurements), generic Dialog changes between 759/760px, and ledger rows use the `workspace` container at 48em with a 16em fallback. Breakdown has a 760px content-stack transition and a `breakdown-chart` container fallback at 14em; Overview keeps one full-width vertical sequence at every width. Activity uses its own `activity-feed` container: below 12rem of available width, the icon and trailing amount share a row above the full-width summary so enlarged text retains readable words across platform fonts. Historical detail wraps long audit text and stacks the icon above its compact 1rem title below 15rem of detail content width; exact monetary values retain local horizontal access when needed. Measure the actual named container when checking its boundary, because navigation and padding reduce available width. `rem`/`em` support enlarged text where the existing layout intends it; retain approved fixed pixel values when they encode artwork, geometry or target sizes. Do not normalize every breakpoint to one value.
 
 Safe-area padding remains with the owning shell/dialog. At phone widths and viewports no taller than 40rem, the identity header scrolls in document flow so enlarged controls remain reachable above the fixed navigation. Measured header scroll clearance becomes zero while it is in flow, and returns to its occupied height when sticky positioning resumes. The expense presentation follows the unscaled visual viewport for the keyboard, keeps one mounted form, and releases sticky actions for a short viewport or enlarged text. The document remains the scroll owner for source restoration. Shared CSS does not create a second scroll container or replace that navigation contract.
 
@@ -161,3 +161,20 @@ label so ordinary words retain usable line width. The directory
 uses the shared cards loading presentation, URL-backed type/date links and the
 direct Create link to a full details page. The in-page Group/Trip segmented choice precedes the name, conditional trip destination/dates and compact read-only USD row. The bounded form column uses existing semantic theme tokens and keeps Cancel/Create in document flow. Contextual recovery appears only for actual unresolved attempts or storage failures; the account-scoped form retains persistence and original-key recovery. Current
 Group and Trip workspaces also expose complete Total spend in Overview.
+
+## Overview
+
+Household leads with “Your money, at a glance”; Group/Trip leads with a compact
+complete Total spend band, excluding repayments. All three use the shared paired
+owe/owed summary with subordinate net/currency, then Your balances and Recent
+expenses, each with View all on its heading row. The bounded preview selects at
+most two positive, currently eligible viewer obligations from complete authorized
+source projections. Both directions retain the source-owned repayment form and
+return context; a net without an explicit eligible edge offers Balances details
+instead of inferring a counterparty. Unavailable sources stay explicit.
+
+The preview stays visible on mobile and never becomes the full member ledger.
+Recent expense rows retain categories, source/date, payer and per-expense share;
+detail/edit keeps its original authorized source. Complete share/paid totals and
+Household spending/counts remain in the secondary Expense totals disclosure.
+Overview never derives complete spending or positions from its recent rows.

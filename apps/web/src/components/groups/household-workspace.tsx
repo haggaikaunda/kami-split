@@ -2,14 +2,9 @@
 
 import { cx } from '../ui/classnames';
 
-import { RichHelp, balanceHelp, shareHelp } from '@/components/rich-help';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import {
-  overviewDate,
-  overviewPeriod,
-  overviewSpansYears,
-} from './overview-date';
+import { overviewDate, overviewSpansYears } from './overview-date';
 import { spaceHref, spaceExpenseHref } from '@/lib/relay/space-routes';
 import Link from 'next/link';
 import { PeopleList } from '@/components/onboarding/people-list';
@@ -34,7 +29,7 @@ import { HouseholdAccess } from './household-access';
 import membersDocument from '@/lib/relay/__generated__/householdMembersQuery.graphql';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { minor, money } from '@/lib/relay/money';
-import { SummaryMetric, Money } from '../financial/presentation';
+import { Money } from '../financial/presentation';
 import {
   workspaceSections,
   type WorkspaceSection,
@@ -55,10 +50,6 @@ import {
 import { useForegroundRefresh } from './foreground';
 
 export type Dashboard = householdContentDashboard$data;
-type Totals = Extract<
-  Dashboard['totals'],
-  { readonly __typename: 'HouseholdDashboardTotals' }
->;
 type Members = Extract<
   householdMembersQuery['response']['group'],
   { readonly __typename: 'Group' }
@@ -72,7 +63,6 @@ import financialStyles from '../financial/presentation.module.css';
 import workspaceFeatureStyles from './workspace.module.css';
 import householdFeatureStyles from './household-workspace.module.css';
 import overviewFeatureStyles from './overview.module.css';
-import categoryFeatureStyles from '../financial/category.module.css';
 import balanceStyles from './balance-sections.module.css';
 
 export function HouseholdWorkspace({
@@ -647,41 +637,26 @@ export function HouseholdContent({
       ) : (
         <>
           {totals && (
-            <div
-              data-ui="summary-row"
-              className={cx(
-                financialStyles['summary-row'],
-                'household-summary',
-              )}
-            >
-              <SummaryMetric
-                label="Total shared expenses"
-                tone="total"
-                icon={<AppIcon name="expense" />}
-                detail="USD"
-              >
-                <Money
-                  value={money(totals.totalSharedExpenseMinor)}
-                  currency="USD"
-                />
-              </SummaryMetric>
-              <HouseholdNet totals={totals} />
-              <SummaryMetric
-                label={<RichHelp label="Your share">{shareHelp}</RichHelp>}
-                tone="share"
-                icon={<AppIcon name="pie" />}
-                detail={`You paid ${money(totals.viewerPaidMinor)}`}
-              >
-                <Money value={money(totals.viewerShareMinor)} currency="USD" />
-              </SummaryMetric>
-            </div>
+            <>
+              <h2 className={overviewFeatureStyles.title}>
+                Your money, at a glance
+              </h2>
+              <BalanceSummary
+                positions={dashboard.spaces.map(
+                  (space) => space.viewerNetMinor,
+                )}
+                currency="USD"
+              />
+            </>
           )}
           {totals && (
             <ObligationPreview
+              href={householdHref('Balances')}
               scope={scope}
               sources={dashboard.spaces.map((space) => ({
                 space: { ...space, id: space.groupId },
                 viewer: space.viewerMembership.id,
+                netMinor: space.viewerNetMinor,
                 obligations:
                   space.balances?.__typename === 'GroupBalances'
                     ? space.balances.obligations
@@ -723,12 +698,6 @@ export function HouseholdContent({
                     </div>
                   ) : (
                     <>
-                      <p
-                        data-ui="overview-month"
-                        className={overviewFeatureStyles['overview-month']}
-                      >
-                        {overviewPeriod(recentDates)}
-                      </p>
                       <ul
                         data-ui="group-expense-list"
                         className={overviewFeatureStyles['group-expense-list']}
@@ -762,6 +731,12 @@ export function HouseholdContent({
                                     )}
                                   </time>
                                 </span>
+                              </span>
+                              <span
+                                data-ui="overview-expense-payer"
+                                className={overviewFeatureStyles.payer}
+                              >
+                                Paid by {node.payer.displayName}
                               </span>
                               <span
                                 data-ui="overview-expense-price"
@@ -802,93 +777,48 @@ export function HouseholdContent({
                   </p>
                 )}
               </section>
-              <aside
-                data-ui="workspace-overview-balances"
-                className={overviewFeatureStyles['workspace-overview-balances']}
-                aria-label="Overview balances by space"
-              >
-                <h2>By group or trip</h2>
-                <ul
-                  data-ui="household-balances"
-                  className={householdFeatureStyles['household-balances']}
-                >
-                  {dashboard.spaces.map((space) => (
-                    <li key={space.groupId}>
-                      <ScopedLink
-                        scope={scope}
-                        id={`overview-balance-${space.groupId}`}
-                        href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
-                      >
-                        <span
-                          data-ui={`category-icon category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`}
-                          className={cx(
-                            categoryFeatureStyles['category-icon'],
-                            categoryFeatureStyles[
-                              `category-icon--${space.kind === 'TRIP' ? 'home' : 'other'}`
-                            ],
-                          )}
-                        >
-                          <AppIcon
-                            name={
-                              space.isHousehold
-                                ? 'home'
-                                : space.kind === 'TRIP'
-                                  ? 'trip'
-                                  : 'groups'
-                            }
-                          />
-                        </span>
-                        <span
-                          data-ui="household-space-copy"
-                          className={
-                            householdFeatureStyles['household-space-copy']
-                          }
-                        >
-                          <strong>
-                            {space.name} ·{' '}
-                            {space.isHousehold
-                              ? 'Household expenses'
-                              : space.kind === 'TRIP'
-                                ? 'Trip'
-                                : 'Group'}
-                          </strong>
-                          <span
-                            data-ui="row-detail"
-                            className={financialStyles['row-detail']}
-                          >
-                            {space.viewerNetMinor == null
-                              ? 'Unavailable'
-                              : minor(space.viewerNetMinor) > 0n
-                                ? "You're owed"
-                                : minor(space.viewerNetMinor) < 0n
-                                  ? 'You owe'
-                                  : 'Nothing to pay or collect'}
-                          </span>
-                        </span>
-                        {space.viewerNetMinor != null && (
-                          <Money
-                            value={money(space.viewerNetMinor)}
-                            currency={space.currency}
-                          />
-                        )}
-                      </ScopedLink>
-                    </li>
-                  ))}
-                </ul>
-                <Link href={householdHref('Balances')}>View all balances</Link>
-              </aside>
             </div>
           )}
           {totals && (
-            <p
-              data-ui="overview-count"
-              className={overviewFeatureStyles['overview-count']}
+            <details
+              className={overviewFeatureStyles.totals}
+              data-ui="overview-totals"
             >
-              <span>
+              <summary>Expense totals</summary>
+              <dl>
+                <div>
+                  <dt>Total shared expenses</dt>
+                  <dd>
+                    <Money
+                      value={money(totals.totalSharedExpenseMinor)}
+                      currency="USD"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Your share</dt>
+                  <dd>
+                    <Money
+                      value={money(totals.viewerShareMinor)}
+                      currency="USD"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>You paid</dt>
+                  <dd>
+                    <Money
+                      value={money(totals.viewerPaidMinor)}
+                      currency="USD"
+                    />
+                  </dd>
+                </div>
+              </dl>
+              <p data-ui="overview-count">
                 {totals.totalSharedExpenseCount} expenses across{' '}
                 {totals.activeSpaceCount} spaces
-              </span>
-            </p>
+              </p>
+            </details>
           )}
           <OverviewExpense
             scope={scope}
@@ -902,43 +832,5 @@ export function HouseholdContent({
         </>
       )}
     </>
-  );
-}
-function HouseholdNet({ totals }: { totals: Totals }) {
-  const net = minor(totals.viewerNetMinor);
-  return (
-    <div
-      data-ui={`signed-balance signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`}
-      className={cx(
-        financialStyles['signed-balance'],
-        financialStyles[
-          `signed-balance--${net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero'}`
-        ],
-      )}
-    >
-      <SummaryMetric
-        label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
-        tone="net"
-        icon={<AppIcon name="arrow-up-right" />}
-        detail={
-          <>
-            <span
-              data-ui="row-detail"
-              className={financialStyles['row-detail']}
-            >
-              {net > 0n
-                ? "You're owed overall"
-                : net < 0n
-                  ? 'You owe overall'
-                  : totals.openBalanceCount !== '0'
-                    ? 'Payments still to settle'
-                    : 'Nothing to pay or collect'}
-            </span>
-          </>
-        }
-      >
-        <Money value={money(totals.viewerNetMinor)} currency="USD" />
-      </SummaryMetric>
-    </div>
   );
 }

@@ -119,7 +119,39 @@ function fixture(net = '0'): Dashboard {
       balances: {
         __typename: 'GroupBalances',
         settled: false,
-        obligations: [],
+        obligations: isHousehold
+          ? [
+              {
+                from: {
+                  id: 'other',
+                  displayName: 'Alex',
+                  canParticipate: true,
+                },
+                to: {
+                  id: 'viewer',
+                  displayName: 'Viewer',
+                  canParticipate: true,
+                },
+                amountMinor: '8420',
+              },
+            ]
+          : name === 'Maui'
+            ? [
+                {
+                  from: {
+                    id: 'viewer',
+                    displayName: 'Viewer',
+                    canParticipate: true,
+                  },
+                  to: {
+                    id: 'other',
+                    displayName: 'Alex',
+                    canParticipate: true,
+                  },
+                  amountMinor: '8420',
+                },
+              ]
+            : [],
       },
     })),
   } as unknown as Dashboard;
@@ -178,14 +210,18 @@ async function content(
 }
 it('renders exact server aggregates and zero net with open source balances without settlement controls', async () => {
   await content('Overview');
-  const row = host.querySelector('[data-ui~="summary-row"]')!;
-  expect(row.children).toHaveLength(3);
-  expect(row.textContent).toContain('$90,071,992,547,409.93');
+  const row = host.querySelector('[data-ui~="balance-summary"]')!;
+  expect(host.querySelector('[data-ui~="summary-row"]')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="overview-totals"]')?.textContent,
+  ).toContain('$90,071,992,547,409.93');
   expect(
     host.querySelector('[data-ui~="overview-count"]')?.textContent,
   ).toContain('17 expenses');
   expect(row.textContent).not.toContain('repayments excluded');
-  expect(row.textContent).toContain('Payments still to settle');
+  expect(row.textContent).toContain('You owe$84.20');
+  expect(row.textContent).toContain('You’re owed$84.20');
+  expect(row.textContent).toContain('Net $0.00');
   expect(row.textContent).not.toContain('Nothing to pay or collect');
   expect(row.querySelector('a')).toBeNull();
   expect(row.textContent).not.toContain('2 open balances');
@@ -194,7 +230,7 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(
     host.querySelectorAll('[data-ui~="household-balances"] li'),
   ).toHaveLength(3);
-  expect(host.querySelectorAll('a[href*="repayments"]')).toHaveLength(0);
+  expect(host.querySelectorAll('a[href*="repayments"]')).toHaveLength(1);
   expect(host.querySelectorAll('button[aria-haspopup=dialog]')).toHaveLength(1);
   expect(
     host.querySelectorAll('button:not([aria-haspopup=dialog])'),
@@ -221,17 +257,32 @@ it('renders exact server aggregates and zero net with open source balances witho
   ).toContain('You’re owed$84.20');
 });
 it.each([
-  ['150', "You're owed overall"],
-  ['-150', 'You owe overall'],
-])('gives %s textual direction', async (net, text) => {
-  await content('Overview', fixture(net));
-  expect(host.textContent).toContain(text);
-});
+  ['150', 'You’re owed$1.50', 'Net $1.50'],
+  ['-150', 'You owe$1.50', 'Net -$1.50'],
+])(
+  'gives %s textual direction from complete source positions',
+  async (net, text, netText) => {
+    const dashboard = fixture(net);
+    await content('Overview', {
+      ...dashboard,
+      spaces: dashboard.spaces.map((space, index) => ({
+        ...space,
+        viewerNetMinor: index ? '0' : net,
+      })),
+    } as Dashboard);
+    expect(
+      host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+    ).toContain(text);
+    expect(
+      host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+    ).toContain(netText);
+  },
+);
 it.each(['INCOMPLETE', 'UNAVAILABLE'] as const)(
   'does not present complete totals for %s',
   async (state) => {
     await content('Overview', { ...fixture(), state } as Dashboard);
-    expect(host.querySelector('[data-ui~="summary-row"]')).toBeNull();
+    expect(host.querySelector('[data-ui~="balance-summary"]')).toBeNull();
     expect(host.textContent).not.toContain('$0.00');
     if (state === 'UNAVAILABLE') {
       expect(host.textContent).toContain('Refresh to check current access');
@@ -489,11 +540,18 @@ it('shows one concise settled status without a duplicate open balance count', as
   await content('Overview', {
     ...dashboard,
     totals: { ...totals, openBalanceCount: '0' },
+    spaces: dashboard.spaces.map((space) => ({
+      ...space,
+      viewerNetMinor: '0',
+      balances: { __typename: 'GroupBalances', settled: true, obligations: [] },
+    })),
   } as Dashboard);
-  const net = host.querySelector('[data-ui~="signed-balance"]')!;
-  expect(net.textContent).toContain('Nothing to pay or collect');
+  const net = host.querySelector('[data-ui~="obligation-preview"]')!;
+  expect(net.textContent).toContain('Nothing for you to pay or collect');
   expect(net.textContent).not.toContain('0 open balances');
-  expect(net.querySelector('a')).toBeNull();
+  expect(net.querySelector('a')?.getAttribute('href')).toBe(
+    '/household?tab=balances',
+  );
 });
 
 it('keeps confirmed edit success distinct from a failed Household refresh without replaying the save', async () => {
@@ -528,9 +586,13 @@ it('keeps confirmed edit success distinct from a failed Household refresh withou
 it('identifies aggregate and individual source scope without claiming unavailable sources are settled', async () => {
   await content('Overview');
   expect(host.textContent).not.toContain('currently eligible');
-  expect(host.textContent).toContain('Home · Household expenses');
-  expect(host.textContent).toContain('Maui · Trip');
-  expect(host.textContent).toContain('Cabin · Group');
+  expect(
+    host.querySelector('[data-ui~="obligation-preview"]')?.textContent,
+  ).toContain('Owes you · Home');
+  expect(
+    host.querySelector('[data-ui~="obligation-preview"]')?.textContent,
+  ).toContain('You owe · Maui');
+  expect(host.querySelectorAll('[data-ui~="repayment-row"]')).toHaveLength(2);
   const dashboard = fixture();
   await content('Balances', {
     ...dashboard,

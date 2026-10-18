@@ -117,15 +117,17 @@ it('uses the shared direct and More workspace routes for ordinary groups and tri
         (a) => a.textContent,
       ),
     ).toEqual(['Overview', 'Expenses', 'Balances', 'Activity', 'Members']);
-    const summaries = host.querySelector('[data-ui~="summary-row"]')!;
-    expect(summaries.children).toHaveLength(3);
-    expect(summaries.textContent).toContain('90,071,992,547,409.93');
+    const summaries = host.querySelector('[data-ui~="balance-summary"]')!;
+    expect(
+      host.querySelector('[data-ui~="overview-spend"]')?.textContent,
+    ).toContain('90,071,992,547,409.93');
+    expect(host.querySelector('[data-ui~="summary-row"]')).toBeNull();
     expect(summaries.textContent).toContain('You owe');
     expect(summaries.querySelectorAll('a')).toHaveLength(0);
     expect(
       host
         .querySelector(
-          '[data-ui~="workspace-overview-balances"] a[href$="?tab=balances"]',
+          '[data-ui~="obligation-preview"] a[href$="?tab=balances"]',
         )
         ?.getAttribute('href'),
     ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
@@ -160,9 +162,9 @@ it('exposes every one-to-many obligation with exact group, sender, recipient and
 });
 it('states positive means owed and distinguishes zero viewer from unsettled group', async () => {
   await render(fixture('1000'));
-  expect(host.querySelector('[data-ui~="summary-row"]')!.textContent).toContain(
-    "You're owed",
-  );
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')!.textContent,
+  ).toContain('You’re owed$10.00');
   await render(fixture('0'));
   expect(host.textContent).toContain('Other members still owe each other');
   nav.search = 'tab=balances';
@@ -195,14 +197,12 @@ it('shows complete viewer expense allocations and payer amount without deriving 
     },
   };
   await render(updated);
-  const summary = host.querySelector('[data-ui~="summary-row"]')!;
-  expect(
-    [...summary.querySelectorAll('[data-ui~="metric-label"]')].map((n) =>
-      n.textContent?.replace('ⓘ', ''),
-    ),
-  ).toEqual(['Total spend', 'Your balance', 'Your share']);
+  const summary = host.querySelector('[data-ui~="overview-totals"]')!;
+  expect([...summary.querySelectorAll('dt')].map((n) => n.textContent)).toEqual(
+    ['Your share', 'You paid'],
+  );
   expect(summary.textContent).toContain('3.75');
-  expect(summary.textContent).toContain('You paid $90,071,992,547,409.93 USD');
+  expect(summary.textContent).toContain('You paid$90,071,992,547,409.93 USD');
   expect(summary.textContent).toContain('Other members still owe each other');
 });
 

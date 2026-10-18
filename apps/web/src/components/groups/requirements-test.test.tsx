@@ -264,7 +264,9 @@ it('distinguishes an actual empty group from failed expense and balance reads', 
     groupResult('T', { pageFailed: true, balancesFailed: true }),
   );
   expect(host.textContent).toContain('expense page failed');
-  expect(host.textContent).toContain('Balances are unavailable');
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('Complete balance unavailable');
   expect(host.textContent).not.toContain('This group has no expenses');
   expect(host.textContent).not.toContain('Settled:');
 });

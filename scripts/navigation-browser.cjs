@@ -587,11 +587,8 @@ withAuthFixture(origin, session, async () => {
           .getByRole('heading', { name: 'Recent expenses', exact: true })
           .waitFor();
         assert.equal(
-          await page
-            .locator('[data-ui~="summary-row"] [data-ui~="metric-label"]')
-            .last()
-            .innerText(),
-          'Your share',
+          await page.locator('[data-ui~="obligation-preview"] h2').innerText(),
+          'Your balances',
         );
         await page.screenshot({
           path: path.join(output, 'overview-ordinary-group.png'),
@@ -755,21 +752,20 @@ withAuthFixture(origin, session, async () => {
         (theme) => document.documentElement.dataset.theme === theme,
         process.env.THEME || 'light',
       );
-      const labels = await page
-        .locator('[data-ui~="summary-row"] [data-ui~="metric-label"]')
-        .allTextContents();
+      const summary = page.locator('[data-ui~="balance-summary"]');
+      assert.equal(await summary.count(), 1, 'complete directional summary');
+      assert.ok((await summary.innerText()).includes('You owe'));
+      assert.ok((await summary.innerText()).includes('You’re owed'));
       assert.equal(
-        labels.length,
-        3,
-        'overview has three complete summary cards',
+        await page.locator('[data-ui~="obligation-preview"]').isVisible(),
+        true,
+        'bounded actionable preview remains visible on every width',
       );
-      assert.equal(labels[2], 'Your share');
-      assert.equal(
-        await page
-          .locator('[data-ui~="workspace-overview-balances"]')
-          .isVisible(),
-        width > 900,
-        'overview balances responsive visibility',
+      await page.locator('[data-ui~="overview-totals"] summary').click();
+      assert.ok(
+        (
+          await page.locator('[data-ui~="overview-totals"]').innerText()
+        ).includes('Your share'),
       );
       await page.screenshot({
         path: path.join(output, `overview-${workspace}.png`),
@@ -970,11 +966,21 @@ withAuthFixture(origin, session, async () => {
                 0,
               );
           const foreground = luminance(
-            getComputedStyle(button.querySelector('span:nth-child(2) > span'))
-              .color,
+            getComputedStyle(
+              button.querySelector('[data-ui~="breakdown-legend-label"]'),
+            ).color,
           );
+          // Match edit-real-browser's painted-ancestor contrast measurement.
+          let painted = button;
+          while (
+            painted.parentElement &&
+            getComputedStyle(painted)
+              .backgroundColor.match(/[\d.]+/g)
+              .map(Number)[3] === 0
+          )
+            painted = painted.parentElement;
           const background = luminance(
-            getComputedStyle(button).backgroundColor,
+            getComputedStyle(painted).backgroundColor,
           );
           return (
             (Math.max(foreground, background) + 0.05) /
@@ -1057,7 +1063,7 @@ withAuthFixture(origin, session, async () => {
           'mobile detail covers full viewport height from top',
         );
         await page
-          .getByRole('button', { name: 'Back to expenses', exact: true })
+          .getByRole('button', { name: 'Close expense', exact: true })
           .waitFor();
       } else {
         assert(
