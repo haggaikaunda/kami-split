@@ -9,19 +9,6 @@
   padding: 0.625rem 0.75rem;
   cursor: pointer;
 }
-.group-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.group-header-actions details[open] {
-  flex-basis: 100%;
-  padding: 1rem;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  border-radius: var(--radius-card);
-}
 .group-balances {
   max-width: 100%;
 }
@@ -100,12 +87,6 @@
 @media (max-width: 600px) {
   .workspace-panel {
     padding: 1.25rem 0.9375rem;
-  }
-  .group-header-actions {
-    flex-basis: 100%;
-    margin-left: 47px;
-    max-width: calc(100% - 47px);
-    font-size: 0.875rem;
   }
 }
 .workspace-header-host {
