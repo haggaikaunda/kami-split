@@ -1005,7 +1005,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   if (page.viewportSize().width <= 600) await page.goBack();
   else
     await page
-      .getByRole('link', { name: 'Back to source', exact: true })
+      .getByRole('link', { name: 'Back to Groups', exact: true })
       .click();
   await expect(trip).toBeFocused();
   await expect(
@@ -1288,7 +1288,12 @@ test('Profile returns a filtered late-page ledger with its loaded extent, scroll
   expect(
     app.requests.filter((r) => r.operation === 'journeyWorkspaceQuery'),
   ).toHaveLength(firstReads);
-  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await page
+    .getByRole('link', {
+      name: 'Back to Maui 2026 with a very long friendly space name',
+      exact: true,
+    })
+    .click();
   await expect(page).toHaveURL(
     new RegExp('categories=GROCERIES.*sort=AMOUNT_DESC'),
   );
@@ -1310,6 +1315,121 @@ test('Profile returns a filtered late-page ledger with its loaded extent, scroll
   await expect(profileFor(page)).toBeFocused();
 });
 
+for (const [kind, path] of [
+  ['expense', '/trips/T/expenses/e1'],
+  ['repayment', '/trips/T/repayments/new'],
+  ['activity', '/groups/T/activity'],
+]) {
+  const title =
+    kind === 'expense'
+      ? 'Profile entry after closing expense preserves modal ownership and workspace return'
+      : `Profile names and reauthorizes a nested ${kind} origin`;
+  test(title, async ({ page, app }) => {
+    await app.authenticate();
+    await page.goto(path);
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Financial navigation' })
+        .getByRole('heading', {
+          name: 'Maui 2026 with a very long friendly space name',
+          level: 1,
+          exact: true,
+        }),
+    ).toBeVisible();
+    if (kind === 'expense') {
+      // Expense detail owns a native modal; the background Profile is inert.
+      const presentation = page.locator(
+        'dialog[data-ui~="expense-presentation"]',
+      );
+      await expect(presentation).toBeVisible();
+      await expect
+        .poll(() => presentation.evaluate((dialog) => dialog.matches(':modal')))
+        .toBe(true);
+      await page.keyboard.press('Tab');
+      await expect
+        .poll(() =>
+          presentation.evaluate((dialog) =>
+            dialog.contains(document.activeElement),
+          ),
+        )
+        .toBe(true);
+      expect(new URL(page.url()).pathname).toBe(path);
+      expect(
+        app.requests.filter(
+          (request) => request.operation === 'profileReturnQuery',
+        ),
+      ).toHaveLength(0);
+      await page
+        .getByRole('button', { name: 'Close expense', exact: true })
+        .click();
+      await expect(presentation).toHaveCount(0);
+      await expect(page.locator('#ledger-expense-e1')).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe('/trips/T');
+      expect(new URL(page.url()).searchParams.get('tab')).toBe('expenses');
+    }
+    const source = new URL(page.url());
+    const authorization = app.hold(
+      'profileReturnQuery',
+      responseFor('profileReturnQuery', {}),
+    );
+    await profileFor(page).click();
+    await authorization.started;
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Checking return destination…' }),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Back to Maui/ })).toHaveCount(
+      0,
+    );
+    await authorization.release();
+    await page
+      .getByRole('link', {
+        name: 'Back to Maui 2026 with a very long friendly space name',
+        exact: true,
+      })
+      .click();
+    await expect(profileFor(page)).toBeFocused();
+    const returned = new URL(page.url());
+    expect(returned.pathname).toBe(source.pathname);
+    for (const [name, value] of source.searchParams)
+      expect(returned.searchParams.get(name)).toBe(value);
+    const denied = app.hold('profileReturnQuery', {
+      viewer: { __typename: 'Viewer', groups: [] },
+    });
+    await profileFor(page).click();
+    await denied.started;
+    await denied.release();
+    await expect(
+      page.getByRole('link', { name: 'Go to Groups', exact: true }),
+    ).toHaveAttribute('href', '/groups');
+    await expect(page.getByRole('link', { name: /^Back to Maui/ })).toHaveCount(
+      0,
+    );
+  });
+}
+test('Profile direct and expired visits offer Groups without inventing a return origin', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  for (const path of ['/account', '/account?source=expired&name=Untrusted']) {
+    await page.goto(path);
+    await expect(
+      page.getByLabel('Display name', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Go to Groups', exact: true }),
+    ).toHaveAttribute('href', '/groups');
+    await expect(page.getByText('Untrusted', { exact: true })).toHaveCount(0);
+  }
+  expect(
+    app.requests.filter(
+      (request) => request.operation === 'profileReturnQuery',
+    ),
+  ).toHaveLength(0);
+});
+
 test('global Add expense requires an explicit eligible source and cancel restores Profile', async ({
   page,
   app,
@@ -1318,7 +1438,7 @@ test('global Add expense requires an explicit eligible source and cancel restore
   await page.goto('/account');
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Back to Groups', exact: true }),
+    page.getByRole('link', { name: 'Go to Groups', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Add expense', exact: true }).click();
   const source = page.getByRole('combobox', {
@@ -1454,16 +1574,13 @@ test('compact identity and navigation remain readable across responsive themes a
   for (const theme of ['light', 'dark', 'system']) {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/account');
-    const choice = page.getByRole('radio', {
-      name: theme[0].toUpperCase() + theme.slice(1),
+    const choice = page.getByRole('combobox', {
+      name: 'Appearance',
       exact: true,
     });
     await expect(choice).toBeVisible();
-    if (!(await choice.isChecked())) {
-      await page
-        .locator('[data-ui~="appearance-choice"]')
-        .filter({ has: choice })
-        .click();
+    if ((await choice.inputValue()) !== theme.toUpperCase()) {
+      await choice.selectOption(theme.toUpperCase());
       await expect(
         page.getByText('Appearance saved for your account.', { exact: true }),
       ).toBeVisible();
@@ -1549,7 +1666,12 @@ test('Profile return reauthorizes an expired source and cannot restore denied pr
       message: 'Access denied',
     },
   });
-  await page.getByRole('link', { name: 'Back to source', exact: true }).click();
+  await page
+    .getByRole('link', {
+      name: 'Back to Maui 2026 with a very long friendly space name',
+      exact: true,
+    })
+    .click();
   await denied.started;
   await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(0);
   await expect(

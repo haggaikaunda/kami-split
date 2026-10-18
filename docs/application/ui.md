@@ -18,6 +18,8 @@ Existing cross-component customization uses explicit `data-ui` styling slots. Th
 
 For example, Account customizes `field-label` and `field-control` while Field continues to own labeling, errors and descriptions. Member layouts customize `member-copy` and `member-name` instead of depending on a last-child span or a nested `strong`. Prefer an existing component variant or root `className` for new consumers; extend this slot contract only when a real consumer needs a distinct layout. Slots do not transfer behavior or financial ownership to CSS.
 
+Profile uses a leading, bounded single column with a compact identity divider, stacked personal details and a native Appearance selector. Display-name save/discard remains separate from immediate account-scoped appearance persistence. Return labels resolve group names through fresh authorized account context; missing or revoked origins use directory navigation.
+
 Account and appearance presentation belongs to `onboarding/account.module.css`; authentication/join screens use `onboarding/onboarding.module.css`. Invitation management and member-list layouts share `onboarding/invitations.module.css`, with an explicit `members-panel` class composed by workspace consumers. Activity feed and immutable event detail share `activity/feed.module.css`; anchored help owns `rich-help.module.css`. These modules customize shared controls through the public slots above. Semantic roles/labels remain the first choice for tests; stable `data-ui` parts support structural layout assertions without exposing generated class names.
 
 The remaining production owners are:
