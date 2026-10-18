@@ -141,6 +141,8 @@ export function expensePage(after) {
 }
 export function responseFor(operation, variables) {
   switch (operation) {
+    case 'profileReturnQuery':
+      return { viewer: { __typename: 'Viewer', groups } };
     case 'appearanceQuery':
     case 'profileQuery':
       return {
@@ -212,6 +214,15 @@ export function responseFor(operation, variables) {
         group: group(variables.id),
         ...(variables.ledger
           ? { groupExpenses: expensePage(variables.after) }
+          : {}),
+        ...(variables.activity
+          ? {
+              groupActivity: {
+                __typename: 'ActivityConnection',
+                edges: [],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            }
           : {}),
       };
     case 'expensesHouseholdInitialQuery': {

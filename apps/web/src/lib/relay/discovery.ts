@@ -88,3 +88,11 @@ export function routeId(value: string) {
     return value;
   }
 }
+
+/** Resolve a Group/Trip route, including nested records, without confusing global routes with IDs. */
+export function groupRouteId(pathname: string) {
+  const match = pathname.match(/^\/(?:groups|trips)\/([^/]+)(?:\/|$)/);
+  if (!match) return;
+  const id = routeId(match[1]);
+  return id === 'activity' || id === 'new' ? undefined : id;
+}
