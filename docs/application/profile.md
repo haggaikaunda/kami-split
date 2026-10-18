@@ -84,8 +84,9 @@ selector in a leading column bounded to 560px. Appearance still saves independen
 and immediately. It loads no financial overview. Its Back link uses the actor-scoped
 source visit. Household and directory visits have descriptive labels; a Group/Trip
 origin resolves its name from a fresh, retained authorized group-name query, which
-is revalidated on foreground return. Until confirmed, or after missing access, the
-link safely returns to Groups. Direct entry and missing visits also fall back to Groups.
+is revalidated on foreground return. While that authorization is pending, the return
+waits without offering an unconfirmed destination. Failed or missing access falls
+back to Groups, as do direct entry, missing visits and unavailable account context.
 Source restoration waits for current authorized content and preserves ledger
 filters, loaded extent, scroll and logical focus. Opening Profile alone does not
 invalidate valid financial projections; a confirmed display-name change does. Profile loading and failure leave

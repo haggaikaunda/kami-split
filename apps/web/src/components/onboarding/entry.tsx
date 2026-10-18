@@ -150,8 +150,10 @@ function OnboardingVisit({
                   data-ui="profile-return"
                   className={accountStyles['profile-return']}
                 >
-                  {scope && scope.actor === c.session?.user.id && (
+                  {scope && scope.actor === c.session?.user.id ? (
                     <ProfileReturn scope={scope} />
+                  ) : (
+                    <Link href="/groups">Back to Groups</Link>
                   )}
                 </div>
                 <header
