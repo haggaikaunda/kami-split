@@ -215,6 +215,15 @@ export function responseFor(operation, variables) {
         ...(variables.ledger
           ? { groupExpenses: expensePage(variables.after) }
           : {}),
+        ...(variables.activity
+          ? {
+              groupActivity: {
+                __typename: 'ActivityConnection',
+                edges: [],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            }
+          : {}),
       };
     case 'expensesHouseholdInitialQuery': {
       const dashboard = responseFor(

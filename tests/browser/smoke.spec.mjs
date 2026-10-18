@@ -1339,6 +1339,7 @@ for (const [kind, path] of [
     await expect(
       page.getByRole('heading', {
         name: 'Maui 2026 with a very long friendly space name',
+        level: 1,
         exact: true,
       }),
     ).toBeVisible();
@@ -1413,7 +1414,7 @@ test('global Add expense requires an explicit eligible source and cancel restore
   await page.goto('/account');
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Back to Groups', exact: true }),
+    page.getByRole('link', { name: 'Go to Groups', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Add expense', exact: true }).click();
   const source = page.getByRole('combobox', {
