@@ -232,6 +232,8 @@ test('focus presentation: enlarged short filters preserve text-entry and forced-
   await ring(description);
   await page.keyboard.press('Escape');
   await expect(description).toHaveCount(0);
+  // Complete the fresh authorized return before the next overlay and teardown.
+  await expect(page.locator('#ledger-expense-e1')).toBeVisible();
   await page.emulateMedia({ forcedColors: 'active' });
   await filters.tap();
   const close = dialog.getByRole('button', { name: 'Back to expenses' });
