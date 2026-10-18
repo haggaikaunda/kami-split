@@ -42,11 +42,14 @@
 .content .section > summary {
   min-height: var(--target-size);
   padding: 0.5rem 0;
-  list-style: disclosure-closed;
+  list-style: disclosure-closed inside;
   display: list-item;
 }
 .content .section[open] > summary {
-  list-style: disclosure-open;
+  list-style: disclosure-open inside;
+}
+.content .section > summary::-webkit-details-marker {
+  display: revert;
 }
 .content .section .content {
   padding-inline: 0;
