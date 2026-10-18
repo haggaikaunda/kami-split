@@ -458,7 +458,16 @@ for (const width of [320, 390, 440, 1280, 1440]) {
             geometry.panel.right + 1,
           );
           for (const row of geometry.rows) {
-            expect(row.amount.x).toBeGreaterThanOrEqual(row.content.right - 1);
+            if (scale === 2 && width <= 440) {
+              expect(row.amount.y + row.amount.height).toBeLessThanOrEqual(
+                row.content.y,
+              );
+              expect(row.amount.right).toBeCloseTo(geometry.panel.right, 0);
+            } else {
+              expect(row.amount.x).toBeGreaterThanOrEqual(
+                row.content.right - 1,
+              );
+            }
             expect(row.amount.right).toBeLessThanOrEqual(
               geometry.panel.right + 1,
             );
@@ -515,3 +524,143 @@ for (const width of [320, 390, 440, 1280, 1440]) {
     }
   });
 }
+
+test('enlarged historical detail wraps every audit text slot and returns keyboard focus', async ({
+  page,
+  app,
+  context,
+}, testInfo) => {
+  const actor = {
+    id: 'detail-actor',
+    displayName: 'AlexandriaWithAnUnbrokenVeryLongHistoricalName',
+  };
+  const payer = {
+    id: 'detail-payer',
+    displayName: 'BrianWithAnUnbrokenVeryLongHistoricalName',
+  };
+  const participant = {
+    id: 'detail-participant',
+    displayName: 'CaseyWithAnUnbrokenVeryLongHistoricalName',
+  };
+  const note = 'UnbrokenHistoricalNote'.repeat(8),
+    previousNote = 'PreviousUnbrokenHistoricalNote'.repeat(5);
+  const amountMinor = '9007199254740991';
+  let current;
+  await app.authenticate();
+  app.setAppearance('DARK');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await context.route('**/api/graphql', (route) => {
+    const { query } = route.request().postDataJSON();
+    if (query.includes('query activityHouseholdQuery'))
+      return route.fulfill({
+        json: { data: { householdActivity: connection([current]) } },
+      });
+    if (query.includes('query activityDetailQuery'))
+      return route.fulfill({ json: { data: { activityEvent: current } } });
+    return route.fallback();
+  });
+  for (const width of [320, 390])
+    for (const kind of ['EXPENSE_UPDATED', 'REPAYMENT_RECORDED']) {
+      current = event(`audit-${kind}`, kind, {
+        creator: actor,
+        payer,
+        sender: payer,
+        recipient: participant,
+        description: 'A historical dinner with complete original values',
+        groupName: 'AnUnbrokenHistoricalSourceName'.repeat(3),
+        amountMinor,
+        note,
+      });
+      if (kind === 'EXPENSE_UPDATED') {
+        current.after = {
+          ...current.after,
+          payer,
+          note,
+          allocations: [
+            { participant, amountMinor, percentageHundredths: null },
+          ],
+        };
+        current.before = {
+          ...current.after,
+          description: 'Original historical dinner',
+          note: previousNote,
+          totalMinor: '9007199254740990',
+          allocations: [
+            {
+              participant,
+              amountMinor: '9007199254740990',
+              percentageHundredths: null,
+            },
+          ],
+        };
+      }
+      await page.setViewportSize({ width, height: 420 });
+      await page.goto('/household/activity');
+      const row = page.locator('[data-ui~="activity-events"] > li > button');
+      await expect(row).toHaveCount(1);
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '200%';
+      });
+      await row.focus();
+      const scroll = await page.evaluate(() => scrollY);
+      await page.keyboard.press('Enter');
+      const detail = page.getByRole('region', {
+        name: 'Historical event detail',
+      });
+      await expect(detail).toContainText(actor.displayName);
+      await expect(detail).toContainText(payer.displayName);
+      await expect(detail).toContainText(participant.displayName);
+      await expect(detail).toContainText(note);
+      if (kind === 'EXPENSE_UPDATED')
+        await expect(detail).toContainText(previousNote);
+      await expect(
+        detail.locator('[data-ui~="activity-detail-amount"]'),
+      ).toHaveAttribute('aria-label', '$90,071,992,547,409.91 USD');
+      const exact = detail.getByText('Exact timestamp', { exact: true });
+      await exact.focus();
+      await page.keyboard.press('Enter');
+      await expect(detail).toContainText(current.timestamp);
+      const geometry = await detail.evaluate((el) => {
+        const box = (node) => {
+          const r = node.getBoundingClientRect();
+          return {
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+            right: r.right,
+            bottom: r.bottom,
+          };
+        };
+        return {
+          viewport: innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          detail: box(el),
+          heading: box(
+            el.querySelector('[data-ui~="activity-record-heading"] > div'),
+          ),
+          icon: box(
+            el.querySelector('[data-ui~="activity-record-heading"] > span'),
+          ),
+        };
+      });
+      await testInfo.attach(`${width}-${kind}-detail-geometry`, {
+        body: JSON.stringify(geometry, null, 2),
+        contentType: 'application/json',
+      });
+      expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewport);
+      expect(geometry.heading.width).toBeGreaterThan(130);
+      expect(geometry.icon.bottom).toBeLessThanOrEqual(geometry.heading.y);
+      await detail.locator('[data-ui~="activity-record-heading"]').screenshot({
+        path: testInfo.outputPath(`${width}-${kind}-heading.png`),
+      });
+      const close = detail.getByRole('button', {
+        name: 'Close detail',
+        exact: true,
+      });
+      await close.focus();
+      await page.keyboard.press('Enter');
+      await expect(row).toBeFocused();
+      expect(await page.evaluate(() => scrollY)).toBe(scroll);
+    }
+});
