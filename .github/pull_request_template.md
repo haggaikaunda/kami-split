@@ -42,6 +42,7 @@ Refs #
 - [ ] Required CI passes on the current head
 
 - Independent acceptance evidence (scope revision, tested SHA, coverage / limitations):
+- Approved-design work, when applicable (reference revision, mobile/desktop state comparisons, differences/exceptions and evidence applicable to the final candidate):
 - Final-head CI (run/check identity, attempt, conclusion and head/base or synthetic-merge relationship):
 
 <!-- Before merging: remove draft status and satisfy required GitHub approvals and branch protections. -->

@@ -30,7 +30,7 @@ body:
     id: acceptance
     attributes:
       label: Acceptance and regression coverage
-      description: Use stable IDs for observable corrected behavior, preserved behavior and relevant failure cases. Map each to a verification scenario; see docs/agents/outcome-verification.md.
+      description: Use stable IDs for observable corrected behavior, preserved behavior and relevant failure cases. Map each to a verification scenario. For approved-design corrections, identify the versioned reference, visual criteria, mobile/desktop states, fixtures and authorized exceptions; see docs/agents/outcome-verification.md.
       placeholder: '- [ ] AC1 — Given ..., when ..., then ...'
   - type: textarea
     id: scope
