@@ -386,7 +386,7 @@ test('a save committing after the resumed read converges on a fresh read without
     updateMyAppearance: { __typename: 'Profile', appearance: 'DARK' },
   });
   await page.getByRole('combobox', { name: 'Appearance', exact: true }).focus();
-  await page.keyboard.press('End');
+  await page.keyboard.press('d');
   await page.keyboard.press('Enter');
   await save.started;
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

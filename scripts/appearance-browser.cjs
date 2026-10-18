@@ -520,7 +520,7 @@ withAuthFixture(origin, session, async () => {
     exact: true,
   });
   await themeSelect.focus();
-  await page.keyboard.press('End');
+  await page.keyboard.press('d');
   await page.keyboard.press('Enter');
   await theme('dark');
   await page.getByText('Saving appearance…', { exact: true }).waitFor();
@@ -528,7 +528,8 @@ withAuthFixture(origin, session, async () => {
     await themeSelect.evaluate((e) => e === document.activeElement),
     'selection keeps focus during save',
   );
-  await themeSelect.selectOption('LIGHT');
+  await page.keyboard.press('l');
+  await page.keyboard.press('Enter');
   await page
     .getByText('Appearance saved for your account.', { exact: true })
     .waitFor();

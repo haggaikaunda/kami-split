@@ -51,8 +51,8 @@
   height: 52px;
   flex: 0 0 52px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-orange-surface);
+  color: var(--color-orange);
   font-size: 1.1875rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -93,6 +93,16 @@
 }
 .account-profile-fields [data-ui~='field'] {
   margin: 0;
+  gap: 0;
+}
+.account-profile-fields [data-ui~='field-label'] {
+  position: static;
+  padding: 0;
+  background: none;
+  color: var(--color-ink);
+}
+.account-profile-fields [data-ui~='error'] {
+  margin-top: 8px;
 }
 .account-profile-fields [data-ui~='field-label'],
 .appearance-label {
