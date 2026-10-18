@@ -24,14 +24,14 @@ Account and appearance presentation belongs to `onboarding/account.module.css`; 
 
 The remaining production owners are:
 
-| Presentation                                                                 | Colocated owner                                                                                                       |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Discovery and group/trip cards                                               | `groups/discovery.module.css`                                                                                         |
-| Workspace panels/settings/balances, overview rows, Household source balances | `groups/workspace.module.css`, `overview.module.css`, `household-workspace.module.css`, `balance-sections.module.css` |
-| Expense/repayment and group/trip creation forms                              | `groups/forms.module.css`; current expense facts use `groups/expense-detail.module.css`                               |
-| Ledger rows, responsive filters and Breakdown                                | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                                        |
-| Native expense/filter dialog frame and expense viewport behavior             | `expenses/dialog.module.css` and `presentation.module.css`; neither imports ledger row styles                         |
-| Category artwork and refresh feedback                                        | `financial/category.tsx` with `category.module.css`, and `workspace-refresh.module.css`                               |
+| Presentation                                                                 | Colocated owner                                                                                                                     |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Discovery and group/trip cards                                               | `groups/discovery.module.css`                                                                                                       |
+| Workspace panels/settings/balances, overview rows, Household source balances | `groups/workspace.module.css`, `overview.module.css`, `household-workspace.module.css`, `balance-sections.module.css`               |
+| Expense/repayment forms                                                      | `groups/forms.module.css`; creation owns `groups/creation.module.css`; current expense facts use `groups/expense-detail.module.css` |
+| Ledger rows, responsive filters and Breakdown                                | `expenses/ledger.module.css`, `filter-form.module.css`, `breakdown.module.css`                                                      |
+| Native expense/filter dialog frame and expense viewport behavior             | `expenses/dialog.module.css` and `presentation.module.css`; neither imports ledger row styles                                       |
+| Category artwork and refresh feedback                                        | `financial/category.tsx` with `category.module.css`, and `workspace-refresh.module.css`                                             |
 
 `ui/form-layout.module.css` provides the opt-in neutral `form-scope` layout class. Existing native controls declare `form-label`, `form-control`, `form-checkbox`, `form-radio`, `form-fieldset` or `form-button` slots; `form-region` declares a shrinkable region. Field's existing `field-label`/`field-control` slots also participate. A scope no longer styles arbitrary descendant controls. The shared sheet is anchored before feature overrides, and can be used without importing financial styles. Native expense presentation composes the scope itself. Feature form classes own their floating labels, split controls, recovery content and sticky action rows. `Skeleton size="workspace"` owns the taller workspace loading geometry, independently of a feature wrapper.
 
@@ -149,5 +149,5 @@ within shrinkable card columns at narrow widths and enlarged text. When a card
 is narrow relative to its text size, its icon stacks above the name and member
 label so ordinary words retain usable line width. The directory
 uses the shared cards loading presentation, URL-backed type/date links and the
-existing native Dialog for the authorized Group/Trip creation choices. Current
+direct Create link to a full details page. The in-page Group/Trip segmented choice precedes the name, conditional trip destination/dates and compact read-only USD row. The bounded form column uses existing semantic theme tokens and keeps Cancel/Create in document flow. Contextual recovery appears only for actual unresolved attempts or storage failures; the account-scoped form retains persistence and original-key recovery. Current
 Group and Trip workspaces also expose complete Total spend in Overview.

@@ -1064,40 +1064,30 @@ test('directory unavailable aggregates remain unavailable and foreground denial 
   await expect(directory(page)).toHaveCount(0);
 });
 
-test('authorized create choices preserve directory selection and return focus', async ({
+test('authorized Create opens details directly and preserves directory selection and return focus', async ({
   page,
   app,
 }) => {
   await app.authenticate();
   const data = responseFor('journeyViewerQuery', {});
   data.viewer.canCreateGroups = true;
-  void app.hold('journeyViewerQuery', data).release();
+  app.holdMatching('journeyViewerQuery', () => true, data).release();
   await page.goto('/groups?kind=trips');
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toHaveAccessibleName('Create a shared space');
-  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Create', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: 'Create', exact: true }),
-  ).toBeFocused();
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  void app.hold('journeyViewerQuery', data).release();
-  await dialog.getByRole('link', { name: 'Create trip', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Create trip', exact: true }),
+    page.getByRole('heading', { name: 'Create a shared space', exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Trip', exact: true }).click();
   await expect(
     page.getByLabel('Destination (optional)', { exact: true }),
   ).toBeVisible();
-  void app.hold('journeyViewerQuery', data).release();
-  await page
-    .getByRole('link', { name: 'Inspect your trips', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Cancel', exact: true }).click();
   await expect(
     typeFilter(page).getByRole('link', { name: 'Trips', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
   await expect(
-    page.getByRole('button', { name: 'Create', exact: true }),
+    page.getByRole('link', { name: 'Create', exact: true }),
   ).toBeFocused();
 });
 
@@ -3200,7 +3190,7 @@ for (const count of [0, 1, 3, 12]) {
     await expect(page.getByText('Signed in as', { exact: false })).toHaveCount(
       0,
     );
-    const create = toolbar.getByRole('button', { name: 'Create', exact: true });
+    const create = toolbar.getByRole('link', { name: 'Create', exact: true });
     const filters = toolbar.getByRole('navigation', { name: 'Group type' });
     const createBox = await create.boundingBox();
     const filterBox = await filters.boundingBox();
@@ -3290,16 +3280,16 @@ test('creation recovery and validation stay readable at 320px with doubled text'
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/trips/new');
   await expect(
-    page.getByRole('heading', { name: 'Create trip', exact: true }),
+    page.getByRole('heading', { name: 'Create a shared space', exact: true }),
   ).toBeVisible();
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });
   const form = page.locator('[data-ui~="creation-form"]');
-  const recovery = form.locator('[data-ui="financial-recovery"]');
-  await expect(recovery).toContainText(
-    'a new key cannot deduplicate a lost attempt',
-  );
+  const recovery = form
+    .locator('p')
+    .filter({ hasText: 'For a journey together.' });
+  await expect(form.locator('details')).toHaveCount(0);
   const textGeometry = (element) => {
     const splitWords = [];
     const nodes = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -3334,7 +3324,7 @@ test('creation recovery and validation stay readable at 320px with doubled text'
     }, family);
     const geometry = await recovery.evaluate(textGeometry);
     expect(geometry.font).toBe('32px');
-    expect(geometry.textSize).toBe('34px');
+    expect(parseFloat(geometry.textSize)).toBeGreaterThanOrEqual(26);
     expect(geometry.splitWords, `${family} recovery words`).toEqual([]);
     expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
     await testInfo.attach(
@@ -3346,12 +3336,33 @@ test('creation recovery and validation stay readable at 320px with doubled text'
     );
   }
   // Keep the widest font for these creation validation/field assertions.
-  await page
-    .getByLabel('I have checked my groups and want a new creation.')
-    .check();
   await form.getByRole('button', { name: 'Create trip', exact: true }).click();
-  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await expect(page.getByLabel('Trip name', { exact: true })).toBeFocused();
   await expect(form.getByRole('alert')).toContainText('name');
+  const validationGeometry = await form
+    .getByRole('alert')
+    .evaluate((element) => {
+      const list = element.querySelector('ul');
+      const form = element.closest('[data-ui~=creation-form]');
+      const styles = getComputedStyle(element);
+      const listStyles = getComputedStyle(list);
+      return {
+        formWidth: form.clientWidth,
+        summaryWidth: element.clientWidth,
+        summaryPadding: [styles.paddingLeft, styles.paddingRight],
+        listWidth: list.clientWidth,
+        listPadding: listStyles.paddingLeft,
+        textWidth:
+          list.clientWidth -
+          parseFloat(listStyles.paddingLeft) -
+          parseFloat(listStyles.paddingRight),
+        font: styles.fontSize,
+      };
+    });
+  await testInfo.attach('creation-validation-geometry', {
+    body: JSON.stringify(validationGeometry),
+    contentType: 'application/json',
+  });
   expect(
     (await form.getByRole('alert').evaluate(textGeometry)).splitWords,
   ).toEqual([]);

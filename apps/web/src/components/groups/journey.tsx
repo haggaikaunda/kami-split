@@ -161,18 +161,14 @@ export function GroupJourney({
           <header
             data-ui="journey-page-heading form-region"
             className={
-              !initialGroup && !creation
+              !initialGroup
                 ? uiStyles['visually-hidden']
                 : workspaceFeatureStyles['journey-page-heading']
             }
           >
-            {!initialGroup && (
+            {!initialGroup && !creation && (
               <h1 data-page-heading tabIndex={-1}>
-                {creation
-                  ? creation === 'TRIP'
-                    ? 'New trip'
-                    : 'New group'
-                  : 'Groups'}
+                Groups
               </h1>
             )}
           </header>

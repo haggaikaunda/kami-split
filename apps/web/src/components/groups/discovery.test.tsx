@@ -239,22 +239,15 @@ it('does not infer Household identity from an ordinary group name', async () => 
   );
   expect(host.textContent).not.toContain('No groups match this filter');
 });
-it('offers authorized Group and Trip choices from the shared Create entry', async () => {
-  Object.assign(HTMLDialogElement.prototype, { showModal() {}, close() {} });
+it('opens the details route directly from the authorized Create entry', async () => {
   await render(<GroupJourney />);
   const data = viewer();
   data.viewer.canCreateGroups = true;
   await respond(data);
-  const create = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent?.trim() === 'Create',
-  )!;
-  await act(async () => create.click());
-  expect(host.querySelector('a[href="/trips/new"]')?.textContent).toBe(
-    'Create trip',
-  );
-  expect(host.querySelector('a[href="/groups/new"]')?.textContent).toBe(
-    'Create group',
-  );
+  const create = host.querySelector('#directory-create') as HTMLAnchorElement;
+  expect(create.getAttribute('href')).toBe('/groups/new');
+  expect(create.textContent).toContain('Create');
+  expect(host.querySelector('dialog')).toBeNull();
 });
 
 it.each([

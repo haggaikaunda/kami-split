@@ -16,7 +16,6 @@ import card, {
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { ContentLoading } from '../ui/loading';
-import { Button, Dialog } from '../ui/primitives';
 import { AppIcon } from '@/components/workspace-identity';
 import { minor, money } from '@/lib/relay/money';
 
@@ -129,10 +128,16 @@ function DiscoveryResults({
   onError: (error: string) => void;
   onDenied: () => void;
 }) {
-  const [creating, setCreating] = useState(false);
   const params = useSearchParams();
   const source = params.get('source');
   const visit = source ? scope.visits.get(source) : undefined;
+  const sourceUrl = visit
+    ? new URL(visit.href, 'https://workspace.invalid')
+    : undefined;
+  if (sourceUrl && source) sourceUrl.searchParams.set('restore', source);
+  const returnHref = sourceUrl
+    ? sourceUrl.pathname + sourceUrl.search
+    : '/groups';
   const entries =
     directory.__typename === 'GroupDirectory' ? directory.entries : [];
   const groups = entries.filter(
@@ -154,11 +159,7 @@ function DiscoveryResults({
         (viewer.canCreateGroups ? (
           <CreationForm
             source={source ?? undefined}
-            returnHref={
-              visit
-                ? `${visit.href}${visit.href.includes('?') ? '&' : '?'}restore=${source}`
-                : undefined
-            }
+            returnHref={returnHref}
             scope={scope}
             actor={viewer.id}
             today={viewer.today}
@@ -198,43 +199,17 @@ function DiscoveryResults({
               ))}
             </nav>
             {viewer.canCreateGroups && (
-              <Button
-                tone="secondary"
+              <ScopedLink
+                scope={scope}
                 id="directory-create"
-                onClick={() => setCreating(true)}
+                href="/groups/new"
+                sourceFocus="directory-create"
+                className={discoveryFeatureStyles['create-link']}
               >
                 <AppIcon name="plus" /> Create
-              </Button>
+              </ScopedLink>
             )}
           </div>
-          {creating && (
-            <Dialog
-              open
-              title="Create a shared space"
-              onClose={() => setCreating(false)}
-            >
-              <p>
-                <ScopedLink
-                  scope={scope}
-                  id="create-group"
-                  sourceFocus="directory-create"
-                  href="/groups/new"
-                >
-                  Create group
-                </ScopedLink>
-              </p>
-              <p>
-                <ScopedLink
-                  scope={scope}
-                  id="create-trip"
-                  sourceFocus="directory-create"
-                  href="/trips/new"
-                >
-                  Create trip
-                </ScopedLink>
-              </p>
-            </Dialog>
-          )}
           {selection === 'trips' && (
             <nav
               data-ui="discovery-filters"

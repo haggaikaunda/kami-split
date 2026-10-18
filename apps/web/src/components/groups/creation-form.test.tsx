@@ -105,16 +105,20 @@ function edit(id: string, value: string) {
   )!.set!.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
-it('defaults entry types and UTC dates, has no member picker or currency input', async () => {
+it('defaults entry types and UTC dates, has no member picker or editable currency', async () => {
   await render('TRIP');
-  expect(
-    (host.querySelector('#creation-kind') as HTMLSelectElement).value,
-  ).toBe('TRIP');
+  expect(button('Trip').getAttribute('aria-pressed')).toBe('true');
   expect(
     (host.querySelector('#creation-startDate') as HTMLInputElement).value,
   ).toBe('2026-10-04');
-  expect(host.querySelectorAll('select')).toHaveLength(1);
-  expect(host.textContent).toContain('Currency: USD');
+  expect(host.querySelectorAll('select')).toHaveLength(0);
+  expect(host.querySelector('[aria-label=Currency]')?.textContent).toBe(
+    'CurrencyUSD · US Dollar',
+  );
+  expect(host.querySelector('[aria-label=Currency] input')).toBeNull();
+  expect(host.querySelector('input[type=checkbox]')).toBeNull();
+  expect(host.querySelector('details')).toBeNull();
+  expect(button('Create trip').disabled).toBe(false);
   await render('ORDINARY', 'ordinary');
   expect(host.querySelector('#creation-startDate')).toBeNull();
 });
@@ -125,7 +129,6 @@ it('persists key/frozen canonical input before dispatch and suppresses double cl
   await render();
   await act(async () => {
     edit('name', ' \tFriends\n');
-    (host.querySelector('input[type=checkbox]') as HTMLInputElement).click();
   });
   await act(async () => {
     button('Create group').click();
@@ -197,7 +200,6 @@ it('definitive rejection enables correction with a new attempt key and field err
   expect(host.textContent).toContain('Use another name');
   await act(async () => {
     edit('name', 'New name');
-    (host.querySelector('input[type=checkbox]') as HTMLInputElement).click();
   });
   await act(async () => button('Create trip').click());
   expect(network.mutate.mock.calls[0][1].variables.input.operationKey).not.toBe(
@@ -205,7 +207,7 @@ it('definitive rejection enables correction with a new attempt key and field err
   );
 });
 it.each(['ORDINARY', 'TRIP'] as const)(
-  'freshly authorizes completed %s before its canonical route and clears only confirmed accessible results',
+  'freshly authorizes a recovered Trip from %s entry before its canonical route and clears only confirmed accessible results',
   async (kind) => {
     const a = frozen();
     network.read
@@ -217,9 +219,7 @@ it.each(['ORDINARY', 'TRIP'] as const)(
     expect(network.read.mock.calls[1][3]).toEqual({
       fetchPolicy: 'network-only',
     });
-    expect(network.push).toHaveBeenCalledWith(
-      `${kind === 'TRIP' ? '/trips' : '/groups'}/G`,
-    );
+    expect(network.push).toHaveBeenCalledWith('/trips/G');
     expect(readCreation('Viewer:A')).toBeUndefined();
   },
 );
@@ -290,9 +290,6 @@ it('actor replacement suppresses late results before any group read', async () =
 });
 it('focuses invalid fields and shows accessible errors without a network request', async () => {
   await render();
-  await act(async () =>
-    (host.querySelector('input[type=checkbox]') as HTMLInputElement).click(),
-  );
   await act(async () => button('Create group').click());
   expect(document.activeElement?.id).toBe('creation-name');
   expect(
@@ -320,8 +317,21 @@ it('unwritable storage sends nothing', async () => {
   });
   await act(async () => {
     edit('name', 'Friends');
-    (host.querySelector('input[type=checkbox]') as HTMLInputElement).click();
   });
   await act(async () => button('Create group').click());
   expect(network.mutate).not.toHaveBeenCalled();
+});
+
+it('persists a pre-submit type change and preserves its recovered identity and dates', async () => {
+  await render();
+  await act(async () => button('Trip').click());
+  await act(async () => edit('name', 'Spring trip'));
+  await render('ORDINARY', 'reloaded');
+  expect(button('Trip').getAttribute('aria-pressed')).toBe('true');
+  expect((host.querySelector('#creation-name') as HTMLInputElement).value).toBe(
+    'Spring trip',
+  );
+  expect(
+    (host.querySelector('#creation-startDate') as HTMLInputElement).value,
+  ).toBe('2026-10-04');
 });

@@ -245,12 +245,7 @@ test('fixture-create-group-and-trip-browser', async (page) => {
   for (const kind of ['group', 'trip']) {
     await page.goto(`${origin}/${kind}s/new`, { waitUntil: 'networkidle' });
     await page
-      .getByRole('checkbox', {
-        name: 'I have checked my groups and want a new creation.',
-      })
-      .check();
-    await page
-      .getByLabel('Name', { exact: true })
+      .getByLabel(kind === 'trip' ? 'Trip name' : 'Group name', { exact: true })
       .fill(`Synthetic new ${kind}`);
     if (kind === 'trip') {
       await page
