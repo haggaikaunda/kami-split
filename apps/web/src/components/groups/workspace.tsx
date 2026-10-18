@@ -21,7 +21,7 @@ import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
 import { AppIcon } from '@/components/workspace-identity';
 import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useFragment } from 'react-relay';
 import groupDocument, {
   type workspaceGroup$key,
@@ -50,13 +50,16 @@ import { ExpenseLedger } from '@/components/expenses/ledger';
 import { PeopleList } from '@/components/onboarding/people-list';
 import { ScopedInvitations } from '@/components/onboarding/scoped-invitations';
 import { RepaymentForm } from './repayment-form';
-import { BalanceSection, ObligationRows } from './balance-sections';
+import { RepaymentPresentation } from './repayment-presentation';
 import {
-  RichHelp,
-  BalanceExplanation,
-  balanceHelp,
-  shareHelp,
-} from '@/components/rich-help';
+  BalanceHeading,
+  BalanceSummary,
+  SourceSummary,
+  BalanceSection,
+  ObligationRows,
+  ObligationPreview,
+} from './balance-sections';
+import { RichHelp, balanceHelp, shareHelp } from '@/components/rich-help';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 
 import financialPaletteStyles from '../financial/presentation.module.css';
@@ -65,6 +68,7 @@ import workspaceStyles from '../workspace/patterns.module.css';
 import financialStyles from '../financial/presentation.module.css';
 import workspaceFeatureStyles from './workspace.module.css';
 import overviewFeatureStyles from './overview.module.css';
+import balanceStyles from './balance-sections.module.css';
 
 /** The route validates and owns canonical workspace identity before rendering. */
 type WorkspaceIdentity = Pick<
@@ -126,6 +130,39 @@ export function GroupWorkspaceContent({
   onDenied: () => void;
 }) {
   const params = useSearchParams();
+  const router = useRouter();
+  const sourceToken = params.get('source');
+  const sourceVisit = sourceToken ? scope.visits?.get(sourceToken) : undefined;
+  const contextual = !!(
+    repayment &&
+    sourceVisit &&
+    params.get('sender') &&
+    params.get('recipient') &&
+    params.get('amount')
+  );
+  const closeRepayment = () => {
+    if (!sourceVisit || !sourceToken) return;
+    scope.restored.delete(sourceToken);
+    const target = new URL(sourceVisit.href, window.location.origin);
+    target.searchParams.set('restore', sourceToken);
+    router.replace(target.pathname + target.search, { scroll: false });
+  };
+  const repaymentForm = (
+    <RepaymentForm
+      scope={scope}
+      group={group.id}
+      name={group.name}
+      today={today}
+      sender={params.get('sender') ?? ''}
+      recipient={params.get('recipient') ?? ''}
+      suggested={params.get('amount') ?? ''}
+      members={group.members}
+      onCommitted={onCommitted}
+      onDenied={onDenied}
+      contextual={contextual}
+      viewer={group.viewerMembership.id}
+    />
+  );
   const header = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const element = header.current;
@@ -246,23 +283,38 @@ export function GroupWorkspaceContent({
         </div>
       )}
       {repayment && !completed ? (
-        <RepaymentForm
-          scope={scope}
-          group={group.id}
-          name={group.name}
-          today={today}
-          sender={params.get('sender') ?? ''}
-          recipient={params.get('recipient') ?? ''}
-          suggested={params.get('amount') ?? ''}
-          members={group.members}
-          onCommitted={onCommitted}
-          onDenied={onDenied}
-        />
+        contextual ? (
+          <>
+            <GroupBalances scope={scope} group={group} />
+            <RepaymentPresentation onClose={closeRepayment}>
+              {repaymentForm}
+            </RepaymentPresentation>
+          </>
+        ) : (
+          repaymentForm
+        )
       ) : completed || current === 'Balances' ? (
         <GroupBalances scope={scope} group={group} />
       ) : current === 'Overview' ? (
         <>
           <OverviewMetrics scope={scope} group={group} />
+          <ObligationPreview
+            scope={scope}
+            sources={[
+              {
+                space: group,
+                viewer: group.viewerMembership.id,
+                obligations:
+                  group.balances?.__typename === 'GroupBalances'
+                    ? group.balances.obligations
+                    : undefined,
+                eligible: (id) =>
+                  group.members.some(
+                    (member) => member.id === id && member.canParticipate,
+                  ),
+              },
+            ]}
+          />
           <div
             data-ui="workspace-overview-columns"
             className={overviewFeatureStyles['workspace-overview-columns']}
@@ -311,12 +363,7 @@ export function GroupWorkspaceContent({
                         }
                       />
                       <Money
-                        value={money(
-                          (minor(p.netMinor) < 0n
-                            ? -minor(p.netMinor)
-                            : minor(p.netMinor)
-                          ).toString(),
-                        )}
+                        value={money(p.netMinor).replace(/^-/, '')}
                         currency={group.currency}
                       />
                     </div>
@@ -635,116 +682,98 @@ export function GroupBalances({
   const b = group.balances;
   if (b?.__typename !== 'GroupBalances')
     return (
-      <section data-ui="form-region">
-        <h2>
-          {group.isHousehold ? 'Household expenses' : 'Complete balances'}
-        </h2>
+      <section
+        data-ui="group-balances form-region"
+        className={cx(
+          workspaceFeatureStyles['group-balances'],
+          balanceStyles.view,
+        )}
+      >
+        <BalanceHeading />
+        <BalanceSummary currency={group.currency} positions={[undefined]} />
         <p role="alert">
           Balances are unavailable. This group cannot be shown as settled.
         </p>
-        <Link href={`${spaceHref(group)}?tab=activity`}>
-          View Activity and expense before/after history
-        </Link>
-        <GeneralRepaymentEntry scope={scope} group={group} />
-        <RecentRepayments group={group} />
+        <BalanceSection
+          scope={scope}
+          identity={`group-${group.id}-source`}
+          initiallyOpen
+          summary={
+            <SourceSummary
+              name={group.isHousehold ? 'Household expenses' : group.name}
+              icon={
+                group.isHousehold
+                  ? 'home'
+                  : group.kind === 'TRIP'
+                    ? 'trip'
+                    : 'groups'
+              }
+              detail="Balance unavailable"
+            />
+          }
+        >
+          <p>
+            {group.members.length} members · {group.currency}
+          </p>
+          <Link href={`${spaceHref(group)}?tab=activity`}>
+            View Activity and expense before/after history
+          </Link>
+          <GeneralRepaymentEntry scope={scope} group={group} />
+          <RecentRepayments group={group} />
+        </BalanceSection>
       </section>
     );
+  const viewerPosition = b.positions.find(
+    (p) => p.member.id === group.viewerMembership.id,
+  );
+  const viewerNet = viewerPosition ? minor(viewerPosition.netMinor) : undefined;
+  const sourceStatus =
+    viewerNet === undefined
+      ? 'Your balance is unavailable'
+      : viewerNet < 0n
+        ? `You owe ${money(viewerPosition!.netMinor).replace(/^-/, '')}`
+        : viewerNet > 0n
+          ? `You're owed ${money(viewerNet.toString())}`
+          : b.settled
+            ? 'Settled'
+            : 'Nothing to pay or collect. Other members still owe each other.';
   return (
     <section
-      data-ui="group-balances workspace-panel form-region"
+      data-ui="group-balances form-region"
       className={cx(
         workspaceFeatureStyles['group-balances'],
-        workspaceFeatureStyles['workspace-panel'],
+        balanceStyles.view,
       )}
     >
-      <h2>{group.isHousehold ? 'Household expenses' : 'Balance details'}</h2>
-      <ViewerMetric scope={scope} group={group} />
-      <p>
-        {b.settled
-          ? 'Everyone in this space is settled: each member’s balance is zero.'
-          : 'This group has outstanding balances.'}
-      </p>
-      <BalanceExplanation />
-      <Link href={`${spaceHref(group)}?tab=activity`}>
-        View Activity and expense before/after history
-      </Link>
+      <BalanceHeading />
+      <BalanceSummary
+        currency={group.currency}
+        positions={[
+          b.positions.find((p) => p.member.id === group.viewerMembership.id)
+            ?.netMinor,
+        ]}
+      />
       <BalanceSection
         scope={scope}
-        identity={`group-${group.id}-positions`}
-        summary={<h3>Each member’s balance · {b.positions.length} members</h3>}
-      >
-        <div
-          data-ui="workspace-member-balances"
-          className={cx(
-            overviewFeatureStyles['workspace-member-balances'],
-            financialPaletteStyles['member-palette'],
-          )}
-        >
-          {b.positions.map((p) => (
-            <div
-              data-ui="balance-position"
-              className={workspaceFeatureStyles['balance-position']}
-              key={p.member.id}
-            >
-              <details>
-                <summary
-                  data-ui="balance-row"
-                  className={financialStyles['balance-row']}
-                >
-                  <Member
-                    name={p.member.displayName}
-                    detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
-                  />
-                  <Money
-                    value={money(p.netMinor).replace(/^-/, '')}
-                    currency={group.currency}
-                    focusable={false}
-                  />
-                  <span data-ui="row-detail">
-                    Position details for {p.member.displayName}
-                  </span>
-                </summary>
-                <dl
-                  data-ui="balance-position-facts"
-                  className={workspaceFeatureStyles['balance-position-facts']}
-                >
-                  {[
-                    ['Paid for expenses (+)', p.paidMinor],
-                    ['Expense share (−)', p.owedMinor],
-                    ['Repayments sent (+)', p.sentMinor],
-                    ['Repayments received (−)', p.receivedMinor],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <dt>{label}</dt>
-                      <dd>
-                        <Money value={money(value)} currency={group.currency} />
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <p
-                  aria-label={`Balance calculation for ${p.member.displayName}`}
-                >
-                  {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
-                  {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
-                  {money(p.netMinor)} {group.currency}
-                </p>
-              </details>
-            </div>
-          ))}
-        </div>
-      </BalanceSection>
-      <BalanceSection
-        scope={scope}
-        identity={`group-${group.id}-obligations`}
+        identity={`group-${group.id}-source`}
         initiallyOpen
         summary={
-          <>
-            <h3>Who owes whom</h3>
-            <span> · {b.obligations?.length ?? 0} suggestions</span>
-          </>
+          <SourceSummary
+            name={group.isHousehold ? 'Household expenses' : group.name}
+            icon={
+              group.isHousehold
+                ? 'home'
+                : group.kind === 'TRIP'
+                  ? 'trip'
+                  : 'groups'
+            }
+            detail={sourceStatus}
+          />
         }
       >
+        <p>
+          {b.positions.length} members · {group.currency}
+        </p>
         {!b.obligations?.length && (
           <p>
             {b.settled
@@ -763,9 +792,92 @@ export function GroupBalances({
             )
           }
         />
+        <BalanceSection
+          scope={scope}
+          identity={`group-${group.id}-positions`}
+          summary={
+            <h3>Each member’s balance · {b.positions.length} members</h3>
+          }
+        >
+          <p>
+            {b.settled
+              ? 'Everyone in this space is settled: each member’s balance is zero.'
+              : b.positions.find(
+                    (p) => p.member.id === group.viewerMembership.id,
+                  )?.netMinor === '0'
+                ? 'Nothing to pay or collect. Other members still owe each other.'
+                : 'This group has outstanding balances.'}
+          </p>
+          <div
+            data-ui="workspace-member-balances"
+            className={cx(
+              overviewFeatureStyles['workspace-member-balances'],
+              financialPaletteStyles['member-palette'],
+            )}
+          >
+            {b.positions.map((p) => (
+              <div
+                data-ui="balance-position"
+                className={workspaceFeatureStyles['balance-position']}
+                key={p.member.id}
+              >
+                <details>
+                  <summary
+                    data-ui="balance-row"
+                    className={financialStyles['balance-row']}
+                  >
+                    <Member
+                      name={p.member.displayName}
+                      detail={`${minor(p.netMinor) > 0n ? 'Is owed' : minor(p.netMinor) < 0n ? 'Owes' : 'Net zero'}${p.member.status === 'INACTIVE' ? ' · historical member' : ''}`}
+                    />
+                    <Money
+                      value={money(p.netMinor).replace(/^-/, '')}
+                      currency={group.currency}
+                      focusable={false}
+                    />
+                    <span data-ui="row-detail">
+                      Position details for {p.member.displayName}
+                    </span>
+                  </summary>
+                  <dl
+                    data-ui="balance-position-facts"
+                    className={workspaceFeatureStyles['balance-position-facts']}
+                  >
+                    {[
+                      ['Paid for expenses (+)', p.paidMinor],
+                      ['Expense share (−)', p.owedMinor],
+                      ['Repayments sent (+)', p.sentMinor],
+                      ['Repayments received (−)', p.receivedMinor],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>
+                          <Money
+                            value={money(value)}
+                            currency={group.currency}
+                          />
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p
+                    aria-label={`Balance calculation for ${p.member.displayName}`}
+                  >
+                    {money(p.paidMinor)} − {money(p.owedMinor)} +{' '}
+                    {money(p.sentMinor)} − {money(p.receivedMinor)} ={' '}
+                    {money(p.netMinor)} {group.currency}
+                  </p>
+                </details>
+              </div>
+            ))}
+          </div>
+        </BalanceSection>
+        <Link href={`${spaceHref(group)}?tab=activity`}>
+          View Activity and expense before/after history
+        </Link>
+        <GeneralRepaymentEntry scope={scope} group={group} />
+        <RecentRepayments group={group} />
       </BalanceSection>
-      <GeneralRepaymentEntry scope={scope} group={group} />
-      <RecentRepayments group={group} />
     </section>
   );
 }
@@ -777,19 +889,13 @@ function GeneralRepaymentEntry({
   group: WorkspaceGroup;
 }) {
   return (
-    <>
-      <ScopedLink
-        scope={scope}
-        id={`repay-general-${group.id}`}
-        href={spaceRepaymentHref(group, new URLSearchParams())}
-      >
-        Record an actual transfer
-      </ScopedLink>
-      <p>
-        Choose the people and amount for money already transferred, including
-        partial repayments, overpayments or transfers without a suggestion.
-      </p>
-    </>
+    <ScopedLink
+      scope={scope}
+      id={`repay-general-${group.id}`}
+      href={spaceRepaymentHref(group, new URLSearchParams())}
+    >
+      Record an actual transfer
+    </ScopedLink>
   );
 }
 function RecentRepayments({ group }: { group: WorkspaceGroup }) {

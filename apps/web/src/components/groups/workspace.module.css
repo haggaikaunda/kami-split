@@ -23,7 +23,7 @@
   border-radius: var(--radius-card);
 }
 .group-balances {
-  max-width: 48rem;
+  max-width: 100%;
 }
 .group-balances > [data-ui~='signed-balance'] {
   max-width: 32rem;
@@ -58,6 +58,13 @@
   border: 0;
   padding: 0;
 }
+.balance-position [data-ui~='balance-row'] > [data-ui~='member'] {
+  flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
+}
+.balance-position [data-ui~='member-copy'] {
+  flex: 1;
+}
 .balance-position details {
   font-size: 0.875rem;
   color: var(--color-muted);
@@ -81,6 +88,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem 1.5rem;
+}
+.balance-position-facts > div {
+  min-width: 0;
+  max-width: 100%;
 }
 .balance-position-facts dd {
   margin: 0;

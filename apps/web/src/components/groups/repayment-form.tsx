@@ -20,7 +20,7 @@ import {
 import type { Member } from '@/lib/relay/draft';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { money } from '@/lib/relay/money';
-import { ErrorSummary } from '../ui/primitives';
+import { ErrorSummary, Member as MemberIdentity } from '../ui/primitives';
 
 import formsFeatureStyles from './forms.module.css';
 
@@ -38,7 +38,11 @@ export function RepaymentForm({
   members,
   onCommitted,
   onDenied,
+  contextual = false,
+  viewer,
 }: {
+  contextual?: boolean;
+  viewer?: string;
   scope: FinancialScope;
   group: string;
   name: string;
@@ -219,32 +223,91 @@ export function RepaymentForm({
     );
   }
   const disabled = busy || !!attempt || storageFailed || denied;
+  const amountField = (
+    <div
+      data-ui="financial-field"
+      className={formsFeatureStyles['financial-field']}
+    >
+      <label htmlFor="repayment-amount" data-ui="form-label">
+        Amount (USD)
+      </label>
+      <input
+        id="repayment-amount"
+        inputMode="decimal"
+        value={draft.amount}
+        aria-invalid={submitted && !!checked.errors.amount}
+        onChange={(e) => change({ amount: e.target.value })}
+        data-ui="form-control"
+      />
+    </div>
+  );
+  const recordingExplanation = (
+    <p>
+      Record money already transferred. Recording does not move money. Partial
+      repayments and overpayments are allowed.
+    </p>
+  );
+  const transferNote = (
+    <p role="note" aria-label="Transfer to record">
+      {members.find((member) => member.id === draft.sender)?.displayName ??
+        'Choose sender'}
+      {' paid '}
+      {members.find((member) => member.id === draft.recipient)?.displayName ??
+        'choose recipient'}
+      {' · '}
+      {!checked.errors.amount
+        ? money(checked.amount) + ' USD'
+        : 'Enter a valid amount'}
+      {' · Original group: '}
+      {name}
+    </p>
+  );
   return (
     <section
       data-ui="financial-form-card form-region"
-      className={formsFeatureStyles['financial-form-card']}
+      className={[
+        formsFeatureStyles['financial-form-card'],
+        contextual ? formsFeatureStyles['contextual-repayment'] : '',
+      ].join(' ')}
       aria-labelledby="repayment-heading"
     >
       <h1 id="repayment-heading" tabIndex={-1}>
-        Record repayment · {name}
+        {contextual
+          ? `Settle with ${members.find((member) => member.id === (draft.sender === viewer ? draft.recipient : draft.sender))?.displayName ?? 'a member'}`
+          : `Record repayment · ${name}`}
       </h1>
-      <p>
-        Record money already transferred in this group. Recording does not move
-        money. Partial repayments and overpayments are allowed.
-      </p>
-      <p role="note" aria-label="Transfer to record">
-        {members.find((member) => member.id === draft.sender)?.displayName ??
-          'Choose sender'}
-        {' paid '}
-        {members.find((member) => member.id === draft.recipient)?.displayName ??
-          'choose recipient'}
-        {' · '}
-        {!checked.errors.amount
-          ? money(checked.amount) + ' USD'
-          : 'Enter a valid amount'}
-        {' · Original group: '}
-        {name}
-      </p>
+      {contextual && (
+        <>
+          <p>{name} · USD</p>
+          <div className={formsFeatureStyles['repayment-direction']}>
+            <div>
+              <small>Paid by</small>
+              <MemberIdentity
+                name={
+                  members.find((member) => member.id === draft.sender)
+                    ?.displayName ?? 'Choose sender'
+                }
+              />
+            </div>
+            <span aria-hidden="true">→</span>
+            <div>
+              <small>Received by</small>
+              <MemberIdentity
+                name={
+                  members.find((member) => member.id === draft.recipient)
+                    ?.displayName ?? 'Choose recipient'
+                }
+              />
+            </div>
+          </div>
+        </>
+      )}
+      {!contextual && (
+        <>
+          {recordingExplanation}
+          {transferNote}
+        </>
+      )}
       <p ref={status} role="status" tabIndex={-1}>
         {busy ? 'Working…' : notice}
       </p>
@@ -334,6 +397,12 @@ export function RepaymentForm({
             disabled={disabled}
           >
             <legend>Original group: {name}</legend>
+            {contextual && (
+              <>
+                {amountField}
+                {recordingExplanation}
+              </>
+            )}
             {(['sender', 'recipient'] as const).map((key) => (
               <div
                 data-ui="financial-field"
@@ -361,22 +430,7 @@ export function RepaymentForm({
                 </select>
               </div>
             ))}
-            <div
-              data-ui="financial-field"
-              className={formsFeatureStyles['financial-field']}
-            >
-              <label htmlFor="repayment-amount" data-ui="form-label">
-                Amount (USD)
-              </label>
-              <input
-                id="repayment-amount"
-                inputMode="decimal"
-                value={draft.amount}
-                aria-invalid={submitted && !!checked.errors.amount}
-                onChange={(e) => change({ amount: e.target.value })}
-                data-ui="form-control"
-              />
-            </div>
+            {!contextual && amountField}
             <div
               data-ui="financial-field"
               className={formsFeatureStyles['financial-field']}
@@ -408,6 +462,7 @@ export function RepaymentForm({
                 data-ui="form-control"
               />
             </div>
+            {contextual && transferNote}
             <button type="submit" data-ui="form-button">
               Record repayment
             </button>

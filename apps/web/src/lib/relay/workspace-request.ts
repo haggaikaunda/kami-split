@@ -12,7 +12,7 @@ export function workspaceRequest(
   const variables: journeyWorkspaceQuery['variables'] = {
     id,
     overview: !expense && !repayment && tab === 'overview',
-    balances: repayment || tab === 'balances',
+    balances: repayment || ['overview', 'balances'].includes(tab),
     summary:
       !expense &&
       (repayment || ['overview', 'balances', 'expenses'].includes(tab)),

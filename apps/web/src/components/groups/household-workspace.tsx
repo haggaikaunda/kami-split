@@ -2,12 +2,7 @@
 
 import { cx } from '../ui/classnames';
 
-import {
-  RichHelp,
-  BalanceExplanation,
-  balanceHelp,
-  shareHelp,
-} from '@/components/rich-help';
+import { RichHelp, balanceHelp, shareHelp } from '@/components/rich-help';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import {
@@ -47,7 +42,15 @@ import {
 import { ActivityFeed } from '@/components/activity/feed';
 import { useFinancialSession } from './session';
 import { ScopedLink, RestoreSource } from './navigation';
-import { BalanceSection, ObligationRows } from './balance-sections';
+import {
+  BalanceHeading,
+  BalanceSummary,
+  BalanceSources,
+  SourceSummary,
+  BalanceSection,
+  ObligationRows,
+  ObligationPreview,
+} from './balance-sections';
 
 import { useForegroundRefresh } from './foreground';
 
@@ -70,6 +73,7 @@ import workspaceFeatureStyles from './workspace.module.css';
 import householdFeatureStyles from './household-workspace.module.css';
 import overviewFeatureStyles from './overview.module.css';
 import categoryFeatureStyles from '../financial/category.module.css';
+import balanceStyles from './balance-sections.module.css';
 
 export function HouseholdWorkspace({
   activity = false,
@@ -332,7 +336,7 @@ function HouseholdSummaryRead({
           document={document}
           variables={{
             recent: current === 'Overview',
-            balances: current === 'Balances',
+            balances: current === 'Balances' || current === 'Overview',
           }}
           fallback={loading}
           failure={
@@ -469,182 +473,175 @@ export function HouseholdContent({
         </section>
       ) : current === 'Balances' ? (
         <section
-          data-ui="workspace-panel form-region"
-          className={workspaceFeatureStyles['workspace-panel']}
+          data-ui="household-balance-view form-region"
+          className={balanceStyles.view}
         >
-          <h2>Your balance</h2>
-          {totals && <HouseholdNet totals={totals} />}
-          <BalanceExplanation household />
-          <h3>By group or trip</h3>
+          <BalanceHeading />
+          <BalanceSummary
+            currency="USD"
+            positions={
+              totals
+                ? dashboard.spaces.map((space) =>
+                    space.balances?.__typename === 'GroupBalances'
+                      ? space.viewerNetMinor
+                      : undefined,
+                  )
+                : [undefined]
+            }
+          />
           {totals && (
-            <ul
-              data-ui="household-balances"
-              className={householdFeatureStyles['household-balances']}
+            <BalanceSources
+              scope={scope}
+              identities={dashboard.spaces.map(
+                (space) => `household-${space.groupId}`,
+              )}
             >
-              {dashboard.spaces.map((space) => {
-                const net =
-                  space.viewerNetMinor == null ||
-                  space.balances?.__typename !== 'GroupBalances'
-                    ? undefined
-                    : minor(space.viewerNetMinor);
-                const state =
-                  net === undefined
-                    ? 'unavailable'
-                    : net > 0n
-                      ? 'positive'
-                      : net < 0n
-                        ? 'negative'
-                        : 'zero';
-                const balances = space.balances;
-                const viewer = space.viewerMembership.id;
-                const parties =
-                  balances?.__typename === 'GroupBalances'
-                    ? balances.obligations
-                        .filter(
-                          (o) =>
-                            net !== undefined &&
-                            (net > 0n
-                              ? o.to.id === viewer
-                              : net < 0n && o.from.id === viewer),
-                        )
-                        .map((o) =>
-                          net! > 0n ? o.from.displayName : o.to.displayName,
-                        )
-                    : [];
-                const detail =
-                  net === undefined
-                    ? 'Balance unavailable'
-                    : net > 0n
-                      ? parties.length === 1
-                        ? `${parties[0]} owes you`
-                        : "You're owed in this space"
-                      : net < 0n
-                        ? parties.length === 1
-                          ? `You owe ${parties[0]}`
-                          : 'You owe in this space'
-                        : balances?.__typename === 'GroupBalances' &&
-                            balances.settled
-                          ? space.sharedExpenseCount === '0'
-                            ? 'No shared expenses · Settled'
-                            : 'Settled'
-                          : 'Nothing to pay or collect · Other members still owe each other';
-                return (
-                  <li
-                    key={space.groupId}
-                    data-ui="household-balance"
-                    data-position={state}
-                    className={householdFeatureStyles['household-balance']}
-                  >
-                    <BalanceSection
-                      scope={scope}
-                      identity={`household-${space.groupId}`}
-                      summary={
-                        <>
-                          <span>
-                            <strong
-                              data-ui={`household-source-name household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`}
-                              className={cx(
-                                householdFeatureStyles['household-source-name'],
-                                householdFeatureStyles[
-                                  `household-source-name--${space.kind === 'TRIP' ? 'trip' : 'group'}`
-                                ],
-                              )}
-                            >
-                              <AppIcon
-                                name={
-                                  space.isHousehold
-                                    ? 'home'
-                                    : space.kind === 'TRIP'
-                                      ? 'trip'
-                                      : 'groups'
-                                }
-                              />
-                              <span
-                                data-ui="household-source-label"
-                                className={
-                                  householdFeatureStyles[
-                                    'household-source-label'
-                                  ]
-                                }
-                              >
-                                {space.name} ·{' '}
-                                {space.isHousehold
-                                  ? 'Household expenses'
+              {(open, change) => (
+                <ul
+                  data-ui="household-balances"
+                  className={householdFeatureStyles['household-balances']}
+                >
+                  {dashboard.spaces.map((space) => {
+                    const net =
+                      space.viewerNetMinor == null ||
+                      space.balances?.__typename !== 'GroupBalances'
+                        ? undefined
+                        : minor(space.viewerNetMinor);
+                    const state =
+                      net === undefined
+                        ? 'unavailable'
+                        : net > 0n
+                          ? 'positive'
+                          : net < 0n
+                            ? 'negative'
+                            : 'zero';
+                    const balances = space.balances;
+                    const viewer = space.viewerMembership.id;
+                    const parties =
+                      balances?.__typename === 'GroupBalances'
+                        ? balances.obligations
+                            .filter(
+                              (o) =>
+                                net !== undefined &&
+                                (net > 0n
+                                  ? o.to.id === viewer
+                                  : net < 0n && o.from.id === viewer),
+                            )
+                            .map((o) =>
+                              net! > 0n ? o.from.displayName : o.to.displayName,
+                            )
+                        : [];
+                    const detail =
+                      net === undefined
+                        ? 'Balance unavailable'
+                        : net > 0n
+                          ? parties.length === 1
+                            ? `${parties[0]} owes you`
+                            : "You're owed in this space"
+                          : net < 0n
+                            ? parties.length === 1
+                              ? `You owe ${parties[0]}`
+                              : 'You owe in this space'
+                            : balances?.__typename === 'GroupBalances' &&
+                                balances.settled
+                              ? space.sharedExpenseCount === '0'
+                                ? 'No shared expenses · Settled'
+                                : 'Settled'
+                              : 'Nothing to pay or collect · Other members still owe each other';
+                    return (
+                      <li
+                        key={space.groupId}
+                        data-ui="household-balance"
+                        data-position={state}
+                      >
+                        <BalanceSection
+                          scope={scope}
+                          identity={`household-${space.groupId}`}
+                          open={open[`household-${space.groupId}`] ?? false}
+                          onOpenChange={(value) =>
+                            change(`household-${space.groupId}`, value)
+                          }
+                          summary={
+                            <SourceSummary
+                              name={space.name}
+                              icon={
+                                space.isHousehold
+                                  ? 'home'
                                   : space.kind === 'TRIP'
-                                    ? 'Trip'
-                                    : 'Group'}
-                              </span>
-                            </strong>
-                            <span
-                              data-ui="row-detail"
-                              className={financialStyles['row-detail']}
-                            >
-                              {detail}
-                            </span>
-                          </span>
-                          <span>
-                            {net === undefined ? (
-                              'Unavailable'
-                            ) : (
-                              <Money
-                                value={`${net > 0n ? '+' : ''}${money(space.viewerNetMinor!)}`}
-                                currency={space.currency}
-                                focusable={false}
-                              />
-                            )}
-                          </span>
-                        </>
-                      }
-                    >
-                      {balances?.__typename === 'GroupBalances' ? (
-                        <>
-                          <p>
-                            {balances.settled
-                              ? 'Everyone in this space is settled.'
-                              : 'This space has outstanding balances.'}
-                          </p>
-                          <h4>Who owes whom</h4>
-                          {balances.obligations.length ? (
-                            <ObligationRows
-                              scope={scope}
-                              space={{ ...space, id: space.groupId }}
-                              viewer={viewer}
-                              obligations={balances.obligations}
-                              eligible={(id) =>
-                                balances.obligations.some((obligation) =>
-                                  [obligation.from, obligation.to].some(
-                                    (member) =>
-                                      member.id === id && member.canParticipate,
-                                  ),
-                                )
+                                    ? 'trip'
+                                    : 'groups'
+                              }
+                              detail={
+                                <>
+                                  {detail}
+                                  {net !== undefined && net !== 0n && (
+                                    <>
+                                      {' '}
+                                      ·{' '}
+                                      {money(space.viewerNetMinor!).replace(
+                                        /^-/,
+                                        '',
+                                      )}{' '}
+                                      {space.currency}
+                                    </>
+                                  )}
+                                </>
                               }
                             />
+                          }
+                        >
+                          {balances?.__typename === 'GroupBalances' ? (
+                            <>
+                              <p>
+                                {balances.settled
+                                  ? 'Everyone in this space is settled.'
+                                  : 'This space has outstanding balances.'}
+                              </p>
+                              <h4>Who owes whom</h4>
+                              {balances.obligations.length ? (
+                                <ObligationRows
+                                  scope={scope}
+                                  space={{ ...space, id: space.groupId }}
+                                  viewer={viewer}
+                                  obligations={balances.obligations}
+                                  eligible={(id) =>
+                                    balances.obligations.some((obligation) =>
+                                      [obligation.from, obligation.to].some(
+                                        (member) =>
+                                          member.id === id &&
+                                          member.canParticipate,
+                                      ),
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <p>
+                                  {balances.settled
+                                    ? 'No repayments are needed in this space.'
+                                    : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+                                </p>
+                              )}
+                            </>
                           ) : (
-                            <p>
-                              {balances.settled
-                                ? 'No repayments are needed in this space.'
-                                : 'Repayment suggestions are unavailable; this space still has outstanding balances.'}
+                            <p role="alert">
+                              Balances are unavailable. This space cannot be
+                              shown as settled.
                             </p>
                           )}
-                        </>
-                      ) : (
-                        <p role="alert">
-                          Balances are unavailable. This space cannot be shown
-                          as settled.
-                        </p>
-                      )}
-                      <ScopedLink
-                        scope={scope}
-                        id={`household-source-${space.groupId}`}
-                        href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
-                      >
-                        Complete member positions and recorded repayments
-                      </ScopedLink>
-                    </BalanceSection>
-                  </li>
-                );
-              })}
-            </ul>
+                          <ScopedLink
+                            scope={scope}
+                            id={`household-source-${space.groupId}`}
+                            href={`${spaceHref({ id: space.groupId, isHousehold: space.isHousehold, kind: space.kind })}?tab=balances`}
+                          >
+                            Complete member positions and recorded repayments
+                          </ScopedLink>
+                        </BalanceSection>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </BalanceSources>
           )}
         </section>
       ) : (
@@ -678,6 +675,26 @@ export function HouseholdContent({
                 <Money value={money(totals.viewerShareMinor)} currency="USD" />
               </SummaryMetric>
             </div>
+          )}
+          {totals && (
+            <ObligationPreview
+              scope={scope}
+              sources={dashboard.spaces.map((space) => ({
+                space: { ...space, id: space.groupId },
+                viewer: space.viewerMembership.id,
+                obligations:
+                  space.balances?.__typename === 'GroupBalances'
+                    ? space.balances.obligations
+                    : undefined,
+                eligible: (id) =>
+                  space.balances?.__typename === 'GroupBalances' &&
+                  space.balances.obligations.some((edge) =>
+                    [edge.from, edge.to].some(
+                      (member) => member.id === id && member.canParticipate,
+                    ),
+                  ),
+              }))}
+            />
           )}
           {totals && (
             <div

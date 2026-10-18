@@ -124,7 +124,9 @@ it('uses the shared direct and More workspace routes for ordinary groups and tri
     expect(summaries.querySelectorAll('a')).toHaveLength(0);
     expect(
       host
-        .querySelector('[data-ui~="workspace-overview-balances"] a')
+        .querySelector(
+          '[data-ui~="workspace-overview-balances"] a[href$="?tab=balances"]',
+        )
         ?.getAttribute('href'),
     ).toBe(`${trip ? '/trips' : '/groups'}/G?tab=balances`);
     expect(
@@ -165,7 +167,7 @@ it('states positive means owed and distinguishes zero viewer from unsettled grou
   expect(host.textContent).toContain('Other members still owe each other');
   nav.search = 'tab=balances';
   await render(fixture('0'));
-  expect(host.textContent).toContain('This group has outstanding balances');
+  expect(host.textContent).toContain('Other members still owe each other');
   expect(
     host.querySelectorAll('a[href*="repayments/new?sender="]'),
   ).toHaveLength(2);
@@ -243,10 +245,12 @@ it('explains authoritative expense and repayment contributions with exact displa
     },
   });
   expect(host.textContent).toContain('Household expenses');
-  expect(host.textContent).toContain('Who owes whom');
-  expect(host.textContent).toContain(
-    'including recorded repayments you sent and received',
-  );
+  expect(host.textContent).toContain('3 members · USD');
+  expect(
+    Array.from(host.querySelectorAll('button')).some((button) =>
+      button.textContent?.includes('How balances work'),
+    ),
+  ).toBe(true);
   const calculations = [
     ...host.querySelectorAll('[aria-label^="Balance calculation"]'),
   ].map((node) => node.textContent?.replace(/\s+/g, ' '));
@@ -341,6 +345,24 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
     'Balances are unavailable',
   );
   expect(host.querySelector('[data-ui~="balance-position"]')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('Complete balance unavailable');
+  expect(
+    host.querySelector('#balance-section-group-G-source')?.textContent,
+  ).toContain('Balance unavailable');
   expect(host.textContent).not.toContain('Everyone in this space is settled');
   expect(host.textContent).not.toContain('$0.00');
+});
+
+it('displays a valid minimum signed source position without overflowing its magnitude', async () => {
+  nav.search = 'tab=balances';
+  const group = fixture('-9223372036854775808');
+  await render(group);
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('You owe$92,233,720,368,547,758.08');
+  expect(
+    host.querySelector('#balance-section-group-G-source')?.textContent,
+  ).toContain('You owe $92,233,720,368,547,758.08');
 });

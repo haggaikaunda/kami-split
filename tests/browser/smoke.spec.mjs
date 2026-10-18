@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { writeFile } from 'node:fs/promises';
 import { test, expect } from './fixtures.mjs';
 import { responseFor } from './data.mjs';
 
@@ -1783,8 +1784,14 @@ test('Household balances: independent compact sources, both repayment directions
   );
   await expect(sources).toHaveCount(14);
   await expect(sources.locator(':scope[open]')).toHaveCount(0);
-  await expect(page.locator('[data-ui~="signed-balance"]')).toContainText(
-    'Payments still to settle',
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'You owe$84.20',
+  );
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'You’re owed$84.20',
+  );
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'Net $0.00',
   );
   const last = sources.last().locator('summary').first();
   await last.focus();
@@ -1830,7 +1837,7 @@ test('Household balances: independent compact sources, both repayment directions
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(direction.path);
     await expect(
-      page.getByRole('heading', { name: /Record repayment/ }),
+      page.getByRole('heading', { name: /Settle with/ }),
     ).toBeVisible();
     await expect(page.getByLabel('Sender', { exact: true })).toHaveValue(
       direction.sender,
@@ -1845,7 +1852,7 @@ test('Household balances: independent compact sources, both repayment directions
       direction.name,
     );
     await page
-      .getByRole('link', { name: 'Back to source', exact: true })
+      .getByRole('button', { name: 'Close repayment', exact: true })
       .click();
     await expect(page).toHaveURL(/\/household\?tab=balances&restore=/);
     await expect(page.locator(`#${id}`)).toBeFocused();
@@ -2025,7 +2032,7 @@ test('Balance layout: long names and amounts, keyboard details, ineligible parti
       expect(geometry.font).toBe(textScale === '200%' ? '32px' : '16px');
       if (width === 320 && textScale === '200%') {
         const label = await summary
-          .locator('[data-ui~="household-source-label"]')
+          .locator('[data-ui~="balance-source-copy"]')
           .boundingBox();
         expect(
           label.width,
@@ -2305,6 +2312,737 @@ for (const overlay of ['detail', 'create']) {
     // Finish synthetic response callbacks before the fixture removes routes;
     // denied owner disposal deliberately cancels overlapping protected reads.
     await page.waitForLoadState('networkidle');
+  });
+}
+
+function manySources() {
+  const fixture = structuredClone(responseFor('householdWorkspaceQuery', {}));
+  const dashboard = fixture.householdDashboard;
+  const home = dashboard.spaces[0];
+  dashboard.spaces = Array.from({ length: 6 }, (_, index) => ({
+    ...home,
+    groupId: index === 0 ? 'H' : `compact-${index}`,
+    name: ['Home', 'Maui', 'Friends', 'Cabin', 'London', 'Weekend'][index],
+    isHousehold: index === 0,
+    kind: index % 2 ? 'TRIP' : 'ORDINARY',
+    viewerNetMinor: index === 0 ? '8420' : index === 1 ? '-8420' : '0',
+    balances: {
+      ...home.balances,
+      settled: index > 1,
+      obligations: index === 0 ? home.balances.obligations : [],
+    },
+  }));
+  for (const space of dashboard.spaces) {
+    delete space.id;
+    delete space.__typename;
+  }
+  dashboard.totals.viewerNetMinor = '0';
+  dashboard.totals.activeSpaceCount = '6';
+  return fixture;
+}
+
+test('compact balance hierarchy, independent card controls and normal-content geometry', async ({
+  page,
+  app,
+}, testInfo) => {
+  const fixture = manySources();
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    fixture,
+  );
+  response.release();
+  await app.authenticate();
+  const width = page.viewportSize().width;
+  await page.setViewportSize({ width, height: 844 });
+  await page.goto('/household?tab=balances');
+  const sources = page.locator(
+    '[data-ui~="household-balances"] > li > details',
+  );
+  await expect(sources).toHaveCount(6);
+  const summary = page.locator('[data-ui~="balance-summary"]');
+  await expect(summary).toContainText('You owe$84.20');
+  await expect(summary).toContainText('You’re owed$84.20');
+  await expect(summary).toContainText('Net $0.00');
+  const geometry = await page.evaluate(() => {
+    const box = (selector) => {
+      const { x, y, width, height } = document
+        .querySelector(selector)
+        .getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    return {
+      typography: Object.fromEntries(
+        [
+          ['heading', '[data-ui~="household-balance-view"] h2'],
+          ['amount', '[data-ui~="balance-summary"] [data-ui~="money-value"]'],
+          ['source', '[data-ui~="balance-source-copy"] strong'],
+        ].map(([name, selector]) => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return [
+            name,
+            {
+              size: style.fontSize,
+              weight: style.fontWeight,
+              family: style.fontFamily,
+            },
+          ];
+        }),
+      ),
+      viewport: { width: innerWidth, height: innerHeight },
+      canvas: box('[data-ui~="workspace-content"]'),
+      content: box('[data-ui~="household-balance-view"]'),
+      heading: box('[data-ui~="household-balance-view"] h2'),
+      metrics: box('[data-ui~="balance-summary"]'),
+      sources: [
+        ...document.querySelectorAll(
+          '[data-ui~="household-balances"] > li > details',
+        ),
+      ].map((el) => {
+        const { x, y, width, height } = el.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+      bottom: box('[data-ui~="workspace-navigation-links"]'),
+    };
+  });
+  expect(geometry.typography.heading.size).toBe('18px');
+  expect(geometry.typography.heading.weight).toBe('500');
+  expect(geometry.typography.amount.size).toBe('28px');
+  expect(geometry.typography.amount.weight).toBe('500');
+  expect(geometry.typography.source.size).toBe('14px');
+  expect(geometry.typography.source.weight).toBe('500');
+  if (width === 390) {
+    expect(geometry.sources[0].y).toBeLessThanOrEqual(450);
+    expect(geometry.sources[0].height).toBeGreaterThanOrEqual(76);
+    expect(geometry.sources[0].height).toBeLessThanOrEqual(88);
+    expect(geometry.sources[2].y + geometry.sources[2].height).toBeLessThan(
+      geometry.bottom.y,
+    );
+  }
+  await writeFile(
+    testInfo.outputPath('compact-geometry.json'),
+    JSON.stringify(geometry, null, 2),
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('household-collapsed.png'),
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Expand all', exact: true }).click();
+  await expect(sources.locator(':scope[open]')).toHaveCount(6);
+  await sources.nth(1).locator('summary').first().click();
+  await expect(sources.locator(':scope[open]')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Collapse all', exact: true }).click();
+  await expect(sources.locator(':scope[open]')).toHaveCount(0);
+  const help = page.getByRole('button', { name: 'How balances work' });
+  await help.click();
+  await expect(
+    page.getByRole('dialog', { name: 'How balances work' }),
+  ).toContainText('What you owe in one group');
+  await page.keyboard.press('Escape');
+  await expect(help).toBeFocused();
+});
+
+test('contextual repayment dismisses with draft, source expansion, scroll and focus intact', async ({
+  page,
+  app,
+}, testInfo) => {
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    manySources(),
+  );
+  response.release();
+  await app.authenticate();
+  await page.goto('/household?tab=balances');
+  await page.locator('#balance-section-household-H').click();
+  const trigger = page.locator('#repay-H-M1-M0');
+  await trigger.focus();
+  const before = await page.evaluate(() => scrollY);
+  await page.keyboard.press('Enter');
+  const dialog = page.locator('[data-ui~="repayment-presentation"]');
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole('heading', { name: 'Settle with Brian' }),
+  ).toBeFocused();
+  await expect(page.locator('form')).toHaveCount(1);
+  const modalType = await dialog.evaluate((element) => {
+    const heading = getComputedStyle(
+      element.querySelector('#repayment-heading'),
+    );
+    const member = getComputedStyle(
+      element.querySelector('[data-ui~="member-name"]'),
+    );
+    return {
+      heading: {
+        size: heading.fontSize,
+        line: heading.lineHeight,
+        weight: heading.fontWeight,
+      },
+      member: { size: member.fontSize, weight: member.fontWeight },
+    };
+  });
+  expect(modalType.heading.size).toBe('18px');
+  expect(parseFloat(modalType.heading.line)).toBeCloseTo(23.4, 1);
+  expect(modalType.member).toEqual({ size: '14px', weight: '400' });
+  await writeFile(
+    testInfo.outputPath('repayment-typography.json'),
+    JSON.stringify(modalType, null, 2),
+  );
+  await page.screenshot({ path: testInfo.outputPath('repayment-initial.png') });
+  await expect(dialog.getByLabel('Transfer date')).toBeVisible();
+  const box = await dialog.boundingBox();
+  if (page.viewportSize().width === 390) {
+    expect(box.width).toBe(390);
+    expect(box.y).toBeGreaterThanOrEqual(15);
+  } else {
+    expect(box.x + box.width).toBe(1280);
+    expect(box.width).toBeLessThan(500);
+  }
+  await dialog.getByLabel('Amount (USD)').fill('40.01');
+  await dialog.getByLabel('Optional note').fill('Retained actual transfer');
+  await page.screenshot({ path: testInfo.outputPath('repayment.png') });
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  expect(Math.abs((await page.evaluate(() => scrollY)) - before)).toBeLessThan(
+    4,
+  );
+  await expect(page.locator('#balance-section-household-H')).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await trigger.click();
+  await expect(dialog.getByLabel('Amount (USD)')).toHaveValue('40.01');
+  await expect(dialog.getByLabel('Optional note')).toHaveValue(
+    'Retained actual transfer',
+  );
+  await dialog.getByRole('button', { name: 'Close repayment' }).click();
+  expect(
+    app.requests.some(
+      (request) => request.operation === 'journeyRepaymentMutation',
+    ),
+  ).toBe(false);
+  await page.goto(
+    '/household/ledger?tab=balances&repayment=1&sender=M1&recipient=M0&amount=8420',
+  );
+  await expect(page.locator('[data-ui~="repayment-presentation"]')).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole('heading', { name: 'Record repayment · Home' }),
+  ).toBeVisible();
+});
+
+test('Group compact source keeps member calculations and simple actionable rows inside one expanded card', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  await page.goto('/groups/F?tab=balances');
+  const card = page.locator('#balance-section-group-F-source').locator('..');
+  await expect(card).toHaveAttribute('open', '');
+  await expect(card.locator('summary').first()).toContainText(
+    "You're owed $84.20",
+  );
+  await expect(card.locator('[data-ui~="repayment-row"]')).toHaveCount(1);
+  await expect(
+    card.getByRole('link', { name: 'Record an actual transfer', exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByRole('heading', { name: 'Recent recorded repayments' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('group-source-expanded.png'),
+    fullPage: true,
+  });
+  const members = card
+    .locator('summary')
+    .filter({ hasText: 'Each member’s balance' });
+  await members.click();
+  await expect(card.getByLabel('Balance calculation for Alex')).toBeAttached();
+  await page.screenshot({
+    path: testInfo.outputPath('group-expanded.png'),
+    fullPage: true,
+  });
+});
+
+for (const source of [
+  { id: 'F', path: '/groups/F' },
+  { id: 'T', path: '/trips/T' },
+]) {
+  for (const long of [false, true]) {
+    test(`expanded ${source.id} member positions keep ${long ? 'long' : 'short'} identities readable at enlarged sizes`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      const fixture = structuredClone(
+        responseFor('journeyWorkspaceQuery', { id: source.id }),
+      );
+      const group = fixture.group;
+      const name = long ? 'Alexandria Example Member With A Long Name' : 'Alex';
+      group.members[0].displayName = name;
+      if (long) {
+        const amount = '9223372036854775807';
+        group.balances.positions[0].netMinor = amount;
+        group.balances.positions[0].paidMinor = amount;
+        group.balances.positions[1].netMinor = `-${amount}`;
+        group.balances.positions[1].owedMinor = amount;
+        group.balances.obligations[0].amountMinor = amount;
+      }
+      app
+        .holdMatching(
+          'journeyWorkspaceQuery',
+          (variables) => variables.id === source.id,
+          fixture,
+        )
+        .release();
+      await app.authenticate();
+      await page.goto(`${source.path}?tab=balances`);
+      const disclosure = page.locator(
+        `#balance-section-group-${source.id}-positions`,
+      );
+      await disclosure.focus();
+      await page.keyboard.press('Enter');
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+      const row = page
+        .locator('[data-ui~="balance-position"]')
+        .first()
+        .locator('summary');
+      await expect(row.locator('[data-ui~="member-name"]')).toHaveText(name);
+      await expect(row.locator('[data-ui~="member-detail"]')).toHaveText(
+        'Is owed',
+      );
+      await expect(row.locator('[data-ui~="money-value"]')).toHaveText(
+        long ? '$92,233,720,368,547,758.07' : '$84.20',
+      );
+      const calculations = page.locator(
+        '[data-ui~="balance-position"] > details > summary',
+      );
+      for (const summary of await calculations.all()) {
+        await summary.focus();
+        await page.keyboard.press('Enter');
+        await expect(summary.locator('..')).toHaveAttribute('open', '');
+      }
+      const facts = row
+        .locator('..')
+        .locator('[data-ui~="balance-position-facts"]');
+      const paid = facts.locator('dd [data-ui~="money"]').first();
+      await expect(paid.locator('[data-ui~="money-value"]')).toHaveText(
+        long ? '$92,233,720,368,547,758.07' : '$0.00',
+      );
+      await expect(
+        page.getByLabel(`Balance calculation for ${name}`, { exact: true }),
+      ).toBeVisible();
+      const observations = [];
+      for (const width of [320, 390, 440, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        for (const scale of ['100%', '200%']) {
+          await page.evaluate((value) => {
+            document.documentElement.style.fontSize = value;
+          }, scale);
+          const geometry = await row.evaluate((element) => {
+            const name = element.querySelector('[data-ui~="member-name"]');
+            const copy = element.querySelector('[data-ui~="member-copy"]');
+            const detail = element.querySelector('[data-ui~="member-detail"]');
+            const style = getComputedStyle(name);
+            const facts = element.parentElement.querySelector(
+              '[data-ui~="balance-position-facts"]',
+            );
+            const fact = facts.firstElementChild;
+            const factMoney = fact.querySelector('[data-ui~="money"]');
+            return {
+              factsWidth: facts.getBoundingClientRect().width,
+              factWidth: fact.getBoundingClientRect().width,
+              factMoneyWidth: factMoney.clientWidth,
+              factMoneyScroll: factMoney.scrollWidth,
+              copyWidth: copy.getBoundingClientRect().width,
+              font: parseFloat(style.fontSize),
+              nameHeight: name.getBoundingClientRect().height,
+              detailHeight: detail.getBoundingClientRect().height,
+              lineHeight: parseFloat(style.lineHeight),
+              documentWidth: document.documentElement.clientWidth,
+              documentScroll: document.documentElement.scrollWidth,
+            };
+          });
+          // A usable identity column prevents letter-by-letter wrapping even
+          // when an exact amount must move below it or scroll independently.
+          expect(geometry.copyWidth).toBeGreaterThanOrEqual(geometry.font * 4);
+          expect(geometry.factWidth).toBeLessThanOrEqual(
+            geometry.factsWidth + 1,
+          );
+          expect(geometry.factMoneyWidth).toBeLessThanOrEqual(
+            geometry.factWidth + 1,
+          );
+          if (!long) {
+            expect(geometry.nameHeight).toBeLessThanOrEqual(
+              geometry.lineHeight,
+            );
+            expect(geometry.detailHeight).toBeLessThanOrEqual(
+              geometry.lineHeight + 1,
+            );
+          }
+          expect(geometry.documentScroll).toBeLessThanOrEqual(
+            geometry.documentWidth + 1,
+          );
+          observations.push({ width, scale, ...geometry });
+          if (width === 320 && scale === '200%') {
+            if (long) {
+              await expect(paid).toHaveAccessibleName(
+                '$92,233,720,368,547,758.07 USD',
+              );
+              expect(geometry.factMoneyScroll).toBeGreaterThan(
+                geometry.factMoneyWidth,
+              );
+              await paid.focus();
+              await expect(paid).toBeFocused();
+              for (let step = 0; step < 10; step++)
+                await page.keyboard.press('ArrowRight');
+              await expect
+                .poll(() =>
+                  paid.evaluate(
+                    (element) => element.scrollLeft + element.clientWidth,
+                  ),
+                )
+                .toBeGreaterThanOrEqual(geometry.factMoneyScroll - 1);
+              await paid.screenshot({
+                path: testInfo.outputPath('calculation-amount-end-320-200.png'),
+              });
+              await paid.evaluate((element) => {
+                element.scrollLeft = 0;
+              });
+            }
+            await facts
+              .locator(':scope > div')
+              .first()
+              .screenshot({
+                path: testInfo.outputPath('calculation-fact-320-200.png'),
+              });
+            await row.scrollIntoViewIfNeeded();
+            await page.screenshot({
+              path: testInfo.outputPath('member-position-320-200.png'),
+              fullPage: true,
+            });
+            await row.screenshot({
+              path: testInfo.outputPath('member-row-320-200.png'),
+            });
+          }
+        }
+      }
+      await writeFile(
+        testInfo.outputPath('member-position-geometry.json'),
+        JSON.stringify(observations, null, 2),
+      );
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '';
+      });
+    });
+  }
+}
+
+test('contextual uncertain repayment keeps the original operation across dismissal and explicit recovery', async ({
+  page,
+  app,
+}) => {
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    manySources(),
+  );
+  response.release();
+  let original;
+  let submissions = 0;
+  let recoveries = 0;
+  await page.route('**/api/graphql', async (route) => {
+    const { query, variables } = route.request().postDataJSON();
+    if (query.includes('mutation journeyRepaymentMutation')) {
+      submissions++;
+      if (!original) original = structuredClone(variables.input);
+      expect(variables.input).toEqual(original);
+      return route.fulfill({
+        json: {
+          data: {
+            recordRepayment: {
+              __typename: 'OperationProgress',
+              key: original.key,
+              state: 'UNKNOWN',
+            },
+          },
+        },
+      });
+    }
+    if (query.includes('query journeyRepaymentRecoveryQuery')) {
+      recoveries++;
+      expect(variables).toEqual({ groupId: 'H', key: original.key });
+      return route.fulfill({
+        json: {
+          data: {
+            repaymentOperation: {
+              __typename: 'OperationProgress',
+              key: original.key,
+              state: 'NOT_OBSERVED',
+            },
+          },
+        },
+      });
+    }
+    return route.fallback();
+  });
+  await app.authenticate();
+  await page.goto('/household?tab=balances');
+  await page.locator('#balance-section-household-H').click();
+  const trigger = page.locator('#repay-H-M1-M0');
+  await trigger.click();
+  const dialog = page.locator('[data-ui~="repayment-presentation"]');
+  await dialog.getByLabel('Amount (USD)').fill('40.01');
+  await dialog
+    .getByRole('button', { name: 'Record repayment', exact: true })
+    .click();
+  await expect(
+    dialog.getByRole('heading', { name: 'Unconfirmed original repayment' }),
+  ).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close repayment' }).click();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(dialog.getByLabel('Amount (USD)')).toHaveValue('40.01');
+  await expect(dialog.getByLabel('Amount (USD)')).toBeDisabled();
+  await dialog
+    .getByRole('button', { name: 'Recover original repayment' })
+    .click();
+  await expect.poll(() => recoveries).toBe(1);
+  expect(submissions).toBe(1);
+  await dialog
+    .getByRole('button', { name: 'Retry original repayment' })
+    .click();
+  await expect.poll(() => submissions).toBe(2);
+  await expect(dialog.getByLabel('Amount (USD)')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+});
+
+test('balance and repayment layout retains readable controls across appearance, enlarged text and short viewports', async ({
+  page,
+  app,
+}, testInfo) => {
+  const response = app.holdMatching(
+    'householdWorkspaceQuery',
+    () => true,
+    manySources(),
+  );
+  response.release();
+  await app.authenticate();
+  for (const appearance of ['LIGHT', 'DARK', 'SYSTEM']) {
+    app.setAppearance(appearance);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    for (const width of [320, 390, 440, 1280]) {
+      await page.setViewportSize({ width, height: 480 });
+      await page.goto('/household?tab=balances');
+      await expect(page.locator('html')).toHaveAttribute(
+        'data-theme',
+        appearance === 'LIGHT' ? 'light' : 'dark',
+      );
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '200%';
+      });
+      await page.locator('#balance-section-household-H').click();
+      await page.locator('#repay-H-M1-M0').click();
+      const dialog = page.locator('[data-ui~="repayment-presentation"]');
+      await expect(dialog).toBeVisible();
+      await dialog
+        .getByRole('button', { name: 'Record repayment', exact: true })
+        .scrollIntoViewIfNeeded();
+      await expect(
+        dialog.getByRole('button', { name: 'Record repayment', exact: true }),
+      ).toBeInViewport();
+      const dimensions = await dialog.evaluate((element) => ({
+        width: element.clientWidth,
+        scroll: element.scrollWidth,
+        height: element.getBoundingClientRect().height,
+        viewport: innerHeight,
+      }));
+      expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
+      expect(dimensions.height).toBeLessThanOrEqual(dimensions.viewport);
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `repayment-${appearance}-${width}-200-short.png`,
+        ),
+      });
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#repay-H-M1-M0')).toBeFocused();
+    }
+  }
+});
+
+for (const source of [
+  {
+    name: 'Household',
+    path: '/household',
+    id: 'H',
+    operation: 'householdWorkspaceQuery',
+  },
+  {
+    name: 'Group',
+    path: '/groups/F?tab=overview',
+    id: 'F',
+    operation: 'journeyWorkspaceQuery',
+  },
+  {
+    name: 'Trip',
+    path: '/trips/T?tab=overview',
+    id: 'T',
+    operation: 'journeyWorkspaceQuery',
+  },
+])
+  for (const direction of ['sent', 'received']) {
+    test(`Overview ${source.name} ${direction} obligation opens the original repayment owner and restores the preview`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      const fixture =
+        source.id === 'H'
+          ? manySources()
+          : structuredClone(
+              responseFor('journeyWorkspaceQuery', { id: source.id }),
+            );
+      const group = responseFor('journeyWorkspaceQuery', {
+        id: source.id,
+      }).group;
+      const [viewer, other] = group.members;
+      const edge = {
+        from: direction === 'sent' ? viewer : other,
+        to: direction === 'sent' ? other : viewer,
+        amountMinor: '8420',
+      };
+      if (source.id === 'H') {
+        fixture.householdDashboard.spaces[0].balances.obligations = [edge];
+        fixture.householdDashboard.spaces[0].viewerNetMinor =
+          direction === 'sent' ? '-8420' : '8420';
+        fixture.householdDashboard.totals.viewerNetMinor =
+          direction === 'sent' ? '-16840' : '0';
+      } else {
+        fixture.group.balances.obligations = [edge];
+        fixture.group.balances.positions = fixture.group.balances.positions.map(
+          (position) => ({
+            ...position,
+            netMinor:
+              position.member.id === viewer.id
+                ? direction === 'sent'
+                  ? '-8420'
+                  : '8420'
+                : position.member.id === other.id
+                  ? direction === 'sent'
+                    ? '8420'
+                    : '-8420'
+                  : '0',
+          }),
+        );
+      }
+      const response = app.holdMatching(source.operation, () => true, fixture);
+      response.release();
+      await app.authenticate();
+      await page.goto(source.path);
+      const preview = page.getByRole('region', { name: 'Repayment options' });
+      const trigger = preview.locator(
+        `#repay-${source.id}-${edge.from.id}-${edge.to.id}`,
+      );
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toContainText(
+        source.id === 'H' ? 'Home' : group.name,
+      );
+      expect(
+        app.requests.find((request) => request.operation === source.operation)
+          ?.variables.balances,
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath('overview-preview.png'),
+        fullPage: true,
+      });
+      await trigger.focus();
+      const scroll = await page.evaluate(() => scrollY);
+      await page.keyboard.press('Enter');
+      const dialog = page.locator('[data-ui~="repayment-presentation"]');
+      await expect(dialog).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath('overview-repayment.png'),
+      });
+      await expect(dialog.getByLabel('Sender', { exact: true })).toHaveValue(
+        edge.from.id,
+      );
+      await expect(dialog.getByLabel('Recipient', { exact: true })).toHaveValue(
+        edge.to.id,
+      );
+      await expect(
+        dialog.getByLabel('Amount (USD)', { exact: true }),
+      ).toHaveValue('84.20');
+      const close = dialog.getByRole('button', { name: 'Close repayment' });
+      await close.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(
+        dialog.getByRole('button', { name: 'Record repayment', exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(close).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(trigger).toBeFocused();
+      expect(new URL(page.url()).pathname).toBe(
+        new URL(source.path, 'https://fixture.invalid').pathname,
+      );
+      expect(new URL(page.url()).searchParams.get('tab')).not.toBe('balances');
+      expect(
+        Math.abs((await page.evaluate(() => scrollY)) - scroll),
+      ).toBeLessThan(4);
+      expect(
+        app.requests.some(
+          (request) => request.operation === 'journeyRepaymentMutation',
+        ),
+      ).toBe(false);
+    });
+  }
+
+for (const space of [
+  { id: 'F', path: '/groups/F?tab=balances' },
+  { id: 'T', path: '/trips/T?tab=balances' },
+]) {
+  test(`Unavailable ${space.id} balances retain compact source detail and general actual-transfer access`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    const fixture = structuredClone(
+      responseFor('journeyWorkspaceQuery', { id: space.id }),
+    );
+    fixture.group.balances = { __typename: 'Problem', code: 'UNAVAILABLE' };
+    const response = app.holdMatching(
+      'journeyWorkspaceQuery',
+      () => true,
+      fixture,
+    );
+    response.release();
+    await app.authenticate();
+    await page.goto(space.path);
+    await expect(
+      page.getByRole('heading', { name: 'Your balances' }),
+    ).toBeVisible();
+    const summary = page.locator('[data-ui~="balance-summary"]');
+    await expect(summary).toContainText('Complete balance unavailable');
+    await expect(summary).not.toContainText('$0.00');
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Balances are unavailable' }),
+    ).toBeVisible();
+    await expect(
+      page.locator(`#balance-section-group-${space.id}-source`),
+    ).toContainText('Balance unavailable');
+    await page.screenshot({
+      path: testInfo.outputPath('unavailable-source.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('link', { name: 'Record an actual transfer', exact: true })
+      .click();
+    await expect(page.getByLabel('Amount (USD)', { exact: true })).toHaveValue(
+      '',
+    );
+    await expect(page.getByLabel('Sender', { exact: true })).toHaveValue('');
+    await expect(
+      page.locator('[data-ui~="repayment-presentation"]'),
+    ).toHaveCount(0);
   });
 }
 
