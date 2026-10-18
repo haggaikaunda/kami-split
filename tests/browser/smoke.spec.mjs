@@ -2655,6 +2655,9 @@ for (const source of [
               path: testInfo.outputPath('member-position-320-200.png'),
               fullPage: true,
             });
+            await row.screenshot({
+              path: testInfo.outputPath('member-row-320-200.png'),
+            });
           }
         }
       }

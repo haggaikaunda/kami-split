@@ -60,6 +60,10 @@
 }
 .balance-position [data-ui~='balance-row'] > [data-ui~='member'] {
   flex: 1 1 12rem;
+  min-width: min(100%, 12rem);
+}
+.balance-position [data-ui~='member-copy'] {
+  flex: 1;
 }
 .balance-position details {
   font-size: 0.875rem;
