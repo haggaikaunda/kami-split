@@ -29,10 +29,10 @@ body:
     id: test_notes
     attributes:
       label: Test and risk notes
-      description: Map each criterion to a practical scenario/test surface and meaningful failure or regression case. Note missing tools/evidence and relevant financial, authorization, duplicate or concurrency risks.
+      description: Map each criterion to a practical scenario/test surface and meaningful failure or regression case. For approved-design work, include visual criteria, mobile/desktop states, fixtures and reference/candidate comparison conditions under docs/agents/outcome-verification.md. Note missing evidence and relevant financial, authorization, duplicate or concurrency risks.
   - type: textarea
     id: authority
     attributes:
       label: References and scope approval
-      description: Distinguish authoritative contracts/designs from examples. Record a scope revision and approval provenance if already approved; otherwise mark proposed. Do not self-approve or request existing authorization again.
+      description: Distinguish authoritative contracts/designs from examples. For approved-design work, identify the versioned reference and authorized production exceptions. Record a scope revision and approval provenance if already approved; otherwise mark proposed. Do not self-approve or request existing authorization again.
       placeholder: 'Scope v1 — proposed. Authoritative inputs: ... Illustrative inputs: ... Approval source or outstanding decision: ...'

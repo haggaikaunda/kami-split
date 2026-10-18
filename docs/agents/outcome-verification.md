@@ -43,6 +43,45 @@ decision only when existing authorization does not resolve it. Continue unaffect
 work. Do not hash the entire mutable issue body as its scope identity: progress
 checkboxes and handoff edits are not requirements changes.
 
+## Approved-design conformance
+
+Apply this requirement when the approved scope implements or materially changes
+an approved visual design. Ordinary UI maintenance still needs affected visual
+and interaction checks; nonvisual work does not require a design reference.
+This uses the existing roles and gates, without another approval stage.
+
+- **Issue author:** identify the versioned approved reference and required
+  screens, interactions and states. Translate composition, hierarchy, spacing
+  and density into observable criteria; identify required mobile and desktop
+  coverage, fixture data and comparison conditions. Distinguish authoritative
+  design from sample content, superseded variants and existing approved
+  production exceptions. Missing essential references or expectations leave
+  affected readiness unresolved; a link alone does not establish complete scope.
+- **Independent tester:** render and inspect both reference and candidate in
+  equivalent states at comparable app-content dimensions, excluding prototype
+  demo frames. Use synthetic fixtures for states unavailable in live data.
+  Record criterion-level reference/candidate captures, relevant geometry and
+  visual observations, actual dimensions, appearance/text settings, covered
+  states, differences and limitations, bound to candidate and reference
+  revisions. Name relevant expanded, error and long-content states rather than
+  treating a viewport list as state coverage. Functional tests, an application
+  screenshot or passing snapshot/CI alone cannot establish design conformance.
+  Missing required comparison remains blocked or unverified.
+- **Delivery coordinator:** require applicable independent comparison evidence
+  and resolution of material mismatches before merge. After relevant changes,
+  refresh affected comparisons and explain any retained evidence's applicability
+  to the final candidate. An intentional departure needs an existing authorized
+  exception or scope decision; the tester cannot redefine the approved design
+  to fit the implementation. Use existing approval without requesting it again.
+
+Preserve accessibility, readable reflow, complete financial meaning and current
+production contracts. Normal-content geometry bounds do not authorize clipping,
+hiding required data or shrinking controls to force a match. Do not promote the
+current implementation's screenshots to approved-reference status. Automation
+can check metadata and specific regressions; independent visual judgment owns
+conformance. Use the existing [browser comparison guidance](../browser-verification.md#reference-captures-and-comparisons)
+and its runtime limitations; keep run evidence on the issue/PR or ignored output.
+
 ## Test the outcome independently
 
 Give the tester the live issue and scope revision, candidate base/head, relevant
