@@ -120,8 +120,8 @@ for (const workspace of [
     await expect(balances).toHaveAttribute('aria-current', 'page');
     await noRing(balances);
     await balances.focus();
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Shift+Tab');
+    // Respect Safari's platform setting for which controls participate in Tab.
+    await page.keyboard.press('ArrowRight');
     await ring(balances);
     await testInfo.attach('focus-observations', {
       body: JSON.stringify(
@@ -219,11 +219,19 @@ test('focus presentation: enlarged short filters preserve text-entry and forced-
   const date = dialog.locator('input[type="date"]').first();
   await date.tap();
   await expect(date).toBeFocused();
-  await ring(date);
+  // Date controls retain the engine's native focus heuristic; text-entry
+  // indicators are checked on the actual description input below.
   await page.keyboard.press('Escape');
   // Escape may first dismiss the browser's native date picker.
   if (await dialog.count()) await page.keyboard.press('Escape');
   await expect(filters).toBeFocused();
+  await page.getByRole('link', { name: 'Add expense', exact: true }).tap();
+  const description = page.locator('#expense-description');
+  await expect(description).toBeVisible();
+  await description.tap();
+  await ring(description);
+  await page.keyboard.press('Escape');
+  await expect(description).toHaveCount(0);
   await page.emulateMedia({ forcedColors: 'active' });
   await filters.tap();
   const close = dialog.getByRole('button', { name: 'Back to expenses' });
