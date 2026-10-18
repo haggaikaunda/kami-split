@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/banking"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/diagnostic"
@@ -112,6 +116,29 @@ func run() int {
 	}
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Profiles: profile.New(db), Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}})
 	application := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...)
+	bankingRuntime, err := banking.LoadRuntime(os.LookupEnv)
+	if err != nil || (bankingRuntime != nil && db == nil) {
+		logger.Error("invalid banking runtime configuration or missing database")
+		return 1
+	}
+	if bankingRuntime != nil {
+		service, err := banking.New(db, bankingRuntime.Protector)
+		if err != nil {
+			logger.Error("banking ingress unavailable")
+			return 1
+		}
+		webhookVerifier, err := banking.NewWebhookVerifier(bankingRuntime.Provider, nil)
+		if err != nil {
+			logger.Error("banking ingress unavailable")
+			return 1
+		}
+		handler, err := banking.NewWebhookHandler(webhookVerifier, service)
+		if err != nil {
+			logger.Error("banking ingress unavailable")
+			return 1
+		}
+		application.Use(bankingIngress(handler, logger))
+	}
 	if invitations != nil {
 		handler, err := onboarding.NewHandler(invitations, verifier, os.Getenv("ONBOARDING_ORIGIN"), os.Getenv("ONBOARDING_AUTH_ADMIN_KEY"), logger)
 		if err != nil {
@@ -129,4 +156,22 @@ func run() int {
 		return 1
 	}
 	return 0
+}
+
+// bankingIngress mounts the single verifier and owns one safe diagnostic event
+// per request. It never logs raw errors, URL correlations, headers or bodies.
+func bankingIngress(handler http.Handler, logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.URL.Path, "/banking/webhooks/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			var once sync.Once
+			ctx := diagnostic.WithReporter(r.Context(), func(operation string) {
+				once.Do(func() { logger.ErrorContext(r.Context(), "banking ingress unavailable", "operation", operation) })
+			})
+			handler.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

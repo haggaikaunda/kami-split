@@ -29,8 +29,9 @@ separate #177 scope; these reads introduce no search field or SQL text search.
 
 The internal [banking storage foundation](../../docs/application/banking-storage.md)
 provides owner-private persistence, a separate credential keyring, durable attempts
-and lifecycle fences. Enrollment, worker runtime, banking transport and replacement
-activation remain deferred.
+and lifecycle fences. The [lifecycle worker](../../docs/application/banking-worker.md) implements durable
+cleanup and the sole verified webhook ingress. Enrollment, transaction sync,
+public banking GraphQL transport and replacement activation remain deferred.
 
 ## Design and implementation
 

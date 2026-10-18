@@ -1,11 +1,17 @@
 services:
   api:
+    image: ${COMPOSE_PROJECT_NAME:-kami-split}-api:local
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
       API_ADDR: ':8080'
       API_SHUTDOWN_TIMEOUT: 5s
+      BANKING_ENVIRONMENT:
+      PLAID_CLIENT_ID:
+      PLAID_SECRET:
+      BANKING_KEY_CURRENT:
+      BANKING_KEYS:
     ports:
       - '127.0.0.1:8080:8080'
     read_only: true
@@ -17,6 +23,38 @@ services:
     healthcheck:
       test:
         ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/ready']
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+
+  # Explicit opt-in; no provider credentials or key material are supplied here.
+  worker:
+    profiles: ['banking']
+    image: ${COMPOSE_PROJECT_NAME:-kami-split}-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ['/usr/local/bin/worker']
+    environment:
+      WORKER_ADDR: ':8081'
+      WORKER_SHUTDOWN_TIMEOUT: 5s
+      BANKING_ENVIRONMENT:
+      PLAID_CLIENT_ID:
+      PLAID_SECRET:
+      BANKING_KEY_CURRENT:
+      BANKING_KEYS:
+    ports:
+      - '127.0.0.1:8081:8081'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 10s
+    healthcheck:
+      test:
+        ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8081/ready']
       interval: 5s
       timeout: 2s
       retries: 3

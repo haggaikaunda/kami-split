@@ -59,6 +59,14 @@ jobs:
       - run: docker compose down
       - name: Coordinated local database and API readiness
         run: make dev-up DEV_BUILD_FLAG=--no-build
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: Actual restricted banking worker startup and shutdown
+        env:
+          BANKING_WORKER_SMOKE_DATABASE_URL: postgres://kami_worker:kami-worker-local-only@127.0.0.1:55422/postgres?sslmode=disable
+        run: make banking-worker-smoke
       # Separate cleanup steps ensure Supabase stops even if Compose cleanup fails.
       - if: always()
         run: docker compose -f compose.yaml -f compose.database.yaml down

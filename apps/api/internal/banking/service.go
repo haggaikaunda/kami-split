@@ -1,5 +1,5 @@
-// Package banking owns private storage primitives without provider, worker or
-// transport adapters. Live enrollment remains a separately gated capability.
+// Package banking owns private storage primitives with private lifecycle worker and ingress
+// adapters. Live enrollment remains a separately gated capability.
 package banking
 
 import (
@@ -354,7 +354,7 @@ func (s *Service) ReadSource(ctx context.Context, id uuid.UUID) (Source, Result)
 		if err != nil {
 			return err
 		}
-		source = Source{ID: safeID(row.ID), BindingID: safeID(row.BindingID), Revision: row.Revision, AmountMinor: strconv.FormatInt(row.AmountMinor, 10), Currency: row.Currency, BankDate: row.BankDate.Time.Format("2006-01-02"), ProcessingState: row.ProcessingState}
+		source = Source{ID: safeID(row.ID), BindingID: safeID(row.BindingID), Revision: row.Revision.Int64, AmountMinor: strconv.FormatInt(row.AmountMinor, 10), Currency: row.Currency, BankDate: row.BankDate.Time.Format("2006-01-02"), ProcessingState: row.ProcessingState}
 		outcome = Result{Code: "READY", ID: source.ID}
 		return nil
 	})

@@ -90,7 +90,7 @@ type ReadSourceRow struct {
 	ID                    pgtype.UUID
 	BindingID             pgtype.UUID
 	ProviderTransactionID string
-	Revision              int64
+	Revision              pgtype.Int8
 	AmountMinor           int64
 	Currency              string
 	BankDate              pgtype.Date
