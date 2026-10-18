@@ -58,6 +58,9 @@
   border: 0;
   padding: 0;
 }
+.balance-position [data-ui~='balance-row'] > [data-ui~='member'] {
+  flex: 1 1 12rem;
+}
 .balance-position details {
   font-size: 0.875rem;
   color: var(--color-muted);

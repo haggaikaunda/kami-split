@@ -2565,6 +2565,110 @@ test('Group compact source keeps member calculations and simple actionable rows 
   });
 });
 
+for (const source of [
+  { id: 'F', path: '/groups/F' },
+  { id: 'T', path: '/trips/T' },
+]) {
+  for (const long of [false, true]) {
+    test(`expanded ${source.id} member positions keep ${long ? 'long' : 'short'} identities readable at enlarged sizes`, async ({
+      page,
+      app,
+    }, testInfo) => {
+      const fixture = structuredClone(
+        responseFor('journeyWorkspaceQuery', { id: source.id }),
+      );
+      const group = fixture.group;
+      const name = long ? 'Alexandria Example Member With A Long Name' : 'Alex';
+      group.members[0].displayName = name;
+      if (long) {
+        const amount = '9223372036854775807';
+        group.balances.positions[0].netMinor = amount;
+        group.balances.positions[1].netMinor = `-${amount}`;
+        group.balances.obligations[0].amountMinor = amount;
+      }
+      app
+        .holdMatching(
+          'journeyWorkspaceQuery',
+          (variables) => variables.id === source.id,
+          fixture,
+        )
+        .release();
+      await app.authenticate();
+      await page.goto(`${source.path}?tab=balances`);
+      const disclosure = page.locator(
+        `#balance-section-group-${source.id}-positions`,
+      );
+      await disclosure.focus();
+      await page.keyboard.press('Enter');
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+      const row = page
+        .locator('[data-ui~="balance-position"]')
+        .first()
+        .locator('summary');
+      await expect(row.locator('[data-ui~="member-name"]')).toHaveText(name);
+      await expect(row.locator('[data-ui~="member-detail"]')).toHaveText(
+        'Is owed',
+      );
+      await expect(row.locator('[data-ui~="money-value"]')).toHaveText(
+        long ? '$92,233,720,368,547,758.07' : '$84.20',
+      );
+      const observations = [];
+      for (const width of [320, 390, 440, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        for (const scale of ['100%', '200%']) {
+          await page.evaluate((value) => {
+            document.documentElement.style.fontSize = value;
+          }, scale);
+          const geometry = await row.evaluate((element) => {
+            const name = element.querySelector('[data-ui~="member-name"]');
+            const copy = element.querySelector('[data-ui~="member-copy"]');
+            const detail = element.querySelector('[data-ui~="member-detail"]');
+            const style = getComputedStyle(name);
+            return {
+              copyWidth: copy.getBoundingClientRect().width,
+              font: parseFloat(style.fontSize),
+              nameHeight: name.getBoundingClientRect().height,
+              detailHeight: detail.getBoundingClientRect().height,
+              lineHeight: parseFloat(style.lineHeight),
+              documentWidth: document.documentElement.clientWidth,
+              documentScroll: document.documentElement.scrollWidth,
+            };
+          });
+          // A usable identity column prevents letter-by-letter wrapping even
+          // when an exact amount must move below it or scroll independently.
+          expect(geometry.copyWidth).toBeGreaterThanOrEqual(geometry.font * 4);
+          if (!long) {
+            expect(geometry.nameHeight).toBeLessThanOrEqual(
+              geometry.lineHeight,
+            );
+            expect(geometry.detailHeight).toBeLessThanOrEqual(
+              geometry.lineHeight + 1,
+            );
+          }
+          expect(geometry.documentScroll).toBeLessThanOrEqual(
+            geometry.documentWidth + 1,
+          );
+          observations.push({ width, scale, ...geometry });
+          if (width === 320 && scale === '200%') {
+            await row.scrollIntoViewIfNeeded();
+            await page.screenshot({
+              path: testInfo.outputPath('member-position-320-200.png'),
+              fullPage: true,
+            });
+          }
+        }
+      }
+      await writeFile(
+        testInfo.outputPath('member-position-geometry.json'),
+        JSON.stringify(observations, null, 2),
+      );
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '';
+      });
+    });
+  }
+}
+
 test('contextual uncertain repayment keeps the original operation across dismissal and explicit recovery', async ({
   page,
   app,
