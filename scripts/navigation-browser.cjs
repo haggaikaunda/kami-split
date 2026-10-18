@@ -626,7 +626,7 @@ withAuthFixture(origin, session, async () => {
       await page.goto(origin + '/groups/T?tab=balances');
       await page.waitForURL('**/trips/T?tab=balances');
       await page
-        .getByRole('heading', { name: 'Balances', exact: true })
+        .getByRole('heading', { name: 'Your balances', exact: true })
         .waitFor();
       assert.equal(
         await page
