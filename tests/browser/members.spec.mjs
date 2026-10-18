@@ -212,7 +212,7 @@ for (const workspace of workspaces) {
         .variables,
     ).toEqual({ actionID: 'original-email-action' });
     const history = page.locator('[data-ui~="invitation-history"]');
-    await history.locator('summary').click();
+    await history.getByText('Invitation history', { exact: true }).click();
     await expect(
       history.getByText('Accepted', { exact: true }).first(),
     ).toBeVisible();
