@@ -564,7 +564,8 @@ withAuthFixture(origin, session, async () => {
     });
     if (workspace === 'group') {
       await page.goto(origin + '/groups');
-      await page.getByText('Signed in as Alex').waitFor();
+      await page.getByRole('navigation', { name: 'Group type' }).waitFor();
+      await page.locator('[data-ui~="discovery-cards"]').waitFor();
       const cards = page.locator('[data-ui~="discovery-cards"] a');
       assert.equal(await cards.count(), 2, 'All contains groups and trips');
       assert.equal(await cards.filter({ hasText: 'Maui' }).count(), 1);
@@ -1223,17 +1224,40 @@ withAuthFixture(origin, session, async () => {
       const membersLink = await workspaceLink('Members');
       await membersLink.hover();
       await page.waitForTimeout(delay + 80);
-      denied = true;
       await membersLink.click();
+      await page.locator('[data-ui~="group-members-list"]').waitFor();
+      // A recent Members activation may reuse authorized data. Foregrounding
+      // invalidates that eligibility and must observe the revoked access.
+      denied = true;
+      const deniedRead = page.waitForResponse(async (response) => {
+        if (!response.url().endsWith('/api/graphql')) return false;
+        const { data } = await response.json();
+        return (
+          data?.group?.__typename === 'Problem' &&
+          data.group.code === 'NOT_FOUND'
+        );
+      });
+      await page.evaluate(() =>
+        document.dispatchEvent(new Event('visibilitychange')),
+      );
+      await deniedRead;
+      // A typed access denial disposes the account scope. The auth boundary
+      // routes recovery through sign-in instead of retaining a group heading.
+      await page.waitForURL(
+        (url) =>
+          url.pathname === '/sign-in' &&
+          url.searchParams.get('auth') === 'unavailable',
+      );
       await page
-        .getByRole('heading', { name: 'Group unavailable', exact: true })
+        .getByRole('alert')
+        .filter({ hasText: 'Account verification is unavailable.' })
         .waitFor();
       assert.equal(await page.getByText('Private fixture note').count(), 0);
       assert.equal(
         await page.getByText(group('T').name, { exact: true }).count(),
         0,
       );
-      results.push({ workspace, tabHoverThenRevocationDenied: true });
+      results.push({ workspace, cachedTabForegroundRevocationDenied: true });
     }
     assert.deepEqual(errors, []);
     await page.close();
