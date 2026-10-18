@@ -3629,3 +3629,119 @@ test('Overview exact long amounts and labels reflow without hiding the preview o
     fullPage: true,
   });
 });
+
+// Independent acceptance: coherent financial empty history.
+// A genuinely empty financial history has zero complete totals as well as no rows.
+// Clearing only recent edges would not establish this state.
+for (const source of [
+  { id: 'H', path: '/household', operation: 'householdWorkspaceQuery' },
+  {
+    id: 'F',
+    path: '/groups/F?tab=overview',
+    operation: 'journeyWorkspaceQuery',
+  },
+  {
+    id: 'T',
+    path: '/trips/T?tab=overview',
+    operation: 'journeyWorkspaceQuery',
+  },
+]) {
+  test(`Overview ${source.id} zero-history totals and empty preview remain coherent`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    const data = structuredClone(
+      responseFor(source.operation, { id: source.id, recent: true }),
+    );
+    const zeroBalances = (balances) => {
+      balances.settled = true;
+      balances.totalExpenseMinor = '0';
+      balances.obligations = [];
+      for (const position of balances.positions)
+        for (const field of [
+          'paidMinor',
+          'owedMinor',
+          'sentMinor',
+          'receivedMinor',
+          'netMinor',
+        ])
+          position[field] = '0';
+    };
+    if (source.id === 'H') {
+      for (const key of Object.keys(data.householdDashboard.totals))
+        if (key !== '__typename' && key !== 'activeSpaceCount')
+          data.householdDashboard.totals[key] = '0';
+      for (const space of data.householdDashboard.spaces) {
+        space.viewerNetMinor = '0';
+        space.sharedExpenseCount = '0';
+        zeroBalances(space.balances);
+      }
+      const expenses = data.householdExpenses;
+      expenses.edges = [];
+      expenses.categories = [];
+      expenses.months = [];
+      for (const field of [
+        'totalExpenseMinor',
+        'viewerShareMinor',
+        'viewerPaidMinor',
+        'expenseCount',
+      ])
+        expenses[field] = '0';
+      expenses.pageInfo = { hasNextPage: false, endCursor: null };
+    } else {
+      zeroBalances(data.group.balances);
+      data.group.expenses.edges = [];
+      data.group.expenses.pageInfo = {
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+    }
+    app.holdMatching(source.operation, () => true, data).release();
+    await app.authenticate();
+    await page.goto(source.path);
+    const summary = page.locator('[data-ui~="balance-summary"]');
+    await expect(summary).toContainText('You owe$0.00');
+    await expect(summary).toContainText('You’re owed$0.00');
+    await expect(summary).toContainText('Net $0.00');
+    const preview = page.getByRole('region', {
+      name: 'Your balances',
+      exact: true,
+    });
+    await expect(preview).toContainText('Nothing for you to pay or collect.');
+    await expect(preview.locator('[data-ui~="repayment-row"]')).toHaveCount(0);
+    await expect(
+      preview.getByRole('link', { name: 'View all', exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('[data-ui~="group-expense-list"] a')).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByText(
+        source.id === 'H'
+          ? 'No shared expenses yet.'
+          : 'This group has no expenses.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    if (source.id !== 'H')
+      await expect(page.locator('[data-ui~="overview-spend"]')).toContainText(
+        '$0.00',
+      );
+    const totals = page.locator('[data-ui~="overview-totals"]');
+    await totals.locator('summary').click();
+    await expect(totals).toContainText('Your share$0.00');
+    await expect(totals).toContainText('You paid$0.00');
+    if (source.id === 'H') {
+      await expect(totals).toContainText('0 expenses across 1 spaces');
+      await expect(totals).toContainText('Total shared expenses$0.00');
+    }
+    // Next mounts an empty route announcer with role=alert. Reject actual error copy.
+    await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(
+      0,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`zero-history-${source.id}.png`),
+      fullPage: true,
+    });
+  });
+}
