@@ -37,6 +37,13 @@ allocated-share totals, average-trip spending, budgets, historical reports and
 currency conversion remain deferred. #169 owns cross-space expense connections
 and structured-filter totals; #177 owns future full-text search; #112 owns the UI.
 
+The compact visual revision in #339 and #341 supersedes the historical
+presentation choices below: current Household Overview and Balances show separate
+complete per-source owe/owed totals with subordinate net, and bounded Overview
+repayment links retain each original source. See [current UI behavior](../ui.md#overview).
+The eligibility, exact-money and within-source financial authority in this ADR
+continue to apply.
+
 ## Perspective, derivation and exact amounts
 
 Reuse [ADR-005 S4](../proposals/first-expense/shared.md#s4-complete-money-projections)

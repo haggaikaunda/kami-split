@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<915a486cbbceba13a9c2a0b148656833>>
+ * @generated SignedSource<<fa5b63fc9fb1b8975b3c236fdc872b76>>
  * @lightSyntaxTransform
  */
 
@@ -46,6 +46,9 @@ export type householdWorkspaceQuery$data = {
         readonly effectiveDate: string;
         readonly expenseId: string;
         readonly groupId: string;
+        readonly payer: {
+          readonly displayName: string;
+        };
         readonly totalMinor: string;
         readonly version: string;
       };
@@ -163,17 +166,24 @@ v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "displayName",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "amountMinor",
+  "name": "id",
   "storageKey": null
 },
 v14 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "amountMinor",
+  "storageKey": null
+},
+v15 = {
   "alias": null,
   "args": null,
   "concreteType": "Allocation",
@@ -189,43 +199,43 @@ v14 = {
       "name": "participant",
       "plural": false,
       "selections": [
-        (v12/*:: as any*/)
+        (v13/*:: as any*/)
       ],
       "storageKey": null
     },
-    (v13/*:: as any*/)
+    (v14/*:: as any*/)
   ],
-  "storageKey": null
-},
-v15 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "kind",
+  "name": "name",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isHousehold",
+  "name": "kind",
   "storageKey": null
 },
 v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "currency",
+  "name": "isHousehold",
   "storageKey": null
 },
 v19 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currency",
+  "storageKey": null
+},
+v20 = {
   "alias": null,
   "args": null,
   "concreteType": "GroupSummary",
@@ -233,30 +243,24 @@ v19 = {
   "name": "source",
   "plural": false,
   "selections": [
-    (v12/*:: as any*/),
-    (v15/*:: as any*/),
+    (v13/*:: as any*/),
     (v16/*:: as any*/),
     (v17/*:: as any*/),
-    (v18/*:: as any*/)
+    (v18/*:: as any*/),
+    (v19/*:: as any*/)
   ],
   "storageKey": null
 },
-v20 = {
+v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "viewerNetMinor",
   "storageKey": null
 },
-v21 = [
+v22 = [
+  (v13/*:: as any*/),
   (v12/*:: as any*/),
-  {
-    "alias": null,
-    "args": null,
-    "kind": "ScalarField",
-    "name": "displayName",
-    "storageKey": null
-  },
   {
     "alias": null,
     "args": null,
@@ -358,11 +362,23 @@ return {
                           (v9/*:: as any*/),
                           (v10/*:: as any*/),
                           (v11/*:: as any*/),
-                          (v14/*:: as any*/)
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "Membership",
+                            "kind": "LinkedField",
+                            "name": "payer",
+                            "plural": false,
+                            "selections": [
+                              (v12/*:: as any*/)
+                            ],
+                            "storageKey": null
+                          },
+                          (v15/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v19/*:: as any*/)
+                      (v20/*:: as any*/)
                     ],
                     "storageKey": null
                   }
@@ -434,7 +450,7 @@ return {
                         "name": "viewerPaidMinor",
                         "storageKey": null
                       },
-                      (v20/*:: as any*/),
+                      (v21/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -480,11 +496,11 @@ return {
                 "plural": true,
                 "selections": [
                   (v7/*:: as any*/),
-                  (v15/*:: as any*/),
                   (v16/*:: as any*/),
                   (v17/*:: as any*/),
                   (v18/*:: as any*/),
-                  (v20/*:: as any*/),
+                  (v19/*:: as any*/),
+                  (v21/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -500,7 +516,7 @@ return {
                     "name": "viewerMembership",
                     "plural": false,
                     "selections": [
-                      (v12/*:: as any*/),
+                      (v13/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -550,7 +566,7 @@ return {
                                     "kind": "LinkedField",
                                     "name": "from",
                                     "plural": false,
-                                    "selections": (v21/*:: as any*/),
+                                    "selections": (v22/*:: as any*/),
                                     "storageKey": null
                                   },
                                   {
@@ -560,10 +576,10 @@ return {
                                     "kind": "LinkedField",
                                     "name": "to",
                                     "plural": false,
-                                    "selections": (v21/*:: as any*/),
+                                    "selections": (v22/*:: as any*/),
                                     "storageKey": null
                                   },
-                                  (v13/*:: as any*/)
+                                  (v14/*:: as any*/)
                                 ],
                                 "storageKey": null
                               }
@@ -628,16 +644,29 @@ return {
                           (v9/*:: as any*/),
                           (v10/*:: as any*/),
                           (v11/*:: as any*/),
-                          (v14/*:: as any*/),
-                          (v12/*:: as any*/)
+                          {
+                            "alias": null,
+                            "args": null,
+                            "concreteType": "Membership",
+                            "kind": "LinkedField",
+                            "name": "payer",
+                            "plural": false,
+                            "selections": [
+                              (v12/*:: as any*/),
+                              (v13/*:: as any*/)
+                            ],
+                            "storageKey": null
+                          },
+                          (v15/*:: as any*/),
+                          (v13/*:: as any*/)
                         ],
                         "storageKey": null
                       },
-                      (v19/*:: as any*/)
+                      (v20/*:: as any*/)
                     ],
                     "storageKey": null
                   },
-                  (v12/*:: as any*/)
+                  (v13/*:: as any*/)
                 ],
                 "type": "ExpenseView",
                 "abstractKey": null
@@ -650,16 +679,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "bb41574e576a1cd17e287da0f29c87b9",
+    "cacheID": "36b222f221a06289076bebb4cb4f9540",
     "id": null,
     "metadata": {},
     "name": "householdWorkspaceQuery",
     "operationKind": "query",
-    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      ...householdContentDashboard_4qorL8\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n\nfragment householdContentDashboard_4qorL8 on HouseholdDashboard {\n  state\n  totals {\n    __typename\n    ... on HouseholdDashboardTotals {\n      viewerShareMinor\n      viewerPaidMinor\n      viewerNetMinor\n      openBalanceCount\n      activeSpaceCount\n      totalSharedExpenseMinor\n      totalSharedExpenseCount\n    }\n    ... on Problem {\n      code\n    }\n  }\n  spaces {\n    groupId\n    name\n    kind\n    isHousehold\n    currency\n    viewerNetMinor\n    sharedExpenseCount\n    viewerMembership {\n      id\n      role\n    }\n    balances @include(if: $balances) {\n      __typename\n      ... on GroupBalances {\n        settled\n        obligations {\n          from {\n            id\n            displayName\n            canParticipate\n          }\n          to {\n            id\n            displayName\n            canParticipate\n          }\n          amountMinor\n        }\n      }\n      ... on Problem {\n        code\n      }\n    }\n  }\n}\n"
+    "text": "query householdWorkspaceQuery(\n  $recent: Boolean!\n  $balances: Boolean!\n) {\n  householdDashboard {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on HouseholdDashboard {\n      ...householdContentDashboard_4qorL8\n    }\n  }\n  householdExpenses(first: 4) @include(if: $recent) {\n    __typename\n    ... on Problem {\n      code\n    }\n    ... on ExpenseView {\n      edges {\n        node: snapshot {\n          expenseId\n          version\n          groupId\n          description\n          effectiveDate\n          totalMinor\n          category\n          payer {\n            displayName\n            id\n          }\n          allocations {\n            participant {\n              id\n            }\n            amountMinor\n          }\n          id\n        }\n        source {\n          id\n          name\n          kind\n          isHousehold\n          currency\n        }\n      }\n      id\n    }\n  }\n}\n\nfragment householdContentDashboard_4qorL8 on HouseholdDashboard {\n  state\n  totals {\n    __typename\n    ... on HouseholdDashboardTotals {\n      viewerShareMinor\n      viewerPaidMinor\n      viewerNetMinor\n      openBalanceCount\n      activeSpaceCount\n      totalSharedExpenseMinor\n      totalSharedExpenseCount\n    }\n    ... on Problem {\n      code\n    }\n  }\n  spaces {\n    groupId\n    name\n    kind\n    isHousehold\n    currency\n    viewerNetMinor\n    sharedExpenseCount\n    viewerMembership {\n      id\n      role\n    }\n    balances @include(if: $balances) {\n      __typename\n      ... on GroupBalances {\n        settled\n        obligations {\n          from {\n            id\n            displayName\n            canParticipate\n          }\n          to {\n            id\n            displayName\n            canParticipate\n          }\n          amountMinor\n        }\n      }\n      ... on Problem {\n        code\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "eb147dbef8df3b43f4e3e47e8e861582";
+(node as any).hash = "e0dbb38f312e0cbe942c2c7d654815a4";
 
 export default node;

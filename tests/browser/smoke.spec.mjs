@@ -999,9 +999,9 @@ test('unified directory retains legacy trip filters and canonical source return 
   await expect(
     page.getByRole('heading', { name: 'Recent expenses', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('[data-ui~="summary-row"]').first()).toContainText(
-    'Total spend$3.00',
-  );
+  await expect(
+    page.locator('[data-ui~="overview-spend"]').first(),
+  ).toContainText('Total spend · USDTrip expenses$3.00');
   if (page.viewportSize().width <= 600) await page.goBack();
   else
     await page
@@ -2939,7 +2939,7 @@ for (const source of [
       response.release();
       await app.authenticate();
       await page.goto(source.path);
-      const preview = page.getByRole('region', { name: 'Repayment options' });
+      const preview = page.getByRole('region', { name: 'Your balances' });
       const trigger = preview.locator(
         `#repay-${source.id}-${edge.from.id}-${edge.to.id}`,
       );

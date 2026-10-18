@@ -27,6 +27,9 @@ export const householdWorkspaceQuery = graphql`
             effectiveDate
             totalMinor
             category
+            payer {
+              displayName
+            }
             allocations {
               participant {
                 id

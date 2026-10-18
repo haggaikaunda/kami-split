@@ -180,16 +180,19 @@ onboarding operation rather than an implicit step in creation.
 The canonical group route defaults to Overview. The common Overview, Expenses,
 Balances, Activity and Members navigation uses `tab` in the URL, preserving direct
 entry and history. Ordinary groups use neutral contextual art; trips add travel
-metadata/abstract illustration. Complete server totals and viewer positions drive
-three tonal overview metrics (total, viewer net, and complete viewer share); a zero viewer position does not imply every
-member is settled. Balance details identify each simplified obligation; an eligible
+metadata/abstract illustration. Complete server totals drive a compact Total spend
+band; complete viewer positions drive paired You owe / You’re owed cards and a
+subordinate net/currency line. Complete share and paid values remain reachable in
+Expense totals. A zero viewer position does not imply every member is settled. Balance details identify each simplified obligation; an eligible
 row opens the original source's repayment form with explicit parties and an exact
 suggested amount. A separate **Record an actual transfer** entry supports actual
 same-source transfers without a current suggestion, including when balances are
 settled or unavailable. Existing form validation and current server authorization
 and participant eligibility still apply. Overview metric amounts remain
-informational. A separate source-labeled preview below them exposes up to two
-explicit viewer obligations from the complete authorized projection. Eligible
+informational. A full-width Your balances preview followed by Recent expenses
+retains the same vertical hierarchy on mobile and desktop. The source-labeled
+preview exposes up to two positive, currently eligible viewer obligations from the
+complete authorized projection. Eligible
 rows open the same source-owned repayment form as Balances, contextually in a
 mobile bottom sheet or desktop right drawer for an in-account source visit.
 A metric or net never supplies a counterparty. See
@@ -201,10 +204,12 @@ Owner settings disclose current metadata; metadata editing remains unavailable.
 ## Household workspace
 
 #112 connects `/household` to the complete authorized `householdDashboard` read.
-Overview shows expense face-value total/count, exact signed viewer net/open-space
-count, and complete viewer share with expense-payer amount in a tonal row, followed
-by a source-labeled preview of up to two explicit viewer obligations, then at most
-four source-attributed expenses from `householdExpenses`. Eligible preview rows
+Overview shows paired owe/owed totals derived separately from complete per-space
+viewer positions, with subordinate net/currency. Total shared expenses/counts and
+complete share/paid values remain in the secondary Expense totals disclosure.
+A source-labeled preview of up to two positive eligible viewer obligations precedes
+at most four source-attributed expenses from `householdExpenses`, including payer,
+category, date and per-expense share. Eligible preview rows
 use the same contextual repayment entry described above, retaining their explicit
 original source. Balances uses the complete
 server source set and never derives totals from the recent page. Sources collapse

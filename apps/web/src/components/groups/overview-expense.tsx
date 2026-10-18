@@ -36,6 +36,11 @@ export function OverviewExpenseLink({
           scroll: window.scrollY,
           group,
         });
+        // The source entry owns Back restoration after Next replaces focus.
+        window.history.replaceState(
+          { ...window.history.state, financialRestore: token },
+          '',
+        );
         url.searchParams.set('detailSource', token);
         url.searchParams.set('expense', id);
         url.searchParams.set('expenseGroup', group);

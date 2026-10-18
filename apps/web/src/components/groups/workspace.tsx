@@ -31,11 +31,7 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { tripState } from '@/lib/relay/discovery';
 import { minor, money } from '@/lib/relay/money';
 import { Member } from '../ui/primitives';
-import {
-  Money,
-  SignedBalanceMetric,
-  SummaryMetric,
-} from '../financial/presentation';
+import { Money } from '../financial/presentation';
 import {
   WorkspaceHeader,
   WorkspaceTabs,
@@ -59,7 +55,7 @@ import {
   ObligationRows,
   ObligationPreview,
 } from './balance-sections';
-import { RichHelp, balanceHelp, shareHelp } from '@/components/rich-help';
+import { RichHelp } from '@/components/rich-help';
 import type { journeyWorkspaceQuery } from '@/lib/relay/__generated__/journeyWorkspaceQuery.graphql';
 
 import financialPaletteStyles from '../financial/presentation.module.css';
@@ -297,13 +293,20 @@ export function GroupWorkspaceContent({
         <GroupBalances scope={scope} group={group} />
       ) : current === 'Overview' ? (
         <>
-          <OverviewMetrics scope={scope} group={group} />
+          <OverviewMetrics group={group} />
           <ObligationPreview
+            href={hrefFor('Balances')}
             scope={scope}
             sources={[
               {
                 space: group,
                 viewer: group.viewerMembership.id,
+                netMinor:
+                  group.balances?.__typename === 'GroupBalances'
+                    ? group.balances.positions.find(
+                        (p) => p.member.id === group.viewerMembership.id,
+                      )?.netMinor
+                    : undefined,
                 obligations:
                   group.balances?.__typename === 'GroupBalances'
                     ? group.balances.obligations
@@ -332,55 +335,8 @@ export function GroupWorkspaceContent({
               </div>
               <Expenses scope={scope} group={group} recent />
             </section>
-            <aside
-              data-ui="workspace-overview-balances"
-              className={overviewFeatureStyles['workspace-overview-balances']}
-              aria-label="Overview member balances"
-            >
-              <h2>Balances</h2>
-              <div
-                data-ui="workspace-member-balances"
-                className={cx(
-                  overviewFeatureStyles['workspace-member-balances'],
-                  financialPaletteStyles['member-palette'],
-                )}
-              >
-                {group.balances?.__typename === 'GroupBalances' ? (
-                  group.balances.positions.map((p) => (
-                    <div
-                      data-ui="balance-row"
-                      className={financialStyles['balance-row']}
-                      key={p.member.id}
-                    >
-                      <Member
-                        name={p.member.displayName}
-                        detail={
-                          minor(p.netMinor) > 0n
-                            ? 'Is owed'
-                            : minor(p.netMinor) < 0n
-                              ? 'Owes'
-                              : 'Net zero'
-                        }
-                      />
-                      <Money
-                        value={money(p.netMinor).replace(/^-/, '')}
-                        currency={group.currency}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <p role="alert">Balances are unavailable.</p>
-                )}
-              </div>
-              <p
-                data-ui="overview-balance-note"
-                className={overviewFeatureStyles['overview-balance-note']}
-              >
-                Complete balances · Not affected by expense filters.{' '}
-                <Link href={hrefFor('Balances')}>View balance details</Link>
-              </p>
-            </aside>
           </div>
+          <OverviewTotals group={group} />
           <OverviewExpense
             scope={scope}
             allowed={[group.id]}
@@ -469,117 +425,80 @@ export function GroupWorkspaceContent({
     </div>
   );
 }
-function ViewerMetric({
-  scope,
-  group,
-  disclosure = false,
-}: {
-  scope: FinancialScope;
-  group: WorkspaceGroup;
-  disclosure?: boolean;
-}) {
-  const b = group.balances;
-  const viewer =
-    b?.__typename === 'GroupBalances'
-      ? b.positions.find((p) => p.member.id === group.viewerMembership.id)
-      : undefined;
-  if (!viewer)
-    return (
-      <SummaryMetric
-        label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
-      >
-        <span role="alert">Balances are unavailable</span>
-      </SummaryMetric>
-    );
-  const net = minor(viewer.netMinor),
-    position = net > 0n ? 'positive' : net < 0n ? 'negative' : 'zero';
-  return (
-    <SignedBalanceMetric
-      position={position}
-      label={<RichHelp label="Your balance">{balanceHelp}</RichHelp>}
-      value={money(viewer.netMinor)}
-      currency={group.currency}
-      detail={
-        <>
-          {net === 0n && b?.__typename === 'GroupBalances' && !b.settled
-            ? 'Nothing to pay or collect. Other members still owe each other.'
-            : net > 0n
-              ? "You're owed"
-              : net < 0n
-                ? 'You owe'
-                : 'Nothing to pay or collect'}
-          {disclosure && (
-            <ScopedLink
-              scope={scope}
-              id="view-balance"
-              href={`${spaceHref(group)}?tab=balances`}
-            >
-              View balance
-            </ScopedLink>
-          )}
-        </>
-      }
-    />
+function OverviewMetrics({ group }: { group: WorkspaceGroup }) {
+  const balances =
+    group.balances?.__typename === 'GroupBalances' ? group.balances : undefined;
+  const viewer = balances?.positions.find(
+    (p) => p.member.id === group.viewerMembership.id,
   );
-}
-function OverviewMetrics({
-  scope,
-  group,
-}: {
-  scope: FinancialScope;
-  group: WorkspaceGroup;
-}) {
-  const viewer =
-    group.balances?.__typename === 'GroupBalances'
-      ? group.balances.positions.find(
-          (p) => p.member.id === group.viewerMembership.id,
-        )
-      : undefined;
   return (
-    <div data-ui="summary-row" className={financialStyles['summary-row']}>
-      <SummaryMetric
-        label="Total spend"
-        tone="total"
-        detail={
-          group.isHousehold
-            ? `Household expenses · ${group.currency}`
-            : group.currency
-        }
-        icon={<AppIcon name="expense" />}
-      >
-        {group.balances?.__typename === 'GroupBalances' ? (
+    <>
+      <div className={overviewFeatureStyles.spend} data-ui="overview-spend">
+        <div>
+          <span>Total spend · {group.currency}</span>
+          <h2>
+            {group.trip
+              ? 'Trip expenses'
+              : group.isHousehold
+                ? 'Household expenses'
+                : 'Group expenses'}
+          </h2>
+        </div>
+        {balances ? (
           <Money
-            value={money(group.balances.totalExpenseMinor)}
+            value={money(balances.totalExpenseMinor)}
             currency={group.currency}
           />
         ) : (
-          <span role="alert">Total spend unavailable</span>
+          <strong>Total spend unavailable</strong>
         )}
-      </SummaryMetric>
-      <ViewerMetric scope={scope} group={group} />
-      <SummaryMetric
-        label={<RichHelp label="Your share">{shareHelp}</RichHelp>}
-        tone="share"
-        icon={<AppIcon name="pie" />}
-        detail={
-          viewer ? (
-            <>
-              You paid{' '}
+      </div>
+      <BalanceSummary
+        positions={[viewer?.netMinor]}
+        currency={group.currency}
+      />
+    </>
+  );
+}
+function OverviewTotals({ group }: { group: WorkspaceGroup }) {
+  const balances =
+    group.balances?.__typename === 'GroupBalances' ? group.balances : undefined;
+  const viewer = balances?.positions.find(
+    (p) => p.member.id === group.viewerMembership.id,
+  );
+  return (
+    <details className={overviewFeatureStyles.totals} data-ui="overview-totals">
+      <summary>Expense totals</summary>
+      {viewer ? (
+        <dl>
+          <div>
+            <dt>Your share</dt>
+            <dd>
+              <Money
+                value={money(viewer.owedMinor)}
+                currency={group.currency}
+              />
+            </dd>
+          </div>
+          <div>
+            <dt>You paid</dt>
+            <dd>
               <Money
                 value={money(viewer.paidMinor)}
                 currency={group.currency}
               />
-            </>
-          ) : undefined
-        }
-      >
-        {viewer ? (
-          <Money value={money(viewer.owedMinor)} currency={group.currency} />
-        ) : (
-          <span role="alert">Your share is unavailable</span>
-        )}
-      </SummaryMetric>
-    </div>
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <p role="alert">Complete expense totals are unavailable.</p>
+      )}
+      {viewer?.netMinor === '0' && balances && !balances.settled && (
+        <p>
+          Nothing for you to pay or collect. Other members still owe each other.
+        </p>
+      )}
+    </details>
   );
 }
 function Expenses({
@@ -635,7 +554,7 @@ function Expenses({
                       data-ui="row-detail"
                       className={financialStyles['row-detail']}
                     >
-                      {edge.node.payer.displayName} paid ·{' '}
+                      {group.name} ·{' '}
                       <time dateTime={edge.node.effectiveDate}>
                         {overviewDate(
                           edge.node.effectiveDate,
@@ -644,6 +563,12 @@ function Expenses({
                         )}
                       </time>
                     </span>
+                  </span>
+                  <span
+                    data-ui="overview-expense-payer"
+                    className={overviewFeatureStyles.payer}
+                  >
+                    Paid by {edge.node.payer.displayName}
                   </span>
                   <span
                     data-ui="overview-expense-price"

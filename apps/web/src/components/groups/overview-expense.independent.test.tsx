@@ -94,6 +94,10 @@ it('returns an in-session overview selection through Back so Forward can reopen 
   );
   await act(async () => host.querySelector('a')!.click());
   expect(state.push).toHaveBeenCalledOnce();
+  expect(scope.visits.has(window.history.state.financialRestore)).toBe(true);
+  expect(scope.visits.get(window.history.state.financialRestore)?.focus).toBe(
+    'expense-expense',
+  );
   window.history.pushState({}, '', state.push.mock.calls[0][0]);
   await renderDetail();
   expect(host.textContent).toContain('Authorized detail home:expense');

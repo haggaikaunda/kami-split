@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { AppIcon } from '@/components/workspace-identity';
 import { RichHelp, BalanceExplanation } from '@/components/rich-help';
 import { Money } from '../financial/presentation';
@@ -212,6 +213,7 @@ export function BalanceSources({
 type ObligationSource = {
   space: SpaceRoute & { name: string; currency: string };
   viewer: string;
+  netMinor?: string | null;
   obligations: readonly BalanceObligation[] | undefined;
   eligible: (id: string) => boolean;
 };
@@ -220,7 +222,9 @@ type ObligationSource = {
 export function ObligationPreview({
   scope,
   sources,
+  href,
 }: {
+  href?: string;
   scope: FinancialScope;
   sources: readonly ObligationSource[];
 }) {
@@ -229,26 +233,41 @@ export function ObligationPreview({
       (source.obligations ?? [])
         .filter(
           (edge) =>
-            edge.from.id === source.viewer || edge.to.id === source.viewer,
+            (edge.from.id === source.viewer || edge.to.id === source.viewer) &&
+            source.eligible(edge.from.id) &&
+            source.eligible(edge.to.id) &&
+            minor(edge.amountMinor) > 0n,
         )
         .map((edge) => ({ source, edge })),
     )
     .slice(0, 2);
   const unavailable = sources.some(
-    (source) => source.obligations === undefined,
+    (source) => source.obligations === undefined || source.netMinor == null,
   );
-  if (!rows.length && !unavailable) return null;
+  const outstanding = sources.some(
+    (source) => source.netMinor != null && minor(source.netMinor) !== 0n,
+  );
   return (
     <section
       data-ui="obligation-preview"
       className={styles.preview}
-      aria-label="Repayment options"
+      aria-label="Your balances"
     >
-      <h3>Repayment options</h3>
+      <div className={styles.heading}>
+        <h2>Your balances</h2>
+        {href && <Link href={href}>View all</Link>}
+      </div>
       {unavailable && (
         <p>
           Some repayment options are unavailable. Open Balances for current
           source details.
+        </p>
+      )}
+      {!rows.length && !unavailable && (
+        <p>
+          {outstanding
+            ? 'Open Balances for current repayment choices and source details.'
+            : 'Nothing for you to pay or collect.'}
         </p>
       )}
       {rows.map(({ source, edge }) => (
