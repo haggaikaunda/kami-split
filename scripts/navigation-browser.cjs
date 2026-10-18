@@ -1063,7 +1063,7 @@ withAuthFixture(origin, session, async () => {
           'mobile detail covers full viewport height from top',
         );
         await page
-          .getByRole('button', { name: 'Back to expenses', exact: true })
+          .getByRole('button', { name: 'Close expense', exact: true })
           .waitFor();
       } else {
         assert(
