@@ -26,7 +26,7 @@ import type { FinancialScope } from '@/lib/relay/environment';
 import { ErrorSummary, Button } from '../ui/primitives';
 import creationStyles from './creation.module.css';
 
-import formsFeatureStyles from './forms.module.css';
+import { AppIcon } from '@/components/workspace-identity';
 
 type Outcome =
   | journeyGroupCreationMutation['response']['createGroup']
@@ -84,6 +84,7 @@ export function CreationForm({
     alive.current && scope.isLive() && document.visibilityState !== 'hidden';
   useEffect(() => {
     alive.current = true;
+    document.getElementById('creation-heading')?.focus({ preventScroll: true });
     return () => {
       alive.current = false;
     };
@@ -250,20 +251,52 @@ export function CreationForm({
     );
   }
   const disabled = busy || !!attempt || storageFailed || denied;
+  function field(
+    key: 'name' | 'destination' | 'startDate' | 'endDate',
+    label: string,
+    placeholder?: string,
+  ) {
+    return (
+      <div className={creationStyles.field}>
+        <label htmlFor={`creation-${key}`} data-ui="form-label">
+          {label}
+        </label>
+        <input
+          id={`creation-${key}`}
+          type={key.endsWith('Date') ? 'date' : 'text'}
+          value={draft[key]}
+          onChange={(e) => change({ [key]: e.target.value })}
+          placeholder={placeholder}
+          autoComplete="off"
+          required={key !== 'destination'}
+          aria-invalid={!!errors[key]}
+          aria-describedby={errors[key] ? `creation-${key}-error` : undefined}
+          data-ui="form-control"
+        />
+        {errors[key] && (
+          <p id={`creation-${key}-error`} className={creationStyles.error}>
+            {errors[key]}
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <section
-      data-ui="financial-form-card creation-form form-region"
-      className={`${formsFeatureStyles['creation-form']} ${creationStyles.form}`}
+      data-ui="creation-form form-region"
+      className={creationStyles.form}
       aria-labelledby="creation-heading"
     >
-      <h2 id="creation-heading" tabIndex={-1}>
-        Create {draft.kind === 'TRIP' ? 'trip' : 'group'}
-      </h2>
-      <p className={creationStyles.intro}>
-        {draft.kind === 'TRIP'
-          ? 'Expenses for a journey together.'
-          : 'Ongoing shared expenses.'}
-      </p>
+      <Link
+        className={creationStyles.back}
+        href={returnHref ?? '/groups'}
+        scroll={false}
+      >
+        <span aria-hidden="true">←</span> Groups
+      </Link>
+      <h1 id="creation-heading" tabIndex={-1}>
+        Create a shared space
+      </h1>
       <p
         className={creationStyles.status}
         ref={status}
@@ -273,11 +306,11 @@ export function CreationForm({
         {busy ? 'Working…' : notice}
       </p>
       {attempt && (
-        <aside
-          data-ui="financial-recovery"
-          className={formsFeatureStyles['financial-recovery']}
-        >
+        <aside data-ui="financial-recovery" className={creationStyles.recovery}>
           <h3>Unconfirmed original creation</h3>
+          <Link href={returnHref ?? '/groups'} scroll={false}>
+            Inspect your groups
+          </Link>
           <p>
             The original name, type, trip fields and key are frozen. Leaving
             preserves this attempt in this tab.
@@ -311,10 +344,7 @@ export function CreationForm({
         </aside>
       )}
       {!attempt && !denied && storageFailed && (
-        <aside
-          data-ui="financial-recovery"
-          className={formsFeatureStyles['financial-recovery']}
-        >
+        <aside data-ui="financial-recovery" className={creationStyles.recovery}>
           <p>
             Saved creation cannot be safely read or saved. If tab storage was
             lost, an earlier creation may have completed. Inspect your groups
@@ -396,83 +426,64 @@ export function CreationForm({
           />
           <fieldset
             data-ui="financial-entry-fields form-fieldset"
-            className={formsFeatureStyles['financial-entry-fields']}
+            className={creationStyles.fields}
             disabled={disabled}
           >
             <legend>Group details</legend>
             <div
-              data-ui="financial-field"
-              className={formsFeatureStyles['financial-field']}
+              role="group"
+              aria-label="Space type"
+              id="creation-kind"
+              className={creationStyles.kind}
             >
-              <label htmlFor="creation-kind" data-ui="form-label">
-                Type
-              </label>
-              <select
-                id="creation-kind"
-                value={draft.kind}
-                onChange={(e) =>
-                  change({ kind: e.target.value as CreationDraft['kind'] })
-                }
-                data-ui="form-control"
-              >
-                <option value="ORDINARY">Group</option>
-                <option value="TRIP">Trip</option>
-              </select>
+              {(['ORDINARY', 'TRIP'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={draft.kind === value}
+                  onClick={() => change({ kind: value })}
+                >
+                  <AppIcon name={value === 'TRIP' ? 'trip' : 'groups'} />
+                  {value === 'TRIP' ? 'Trip' : 'Group'}
+                </button>
+              ))}
             </div>
-            {(
-              [
-                'name',
-                ...(draft.kind === 'TRIP'
-                  ? (['destination', 'startDate', 'endDate'] as const)
-                  : []),
-              ] as const
-            ).map((key) => (
-              <div
-                data-ui="financial-field"
-                className={formsFeatureStyles['financial-field']}
-                key={key}
-              >
-                <label htmlFor={`creation-${key}`} data-ui="form-label">
-                  {
-                    {
-                      name: 'Name',
-                      destination: 'Destination (optional)',
-                      startDate: 'Start date',
-                      endDate: 'End date',
-                    }[key]
-                  }
-                </label>
-                <input
-                  id={`creation-${key}`}
-                  type={key.endsWith('Date') ? 'date' : 'text'}
-                  value={draft[key]}
-                  onChange={(e) => change({ [key]: e.target.value })}
-                  aria-invalid={!!errors[key]}
-                  aria-describedby={
-                    errors[key] ? `creation-${key}-error` : undefined
-                  }
-                  data-ui="form-control"
-                />
-                {errors[key] && (
-                  <p id={`creation-${key}-error`}>{errors[key]}</p>
+            <p className={creationStyles.intro}>
+              {draft.kind === 'TRIP'
+                ? 'For a journey together.'
+                : 'For ongoing shared expenses.'}
+            </p>
+            {field(
+              'name',
+              draft.kind === 'TRIP' ? 'Trip name' : 'Group name',
+              draft.kind === 'TRIP'
+                ? 'e.g. Summer in Italy'
+                : 'e.g. Friday dinners',
+            )}
+            {draft.kind === 'TRIP' && (
+              <>
+                {field(
+                  'destination',
+                  'Destination (optional)',
+                  'e.g. Maui, Hawaii',
                 )}
-              </div>
-            ))}
-            <div className={creationStyles.currency}>
-              <label htmlFor="creation-currency" data-ui="form-label">
-                Currency
-              </label>
-              <input
-                id="creation-currency"
-                value="USD — US Dollar"
-                readOnly
-                data-ui="form-control"
-              />
-              <span>
-                Currency: USD. Only you are added as owner. Invite others after
-                creation.
-              </span>
+                <div className={creationStyles.dates}>
+                  {field('startDate', 'Start date')}
+                  {field('endDate', 'End date')}
+                </div>
+              </>
+            )}
+            <div
+              className={creationStyles.currency}
+              role="group"
+              aria-label="Currency"
+            >
+              <span>Currency</span>
+              <strong>USD · US Dollar</strong>
             </div>
+            <p className={creationStyles.note}>
+              You can invite others after creating this space.
+            </p>
             <div className={creationStyles.actions}>
               <Link href={returnHref ?? '/groups'} scroll={false}>
                 Cancel
@@ -483,19 +494,6 @@ export function CreationForm({
             </div>
           </fieldset>
         </form>
-      )}
-      {!attempt && !denied && !storageFailed && (
-        <details className={creationStyles.help}>
-          <summary>Missing a previous creation?</summary>
-          <p>
-            If tab storage was lost, an earlier creation may have completed.
-            Inspect your groups before deliberately creating another; a new key
-            cannot deduplicate a lost attempt.
-          </p>
-          <Link href={returnHref ?? '/groups'} scroll={false}>
-            Inspect your groups
-          </Link>
-        </details>
       )}
     </section>
   );

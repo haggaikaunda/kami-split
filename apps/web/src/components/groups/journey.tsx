@@ -166,7 +166,7 @@ export function GroupJourney({
                 : workspaceFeatureStyles['journey-page-heading']
             }
           >
-            {!initialGroup && (
+            {!initialGroup && !creation && (
               <h1 data-page-heading tabIndex={-1}>
                 Groups
               </h1>

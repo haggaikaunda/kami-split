@@ -1,143 +1,199 @@
-.choices {
-  container: creation-choices / inline-size;
-  display: grid;
-  gap: 0.5rem;
-}
-.choice {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 4.5rem;
-  padding: 0.75rem 0;
-  color: var(--color-ink);
-  text-decoration: none;
-  border-bottom: 1px solid var(--color-separator);
-}
-.choice:last-child {
-  border-bottom: 0;
-}
-.choice strong {
-  display: block;
-  font-weight: 500;
-}
-.choice small {
-  display: block;
-  color: var(--color-muted);
-  font-size: 0.8125rem;
-  margin-top: 0.25rem;
-}
-.icon {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
-  background: var(--color-container);
-  color: var(--color-primary);
-}
 .form {
+  max-width: 35rem;
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
   min-width: 0;
+  container: creation / inline-size;
   overflow-wrap: break-word;
 }
-.form h2 {
-  margin: 0 2.5rem 0.5rem 0;
-  font-size: 1.125rem;
-  font-weight: 500;
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--target-size);
+  color: var(--color-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+.form h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.03125rem;
+  margin: 1rem 0 1.25rem;
+}
+.form .fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.fields legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.kind {
+  display: flex;
+  gap: 0.375rem;
+  padding: 5px;
+  border-radius: 14px;
+  background: var(--color-subtle);
+  margin-bottom: 0.5rem;
+}
+.kind button {
+  display: inline-flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2.875rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+}
+.kind button[aria-pressed='true'] {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px #00000010;
+}
+.kind button:disabled {
+  opacity: 0.65;
 }
 .intro {
   color: var(--color-muted);
   font-size: 0.875rem;
-  margin: 0 0 1rem;
+  margin: 0 0 1.5rem;
 }
-.status:empty {
-  display: none;
-}
-.help {
-  margin: 0 0 1.25rem;
-  color: var(--color-muted);
-  font-size: 0.8125rem;
-}
-.help summary {
-  cursor: pointer;
-  min-height: 2.75rem;
-  display: list-item;
-  align-content: center;
-}
-.help p {
-  margin: 0.5rem 0;
-}
-.help a {
-  display: inline-block;
-  min-height: 2.75rem;
-  padding-block: 0.5rem;
-}
-.form [data-ui~='financial-entry-fields'] {
-  display: grid;
-  padding: 0;
-  border: 0;
-  gap: 1.25rem;
-  margin: 1.5rem 0 0;
-}
-.form legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  clip-path: inset(50%);
-  overflow: hidden;
-}
-.form [data-ui~='financial-field'] {
+.field {
   min-width: 0;
+  margin-bottom: 1.25rem;
 }
-.form [data-ui~='form-control'] {
+.field [data-ui~='form-label'] {
+  position: static;
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0 0 7px;
+}
+.field [data-ui~='form-control'] {
   width: 100%;
   min-width: 0;
+  min-height: 3rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  background: var(--color-surface);
+  color: var(--color-ink);
   font-size: max(1rem, 16px);
 }
+.field [aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.field input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.8;
+}
+.dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
 .currency {
-  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 14px;
+  border-block: 1px solid var(--color-separator);
+  font-size: 0.875rem;
 }
 .currency span {
-  display: block;
   color: var(--color-muted);
-  font-size: 0.75rem;
-  margin-top: 0.5rem;
+}
+.currency strong {
+  font-weight: 600;
+}
+.note {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin: 14px 0 22px;
 }
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
-  border-top: 1px solid var(--color-separator);
-  padding-top: 1rem;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 .actions a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: var(--target-size);
-  padding-inline: 0.75rem;
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
   color: var(--color-ink);
   text-decoration: none;
 }
-@container creation-choices (max-width: 14em) {
-  .choice {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .icon {
-    grid-column: 1 / -1;
-  }
+.status:empty {
+  display: none;
 }
-
-.form [data-ui~='financial-field'] [data-ui~='form-control'] {
-  background: var(--color-surface);
+.recovery {
+  padding: 1rem;
+  border-radius: var(--radius-control);
+  background: var(--color-subtle);
+  margin-bottom: 1.5rem;
 }
-
-.form [data-ui~='status'],
-.form [data-ui~='financial-recovery'] {
-  padding: 0.5rem;
+.recovery h3 {
+  font-size: 1rem;
+}
+.recovery button,
+.recovery a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  margin: 0.25rem;
+}
+.error {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0;
+}
+.form [data-ui~='status'] {
+  padding: min(1rem, 12px);
 }
 .form [data-ui~='status'] ul {
   padding-inline-start: 1em;
+}
+@container creation (max-width: 20em) {
+  .form [data-ui~='status'] {
+    padding: 4px;
+  }
+  .dates {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+@media (max-width: 600px) {
+  .form h1 {
+    font-size: 1.375rem;
+    margin-top: 0.75rem;
+  }
+}
+
+@container creation (max-width: 14em) {
+  .kind button {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.375rem 2px;
+  }
 }

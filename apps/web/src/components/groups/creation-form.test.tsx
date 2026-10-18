@@ -107,19 +107,17 @@ function edit(id: string, value: string) {
 }
 it('defaults entry types and UTC dates, has no member picker or editable currency', async () => {
   await render('TRIP');
-  expect(
-    (host.querySelector('#creation-kind') as HTMLSelectElement).value,
-  ).toBe('TRIP');
+  expect(button('Trip').getAttribute('aria-pressed')).toBe('true');
   expect(
     (host.querySelector('#creation-startDate') as HTMLInputElement).value,
   ).toBe('2026-10-04');
-  expect(host.querySelectorAll('select')).toHaveLength(1);
-  expect(host.textContent).toContain('Currency: USD');
-  expect(
-    (host.querySelector('#creation-currency') as HTMLInputElement).readOnly,
-  ).toBe(true);
+  expect(host.querySelectorAll('select')).toHaveLength(0);
+  expect(host.querySelector('[aria-label=Currency]')?.textContent).toBe(
+    'CurrencyUSD · US Dollar',
+  );
+  expect(host.querySelector('[aria-label=Currency] input')).toBeNull();
   expect(host.querySelector('input[type=checkbox]')).toBeNull();
-  expect(host.querySelector('details')?.open).toBe(false);
+  expect(host.querySelector('details')).toBeNull();
   expect(button('Create trip').disabled).toBe(false);
   await render('ORDINARY', 'ordinary');
   expect(host.querySelector('#creation-startDate')).toBeNull();
@@ -209,7 +207,7 @@ it('definitive rejection enables correction with a new attempt key and field err
   );
 });
 it.each(['ORDINARY', 'TRIP'] as const)(
-  'freshly authorizes completed %s before its canonical route and clears only confirmed accessible results',
+  'freshly authorizes a recovered Trip from %s entry before its canonical route and clears only confirmed accessible results',
   async (kind) => {
     const a = frozen();
     network.read
@@ -326,16 +324,10 @@ it('unwritable storage sends nothing', async () => {
 
 it('persists a pre-submit type change and preserves its recovered identity and dates', async () => {
   await render();
-  const select = host.querySelector('#creation-kind') as HTMLSelectElement;
-  await act(async () => {
-    select.value = 'TRIP';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    edit('name', 'Spring trip');
-  });
+  await act(async () => button('Trip').click());
+  await act(async () => edit('name', 'Spring trip'));
   await render('ORDINARY', 'reloaded');
-  expect(
-    (host.querySelector('#creation-kind') as HTMLSelectElement).value,
-  ).toBe('TRIP');
+  expect(button('Trip').getAttribute('aria-pressed')).toBe('true');
   expect((host.querySelector('#creation-name') as HTMLInputElement).value).toBe(
     'Spring trip',
   );
