@@ -1,0 +1,10 @@
+/* Opt in only known navigation/overlay targets, never text entry. Native
+   high-contrast focus remains in charge when forced colors are active. */
+@media (forced-colors: none) {
+  :global(html[data-focus-input='pointer']) .pointer-focus:focus-visible,
+  :global(html[data-focus-input='pointer'])
+    .pointer-navigation
+    :is(a, button):focus-visible {
+    outline: none;
+  }
+}

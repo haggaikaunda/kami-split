@@ -6,6 +6,7 @@ import { acquireBodyScrollLock } from '../ui/scroll-lock';
 import { AppIcon } from '@/components/workspace-identity';
 import { cx } from '../ui/classnames';
 
+import focusStyles from '../ui/focus.module.css';
 import formLayoutStyles from '../ui/form-layout.module.css';
 import dialogFeatureStyles from './dialog.module.css';
 import presentationFeatureStyles from './presentation.module.css';
@@ -17,7 +18,10 @@ export function ExpensePresentation({
   layout = 'group',
   onClose,
   children,
+  restoreFocus = true,
 }: {
+  /** Ledger owns its authorized deferred return; other consumers restore here. */
+  restoreFocus?: boolean;
   title: string;
   kind?: 'detail' | 'create';
   layout?: 'group' | 'household';
@@ -47,9 +51,14 @@ export function ExpensePresentation({
     return () => {
       dialog.close();
       releaseScroll();
-      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      if (
+        restoreFocus &&
+        trigger?.isConnected &&
+        !document.querySelector('dialog[open]')
+      )
+        trigger.focus({ preventScroll: true });
     };
-  }, []);
+  }, [restoreFocus]);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -126,18 +135,28 @@ export function ExpensePresentation({
       <header data-ui="form-region">
         <button
           data-ui="expense-presentation-back form-button"
-          className={presentationFeatureStyles['expense-presentation-back']}
+          className={cx(
+            presentationFeatureStyles['expense-presentation-back'],
+            focusStyles['pointer-focus'],
+          )}
           onClick={onClose}
           aria-label="Back to expenses"
         >
           <AppIcon name="back" /> Back to expenses
         </button>
-        <h1 ref={heading} tabIndex={-1}>
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className={focusStyles['pointer-focus']}
+        >
           {title}
         </h1>
         <button
           data-ui="expense-presentation-close form-button"
-          className={presentationFeatureStyles['expense-presentation-close']}
+          className={cx(
+            presentationFeatureStyles['expense-presentation-close'],
+            focusStyles['pointer-focus'],
+          )}
           onClick={onClose}
           aria-label="Close expense"
         >

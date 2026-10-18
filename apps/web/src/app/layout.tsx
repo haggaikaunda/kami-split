@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { AuthBoundary } from '@/components/groups/auth-boundary';
 import { FinancialSession } from '@/components/groups/session';
+import { FocusInput } from '@/components/ui/focus-input';
 import { ScreenLoading } from '@/components/ui/loading';
 // Anchor the shared cascade before route styles; Next also deduplicates the
 // same colocated imports in components. Preserve this order when moving owners.
@@ -43,6 +44,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: appearanceBootstrap }} />
       </head>
       <body>
+        <FocusInput />
         <Suspense fallback={<ScreenLoading />}>
           <FinancialSession>
             <AuthBoundary>{children}</AuthBoundary>

@@ -49,6 +49,7 @@ import { ExpenseFilterForm } from './filter-form';
 import { overviewDate } from '../groups/overview-date';
 import { cx } from '../ui/classnames';
 
+import focusStyles from '../ui/focus.module.css';
 import ledgerFeatureStyles from './ledger.module.css';
 import formsFeatureStyles from '../groups/forms.module.css';
 import dialogFeatureStyles from './dialog.module.css';
@@ -76,11 +77,28 @@ export function ExpenseLedger(
     const restore = restoreFilterScope.current === props.scope.id;
     restoreFilterScope.current = null;
     if (!restore) return;
-    const frame = requestAnimationFrame(() =>
-      filterTrigger.current?.focus({ preventScroll: true }),
-    );
-    return () => cancelAnimationFrame(frame);
-  }, [filters, props.scope.id]);
+    let current = true;
+    const cancel = () => {
+      current = false;
+    };
+    document.addEventListener('pointerdown', cancel, true);
+    document.addEventListener('keydown', cancel, true);
+    document.addEventListener('click', cancel, true);
+    const frame = requestAnimationFrame(() => {
+      if (
+        current &&
+        props.scope.isLive() &&
+        !document.querySelector('dialog[open]')
+      )
+        filterTrigger.current?.focus({ preventScroll: true });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', cancel, true);
+      document.removeEventListener('keydown', cancel, true);
+      document.removeEventListener('click', cancel, true);
+    };
+  }, [filters, props.scope]);
   return (
     <LedgerContent
       key={`${props.scope.id}:${props.groupId ?? 'household'}:${filters}`}
@@ -163,6 +181,21 @@ function LedgerContent({
     Math.max(0, Math.ceil((savedPosition?.count ?? 0) / 6) - 1),
   );
   const container = useRef<HTMLElement>(null);
+  const returnFocusAllowed = useRef(true);
+  useEffect(() => {
+    if (!restoring) return;
+    const cancel = () => {
+      returnFocusAllowed.current = false;
+    };
+    document.addEventListener('pointerdown', cancel, true);
+    document.addEventListener('keydown', cancel, true);
+    document.addEventListener('click', cancel, true);
+    return () => {
+      document.removeEventListener('pointerdown', cancel, true);
+      document.removeEventListener('keydown', cancel, true);
+      document.removeEventListener('click', cancel, true);
+    };
+  }, [restoring]);
   const sentinel = useRef<HTMLDivElement>(null);
   const inFlight = useRef(true);
   const consumedCursors = useRef(new Set<string>());
@@ -391,6 +424,7 @@ function LedgerContent({
       0,
       Math.ceil(restoreCount.current / 6) - 1,
     );
+    returnFocusAllowed.current = true;
     setRestoring(true);
     reset();
     // Overlay transitions alone own reconciliation, not page insertions.
@@ -424,17 +458,25 @@ function LedgerContent({
       // A newer overlay intent supersedes this return frame, even before the
       // navigation commit can run the effect cleanup.
       if (
+        !scope.isLive() ||
         inFlight.current ||
         generation.current !== returnGeneration ||
         saved !== origin.current
       )
         return;
+      if (
+        !returnFocusAllowed.current ||
+        document.querySelector('dialog[open]')
+      ) {
+        setRestoring(false);
+        return;
+      }
       const nearest = rows[Math.min(saved?.index ?? 0, rows.length - 1)];
       const target =
         (saved && document.getElementById(saved.id)) ||
         (nearest &&
           document.getElementById(`ledger-expense-${nearest.node.expenseId}`));
-      (target || container.current)?.focus({ preventScroll: true });
+      (target || filterTrigger.current)?.focus({ preventScroll: true });
       if (saved) {
         const top =
           target && !target.closest('[data-ui~="workspace-navigation"]')
@@ -460,6 +502,8 @@ function LedgerContent({
     loadMore,
     positions,
     visitKey,
+    scope,
+    filterTrigger,
   ]);
   const remember = (id: string) => {
     origin.current = {
@@ -551,7 +595,10 @@ function LedgerContent({
           aria-label={`Filters${activeFilters.length ? ` · ${activeFilters.length}` : ''}`}
           ref={filterTrigger}
           data-ui="ledger-filter-button form-button"
-          className={ledgerFeatureStyles['ledger-filter-button']}
+          className={cx(
+            ledgerFeatureStyles['ledger-filter-button'],
+            focusStyles['pointer-focus'],
+          )}
           onClick={() => setFiltersOpen(true)}
         >
           <AppIcon name="sliders" /> Filters
@@ -799,6 +846,7 @@ function LedgerContent({
                               <li key={node.expenseId}>
                                 <Link
                                   id={id}
+                                  className={focusStyles['pointer-focus']}
                                   href={`${pathname}?${next}`}
                                   scroll={false}
                                   onNavigate={() => {
@@ -924,6 +972,7 @@ function LedgerContent({
       {filtersOpen && (
         <LedgerDialog
           title="Expense filters"
+          returnFocus={filterTrigger}
           onClose={() => setFiltersOpen(false)}
         >
           <ExpenseFilterForm
@@ -960,6 +1009,7 @@ function LedgerContent({
       )}
       {(selected || create) && (
         <ExpensePresentation
+          restoreFocus={false}
           kind={selected ? 'detail' : 'create'}
           layout={filterLayout}
           title={selected ? 'Expense detail' : 'Add expense'}
@@ -1076,7 +1126,9 @@ export function LedgerDialog({
   title,
   onClose,
   children,
+  returnFocus,
 }: {
+  returnFocus?: RefObject<HTMLElement | null>;
   title: string;
   onClose: () => void;
   children: ReactNode;
@@ -1086,17 +1138,19 @@ export function LedgerDialog({
   useEffect(() => {
     const dialog = ref.current!;
     const trigger =
-      document.activeElement instanceof HTMLElement
+      returnFocus?.current ??
+      (document.activeElement instanceof HTMLElement
         ? document.activeElement
-        : null;
+        : null);
     const releaseScroll = acquireBodyScrollLock(document.body);
     dialog.showModal();
     return () => {
       dialog.close();
       releaseScroll();
-      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      if (trigger?.isConnected && !document.querySelector('dialog[open]'))
+        trigger.focus({ preventScroll: true });
     };
-  }, []);
+  }, [returnFocus]);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -1160,7 +1214,10 @@ export function LedgerDialog({
         <h2>Filter expenses</h2>
         <button
           data-ui="ledger-dialog-close form-button"
-          className={filterFeatureStyles['ledger-dialog-close']}
+          className={cx(
+            filterFeatureStyles['ledger-dialog-close'],
+            focusStyles['pointer-focus'],
+          )}
           aria-label="Back to expenses"
           autoFocus
           onClick={onClose}

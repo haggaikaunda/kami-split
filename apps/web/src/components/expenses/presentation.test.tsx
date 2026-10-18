@@ -197,3 +197,26 @@ it('tracks keyboard viewport changes, leaves pinch scaling alone, and removes li
     else Reflect.deleteProperty(window, 'visualViewport');
   }
 });
+
+it('leaves deferred return to the ledger instead of restoring a captured background element', async () => {
+  await act(async () =>
+    root.render(
+      <ExpensePresentation
+        title="Expense detail"
+        restoreFocus={false}
+        onClose={vi.fn()}
+      >
+        <button>Inside</button>
+      </ExpensePresentation>,
+    ),
+  );
+  const newer = document.createElement('button');
+  document.body.append(newer);
+  newer.focus();
+  try {
+    await act(async () => root.render(null));
+    expect(document.activeElement).toBe(newer);
+  } finally {
+    newer.remove();
+  }
+});
