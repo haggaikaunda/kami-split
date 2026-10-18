@@ -2458,6 +2458,7 @@ test('creation recovery and validation stay readable at 320px with doubled text'
       viewport: innerWidth,
       font: getComputedStyle(document.documentElement).fontSize,
       family: getComputedStyle(element).fontFamily,
+      textSize: getComputedStyle(element).fontSize,
     };
   };
   // Arial models the wider sans fallback used outside macOS; monospace is
@@ -2467,9 +2468,13 @@ test('creation recovery and validation stay readable at 320px with doubled text'
       if (family === 'system')
         document.documentElement.style.removeProperty('--font-body');
       else document.documentElement.style.setProperty('--font-body', family);
+      // Percentage defaults differ for generic monospace; hold actual doubled
+      // text size constant so the stress case cannot silently shrink it.
+      document.documentElement.style.fontSize = '32px';
     }, family);
     const geometry = await recovery.evaluate(textGeometry);
     expect(geometry.font).toBe('32px');
+    expect(geometry.textSize).toBe('34px');
     expect(geometry.splitWords, `${family} recovery words`).toEqual([]);
     expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport);
     await testInfo.attach(
@@ -2480,6 +2485,7 @@ test('creation recovery and validation stay readable at 320px with doubled text'
       },
     );
   }
+  // Keep the widest font for these creation validation/field assertions.
   await page
     .getByLabel('I have checked my groups and want a new creation.')
     .check();
