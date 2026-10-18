@@ -3443,6 +3443,8 @@ test('Overview states never infer settlement or retain stale private rows during
   response.release();
   await app.authenticate();
   await page.goto('/household');
+  // Drain the fixture's delayed shell callbacks before a reload cancels them.
+  await page.waitForLoadState('networkidle');
   await expect(page.locator('[data-ui~="repayment-row"]')).toHaveCount(2);
   const dashboard = fixture.householdDashboard;
   for (const state of [
@@ -3492,6 +3494,8 @@ test('Overview states never infer settlement or retain stale private rows during
       path: testInfo.outputPath(`overview-state-${state}.png`),
       fullPage: true,
     });
+    // All UI observations above remain explicit; this only owns reload/teardown.
+    await page.waitForLoadState('networkidle');
   }
 });
 
