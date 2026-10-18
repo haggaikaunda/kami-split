@@ -1337,11 +1337,13 @@ for (const [kind, path] of [
     await app.authenticate();
     await page.goto(path);
     await expect(
-      page.getByRole('heading', {
-        name: 'Maui 2026 with a very long friendly space name',
-        level: 1,
-        exact: true,
-      }),
+      page
+        .getByRole('navigation', { name: 'Financial navigation' })
+        .getByRole('heading', {
+          name: 'Maui 2026 with a very long friendly space name',
+          level: 1,
+          exact: true,
+        }),
     ).toBeVisible();
     const source = new URL(page.url());
     const authorization = app.hold(
