@@ -70,6 +70,20 @@ for (const [paths, web, api] of [
     assert.equal(actual.verify_api, api);
   });
 
+test('Activity browser fixture selects only web verification; unknown neighbors and classifier changes stay conservative', () => {
+  assert.deepEqual(classify(['tests/browser/activity.spec.mjs']), {
+    verify_web: true,
+    verify_api: false,
+    deploy_web: false,
+    deploy_api: false,
+  });
+  assert.deepEqual(
+    classify(['tests/browser/new-activity-runner.mjs']),
+    conservative(),
+  );
+  assert.deepEqual(classify(['scripts/ci/changes.mjs']), conservative());
+});
+
 test('real history: PR merge base, multi-commit push, deletions, renames and unusual filenames', (t) => {
   const cwd = mkdtempSync(join(tmpdir(), 'changes-'));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));

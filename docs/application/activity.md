@@ -51,6 +51,12 @@ The PR is stacked on #111; its SQL discovery contract must be deployed first.
 The original #172 slice added no mutation or migration. [Expense editing](expense-editing.md)
 adds guarded edits, immutable revision backfill and real update events under #212.
 
+The shared feed uses separated rows on the page canvas: actor/action/record,
+source and concise recorded UTC date, then a distinct exact trailing amount.
+The feed date includes the year and comes from the recorded instant, never the
+expense's effective date. Payer and transfer parties remain in historical detail.
+Long summaries and amounts wrap without dropping financial digits.
+
 Recorded instants use the shared [UTC display policy](dates.md), with readable
-labels and an Exact timestamp disclosure. Effective date-only facts keep their
+labels and an Exact timestamp disclosure in historical detail. Effective date-only facts keep their
 calendar day, and history comparisons/order retain the underlying values.
