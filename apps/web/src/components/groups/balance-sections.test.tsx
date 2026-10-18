@@ -118,14 +118,14 @@ it.each([
       `${prefix}sender=third&recipient=viewer&amount=599`,
       `${prefix}sender=other&recipient=third&amount=9007199254740993`,
     ]);
-    expect(
-      links[0].querySelector('[data-ui~="repayment-row"]')?.textContent,
-    ).toContain('You (You Person) pays Long Counterparty Name');
-    expect(links[1].textContent).toContain('Record repayment:');
-    expect(links[1].textContent).toContain(
+    expect(links[0].getAttribute('aria-label')).toContain(
+      'You (You Person) pays Long Counterparty Name',
+    );
+    expect(links[1].getAttribute('aria-label')).toContain(
       'Another Counterparty pays You (You Person)',
     );
-    expect(links[1].textContent).toContain('Original source');
+    expect(links[1].getAttribute('aria-label')).toContain('Original source');
+    expect(links[1].textContent).toContain('Owes you');
     expect(links[1].textContent).toContain('$5.99');
     for (const link of links) {
       expect(link.querySelector('a, button, input, [tabindex="0"]')).toBeNull();
@@ -160,8 +160,100 @@ it('retains ineligible historical obligations as readable rows without granting 
     ),
   );
   expect(host.querySelector('a')).toBeNull();
-  expect(host.textContent).toContain('Former Member pays You (Viewer)');
+  expect(
+    host.querySelector('[aria-label]')?.getAttribute('aria-label'),
+  ).toContain('Former Member pays You (Viewer)');
+  expect(host.textContent).toContain('Owes you');
   expect(host.textContent).toContain(
     'Recording requires two currently eligible members.',
   );
+});
+
+it('keeps offsetting complete source positions exact and withholds incomplete totals', async () => {
+  const { balanceDirections, BalanceSummary } =
+    await import('./balance-sections');
+  expect(balanceDirections(['9007199254740993', '-9007199254740993'])).toEqual({
+    owe: '9007199254740993',
+    owed: '9007199254740993',
+    net: '0',
+  });
+  expect(balanceDirections(['0', undefined])).toBeUndefined();
+  expect(balanceDirections(['0', null])).toBeUndefined();
+  expect(balanceDirections([])).toEqual({ owe: '0', owed: '0', net: '0' });
+  await act(async () =>
+    root.render(
+      <BalanceSummary positions={['8420', '-8420']} currency="USD" />,
+    ),
+  );
+  expect(host.textContent).toContain('You owe$84.20');
+  expect(host.textContent).toContain('You’re owed$84.20');
+  expect(host.textContent).toContain('Net $0.00');
+  await act(async () =>
+    root.render(<BalanceSummary positions={['8420', null]} currency="USD" />),
+  );
+  expect(host.textContent).toContain('Complete balance unavailable');
+  expect(host.textContent).not.toContain('$0.00');
+});
+
+it('bulk disclosure controls preserve independent metadata and account disposal prevents writes', async () => {
+  const { BalanceSources } = await import('./balance-sections');
+  const ids = ['one', 'two', 'three'];
+  await act(async () =>
+    root.render(
+      <BalanceSources scope={scope} identities={ids}>
+        {(open, change) =>
+          ids.map((id) => (
+            <BalanceSection
+              key={id}
+              scope={scope}
+              identity={id}
+              open={open[id]}
+              onOpenChange={(value) => change(id, value)}
+              summary={id}
+            >
+              Details {id}
+            </BalanceSection>
+          ))
+        }
+      </BalanceSources>,
+    ),
+  );
+  await act(async () => host.querySelector('button')!.click());
+  expect(
+    [...host.querySelectorAll('details')].every((detail) => detail.open),
+  ).toBe(true);
+  const middle = host.querySelectorAll('details')[1];
+  await act(async () => {
+    middle.open = false;
+    middle.dispatchEvent(new Event('toggle', { bubbles: true }));
+  });
+  expect(scope.balanceExpansions.get('two')).toBe(false);
+  await act(async () => host.querySelector('button')!.click());
+  expect(
+    [...host.querySelectorAll('details')].every((detail) => !detail.open),
+  ).toBe(true);
+  scope.dispose();
+  await act(async () => host.querySelector('button')!.click());
+  expect(scope.balanceExpansions.size).toBe(0);
+});
+
+it('formats exact directional totals beyond a single signed wire value without Number rounding', async () => {
+  const { BalanceSummary, balanceDirections } =
+    await import('./balance-sections');
+  expect(() => balanceDirections(['1.5'])).toThrow('Invalid monetary amount');
+  await act(async () =>
+    root.render(
+      <BalanceSummary
+        positions={[
+          '9223372036854775807',
+          '9223372036854775807',
+          '-9223372036854775808',
+        ]}
+        currency="USD"
+      />,
+    ),
+  );
+  expect(host.textContent).toContain('You owe$92,233,720,368,547,758.08');
+  expect(host.textContent).toContain('You’re owed$184,467,440,737,095,516.14');
+  expect(host.textContent).toContain('Net $92,233,720,368,547,758.06');
 });

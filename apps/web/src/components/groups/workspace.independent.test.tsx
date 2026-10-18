@@ -165,7 +165,7 @@ it('states positive means owed and distinguishes zero viewer from unsettled grou
   expect(host.textContent).toContain('Other members still owe each other');
   nav.search = 'tab=balances';
   await render(fixture('0'));
-  expect(host.textContent).toContain('This group has outstanding balances');
+  expect(host.textContent).toContain('Other members still owe each other');
   expect(
     host.querySelectorAll('a[href*="repayments/new?sender="]'),
   ).toHaveLength(2);
@@ -243,10 +243,12 @@ it('explains authoritative expense and repayment contributions with exact displa
     },
   });
   expect(host.textContent).toContain('Household expenses');
-  expect(host.textContent).toContain('Who owes whom');
-  expect(host.textContent).toContain(
-    'including recorded repayments you sent and received',
-  );
+  expect(host.textContent).toContain('3 members · USD');
+  expect(
+    Array.from(host.querySelectorAll('button')).some((button) =>
+      button.textContent?.includes('How balances work'),
+    ),
+  ).toBe(true);
   const calculations = [
     ...host.querySelectorAll('[aria-label^="Balance calculation"]'),
   ].map((node) => node.textContent?.replace(/\s+/g, ' '));

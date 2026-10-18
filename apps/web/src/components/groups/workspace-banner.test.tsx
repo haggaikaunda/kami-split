@@ -8,6 +8,7 @@ import {
 } from './workspace';
 const nav = vi.hoisted(() => ({ search: '' }));
 vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
 vi.mock('next/link', () => ({

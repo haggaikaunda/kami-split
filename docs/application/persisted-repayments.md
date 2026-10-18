@@ -81,9 +81,11 @@ identity, deadline and diagnostic boundaries also apply to these operations.
 ## Authenticated workspace entry (#171)
 
 Overview shows complete Total spend and one signed viewer balance, with no
-settlement controls. Balances keeps member positions and simplified obligations
-in independent native disclosures. Household sources start collapsed with visible
-personal balances; personal zero is separate from all-members settlement, and
+settlement controls. Balances shows separate owe/owed amounts above source cards;
+Household sums each complete source direction independently rather than canceling
+across spaces. Group/Trip starts with one expanded source containing obligations,
+member calculations and history. Household sources start collapsed with visible
+personal balances and bulk expand/collapse controls; personal zero is separate from all-members settlement, and
 unavailable sources never imply zero. Expanded sources expose the actual
 obligation choices and retain access to complete positions, calculations and history.
 A member net is never used to choose a transfer counterparty.
@@ -109,7 +111,9 @@ history is separately labeled and does not claim to be the whole activity feed.
 
 Normal obligation activation records the source URL, focus target and scroll through
 the existing account-scoped visit protocol. Source disclosure state survives that
-visit's remount so Back to source and browser Back can restore the selected row
-after an authorized read. If the row no longer exists, restoration safely uses the
+visit's remount so modal dismissal, Back to source and browser Back can restore
+the selected row after an authorized read. In-account obligation activation presents
+the same form in a mobile bottom sheet or desktop right drawer, with one mutation,
+draft and recovery owner. If the row no longer exists, restoration safely uses the
 page heading. Modified clicks and direct links retain the full-page form. No
 financial data is persisted with disclosure state, and scope disposal clears it.

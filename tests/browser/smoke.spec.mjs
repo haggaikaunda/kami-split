@@ -1004,7 +1004,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   if (page.viewportSize().width <= 600) await page.goBack();
   else
     await page
-      .getByRole('link', { name: 'Back to source', exact: true })
+      .getByRole('button', { name: 'Close repayment', exact: true })
       .click();
   await expect(trip).toBeFocused();
   await expect(
@@ -1783,8 +1783,14 @@ test('Household balances: independent compact sources, both repayment directions
   );
   await expect(sources).toHaveCount(14);
   await expect(sources.locator(':scope[open]')).toHaveCount(0);
-  await expect(page.locator('[data-ui~="signed-balance"]')).toContainText(
-    'Payments still to settle',
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'You owe$84.20',
+  );
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'You’re owed$84.20',
+  );
+  await expect(page.locator('[data-ui~="balance-summary"]')).toContainText(
+    'Net $0.00',
   );
   const last = sources.last().locator('summary').first();
   await last.focus();
@@ -1830,7 +1836,7 @@ test('Household balances: independent compact sources, both repayment directions
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(direction.path);
     await expect(
-      page.getByRole('heading', { name: /Record repayment/ }),
+      page.getByRole('heading', { name: /Settle with/ }),
     ).toBeVisible();
     await expect(page.getByLabel('Sender', { exact: true })).toHaveValue(
       direction.sender,
@@ -1845,7 +1851,7 @@ test('Household balances: independent compact sources, both repayment directions
       direction.name,
     );
     await page
-      .getByRole('link', { name: 'Back to source', exact: true })
+      .getByRole('button', { name: 'Close repayment', exact: true })
       .click();
     await expect(page).toHaveURL(/\/household\?tab=balances&restore=/);
     await expect(page.locator(`#${id}`)).toBeFocused();
@@ -2025,7 +2031,7 @@ test('Balance layout: long names and amounts, keyboard details, ineligible parti
       expect(geometry.font).toBe(textScale === '200%' ? '32px' : '16px');
       if (width === 320 && textScale === '200%') {
         const label = await summary
-          .locator('[data-ui~="household-source-label"]')
+          .locator('[data-ui~="balance-source-copy"]')
           .boundingBox();
         expect(
           label.width,

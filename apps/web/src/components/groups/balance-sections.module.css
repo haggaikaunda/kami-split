@@ -1,12 +1,23 @@
 .section {
   min-width: 0;
-  border-bottom: 1px solid var(--color-separator);
+  border: 1px solid var(--color-separator);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  margin-block: 1.125rem;
+  overflow: clip;
 }
 .section > summary {
-  min-height: var(--target-size);
-  padding-block: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.75rem;
+  padding: 0.875rem;
   cursor: pointer;
   overflow-wrap: anywhere;
+  list-style: none;
+}
+.section > summary::-webkit-details-marker {
+  display: none;
 }
 .section > summary > h3 {
   display: inline;
@@ -15,34 +26,230 @@
 .section > summary:focus-visible,
 .obligation:focus-visible {
   outline: 3px solid var(--color-primary);
-  outline-offset: 3px;
+  outline-offset: -3px;
   border-radius: var(--radius-control);
 }
 .content {
-  padding-bottom: 1rem;
+  padding: 0 0.875rem 0.875rem;
   min-width: 0;
+}
+.content .section {
+  border: 0;
+  border-top: 1px solid var(--color-separator);
+  border-radius: 0;
+  margin-block: 0.5rem;
+}
+.content .section > summary {
+  min-height: var(--target-size);
+  padding: 0.5rem 0;
+  list-style: disclosure-closed;
+  display: list-item;
+}
+.content .section[open] > summary {
+  list-style: disclosure-open;
+}
+.content .section .content {
+  padding-inline: 0;
+}
+.heading,
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.heading > [data-ui~='rich-help-trigger'] {
+  font-size: 0.75rem;
+}
+.toolbar {
+  margin-top: 1.25rem;
+}
+.toolbar h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.toolbar button {
+  background: transparent;
+  border: 0;
+  color: var(--color-primary);
+  padding: 0.5rem 0;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin: 0.875rem 0 0.625rem;
+}
+.metrics > div {
+  min-width: 0;
+  border: 1px solid var(--color-separator);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  padding: 0.875rem 0.8125rem;
+}
+.metrics > div:last-child {
+  background: var(--color-summary-net);
+  border-color: transparent;
+}
+.metrics > div > span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.metrics [data-ui~='money'] {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-block: 0.3125rem;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.metrics [data-ui~='currency'] {
+  display: none;
+}
+.net {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+.sourceIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 0.8125rem;
+  background: var(--color-orange-surface);
+  color: var(--color-orange);
+}
+.sourceCopy {
+  min-width: 0;
+  flex: 1;
+}
+.sourceCopy strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.sourceCopy > span {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin-top: 0.25rem;
+}
+.chevron {
+  color: var(--color-muted);
+  flex: none;
+}
+.section[open] > summary > .chevron {
+  transform: rotate(180deg);
 }
 .obligation {
   display: block;
   color: var(--color-ink);
   text-decoration: none;
-}
-.action-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  border-radius: 0.5rem;
 }
 .obligation:hover {
   background: var(--color-subtle);
+}
+:is(.obligation, .ineligible) [data-ui~='repayment-row'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
+  gap: 0.5rem;
+  padding-block: 0.875rem;
+  font-size: 0.875rem;
 }
 :is(.obligation, .ineligible) [data-ui~='repayment-row'] > * {
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+.ineligible [data-ui~='repayment-row'] > span:last-child {
+  grid-column: 1/-1;
+  color: var(--color-muted);
+}
 .obligation [data-ui~='money'] {
-  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+@container (max-width: 20rem) {
+  :is(.obligation, .ineligible) [data-ui~='repayment-row'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .obligation [data-ui~='repayment-row'] > span:last-child {
+    display: none;
+  }
+}
+
+.metrics [data-ui~='money-value'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+:is(.obligation, .ineligible) [data-ui~='member-name'] {
+  font-weight: 500;
+}
+:is(.obligation, .ineligible) [data-ui~='member-detail'] {
+  font-size: 0.8125rem;
+}
+
+:is(.obligation, .ineligible) [data-ui~='money-value'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:is(.obligation, .ineligible) [data-ui~='member-copy'] {
+  min-width: 0;
+}
+@container (max-width: 20rem) {
+  :is(.obligation, .ineligible)
+    [data-ui~='repayment-row']
+    > [data-ui~='money'] {
+    justify-self: start;
+  }
+}
+
+.view {
+  padding-top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.metrics strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+@container (max-width: 14rem) {
+  .metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .section > summary:has(.sourceIcon) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+  }
+  .sourceIcon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .sourceCopy {
+    grid-column: 1/-1;
+    grid-row: 2;
+  }
+  .chevron {
+    grid-column: 2;
+    grid-row: 1;
+  }
 }

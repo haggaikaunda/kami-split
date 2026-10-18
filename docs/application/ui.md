@@ -61,19 +61,26 @@ Creation/editing preserves exact Equal, Exact and Percentage intent, dirty draft
 
 Balance copy distinguishes what a person owes/is owed from expense spending. Repayments record transfers without moving money and never affect spending totals. Household net zero can contain offsetting source balances; retain the explicit warning and original-space explanation. Every individual must be zero within a source group for that group to be settled. Failed or incomplete reads cannot imply zero.
 
-Household Balances initially collapses each source independently, keeping its name,
-kind, exact personal balance and truthful settlement/unavailable copy visible.
-Source icons stack above names in narrow text-relative containers so long names
-retain a readable text column at enlarged sizes.
-Expanded sources expose explicit obligations and links to complete member positions
-and repayment history. Group/Trip Balances separates member positions from
-who-owes-whom suggestions with the same native keyboard disclosures. Selecting a
-member position opens its expense/repayment calculation; it never infers a
-counterparty from a net. Eligible obligation rows are one native link with explicit
-parties, exact suggested amount and source; ineligible rows explain why recording
-is unavailable. General actual transfers remain a separate source-owned entry.
-Expansion metadata belongs to the account's financial scope and is erased on
-scope disposal. It contains no balances or member payloads.
+Balances places an equal You owe / You're owed pair above subordinate net/currency
+and independently rounded source cards. Household sums complete personal positions
+in each source separately, preserving both directions when sources offset. A missing
+source projection withholds the complete pair instead of declaring zero. One labeled
+help entry retains the explanation and examples. The By space toolbar expands or
+collapses all sources using the same account-owned metadata as individual native
+disclosures. Group/Trip starts with one expanded source card containing explicit
+obligations, member calculations, history, Activity and general actual-transfer access.
+Personal zero does not declare the source settled while other members owe each other.
+
+Eligible obligation rows are one native link with explicit parties, exact suggested
+amount and source; ineligible rows explain why recording is unavailable. An
+in-account source visit presents its existing repayment form in a mobile bottom
+sheet or desktop right drawer. It preserves transfer date/note, editable parties,
+partial/overpayment validation and original-attempt recovery. The presentation only
+owns modal focus, visual-viewport sizing and document scroll locking; the existing
+form remains the sole draft/mutation owner. Dismissal uses authorized source
+restoration for expansion, scroll and triggering focus. Direct URLs without a
+retained source visit and general actual-transfer entries retain the full-page form.
+Expansion metadata contains no financial payload and is erased on scope disposal.
 
 Rich help is anchored and keyboard accessible with explicit dismissal, focus restoration and viewport bounds. Routine Refresh buttons are absent; pull-to-refresh, foreground reauthorization and actionable error retries preserve continuity. See [workspace loading](../navigation/workspace-loading.md) for request ownership and refresh behavior.
 

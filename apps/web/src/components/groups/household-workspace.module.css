@@ -5,43 +5,6 @@
   list-style: none;
   padding: 0 !important;
 }
-.household-balance > details > summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-}
-.household-balance > details > summary::before {
-  content: '+';
-  color: var(--color-muted);
-}
-.household-balance > details[open] > summary::before {
-  content: '−';
-}
-.household-balance > details > summary > span {
-  min-width: 0;
-}
-.household-balance > details > summary > span:last-child {
-  text-align: right;
-}
-.household-balance > details > summary [data-ui~='money'] {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-}
-.household-balance[data-position='positive']
-  > details
-  > summary
-  [data-ui~='money'] {
-  color: var(--color-primary);
-}
-.household-balance[data-position='negative']
-  > details
-  > summary
-  [data-ui~='money'] {
-  color: var(--color-owes);
-}
-
 .household-source-name {
   display: flex;
   align-items: center;
@@ -97,12 +60,7 @@
   color: var(--color-blue);
 }
 
-@container (max-width: 28rem) {
-  .household-balance > details > summary {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .household-balance > details > summary > span:last-child {
-    grid-column: 2;
-    text-align: left;
-  }
+/* Source cards retain the same anatomy at narrow widths and enlarged text. */
+.household-balances {
+  margin: 0;
 }

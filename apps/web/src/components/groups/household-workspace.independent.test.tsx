@@ -198,7 +198,10 @@ it('renders exact server aggregates and zero net with open source balances witho
   expect(host.querySelectorAll('button[aria-haspopup=dialog]')).toHaveLength(1);
   expect(
     host.querySelectorAll('button:not([aria-haspopup=dialog])'),
-  ).toHaveLength(0);
+  ).toHaveLength(1);
+  expect(
+    host.querySelector('button:not([aria-haspopup=dialog])')?.textContent,
+  ).toBe('Expand all');
   expect(host.textContent).not.toContain('Settled');
   expect(
     host.querySelector('a[href="/household/ledger?tab=balances"]'),
@@ -210,8 +213,12 @@ it('renders exact server aggregates and zero net with open source balances witho
     host.querySelector('a[href="/groups/group-c?tab=balances"]'),
   ).not.toBeNull();
   expect(host.querySelector('a[href^="/groups/trip-b"]')).toBeNull();
-  expect(host.textContent).toContain('+$84.20');
-  expect(host.textContent).toContain('-$84.20');
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('You owe$84.20');
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('You’re owed$84.20');
 });
 it.each([
   ['150', "You're owed overall"],
@@ -290,7 +297,18 @@ it('clears private rows during refresh and rejects an older response', async () 
   );
   await act(async () => second.resolve(result(fixture('999'))));
   expect(host.textContent).not.toContain('$9.99');
-  await act(async () => third.resolve(result(fixture('123'))));
+  const refreshed = fixture('123');
+  await act(async () =>
+    third.resolve(
+      result({
+        ...refreshed,
+        spaces: refreshed.spaces.map((space, index) => ({
+          ...space,
+          viewerNetMinor: index === 0 ? '123' : '0',
+        })),
+      }),
+    ),
+  );
   expect(host.textContent).toContain('$1.23');
   expect(
     queries.fetch.mock.calls.every(
@@ -569,7 +587,7 @@ it('replaces eligible sources after revalidation rather than retaining a removed
     host.querySelectorAll('[data-ui~="household-balances"] li'),
   ).toHaveLength(2);
   expect(
-    host.querySelector('[data-ui~="signed-balance"]')?.textContent,
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
   ).toContain('$84.20');
 });
 
