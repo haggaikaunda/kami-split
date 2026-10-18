@@ -167,6 +167,23 @@ module.exports = async function verifyFilters({
     ),
   });
 
+  async function fieldSpacing() {
+    for (const control of await dialog.getByRole('combobox').all()) {
+      const spacing = await control.evaluate((select) => {
+        const label = select.closest('label').querySelector('span');
+        return (
+          select.getBoundingClientRect().top -
+          label.getBoundingClientRect().bottom
+        );
+      });
+      assert(
+        spacing >= 4,
+        'field labels stay visibly separated from their controls',
+      );
+    }
+  }
+  await fieldSpacing();
+
   async function optionReachability() {
     const option = section('Categories').getByLabel('Other', { exact: true });
     await option.scrollIntoViewIfNeeded();
@@ -345,6 +362,7 @@ module.exports = async function verifyFilters({
       .waitFor();
     await summary('Categories').click();
     await optionReachability();
+    await fieldSpacing();
     await geometry('Household after Group navigation');
     await page.keyboard.press('Escape');
   }
