@@ -150,12 +150,6 @@ function DiscoveryResults({
 
   return (
     <>
-      <p
-        data-ui="journey-viewer"
-        className={discoveryFeatureStyles['journey-viewer']}
-      >
-        Signed in as {viewer.displayName}
-      </p>
       {creation &&
         (viewer.canCreateGroups ? (
           <CreationForm
@@ -181,7 +175,10 @@ function DiscoveryResults({
         ))}
       {!creation && (
         <>
-          <div className={discoveryFeatureStyles['directory-toolbar']}>
+          <div
+            data-ui="directory-toolbar"
+            className={discoveryFeatureStyles['directory-toolbar']}
+          >
             <nav
               className={discoveryFeatureStyles['discovery-filters']}
               aria-label="Group type"
@@ -202,7 +199,7 @@ function DiscoveryResults({
             </nav>
             {viewer.canCreateGroups && (
               <Button id="directory-create" onClick={() => setCreating(true)}>
-                Create
+                <AppIcon name="plus" /> Create
               </Button>
             )}
           </div>
@@ -321,26 +318,42 @@ function DiscoveryCard({
           >
             <AppIcon name={item.kind === 'TRIP' ? 'trip' : 'groups'} />
           </span>
-          <strong>{item.name}</strong>
-          <span>
-            {item.kind === 'TRIP' ? 'Trip' : 'Group'} ·{' '}
-            {entry.activeMemberCount} active{' '}
-            {entry.activeMemberCount === 1 ? 'member' : 'members'}
+          <span className={discoveryFeatureStyles['card-title']}>
+            <strong>{item.name}</strong>
+            <span className={discoveryFeatureStyles['card-meta']}>
+              {item.kind === 'TRIP' ? 'Trip' : 'Group'} ·{' '}
+              {entry.activeMemberCount} active{' '}
+              {entry.activeMemberCount === 1 ? 'member' : 'members'}
+              {item.trip && (
+                <>
+                  {' · '}
+                  {item.trip.destination && <>{item.trip.destination} · </>}
+                  <time dateTime={item.trip.startDate}>
+                    {calendarDate(item.trip.startDate)}
+                  </time>
+                  {' – '}
+                  <time dateTime={item.trip.endDate}>
+                    {calendarDate(item.trip.endDate)}
+                  </time>
+                  {' · '}
+                  {tripState(item.trip, today)}
+                </>
+              )}
+            </span>
           </span>
+          <svg
+            aria-hidden="true"
+            className={discoveryFeatureStyles['card-chevron']}
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </span>
-        {item.trip && (
-          <span className={discoveryFeatureStyles['card-meta']}>
-            {item.trip.destination} ·{' '}
-            <time dateTime={item.trip.startDate}>
-              {calendarDate(item.trip.startDate)}
-            </time>{' '}
-            –{' '}
-            <time dateTime={item.trip.endDate}>
-              {calendarDate(item.trip.endDate)}
-            </time>{' '}
-            · {tripState(item.trip, today)}
-          </span>
-        )}
         <span className={discoveryFeatureStyles['card-finances']}>
           <span>
             <span>Total spend · {item.currency}</span>
@@ -363,19 +376,15 @@ function DiscoveryCard({
           >
             <span>Your balance · {item.currency}</span>
             <strong>
-              {summary.__typename === 'GroupFinancialSummary'
-                ? money(summary.viewerNetMinor)
-                : 'Unavailable'}
-            </strong>
-            <span>
               {net === null
-                ? 'Refresh to try again'
+                ? 'Unavailable'
                 : net > 0n
-                  ? 'You’re owed'
+                  ? `You’re owed ${money(net.toString())}`
                   : net < 0n
-                    ? 'You owe'
+                    ? `You owe ${money(net.toString()).replace(/^-/, '')}`
                     : 'Nothing for you to pay or collect'}
-            </span>
+            </strong>
+            {net === null && <span>Refresh to try again</span>}
           </span>
         </span>
       </ScopedLink>

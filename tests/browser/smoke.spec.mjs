@@ -991,7 +991,7 @@ test('unified directory retains legacy trip filters and canonical source return 
   const trip = directory(page).getByRole('link');
   await expect(trip).toContainText('3 active members');
   await expect(trip).toContainText('Total spend · USD$3.00');
-  await expect(trip).toContainText('Your balance · USD$84.20');
+  await expect(trip).toContainText('Your balance · USDYou’re owed $84.20');
   await trip.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/trips\/T\?source=/);
@@ -1211,7 +1211,7 @@ test('fresh directory reads reflect expense corrections and repayment-only balan
   await expense.started;
   await expense.release();
   await expect(group).toContainText('Total spend · USD$9.75');
-  await expect(group).toContainText('Your balance · USD-$4.50');
+  await expect(group).toContainText('Your balance · USDYou owe $4.50');
   const repaid = structuredClone(corrected);
   repaid.groupDirectory.entries[1].financialSummary.viewerNetMinor = '0';
   const repayment = app.hold('journeyViewerQuery', repaid);
