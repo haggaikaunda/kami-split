@@ -125,9 +125,7 @@ for (const workspace of workspaces) {
     ).toBeVisible();
     await expect(list.getByText('Inactive', { exact: true })).toBeVisible();
     await expect(
-      list.getByText('Member · No access; retained in history', {
-        exact: true,
-      }),
+      list.getByText(/Member · No access\s+Retained in history/),
     ).toBeVisible();
     const heading = page.locator('[data-ui~="members-heading"]');
     const invite = heading.getByRole('button', { name: 'Invite', exact: true });
@@ -139,6 +137,21 @@ for (const workspace of workspaces) {
       };
       return {
         viewport: { width: innerWidth, height: innerHeight },
+        typography: Object.fromEntries(
+          ['member-name', 'member-detail', 'member-state'].map((slot) => {
+            const style = getComputedStyle(
+              document.querySelector(`[data-ui="${slot}"]`),
+            );
+            return [
+              slot,
+              {
+                size: style.fontSize,
+                weight: style.fontWeight,
+                lineHeight: style.lineHeight,
+              },
+            ];
+          }),
+        ),
         heading: rect(document.querySelector('[data-ui~="members-heading"]')),
         rows: [...document.querySelectorAll('[aria-label="People"] > li')].map(
           rect,
@@ -148,6 +161,13 @@ for (const workspace of workspaces) {
         ),
       };
     });
+    expect(geometry.typography['member-name']).toEqual({
+      size: '14px',
+      weight: '400',
+      lineHeight: '20.3px',
+    });
+    expect(geometry.typography['member-detail'].size).toBe('12px');
+    expect(geometry.typography['member-state'].size).toBe('11px');
     if (geometry.viewport.width === 390) {
       expect(geometry.rows[0].y).toBeLessThanOrEqual(300);
       expect(geometry.rows[3].bottom).toBeLessThanOrEqual(

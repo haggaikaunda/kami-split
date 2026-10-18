@@ -54,7 +54,7 @@ export function PeopleList({
           >
             <Member
               name={member.displayName}
-              detail={`${member.role === 'OWNER' ? 'Owner' : 'Member'}${member.status === 'ACTIVE' ? '' : ' · No access; retained in history'}`}
+              detail={`${member.role === 'OWNER' ? 'Owner' : 'Member'}${member.status === 'ACTIVE' ? '' : ' · No access\nRetained in history'}`}
             />
             <span
               data-ui="member-state"

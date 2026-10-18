@@ -70,7 +70,7 @@ it('separates membership identities from pending recipients, with terminal recor
   );
   expect(people.textContent).toContain('Bob');
   expect(people.textContent).toContain(
-    'Member · No access; retained in history',
+    'Member · No access\nRetained in history',
   );
   expect(people.textContent).not.toContain('carol@example.test');
   const pending = host.querySelector('[aria-label="Pending invitations"]')!;
