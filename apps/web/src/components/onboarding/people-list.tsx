@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { cx } from '../ui/classnames';
 import { Member } from '../ui/primitives';
 
@@ -12,20 +13,36 @@ export type Person = {
 };
 
 /** Membership comes only from the authorized group read, never an invitation. */
-export function PeopleList({ members }: { members: readonly Person[] }) {
+export function PeopleList({
+  members,
+  action,
+  children,
+}: {
+  members: readonly Person[];
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
   const activeCount = members.filter(
     (member) => member.status === 'ACTIVE',
   ).length;
   return (
     <>
+      <div
+        data-ui="members-heading"
+        className={invitationStyles['members-heading']}
+      >
+        <h2>Members</h2>
+        {action}
+      </div>
+      {children}
       <p data-ui="member-count" className={invitationStyles['member-count']}>
         {activeCount} active {activeCount === 1 ? 'member' : 'members'}
       </p>
+      {members.length === 0 && <p>No members to display.</p>}
       <ul
-        data-ui="group-members-list account-rows"
+        data-ui="group-members-list"
         className={cx(
           invitationStyles['group-members-list'],
-          invitationStyles['account-rows'],
           financialPaletteStyles['member-palette'],
         )}
         aria-label="People"
@@ -37,7 +54,7 @@ export function PeopleList({ members }: { members: readonly Person[] }) {
           >
             <Member
               name={member.displayName}
-              detail={`${member.role === 'OWNER' ? 'Owner' : 'Member'}${member.status === 'ACTIVE' ? '' : ' · No access; retained in history'}`}
+              detail={`${member.role === 'OWNER' ? 'Owner' : 'Member'}${member.status === 'ACTIVE' ? '' : ' · No access\nRetained in history'}`}
             />
             <span
               data-ui="member-state"

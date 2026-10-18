@@ -66,6 +66,7 @@ function InvitationVisit({
         <p>Sign in again to manage invitations.</p>
       ) : (
         <>
+          <InvitationPanel state={c} members={members} />
           {(c.notice || c.busy) && (
             <Status kind={c.failed ? 'error' : c.busy ? 'pending' : 'info'}>
               {c.busy ? 'Working…' : c.notice}
@@ -84,7 +85,6 @@ function InvitationVisit({
           ) : (
             <ActionRecovery state={c} />
           )}
-          <InvitationPanel state={c} members={members} />
         </>
       )}
     </section>

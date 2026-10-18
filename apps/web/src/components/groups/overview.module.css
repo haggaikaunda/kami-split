@@ -164,9 +164,6 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
-.workspace-owner-actions {
-  margin-bottom: 1rem;
-}
 .workspace-member-balances [data-ui~='member'] {
   flex: 1;
   font-size: 0.875rem;

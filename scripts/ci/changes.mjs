@@ -48,6 +48,7 @@ const syntheticBrowser = new Set([
   'tests/browser/fixtures.mjs',
   'tests/browser/smoke.spec.mjs',
   'tests/browser/activity.spec.mjs',
+  'tests/browser/members.spec.mjs',
 ]);
 const integratedBrowser = new Set([
   'scripts/edit-real-browser.cjs',

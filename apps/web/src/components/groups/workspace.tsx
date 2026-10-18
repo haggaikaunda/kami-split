@@ -246,34 +246,6 @@ export function GroupWorkspaceContent({
         />
       )}
 
-      {current === 'Members' && (
-        <div
-          data-ui="workspace-owner-actions"
-          className={overviewFeatureStyles['workspace-owner-actions']}
-        >
-          {' '}
-          {group.viewerMembership.role === 'OWNER' && (
-            <div
-              data-ui="group-header-actions"
-              className={workspaceFeatureStyles['group-header-actions']}
-            >
-              <details
-                data-ui="group-settings"
-                className={workspaceFeatureStyles['group-settings']}
-              >
-                <summary>Group settings</summary>
-                <p>
-                  Name: {group.name} · Currency: {group.currency}
-                </p>
-                <p>
-                  Membership and invitations are managed separately. Metadata
-                  editing is not available in this workspace.
-                </p>
-              </details>
-            </div>
-          )}
-        </div>
-      )}
       {repayment && !completed ? (
         contextual ? (
           <>
@@ -369,29 +341,9 @@ export function GroupWorkspaceContent({
         </>
       ) : current === 'Members' ? (
         <section
-          data-ui="workspace-panel members-panel form-region"
-          className={cx(
-            workspaceFeatureStyles['workspace-panel'],
-            invitationStyles['members-panel'],
-          )}
+          data-ui="members-panel form-region"
+          className={invitationStyles['members-panel']}
         >
-          <h2>Members</h2>
-          {group.trip && (
-            <p
-              data-ui="workspace-context-detail"
-              className={workspaceFeatureStyles['workspace-context-detail']}
-            >
-              {group.trip.destination} ·{' '}
-              <time dateTime={group.trip.startDate}>
-                {calendarDate(group.trip.startDate)}
-              </time>{' '}
-              –{' '}
-              <time dateTime={group.trip.endDate}>
-                {calendarDate(group.trip.endDate)}
-              </time>{' '}
-              · {tripState(group.trip, today)}
-            </p>
-          )}
           {group.viewerMembership.role === 'OWNER' ? (
             <ScopedInvitations
               scope={scope}
@@ -404,6 +356,40 @@ export function GroupWorkspaceContent({
               <PeopleList members={group.members} />
               <p>Ask the owner to invite someone to this group.</p>
             </>
+          )}
+          <details className={invitationStyles['members-help']}>
+            <summary>About this space</summary>
+            <p>
+              Active members share this ledger and its full expense history.
+            </p>
+            {group.trip && (
+              <p
+                data-ui="workspace-context-detail"
+                className={workspaceFeatureStyles['workspace-context-detail']}
+              >
+                {group.trip.destination} ·{' '}
+                <time dateTime={group.trip.startDate}>
+                  {calendarDate(group.trip.startDate)}
+                </time>{' '}
+                –{' '}
+                <time dateTime={group.trip.endDate}>
+                  {calendarDate(group.trip.endDate)}
+                </time>{' '}
+                · {tripState(group.trip, today)}
+              </p>
+            )}
+          </details>
+          {group.viewerMembership.role === 'OWNER' && (
+            <details className={workspaceFeatureStyles['group-settings']}>
+              <summary>Group settings</summary>
+              <p>
+                Name: {group.name} · Currency: {group.currency}
+              </p>
+              <p>
+                Membership and invitations are managed separately. Metadata
+                editing is not available in this workspace.
+              </p>
+            </details>
           )}
         </section>
       ) : (
