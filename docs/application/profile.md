@@ -81,12 +81,14 @@ OS-wide and Account-only dark palettes have been removed.
 avatar on phones and desktop. The compact content uses an identity divider,
 stacked read-only email and editable display-name fields, and a native Appearance
 selector in a leading column bounded to 560px. Appearance still saves independently
-and immediately. It loads no financial overview. Its Back link uses the actor-scoped
+and immediately. It loads no financial overview. Its return link uses the actor-scoped
 source visit. Household and directory visits have descriptive labels; a Group/Trip
-origin resolves its name from a fresh, retained authorized group-name query, which
+origin, including nested expense, repayment and activity routes, resolves its name from a fresh, retained authorized group-name query, which
 is revalidated on foreground return. While that authorization is pending, the return
 waits without offering an unconfirmed destination. Failed or missing access falls
-back to Groups, as do direct entry, missing visits and unavailable account context.
+back to **Go to Groups**, as do direct entry, missing visits and unavailable account
+context. Static Activity and group/trip creation origins retain their own descriptive
+return labels without being mistaken for group IDs.
 Source restoration waits for current authorized content and preserves ledger
 filters, loaded extent, scroll and logical focus. Opening Profile alone does not
 invalidate valid financial projections; a confirmed display-name change does. Profile loading and failure leave

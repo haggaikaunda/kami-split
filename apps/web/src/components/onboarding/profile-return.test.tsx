@@ -85,7 +85,7 @@ it('uses only freshly authorized names and preserves the exact return query', as
     await new Promise((resolve) => setTimeout(resolve, 30));
   });
   await act(async () => requests.at(-1)!.next(response([])));
-  expect(host.textContent).toContain('Back to Groups');
+  expect(host.textContent).toContain('Go to Groups');
   expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
 });
 it('does not carry a private source name or visit across account replacement', async () => {
@@ -101,7 +101,7 @@ it('does not carry a private source name or visit across account replacement', a
     environment: queryEnvironment((request) => requests.push(request)),
   };
   await act(async () => root.render(<ProfileReturn key="bob" scope={scope} />));
-  expect(host.textContent).toContain('Back to Groups');
+  expect(host.textContent).toContain('Go to Groups');
   expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
   expect(requests).toHaveLength(1);
 });
@@ -124,6 +124,58 @@ it('uses truthful directory and Household labels without URL-provided names; mis
   await act(async () =>
     root.render(<ProfileReturn key="expired" scope={scope} />),
   );
-  expect(host.textContent).toContain('Back to Groups');
+  expect(host.textContent).toContain('Go to Groups');
   expect(requests).toHaveLength(0);
 });
+
+it.each([
+  '/trips/T/expenses/e?source=earlier',
+  '/groups/T/repayments/new?sender=M&recipient=N',
+  '/groups/T/activity?kind=expense',
+])(
+  'reauthorizes nested origin %s and preserves its exact return path',
+  async (href) => {
+    scope.visits.set('visit', { href, focus: 'header-profile', scroll: 300 });
+    await act(async () => root.render(<ProfileReturn scope={scope} />));
+    expect(host.querySelector('a')).toBeNull();
+    expect(requests).toHaveLength(1);
+    await act(async () =>
+      requests[0].next(response([{ id: 'T', name: 'Authorized trip' }])),
+    );
+    expect(host.textContent).toBe('Back to Authorized trip');
+    const destination = new URL(href, 'https://workspace.invalid');
+    destination.searchParams.set('restore', 'visit');
+    expect(host.querySelector('a')!.getAttribute('href')).toBe(
+      destination.pathname + destination.search,
+    );
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    await act(async () => requests.at(-1)!.next(response([])));
+    expect(host.textContent).toBe('Go to Groups');
+    expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
+  },
+);
+it.each([
+  ['/groups/activity?kind=expense', 'Back to Activity', 'activity'],
+  ['/groups/new?kind=trip', 'Back to Create group', 'new'],
+  ['/trips/new', 'Back to Create trip', 'new'],
+])(
+  'returns static origin %s without interpreting its route name as a group ID',
+  async (href, label, legacyGroup) => {
+    // Even metadata produced by the former parser cannot turn a static route into a private group.
+    scope.visits.set('visit', {
+      href,
+      group: legacyGroup,
+      focus: 'header-profile',
+      scroll: 3,
+    });
+    await act(async () => root.render(<ProfileReturn scope={scope} />));
+    expect(host.textContent).toBe(label);
+    expect(requests).toHaveLength(0);
+    expect(host.querySelector('a')!.getAttribute('href')).toContain(
+      'restore=visit',
+    );
+  },
+);

@@ -1325,6 +1325,86 @@ test('Profile returns a filtered late-page ledger with its loaded extent, scroll
   await expect(profileFor(page)).toBeFocused();
 });
 
+for (const [kind, path] of [
+  ['expense', '/trips/T/expenses/e1'],
+  ['repayment', '/trips/T/repayments/new'],
+  ['activity', '/groups/T/activity'],
+]) {
+  test(`Profile names and reauthorizes a nested ${kind} origin`, async ({
+    page,
+    app,
+  }) => {
+    await app.authenticate();
+    await page.goto(path);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Maui 2026 with a very long friendly space name',
+        exact: true,
+      }),
+    ).toBeVisible();
+    const source = new URL(page.url());
+    const authorization = app.hold(
+      'profileReturnQuery',
+      responseFor('profileReturnQuery', {}),
+    );
+    await profileFor(page).click();
+    await authorization.started;
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Checking return destination…' }),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Back to Maui/ })).toHaveCount(
+      0,
+    );
+    await authorization.release();
+    await page
+      .getByRole('link', {
+        name: 'Back to Maui 2026 with a very long friendly space name',
+        exact: true,
+      })
+      .click();
+    await expect(profileFor(page)).toBeFocused();
+    const returned = new URL(page.url());
+    expect(returned.pathname).toBe(source.pathname);
+    for (const [name, value] of source.searchParams)
+      expect(returned.searchParams.get(name)).toBe(value);
+    const denied = app.hold('profileReturnQuery', {
+      viewer: { __typename: 'Viewer', groups: [] },
+    });
+    await profileFor(page).click();
+    await denied.started;
+    await denied.release();
+    await expect(
+      page.getByRole('link', { name: 'Go to Groups', exact: true }),
+    ).toHaveAttribute('href', '/groups');
+    await expect(page.getByRole('link', { name: /^Back to Maui/ })).toHaveCount(
+      0,
+    );
+  });
+}
+test('Profile direct and expired visits offer Groups without inventing a return origin', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  for (const path of ['/account', '/account?source=expired&name=Untrusted']) {
+    await page.goto(path);
+    await expect(
+      page.getByLabel('Display name', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Go to Groups', exact: true }),
+    ).toHaveAttribute('href', '/groups');
+    await expect(page.getByText('Untrusted', { exact: true })).toHaveCount(0);
+  }
+  expect(
+    app.requests.filter(
+      (request) => request.operation === 'profileReturnQuery',
+    ),
+  ).toHaveLength(0);
+});
+
 test('global Add expense requires an explicit eligible source and cancel restores Profile', async ({
   page,
   app,

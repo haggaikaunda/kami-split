@@ -153,7 +153,7 @@ function OnboardingVisit({
                   {scope && scope.actor === c.session?.user.id ? (
                     <ProfileReturn scope={scope} />
                   ) : (
-                    <Link href="/groups">Back to Groups</Link>
+                    <Link href="/groups">Go to Groups</Link>
                   )}
                 </div>
                 <header

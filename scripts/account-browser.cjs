@@ -282,7 +282,7 @@ withAuthFixture(origin, session, async () => {
         );
         assert.equal(
           await page
-            .getByRole('link', { name: 'Back to Groups', exact: true })
+            .getByRole('link', { name: 'Go to Groups', exact: true })
             .count(),
           1,
         );

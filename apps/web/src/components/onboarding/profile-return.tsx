@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { NetworkQuery } from '@/lib/relay/query';
 import type { FinancialScope } from '@/lib/relay/environment';
+import { groupRouteId } from '@/lib/relay/discovery';
 import document, {
   type profileReturnQuery,
 } from '@/lib/relay/__generated__/profileReturnQuery.graphql';
@@ -13,6 +14,9 @@ import { useForegroundRefresh } from '../groups/foreground';
 export function ProfileReturn({ scope }: { scope: FinancialScope }) {
   const token = useSearchParams().get('source');
   const visit = token && scope.isLive() ? scope.visits.get(token) : undefined;
+  const groupId = visit
+    ? groupRouteId(new URL(visit.href, 'https://workspace.invalid').pathname)
+    : undefined;
   const [version, setVersion] = useState(0);
   const [active, setActive] = useState(true);
   useForegroundRefresh(
@@ -21,15 +25,21 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
       setVersion((value) => value + 1);
       setActive(true);
     },
-    Boolean(visit?.group),
+    Boolean(groupId),
   );
-  const fallback = <SourceReturn scope={scope} authorizedGroups={[]} />;
+  const fallback = (
+    <SourceReturn
+      scope={scope}
+      authorizedGroups={[]}
+      fallbackLabel="Go to Groups"
+    />
+  );
   const pending = (
     <span data-ui="source-return-pending" role="status">
       Checking return destination…
     </span>
   );
-  if (!visit?.group) return fallback;
+  if (!groupId) return fallback;
   if (!active) return pending;
   return (
     <NetworkQuery<profileReturnQuery>
@@ -43,6 +53,7 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
       {(data) => (
         <SourceReturn
           scope={scope}
+          fallbackLabel="Go to Groups"
           authorizedGroups={
             data.viewer.__typename === 'Viewer' ? data.viewer.groups : []
           }
