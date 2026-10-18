@@ -2465,6 +2465,29 @@ test('contextual repayment dismisses with draft, source expansion, scroll and fo
     dialog.getByRole('heading', { name: 'Settle with Brian' }),
   ).toBeFocused();
   await expect(page.locator('form')).toHaveCount(1);
+  const modalType = await dialog.evaluate((element) => {
+    const heading = getComputedStyle(
+      element.querySelector('#repayment-heading'),
+    );
+    const member = getComputedStyle(
+      element.querySelector('[data-ui~="member-name"]'),
+    );
+    return {
+      heading: {
+        size: heading.fontSize,
+        line: heading.lineHeight,
+        weight: heading.fontWeight,
+      },
+      member: { size: member.fontSize, weight: member.fontWeight },
+    };
+  });
+  expect(modalType.heading.size).toBe('18px');
+  expect(parseFloat(modalType.heading.line)).toBeCloseTo(23.4, 1);
+  expect(modalType.member).toEqual({ size: '14px', weight: '400' });
+  await writeFile(
+    testInfo.outputPath('repayment-typography.json'),
+    JSON.stringify(modalType, null, 2),
+  );
   await page.screenshot({ path: testInfo.outputPath('repayment-initial.png') });
   await expect(dialog.getByLabel('Transfer date')).toBeVisible();
   const box = await dialog.boundingBox();
@@ -2527,6 +2550,10 @@ test('Group compact source keeps member calculations and simple actionable rows 
   await expect(
     card.getByRole('heading', { name: 'Recent recorded repayments' }),
   ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('group-source-expanded.png'),
+    fullPage: true,
+  });
   const members = card
     .locator('summary')
     .filter({ hasText: 'Each member’s balance' });
@@ -2796,3 +2823,52 @@ for (const source of [
       ).toBe(false);
     });
   }
+
+for (const space of [
+  { id: 'F', path: '/groups/F?tab=balances' },
+  { id: 'T', path: '/trips/T?tab=balances' },
+]) {
+  test(`Unavailable ${space.id} balances retain compact source detail and general actual-transfer access`, async ({
+    page,
+    app,
+  }, testInfo) => {
+    const fixture = structuredClone(
+      responseFor('journeyWorkspaceQuery', { id: space.id }),
+    );
+    fixture.group.balances = { __typename: 'Problem', code: 'UNAVAILABLE' };
+    const response = app.holdMatching(
+      'journeyWorkspaceQuery',
+      () => true,
+      fixture,
+    );
+    response.release();
+    await app.authenticate();
+    await page.goto(space.path);
+    await expect(
+      page.getByRole('heading', { name: 'Your balances' }),
+    ).toBeVisible();
+    const summary = page.locator('[data-ui~="balance-summary"]');
+    await expect(summary).toContainText('Complete balance unavailable');
+    await expect(summary).not.toContainText('$0.00');
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Balances are unavailable' }),
+    ).toBeVisible();
+    await expect(
+      page.locator(`#balance-section-group-${space.id}-source`),
+    ).toContainText('Balance unavailable');
+    await page.screenshot({
+      path: testInfo.outputPath('unavailable-source.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('link', { name: 'Record an actual transfer', exact: true })
+      .click();
+    await expect(page.getByLabel('Amount (USD)', { exact: true })).toHaveValue(
+      '',
+    );
+    await expect(page.getByLabel('Sender', { exact: true })).toHaveValue('');
+    await expect(
+      page.locator('[data-ui~="repayment-presentation"]'),
+    ).toHaveCount(0);
+  });
+}

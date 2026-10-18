@@ -682,18 +682,45 @@ export function GroupBalances({
   const b = group.balances;
   if (b?.__typename !== 'GroupBalances')
     return (
-      <section data-ui="form-region">
-        <h2>
-          {group.isHousehold ? 'Household expenses' : 'Complete balances'}
-        </h2>
+      <section
+        data-ui="group-balances form-region"
+        className={cx(
+          workspaceFeatureStyles['group-balances'],
+          balanceStyles.view,
+        )}
+      >
+        <BalanceHeading />
+        <BalanceSummary currency={group.currency} positions={[undefined]} />
         <p role="alert">
           Balances are unavailable. This group cannot be shown as settled.
         </p>
-        <Link href={`${spaceHref(group)}?tab=activity`}>
-          View Activity and expense before/after history
-        </Link>
-        <GeneralRepaymentEntry scope={scope} group={group} />
-        <RecentRepayments group={group} />
+        <BalanceSection
+          scope={scope}
+          identity={`group-${group.id}-source`}
+          initiallyOpen
+          summary={
+            <SourceSummary
+              name={group.isHousehold ? 'Household expenses' : group.name}
+              icon={
+                group.isHousehold
+                  ? 'home'
+                  : group.kind === 'TRIP'
+                    ? 'trip'
+                    : 'groups'
+              }
+              detail="Balance unavailable"
+            />
+          }
+        >
+          <p>
+            {group.members.length} members · {group.currency}
+          </p>
+          <Link href={`${spaceHref(group)}?tab=activity`}>
+            View Activity and expense before/after history
+          </Link>
+          <GeneralRepaymentEntry scope={scope} group={group} />
+          <RecentRepayments group={group} />
+        </BalanceSection>
       </section>
     );
   const viewerPosition = b.positions.find(
@@ -862,19 +889,13 @@ function GeneralRepaymentEntry({
   group: WorkspaceGroup;
 }) {
   return (
-    <>
-      <ScopedLink
-        scope={scope}
-        id={`repay-general-${group.id}`}
-        href={spaceRepaymentHref(group, new URLSearchParams())}
-      >
-        Record an actual transfer
-      </ScopedLink>
-      <p>
-        Choose the people and amount for money already transferred, including
-        partial repayments, overpayments or transfers without a suggestion.
-      </p>
-    </>
+    <ScopedLink
+      scope={scope}
+      id={`repay-general-${group.id}`}
+      href={spaceRepaymentHref(group, new URLSearchParams())}
+    >
+      Record an actual transfer
+    </ScopedLink>
   );
 }
 function RecentRepayments({ group }: { group: WorkspaceGroup }) {

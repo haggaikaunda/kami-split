@@ -86,6 +86,10 @@ export function BalanceHeading() {
       <h2>Your balances</h2>
       <RichHelp label="How balances work">
         <BalanceExplanation household />
+        <p>
+          You can record partial repayments, overpayments and actual transfers
+          without a suggestion. Each transfer stays within its original space.
+        </p>
       </RichHelp>
     </div>
   );

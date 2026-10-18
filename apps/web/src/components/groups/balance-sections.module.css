@@ -271,3 +271,30 @@
   color: var(--color-muted);
   font-size: 0.8125rem;
 }
+
+.section[open] > .content {
+  border-top: 1px solid var(--color-separator);
+}
+.content .section[open] > .content {
+  border-top: 0;
+}
+.content > p:first-child {
+  margin-block: 0.625rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+.content .section > summary h3 {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.content > a:not(.obligation) {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-size);
+  font-size: 0.8125rem;
+}
+.content > section > h3 {
+  margin-block: 1rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}

@@ -345,6 +345,12 @@ it('distinguishes a fully repaid viewer from outstanding obligations between oth
     'Balances are unavailable',
   );
   expect(host.querySelector('[data-ui~="balance-position"]')).toBeNull();
+  expect(
+    host.querySelector('[data-ui~="balance-summary"]')?.textContent,
+  ).toContain('Complete balance unavailable');
+  expect(
+    host.querySelector('#balance-section-group-G-source')?.textContent,
+  ).toContain('Balance unavailable');
   expect(host.textContent).not.toContain('Everyone in this space is settled');
   expect(host.textContent).not.toContain('$0.00');
 });
