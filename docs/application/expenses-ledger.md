@@ -36,7 +36,9 @@ The list retains its query and session-owned row/position metadata across detail
 Back/Forward and edit-triggered parent remounts. Returning rebuilds the previously
 loaded extent from freshly authorized pages and restores trigger focus and viewport
 offset. If a row moved outside that extent or disappeared, the nearest surviving
-row by prior ordinal is used; direct URLs fall back to the Expenses region. Every detail first rechecks source eligibility, then reads the stable
+row by prior ordinal is used. Direct entry without a saved opener uses the first
+available row; when no row is available, focus returns to Filters. Every detail
+first rechecks source eligibility, then reads the stable
 expense node and verifies both expense and group identity. Refresh/foreground
 invalidates prior rows and detail before reauthorization; failed, stale, denied
 and unavailable reads never manufacture empty success or settled data. Account
