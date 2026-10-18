@@ -2583,7 +2583,9 @@ for (const source of [
       if (long) {
         const amount = '9223372036854775807';
         group.balances.positions[0].netMinor = amount;
+        group.balances.positions[0].paidMinor = amount;
         group.balances.positions[1].netMinor = `-${amount}`;
+        group.balances.positions[1].owedMinor = amount;
         group.balances.obligations[0].amountMinor = amount;
       }
       app
@@ -2612,6 +2614,24 @@ for (const source of [
       await expect(row.locator('[data-ui~="money-value"]')).toHaveText(
         long ? '$92,233,720,368,547,758.07' : '$84.20',
       );
+      const calculations = page.locator(
+        '[data-ui~="balance-position"] > details > summary',
+      );
+      for (const summary of await calculations.all()) {
+        await summary.focus();
+        await page.keyboard.press('Enter');
+        await expect(summary.locator('..')).toHaveAttribute('open', '');
+      }
+      const facts = row
+        .locator('..')
+        .locator('[data-ui~="balance-position-facts"]');
+      const paid = facts.locator('dd [data-ui~="money"]').first();
+      await expect(paid.locator('[data-ui~="money-value"]')).toHaveText(
+        long ? '$92,233,720,368,547,758.07' : '$0.00',
+      );
+      await expect(
+        page.getByLabel(`Balance calculation for ${name}`, { exact: true }),
+      ).toBeVisible();
       const observations = [];
       for (const width of [320, 390, 440, 1280]) {
         await page.setViewportSize({ width, height: 844 });
@@ -2624,7 +2644,16 @@ for (const source of [
             const copy = element.querySelector('[data-ui~="member-copy"]');
             const detail = element.querySelector('[data-ui~="member-detail"]');
             const style = getComputedStyle(name);
+            const facts = element.parentElement.querySelector(
+              '[data-ui~="balance-position-facts"]',
+            );
+            const fact = facts.firstElementChild;
+            const factMoney = fact.querySelector('[data-ui~="money"]');
             return {
+              factsWidth: facts.getBoundingClientRect().width,
+              factWidth: fact.getBoundingClientRect().width,
+              factMoneyWidth: factMoney.clientWidth,
+              factMoneyScroll: factMoney.scrollWidth,
               copyWidth: copy.getBoundingClientRect().width,
               font: parseFloat(style.fontSize),
               nameHeight: name.getBoundingClientRect().height,
@@ -2637,6 +2666,12 @@ for (const source of [
           // A usable identity column prevents letter-by-letter wrapping even
           // when an exact amount must move below it or scroll independently.
           expect(geometry.copyWidth).toBeGreaterThanOrEqual(geometry.font * 4);
+          expect(geometry.factWidth).toBeLessThanOrEqual(
+            geometry.factsWidth + 1,
+          );
+          expect(geometry.factMoneyWidth).toBeLessThanOrEqual(
+            geometry.factWidth + 1,
+          );
           if (!long) {
             expect(geometry.nameHeight).toBeLessThanOrEqual(
               geometry.lineHeight,
@@ -2650,6 +2685,37 @@ for (const source of [
           );
           observations.push({ width, scale, ...geometry });
           if (width === 320 && scale === '200%') {
+            if (long) {
+              await expect(paid).toHaveAccessibleName(
+                '$92,233,720,368,547,758.07 USD',
+              );
+              expect(geometry.factMoneyScroll).toBeGreaterThan(
+                geometry.factMoneyWidth,
+              );
+              await paid.focus();
+              await expect(paid).toBeFocused();
+              for (let step = 0; step < 10; step++)
+                await page.keyboard.press('ArrowRight');
+              await expect
+                .poll(() =>
+                  paid.evaluate(
+                    (element) => element.scrollLeft + element.clientWidth,
+                  ),
+                )
+                .toBeGreaterThanOrEqual(geometry.factMoneyScroll - 1);
+              await paid.screenshot({
+                path: testInfo.outputPath('calculation-amount-end-320-200.png'),
+              });
+              await paid.evaluate((element) => {
+                element.scrollLeft = 0;
+              });
+            }
+            await facts
+              .locator(':scope > div')
+              .first()
+              .screenshot({
+                path: testInfo.outputPath('calculation-fact-320-200.png'),
+              });
             await row.scrollIntoViewIfNeeded();
             await page.screenshot({
               path: testInfo.outputPath('member-position-320-200.png'),
