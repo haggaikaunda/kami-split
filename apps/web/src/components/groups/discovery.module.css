@@ -42,6 +42,7 @@
   color: var(--color-on-container);
 }
 .directory-toolbar [data-ui~='button'] {
+  border-radius: 0.875rem;
   padding-inline: 0.875rem;
   font-size: 0.8125rem;
 }

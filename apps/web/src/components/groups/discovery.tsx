@@ -198,7 +198,11 @@ function DiscoveryResults({
               ))}
             </nav>
             {viewer.canCreateGroups && (
-              <Button id="directory-create" onClick={() => setCreating(true)}>
+              <Button
+                tone="secondary"
+                id="directory-create"
+                onClick={() => setCreating(true)}
+              >
                 <AppIcon name="plus" /> Create
               </Button>
             )}
@@ -354,7 +358,10 @@ function DiscoveryCard({
             <path d="m9 18 6-6-6-6" />
           </svg>
         </span>
-        <span className={discoveryFeatureStyles['card-finances']}>
+        <span
+          data-ui="directory-finances"
+          className={discoveryFeatureStyles['card-finances']}
+        >
           <span>
             <span>Total spend · {item.currency}</span>
             <strong>

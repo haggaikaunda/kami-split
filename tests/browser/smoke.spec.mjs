@@ -2371,11 +2371,18 @@ for (const count of [0, 1, 3, 12]) {
           toolbar: box(document.querySelector('[data-ui="directory-toolbar"]')),
           list: box(list),
           cards: [...list.children].map(box),
+          finances: [
+            ...list.querySelectorAll('[data-ui="directory-finances"]'),
+          ].map((element) => [...element.children].map(box)),
           navigation: box(
             document.querySelector('[data-ui~="workspace-navigation-links"]'),
           ),
         };
       });
+      for (const [spend, balance] of bounds.finances) {
+        expect(balance.y).toBe(spend.y);
+        expect(balance.x).toBeGreaterThan(spend.x + spend.width);
+      }
       await testInfo.attach('directory-bounds', {
         body: JSON.stringify(bounds, null, 2),
         contentType: 'application/json',
