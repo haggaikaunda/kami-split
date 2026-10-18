@@ -633,6 +633,18 @@ test('enlarged historical detail wraps every audit text slot and returns keyboar
           };
         };
         return {
+          titleFontSize: getComputedStyle(el.querySelector('h3')).fontSize,
+          titleWordWidth: (() => {
+            const title = el.querySelector('h3');
+            const context = document.createElement('canvas').getContext('2d');
+            context.font = getComputedStyle(title).font;
+            return Math.max(
+              ...title.textContent
+                .trim()
+                .split(/\s+/)
+                .map((word) => context.measureText(word).width),
+            );
+          })(),
           viewport: innerWidth,
           documentWidth: document.documentElement.scrollWidth,
           detail: box(el),
@@ -650,6 +662,10 @@ test('enlarged historical detail wraps every audit text slot and returns keyboar
       });
       expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewport);
       expect(geometry.heading.width).toBeGreaterThan(130);
+      expect(geometry.titleFontSize).toBe('32px');
+      expect(geometry.heading.width).toBeGreaterThanOrEqual(
+        geometry.titleWordWidth,
+      );
       expect(geometry.icon.bottom).toBeLessThanOrEqual(geometry.heading.y);
       await detail.locator('[data-ui~="activity-record-heading"]').screenshot({
         path: testInfo.outputPath(`${width}-${kind}-heading.png`),

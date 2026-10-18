@@ -325,6 +325,9 @@
   .activity-record-heading > div {
     width: 100%;
   }
+  .activity-record-heading h3 {
+    font-size: 1rem;
+  }
   .activity-facts > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.375rem;
