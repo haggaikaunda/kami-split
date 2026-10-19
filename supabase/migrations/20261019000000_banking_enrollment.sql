@@ -56,6 +56,7 @@ CREATE FUNCTION app.banking_enrollment_start(target uuid, env text, digest bytea
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE actor uuid:=app.lock_banking_owner(); e app.banking_enrollments;
 BEGIN
+  -- Reservation authority precedes attempt/connection/job locks, as in activation.
   PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||'/banking/'||env,0));
   SELECT * INTO e FROM app.banking_enrollments WHERE id=target FOR UPDATE;
   IF FOUND THEN
@@ -117,8 +118,13 @@ BEGIN
 END $$;
 CREATE FUNCTION app.banking_enrollment_activate(target uuid, accounts jsonb, institution text) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE actor uuid:=app.lock_banking_owner(); e app.banking_enrollments; connection app.banking_connections; a jsonb; account uuid; binding uuid;
+DECLARE actor uuid:=app.lock_banking_owner(); env text; e app.banking_enrollments; connection app.banking_connections; a jsonb; account uuid; binding uuid;
 BEGIN
+  -- Environment is immutable; this read supplies only the reservation lock key.
+  -- Reauthorize and lock the attempt after acquiring the same first lock as Start.
+  SELECT environment INTO env FROM app.banking_enrollments WHERE id=target AND owner_id=actor;
+  IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||'/banking/'||env,0));
   SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
   IF e.state<>'exchanging' OR e.cancelled OR e.expires_at<=clock_timestamp() OR e.connection_id IS NULL THEN RETURN 'CLEANUP_PENDING'; END IF;
@@ -131,7 +137,6 @@ BEGIN
   IF EXISTS(SELECT FROM app.banking_enrollment_receipts r JOIN app.banking_connections c ON c.id=e.connection_id WHERE r.attempt_id=e.id AND r.hint_item_id<>c.provider_item_id) THEN RETURN 'CLEANUP_PENDING'; END IF;
   IF e.intent='existing' THEN RETURN 'REPLACEMENT_REQUIRED'; END IF;
   IF jsonb_typeof(accounts)<>'array' OR jsonb_array_length(accounts) NOT BETWEEN 1 AND 100 OR institution='' THEN RETURN 'INVALID_SELECTION'; END IF;
-  PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||'/banking/'||e.environment,0));
   FOR a IN SELECT * FROM jsonb_array_elements(accounts) LOOP
     IF a->>'Kind' NOT IN('checking','savings','credit_card') OR a->>'Currency'<>'USD' OR coalesce(a->>'ID','')='' THEN RETURN 'INVALID_SELECTION'; END IF;
     IF coalesce(a->>'StableID','')<>'' AND EXISTS(SELECT FROM app.banking_enrollment_accounts WHERE owner_id=actor AND environment=e.environment AND institution_id=institution AND stable_id=a->>'StableID') THEN RETURN 'DUPLICATE_ACCOUNT'; END IF;

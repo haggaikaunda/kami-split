@@ -166,9 +166,11 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 			if err = tx.QueryRow(ctx, `SELECT app.banking_enrollment_start($1,$2,$3,$4,$5,$6)`, input.AttemptID, s.config.Environment, digest, version, input.Intent, webhook).Scan(&code); err != nil {
 				return err
 			}
-			if code != "PREPARING" {
+			if code == "NOT_FOUND" || code == "CONFLICT" || code == "ATTEMPT_IN_PROGRESS" {
 				return nil
 			}
+			// Another Start may have reserved this ID after the absent-row read.
+			// Load its canonical receipt just as the ordinary replay path does.
 			e, err = readEnrollment(ctx, tx, input.AttemptID)
 			if err != nil {
 				return err
