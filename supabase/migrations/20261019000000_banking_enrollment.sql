@@ -117,11 +117,17 @@ BEGIN
 END $$;
 CREATE FUNCTION app.banking_enrollment_activate(target uuid, accounts jsonb, institution text) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE actor uuid:=app.lock_banking_owner(); e app.banking_enrollments; a jsonb; account uuid; binding uuid;
+DECLARE actor uuid:=app.lock_banking_owner(); e app.banking_enrollments; connection app.banking_connections; a jsonb; account uuid; binding uuid;
 BEGIN
   SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
   IF e.state<>'exchanging' OR e.cancelled OR e.expires_at<=clock_timestamp() OR e.connection_id IS NULL THEN RETURN 'CLEANUP_PENDING'; END IF;
+  -- The attempt lock precedes the connection lock, matching recovery/ingress.
+  -- Only the untouched provisional generation may publish selected accounts.
+  SELECT * INTO connection FROM app.banking_connections WHERE id=e.connection_id AND owner_id=actor FOR UPDATE;
+  IF NOT FOUND OR connection.state<>'stopped' OR connection.generation<>1 OR connection.deletion_generation<>0
+    OR NOT connection.enrollment_pending OR connection.provider_removed
+    OR EXISTS(SELECT FROM app.banking_deletion_barriers WHERE connection_id=connection.id) THEN RETURN 'CLEANUP_PENDING'; END IF;
   IF EXISTS(SELECT FROM app.banking_enrollment_receipts r JOIN app.banking_connections c ON c.id=e.connection_id WHERE r.attempt_id=e.id AND r.hint_item_id<>c.provider_item_id) THEN RETURN 'CLEANUP_PENDING'; END IF;
   IF e.intent='existing' THEN RETURN 'REPLACEMENT_REQUIRED'; END IF;
   IF jsonb_typeof(accounts)<>'array' OR jsonb_array_length(accounts) NOT BETWEEN 1 AND 100 OR institution='' THEN RETURN 'INVALID_SELECTION'; END IF;
@@ -130,13 +136,15 @@ BEGIN
     IF a->>'Kind' NOT IN('checking','savings','credit_card') OR a->>'Currency'<>'USD' OR coalesce(a->>'ID','')='' THEN RETURN 'INVALID_SELECTION'; END IF;
     IF coalesce(a->>'StableID','')<>'' AND EXISTS(SELECT FROM app.banking_enrollment_accounts WHERE owner_id=actor AND environment=e.environment AND institution_id=institution AND stable_id=a->>'StableID') THEN RETURN 'DUPLICATE_ACCOUNT'; END IF;
   END LOOP;
+  UPDATE app.banking_connections SET state='active',permission_state='granted',enrollment_pending=false
+    WHERE id=e.connection_id AND state='stopped' AND generation=1 AND deletion_generation=0 AND enrollment_pending AND NOT provider_removed;
+  IF NOT FOUND THEN RETURN 'CLEANUP_PENDING'; END IF;
   FOR a IN SELECT * FROM jsonb_array_elements(accounts) LOOP
     account:=gen_random_uuid(); binding:=gen_random_uuid();
     INSERT INTO app.banking_accounts(id,owner_id,kind,selected) VALUES(account,actor,a->>'Kind',true);
     INSERT INTO app.banking_bindings(id,owner_id,connection_id,account_id,provider_account_id) VALUES(binding,actor,e.connection_id,account,a->>'ID');
     INSERT INTO app.banking_enrollment_accounts VALUES(binding,actor,e.environment,institution,coalesce(a->>'StableID',''),a->>'Name','USD',365);
   END LOOP;
-  UPDATE app.banking_connections SET state='active',permission_state='granted',enrollment_pending=false WHERE id=e.connection_id AND state='stopped';
   INSERT INTO app.banking_webhook_correlations VALUES(target,e.connection_id,1);
   UPDATE app.banking_enrollments SET state='ready',blocks_enrollment=false,result_code='AWAITING_INITIAL_IMPORT',link_ciphertext=NULL,public_ciphertext=NULL,lease_until=NULL WHERE id=target;
   UPDATE app.banking_enrollment_jobs SET state='complete' WHERE attempt_id=target;
@@ -155,14 +163,27 @@ BEGIN
   PERFORM app.banking_enrollment_enqueue(target);
   RETURN 'CLEANUP_PENDING';
 END $$;
-CREATE FUNCTION app.banking_enrollment_unknown(target uuid) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$ BEGIN
-  PERFORM app.lock_banking_owner();
-  UPDATE app.banking_enrollments SET state='exchange_unknown',result_code='EXCHANGE_UNKNOWN',link_ciphertext=NULL,public_ciphertext=NULL,lease_until=NULL
-    WHERE id=target AND owner_id=app.banking_owner() AND state IN('preparing','exchanging');
-  UPDATE app.banking_enrollment_jobs SET due_at=clock_timestamp() WHERE attempt_id=target AND state='pending';
+CREATE FUNCTION app.banking_enrollment_unknown(target uuid, targets text[] DEFAULT '{}') RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE e app.banking_enrollments; job app.banking_enrollment_jobs; reopen boolean;
+BEGIN
+  SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=app.lock_banking_owner() FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  SELECT * INTO job FROM app.banking_enrollment_jobs WHERE attempt_id=target FOR UPDATE;
+  -- A slow request can learn additional positive targets after a worker has
+  -- completed its earlier set. Reopen only that unresolved cleanup, preserving
+  -- confirmed removal evidence and the existing attention/exhaustion boundary.
+  reopen:=job.state='complete' AND NOT coalesce(targets,'{}'::text[])<@job.removed_items;
+  UPDATE app.banking_enrollments SET state=CASE WHEN reopen THEN 'cleanup_pending' ELSE 'exchange_unknown' END,
+    result_code=CASE WHEN reopen THEN 'CLEANUP_PENDING' ELSE 'EXCHANGE_UNKNOWN' END,
+    force_discovery=force_discovery OR cardinality(coalesce(targets,'{}'::text[]))>0,link_ciphertext=NULL,public_ciphertext=NULL,
+    lease_until=CASE WHEN job.state='running' THEN lease_until ELSE NULL END
+    WHERE id=target AND (state IN('preparing','exchanging') OR reopen);
+  UPDATE app.banking_enrollment_jobs SET correlated_items=ARRAY(SELECT DISTINCT unnest(correlated_items||coalesce(targets,'{}'::text[]))),
+    state=CASE WHEN reopen THEN 'pending' ELSE state END,attempts=CASE WHEN reopen THEN 0 ELSE attempts END,
+    due_at=CASE WHEN state='pending' OR reopen THEN clock_timestamp() ELSE due_at END WHERE attempt_id=target;
 END $$;
-GRANT EXECUTE ON FUNCTION app.banking_enrollment_unknown(uuid) TO kami_api;
+GRANT EXECUTE ON FUNCTION app.banking_enrollment_unknown(uuid,text[]) TO kami_api;
 GRANT EXECUTE ON FUNCTION app.banking_enrollment_start(uuid,text,bytea,text,text,text),app.banking_enrollment_prepare_claim(uuid,uuid),
   app.banking_enrollment_prepared(uuid,uuid,text,bytea,text,timestamptz),app.banking_enrollment_exchange_claim(uuid,bytea,bytea,text),
   app.banking_enrollment_exchange_saved(uuid,text,uuid,bytea,text),app.banking_enrollment_activate(uuid,jsonb,text),app.banking_enrollment_cancel(uuid,text) TO kami_api;
@@ -250,7 +271,7 @@ BEGIN
   IF j.state<>'running' OR j.lease_token IS DISTINCT FROM authority OR j.lease_until<=clock_timestamp() THEN RETURN false; END IF;
   IF e.connection_id IS NOT NULL AND NOT e.force_discovery THEN
     UPDATE app.banking_connections SET enrollment_pending=false WHERE id=e.connection_id AND state='stopped';
-    PERFORM app.banking_enqueue(e.connection_id,1,'teardown');
+    PERFORM app.banking_enqueue(e.connection_id,(SELECT generation FROM app.banking_connections WHERE id=e.connection_id),'teardown');
     SELECT provider_removed INTO finished FROM app.banking_connections WHERE id=e.connection_id;
   ELSE
     UPDATE app.banking_enrollment_jobs SET removed_items=ARRAY(SELECT DISTINCT unnest(removed_items||confirmed_items)) WHERE attempt_id=target;

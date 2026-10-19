@@ -48,7 +48,11 @@ func TestEnrollmentUserPersistsBeforeExactLinkPreparation(t *testing.T) {
 			if !reflect.DeepEqual(request, map[string]any{"client_user_id": "actor-environment"}) {
 				t.Fatal("user creation accepted browser identity or unnecessary PII")
 			}
-			return plaidTestResponse(200, `{"user_id":"usr_actor","request_id":"id"}`), nil
+			status := http.StatusCreated
+			if calls > 1 {
+				status = http.StatusOK
+			}
+			return plaidTestResponse(status, `{"user_id":"usr_actor","request_id":"id"}`), nil
 		case "/link/token/create":
 			want := map[string]any{
 				"user":    map[string]any{"client_user_id": "actor-environment"},
@@ -436,5 +440,37 @@ func TestEnrollmentRedirectAndCancelledExchangeHaveOneAttempt(t *testing.T) {
 		if !errors.As(err, &failure) || failure.Retryable || calls != 1 {
 			t.Fatal("one-use exchange followed redirect, retried or ignored cancellation")
 		}
+	}
+}
+
+func TestEnrollmentUserCreationRejectsUnexpectedStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusAccepted, http.StatusNoContent, http.StatusPartialContent, http.StatusMultipleChoices, http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			calls := 0
+			provider := enrollmentPlaid(t, bankingRoundTrip(func(r *http.Request) (*http.Response, error) {
+				calls++
+				enrollmentRequest(t, r)
+				return plaidTestResponse(status, `{"user_id":"usr_actor","request_id":"id"}`), nil
+			}))
+			if user, err := provider.EnsureUser(context.Background(), "sandbox", "actor-environment"); err == nil || user != "" || calls != 1 {
+				t.Fatal("unexpected user status accepted or retried")
+			}
+		})
+	}
+}
+
+func TestEnrollmentCreatedStatusIsSpecificToUserCreation(t *testing.T) {
+	calls := 0
+	expiry := time.Now().UTC().Add(time.Hour).Format(time.RFC3339)
+	provider := enrollmentPlaid(t, bankingRoundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		enrollmentRequest(t, r)
+		return plaidTestResponse(http.StatusCreated, fmt.Sprintf(`{"link_token":"link-private","expiration":%q,"item_id":"item","access_token":"access-private"}`, expiry)), nil
+	}))
+	if _, err := provider.Prepare(context.Background(), EnrollmentPreparation{Environment: "sandbox", ClientUserID: "actor", UserID: "usr_actor", WebhookURL: "https://api.example.invalid/banking/webhooks/attempt"}); err == nil || calls != 1 {
+		t.Fatal("Link accepted undocumented created status")
+	}
+	if _, err := provider.Exchange(context.Background(), "sandbox", NewPublicToken([]byte("public-private"))); err == nil || calls != 2 {
+		t.Fatal("one-use exchange accepted undocumented created status or retried")
 	}
 }

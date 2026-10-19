@@ -365,9 +365,14 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 	// The exchanged Item must belong to this actor and this exact Link URL. A
 	// swapped token is never stored, activated or removed under guessed authority.
 	items, err := s.provider.Discover(ctx, e.Environment, EnrollmentCorrelation{UserID: e.UserID, ClientUserID: "kami-" + e.OwnerID.String() + "-" + e.Environment, WebhookURL: e.Webhook})
-	correlated := len(items) == 1 && items[0] == exchanged.ItemID
-	if err != nil || !correlated {
+	if err != nil {
 		return s.unknown(ctx, e.ID)
+	}
+	correlated := len(items) == 1 && items[0] == exchanged.ItemID
+	if !correlated {
+		// Successful discovery is positive authority even if a later lookup is
+		// incomplete. Commit every correlated target with uncertainty before returning.
+		return s.unknown(ctx, e.ID, items...)
 	}
 	connection := uuid.New()
 	raw := exchanged.AccessToken.Bytes()
@@ -384,7 +389,7 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 		return enrollmentFailure(ctx, err)
 	}
 	if !saved {
-		return s.Status(ctx, e.ID)
+		return s.unknown(ctx, e.ID, items...)
 	}
 	inventory, err := s.provider.Accounts(ctx, e.Environment, exchanged.AccessToken)
 	if err != nil || inventory.ItemID != exchanged.ItemID {
@@ -448,9 +453,9 @@ func (s *EnrollmentService) Accounts(ctx context.Context, connection uuid.UUID) 
 	return result, Result{Code: code}
 }
 
-func (s *EnrollmentService) unknown(ctx context.Context, id uuid.UUID) EnrollmentOutcome {
+func (s *EnrollmentService) unknown(ctx context.Context, id uuid.UUID, targets ...string) EnrollmentOutcome {
 	err := s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
-		_, err := tx.Exec(ctx, `SELECT app.banking_enrollment_unknown($1)`, id)
+		_, err := tx.Exec(ctx, `SELECT app.banking_enrollment_unknown($1,$2)`, id, targets)
 		return err
 	})
 	if err != nil {

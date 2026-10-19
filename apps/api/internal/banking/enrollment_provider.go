@@ -389,7 +389,10 @@ func (p *PlaidProvider) enrollmentPost(ctx context.Context, path string, request
 	if err != nil {
 		return &EnrollmentError{Uncertain: effect, Retryable: true, RetryAfter: response.retryAfter}
 	}
-	if response.status != http.StatusOK {
+	// New User API creation returns 201; idempotent existing-user lookup
+	// returns 200. Other enrollment endpoints retain their documented 200 contract.
+	success := response.status == http.StatusOK || (path == "/user/create" && response.status == http.StatusCreated)
+	if !success {
 		return &EnrollmentError{Uncertain: effect && response.status >= 500, Retryable: response.status == http.StatusTooManyRequests || response.status >= 500, RetryAfter: response.retryAfter}
 	}
 	var failure struct {
