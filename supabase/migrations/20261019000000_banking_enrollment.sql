@@ -165,9 +165,9 @@ BEGIN
 END $$;
 CREATE FUNCTION app.banking_enrollment_unknown(target uuid, targets text[] DEFAULT '{}') RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE e app.banking_enrollments; job app.banking_enrollment_jobs; reopen boolean;
+DECLARE actor uuid:=app.lock_banking_owner(); job app.banking_enrollment_jobs; reopen boolean;
 BEGIN
-  SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=app.lock_banking_owner() FOR UPDATE;
+  PERFORM 1 FROM app.banking_enrollments WHERE id=target AND owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
   SELECT * INTO job FROM app.banking_enrollment_jobs WHERE attempt_id=target FOR UPDATE;
   -- A slow request can learn additional positive targets after a worker has
