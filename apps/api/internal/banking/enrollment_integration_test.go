@@ -23,6 +23,7 @@ type enrollmentItem struct {
 	removed       bool
 }
 type controlledEnrollmentProvider struct {
+	capabilities                                          *EnrollmentCapabilities
 	mu                                                    sync.Mutex
 	links                                                 map[string]EnrollmentPreparation
 	items                                                 map[string]enrollmentItem
@@ -43,7 +44,10 @@ func newControlledProvider() *controlledEnrollmentProvider {
 		{ID: "foreign", Type: "depository", Subtype: "checking", Currency: "CAD"},
 	}}}
 }
-func (*controlledEnrollmentProvider) EnrollmentCapabilities() EnrollmentCapabilities {
+func (p *controlledEnrollmentProvider) EnrollmentCapabilities() EnrollmentCapabilities {
+	if p.capabilities != nil {
+		return *p.capabilities
+	}
 	return EnrollmentCapabilities{true, true}
 }
 func (*controlledEnrollmentProvider) EnsureUser(_ context.Context, _, client string) (string, error) {
@@ -568,5 +572,33 @@ func TestEnrollmentLateItemAfterHistoryDeletionUsesNarrowDiscovery(t *testing.T)
 	}
 	if _, status := f.service.ReadConnection(f.actor(f.owner), ready.ConnectionID); status.Code != "NOT_FOUND" {
 		t.Fatal("deleted connection became visible")
+	}
+}
+
+func TestEnrollmentGateRevocationSuppressesExistingHandoffAndExchange(t *testing.T) {
+	f, s, p, _, _ := enrollmentFixture(t)
+	id := startEnrollment(t, f, s, f.owner, "different")
+	for _, capabilityOff := range []bool{false, true} {
+		s.config.Enabled = !capabilityOff
+		if capabilityOff {
+			s.config.Enabled = true
+			p.capabilities = &EnrollmentCapabilities{}
+		} else {
+			s.config.Enabled = false
+		}
+		start := s.Start(f.actor(f.owner), StartEnrollmentInput{AttemptID: id, Intent: "different"})
+		if start.LinkToken != "" || (start.Code != "FEATURE_DISABLED" && start.Code != "NEEDS_ATTENTION") {
+			t.Fatal("revoked handoff", start.Code)
+		}
+		finish := finishEnrollment(f, s, f.owner, id, "checking")
+		if finish.Code != "FEATURE_DISABLED" && finish.Code != "NEEDS_ATTENTION" {
+			t.Fatal("revoked exchange", finish.Code)
+		}
+		if p.exchanges != 0 {
+			t.Fatal("provider exchange after revocation")
+		}
+		if s.Status(f.actor(f.owner), id).State != "prepared" {
+			t.Fatal("safe recovery unavailable")
+		}
 	}
 }

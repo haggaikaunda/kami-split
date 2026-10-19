@@ -146,6 +146,10 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 			}
 			e = existing
 			code = e.Code
+			if blocked := s.enrollmentGate(); blocked != "" {
+				code = blocked
+				return nil
+			}
 		} else {
 			if !s.config.Enabled {
 				code = "FEATURE_DISABLED"
@@ -181,6 +185,11 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 	}
 	if code == "CONFLICT" {
 		return EnrollmentOutcome{Code: code}
+	}
+	if code == "FEATURE_DISABLED" || code == "NEEDS_ATTENTION" {
+		result := outcome(e)
+		result.Code = code
+		return result
 	}
 	if claimed {
 		user, providerErr := s.provider.EnsureUser(ctx, e.Environment, "kami-"+e.OwnerID.String()+"-"+e.Environment)
@@ -310,8 +319,8 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 	var e enrollmentRecord
 	code := ""
 	err := s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
-		if !s.config.Enabled {
-			code = "FEATURE_DISABLED"
+		if blocked := s.enrollmentGate(); blocked != "" {
+			code = blocked
 			return nil
 		}
 		var err error
@@ -336,7 +345,7 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 		return enrollmentFailure(ctx, err)
 	}
 	if code != "CLAIMED" {
-		if code == "FEATURE_DISABLED" {
+		if code == "FEATURE_DISABLED" || code == "NEEDS_ATTENTION" {
 			return EnrollmentOutcome{Code: code}
 		}
 		if code == "CONFLICT" {
@@ -448,4 +457,15 @@ func (s *EnrollmentService) unknown(ctx context.Context, id uuid.UUID) Enrollmen
 		return enrollmentFailure(ctx, err)
 	}
 	return s.Status(ctx, id)
+}
+
+func (s *EnrollmentService) enrollmentGate() string {
+	if !s.config.Enabled {
+		return "FEATURE_DISABLED"
+	}
+	caps := s.provider.EnrollmentCapabilities()
+	if !caps.UserScopedDiscovery || !caps.UserScopedRemoval {
+		return "NEEDS_ATTENTION"
+	}
+	return ""
 }
