@@ -323,7 +323,9 @@ func TestIndependentProviderMinimumRetryIsNeverRoundedEarlier(t *testing.T) {
 	connection := f.connection(f.owner, "independent-provider-minimum")
 	requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}), "READY")
 	notBefore := time.Now().Add(130 * time.Second).UTC().Truncate(time.Second)
+	calls := 0
 	provider := testPlaid(t, bankingRoundTrip(func(*http.Request) (*http.Response, error) {
+		calls++
 		response := plaidTestResponse(http.StatusTooManyRequests, `{}`)
 		response.Header.Set("Retry-After", notBefore.Format(http.TimeFormat))
 		return response, nil
@@ -332,11 +334,14 @@ func TestIndependentProviderMinimumRetryIsNeverRoundedEarlier(t *testing.T) {
 	if worked, err := worker.ProcessOne(ctx); err != nil || !worked {
 		t.Fatal(worked, err)
 	}
-	var due time.Time
-	if err := f.admin.QueryRow(ctx, `SELECT due_at FROM app.banking_work WHERE connection_id=$1 AND state='pending'`, connection).Scan(&due); err != nil {
+	if calls != 1 {
+		t.Fatalf("target provider request count=%d; worker selected different work", calls)
+	}
+	var due, databaseNow time.Time
+	if err := f.admin.QueryRow(ctx, `SELECT due_at,clock_timestamp() FROM app.banking_work WHERE connection_id=$1 AND state='pending'`, connection).Scan(&due, &databaseNow); err != nil {
 		t.Fatal(err)
 	}
 	if due.Before(notBefore) {
-		t.Fatalf("retry scheduled %s before provider minimum", notBefore.Sub(due))
+		t.Fatalf("retry scheduled %s before provider minimum (host=%s database=%s due=%s minimum=%s)", notBefore.Sub(due), time.Now().UTC(), databaseNow, due, notBefore)
 	}
 }

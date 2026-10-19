@@ -3,9 +3,11 @@
 The private banking foundation has one actual Go `cmd/worker` consumer backed by
 Supabase Queues (`pgmq`). It executes narrow known-Item teardown, bounded private
 history purge and protected Item status reconciliation. The API optionally mounts
-one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. Link,
-enrollment correlation creation, user-facing lifecycle dispatch, transaction sync
-and replacement activation remain separate work. Live enrollment stays disabled
+one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. The
+[enrollment API](banking-enrollment.md) adds restricted durable enrollment-recovery
+jobs to the same worker, with renewable leases and narrow user-scoped discovery
+and removal. User-facing lifecycle management, transaction sync and replacement
+activation remain separate work. Live enrollment stays disabled
 under #255; synthetic checks establish no live entitlement or backup capability.
 
 ## Durable authority
@@ -15,7 +17,8 @@ cleanup operations and logged queue messages in the same transaction. Deletion
 also fences logical accounts across current and replacement bindings. A rollback
 leaves no executable orphan message. Upgrades and reconciliation prepare logical-account
 scope for earlier pending connection barriers before accepting purge work. Queue payloads contain only operation UUIDs
-and generations; operation/receipt storage contains no tokens or financial payloads.
+and generations; lifecycle work/receipt storage contains no tokens or financial payloads. Enrollment
+handoffs use separate protected, expiring operation storage.
 
 The queue visibility window is two minutes. An independent random lease token,
 current lifecycle generation and unexpired lease authorize each local commit.
@@ -60,7 +63,8 @@ The durable acceptor separately locks the opaque correlation and compares its ex
 environment and generation. Invalid/mismatched events write nothing. Success means
 a committed digest and safe event-routing receipt, including durable duplicates;
 terminal receipts cannot reactivate a generation. Unavailable keys or persistence
-return retryable 503. Accepted routing remains awaiting later lifecycle/sync dispatch;
+return retryable 503. Enrollment correlations accept durable digest hints and trigger only verified
+narrow recovery, never activation; other accepted routing awaits later lifecycle/sync dispatch;
 receipt acceptance is not completed event handling.
 
 ## Runtime and privileges
@@ -76,7 +80,8 @@ from API credentials and migration/operator credentials.
 Configure the explicit banking environment, provider client/secret and a separate
 versioned AES-256 keyring using the runtime variables described in the API README.
 Keep previous key versions until retained ciphertext has migrated. Do not reuse
-invitation keys. No setting enables enrollment. The same production image contains
+invitation keys. Enrollment has additional explicit, default-disabled capability gates described
+in the [enrollment guide](banking-enrollment.md). The same production image contains
 `server` and `worker`; the optional Compose banking profile uses the latter. Local
 synthetic smoke runs the actual binary against a disposable restricted-role database
 and checks readiness, safe bounded status and SIGTERM completion without live calls.

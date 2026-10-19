@@ -3,8 +3,9 @@
 The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
 hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
-protected Item observations and verified webhook ingress. There is no GraphQL
-transport, provider enrollment, transaction import, annotation editing or replacement activation. Live enrollment remains disabled;
+protected Item observations and verified webhook ingress. The [enrollment API](banking-enrollment.md) adds actor-bound Link operations and
+selected stream reads. Transaction import, annotation editing and replacement
+activation remain deferred. Live enrollment remains disabled by default;
 the [Personal contract](personal-banking.md) describes the planned product.
 
 ## Ownership and privileges
@@ -73,8 +74,8 @@ provider systems or backups. Barriers have no invented retention expiry.
 ## Banking protection keys
 
 Construct a separate banking `Protector` with banking-only secret material. Never
-supply invitation keys or reuse their configuration. This package does not load
-environment secrets or enable itself at server startup. The AES-256-GCM nonce and
+supply invitation keys or reuse their configuration. The explicit `LoadRuntime` boundary reads opt-in environment configuration;
+storage constructors alone do not load secrets or enable provider operations. The AES-256-GCM nonce and
 key version are stored with each ciphertext. Authenticated context binds the
 banking namespace, access-token purpose, owner, connection and provider
 environment. Missing keys, changed context and tampering fail closed with safe

@@ -14,9 +14,11 @@ import (
 // PlaidConfig configures one isolated provider environment. Credentials must be
 // provisioned separately for banking and must never appear in diagnostics.
 type PlaidConfig struct {
-	Environment string
-	ClientID    string
-	Secret      string
+	Environment         string
+	ClientID            string
+	Secret              string
+	UserScopedDiscovery bool
+	UserScopedRemoval   bool
 }
 
 // String redacts provider configuration, including authentication material.
@@ -25,8 +27,8 @@ func (PlaidConfig) String() string { return "[redacted banking provider configur
 // GoString redacts provider configuration in Go-syntax diagnostics.
 func (c PlaidConfig) GoString() string { return c.String() }
 
-// PlaidProvider makes only narrow known-credential removal and verification-key
-// requests. Callers own transaction boundaries and must invoke it outside them.
+// PlaidProvider provides bounded enrollment, private inventory, Item observation,
+// verification keys and narrowly correlated removal. Callers own transaction boundaries and must invoke it outside them.
 // It never retries externally observable calls or follows redirects.
 type PlaidProvider struct {
 	config   PlaidConfig

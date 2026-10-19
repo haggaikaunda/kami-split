@@ -69,6 +69,9 @@ func (w *Worker) Run(ctx context.Context, onFailure func()) {
 // startup/integration checks; production scheduling belongs to Run. Concurrent
 // invocations are serialized by database leases, never process-local locks.
 func (w *Worker) ProcessOne(ctx context.Context) (bool, error) {
+	if worked, err := w.processEnrollment(ctx); worked || err != nil {
+		return worked, err
+	}
 	job, err := w.db.ClaimBankingWork(ctx)
 	if database.IsEmptyBankingQueue(err) {
 		return false, nil

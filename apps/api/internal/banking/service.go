@@ -1,5 +1,5 @@
-// Package banking owns private storage primitives with private lifecycle worker and ingress
-// adapters. Live enrollment remains a separately gated capability.
+// Package banking owns private storage, actor-bound enrollment, durable lifecycle
+// cleanup and verified ingress. Live enrollment remains a separately gated capability.
 package banking
 
 import (

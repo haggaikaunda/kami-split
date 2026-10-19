@@ -7,11 +7,13 @@ import (
 )
 
 // Runtime contains the separate banking dependencies for explicitly opted-in
-// ingress and cleanup. Loading it grants no enrollment or collection authority.
+// ingress, cleanup and explicitly gated enrollment. Configuration never attests
+// provider entitlement or grants transaction collection authority.
 // Its protector retains old key versions for unfinished cleanup operations.
 type Runtime struct {
-	Protector *Protector
-	Provider  *PlaidProvider
+	Protector  *Protector
+	Provider   *PlaidProvider
+	Enrollment EnrollmentConfig
 }
 
 // String prevents runtime configuration from exposing credentials or keys.
@@ -30,7 +32,7 @@ func LoadRuntime(lookup func(string) (string, bool)) (*Runtime, error) {
 	environment, enabled := lookup("BANKING_ENVIRONMENT")
 	invalid := errors.New("invalid banking runtime configuration")
 	if !enabled {
-		for _, key := range []string{"PLAID_CLIENT_ID", "PLAID_SECRET", "BANKING_KEY_CURRENT", "BANKING_KEYS"} {
+		for _, key := range []string{"PLAID_CLIENT_ID", "PLAID_SECRET", "BANKING_KEY_CURRENT", "BANKING_KEYS", "BANKING_ENROLLMENT_ENABLED", "BANKING_WEBHOOK_ORIGIN", "BANKING_USER_DISCOVERY_VERIFIED", "BANKING_USER_REMOVAL_VERIFIED"} {
 			if _, set := lookup(key); set {
 				return nil, invalid
 			}
@@ -68,9 +70,22 @@ func LoadRuntime(lookup func(string) (string, bool)) (*Runtime, error) {
 	if err != nil {
 		return nil, invalid
 	}
-	provider, err := NewPlaidProvider(PlaidConfig{Environment: environment, ClientID: clientID, Secret: secret}, nil)
+	enrollment, _ := lookup("BANKING_ENROLLMENT_ENABLED")
+	discovery, _ := lookup("BANKING_USER_DISCOVERY_VERIFIED")
+	removal, _ := lookup("BANKING_USER_REMOVAL_VERIFIED")
+	for _, value := range []string{enrollment, discovery, removal} {
+		if value != "" && value != "true" && value != "false" {
+			return nil, invalid
+		}
+	}
+	origin, _ := lookup("BANKING_WEBHOOK_ORIGIN")
+	config := EnrollmentConfig{Enabled: enrollment == "true", Environment: environment, WebhookOrigin: origin}
+	if config.Enabled && (discovery != "true" || removal != "true" || origin == "") {
+		return nil, invalid
+	}
+	provider, err := NewPlaidProvider(PlaidConfig{Environment: environment, ClientID: clientID, Secret: secret, UserScopedDiscovery: discovery == "true", UserScopedRemoval: removal == "true"}, nil)
 	if err != nil {
 		return nil, invalid
 	}
-	return &Runtime{Protector: protector, Provider: provider}, nil
+	return &Runtime{Protector: protector, Provider: provider, Enrollment: config}, nil
 }

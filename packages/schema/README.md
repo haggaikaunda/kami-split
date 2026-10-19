@@ -152,3 +152,14 @@ These IDs are not cursors or access capabilities. Read through the original
 currently authorized query, using its signed continuation cursor where needed.
 See [client financial identity](../../docs/application/expense-editing.md#client-financial-identity)
 for metadata ownership and API-before-client deployment compatibility.
+
+## Private banking enrollment
+
+`banking.graphql` exposes owner-bound Link start/finish/cancel/status and selected
+connection/account reads. The [enrollment contract](../../docs/application/banking-enrollment.md)
+describes canonical attempts, explicit server-verified US/USD selection, the
+365-day requested history window and non-active uncertainty/cleanup states. Only
+start returns the short-lived Link handoff; tokens must never enter persistent
+browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
+claim. New enrollment is disabled by default; transaction ingestion, browser Link
+and replacement activation are separate deliveries.
