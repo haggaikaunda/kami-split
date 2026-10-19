@@ -54,6 +54,7 @@ func TestEnrollmentDelayedAbsentStartAndFinishUseOneLockOrder(t *testing.T) {
 	startDone := make(chan struct{})
 	go func() { defer close(startDone); delayed <- service.Start(requestCtx, input) }()
 	defer func() {
+		cancel() // Also release capability/Accounts barriers on early failure.
 		requestCancel()
 		select {
 		case <-startDone:
@@ -84,6 +85,7 @@ func TestEnrollmentDelayedAbsentStartAndFinishUseOneLockOrder(t *testing.T) {
 		finished <- service.Finish(requestCtx, FinishEnrollmentInput{AttemptID: id, PublicToken: "public-" + id.String(), AccountIDs: []string{"checking"}})
 	}()
 	defer func() {
+		cancel() // Also release capability/Accounts barriers on early failure.
 		requestCancel()
 		select {
 		case <-finishDone:
