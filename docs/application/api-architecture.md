@@ -82,7 +82,9 @@ The internal [private banking storage](banking-storage.md) foundation implements
 owner-only persistence, protected credential storage, durable attempts and lifecycle
 fences. The [lifecycle worker](banking-worker.md) implements protected narrow Plaid cleanup,
 Item observation, worker privileges/runtime and verified durable HTTP ingress.
-Enrollment, transaction sync and public banking GraphQL transport remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
+The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
+selected stream reads and durable unknown-exchange recovery. New enrollment is
+disabled by default; transaction sync and replacement activation remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
@@ -96,8 +98,8 @@ plan/import/data/annotation/lifecycle revisions and fence only the affected acco
 The lifecycle slice can verify persisted activation with controlled import fixtures
 before real sync exists. Live provider recovery/backup capabilities require
 verification.
-This design does not add runtime SDL, grant banking access through groups or
-claim implemented connectivity.
+The remaining planned contract does not grant banking access through groups.
+Delivered enrollment SDL is documented separately; live capabilities remain gated.
 
 See the [Go engineering guide](../agents/go-guidelines.md) for code and testing expectations. Extensions to schema, authentication and persistence, and hosted deployment and worker implementation require separately approved issues.
 

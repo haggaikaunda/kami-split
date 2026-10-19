@@ -100,3 +100,27 @@ func TestLoadRuntimeRejectsIncompleteOrInvalidConfiguration(t *testing.T) {
 		}
 	}
 }
+
+func TestEnrollmentRuntimeDefaultsAndCapabilityGates(t *testing.T) {
+	values := runtimeEnvironment()
+	lookup := func(key string) (string, bool) { v, ok := values[key]; return v, ok }
+	runtime, err := LoadRuntime(lookup)
+	if err != nil || runtime.Enrollment.Enabled || runtime.Provider.EnrollmentCapabilities().UserScopedRemoval {
+		t.Fatal("enrollment enabled by cleanup configuration")
+	}
+	values["BANKING_ENROLLMENT_ENABLED"] = "true"
+	if _, err := LoadRuntime(lookup); err == nil {
+		t.Fatal("missing capabilities accepted")
+	}
+	values["BANKING_USER_DISCOVERY_VERIFIED"] = "true"
+	values["BANKING_USER_REMOVAL_VERIFIED"] = "true"
+	values["BANKING_WEBHOOK_ORIGIN"] = "https://api.example.invalid"
+	runtime, err = LoadRuntime(lookup)
+	if err != nil || !runtime.Enrollment.Enabled {
+		t.Fatal("explicit configuration rejected")
+	}
+	values["BANKING_ENROLLMENT_ENABLED"] = "yes"
+	if _, err := LoadRuntime(lookup); err == nil {
+		t.Fatal("malformed gate ignored")
+	}
+}

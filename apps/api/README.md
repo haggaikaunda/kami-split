@@ -65,18 +65,21 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 
 The [banking lifecycle worker](../../docs/application/banking-worker.md) uses a
 separate `kami_worker` pool for durable cleanup and protected Item observation.
-It runs without enrollment or transaction synchronization. The API's sole verified
+It also polls durable enrollment cleanup; transaction synchronization remains deferred. The API's sole verified
 ingress is opt-in; configuring it grants no live enrollment authority.
 
-| Variable                          | Purpose                                                                                                      |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `BANKING_ENVIRONMENT`             | Explicit `sandbox` or `production`; absent with all dependent variables absent disables API banking ingress. |
-| `PLAID_CLIENT_ID`, `PLAID_SECRET` | Environment-specific server-only provider credentials.                                                       |
-| `BANKING_KEY_CURRENT`             | Current independent banking key version.                                                                     |
-| `BANKING_KEYS`                    | JSON version-to-padded-base64 map of 32-byte AES keys; retain old versions for unfinished work.              |
-| `WORKER_DATABASE_URL`             | Required separate restricted-worker PostgreSQL URL; API database credentials are ignored.                    |
-| `WORKER_ADDR`                     | Operational listener, default `127.0.0.1:8081`.                                                              |
-| `WORKER_SHUTDOWN_TIMEOUT`         | Graceful shutdown deadline, default `5s`, maximum `1m`.                                                      |
+| Variable                                                           | Purpose                                                                                                         |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `BANKING_ENVIRONMENT`                                              | Explicit `sandbox` or `production`; absent with all dependent variables absent disables API banking ingress.    |
+| `PLAID_CLIENT_ID`, `PLAID_SECRET`                                  | Environment-specific server-only provider credentials.                                                          |
+| `BANKING_KEY_CURRENT`                                              | Current independent banking key version.                                                                        |
+| `BANKING_KEYS`                                                     | JSON version-to-padded-base64 map of 32-byte AES keys; retain old versions for unfinished work.                 |
+| `BANKING_ENROLLMENT_ENABLED`                                       | Explicit `true` opts into new enrollment only with separately verified prerequisites; absent defaults disabled. |
+| `BANKING_WEBHOOK_ORIGIN`                                           | Deployed HTTPS API origin for immutable attempt-specific Link correlation.                                      |
+| `BANKING_USER_DISCOVERY_VERIFIED`, `BANKING_USER_REMOVAL_VERIFIED` | Explicit `true` capability gates for restricted Users API discovery/removal, independently verified under #255. |
+| `WORKER_DATABASE_URL`                                              | Required separate restricted-worker PostgreSQL URL; API database credentials are ignored.                       |
+| `WORKER_ADDR`                                                      | Operational listener, default `127.0.0.1:8081`.                                                                 |
+| `WORKER_SHUTDOWN_TIMEOUT`                                          | Graceful shutdown deadline, default `5s`, maximum `1m`.                                                         |
 
 Incomplete/empty configuration fails closed. Secret values never appear in startup
 errors. The worker exposes `/ready` and aggregate `/status`, with a clearly bounded
@@ -144,3 +147,8 @@ limit; exact Relay wire/transport regressions verify all current operations fit
 Percentage is supported alongside Equal and Exact without opt-in configuration.
 Deployments require the percentage migration and compatible API/web readers; see
 the [percentage deployment/rollback contract](../../docs/application/percentage-splits.md).
+
+Private [banking enrollment](../../docs/application/banking-enrollment.md) exposes
+actor-bound Link operations and selected-account reads. New enrollment is disabled
+by default and requires separate verified discovery/removal capability gates;
+cleanup/ingress configuration alone grants no enrollment authority.

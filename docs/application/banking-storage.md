@@ -3,8 +3,9 @@
 The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
 hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
-protected Item observations and verified webhook ingress. There is no GraphQL
-transport, provider enrollment, transaction import, annotation editing or replacement activation. Live enrollment remains disabled;
+protected Item observations and verified webhook ingress. The [enrollment API](banking-enrollment.md) adds actor-bound Link operations and
+selected stream reads. Transaction import, annotation editing and replacement
+activation remain deferred. Live enrollment remains disabled by default;
 the [Personal contract](personal-banking.md) describes the planned product.
 
 ## Ownership and privileges

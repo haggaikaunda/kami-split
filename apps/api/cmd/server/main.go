@@ -114,8 +114,8 @@ func run() int {
 		logger.Error("invalid onboarding configuration")
 		return 1
 	}
-	schema := graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Profiles: profile.New(db), Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}})
-	application := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...)
+	resolvers := &graph.Resolver{Profiles: profile.New(db), Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}
+	var bankingHandler http.Handler
 	bankingRuntime, err := banking.LoadRuntime(os.LookupEnv)
 	if err != nil || (bankingRuntime != nil && db == nil) {
 		logger.Error("invalid banking runtime configuration or missing database")
@@ -137,7 +137,19 @@ func run() int {
 			logger.Error("banking ingress unavailable")
 			return 1
 		}
-		application.Use(bankingIngress(handler, logger))
+		enrollment, err := banking.NewEnrollment(service, bankingRuntime.Provider, bankingRuntime.Enrollment)
+		if err != nil {
+			logger.Error("invalid banking enrollment configuration")
+			return 1
+		}
+		resolvers.Banking = enrollment
+		resolvers.BankingStorage = service
+		bankingHandler = handler
+	}
+	schema := graph.NewExecutableSchema(graph.Config{Resolvers: resolvers})
+	application := server.NewWithAuthentication(cfg, schema, logger, verifier, dependencies...)
+	if bankingHandler != nil {
+		application.Use(bankingIngress(bankingHandler, logger))
 	}
 	if invitations != nil {
 		handler, err := onboarding.NewHandler(invitations, verifier, os.Getenv("ONBOARDING_ORIGIN"), os.Getenv("ONBOARDING_AUTH_ADMIN_KEY"), logger)
