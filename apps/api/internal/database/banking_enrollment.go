@@ -8,6 +8,7 @@ import (
 // EnrollmentWork contains only the restricted cleanup correlation and lease.
 // It never grants collection or authority over unrelated provider Items.
 type EnrollmentWork struct {
+	PreservedItemID                 string
 	ID, OwnerID, Token              uuid.UUID
 	ConnectionID                    *uuid.UUID
 	Environment, UserID, WebhookURL string
@@ -24,7 +25,7 @@ func (e EnrollmentWork) GoString() string { return e.String() }
 // ClaimEnrollment leases durable enrollment recovery, including disabled owners.
 func (d *WorkerDB) ClaimEnrollment(ctx context.Context) (EnrollmentWork, error) {
 	var e EnrollmentWork
-	err := d.db.pool.QueryRow(ctx, `SELECT id,owner_id,lease_token,connection_id,environment,user_id,webhook_url,force_discovery FROM app.banking_enrollment_claim()`).Scan(&e.ID, &e.OwnerID, &e.Token, &e.ConnectionID, &e.Environment, &e.UserID, &e.WebhookURL, &e.ForceDiscovery)
+	err := d.db.pool.QueryRow(ctx, `SELECT id,owner_id,lease_token,connection_id,environment,user_id,webhook_url,force_discovery,preserved_item_id FROM app.banking_enrollment_claim()`).Scan(&e.ID, &e.OwnerID, &e.Token, &e.ConnectionID, &e.Environment, &e.UserID, &e.WebhookURL, &e.ForceDiscovery, &e.PreservedItemID)
 	if err == nil {
 		err = d.db.pool.QueryRow(ctx, `SELECT app.banking_enrollment_attempts($1,$2)`, e.ID, e.Token).Scan(&e.Attempts)
 	}

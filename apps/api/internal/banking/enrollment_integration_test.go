@@ -5,7 +5,9 @@ package banking
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -176,14 +178,18 @@ func enrollmentFixture(t *testing.T) (*fixture, *EnrollmentService, *controlledE
 func startEnrollment(t *testing.T, f *fixture, s *EnrollmentService, owner uuid.UUID, intent string) uuid.UUID {
 	t.Helper()
 	id := uuid.New()
-	o := s.Start(f.actor(owner), StartEnrollmentInput{AttemptID: id, Intent: intent})
+	ctx, cancel := context.WithTimeout(f.actor(owner), 10*time.Second)
+	defer cancel()
+	o := s.Start(ctx, StartEnrollmentInput{AttemptID: id, Intent: intent})
 	if o.Code != "PREPARED" || o.LinkToken == "" {
 		t.Fatalf("start code=%s state=%s", o.Code, o.State)
 	}
 	return id
 }
 func finishEnrollment(f *fixture, s *EnrollmentService, owner, id uuid.UUID, accounts ...string) EnrollmentOutcome {
-	return s.Finish(f.actor(owner), FinishEnrollmentInput{AttemptID: id, PublicToken: "public-" + id.String(), AccountIDs: accounts})
+	ctx, cancel := context.WithTimeout(f.actor(owner), 10*time.Second)
+	defer cancel()
+	return s.Finish(ctx, FinishEnrollmentInput{AttemptID: id, PublicToken: "public-" + id.String(), AccountIDs: accounts})
 }
 func dueEnrollment(f *fixture, id uuid.UUID) {
 	f.exec(`UPDATE app.banking_enrollment_jobs SET due_at=clock_timestamp(),lease_until=NULL WHERE attempt_id=$1`, id)
@@ -191,7 +197,9 @@ func dueEnrollment(f *fixture, id uuid.UUID) {
 }
 func processEnrollment(t *testing.T, w *Worker) {
 	t.Helper()
-	worked, err := w.ProcessOne(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	worked, err := w.ProcessOne(ctx)
 	if err != nil || !worked {
 		t.Fatalf("worker worked=%v err=%v", worked, err)
 	}
@@ -600,5 +608,140 @@ func TestEnrollmentGateRevocationSuppressesExistingHandoffAndExchange(t *testing
 		if s.Status(f.actor(f.owner), id).State != "prepared" {
 			t.Fatal("safe recovery unavailable")
 		}
+	}
+}
+
+func TestEnrollmentMultipleCorrelatedItemsNeverActivate(t *testing.T) {
+	f, s, p, w, _ := enrollmentFixture(t)
+	id := startEnrollment(t, f, s, f.owner, "different")
+	user := "usr-kami-" + f.owner.String() + "-sandbox"
+	p.items["extra"] = enrollmentItem{user: user, webhook: "https://api.example.invalid/banking/webhooks/" + id.String()}
+	if o := finishEnrollment(f, s, f.owner, id, "checking"); o.Code != "EXCHANGE_UNKNOWN" {
+		t.Fatal(o.Code)
+	}
+	if n := queryInt(t, f, `SELECT count(*) FROM app.banking_connections WHERE owner_id=$1`, f.owner); n != 0 {
+		t.Fatal("ambiguous attempt activated")
+	}
+	dueEnrollment(f, id)
+	processEnrollment(t, w)
+	if !p.items["extra"].removed || !p.items["item-public-"+id.String()].removed {
+		t.Fatal("correlated effects forgotten")
+	}
+	if s.Status(f.actor(f.owner), id).Code != "RETRY_ALLOWED" {
+		t.Fatal("cleanup not completed")
+	}
+}
+
+func TestEnrollmentLateExtraItemPreservesReadyConnectionAndFencesHints(t *testing.T) {
+	f, s, p, w, _ := enrollmentFixture(t)
+	id := startEnrollment(t, f, s, f.owner, "different")
+	ready := finishEnrollment(f, s, f.owner, id, "checking")
+	if ready.Code != "AWAITING_INITIAL_IMPORT" {
+		t.Fatal(ready.Code)
+	}
+	original := "item-public-" + id.String()
+	extra := "late-extra"
+	user := "usr-kami-" + f.owner.String() + "-sandbox"
+	p.items[extra] = enrollmentItem{user: user, webhook: "https://api.example.invalid/banking/webhooks/" + id.String()}
+	p.items["unrelated"] = enrollmentItem{user: user, webhook: "https://api.example.invalid/unrelated"}
+	acceptEnrollmentWebhook(t, f.service, id, extra)
+	p.hideDiscovery = true
+	dueEnrollment(f, id)
+	processEnrollment(t, w)
+	if s.Status(f.actor(f.owner), id).State != "cleanup_pending" {
+		t.Fatal("empty discovery released hint")
+	}
+	p.hideDiscovery = false
+	dueEnrollment(f, id)
+	processEnrollment(t, w)
+	if !p.items[extra].removed || p.items[original].removed || p.items["unrelated"].removed {
+		t.Fatal("late cleanup affected legitimate Items")
+	}
+	if s.Status(f.actor(f.owner), id).Code != "AWAITING_INITIAL_IMPORT" {
+		t.Fatal("original readiness not preserved")
+	}
+	if c, r := f.service.ReadConnection(f.actor(f.owner), ready.ConnectionID); r.Code != "READY" || c.State != "active" {
+		t.Fatal("original connection changed")
+	}
+	// A new signed hint begins a new cycle; old confirmation cannot prove it safe.
+	acceptEnrollmentWebhook(t, f.service, id, "not-yet-discoverable")
+	dueEnrollment(f, id)
+	processEnrollment(t, w)
+	if s.Status(f.actor(f.owner), id).State != "cleanup_pending" {
+		t.Fatal("old proof released unseen late effect")
+	}
+}
+
+func TestEnrollmentRecoveryCapabilitiesRetryMinimumAndLeaseAuthority(t *testing.T) {
+	f, s, p, w, db := enrollmentFixture(t)
+	id := startEnrollment(t, f, s, f.owner, "different")
+	p.loseExchange = true
+	finishEnrollment(f, s, f.owner, id, "checking")
+	p.failRemoval = true
+	var before time.Time
+	if err := f.admin.QueryRow(context.Background(), `SELECT clock_timestamp()`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	dueEnrollment(f, id)
+	processEnrollment(t, w)
+	var due time.Time
+	if err := f.admin.QueryRow(context.Background(), `SELECT due_at FROM app.banking_enrollment_jobs WHERE attempt_id=$1`, id).Scan(&due); err != nil || due.Before(before.Add(3*time.Minute)) {
+		t.Fatal("provider minimum shortened", err)
+	}
+	dueEnrollment(f, id)
+	job, err := db.ClaimEnrollment(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ClaimEnrollment(context.Background()); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatal("competing lease", err)
+	}
+	if ok, err := db.RenewEnrollment(context.Background(), job); err != nil || !ok {
+		t.Fatal("lease renewal", err)
+	}
+	dueEnrollment(f, id)
+	replacement, err := db.ClaimEnrollment(context.Background())
+	if err != nil || replacement.Token == job.Token {
+		t.Fatal("restart lease", err)
+	}
+	if ok, err := db.FinishEnrollment(context.Background(), job, []string{"forged"}, 60); err != nil || ok {
+		t.Fatal("stale finish", err)
+	}
+	if ok, err := db.RecordEnrollmentTargets(context.Background(), job, []string{"forged"}); err != nil || ok {
+		t.Fatal("stale targets", err)
+	}
+	f.exec(`UPDATE app.banking_enrollment_jobs SET lease_until=NULL,state='pending' WHERE attempt_id=$1`, id)
+	dueEnrollment(f, id)
+	p.capabilities = &EnrollmentCapabilities{}
+	processEnrollment(t, w)
+	if s.Status(f.actor(f.owner), id).Code != "NEEDS_ATTENTION" || p.items["item-public-"+id.String()].removed {
+		t.Fatal("unsupported cleanup did not fail closed")
+	}
+}
+
+func TestEnrollmentExpiredHandoffIsNotRecoverableAsToken(t *testing.T) {
+	f, s, _, _, _ := enrollmentFixture(t)
+	id := startEnrollment(t, f, s, f.owner, "different")
+	f.exec(`UPDATE app.banking_enrollments SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1`, id)
+	o := s.Start(f.actor(f.owner), StartEnrollmentInput{AttemptID: id, Intent: "different"})
+	if o.LinkToken != "" {
+		t.Fatal("expired Link token exposed")
+	}
+}
+
+func acceptEnrollmentWebhook(t *testing.T, service *Service, id uuid.UUID, item string) {
+	t.Helper()
+	signed := newWebhookFixture(t)
+	handler, err := NewWebhookHandler(signed.verifier, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := webhookBody("sandbox", item)
+	request := httptest.NewRequest(http.MethodPost, "/banking/webhooks/"+id.String(), bytes.NewReader(body))
+	request.Header.Set("Plaid-Verification", signed.sign(t, body, signed.now, nil))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatal("verified enrollment ingress", response.Code)
 	}
 }

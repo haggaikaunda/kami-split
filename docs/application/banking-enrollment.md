@@ -26,7 +26,8 @@ not automatically retry that one-use exchange. Before activation, provider user
 Item discovery must positively match the exchanged Item and the exact persisted
 attempt webhook URL. Callback-supplied Item IDs, names, masks and client selection
 cannot substitute for that check. A swapped callback token cannot activate or
-remove another attempt's Item.
+remove another attempt's Item. Multiple correlated Items keep the attempt
+non-active until all affected targets are confirmed removed.
 
 Server-observed institution country must be unambiguously US. Every explicit
 selected account must be USD checking, savings or credit card. Only those selected
@@ -54,8 +55,12 @@ response followed by absence remains uncertain and may require operator attentio
 Unrelated same-user Items are never targeted. Broad product termination is unused.
 
 Cancellation, expiration and disabled owners permit cleanup, never activation.
-Late verified webhooks retain a digest receipt and wake old completed cleanup
-without reopening activation or affecting a newer attempt. Duplicate receipts do
+Late verified webhooks retain a digest receipt and Item hint and wake old completed
+cleanup without reopening activation or affecting a newer attempt. Extra Items
+after readiness are discovered and narrowly removed while preserving the original
+active Item. Hints arriving during cleanup must be positively correlated and
+confirmed removed before recovery completes; an uncorrelatable hint retains
+actionable uncertainty. Duplicate receipts do
 not reset retry budgets. Minimal correlation and unresolved intent survive token
 expiry. Exhaustion or unsupported/unverified capabilities yields `NEEDS_ATTENTION`
 and continues blocking a fresh enrollment. The bounded operator status includes

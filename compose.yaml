@@ -12,6 +12,10 @@ services:
       PLAID_SECRET:
       BANKING_KEY_CURRENT:
       BANKING_KEYS:
+      BANKING_ENROLLMENT_ENABLED:
+      BANKING_WEBHOOK_ORIGIN:
+      BANKING_USER_DISCOVERY_VERIFIED:
+      BANKING_USER_REMOVAL_VERIFIED:
     ports:
       - '127.0.0.1:8080:8080'
     read_only: true
@@ -44,6 +48,8 @@ services:
       PLAID_SECRET:
       BANKING_KEY_CURRENT:
       BANKING_KEYS:
+      BANKING_USER_DISCOVERY_VERIFIED:
+      BANKING_USER_REMOVAL_VERIFIED:
     ports:
       - '127.0.0.1:8081:8081'
     read_only: true

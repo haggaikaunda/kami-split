@@ -26,3 +26,16 @@ func TestExplicitEligibleSelection(t *testing.T) {
 		t.Fatal("non-US admitted")
 	}
 }
+
+func TestEnrollmentOriginValidationAndNormalization(t *testing.T) {
+	provider, _ := NewPlaidProvider(PlaidConfig{Environment: "sandbox", ClientID: "synthetic", Secret: "synthetic"}, nil)
+	for _, origin := range []string{"", "http://api.example.invalid", "https://:443", "https://api.example.invalid/path", "https://user@api.example.invalid", "https://api.example.invalid?private=query", "https://api.example.invalid#fragment"} {
+		if _, err := NewEnrollment(&Service{}, provider, EnrollmentConfig{Enabled: true, Environment: "sandbox", WebhookOrigin: origin}); err == nil {
+			t.Fatalf("invalid origin accepted: %s", origin)
+		}
+	}
+	service, err := NewEnrollment(&Service{}, provider, EnrollmentConfig{Enabled: true, Environment: "sandbox", WebhookOrigin: "https://api.example.invalid/"})
+	if err != nil || service.config.WebhookOrigin != "https://api.example.invalid" {
+		t.Fatal("origin not normalized")
+	}
+}

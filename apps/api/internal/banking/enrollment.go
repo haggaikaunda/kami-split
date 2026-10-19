@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,10 +38,11 @@ func NewEnrollment(storage *Service, provider EnrollmentProvider, config Enrollm
 	}
 	if config.Enabled {
 		u, e := url.Parse(config.WebhookOrigin)
-		if e != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") || (config.Environment != "sandbox" && config.Environment != "production") {
+		if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(config.WebhookOrigin) > 1900 || (u.Path != "" && u.Path != "/") || (config.Environment != "sandbox" && config.Environment != "production") {
 			return nil, errors.New("invalid banking enrollment configuration")
 		}
 	}
+	config.WebhookOrigin = strings.TrimRight(config.WebhookOrigin, "/")
 	return &EnrollmentService{storage: storage, provider: provider, config: config}, nil
 }
 
@@ -92,7 +94,7 @@ type enrollmentRecord struct {
 func readEnrollment(ctx context.Context, tx pgx.Tx, id uuid.UUID) (enrollmentRecord, error) {
 	var e enrollmentRecord
 	var connection *uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id,owner_id,connection_id,environment,state,result_code,user_id,webhook_url,key_version,coalesce(token_key_version,''),expires_at,link_ciphertext,input_digest,finish_digest,cancelled FROM app.banking_enrollments WHERE id=$1`, id).Scan(&e.ID, &e.OwnerID, &connection, &e.Environment, &e.State, &e.Code, &e.UserID, &e.Webhook, &e.KeyVersion, &e.TokenVersion, &e.Expires, &e.Link, &e.InputDigest, &e.FinishDigest, &e.Cancelled)
+	err := tx.QueryRow(ctx, `SELECT id,owner_id,connection_id,environment,state,result_code,user_id,webhook_url,key_version,coalesce(token_key_version,''),expires_at,CASE WHEN expires_at>clock_timestamp() AND state='prepared' AND NOT cancelled THEN link_ciphertext ELSE NULL END,input_digest,finish_digest,cancelled FROM app.banking_enrollments WHERE id=$1`, id).Scan(&e.ID, &e.OwnerID, &connection, &e.Environment, &e.State, &e.Code, &e.UserID, &e.Webhook, &e.KeyVersion, &e.TokenVersion, &e.Expires, &e.Link, &e.InputDigest, &e.FinishDigest, &e.Cancelled)
 	if connection != nil {
 		e.ConnectionID = *connection
 	}
@@ -204,7 +206,7 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 			return enrollmentFailure(ctx, err)
 		}
 		if !saved {
-			return outcome(e)
+			return s.Status(ctx, e.ID)
 		}
 		prepared, providerErr := s.provider.Prepare(ctx, EnrollmentPreparation{Environment: e.Environment, ClientUserID: "kami-" + e.OwnerID.String() + "-" + e.Environment, UserID: user, WebhookURL: e.Webhook})
 		if providerErr != nil {
@@ -226,6 +228,9 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 		err = s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error { var err error; e, err = readEnrollment(ctx, tx, e.ID); return err })
 		if err != nil {
 			return enrollmentFailure(ctx, err)
+		}
+		if len(e.Link) == 0 {
+			return outcome(e)
 		}
 		raw, err := s.storage.protector.decrypt(e.Link, e.TokenVersion, e.OwnerID.String(), "link/"+e.ID.String(), e.Environment)
 		if err != nil {
@@ -310,7 +315,7 @@ func selectAccounts(inventory AccountInventory, ids []string) ([]selectedAccount
 // Finish claims exactly one exchange before I/O. Lost/uncertain effects remain
 // non-active and worker-recoverable; neither retries nor callbacks repeat exchange.
 func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentInput) EnrollmentOutcome {
-	if input.AttemptID == uuid.Nil || len(input.PublicToken) < 1 || len(input.PublicToken) > 8192 || len(input.AccountIDs) < 1 || len(input.AccountIDs) > 100 {
+	if input.AttemptID == uuid.Nil || len(input.PublicToken) < 1 || len(input.PublicToken) > 4096 || len(input.AccountIDs) < 1 || len(input.AccountIDs) > 100 {
 		return EnrollmentOutcome{Code: "INVALID_INPUT"}
 	}
 	input.AccountIDs = append([]string(nil), input.AccountIDs...)
@@ -360,12 +365,7 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 	// The exchanged Item must belong to this actor and this exact Link URL. A
 	// swapped token is never stored, activated or removed under guessed authority.
 	items, err := s.provider.Discover(ctx, e.Environment, EnrollmentCorrelation{UserID: e.UserID, ClientUserID: "kami-" + e.OwnerID.String() + "-" + e.Environment, WebhookURL: e.Webhook})
-	correlated := false
-	for _, item := range items {
-		if item == exchanged.ItemID {
-			correlated = true
-		}
-	}
+	correlated := len(items) == 1 && items[0] == exchanged.ItemID
 	if err != nil || !correlated {
 		return s.unknown(ctx, e.ID)
 	}

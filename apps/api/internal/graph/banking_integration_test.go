@@ -263,7 +263,9 @@ func (f *bankingHTTPFixture) handler(enabled bool) http.Handler {
 func (f *bankingHTTPFixture) post(handler http.Handler, query, token string, allowLink bool) map[string]any {
 	f.t.Helper()
 	raw, _ := json.Marshal(map[string]string{"query": query})
-	r := httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(raw))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	r := httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(raw)).WithContext(ctx)
 	r.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		r.Header.Set("Authorization", "Bearer "+token)

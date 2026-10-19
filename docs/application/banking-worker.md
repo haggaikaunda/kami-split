@@ -17,7 +17,8 @@ cleanup operations and logged queue messages in the same transaction. Deletion
 also fences logical accounts across current and replacement bindings. A rollback
 leaves no executable orphan message. Upgrades and reconciliation prepare logical-account
 scope for earlier pending connection barriers before accepting purge work. Queue payloads contain only operation UUIDs
-and generations; operation/receipt storage contains no tokens or financial payloads.
+and generations; lifecycle work/receipt storage contains no tokens or financial payloads. Enrollment
+handoffs use separate protected, expiring operation storage.
 
 The queue visibility window is two minutes. An independent random lease token,
 current lifecycle generation and unexpired lease authorize each local commit.

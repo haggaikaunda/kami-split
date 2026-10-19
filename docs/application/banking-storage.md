@@ -74,8 +74,8 @@ provider systems or backups. Barriers have no invented retention expiry.
 ## Banking protection keys
 
 Construct a separate banking `Protector` with banking-only secret material. Never
-supply invitation keys or reuse their configuration. This package does not load
-environment secrets or enable itself at server startup. The AES-256-GCM nonce and
+supply invitation keys or reuse their configuration. The explicit `LoadRuntime` boundary reads opt-in environment configuration;
+storage constructors alone do not load secrets or enable provider operations. The AES-256-GCM nonce and
 key version are stored with each ciphertext. Authenticated context binds the
 banking namespace, access-token purpose, owner, connection and provider
 environment. Missing keys, changed context and tampering fail closed with safe

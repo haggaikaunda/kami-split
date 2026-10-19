@@ -46,13 +46,25 @@ func (w *Worker) processEnrollment(ctx context.Context) (bool, error) {
 		delay = 0
 	} else if job.ConnectionID == nil || job.ForceDiscovery {
 		correlation := EnrollmentCorrelation{UserID: job.UserID, ClientUserID: "kami-" + job.OwnerID.String() + "-" + job.Environment, WebhookURL: job.WebhookURL}
-		if correlation.UserID == "" {
+		caps := provider.EnrollmentCapabilities()
+		if !caps.UserScopedDiscovery || !caps.UserScopedRemoval {
+			delay = 0
+			err = &EnrollmentError{}
+		}
+		if err == nil && correlation.UserID == "" {
 			correlation.UserID, err = provider.EnsureUser(ctx, job.Environment, correlation.ClientUserID)
 		}
 		if err == nil {
 			var items []string
 			items, err = provider.Discover(ctx, job.Environment, correlation)
 			if err == nil {
+				targets := make([]string, 0, len(items))
+				for _, item := range items {
+					if item != job.PreservedItemID {
+						targets = append(targets, item)
+					}
+				}
+				items = targets
 				persisted, recordErr := w.db.RecordEnrollmentTargets(ctx, job, items)
 				if recordErr != nil {
 					return true, recordErr

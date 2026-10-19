@@ -10,6 +10,7 @@ CREATE TABLE app.banking_enrollments (
   expires_at timestamptz NOT NULL DEFAULT clock_timestamp()+interval '4 hours',
   link_ciphertext bytea, public_ciphertext bytea, public_expires_at timestamptz, token_key_version text,
   prepare_claimed boolean NOT NULL DEFAULT false, force_discovery boolean NOT NULL DEFAULT false,
+  preserved_item_id text NOT NULL DEFAULT '', restore_ready boolean NOT NULL DEFAULT false,
   finish_digest bytea, connection_id uuid REFERENCES app.banking_connections(id),
   cancelled boolean NOT NULL DEFAULT false, blocks_enrollment boolean NOT NULL DEFAULT true, lease_token uuid, lease_until timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
@@ -25,6 +26,7 @@ CREATE TABLE app.banking_enrollment_accounts (
 CREATE UNIQUE INDEX banking_exact_account ON app.banking_enrollment_accounts(owner_id,environment,institution_id,stable_id) WHERE stable_id<>'';
 CREATE TABLE app.banking_enrollment_receipts (
   attempt_id uuid NOT NULL REFERENCES app.banking_enrollments(id), body_digest bytea NOT NULL CHECK(octet_length(body_digest)=32),
+  hint_item_id text NOT NULL CHECK(char_length(hint_item_id)<=256),
   received_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(attempt_id,body_digest)
 );
 CREATE TABLE app.banking_enrollment_jobs (
@@ -32,7 +34,7 @@ CREATE TABLE app.banking_enrollment_jobs (
   state text NOT NULL DEFAULT 'pending' CHECK(state IN('pending','running','complete','needs_attention')),
   attempts integer NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 10),
   due_at timestamptz NOT NULL DEFAULT now(), lease_token uuid, lease_until timestamptz,
-  correlated_items text[] NOT NULL DEFAULT '{}',
+  hint_items text[] NOT NULL DEFAULT '{}', correlated_items text[] NOT NULL DEFAULT '{}',
   removed_items text[] NOT NULL DEFAULT '{}'
 );
 DO $$ DECLARE relation text; BEGIN
@@ -120,6 +122,7 @@ BEGIN
   SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
   IF e.state<>'exchanging' OR e.cancelled OR e.expires_at<=clock_timestamp() OR e.connection_id IS NULL THEN RETURN 'CLEANUP_PENDING'; END IF;
+  IF EXISTS(SELECT FROM app.banking_enrollment_receipts r JOIN app.banking_connections c ON c.id=e.connection_id WHERE r.attempt_id=e.id AND r.hint_item_id<>c.provider_item_id) THEN RETURN 'CLEANUP_PENDING'; END IF;
   IF e.intent='existing' THEN RETURN 'REPLACEMENT_REQUIRED'; END IF;
   IF jsonb_typeof(accounts)<>'array' OR jsonb_array_length(accounts) NOT BETWEEN 1 AND 100 OR institution='' THEN RETURN 'INVALID_SELECTION'; END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(actor::text||'/banking/'||e.environment,0));
@@ -146,7 +149,7 @@ BEGIN
   SELECT * INTO e FROM app.banking_enrollments WHERE id=target AND owner_id=actor FOR UPDATE;
   IF NOT FOUND THEN RETURN 'NOT_FOUND'; END IF;
   IF e.state IN('ready','retry_allowed') THEN RETURN e.result_code; END IF;
-  UPDATE app.banking_enrollments SET cancelled=true,state='cleanup_pending',result_code=CASE WHEN code IN('DUPLICATE_ACCOUNT','REPLACEMENT_REQUIRED','INVALID_SELECTION') THEN code ELSE 'CLEANUP_PENDING' END,
+  UPDATE app.banking_enrollments SET force_discovery=force_discovery OR EXISTS(SELECT FROM app.banking_enrollment_receipts r JOIN app.banking_connections c ON c.id=e.connection_id WHERE r.attempt_id=e.id AND r.hint_item_id<>c.provider_item_id),cancelled=true,state='cleanup_pending',result_code=CASE WHEN code IN('DUPLICATE_ACCOUNT','REPLACEMENT_REQUIRED','INVALID_SELECTION') THEN code ELSE 'CLEANUP_PENDING' END,
     link_ciphertext=NULL,public_ciphertext=NULL WHERE id=target;
   UPDATE app.banking_enrollment_jobs SET due_at=clock_timestamp() WHERE attempt_id=target AND state='pending';
   PERFORM app.banking_enrollment_enqueue(target);
@@ -251,12 +254,19 @@ BEGIN
     SELECT provider_removed INTO finished FROM app.banking_connections WHERE id=e.connection_id;
   ELSE
     UPDATE app.banking_enrollment_jobs SET removed_items=ARRAY(SELECT DISTINCT unnest(removed_items||confirmed_items)) WHERE attempt_id=target;
-    SELECT cardinality(correlated_items)>0 AND correlated_items<@removed_items INTO finished FROM app.banking_enrollment_jobs WHERE attempt_id=target;
+    -- Tokenless removal is also positive teardown proof for a provisional
+    -- known Item. Destroy its credential without touching a preserved ready Item.
+    UPDATE app.banking_connections connection SET provider_removed=true,permission_state='revoked',provider_item_id=connection.id::text,enrollment_pending=false
+      FROM app.banking_enrollment_jobs job WHERE connection.id=e.connection_id AND connection.state<>'active'
+        AND job.attempt_id=target AND connection.provider_item_id=ANY(job.removed_items);
+    DELETE FROM app.banking_credentials credential USING app.banking_connections connection
+      WHERE credential.connection_id=connection.id AND connection.id=e.connection_id AND connection.provider_removed;
+    SELECT cardinality(correlated_items)>0 AND correlated_items<@removed_items AND NOT EXISTS(SELECT FROM unnest(hint_items) hint WHERE hint<>e.preserved_item_id AND NOT hint=ANY(removed_items)) INTO finished FROM app.banking_enrollment_jobs WHERE attempt_id=target;
   END IF;
   UPDATE app.banking_enrollment_jobs SET state=CASE WHEN finished THEN 'complete' WHEN delay_seconds=0 OR attempts>=10 THEN 'needs_attention' ELSE 'pending' END,
     due_at=clock_timestamp()+make_interval(secs=>greatest(60,delay_seconds)),lease_token=NULL,lease_until=NULL WHERE attempt_id=target;
-  UPDATE app.banking_enrollments SET blocks_enrollment=CASE WHEN finished THEN false ELSE blocks_enrollment END,state=CASE WHEN finished THEN 'retry_allowed' WHEN delay_seconds=0 OR j.attempts>=10 THEN 'needs_attention' ELSE state END,
-    result_code=CASE WHEN finished THEN 'RETRY_ALLOWED' WHEN delay_seconds=0 OR j.attempts>=10 THEN 'NEEDS_ATTENTION' ELSE result_code END,
+  UPDATE app.banking_enrollments SET blocks_enrollment=CASE WHEN finished THEN false ELSE blocks_enrollment END,state=CASE WHEN finished AND e.restore_ready AND EXISTS(SELECT FROM app.banking_connections WHERE id=e.connection_id AND state='active') THEN 'ready' WHEN finished THEN 'retry_allowed' WHEN delay_seconds=0 OR j.attempts>=10 THEN 'needs_attention' ELSE state END,
+    result_code=CASE WHEN finished AND e.restore_ready AND EXISTS(SELECT FROM app.banking_connections WHERE id=e.connection_id AND state='active') THEN 'AWAITING_INITIAL_IMPORT' WHEN finished THEN 'RETRY_ALLOWED' WHEN delay_seconds=0 OR j.attempts>=10 THEN 'NEEDS_ATTENTION' ELSE result_code END,
     lease_token=NULL,lease_until=NULL WHERE id=target;
   RETURN true;
 END $$;
@@ -292,27 +302,36 @@ GRANT EXECUTE ON FUNCTION app.banking_enrollment_claim(),app.banking_enrollment_
 -- establish exact user and attempt URL correlation before removal or activation.
 CREATE OR REPLACE FUNCTION app.banking_accept_webhook(correlation uuid, expected_environment text, item text, digest bytea, event_type text, event_code text) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
-DECLARE e app.banking_enrollments; c app.banking_connections; version bigint; accepted boolean;
+DECLARE e app.banking_enrollments; c app.banking_connections; version bigint; has_enrollment boolean;
 BEGIN
+  -- Enrollment and recovery consistently acquire attempt before connection.
+  SELECT * INTO e FROM app.banking_enrollments WHERE id=correlation AND environment=expected_environment FOR UPDATE;
+  has_enrollment:=FOUND;
   SELECT connection.* INTO c FROM app.banking_connections connection JOIN app.banking_webhook_correlations w ON w.connection_id=connection.id WHERE w.id=correlation FOR SHARE OF connection;
   IF FOUND THEN
     IF c.environment<>expected_environment OR octet_length(digest)<>32 THEN RETURN false; END IF;
     IF c.provider_item_id=item THEN
-    SELECT generation INTO version FROM app.banking_webhook_correlations WHERE id=correlation;
-    INSERT INTO app.banking_webhook_receipts(correlation_id,body_digest,generation,state,event_type,event_code)
-      VALUES(correlation,digest,version,CASE WHEN c.generation=version AND c.state='active' THEN 'accepted' ELSE 'terminal' END,event_type,event_code) ON CONFLICT DO NOTHING;
-    RETURN true;
+      SELECT generation INTO version FROM app.banking_webhook_correlations WHERE id=correlation;
+      INSERT INTO app.banking_webhook_receipts(correlation_id,body_digest,generation,state,event_type,event_code)
+        VALUES(correlation,digest,version,CASE WHEN c.generation=version AND c.state='active' THEN 'accepted' ELSE 'terminal' END,event_type,event_code) ON CONFLICT DO NOTHING;
+      RETURN true;
     END IF;
-    IF c.state='active' THEN RETURN false; END IF;
   END IF;
-  SELECT * INTO e FROM app.banking_enrollments WHERE id=correlation AND environment=expected_environment FOR UPDATE;
-  IF NOT FOUND OR octet_length(digest)<>32 THEN RETURN false; END IF;
-  INSERT INTO app.banking_enrollment_receipts(attempt_id,body_digest) VALUES(e.id,digest) ON CONFLICT DO NOTHING;
-  accepted:=FOUND;
-  IF accepted AND (e.state='retry_allowed' OR (e.state='ready' AND c.state<>'active')) THEN
-    UPDATE app.banking_enrollments SET state='cleanup_pending',result_code='CLEANUP_PENDING',force_discovery=true WHERE id=e.id;
-    INSERT INTO app.banking_enrollment_jobs(attempt_id,state) VALUES(e.id,'pending')
-      ON CONFLICT(attempt_id) DO UPDATE SET state='pending',due_at=clock_timestamp(),attempts=0,lease_until=NULL,lease_token=NULL;
+  IF NOT has_enrollment OR octet_length(digest)<>32 OR char_length(item) NOT BETWEEN 1 AND 256 THEN RETURN false; END IF;
+  INSERT INTO app.banking_enrollment_receipts(attempt_id,body_digest,hint_item_id) VALUES(e.id,digest,item) ON CONFLICT DO NOTHING;
+  IF NOT FOUND THEN RETURN true; END IF;
+  IF e.state IN('ready','retry_allowed') THEN
+    UPDATE app.banking_enrollments SET state='cleanup_pending',result_code='CLEANUP_PENDING',force_discovery=true,
+      preserved_item_id=CASE WHEN c.state='active' THEN c.provider_item_id ELSE '' END,restore_ready=coalesce(c.state='active',false) WHERE id=e.id;
+    INSERT INTO app.banking_enrollment_jobs(attempt_id,state,hint_items) VALUES(e.id,'pending',ARRAY[item])
+      ON CONFLICT(attempt_id) DO UPDATE SET state='pending',due_at=clock_timestamp(),attempts=0,lease_until=NULL,lease_token=NULL,
+        correlated_items='{}',removed_items='{}',hint_items=ARRAY[item];
+  ELSE
+    -- A hint is not removal authority. Retain it until discovery positively
+    -- correlates it; this also fences callbacks racing an in-flight cleanup.
+    UPDATE app.banking_enrollment_jobs SET hint_items=ARRAY(SELECT DISTINCT unnest(hint_items||ARRAY[item])) WHERE attempt_id=e.id;
+    UPDATE app.banking_enrollments SET force_discovery=force_discovery OR
+      (connection_id IS NOT NULL AND item IS DISTINCT FROM (SELECT provider_item_id FROM app.banking_connections WHERE id=connection_id)) WHERE id=e.id;
   END IF;
   RETURN true;
 END $$;
