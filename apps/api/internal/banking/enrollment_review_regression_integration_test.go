@@ -110,6 +110,9 @@ func TestEnrollmentFinishHonorsProvisionalConnectionStopAndDelete(t *testing.T) 
 					requireCode(t, result, "READY")
 					if cleanupFirst {
 						runProvisionalCleanup(t, f, worker, id)
+						if queryInt(t, f, `SELECT count(*) FROM app.banking_connections WHERE id=$1 AND provider_removed AND permission_state='revoked'`, connection) != 1 {
+							t.Fatal("fixture did not finish teardown before activation resumed")
+						}
 					}
 				}
 				outcome := finishEnrollment(f, service, f.owner, id, "checking")
@@ -141,7 +144,7 @@ func TestEnrollmentFinishHonorsProvisionalConnectionStopAndDelete(t *testing.T) 
 				if !provider.items["item-public-"+id.String()].removed {
 					t.Fatal("fenced Item was not narrowly removed")
 				}
-				if n := queryInt(t, f, `SELECT count(*) FROM app.banking_connections WHERE id=$1 AND state='active'`, connection); n != 0 {
+				if n := queryInt(t, f, `SELECT count(*) FROM app.banking_connections WHERE id=$1 AND (state='active' OR permission_state<>'revoked' OR NOT provider_removed)`, connection); n != 0 {
 					t.Fatal("cleanup resurrected fenced connection")
 				}
 			})
@@ -153,10 +156,14 @@ func runProvisionalCleanup(t *testing.T, f *fixture, worker *Worker, id uuid.UUI
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	for range 8 {
+	for range 4 {
 		dueEnrollment(f, id)
-		if _, err := worker.ProcessOne(ctx); err != nil {
-			t.Fatal(err)
+		// The enrollment pass schedules teardown; its next due time is future.
+		// Natural calls then drain lifecycle teardown/purge before re-dueing it.
+		for range 3 {
+			if _, err := worker.ProcessOne(ctx); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 }
