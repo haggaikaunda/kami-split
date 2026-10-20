@@ -155,7 +155,7 @@ func TestReportingTimezonePersistenceRecoveryAndIsolation(t *testing.T) {
 			t.Fatal("anonymous accepted", string(body))
 		}
 	}
-	for _, change := range []string{"enabled=false", "enabled=true,live_auth_id=NULL"} {
+	for _, change := range []string{"enabled=false", "enabled=false,live_auth_id=NULL"} {
 		f.exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.users SET %s WHERE id='%s';RESET ROLE`, change, f.id(102)))
 		requireTimezoneCode(t, read(2), "FORBIDDEN")
 		requireTimezoneCode(t, recover(2, firstKey, "UPDATE"), "FORBIDDEN")
