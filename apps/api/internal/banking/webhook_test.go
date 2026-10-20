@@ -110,7 +110,7 @@ func TestWebhookAuthenticatesExactBodyAndTime(t *testing.T) {
 			}
 			event, err := f.verifier.Verify(context.Background(), signed, body)
 			if tc.valid {
-				if err != nil || event.Environment != "sandbox" || event.ItemID != "known-item" || event.WebhookCode != "USER_PERMISSION_REVOKED" || event.BodySHA256 != sha256.Sum256(body) {
+				if err != nil || event.Environment != "sandbox" || event.ItemID != "known-item" || event.WebhookCode != "USER_PERMISSION_REVOKED" || event.BodySHA256 != sha256.Sum256(body) || event.DeliverySHA256 != sha256.Sum256([]byte(signed)) {
 					t.Fatalf("valid event failed: %+v %v", event, err)
 				}
 			} else if !errors.Is(err, ErrWebhookMismatch) {

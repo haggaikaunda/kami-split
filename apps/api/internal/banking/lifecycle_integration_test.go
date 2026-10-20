@@ -76,8 +76,11 @@ func lifecycleEvent(t *testing.T, f *fixture, correlation uuid.UUID, item, code,
 		t.Fatal(err)
 	}
 	body, _ := json.Marshal(map[string]any{"environment": "sandbox", "item_id": item, "webhook_type": "ITEM", "webhook_code": code, "account_id": account, "error": map[string]string{"error_code_reason": reason}})
+	return lifecycleSignedRequest(handler, correlation, body, signed.sign(t, body, signed.now, nil))
+}
+func lifecycleSignedRequest(handler http.Handler, correlation uuid.UUID, body []byte, signature string) int {
 	request := httptest.NewRequest(http.MethodPost, "/banking/webhooks/"+correlation.String(), bytes.NewReader(body))
-	request.Header.Set("Plaid-Verification", signed.sign(t, body, signed.now, nil))
+	request.Header.Set("Plaid-Verification", signature)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	return response.Code
@@ -181,13 +184,20 @@ func TestLifecycleSignedRevocationIsDurableScopedAndTerminal(t *testing.T) {
 	attempt, connection := lifecycleReady(t, f, s, f.owner, "checking", "savings")
 	source := lifecycleHistory(t, f, connection)
 	item := "item-public-" + attempt.String()
-	if status := lifecycleEvent(t, f, attempt, item, "USER_ACCOUNT_REVOKED", "checking", ""); status != 204 {
+	signed := newWebhookFixture(t)
+	handler, err := NewWebhookHandler(signed.verifier, f.service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(map[string]string{"environment": "sandbox", "item_id": item, "webhook_type": "ITEM", "webhook_code": "USER_ACCOUNT_REVOKED", "account_id": "checking"})
+	signature := signed.sign(t, body, signed.now, nil)
+	if status := lifecycleSignedRequest(handler, attempt, body, signature); status != 204 {
 		t.Fatal(status)
 	}
 	if lifecycleGeneration(t, f, connection) != 2 {
 		t.Fatal("account revocation not fenced")
 	}
-	if status := lifecycleEvent(t, f, attempt, item, "USER_ACCOUNT_REVOKED", "checking", ""); status != 204 || lifecycleGeneration(t, f, connection) != 2 {
+	if status := lifecycleSignedRequest(handler, attempt, body, signature); status != 204 || lifecycleGeneration(t, f, connection) != 2 {
 		t.Fatal("duplicate advanced lifecycle")
 	}
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id WHERE b.connection_id=$1 AND a.selected AND b.provider_account_id='savings'`, connection) != 1 {

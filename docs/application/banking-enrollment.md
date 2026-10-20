@@ -118,8 +118,9 @@ start returns the temporary Link token; `bankingRepair` returns safe status.
 `finishBankingRepair` takes an explicit desired subset, never a public token,
 and checks the current provider inventory and original lifecycle generation.
 Successful repair preserves bindings and history. A changed Item, institution,
-known persistent account identity or kind returns `REPLACEMENT_REQUIRED`;
-replacement activation remains separate. Reauthorization never selects new
+known persistent account identity or kind returns `REPLACEMENT_REQUIRED`.
+Institution continuity is checked across the Item even for a subset of only new
+accounts. Replacement activation remains separate. Reauthorization never selects new
 accounts implicitly. Changed attempt input conflicts; replays reauthorize and
 recover the original receipt. Only one unfinished repair per connection is
 allowed until completion or expiry. Preparation uncertainty is visible and never

@@ -25,8 +25,8 @@ import (
 // durable correlation's environment/Item. It must not be durably accepted.
 var ErrWebhookMismatch = errors.New("banking webhook target mismatch")
 
-// VerifiedWebhook contains only authenticated routing metadata and a digest for
-// deduplication, never the raw body, transaction facts or provider error text.
+// VerifiedWebhook contains only authenticated routing metadata and digests for
+// transport deduplication, never the raw body, transaction facts or provider error text.
 // The acceptor must compare Environment and ItemID against its locked durable
 // correlation and preserve terminal generations. Verification alone dispatches
 // no lifecycle action and grants no collection authority.
@@ -38,7 +38,10 @@ type VerifiedWebhook struct {
 	AccountID   string
 	Revoked     bool
 	BodySHA256  [32]byte
-	IssuedAt    time.Time
+	// DeliverySHA256 fingerprints the exact verified JWS, not a semantic event ID.
+	// Newly signed identical bodies conservatively count as distinct deliveries.
+	DeliverySHA256 [32]byte
+	IssuedAt       time.Time
 }
 
 // WebhookAcceptor owns durable ingress and target/lifecycle validation. A nil
@@ -138,7 +141,7 @@ func (v *WebhookVerifier) Verify(ctx context.Context, signed string, raw []byte)
 	if payload.Code == "USER_ACCOUNT_REVOKED" && !webhookField(payload.AccountID) {
 		return VerifiedWebhook{}, ErrWebhookMismatch
 	}
-	return VerifiedWebhook{AccountID: payload.AccountID, Revoked: payload.Error.Reason == "OAUTH_USER_REVOKED", Environment: payload.Environment, ItemID: payload.ItemID, WebhookType: payload.Type, WebhookCode: payload.Code, BodySHA256: digest, IssuedAt: claims.IssuedAt.Time}, nil
+	return VerifiedWebhook{AccountID: payload.AccountID, Revoked: payload.Error.Reason == "OAUTH_USER_REVOKED", Environment: payload.Environment, ItemID: payload.ItemID, WebhookType: payload.Type, WebhookCode: payload.Code, BodySHA256: digest, DeliverySHA256: sha256.Sum256([]byte(signed)), IssuedAt: claims.IssuedAt.Time}, nil
 }
 
 func webhookField(value string) bool {

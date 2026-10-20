@@ -69,7 +69,13 @@ a committed digest and safe event-routing receipt, including durable duplicates;
 terminal receipts cannot reactivate a generation. Unavailable keys or persistence
 return retryable 503. Enrollment correlations accept durable digest hints and trigger only verified
 narrow recovery, never activation; Item/account revocations dispatch local fences and durable cleanup in the receipt
-transaction. Temporary errors produce repair status; healthy/new-account hints
+transaction. Exact verified-JWS fingerprints make retries of the same signed
+revocation idempotent. Body equality is not a provider event ID: a newly signed
+identical revocation conservatively fences again, including when its account has
+no local binding. This invalidates pending selections/repairs without saving
+never-selected account metadata. Fingerprints remain private, survive disconnect,
+and are removed in bounded batches on explicit history deletion; terminal
+callbacks neither recreate them nor restart cleanup. Temporary errors produce repair status; healthy/new-account hints
 grant no consent or selection. Other routing awaits sync; receipt acceptance is
 not completed provider cleanup.
 
