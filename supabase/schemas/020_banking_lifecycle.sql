@@ -31,6 +31,22 @@ CREATE TABLE app.banking_webhook_deliveries (
 ALTER TABLE app.banking_webhook_deliveries ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON app.banking_webhook_deliveries FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
 
+-- Keep only a correlation-scoped one-way terminal identity after the raw Item
+-- and credential are erased. Existing private correlation retention prevents a
+-- callback for that removed Item being mistaken for a distinct late enrollment.
+ALTER TABLE app.banking_webhook_correlations ADD COLUMN removed_item_digest bytea
+  CHECK(removed_item_digest IS NULL OR octet_length(removed_item_digest)=32);
+CREATE FUNCTION app.banking_remember_removed_item() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$ BEGIN
+ UPDATE app.banking_webhook_correlations w SET removed_item_digest=
+   sha256(convert_to(w.id::text||'/'||OLD.environment||'/'||OLD.provider_item_id,'UTF8'))
+ WHERE w.connection_id=NEW.id;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER banking_remember_removed_item AFTER UPDATE OF provider_removed ON app.banking_connections
+ FOR EACH ROW WHEN (NEW.provider_removed AND NOT OLD.provider_removed)
+ EXECUTE FUNCTION app.banking_remember_removed_item();
+
 -- The status projection deliberately permits opaque deleted-connection status,
 -- without weakening history RLS or exposing any provider or financial payload.
 CREATE FUNCTION app.banking_lifecycle_status(target uuid)
@@ -250,6 +266,13 @@ DECLARE c app.banking_connections; duplicate boolean; accepted boolean; binding 
 BEGIN
  PERFORM 1 FROM app.banking_enrollments WHERE id=correlation FOR UPDATE;
  SELECT connection.* INTO c FROM app.banking_connections connection JOIN app.banking_webhook_correlations w ON w.connection_id=connection.id WHERE w.id=correlation FOR UPDATE OF connection;
+ -- Confirmed removal redacts the original Item from the connection. Recognize
+ -- its durable terminal identity before the legacy unknown-Item discovery path.
+ IF c.provider_removed AND c.state<>'active' AND c.environment=expected_environment AND octet_length(digest)=32
+   AND EXISTS(SELECT FROM app.banking_webhook_correlations w WHERE w.id=correlation
+     AND w.removed_item_digest=sha256(convert_to(w.id::text||'/'||expected_environment||'/'||item,'UTF8'))) THEN
+   RETURN true;
+ END IF;
  SELECT EXISTS(SELECT FROM app.banking_webhook_receipts WHERE correlation_id=correlation AND body_digest=digest) INTO duplicate;
  accepted:=app.banking_accept_webhook(correlation,expected_environment,item,digest,event_type,event_code);
  IF NOT accepted OR c.id IS NULL OR c.provider_item_id<>item OR c.environment<>expected_environment OR c.state<>'active' OR event_type<>'ITEM' THEN RETURN accepted; END IF;

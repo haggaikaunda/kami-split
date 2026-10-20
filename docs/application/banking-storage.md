@@ -69,7 +69,11 @@ history. History deletion advances generations, writes a durable opaque deletion
 barrier and immediately hides affected facts, annotation versions and captures.
 A delayed write cannot cross that fence. Credentials remain protected and hidden
 from ordinary reads, pending durable teardown; deletion does not claim erasure from
-provider systems or backups. Barriers have no invented retention expiry.
+provider systems or backups. Barriers have no invented retention expiry. Private webhook correlations retain
+only a scoped one-way removed-Item identity after confirmed teardown, so late
+callbacks cannot recreate raw Item hints or reopen completed cleanup. The digest
+is not financial history or provider access authority and follows the opaque
+correlation's lifetime.
 
 ## Banking protection keys
 

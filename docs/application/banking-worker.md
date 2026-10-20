@@ -75,7 +75,16 @@ identical revocation conservatively fences again, including when its account has
 no local binding. This invalidates pending selections/repairs without saving
 never-selected account metadata. Fingerprints remain private, survive disconnect,
 and are removed in bounded batches on explicit history deletion; terminal
-callbacks neither recreate them nor restart cleanup. Temporary errors produce repair status; healthy/new-account hints
+callbacks for the confirmed removed original Item are acknowledged using a private,
+correlation-scoped one-way identity digest captured before Item redaction. That
+opaque terminal identity follows existing correlation retention and contains no
+raw Item, credential or financial payload; it prevents reopening completed
+enrollment cleanup after history purge. A genuinely distinct late Item still
+requires existing positively correlated discovery and narrow removal. Known
+original-Item callbacks neither recreate delivery fingerprints nor restart cleanup.
+The proof is captured at removal; older records whose Item was already redacted
+without this proof continue through conservative discovery, rather than inferring
+identity or provider absence. Temporary errors produce repair status; healthy/new-account hints
 grant no consent or selection. Other routing awaits sync; receipt acceptance is
 not completed provider cleanup.
 
