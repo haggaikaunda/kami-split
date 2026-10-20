@@ -225,12 +225,23 @@ func TestIndependentTimezoneRevocationFencesWaitingWrite(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
+	// Disabling an application identity is irreversible. Inspect persisted state
+	// through the fixture owner while the public surfaces must remain forbidden.
 	timezoneFixtureOwner(t, f, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE app.users SET enabled=true WHERE id=$1`, f.id(102))
-		return err
+		var zone string
+		var version, attempts int64
+		if err := tx.QueryRow(ctx, `SELECT p.timezone,p.version,
+ (SELECT count(*) FROM app.reporting_timezone_attempts a WHERE a.owner_id=p.owner_id AND a.operation='UPDATE' AND a.attempt_id=$2)
+ FROM app.reporting_timezones p WHERE p.owner_id=$1`, f.id(102), key).Scan(&zone, &version, &attempts); err != nil {
+			return err
+		}
+		if zone != "UTC" || version != 1 || attempts != 0 {
+			return fmt.Errorf("revoked write changed persisted state: %s/%d, receipts=%d", zone, version, attempts)
+		}
+		return nil
 	})
-	requireTimezone(t, timezoneRequest(t, f, 2, timezoneRead, "reportingTimezone", nil), "UTC", "1")
-	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneRecover, "reportingTimezoneAttempt", map[string]any{"key": key, "kind": "UPDATE"}), "NOT_FOUND")
+	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneRead, "reportingTimezone", nil), "FORBIDDEN")
+	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneRecover, "reportingTimezoneAttempt", map[string]any{"key": key, "kind": "UPDATE"}), "FORBIDDEN")
 }
 
 func TestIndependentTimezoneExhaustionAndRestrictedRoles(t *testing.T) {
