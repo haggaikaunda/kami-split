@@ -79,6 +79,21 @@ func TestIndependentTimezoneDurableFailuresAndCanonicalRetries(t *testing.T) {
 		requireTimezoneCode(t, recover(key, "UPDATE"), "NOT_FOUND")
 	}
 	requireTimezone(t, timezoneRequest(t, f, 2, timezoneRead, "reportingTimezone", nil), "UTC", "2")
+	// All selected scalar inputs must pass preflight before an earlier mutation
+	// can commit. A malformed later preference version must preserve that boundary.
+	query := fmt.Sprintf(`mutation {
+ first:updateReportingTimezone(attemptId:"%s",timezone:"Europe/Paris",expectedVersion:"2") { __typename }
+ second:updateReportingTimezone(attemptId:"%s",timezone:"UTC",expectedVersion:"01") { __typename }
+}`, uuid.NewString(), uuid.NewString())
+	_, body, err := groupHTTP(f, 2, query, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response struct{ Errors []any }
+	if err := json.Unmarshal(body, &response); err != nil || len(response.Errors) == 0 {
+		t.Fatalf("malformed later scalar accepted: %s", body)
+	}
+	requireTimezone(t, timezoneRequest(t, f, 2, timezoneRead, "reportingTimezone", nil), "UTC", "2")
 }
 
 func TestIndependentTimezoneDroppedResponseAndFreshPoolRecovery(t *testing.T) {
