@@ -355,7 +355,7 @@ func (s *EnrollmentService) deselection(ctx context.Context, connection uuid.UUI
 		if err := tx.QueryRow(ctx, `SELECT provider_item_id FROM app.banking_connections WHERE id=$1 AND state='active'`, connection).Scan(&inventory.ItemID); err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT b.provider_account_id,m.display_name,a.kind,m.currency,m.stable_id,m.institution_id FROM app.banking_bindings b JOIN app.banking_accounts a ON a.id=b.account_id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 AND a.selected`, connection)
+		rows, err := tx.Query(ctx, `SELECT b.provider_account_id,m.display_name,a.kind,m.currency,m.stable_id,m.institution_id FROM app.banking_bindings b JOIN app.banking_accounts a ON a.id=b.account_id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 AND a.selected AND b.reporting_state IN('current','staged') AND NOT b.collection_stopped`, connection)
 		if err != nil {
 			return err
 		}
