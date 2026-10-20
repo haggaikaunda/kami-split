@@ -302,7 +302,10 @@ func TestIndependentSignedIngressRejectsRoutingAndForgeryWithoutWrites(t *testin
 	if code := send(correlation, body, signature); code != http.StatusNoContent {
 		t.Fatal("valid event", code)
 	}
-	requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}), "READY")
+	// USER_PERMISSION_REVOKED is now dispatched in the acceptance transaction.
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_connections WHERE id=$1 AND state='stopped' AND generation=2`, connection) != 1 || queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE connection_id=$1 AND generation=2 AND kind='teardown'`, connection) != 1 {
+		t.Fatal("verified revocation was not durably dispatched")
+	}
 	late := append(append([]byte{}, body...), byte(' '))
 	for range 2 {
 		if code := send(correlation, late, signed.sign(t, late, signed.now, nil)); code != http.StatusNoContent {

@@ -129,14 +129,23 @@ func (d *WorkerDB) BankingStatus(ctx context.Context) ([]BankingWorkStatus, erro
 // AcceptBankingWebhook is callable only after the sole signature verifier has
 // authenticated the exact raw body. Database correlation also validates the Item,
 // environment and terminal generation before accepting a durable digest receipt.
-func (d *DB) AcceptBankingWebhook(ctx context.Context, correlation uuid.UUID, environment, item string, digest []byte, eventType, eventCode string) (bool, error) {
+func (d *DB) AcceptBankingWebhook(ctx context.Context, correlation uuid.UUID, environment, item string, digest, delivery []byte, eventType, eventCode, accountID string, revoked bool) (bool, error) {
 	if d == nil {
 		return false, errors.New("banking ingress unavailable")
 	}
 	var accepted bool
-	err := d.pool.QueryRow(ctx, `SELECT app.banking_accept_webhook($1,$2,$3,$4,$5,$6)`, correlation, environment, item, digest, eventType, eventCode).Scan(&accepted)
+	err := d.pool.QueryRow(ctx, `SELECT app.banking_accept_lifecycle_webhook($1,$2,$3,$4,$5,$6,$7,$8,$9)`, correlation, environment, item, digest, delivery, eventType, eventCode, accountID, revoked).Scan(&accepted)
 	return accepted, err
 }
 
 // IsEmptyBankingQueue identifies the normal empty-claim outcome.
 func IsEmptyBankingQueue(err error) bool { return errors.Is(err, pgx.ErrNoRows) }
+
+// RecordBankingObservation records safe health and dispatches positive revocation
+// under the current restricted worker lease. A stale observation changes nothing;
+// revocation atomically fences collection and enqueues existing narrow teardown.
+func (d *WorkerDB) RecordBankingObservation(ctx context.Context, w BankingWork, healthy, revoked bool) (bool, error) {
+	var ok bool
+	err := d.db.pool.QueryRow(ctx, `SELECT app.banking_observation_result($1,$2,$3,$4)`, w.ID, w.Token, healthy, revoked).Scan(&ok)
+	return ok, err
+}

@@ -283,6 +283,7 @@ func selectAccounts(inventory AccountInventory, ids []string) ([]selectedAccount
 	}
 	selected := make([]selectedAccount, 0, len(ids))
 	seen := map[string]bool{}
+	stable := map[string]bool{}
 	for _, id := range ids {
 		if id == "" || len(id) > 256 || seen[id] {
 			return nil, false
@@ -303,6 +304,10 @@ func selectAccounts(inventory AccountInventory, ids []string) ([]selectedAccount
 			if kind == "" || a.Currency != "USD" {
 				return nil, false
 			}
+			if a.StableID != "" && stable[a.StableID] {
+				return nil, false
+			}
+			stable[a.StableID] = a.StableID != ""
 			selected = append(selected, selectedAccount{ID: id, Name: a.Name, Kind: kind, Currency: "USD", StableID: a.StableID})
 			found = true
 			break
@@ -414,15 +419,16 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 	return s.Status(ctx, e.ID)
 }
 
-// Account is the owner-only selected stream projection. RequestedHistoryDays is
+// Account is the owner-only retained stream projection. RequestedHistoryDays is
 // an initialization request, never actual coverage or a rolling retention promise.
 type Account struct {
-	ID, BindingID, ConnectionID uuid.UUID
-	Name, Kind, Currency        string
-	RequestedHistoryDays        int
+	ID, BindingID, ConnectionID             uuid.UUID
+	Name, Kind, Currency, ProviderAccountID string
+	RequestedHistoryDays                    int
+	Selected                                bool
 }
 
-// Accounts reads only selected, visible streams belonging to the enabled actor.
+// Accounts reads selected and deselected visible streams for the enabled owner.
 func (s *EnrollmentService) Accounts(ctx context.Context, connection uuid.UUID) ([]Account, Result) {
 	result := []Account{}
 	code := "NOT_FOUND"
@@ -435,14 +441,14 @@ func (s *EnrollmentService) Accounts(ctx context.Context, connection uuid.UUID) 
 			return nil
 		}
 		code = "READY"
-		rows, err := tx.Query(ctx, `SELECT a.id,b.id,b.connection_id,m.display_name,a.kind,m.currency,m.requested_history_days FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 AND a.selected ORDER BY a.id`, connection)
+		rows, err := tx.Query(ctx, `SELECT a.id,b.id,b.connection_id,m.display_name,a.kind,m.currency,m.requested_history_days,a.selected,b.provider_account_id FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 ORDER BY a.id`, connection)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
 			var a Account
-			if err := rows.Scan(&a.ID, &a.BindingID, &a.ConnectionID, &a.Name, &a.Kind, &a.Currency, &a.RequestedHistoryDays); err != nil {
+			if err := rows.Scan(&a.ID, &a.BindingID, &a.ConnectionID, &a.Name, &a.Kind, &a.Currency, &a.RequestedHistoryDays, &a.Selected, &a.ProviderAccountID); err != nil {
 				return err
 			}
 			result = append(result, a)

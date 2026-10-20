@@ -6,8 +6,9 @@ history purge and protected Item status reconciliation. The API optionally mount
 one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. The
 [enrollment API](banking-enrollment.md) adds restricted durable enrollment-recovery
 jobs to the same worker, with renewable leases and narrow user-scoped discovery
-and removal. User-facing lifecycle management, transaction sync and replacement
-activation remain separate work. Live enrollment stays disabled
+and removal. Authenticated [lifecycle management](banking-enrollment.md#managing-an-existing-connection)
+uses these same cleanup paths; transaction sync and replacement activation remain
+separate work. Live enrollment stays disabled
 under #255; synthetic checks establish no live entitlement or backup capability.
 
 ## Durable authority
@@ -36,7 +37,10 @@ No retry is sent earlier to fit a local scheduling target. Due work is polled ea
 minute. Reconciliation repairs missing transport messages from durable intent,
 fences disabled owners into cleanup and schedules protected Item observations at
 least daily for eligible bindings. Only a matching provider response advances the
-binding observation. Neither a healthy observation nor an absent notification
+binding observation. A matching `item/get` OAuth-revocation reason immediately
+fences collection and enqueues the existing teardown, recovering missed webhook
+notifications without deleting history. Other observation failures set actionable
+repair status; their retry and attention budgets remain bounded. Neither a healthy observation nor an absent notification
 enables a stopped binding or grants collection permission.
 
 ## Private cleanup and ingress
@@ -64,8 +68,28 @@ environment and generation. Invalid/mismatched events write nothing. Success mea
 a committed digest and safe event-routing receipt, including durable duplicates;
 terminal receipts cannot reactivate a generation. Unavailable keys or persistence
 return retryable 503. Enrollment correlations accept durable digest hints and trigger only verified
-narrow recovery, never activation; other accepted routing awaits later lifecycle/sync dispatch;
-receipt acceptance is not completed event handling.
+narrow recovery, never activation; Item/account revocations dispatch local fences and durable cleanup in the receipt
+transaction. Exact verified-JWS fingerprints make retries of the same signed
+revocation idempotent. Body equality is not a provider event ID: a newly signed
+identical revocation conservatively fences again, including when its account has
+no local binding. This invalidates pending selections/repairs without saving
+never-selected account metadata. Fingerprints remain private, survive disconnect,
+and are removed in bounded batches on explicit history deletion; terminal
+callbacks for the confirmed removed original Item are acknowledged using a private,
+correlation-scoped one-way identity digest captured before Item redaction. That
+opaque terminal identity follows existing correlation retention and contains no
+raw Item, credential or financial payload; it prevents reopening completed
+enrollment cleanup after history purge. Positive removals of distinct discovered Items also retain only scoped digests
+in private enrollment metadata. These proofs survive later cleanup cycles that
+reset transient job arrays, so a callback for a removed secondary Item cannot
+reopen completed cleanup or pollute another pending removal. A genuinely new
+late Item still requires existing positively correlated discovery and narrow removal. Known
+original-Item callbacks neither recreate delivery fingerprints nor restart cleanup.
+The proof is captured at removal; older records whose Item was already redacted
+without this proof continue through conservative discovery, rather than inferring
+identity or provider absence. Temporary errors produce repair status; healthy/new-account hints
+grant no consent or selection. Other routing awaits sync; receipt acceptance is
+not completed provider cleanup.
 
 ## Runtime and privileges
 

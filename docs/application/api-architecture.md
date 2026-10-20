@@ -88,7 +88,8 @@ owner-only persistence, protected credential storage, durable attempts and lifec
 fences. The [lifecycle worker](banking-worker.md) implements protected narrow Plaid cleanup,
 Item observation, worker privileges/runtime and verified durable HTTP ingress.
 The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
-selected stream reads and durable unknown-exchange recovery. New enrollment is
+retained stream reads, durable unknown-exchange recovery, explicit selection,
+existing-Item repair and revision-checked disconnect/private-history deletion. New enrollment is
 disabled by default; transaction sync and replacement activation remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The

@@ -7,6 +7,7 @@ package graph
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -50,6 +51,67 @@ func (r *mutationResolver) CancelBankingEnrollment(ctx context.Context, attemptI
 	return mapEnrollment(r.Banking.Cancel(ctx, id)), nil
 }
 
+// ChangeBankingSelection is the resolver for the changeBankingSelection field.
+func (r *mutationResolver) ChangeBankingSelection(ctx context.Context, input model.BankingSelectionInput) (*model.BankingManagementResult, error) {
+	if r.Banking == nil {
+		return &model.BankingManagementResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	fence, ok := parseBankingFence(model.BankingFenceInput{AttemptID: input.AttemptID, ConnectionID: input.ConnectionID, ExpectedGeneration: input.ExpectedGeneration})
+	if !ok {
+		return &model.BankingManagementResult{Code: "INVALID_INPUT"}, nil
+	}
+	result := r.Banking.ChangeSelection(ctx, banking.SelectionInput{AttemptID: fence.AttemptID, ConnectionID: fence.ConnectionID, ExpectedGeneration: fence.ExpectedGeneration, AccountIDs: input.AccountIds})
+	return &model.BankingManagementResult{Code: result.Code}, nil
+}
+
+// StartBankingRepair is the resolver for the startBankingRepair field.
+func (r *mutationResolver) StartBankingRepair(ctx context.Context, input model.BankingFenceInput) (*model.BankingEnrollmentResult, error) {
+	if r.Banking == nil {
+		return &model.BankingEnrollmentResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	fence, ok := parseBankingFence(input)
+	if !ok {
+		return &model.BankingEnrollmentResult{Code: "INVALID_INPUT"}, nil
+	}
+	return mapEnrollment(r.Banking.StartRepair(ctx, banking.RepairInput{AttemptID: fence.AttemptID, ConnectionID: fence.ConnectionID, ExpectedGeneration: fence.ExpectedGeneration})), nil
+}
+
+// FinishBankingRepair is the resolver for the finishBankingRepair field.
+func (r *mutationResolver) FinishBankingRepair(ctx context.Context, input model.FinishBankingRepairInput) (*model.BankingEnrollmentResult, error) {
+	if r.Banking == nil {
+		return &model.BankingEnrollmentResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	id, err := uuid.Parse(input.AttemptID)
+	if err != nil {
+		return &model.BankingEnrollmentResult{Code: "INVALID_INPUT"}, nil
+	}
+	return mapEnrollment(r.Banking.FinishRepair(ctx, banking.FinishRepairInput{AttemptID: id, AccountIDs: input.AccountIds})), nil
+}
+
+// DisconnectBanking is the resolver for the disconnectBanking field.
+func (r *mutationResolver) DisconnectBanking(ctx context.Context, input model.BankingFenceInput) (*model.BankingManagementResult, error) {
+	if r.BankingStorage == nil {
+		return &model.BankingManagementResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	fence, ok := parseBankingFence(input)
+	if !ok {
+		return &model.BankingManagementResult{Code: "INVALID_INPUT"}, nil
+	}
+	return &model.BankingManagementResult{Code: r.BankingStorage.Stop(ctx, fence).Code}, nil
+}
+
+// DeleteBankingHistory is the resolver for the deleteBankingHistory field.
+func (r *mutationResolver) DeleteBankingHistory(ctx context.Context, input model.BankingFenceInput) (*model.BankingManagementResult, error) {
+	if r.BankingStorage == nil {
+		return &model.BankingManagementResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	fence, ok := parseBankingFence(input)
+	if !ok {
+		return &model.BankingManagementResult{Code: "INVALID_INPUT"}, nil
+	}
+	return &model.BankingManagementResult{Code: r.BankingStorage.DeleteHistory(ctx, fence).Code}, nil
+}
+
 // BankingEnrollment is the resolver for the bankingEnrollment field.
 func (r *queryResolver) BankingEnrollment(ctx context.Context, attemptID string) (*model.BankingEnrollmentResult, error) {
 	if r.Banking == nil {
@@ -73,19 +135,46 @@ func (r *queryResolver) BankingConnection(ctx context.Context, connectionID stri
 		result.Code = "INVALID_INPUT"
 		return result, nil
 	}
-	connection, status := r.BankingStorage.ReadConnection(ctx, id)
+	connection, status := r.BankingStorage.ReadLifecycle(ctx, id)
 	result.Code = status.Code
 	if status.Code != "READY" {
 		return result, nil
 	}
-	accounts, status := r.Banking.Accounts(ctx, id)
+	accounts := []banking.Account{}
+	if connection.State != "deleted" {
+		accounts, status = r.Banking.Accounts(ctx, id)
+	}
 	result.Code = status.Code
 	if status.Code != "READY" {
 		return result, nil
 	}
-	result.Connection = &model.BankingConnection{ID: connection.ID.String(), State: connection.State, Accounts: []*model.BankingAccount{}}
+	result.Connection = &model.BankingConnection{ID: connection.ID.String(), State: connection.State, Generation: strconv.FormatInt(connection.Generation, 10), Health: connection.Health, Cleanup: connection.Cleanup, Purge: connection.Purge, Accounts: []*model.BankingAccount{}}
 	for _, a := range accounts {
-		result.Connection.Accounts = append(result.Connection.Accounts, &model.BankingAccount{ID: a.ID.String(), StreamID: a.BindingID.String(), Name: a.Name, Kind: a.Kind, Currency: a.Currency, RequestedHistoryDays: a.RequestedHistoryDays})
+		result.Connection.Accounts = append(result.Connection.Accounts, &model.BankingAccount{ID: a.ID.String(), StreamID: a.BindingID.String(), Name: a.Name, Kind: a.Kind, Currency: a.Currency, RequestedHistoryDays: a.RequestedHistoryDays, Selected: a.Selected, ProviderAccountID: a.ProviderAccountID})
 	}
 	return result, nil
+}
+
+// BankingRepair is the resolver for the bankingRepair field.
+func (r *queryResolver) BankingRepair(ctx context.Context, attemptID string) (*model.BankingEnrollmentResult, error) {
+	if r.Banking == nil {
+		return &model.BankingEnrollmentResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	id, err := uuid.Parse(attemptID)
+	if err != nil {
+		return &model.BankingEnrollmentResult{Code: "INVALID_INPUT"}, nil
+	}
+	return mapEnrollment(r.Banking.RepairStatus(ctx, id)), nil
+}
+
+// BankingOperation is the resolver for the bankingOperation field.
+func (r *queryResolver) BankingOperation(ctx context.Context, attemptID string) (*model.BankingManagementResult, error) {
+	if r.BankingStorage == nil {
+		return &model.BankingManagementResult{Code: "FEATURE_DISABLED"}, nil
+	}
+	id, err := uuid.Parse(attemptID)
+	if err != nil {
+		return &model.BankingManagementResult{Code: "INVALID_INPUT"}, nil
+	}
+	return &model.BankingManagementResult{Code: r.BankingStorage.OperationStatus(ctx, id).Code}, nil
 }

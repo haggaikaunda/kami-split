@@ -4,7 +4,7 @@ The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
 hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
 protected Item observations and verified webhook ingress. The [enrollment API](banking-enrollment.md) adds actor-bound Link operations and
-selected stream reads. Transaction import, annotation editing and replacement
+retained-stream reads and revision-checked lifecycle management. Transaction import, annotation editing and replacement
 activation remain deferred. Live enrollment remains disabled by default;
 the [Personal contract](personal-banking.md) describes the planned product.
 
@@ -64,12 +64,19 @@ Receipts contain only keyed digests, status and opaque identifiers, never bank
 facts, notes, tokens or ciphertext.
 
 Source writes lock the connection, refresh the binding and compare connection,
-binding and source revisions. Stop advances lifecycle generations while retaining
+binding and source revisions, and reject deselected streams. Stop advances lifecycle generations while retaining
 history. History deletion advances generations, writes a durable opaque deletion
 barrier and immediately hides affected facts, annotation versions and captures.
 A delayed write cannot cross that fence. Credentials remain protected and hidden
 from ordinary reads, pending durable teardown; deletion does not claim erasure from
-provider systems or backups. Barriers have no invented retention expiry.
+provider systems or backups. Barriers have no invented retention expiry. Private webhook correlations retain
+only a scoped one-way removed-Item identity after confirmed teardown, so late
+callbacks cannot recreate raw Item hints or reopen completed cleanup. The digest
+is not financial history or provider access authority and follows the opaque
+correlation's lifetime. Confirmed secondary-Item removals similarly retain only
+scoped digests for the enrollment attempt's lifetime, independently of transient
+cleanup job arrays; explicit history deletion does not erase this opaque cleanup
+proof or restore provider authority.
 
 ## Banking protection keys
 

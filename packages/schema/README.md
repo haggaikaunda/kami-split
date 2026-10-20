@@ -161,10 +161,14 @@ currently authorized query, using its signed continuation cursor where needed.
 See [client financial identity](../../docs/application/expense-editing.md#client-financial-identity)
 for metadata ownership and API-before-client deployment compatibility.
 
-## Private banking enrollment
+## Private banking enrollment and lifecycle
 
-`banking.graphql` exposes owner-bound Link start/finish/cancel/status and selected
-connection/account reads. The [enrollment contract](../../docs/application/banking-enrollment.md)
+`banking.graphql` exposes owner-bound enrollment and existing-Item repair, explicit
+selection, revision-checked disconnect/private-history deletion, operation status
+and retained connection/account reads. Deselected streams retain history; deleted
+connections expose only opaque lifecycle/cleanup status. Exact generations are
+decimal strings; local completion, provider teardown and active-copy purge remain
+separate outcomes. The [enrollment contract](../../docs/application/banking-enrollment.md)
 describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent

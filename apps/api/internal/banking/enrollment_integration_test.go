@@ -32,6 +32,7 @@ type controlledEnrollmentProvider struct {
 	exchanges                                             int
 	loseExchange, hideDiscovery, failRemoval, failPrepare bool
 	inventory                                             AccountInventory
+	failAccounts                                          bool
 	beforeExchange                                        func()
 	beforeAccounts                                        func()
 }
@@ -89,6 +90,9 @@ func (p *controlledEnrollmentProvider) Accounts(_ context.Context, _ string, c C
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.failAccounts {
+		return AccountInventory{}, &EnrollmentError{Retryable: true}
+	}
 	inventory := p.inventory
 	inventory.Accounts = append([]ProviderAccount(nil), inventory.Accounts...)
 	inventory.ItemID = strings.TrimPrefix(string(c.Bytes()), "access-")

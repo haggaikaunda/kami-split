@@ -4,7 +4,7 @@ extend type Query {
   """
   bankingEnrollment(attemptId: ID!): BankingEnrollmentResult!
   """
-  Read one owner-private connection and its explicitly selected account streams. Other-owner and absent IDs have the same outcome.
+  Read one owner-private connection and its retained account streams. Other-owner and absent IDs have the same outcome.
   """
   bankingConnection(connectionId: ID!): BankingConnectionResult!
 }
@@ -124,12 +124,12 @@ type BankingConnection {
   """
   state: String!
   """
-  Explicitly selected, currently visible account streams; unselected provider accounts are absent.
+  Retained visible account streams with explicit selection state; never-selected provider accounts are absent.
   """
   accounts: [BankingAccount!]!
 }
 """
-Selected private account stream awaiting future ingestion.
+Retained private account stream; collection selection and retained history are separate.
 """
 type BankingAccount {
   """
@@ -156,4 +156,129 @@ type BankingAccount {
   Initial requested history window of 365 days; actual coverage and retention are separate.
   """
   requestedHistoryDays: Int!
+}
+
+extend type Query {
+  """
+  Recover an owner-only repair attempt without returning its temporary Link token.
+  """
+  bankingRepair(attemptId: ID!): BankingEnrollmentResult!
+  """
+  Recover an owner-only management receipt after a lost response.
+  """
+  bankingOperation(attemptId: ID!): BankingManagementResult!
+}
+extend type Mutation {
+  """
+  Replace the explicit local subset after current server-side provider authorization; empty selection retains history.
+  """
+  changeBankingSelection(
+    input: BankingSelectionInput!
+  ): BankingManagementResult!
+  """
+  Prepare existing-Item update mode; no public-token exchange or replacement activation occurs.
+  """
+  startBankingRepair(input: BankingFenceInput!): BankingEnrollmentResult!
+  """
+  Finish repair with an explicit authorized subset under the original lifecycle revision.
+  """
+  finishBankingRepair(
+    input: FinishBankingRepairInput!
+  ): BankingEnrollmentResult!
+  """
+  Fence local collection and durably request Item teardown while retaining history. Read connection status for remote cleanup.
+  """
+  disconnectBanking(input: BankingFenceInput!): BankingManagementResult!
+  """
+  Immediately hide and fence private history, then durably purge and request teardown. No all-copy or backup erasure claim.
+  """
+  deleteBankingHistory(input: BankingFenceInput!): BankingManagementResult!
+}
+"""
+Revision-checked, owner-bound lifecycle command. Changed reuse conflicts.
+"""
+input BankingFenceInput {
+  """
+  Caller-generated UUID retained across retries.
+  """
+  attemptId: ID!
+  """
+  Owner-private connection UUID.
+  """
+  connectionId: ID!
+  """
+  Last observed lifecycle generation, encoded as an exact decimal integer.
+  """
+  expectedGeneration: String!
+}
+"""
+Explicit replacement of the selected subset; no newly visible account is implicitly selected.
+"""
+input BankingSelectionInput {
+  """
+  Caller-generated recovery UUID.
+  """
+  attemptId: ID!
+  """
+  Owner-private connection UUID.
+  """
+  connectionId: ID!
+  """
+  Observed lifecycle generation as an exact decimal integer.
+  """
+  expectedGeneration: String!
+  """
+  Explicit current provider account IDs; empty stops all streams without erasing data.
+  """
+  accountIds: [String!]!
+}
+"""
+Explicit repair completion for one prepared existing-Item attempt.
+"""
+input FinishBankingRepairInput {
+  """
+  Original repair attempt UUID.
+  """
+  attemptId: ID!
+  """
+  Explicit current authorized provider account subset, including empty.
+  """
+  accountIds: [String!]!
+}
+"""
+Safe opaque management receipt. READY is local success; provider teardown and purge are separate status fields.
+"""
+type BankingManagementResult {
+  """
+  READY, PENDING, CONFLICT, REPAIR_REQUIRED, REPLACEMENT_REQUIRED, NOT_FOUND or safe authentication/availability status.
+  """
+  code: String!
+}
+extend type BankingConnection {
+  """
+  Exact lifecycle revision for management compare-and-swap.
+  """
+  generation: String!
+  """
+  healthy, repair_required or accounts_available; a health hint grants no selection or consent.
+  """
+  health: String!
+  """
+  not_requested, pending, running, needs_attention or confirmed remote Item removal.
+  """
+  cleanup: String!
+  """
+  not_requested, pending or complete active-copy purge, distinct from provider retention and backups.
+  """
+  purge: String!
+}
+extend type BankingAccount {
+  """
+  Whether this retained stream is selected for future collection. False never erases private history.
+  """
+  selected: Boolean!
+  """
+  Owner-private provider account reference for explicit selection changes; never identity-continuity evidence.
+  """
+  providerAccountId: String!
 }

@@ -474,3 +474,26 @@ func TestEnrollmentCreatedStatusIsSpecificToUserCreation(t *testing.T) {
 		t.Fatal("one-use exchange accepted undocumented created status or retried")
 	}
 }
+
+func TestRepairUsesExistingItemWithoutEnrollmentProductsOrExchange(t *testing.T) {
+	calls := 0
+	provider := enrollmentPlaid(t, bankingRoundTrip(func(r *http.Request) (*http.Response, error) {
+		calls++
+		request := enrollmentRequest(t, r)
+		if r.URL.Path != "/link/token/create" || request["access_token"] != "access-existing" || request["products"] != nil || request["transactions"] != nil || request["user_id"] != nil {
+			t.Fatal("repair did not use existing Item update mode")
+		}
+		update, ok := request["update"].(map[string]any)
+		if !ok || update["account_selection_enabled"] != true {
+			t.Fatal("explicit authorization unavailable")
+		}
+		return plaidTestResponse(200, fmt.Sprintf(`{"link_token":"repair-link","expiration":%q}`, time.Now().Add(30*time.Minute).UTC().Format(time.RFC3339))), nil
+	}))
+	result, err := provider.PrepareRepair(context.Background(), "sandbox", "actor-existing", Credential{raw: []byte("access-existing")})
+	if err != nil || result.LinkToken != "repair-link" || calls != 1 {
+		t.Fatal("repair preparation failed")
+	}
+	if _, err := provider.PrepareRepair(context.Background(), "production", "actor-existing", Credential{raw: []byte("access-existing")}); err == nil || calls != 1 {
+		t.Fatal("repair environment mismatch reached provider")
+	}
+}

@@ -200,9 +200,9 @@ func retryDelay(attempt int, provider time.Duration, jitter float64) time.Durati
 }
 
 // AcceptWebhook accepts only verified routing metadata. Nil acknowledges a
-// committed new or duplicate receipt; it never implies lifecycle event dispatch.
+// committed receipt and local lifecycle dispatch; provider cleanup remains durable.
 func (s *Service) AcceptWebhook(ctx context.Context, correlation uuid.UUID, event VerifiedWebhook) error {
-	ok, err := s.db.AcceptBankingWebhook(ctx, correlation, event.Environment, event.ItemID, event.BodySHA256[:], event.WebhookType, event.WebhookCode)
+	ok, err := s.db.AcceptBankingWebhook(ctx, correlation, event.Environment, event.ItemID, event.BodySHA256[:], event.DeliverySHA256[:], event.WebhookType, event.WebhookCode, event.AccountID, event.Revoked)
 	if err != nil {
 		diagnostic.Report(ctx, diagnostic.Wrap(errors.New("banking ingress unavailable"), err, "banking.webhook_accept"))
 		return err
@@ -242,6 +242,14 @@ func (w *Worker) observe(ctx context.Context, job database.BankingWork) (bool, t
 	providerCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	result, providerErr := observer.Observe(providerCtx, protected.Environment, Credential{raw: raw})
+	matching := providerErr == nil && result.ItemID == protected.ProviderItemID
+	revoked := matching && result.Revoked
+	healthy := matching && result.Healthy && !revoked
+	// The database rechecks this exact lease/generation before status or revocation
+	// dispatch. A concurrent stop/delete makes both this and final completion stale.
+	if _, err := w.db.RecordBankingObservation(ctx, job, healthy, revoked); err != nil {
+		return false, 0, err
+	}
 	if providerErr != nil {
 		var typed *ObservationError
 		if errors.As(providerErr, &typed) && !typed.Retryable {
@@ -249,7 +257,7 @@ func (w *Worker) observe(ctx context.Context, job database.BankingWork) (bool, t
 		}
 		return false, result.RetryAfter, nil
 	}
-	if result.ItemID != protected.ProviderItemID || !result.Healthy {
+	if !healthy {
 		return false, -1, nil
 	}
 	return true, 0, nil

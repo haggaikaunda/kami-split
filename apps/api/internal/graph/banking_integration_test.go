@@ -29,6 +29,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/config"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 	"github.com/jackc/pgx/v5"
 )
@@ -48,6 +49,7 @@ type bankingHTTPProvider struct {
 	items                   map[string]bankingHTTPItem
 	preparations, exchanges int
 	loseExchange            bool
+	failRemoval             bool
 }
 
 func newBankingHTTPProvider(t *testing.T) *bankingHTTPProvider {
@@ -258,7 +260,7 @@ func (f *bankingHTTPFixture) handler(enabled bool) http.Handler {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	return server.NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Banking: enrollment, BankingStorage: f.storage}}), slog.New(slog.NewJSONHandler(&f.logs, nil)), f.verifier).Handler()
+	return server.NewWithAuthentication(config.Config{}, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Banking: enrollment, BankingStorage: f.storage, ReportingTimezones: reportingtimezone.New(f.db)}}), slog.New(slog.NewJSONHandler(&f.logs, nil)), f.verifier).Handler()
 }
 func (f *bankingHTTPFixture) post(handler http.Handler, query, token string, allowLink bool) map[string]any {
 	f.t.Helper()
