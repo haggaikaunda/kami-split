@@ -13,6 +13,11 @@ SELECT * FROM app.write_reporting_timezone('UPDATE','b3320000-0000-4000-8000-000
 COMMIT;
 -- Existing attention must become visible without changing stream/history IDs.
 SET ROLE kami_migrator;
+-- Carry available positive secondary-removal proof across this upgrade.
+INSERT INTO app.banking_enrollments(id,owner_id,environment,input_digest,key_version,intent,state,result_code,webhook_url,blocks_enrollment)
+ VALUES('b3320000-0000-4000-8000-000000000010','b3290000-0000-4000-8000-000000000001','sandbox',decode(repeat('01',32),'hex'),'fixture','different','retry_allowed','RETRY_ALLOWED','https://api.example.invalid/banking/webhooks/b3320000-0000-4000-8000-000000000010',false);
+INSERT INTO app.banking_enrollment_jobs(attempt_id,state,correlated_items,removed_items)
+ VALUES('b3320000-0000-4000-8000-000000000010','complete',ARRAY['confirmed-upgrade-secondary'],ARRAY['confirmed-upgrade-secondary']);
 SELECT app.banking_enqueue('b3290000-0000-4000-8000-000000000011',1,'reconcile');
 UPDATE app.banking_work SET state='needs_attention',attempts=1
  WHERE connection_id='b3290000-0000-4000-8000-000000000011' AND kind='reconcile';

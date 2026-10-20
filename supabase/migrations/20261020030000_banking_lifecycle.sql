@@ -47,6 +47,33 @@ CREATE TRIGGER banking_remember_removed_item AFTER UPDATE OF provider_removed ON
  FOR EACH ROW WHEN (NEW.provider_removed AND NOT OLD.provider_removed)
  EXECUTE FUNCTION app.banking_remember_removed_item();
 
+-- Recovery may remove several distinct Items over successive cleanup cycles.
+-- Job arrays are transient work state; positive removal identity must survive a
+-- later reset without retaining another raw provider identifier.
+CREATE TABLE app.banking_enrollment_removals (
+  attempt_id uuid NOT NULL REFERENCES app.banking_enrollments(id) ON DELETE CASCADE,
+  item_digest bytea NOT NULL CHECK(octet_length(item_digest)=32),
+  PRIMARY KEY(attempt_id,item_digest)
+);
+ALTER TABLE app.banking_enrollment_removals ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON app.banking_enrollment_removals FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
+CREATE FUNCTION app.banking_remember_enrollment_removals() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$ BEGIN
+ INSERT INTO app.banking_enrollment_removals
+ SELECT NEW.attempt_id,sha256(convert_to(e.id::text||'/'||e.environment||'/'||removed.item,'UTF8'))
+ FROM app.banking_enrollments e CROSS JOIN unnest(NEW.removed_items) removed(item)
+ WHERE e.id=NEW.attempt_id ON CONFLICT DO NOTHING;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER banking_remember_enrollment_removals AFTER UPDATE OF removed_items ON app.banking_enrollment_jobs
+ FOR EACH ROW EXECUTE FUNCTION app.banking_remember_enrollment_removals();
+-- Existing positive confirmations can be carried forward; missing/redacted
+-- history is never reconstructed from absence or an unconfirmed hint.
+INSERT INTO app.banking_enrollment_removals
+ SELECT e.id,sha256(convert_to(e.id::text||'/'||e.environment||'/'||removed.item,'UTF8'))
+ FROM app.banking_enrollments e JOIN app.banking_enrollment_jobs j ON j.attempt_id=e.id
+ CROSS JOIN unnest(j.removed_items) removed(item) ON CONFLICT DO NOTHING;
+
 -- The status projection deliberately permits opaque deleted-connection status,
 -- without weakening history RLS or exposing any provider or financial payload.
 CREATE FUNCTION app.banking_lifecycle_status(target uuid)
@@ -266,6 +293,13 @@ DECLARE c app.banking_connections; duplicate boolean; accepted boolean; binding 
 BEGIN
  PERFORM 1 FROM app.banking_enrollments WHERE id=correlation FOR UPDATE;
  SELECT connection.* INTO c FROM app.banking_connections connection JOIN app.banking_webhook_correlations w ON w.connection_id=connection.id WHERE w.id=correlation FOR UPDATE OF connection;
+ -- Positive secondary-Item removals outlive transient recovery job arrays.
+ IF octet_length(digest)=32 AND EXISTS(
+   SELECT FROM app.banking_enrollment_removals r JOIN app.banking_enrollments e ON e.id=r.attempt_id
+   WHERE e.id=correlation AND e.environment=expected_environment
+     AND r.item_digest=sha256(convert_to(e.id::text||'/'||e.environment||'/'||item,'UTF8'))) THEN
+   RETURN true;
+ END IF;
  -- Confirmed removal redacts the original Item from the connection. Recognize
  -- its durable terminal identity before the legacy unknown-Item discovery path.
  IF c.provider_removed AND c.state<>'active' AND c.environment=expected_environment AND octet_length(digest)=32

@@ -73,7 +73,10 @@ provider systems or backups. Barriers have no invented retention expiry. Private
 only a scoped one-way removed-Item identity after confirmed teardown, so late
 callbacks cannot recreate raw Item hints or reopen completed cleanup. The digest
 is not financial history or provider access authority and follows the opaque
-correlation's lifetime.
+correlation's lifetime. Confirmed secondary-Item removals similarly retain only
+scoped digests for the enrollment attempt's lifetime, independently of transient
+cleanup job arrays; explicit history deletion does not erase this opaque cleanup
+proof or restore provider authority.
 
 ## Banking protection keys
 

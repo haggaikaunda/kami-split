@@ -79,8 +79,11 @@ callbacks for the confirmed removed original Item are acknowledged using a priva
 correlation-scoped one-way identity digest captured before Item redaction. That
 opaque terminal identity follows existing correlation retention and contains no
 raw Item, credential or financial payload; it prevents reopening completed
-enrollment cleanup after history purge. A genuinely distinct late Item still
-requires existing positively correlated discovery and narrow removal. Known
+enrollment cleanup after history purge. Positive removals of distinct discovered Items also retain only scoped digests
+in private enrollment metadata. These proofs survive later cleanup cycles that
+reset transient job arrays, so a callback for a removed secondary Item cannot
+reopen completed cleanup or pollute another pending removal. A genuinely new
+late Item still requires existing positively correlated discovery and narrow removal. Known
 original-Item callbacks neither recreate delivery fingerprints nor restart cleanup.
 The proof is captured at removal; older records whose Item was already redacted
 without this proof continue through conservative discovery, rather than inferring

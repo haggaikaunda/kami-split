@@ -145,6 +145,51 @@ func TestLifecycleDistinctLateItemStillRequiresNarrowDiscovery(t *testing.T) {
 	if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed {
 		t.Fatal("confirmed distinct late Item callback reopened completed cleanup")
 	}
+	// Each genuinely new Item resets legacy job arrays. Earlier positive proofs
+	// must survive multiple future cycles, during pending and completed cleanup.
+	knownRemoved := []string{late}
+	for _, fresh := range []string{"third-correlated-item", "fourth-correlated-item"} {
+		p.items[fresh] = enrollmentItem{user: user, webhook: "https://api.example.invalid/banking/webhooks/" + enrollment.String()}
+		if status := lifecycleEvent(t, f, enrollment, fresh, "USER_PERMISSION_REVOKED", "", ""); status != http.StatusNoContent {
+			t.Fatal(status)
+		}
+		if queryInt(t, f, `SELECT cardinality(removed_items) FROM app.banking_enrollment_jobs WHERE attempt_id=$1`, enrollment) != 0 {
+			t.Fatal("new cycle did not reset transient removal state")
+		}
+		p.hideDiscovery = true
+		dueEnrollment(f, enrollment)
+		processEnrollment(t, worker)
+		pending = lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
+		for _, item := range knownRemoved {
+			for _, code := range []string{"LOGIN_REPAIRED", "ERROR"} {
+				if status := lifecycleEvent(t, f, enrollment, item, code, "", ""); status != http.StatusNoContent {
+					t.Fatal(status)
+				}
+			}
+		}
+		if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != pending {
+			t.Fatal("earlier removed secondary callback changed pending cleanup budget or hints")
+		}
+		p.hideDiscovery = false
+		dueEnrollment(f, enrollment)
+		processEnrollment(t, worker)
+		if !p.items[fresh].removed || s.Status(f.actor(f.owner), enrollment).Code != "RETRY_ALLOWED" {
+			t.Fatal("new distinct Item cleanup failed")
+		}
+		knownRemoved = append(knownRemoved, fresh)
+		completed = lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
+		for _, item := range knownRemoved {
+			if status := lifecycleEvent(t, f, enrollment, item, "USER_ACCOUNT_REVOKED", "checking", ""); status != http.StatusNoContent {
+				t.Fatal(status)
+			}
+		}
+		if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed || queryInt(t, f, `SELECT count(*) FROM app.banking_enrollment_removals WHERE attempt_id=$1`, enrollment) != len(knownRemoved) {
+			t.Fatal("cross-cycle removal proof lost or completed budget restarted")
+		}
+	}
+	if queryInt(t, f, `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='app' AND c.relname='banking_enrollment_removals' AND c.relrowsecurity`) != 1 || queryInt(t, f, `SELECT count(*) FROM unnest(ARRAY['anon','authenticated','service_role','kami_api','kami_worker']) role_name WHERE has_table_privilege(role_name,'app.banking_enrollment_removals','SELECT,INSERT,UPDATE,DELETE')`) != 0 {
+		t.Fatal("private removal proof exposed outside definer wrappers")
+	}
 	next := s.Start(f.actor(f.owner), StartEnrollmentInput{AttemptID: uuid.New(), Intent: "different"})
 	if next.Code != "PREPARED" {
 		t.Fatal("confirmed late cleanup blocked fresh enrollment", next.Code)
@@ -187,5 +232,62 @@ func TestIndependentRemovedItemProofFailureRollsBackTeardown(t *testing.T) {
 	before := lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
 	if status := lifecycleEvent(t, f, enrollment, item, "USER_PERMISSION_REVOKED", "", ""); status != http.StatusNoContent || lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != before {
 		t.Fatal("recovered proof did not suppress old callback", status)
+	}
+}
+
+func TestLifecycleSecondaryRemovalProofFailureRollsBackRecovery(t *testing.T) {
+	f, s, p, _, db := lifecycleFixture(t)
+	enrollment, _ := lifecycleReady(t, f, s, f.owner, "checking")
+	late := "secondary-proof-failure"
+	p.items[late] = enrollmentItem{user: "usr-kami-" + f.owner.String() + "-sandbox", webhook: "https://api.example.invalid/banking/webhooks/" + enrollment.String()}
+	if status := lifecycleEvent(t, f, enrollment, late, "USER_PERMISSION_REVOKED", "", ""); status != http.StatusNoContent {
+		t.Fatal(status)
+	}
+	dueEnrollment(f, enrollment)
+	ctx := context.Background()
+	job, err := db.ClaimEnrollment(ctx)
+	if err != nil || job.ID != enrollment {
+		t.Fatal("cleanup lease", err)
+	}
+	correlation := EnrollmentCorrelation{UserID: job.UserID, ClientUserID: "kami-" + job.OwnerID.String() + "-" + job.Environment, WebhookURL: job.WebhookURL}
+	targets, err := p.Discover(ctx, job.Environment, correlation)
+	if err != nil || len(targets) != 2 {
+		t.Fatal("expected original plus secondary provider inventory", err)
+	}
+	if ok, err := db.RecordEnrollmentTargets(ctx, job, []string{late}); err != nil || !ok {
+		t.Fatal("positive target correlation", err)
+	}
+	removal, err := p.RemoveDiscovered(ctx, job.Environment, correlation, late)
+	if err != nil || !removal.Confirmed {
+		t.Fatal("positive narrow removal", err)
+	}
+	before := lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
+	f.exec(`CREATE FUNCTION app.banking_secondary_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic secondary proof failure'; END $$`)
+	f.exec(`CREATE TRIGGER banking_secondary_test_fail BEFORE INSERT ON app.banking_enrollment_removals FOR EACH ROW EXECUTE FUNCTION app.banking_secondary_test_fail()`)
+	t.Cleanup(func() {
+		f.exec(`DROP TRIGGER IF EXISTS banking_secondary_test_fail ON app.banking_enrollment_removals`)
+		f.exec(`DROP FUNCTION IF EXISTS app.banking_secondary_test_fail()`)
+	})
+	if _, err := db.FinishEnrollment(ctx, job, []string{late}, 60); err == nil {
+		t.Fatal("proof persistence failure acknowledged cleanup")
+	}
+	if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != before || queryInt(t, f, `SELECT count(*) FROM app.banking_enrollment_removals WHERE attempt_id=$1`, enrollment) != 0 {
+		t.Fatal("proof failure partially changed removal state or completion")
+	}
+	f.exec(`DROP TRIGGER banking_secondary_test_fail ON app.banking_enrollment_removals`)
+	// The same still-authorized worker can retry its positively confirmed result;
+	// no new discovery absence or invented provider confirmation is used.
+	if ok, err := db.FinishEnrollment(ctx, job, []string{late}, 60); err != nil || !ok {
+		t.Fatal("same lease confirmation recovery", err)
+	}
+	if s.Status(f.actor(f.owner), enrollment).Code != "AWAITING_INITIAL_IMPORT" || queryInt(t, f, `SELECT count(*) FROM app.banking_enrollment_removals WHERE attempt_id=$1`, enrollment) != 1 {
+		t.Fatal("confirmed secondary proof or original readiness lost")
+	}
+	completed := lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
+	if err := f.service.AcceptWebhook(ctx, enrollment, VerifiedWebhook{Environment: "production", ItemID: late, BodySHA256: [32]byte{9}}); err != ErrWebhookMismatch || lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed {
+		t.Fatal("removal proof crossed the expected environment boundary", err)
+	}
+	if status := lifecycleEvent(t, f, enrollment, late, "LOGIN_REPAIRED", "", ""); status != http.StatusNoContent || lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed {
+		t.Fatal("recovered proof did not preserve completed cleanup", status)
 	}
 }
