@@ -96,10 +96,7 @@ func TestBankingHTTPLifecycleRetainedHistoryAndRestartableDeletion(t *testing.T)
 	if jointResult["code"] != "AWAITING_INITIAL_IMPORT" {
 		t.Fatal(jointResult["code"])
 	}
-	var sharedBefore int
-	if err := f.admin.QueryRow(context.Background(), `SELECT count(*) FROM app.groups`).Scan(&sharedBefore); err != nil {
-		t.Fatal(err)
-	}
+	sharedBefore := lifecycleHTTPSharedSnapshot(t, f)
 	selectionID, repairID := uuid.New(), uuid.New()
 	operations := []struct{ field, query string }{
 		{"changeBankingSelection", lifecycleHTTPSelection(selectionID, connection, 1, `"unselected-savings"`)},
@@ -259,8 +256,20 @@ func TestBankingHTTPLifecycleRetainedHistoryAndRestartableDeletion(t *testing.T)
 	if jointRead["code"] != "READY" || len(jointRead["connection"].(map[string]any)["accounts"].([]any)) != 1 {
 		t.Fatal("independent holder affected")
 	}
-	var sharedAfter int
-	if err := f.admin.QueryRow(context.Background(), `SELECT count(*) FROM app.groups`).Scan(&sharedAfter); err != nil || sharedBefore != sharedAfter {
-		t.Fatal("private deletion changed shared ledger")
+	if sharedBefore != lifecycleHTTPSharedSnapshot(t, f) {
+		t.Fatal("private deletion changed shared financial or Activity data")
 	}
+}
+
+func lifecycleHTTPSharedSnapshot(t *testing.T, f *bankingHTTPFixture) string {
+	t.Helper()
+	result := ""
+	for _, table := range []string{"groups", "expenses", "repayments", "expense_audit", "repayment_audit", "financial_records"} {
+		var digest string
+		if err := f.admin.QueryRow(context.Background(), `SELECT md5(coalesce(jsonb_agg(to_jsonb(saved) ORDER BY to_jsonb(saved)::text)::text,'')) FROM app.`+table+` saved`).Scan(&digest); err != nil {
+			t.Fatal("shared snapshot unavailable", err)
+		}
+		result += digest
+	}
+	return result
 }

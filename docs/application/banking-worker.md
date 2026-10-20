@@ -37,7 +37,10 @@ No retry is sent earlier to fit a local scheduling target. Due work is polled ea
 minute. Reconciliation repairs missing transport messages from durable intent,
 fences disabled owners into cleanup and schedules protected Item observations at
 least daily for eligible bindings. Only a matching provider response advances the
-binding observation. Neither a healthy observation nor an absent notification
+binding observation. A matching `item/get` OAuth-revocation reason immediately
+fences collection and enqueues the existing teardown, recovering missed webhook
+notifications without deleting history. Other observation failures set actionable
+repair status; their retry and attention budgets remain bounded. Neither a healthy observation nor an absent notification
 enables a stopped binding or grants collection permission.
 
 ## Private cleanup and ingress

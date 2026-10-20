@@ -140,3 +140,12 @@ func (d *DB) AcceptBankingWebhook(ctx context.Context, correlation uuid.UUID, en
 
 // IsEmptyBankingQueue identifies the normal empty-claim outcome.
 func IsEmptyBankingQueue(err error) bool { return errors.Is(err, pgx.ErrNoRows) }
+
+// RecordBankingObservation records safe health and dispatches positive revocation
+// under the current restricted worker lease. A stale observation changes nothing;
+// revocation atomically fences collection and enqueues existing narrow teardown.
+func (d *WorkerDB) RecordBankingObservation(ctx context.Context, w BankingWork, healthy, revoked bool) (bool, error) {
+	var ok bool
+	err := d.db.pool.QueryRow(ctx, `SELECT app.banking_observation_result($1,$2,$3,$4)`, w.ID, w.Token, healthy, revoked).Scan(&ok)
+	return ok, err
+}

@@ -242,6 +242,14 @@ func (w *Worker) observe(ctx context.Context, job database.BankingWork) (bool, t
 	providerCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	result, providerErr := observer.Observe(providerCtx, protected.Environment, Credential{raw: raw})
+	matching := providerErr == nil && result.ItemID == protected.ProviderItemID
+	revoked := matching && result.Revoked
+	healthy := matching && result.Healthy && !revoked
+	// The database rechecks this exact lease/generation before status or revocation
+	// dispatch. A concurrent stop/delete makes both this and final completion stale.
+	if _, err := w.db.RecordBankingObservation(ctx, job, healthy, revoked); err != nil {
+		return false, 0, err
+	}
 	if providerErr != nil {
 		var typed *ObservationError
 		if errors.As(providerErr, &typed) && !typed.Retryable {
@@ -249,7 +257,7 @@ func (w *Worker) observe(ctx context.Context, job database.BankingWork) (bool, t
 		}
 		return false, result.RetryAfter, nil
 	}
-	if result.ItemID != protected.ProviderItemID || !result.Healthy {
+	if !healthy {
 		return false, -1, nil
 	}
 	return true, 0, nil

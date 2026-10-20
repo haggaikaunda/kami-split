@@ -179,8 +179,11 @@ func parseRetryAfter(value string, now time.Time) time.Duration {
 // does not establish consent, selection, lifecycle authority or import freshness.
 // Callers must match ItemID against their durable target before recording it.
 type Observation struct {
-	ItemID     string
-	Healthy    bool
+	ItemID  string
+	Healthy bool
+	// Revoked is positive matching-Item OAuth revocation evidence, not an inference
+	// from temporary failures or missing credentials. It never authorizes deletion.
+	Revoked    bool
 	RetryAfter time.Duration
 }
 
@@ -194,7 +197,8 @@ func (*ObservationError) Error() string { return "banking provider observation u
 // Observe reads only the Item represented by a known credential, outside any
 // database transaction. A provider-reported Item error produces Healthy=false
 // with the authenticated Item identity; unavailable or malformed responses fail
-// closed. It does not dispatch lifecycle changes or enable stopped work.
+// closed. The worker durably fences a matching explicit revocation; observations never
+// enable stopped work or grant selection.
 func (p *PlaidProvider) Observe(ctx context.Context, environment string, credential Credential) (Observation, error) {
 	if environment != p.config.Environment || len(credential.raw) == 0 {
 		return Observation{}, &ObservationError{}
@@ -226,10 +230,12 @@ func (p *PlaidProvider) Observe(ctx context.Context, environment string, credent
 		return result, nil
 	}
 	var itemError struct {
-		Code string `json:"error_code"`
+		Code   string `json:"error_code"`
+		Reason string `json:"error_code_reason"`
 	}
 	if json.Unmarshal(payload.Item.Error, &itemError) != nil || itemError.Code == "" {
 		return Observation{RetryAfter: response.retryAfter}, &ObservationError{Retryable: true}
 	}
+	result.Revoked = itemError.Reason == "OAUTH_USER_REVOKED"
 	return result, nil
 }

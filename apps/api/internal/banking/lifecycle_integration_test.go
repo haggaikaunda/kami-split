@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -322,5 +323,92 @@ func TestLifecycleOfflineDeselectionAndExpiringRepair(t *testing.T) {
 	}
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id WHERE b.connection_id=$1 AND a.selected`, connection) != 1 {
 		t.Fatal("repair silently broadened selection")
+	}
+}
+
+func TestLifecycleActualItemObservationRecoversMissedRevocation(t *testing.T) {
+	for _, mode := range []string{"revoked", "login_required", "mismatched_item", "racing_disconnect"} {
+		t.Run(mode, func(t *testing.T) {
+			f, s, _, _, db := lifecycleFixture(t)
+			attempt, connection := lifecycleReady(t, f, s, f.owner, "checking")
+			source := lifecycleHistory(t, f, connection)
+			item := "item-public-" + attempt.String()
+			observations, removals := 0, 0
+			provider := testPlaid(t, bankingRoundTrip(func(r *http.Request) (*http.Response, error) {
+				var request struct {
+					Access string `json:"access_token"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.Access != "access-"+item {
+					t.Fatal("observation credential did not match owned Item")
+				}
+				switch r.URL.Path {
+				case "/item/get":
+					observations++
+					if mode == "racing_disconnect" {
+						requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}), "READY")
+					}
+					reason := "OAUTH_USER_REVOKED"
+					if mode == "login_required" {
+						reason = "OAUTH_INVALID_TOKEN"
+					}
+					observedItem := item
+					if mode == "mismatched_item" {
+						observedItem = "unrelated-item"
+					}
+					return plaidTestResponse(200, fmt.Sprintf(`{"item":{"item_id":%q,"error":{"error_code":"ITEM_LOGIN_REQUIRED","error_code_reason":%q}}}`, observedItem, reason)), nil
+				case "/item/remove":
+					removals++
+					return plaidTestResponse(200, `{"request_id":"confirmed-observation-removal"}`), nil
+				default:
+					t.Fatal("unexpected provider observation path")
+					return nil, fmt.Errorf("unexpected controlled path")
+				}
+			}))
+			worker, err := NewWorker(db, f.service.protector, provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.exec(`SELECT app.banking_enqueue($1,1,'reconcile')`, connection)
+			for range 4 {
+				if observations > 0 {
+					break
+				}
+				if _, err := worker.ProcessOne(context.Background()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			c, status := f.service.ReadLifecycle(f.actor(f.owner), connection)
+			requireCode(t, status, "READY")
+			if observations != 1 || (mode != "racing_disconnect" && c.Health != "repair_required") {
+				t.Fatal("observation failure not actionable", observations, c.Health)
+			}
+			if mode == "revoked" || mode == "racing_disconnect" {
+				if c.State != "stopped" || c.Generation != 2 || c.Cleanup != "pending" {
+					t.Fatal("positive/stale revocation not fenced truthfully", c.State, c.Generation, c.Cleanup)
+				}
+				if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE connection_id=$1 AND generation=2 AND kind='teardown'`, connection) != 1 {
+					t.Fatal("teardown not durable or duplicated")
+				}
+				for range 4 {
+					if _, err := worker.ProcessOne(context.Background()); err != nil {
+						t.Fatal(err)
+					}
+				}
+				c, _ = f.service.ReadLifecycle(f.actor(f.owner), connection)
+				if c.Cleanup != "confirmed" || removals != 1 {
+					t.Fatal("revocation did not use actual teardown", c.Cleanup, removals)
+				}
+			} else if c.State != "active" || c.Generation != 1 || c.Cleanup != "not_requested" || removals != 0 {
+				t.Fatal("nonrevocation observation guessed terminal authority", c.State, c.Generation, c.Cleanup, removals)
+			}
+			_, status = f.service.ReadSource(f.actor(f.owner), source)
+			requireCode(t, status, "READY")
+			if queryInt(t, f, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1`, source) != 1 {
+				t.Fatal("observation erased annotations")
+			}
+			if _, err := database.IntegrationPool(f.db).Exec(context.Background(), `SELECT app.banking_observation_result($1,$2,false,true)`, uuid.New(), uuid.New()); err == nil {
+				t.Fatal("API role acquired worker revocation authority")
+			}
+		})
 	}
 }

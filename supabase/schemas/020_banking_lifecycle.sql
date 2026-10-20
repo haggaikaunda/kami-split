@@ -1,6 +1,11 @@
 SET ROLE kami_migrator;
 
 ALTER TABLE app.banking_connections ADD COLUMN health text NOT NULL DEFAULT 'healthy' CHECK(health IN('healthy','repair_required','accounts_available'));
+-- Carry existing worker attention into the new owner-visible status at upgrade.
+UPDATE app.banking_connections c SET health='repair_required' WHERE c.state='active' AND
+ (EXISTS(SELECT FROM app.banking_reconciliation r JOIN app.banking_bindings b ON b.id=r.binding_id WHERE b.connection_id=c.id AND r.generation=b.generation AND r.state='attention')
+ OR EXISTS(SELECT FROM app.banking_work w WHERE w.connection_id=c.id AND w.generation=c.generation AND w.kind='reconcile' AND w.state='needs_attention'));
+
 ALTER TABLE app.banking_operations DROP CONSTRAINT banking_operations_kind_check;
 ALTER TABLE app.banking_operations ADD CONSTRAINT banking_operations_kind_check CHECK(kind IN('create_connection','record_source','stop','delete_history','selection'));
 CREATE TABLE app.banking_repairs (
@@ -288,4 +293,27 @@ BEGIN
   RETURN n;
 END $$;
 
+-- Missed signed notifications are recovered by the same protected Item
+-- observation worker. Only a current lease may turn positive revocation into a
+-- terminal fence; transport failures merely expose actionable repair status.
+CREATE FUNCTION app.banking_observation_result(target uuid,authority uuid,healthy boolean,revoked boolean) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE c app.banking_connections; job app.banking_work;
+BEGIN
+ SELECT connection.* INTO c FROM app.banking_connections connection JOIN app.banking_work w ON w.connection_id=connection.id WHERE w.id=target FOR UPDATE OF connection;
+ SELECT * INTO job FROM app.banking_work WHERE id=target FOR UPDATE;
+ IF healthy IS NULL OR revoked IS NULL OR (healthy AND revoked) OR job.kind<>'reconcile' OR job.state<>'running'
+   OR job.lease_token IS DISTINCT FROM authority OR job.lease_until<=clock_timestamp() OR NOT app.banking_work_authorized(target) THEN RETURN false; END IF;
+ IF revoked THEN
+   UPDATE app.banking_connections SET state='stopped',permission_state='revoked',generation=generation+1,health='repair_required' WHERE id=c.id;
+   UPDATE app.banking_bindings SET generation=generation+1 WHERE connection_id=c.id;
+   PERFORM app.banking_enqueue(c.id,c.generation+1,'teardown');
+   UPDATE app.banking_work SET state='complete',last_code='REVOKED',lease_token=NULL,lease_until=NULL,updated_at=clock_timestamp() WHERE id=target;
+   PERFORM pgmq.delete('banking_lifecycle',job.message_id);
+ ELSE
+   UPDATE app.banking_connections SET health=CASE WHEN NOT healthy THEN 'repair_required' WHEN health='accounts_available' THEN health ELSE 'healthy' END WHERE id=c.id;
+ END IF;
+ RETURN true;
+END $$;
+GRANT EXECUTE ON FUNCTION app.banking_observation_result(uuid,uuid,boolean,boolean) TO kami_worker;
 RESET ROLE;
