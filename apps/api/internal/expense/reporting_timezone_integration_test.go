@@ -54,13 +54,14 @@ func TestReportingTimezonePersistenceRecoveryAndIsolation(t *testing.T) {
 	// The ordinary group fixture has no bank connection. Cleanup is test-owned and
 	// precedes the fixture's trigger-disabled identity teardown.
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		for _, table := range []string{"reporting_timezone_attempts", "reporting_timezones"} {
-			if _, err := f.admin.Exec(ctx, `DELETE FROM app.`+table+` WHERE owner_id IN ($1,$2)`, f.id(101), f.id(102)); err != nil {
-				t.Error(err)
+		timezoneFixtureOwner(t, f, func(ctx context.Context, tx pgx.Tx) error {
+			for _, table := range []string{"reporting_timezone_attempts", "reporting_timezones"} {
+				if _, err := tx.Exec(ctx, `DELETE FROM app.`+table+` WHERE owner_id IN ($1,$2)`, f.id(101), f.id(102)); err != nil {
+					return err
+				}
 			}
-		}
+			return nil
+		})
 	})
 	read := func(actor int) map[string]any {
 		return timezoneRequest(t, f, actor, timezoneRead, "reportingTimezone", nil)
@@ -166,7 +167,14 @@ func TestReportingTimezonePersistenceRecoveryAndIsolation(t *testing.T) {
 func TestReportingTimezoneConcurrentInitializationUpdatesAndSettings(t *testing.T) {
 	f := newExpenseFixture(t)
 	t.Cleanup(func() {
-		f.exec(fmt.Sprintf(`DELETE FROM app.reporting_timezone_attempts WHERE owner_id='%s';DELETE FROM app.reporting_timezones WHERE owner_id='%s'`, f.id(102), f.id(102)))
+		timezoneFixtureOwner(t, f, func(ctx context.Context, tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `DELETE FROM app.reporting_timezone_attempts WHERE owner_id=$1`, f.id(102))
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(ctx, `DELETE FROM app.reporting_timezones WHERE owner_id=$1`, f.id(102))
+			return err
+		})
 	})
 	runConcurrent := func(query, field string, inputs []map[string]any) []map[string]any {
 		t.Helper()
@@ -220,14 +228,14 @@ func TestReportingTimezoneConcurrentInitializationUpdatesAndSettings(t *testing.
  INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision) VALUES('%s','%s','%s','timezone-tx',1);
  INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,authorization_date,processing_state,mapping_version,stage) VALUES('%s','%s',1,123,'USD','2024-03-01','2024-02-29','posted','fixture','current');RESET ROLE`, f.id(901), f.id(102), f.id(902), f.id(102), f.id(903), f.id(102), f.id(901), f.id(902), f.id(904), f.id(102), f.id(903), f.id(904), f.id(102)))
 	t.Cleanup(func() {
-		f.exec(fmt.Sprintf(`SET session_replication_role=replica;DELETE FROM app.banking_source_revisions WHERE source_id='%s';DELETE FROM app.banking_sources WHERE id='%s';DELETE FROM app.banking_bindings WHERE id='%s';DELETE FROM app.banking_accounts WHERE id='%s';DELETE FROM app.banking_connections WHERE id='%s';SET session_replication_role=origin`, f.id(904), f.id(904), f.id(903), f.id(902), f.id(901)))
+		f.exec(fmt.Sprintf(`BEGIN;SET LOCAL session_replication_role=replica;SET LOCAL ROLE kami_migrator;DELETE FROM app.banking_source_revisions WHERE source_id='%s';DELETE FROM app.banking_sources WHERE id='%s';DELETE FROM app.banking_bindings WHERE id='%s';DELETE FROM app.banking_accounts WHERE id='%s';DELETE FROM app.banking_connections WHERE id='%s';COMMIT`, f.id(904), f.id(904), f.id(903), f.id(902), f.id(901)))
 	})
 	snapshot := func() string {
 		t.Helper()
 		var out string
-		if err := f.admin.QueryRow(f.ctx, `SELECT to_jsonb(r)::text FROM app.banking_source_revisions r WHERE source_id=$1`, f.id(904)).Scan(&out); err != nil {
-			t.Fatal(err)
-		}
+		timezoneFixtureOwner(t, f, func(ctx context.Context, tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `SELECT to_jsonb(r)::text FROM app.banking_source_revisions r WHERE source_id=$1`, f.id(904)).Scan(&out)
+		})
 		return out
 	}
 	before := snapshot()
@@ -253,5 +261,22 @@ func TestReportingTimezoneConcurrentInitializationUpdatesAndSettings(t *testing.
 	}
 	if snapshot() != before {
 		t.Fatal("timezone update changed stored date facts")
+	}
+}
+
+// Explicit local ownership keeps probes/cleanup independent of administrative
+// login inheritance. The transaction restores the role even on a failed probe.
+func timezoneFixtureOwner(t *testing.T, f *expenseFixture, run func(context.Context, pgx.Tx) error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := pgx.BeginTxFunc(ctx, f.admin, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SET LOCAL ROLE kami_migrator"); err != nil {
+			return err
+		}
+		return run(ctx, tx)
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
