@@ -190,16 +190,20 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE actor uuid:=app.lock_banking_owner(); connection uuid;
 BEGIN
  SELECT b.connection_id INTO connection FROM app.banking_bindings b WHERE b.id=binding AND b.account_id=target AND b.owner_id=actor;
- PERFORM 1 FROM app.banking_connections WHERE id=connection FOR UPDATE;
- PERFORM 1 FROM app.banking_bindings WHERE id=binding FOR UPDATE;
+ -- Reject absent and out-of-scope bindings before acquiring any target locks.
+ IF NOT FOUND THEN RETURN false; END IF;
+ PERFORM 1 FROM app.banking_connections WHERE id=connection AND owner_id=actor FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
+ PERFORM 1 FROM app.banking_bindings WHERE id=binding AND account_id=target AND owner_id=actor FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
  IF (app.banking_replacement_snapshot(target)->'revisions') IS DISTINCT FROM expected THEN RETURN false; END IF;
- UPDATE app.banking_bindings SET reporting_state='cancelled',collection_stopped=true,generation=generation+1 WHERE id=binding AND reporting_state='staged';
+ UPDATE app.banking_bindings SET reporting_state='cancelled',collection_stopped=true,generation=generation+1 WHERE id=binding AND account_id=target AND owner_id=actor AND reporting_state='staged';
  IF NOT FOUND THEN RETURN false; END IF;
  -- A dedicated cancelled candidate needs durable narrow teardown. Selected
  -- siblings retain their Item; cancellation never claims remote completion.
  IF NOT EXISTS(SELECT FROM app.banking_bindings b JOIN app.banking_accounts a ON a.id=b.account_id WHERE b.connection_id=connection AND b.reporting_state IN('current','staged') AND NOT b.collection_stopped AND a.selected) THEN
-  UPDATE app.banking_connections SET state='stopped',generation=generation+1 WHERE id=connection AND state='active';
-  PERFORM app.banking_enqueue(connection,(SELECT generation FROM app.banking_connections WHERE id=connection),'teardown');
+  UPDATE app.banking_connections SET state='stopped',generation=generation+1 WHERE id=connection AND owner_id=actor AND state='active';
+  PERFORM app.banking_enqueue(connection,(SELECT generation FROM app.banking_connections WHERE id=connection AND owner_id=actor),'teardown');
  END IF;
  RETURN true;
 END $$;
