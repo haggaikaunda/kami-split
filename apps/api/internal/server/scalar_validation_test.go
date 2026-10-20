@@ -115,3 +115,28 @@ func TestGraphQLUnicodePreservesBlockStringsCommentsAndPairs(t *testing.T) {
 		t.Fatalf("block string rejected before auth: %d %s", w.Code, w.Body.String())
 	}
 }
+
+func TestReportingTimezoneVersionPreflightPreventsEarlierMutationExecution(t *testing.T) {
+	query := `mutation($version:ReportingTimezoneVersion!) {
+  first:initializeReportingTimezone(attemptId:"00000000-0000-4000-8000-000000000001") { __typename }
+  second:updateReportingTimezone(attemptId:"00000000-0000-4000-8000-000000000002",timezone:"UTC",expectedVersion:$version) { __typename }
+ }`
+	for _, value := range []any{1, "0", "01", "-1", "9007199254740992"} {
+		response := scalarRequest(t, query, map[string]any{"version": value})
+		if response.Code != 400 || !strings.Contains(response.Body.String(), "BAD_USER_INPUT") {
+			t.Fatalf("later preference scalar reached execution: %d %s", response.Code, response.Body.String())
+		}
+	}
+	for _, value := range []string{"1", "9007199254740991"} {
+		response := scalarRequest(t, query, map[string]any{"version": value})
+		if response.Code != 401 {
+			t.Fatalf("valid preference scalar rejected: %d %s", response.Code, response.Body.String())
+		}
+	}
+	inline := strings.Replace(query, `mutation($version:ReportingTimezoneVersion!)`, `mutation`, 1)
+	inline = strings.Replace(inline, `expectedVersion:$version`, `expectedVersion:"01"`, 1)
+	response := scalarRequest(t, inline, nil)
+	if response.Code != 400 || !strings.Contains(response.Body.String(), "BAD_USER_INPUT") {
+		t.Fatalf("inline preference scalar reached execution: %d %s", response.Code, response.Body.String())
+	}
+}
