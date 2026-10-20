@@ -47,7 +47,10 @@ observed date span, exact signed USD minor-unit spending, effective annotation,
 pending and unresolved counts. Observed rows never establish provider coverage.
 
 Dates are strict ISO posted-bank dates in years 0001–9999, at most today in the
-saved reporting timezone. D is inclusive for the complete prior plan; the staged
+saved reporting timezone. The minimal production image uses IANA timezone data
+embedded from the pinned Go toolchain; updating that toolchain refreshes this
+fallback database. Development hosts can use their system timezone data first.
+D is inclusive for the complete prior plan; the staged
 binding owns dates strictly after D. Later transitions preserve every preceding
 interval and require an increasing boundary. Boundary recovery changes only the
 last boundary and cannot cross the preceding transition. Restoration selects only

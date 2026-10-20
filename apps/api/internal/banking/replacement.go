@@ -7,6 +7,9 @@ import (
 	"math/big"
 	"time"
 
+	// The minimal production image has no system zoneinfo database.
+	_ "time/tzdata"
+
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/auth"
 	"github.com/jackc/pgx/v5"
