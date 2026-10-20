@@ -268,7 +268,7 @@ func within(date string, i ReportingInterval) bool {
 
 func prepareReplacement(s replacementSnapshot, request ReplacementRequest, now time.Time) (ReplacementPreview, replacementProposal) {
 	p := ReplacementPreview{Code: "INVALID_INPUT", Request: request, Revisions: s.Revisions, ReportingRevision: s.Account.ReportingRevision, Coverage: "unknown"}
-	proposal := replacementProposal{}
+	proposal := replacementProposal{Captures: []replacementCapture{}}
 	current, ok := currentReplacementPlan(s)
 	if !ok {
 		p.Code = "DATA_UNAVAILABLE"
