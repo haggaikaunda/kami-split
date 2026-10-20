@@ -3,18 +3,27 @@ extend type Mutation {
   Begin explicitly targeted same-account replacement using the ordinary enrollment uncertainty/cleanup engine. Finish with finishBankingEnrollment selecting exactly one authorized compatible account; it remains staged and noncontributing.
   """
   startBankingReplacement(
+    """
+    Client-known attempt UUID and explicitly owned logical account to preserve.
+    """
     input: StartBankingReplacementInput!
   ): BankingEnrollmentResult!
   """
   Publish a freshly previewed date-ownership plan and recovery manifest atomically. A conflict requires a new preview and confirmation; lost responses use bankingReplacementOperation with the same attempt.
   """
   confirmBankingReplacement(
+    """
+    Exact previewed request and complete revision guards, with a durable attempt UUID.
+    """
     input: ConfirmBankingReplacementInput!
   ): BankingReplacementResult!
   """
   Fence a staged stream while preserving the current plan. This does not attest unchanged OAuth permission or provider removal.
   """
   cancelBankingReplacement(
+    """
+    Owned staged binding and current preview guards; cancellation leaves reporting unchanged.
+    """
     input: ConfirmBankingReplacementInput!
   ): BankingReplacementResult!
 }
@@ -23,12 +32,20 @@ extend type Query {
   Compute complete owner-only impacts from persisted import state. Unknown coverage differs from unknown import usability; no provider call or reporting change occurs.
   """
   bankingReplacementPreview(
+    """
+    Owned logical account, requested recovery action and applicable posted-bank date boundary.
+    """
     input: BankingReplacementRequest!
   ): BankingReplacementPreview!
   """
   Recover the original opaque plan/binding outcome for an owner-private durable replacement attempt. Absence does not prove failure.
   """
-  bankingReplacementOperation(attemptId: ID!): BankingReplacementResult!
+  bankingReplacementOperation(
+    """
+    Original client-known attempt UUID; status is private to its authenticated owner.
+    """
+    attemptId: ID!
+  ): BankingReplacementResult!
 }
 """
 Client-known attempt and explicit existing logical account; names/masks never establish continuity.

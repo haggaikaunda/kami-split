@@ -117,7 +117,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
  ), sources AS (
  SELECT s.id,s.binding_id,r.revision,(r.revision=s.revision) AS is_latest,s.discrepancy,r.amount_minor::text AS amount_minor,r.bank_date::text AS bank_date,r.processing_state,r.stage,
  coalesce(an.revision,0) AS annotation_revision,an.activity,an.category,an.note,coalesce(an.excluded,false) AS excluded,coalesce(an.reviewed,false) AS reviewed
- FROM app.banking_sources s JOIN bindings b ON b.id=s.binding_id JOIN app.banking_source_revisions r ON r.source_id=s.id 
+ FROM app.banking_sources s JOIN bindings b ON b.id=s.binding_id JOIN app.banking_source_revisions r ON r.source_id=s.id
  LEFT JOIN LATERAL (SELECT a.* FROM app.banking_annotations a WHERE a.source_id=s.id AND a.material_source_revision=r.revision ORDER BY a.revision DESC LIMIT 1) an ON true
  ), plans AS (
  SELECT p.*,coalesce((SELECT jsonb_agg(to_jsonb(i) ORDER BY i.after_date NULLS FIRST) FROM app.banking_plan_intervals i WHERE i.plan_id=p.id),'[]') AS intervals,
@@ -391,7 +391,11 @@ BEGIN
      IF coalesce(a->>'StableID','')<>'' AND EXISTS(SELECT FROM app.banking_enrollment_accounts WHERE owner_id=actor AND environment=c.environment AND institution_id=institution AND stable_id=a->>'StableID') THEN RETURN 'REPLACEMENT_REQUIRED'; END IF;
    END IF;
  END LOOP;
- UPDATE app.banking_accounts owned SET selected=false,generation=owned.generation+1 WHERE owned.selected AND EXISTS(SELECT FROM app.banking_bindings stream WHERE stream.account_id=owned.id AND stream.connection_id=target AND stream.reporting_state='current' AND NOT EXISTS(SELECT FROM jsonb_array_elements(accounts) x WHERE x->>'ID'=stream.provider_account_id));
+ -- Selection removes collection authority per binding, independently of shared
+ -- logical-account selection and immutable reporting ownership on other Items.
+ UPDATE app.banking_bindings stream SET collection_stopped=true
+ WHERE stream.connection_id=target AND stream.reporting_state IN('current','staged')
+   AND NOT EXISTS(SELECT FROM jsonb_array_elements(accounts) x WHERE x->>'ID'=stream.provider_account_id);
  UPDATE app.banking_bindings SET generation=generation+1 WHERE connection_id=target;
  FOR a IN SELECT * FROM jsonb_array_elements(accounts) LOOP
    SELECT * INTO saved_binding FROM app.banking_bindings WHERE connection_id=target AND provider_account_id=a->>'ID';
@@ -405,6 +409,13 @@ BEGIN
      INSERT INTO app.banking_enrollment_accounts VALUES(binding,actor,c.environment,institution,coalesce(a->>'StableID',''),a->>'Name','USD',365);
    END IF;
  END LOOP;
+ -- A different Item may still collect for this logical account (current or
+ -- staged). Clear its shared selection only when no such binding remains.
+ UPDATE app.banking_accounts owned SET selected=false,generation=owned.generation+1
+ WHERE owned.selected AND owned.owner_id=actor
+   AND EXISTS(SELECT FROM app.banking_bindings stream WHERE stream.account_id=owned.id AND stream.connection_id=target)
+   AND NOT EXISTS(SELECT FROM app.banking_bindings stream WHERE stream.account_id=owned.id
+     AND stream.reporting_state IN('current','staged') AND NOT stream.collection_stopped);
  UPDATE app.banking_connections SET generation=generation+1 WHERE id=target;
  UPDATE app.banking_webhook_correlations SET generation=c.generation+1 WHERE connection_id=target;
  RETURN 'READY';

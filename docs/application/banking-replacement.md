@@ -32,7 +32,12 @@ selection permits the staged binding to collect; old deselected streams remain
 stopped. Publication retires the former reporting binding, advances its generation
 and permanently blocks source writes through that binding. Existing-Item repair
 and selection cannot reactivate a retired binding. The old Item can continue
-serving selected siblings. Cancellation fences the staged binding and queues
+serving selected siblings. Empty or subset selection stops each omitted current
+or staged binding on the managed Item. A different Item's current or staged
+binding can retain the logical account's selection and history. Offline removal
+uses only effectively selected, nonstopped current/staged bindings; reselecting a
+stopped or revoked binding requires positive server-observed provider inventory
+and the existing lifecycle generation check. Cancellation fences the staged binding and queues
 narrow teardown when its Item serves no collecting sibling; it never attests
 unchanged OAuth permission or completed removal.
 
