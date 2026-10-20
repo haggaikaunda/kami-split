@@ -15,6 +15,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph/model"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -419,27 +420,29 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AcceptInvitation         func(childComplexity int, token string, key ledger.OperationKey) int
-		CancelBankingEnrollment  func(childComplexity int, attemptID string) int
-		ChangeBankingSelection   func(childComplexity int, input model.BankingSelectionInput) int
-		CreateExpense            func(childComplexity int, input model.CreateExpenseInput) int
-		CreateGroup              func(childComplexity int, input model.CreateGroupInput) int
-		CreateSharedInvitation   func(childComplexity int, groupID string, key ledger.OperationKey) int
-		CreateTargetedInvitation func(childComplexity int, groupID string, email string, key ledger.OperationKey) int
-		DeleteBankingHistory     func(childComplexity int, input model.BankingFenceInput) int
-		DisconnectBanking        func(childComplexity int, input model.BankingFenceInput) int
-		FinishBankingEnrollment  func(childComplexity int, input model.FinishBankingEnrollmentInput) int
-		FinishBankingRepair      func(childComplexity int, input model.FinishBankingRepairInput) int
-		RecordRepayment          func(childComplexity int, input model.RecordRepaymentInput) int
-		RenewSharedInvitation    func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
-		ResendInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
-		RetryInvitationDelivery  func(childComplexity int, actionID string) int
-		RevokeInvitation         func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
-		StartBankingEnrollment   func(childComplexity int, input model.StartBankingEnrollmentInput) int
-		StartBankingRepair       func(childComplexity int, input model.BankingFenceInput) int
-		UpdateExpense            func(childComplexity int, input model.UpdateExpenseInput) int
-		UpdateMyAppearance       func(childComplexity int, appearance model.Appearance, expectedAppearance model.Appearance) int
-		UpdateMyProfile          func(childComplexity int, displayName string, expectedDisplayName string) int
+		AcceptInvitation            func(childComplexity int, token string, key ledger.OperationKey) int
+		CancelBankingEnrollment     func(childComplexity int, attemptID string) int
+		ChangeBankingSelection      func(childComplexity int, input model.BankingSelectionInput) int
+		CreateExpense               func(childComplexity int, input model.CreateExpenseInput) int
+		CreateGroup                 func(childComplexity int, input model.CreateGroupInput) int
+		CreateSharedInvitation      func(childComplexity int, groupID string, key ledger.OperationKey) int
+		CreateTargetedInvitation    func(childComplexity int, groupID string, email string, key ledger.OperationKey) int
+		DeleteBankingHistory        func(childComplexity int, input model.BankingFenceInput) int
+		DisconnectBanking           func(childComplexity int, input model.BankingFenceInput) int
+		FinishBankingEnrollment     func(childComplexity int, input model.FinishBankingEnrollmentInput) int
+		FinishBankingRepair         func(childComplexity int, input model.FinishBankingRepairInput) int
+		InitializeReportingTimezone func(childComplexity int, attemptID ledger.OperationKey, deviceTimezone *string) int
+		RecordRepayment             func(childComplexity int, input model.RecordRepaymentInput) int
+		RenewSharedInvitation       func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		ResendInvitation            func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		RetryInvitationDelivery     func(childComplexity int, actionID string) int
+		RevokeInvitation            func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
+		StartBankingEnrollment      func(childComplexity int, input model.StartBankingEnrollmentInput) int
+		StartBankingRepair          func(childComplexity int, input model.BankingFenceInput) int
+		UpdateExpense               func(childComplexity int, input model.UpdateExpenseInput) int
+		UpdateMyAppearance          func(childComplexity int, appearance model.Appearance, expectedAppearance model.Appearance) int
+		UpdateMyProfile             func(childComplexity int, displayName string, expectedDisplayName string) int
+		UpdateReportingTimezone     func(childComplexity int, attemptID ledger.OperationKey, timezone string, expectedVersion reportingtimezone.Version) int
 	}
 
 	Obligation struct {
@@ -502,29 +505,31 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ActivityEvent          func(childComplexity int, eventID string, groupID *string) int
-		BankingConnection      func(childComplexity int, connectionID string) int
-		BankingEnrollment      func(childComplexity int, attemptID string) int
-		BankingOperation       func(childComplexity int, attemptID string) int
-		BankingRepair          func(childComplexity int, attemptID string) int
-		CurrentProfile         func(childComplexity int) int
-		ExpenseOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Group                  func(childComplexity int, id string) int
-		GroupActivity          func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
-		GroupCreationOperation func(childComplexity int, operationKey ledger.OperationKey) int
-		GroupDirectory         func(childComplexity int) int
-		GroupExpenses          func(childComplexity int, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) int
-		Health                 func(childComplexity int) int
-		HouseholdActivity      func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
-		HouseholdDashboard     func(childComplexity int) int
-		HouseholdExpenses      func(childComplexity int, first int, after *string, filter *model.StructuredExpenseFilter) int
-		InvitationAction       func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
-		Node                   func(childComplexity int, id string) int
-		OwnerInvitations       func(childComplexity int, groupID string, first int, after *string) int
-		PreviewInvitation      func(childComplexity int, token string) int
-		RepaymentOperation     func(childComplexity int, groupID string, key ledger.OperationKey) int
-		UpdateExpenseOperation func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Viewer                 func(childComplexity int) int
+		ActivityEvent            func(childComplexity int, eventID string, groupID *string) int
+		BankingConnection        func(childComplexity int, connectionID string) int
+		BankingEnrollment        func(childComplexity int, attemptID string) int
+		BankingOperation         func(childComplexity int, attemptID string) int
+		BankingRepair            func(childComplexity int, attemptID string) int
+		CurrentProfile           func(childComplexity int) int
+		ExpenseOperation         func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Group                    func(childComplexity int, id string) int
+		GroupActivity            func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
+		GroupCreationOperation   func(childComplexity int, operationKey ledger.OperationKey) int
+		GroupDirectory           func(childComplexity int) int
+		GroupExpenses            func(childComplexity int, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) int
+		Health                   func(childComplexity int) int
+		HouseholdActivity        func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
+		HouseholdDashboard       func(childComplexity int) int
+		HouseholdExpenses        func(childComplexity int, first int, after *string, filter *model.StructuredExpenseFilter) int
+		InvitationAction         func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
+		Node                     func(childComplexity int, id string) int
+		OwnerInvitations         func(childComplexity int, groupID string, first int, after *string) int
+		PreviewInvitation        func(childComplexity int, token string) int
+		RepaymentOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
+		ReportingTimezone        func(childComplexity int) int
+		ReportingTimezoneAttempt func(childComplexity int, operation model.ReportingTimezoneOperation, attemptID ledger.OperationKey) int
+		UpdateExpenseOperation   func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Viewer                   func(childComplexity int) int
 	}
 
 	Repayment struct {
@@ -569,6 +574,16 @@ type ComplexityRoot struct {
 		RepaymentID           func(childComplexity int) int
 		Revision              func(childComplexity int) int
 		SenderMembershipID    func(childComplexity int) int
+	}
+
+	ReportingTimezone struct {
+		Timezone func(childComplexity int) int
+		Version  func(childComplexity int) int
+	}
+
+	ReportingTimezoneProblem struct {
+		Code    func(childComplexity int) int
+		Message func(childComplexity int) int
 	}
 
 	ValidationProblem struct {
@@ -619,6 +634,8 @@ type MutationResolver interface {
 	UpdateMyAppearance(ctx context.Context, appearance model.Appearance, expectedAppearance model.Appearance) (model.ProfileResult, error)
 	UpdateMyProfile(ctx context.Context, displayName string, expectedDisplayName string) (model.ProfileResult, error)
 	RecordRepayment(ctx context.Context, input model.RecordRepaymentInput) (model.RecordRepaymentResult, error)
+	InitializeReportingTimezone(ctx context.Context, attemptID ledger.OperationKey, deviceTimezone *string) (model.ReportingTimezoneResult, error)
+	UpdateReportingTimezone(ctx context.Context, attemptID ledger.OperationKey, timezone string, expectedVersion reportingtimezone.Version) (model.ReportingTimezoneResult, error)
 }
 type QueryResolver interface {
 	GroupActivity(ctx context.Context, groupID string, first int, after *string, filter *model.ActivityFilter) (model.ActivityResult, error)
@@ -643,6 +660,8 @@ type QueryResolver interface {
 	InvitationAction(ctx context.Context, kind model.InvitationOperation, key ledger.OperationKey) (model.InvitationResult, error)
 	CurrentProfile(ctx context.Context) (model.ProfileResult, error)
 	RepaymentOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.RepaymentOperationResult, error)
+	ReportingTimezone(ctx context.Context) (model.ReportingTimezoneResult, error)
+	ReportingTimezoneAttempt(ctx context.Context, operation model.ReportingTimezoneOperation, attemptID ledger.OperationKey) (model.ReportingTimezoneResult, error)
 	Health(ctx context.Context) (*model.Health, error)
 }
 
@@ -2276,6 +2295,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.FinishBankingRepair(childComplexity, args["input"].(model.FinishBankingRepairInput)), true
+	case "Mutation.initializeReportingTimezone":
+		if e.ComplexityRoot.Mutation.InitializeReportingTimezone == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_initializeReportingTimezone_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.InitializeReportingTimezone(childComplexity, args["attemptId"].(ledger.OperationKey), args["deviceTimezone"].(*string)), true
 	case "Mutation.recordRepayment":
 		if e.ComplexityRoot.Mutation.RecordRepayment == nil {
 			break
@@ -2386,6 +2416,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateMyProfile(childComplexity, args["displayName"].(string), args["expectedDisplayName"].(string)), true
+	case "Mutation.updateReportingTimezone":
+		if e.ComplexityRoot.Mutation.UpdateReportingTimezone == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateReportingTimezone_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateReportingTimezone(childComplexity, args["attemptId"].(ledger.OperationKey), args["timezone"].(string), args["expectedVersion"].(reportingtimezone.Version)), true
 
 	case "Obligation.amountMinor":
 		if e.ComplexityRoot.Obligation.AmountMinor == nil {
@@ -2783,6 +2824,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RepaymentOperation(childComplexity, args["groupId"].(string), args["key"].(ledger.OperationKey)), true
+	case "Query.reportingTimezone":
+		if e.ComplexityRoot.Query.ReportingTimezone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.ReportingTimezone(childComplexity), true
+	case "Query.reportingTimezoneAttempt":
+		if e.ComplexityRoot.Query.ReportingTimezoneAttempt == nil {
+			break
+		}
+
+		args, err := ec.field_Query_reportingTimezoneAttempt_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.ReportingTimezoneAttempt(childComplexity, args["operation"].(model.ReportingTimezoneOperation), args["attemptId"].(ledger.OperationKey)), true
 	case "Query.updateExpenseOperation":
 		if e.ComplexityRoot.Query.UpdateExpenseOperation == nil {
 			break
@@ -2979,6 +3037,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RepaymentOperationRecord.SenderMembershipID(childComplexity), true
+
+	case "ReportingTimezone.timezone":
+		if e.ComplexityRoot.ReportingTimezone.Timezone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReportingTimezone.Timezone(childComplexity), true
+	case "ReportingTimezone.version":
+		if e.ComplexityRoot.ReportingTimezone.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReportingTimezone.Version(childComplexity), true
+
+	case "ReportingTimezoneProblem.code":
+		if e.ComplexityRoot.ReportingTimezoneProblem.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReportingTimezoneProblem.Code(childComplexity), true
+	case "ReportingTimezoneProblem.message":
+		if e.ComplexityRoot.ReportingTimezoneProblem.Message == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReportingTimezoneProblem.Message(childComplexity), true
 
 	case "ValidationProblem.fields":
 		if e.ComplexityRoot.ValidationProblem.Fields == nil {
@@ -5936,6 +6020,105 @@ type RepaymentEdge {
   node: Repayment!
 }
 `, BuiltIn: false},
+	{Name: "../../../../packages/schema/reporting-timezone.graphql", Input: `"""
+Independent positive preference counter, at most 9007199254740991, encoded as a canonical decimal string. Never a financial revision or authorization capability.
+"""
+scalar ReportingTimezoneVersion
+"""
+A private saved reporting zone. It determines today, never reinterprets bank calendar dates, and is not a Node lookup surface.
+"""
+type ReportingTimezone {
+  """
+  Validated IANA timezone name, stable across travel.
+  """
+  timezone: String!
+  """
+  Independent preference revision; use it to invalidate reporting dates/cursors after an explicit update.
+  """
+  version: ReportingTimezoneVersion!
+}
+"""
+Safe outcome without another owner's preference or operation metadata.
+"""
+type ReportingTimezoneProblem {
+  """
+  NOT_INITIALIZED, INVALID_INPUT, CONFLICT, ATTEMPT_MISMATCH, NOT_FOUND, FORBIDDEN, UNAUTHENTICATED or UNAVAILABLE.
+  """
+  code: String!
+  """
+  Safe recovery guidance.
+  """
+  message: String!
+}
+"""
+The authorized saved value or a safe failure. Recovered values describe the original outcome; read current state separately.
+"""
+union ReportingTimezoneResult = ReportingTimezone | ReportingTimezoneProblem
+"""
+The timezone write kind bound to a durable attempt.
+"""
+enum ReportingTimezoneOperation {
+  """
+  One-time initialization from device information or UTC fallback.
+  """
+  INITIALIZE
+  """
+  Explicit independently versioned update.
+  """
+  UPDATE
+}
+extend type Query {
+  """
+  Read the current enabled caller's preference without requiring a bank connection. Missing state returns NOT_INITIALIZED.
+  """
+  reportingTimezone: ReportingTimezoneResult!
+  """
+  Reauthorize and recover the immutable original outcome. NOT_FOUND does not prove an in-flight write failed; retry identical input/key. No other-owner target is accepted.
+  """
+  reportingTimezoneAttempt(
+    """
+    Original operation kind.
+    """
+    operation: ReportingTimezoneOperation!
+    """
+    Client-known UUID supplied before the original write.
+    """
+    attemptId: OperationKey!
+  ): ReportingTimezoneResult!
+}
+extend type Mutation {
+  """
+  Persist the caller's zone once at version 1; subsequent initialization returns the saved value without overwriting it. Same-kind/key/input replays its original outcome; changed input returns ATTEMPT_MISMATCH.
+  """
+  initializeReportingTimezone(
+    """
+    Client-known UUID, retained across response loss and retries.
+    """
+    attemptId: OperationKey!
+    """
+    Valid IANA name; omit or null when unavailable to use UTC. Empty/invalid strings fail validation.
+    """
+    deviceTimezone: String
+  ): ReportingTimezoneResult!
+  """
+  Explicitly save only the caller's reporting zone when the independent expected version matches. Every accepted update advances the version, including same-zone requests. Retry identical input/key after uncertainty; recover then read current state. Name, appearance, bank dates and enrollment are unchanged.
+  """
+  updateReportingTimezone(
+    """
+    Client-known UUID, retained across response loss and retries.
+    """
+    attemptId: OperationKey!
+    """
+    Desired validated IANA timezone name.
+    """
+    timezone: String!
+    """
+    Previously confirmed independent preference version.
+    """
+    expectedVersion: ReportingTimezoneVersion!
+  ): ReportingTimezoneResult!
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/schema.graphql", Input: `extend type Query {
   """
   Public availability check; requires no authentication and does not check database readiness.
@@ -7115,6 +7298,28 @@ func (ec *executionContext) field_Mutation_finishBankingRepair_args(ctx context.
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_initializeReportingTimezone_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "attemptId",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["attemptId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "deviceTimezone",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["deviceTimezone"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_recordRepayment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7316,6 +7521,36 @@ func (ec *executionContext) field_Mutation_updateMyProfile_args(ctx context.Cont
 		return nil, err
 	}
 	args["expectedDisplayName"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateReportingTimezone_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "attemptId",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["attemptId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "timezone",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["timezone"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "expectedVersion",
+		func(ctx context.Context, v any) (reportingtimezone.Version, error) {
+			return ec.unmarshalNReportingTimezoneVersion2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋreportingtimezoneᚐVersion(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["expectedVersion"] = arg2
 	return args, nil
 }
 
@@ -7696,6 +7931,28 @@ func (ec *executionContext) field_Query_repaymentOperation_args(ctx context.Cont
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_reportingTimezoneAttempt_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "operation",
+		func(ctx context.Context, v any) (model.ReportingTimezoneOperation, error) {
+			return ec.unmarshalNReportingTimezoneOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneOperation(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["operation"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "attemptId",
+		func(ctx context.Context, v any) (ledger.OperationKey, error) {
+			return ec.unmarshalNOperationKey2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐOperationKey(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["attemptId"] = arg1
 	return args, nil
 }
 
@@ -14685,6 +14942,94 @@ func (ec *executionContext) fieldContext_Mutation_recordRepayment(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_initializeReportingTimezone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_initializeReportingTimezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().InitializeReportingTimezone(ctx, fc.Args["attemptId"].(ledger.OperationKey), fc.Args["deviceTimezone"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ReportingTimezoneResult) graphql.Marshaler {
+			return ec.marshalNReportingTimezoneResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_initializeReportingTimezone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ReportingTimezoneResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_initializeReportingTimezone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateReportingTimezone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateReportingTimezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateReportingTimezone(ctx, fc.Args["attemptId"].(ledger.OperationKey), fc.Args["timezone"].(string), fc.Args["expectedVersion"].(reportingtimezone.Version))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ReportingTimezoneResult) graphql.Marshaler {
+			return ec.marshalNReportingTimezoneResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateReportingTimezone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ReportingTimezoneResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateReportingTimezone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Obligation_from(ctx context.Context, field graphql.CollectedField, obj *model.Obligation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16263,6 +16608,73 @@ func (ec *executionContext) fieldContext_Query_repaymentOperation(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_reportingTimezone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_reportingTimezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().ReportingTimezone(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ReportingTimezoneResult) graphql.Marshaler {
+			return ec.marshalNReportingTimezoneResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_reportingTimezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type ReportingTimezoneResult does not have child fields"))
+}
+
+func (ec *executionContext) _Query_reportingTimezoneAttempt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_reportingTimezoneAttempt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().ReportingTimezoneAttempt(ctx, fc.Args["operation"].(model.ReportingTimezoneOperation), fc.Args["attemptId"].(ledger.OperationKey))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ReportingTimezoneResult) graphql.Marshaler {
+			return ec.marshalNReportingTimezoneResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_reportingTimezoneAttempt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ReportingTimezoneResult does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_reportingTimezoneAttempt_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17099,6 +17511,98 @@ func (ec *executionContext) _RepaymentOperationRecord_revision(ctx context.Conte
 }
 func (ec *executionContext) fieldContext_RepaymentOperationRecord_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RepaymentOperationRecord", field, false, false, errors.New("field of type Revision does not have child fields"))
+}
+
+func (ec *executionContext) _ReportingTimezone_timezone(ctx context.Context, field graphql.CollectedField, obj *model.ReportingTimezone) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReportingTimezone_timezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReportingTimezone_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReportingTimezone", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReportingTimezone_version(ctx context.Context, field graphql.CollectedField, obj *model.ReportingTimezone) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReportingTimezone_version(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v reportingtimezone.Version) graphql.Marshaler {
+			return ec.marshalNReportingTimezoneVersion2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋreportingtimezoneᚐVersion(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReportingTimezone_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReportingTimezone", field, false, false, errors.New("field of type ReportingTimezoneVersion does not have child fields"))
+}
+
+func (ec *executionContext) _ReportingTimezoneProblem_code(ctx context.Context, field graphql.CollectedField, obj *model.ReportingTimezoneProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReportingTimezoneProblem_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReportingTimezoneProblem_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReportingTimezoneProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReportingTimezoneProblem_message(ctx context.Context, field graphql.CollectedField, obj *model.ReportingTimezoneProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReportingTimezoneProblem_message(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReportingTimezoneProblem_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReportingTimezoneProblem", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _ValidationProblem_fields(ctx context.Context, field graphql.CollectedField, obj *model.ValidationProblem) (ret graphql.Marshaler) {
@@ -19976,6 +20480,33 @@ func (ec *executionContext) _RepaymentOperationResult(ctx context.Context, sel a
 			return typedObj
 		} else {
 			panic(fmt.Errorf("unexpected type %T; non-generated variants of RepaymentOperationResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
+
+func (ec *executionContext) _ReportingTimezoneResult(ctx context.Context, sel ast.SelectionSet, obj model.ReportingTimezoneResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case model.ReportingTimezoneProblem:
+		return ec._ReportingTimezoneProblem(ctx, sel, &obj)
+	case *model.ReportingTimezoneProblem:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ReportingTimezoneProblem(ctx, sel, obj)
+	case model.ReportingTimezone:
+		return ec._ReportingTimezone(ctx, sel, &obj)
+	case *model.ReportingTimezone:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ReportingTimezone(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of ReportingTimezoneResult must implement graphql.Marshaler", obj))
 		}
 	}
 }
@@ -22997,6 +23528,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "initializeReportingTimezone":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_initializeReportingTimezone(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateReportingTimezone":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateReportingTimezone(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -23997,6 +24542,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "reportingTimezone":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_reportingTimezone(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "reportingTimezoneAttempt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_reportingTimezoneAttempt(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "health":
 			field := field
 
@@ -24340,6 +24929,92 @@ func (ec *executionContext) _RepaymentOperationRecord(ctx context.Context, sel a
 			}
 		case "revision":
 			out.Values[i] = ec._RepaymentOperationRecord_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var reportingTimezoneImplementors = []string{"ReportingTimezone", "ReportingTimezoneResult"}
+
+func (ec *executionContext) _ReportingTimezone(ctx context.Context, sel ast.SelectionSet, obj *model.ReportingTimezone) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reportingTimezoneImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReportingTimezone")
+		case "timezone":
+			out.Values[i] = ec._ReportingTimezone_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ReportingTimezone_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var reportingTimezoneProblemImplementors = []string{"ReportingTimezoneProblem", "ReportingTimezoneResult"}
+
+func (ec *executionContext) _ReportingTimezoneProblem(ctx context.Context, sel ast.SelectionSet, obj *model.ReportingTimezoneProblem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reportingTimezoneProblemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReportingTimezoneProblem")
+		case "code":
+			out.Values[i] = ec._ReportingTimezoneProblem_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._ReportingTimezoneProblem_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -25988,6 +26663,36 @@ func (ec *executionContext) marshalNRepaymentOperationResult2githubᚗcomᚋhagg
 		return graphql.Null
 	}
 	return ec._RepaymentOperationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNReportingTimezoneOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneOperation(ctx context.Context, v any) (model.ReportingTimezoneOperation, error) {
+	var res model.ReportingTimezoneOperation
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNReportingTimezoneOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneOperation(ctx context.Context, sel ast.SelectionSet, v model.ReportingTimezoneOperation) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNReportingTimezoneResult2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐReportingTimezoneResult(ctx context.Context, sel ast.SelectionSet, v model.ReportingTimezoneResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ReportingTimezoneResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNReportingTimezoneVersion2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋreportingtimezoneᚐVersion(ctx context.Context, v any) (reportingtimezone.Version, error) {
+	var res reportingtimezone.Version
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNReportingTimezoneVersion2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋreportingtimezoneᚐVersion(ctx context.Context, sel ast.SelectionSet, v reportingtimezone.Version) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNRevision2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋledgerᚐRevision(ctx context.Context, v any) (ledger.Revision, error) {

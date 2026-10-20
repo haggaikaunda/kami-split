@@ -13,6 +13,7 @@
 - [Canonical navigation](../navigation/README.md) and [authorized loading](../navigation/workspace-loading.md): `/groups/:id`, `/trips/:id` and original Household `/household/ledger` routes.
 - [Expenses ledger](expenses-ledger.md): complete filtered totals, sorting, category Breakdown, paging and restoration.
 - [Collaborative editing](expense-editing.md), [Percentage splits](percentage-splits.md), [Activity](activity.md), and [repayments](persisted-repayments.md): exact financial changes and immutable history.
+- [Reporting timezone](reporting-timezone.md): private independently versioned preference API and durable recovery; consumer UI and reporting remain separate.
 - [Profile and appearance](profile.md), [current UI rules](ui.md) and [date presentation](dates.md).
 - [Onboarding](onboarding.md): invitation, confirmation, sessions, recovery and delivery configuration.
 

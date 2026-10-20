@@ -12,6 +12,8 @@ resolver:
   package: graph
   filename_template: '{name}.resolvers.go'
 models:
+  ReportingTimezoneVersion:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone.Version
   MinorUnits:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.MinorUnits
   Revision:

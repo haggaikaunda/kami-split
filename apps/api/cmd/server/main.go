@@ -22,6 +22,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/onboarding"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/profile"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 )
 
@@ -114,7 +115,7 @@ func run() int {
 		logger.Error("invalid onboarding configuration")
 		return 1
 	}
-	resolvers := &graph.Resolver{Profiles: profile.New(db), Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}
+	resolvers := &graph.Resolver{Profiles: profile.New(db), ReportingTimezones: reportingtimezone.New(db), Expenses: expense.New(db), Groups: group.New(db), Cursors: cursors, Invitations: invitations}
 	var bankingHandler http.Handler
 	bankingRuntime, err := banking.LoadRuntime(os.LookupEnv)
 	if err != nil || (bankingRuntime != nil && db == nil) {

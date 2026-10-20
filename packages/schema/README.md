@@ -12,6 +12,14 @@ compiled artifacts. See [frontend ownership](../../docs/application/frontend.md)
 
 Schema additions require approved acceptance criteria and compatibility review. Existing TypeScript exact-money presentation and draft validation remain in `apps/web`; Go application operations own persisted financial rules. Language-neutral test fixtures may be shared when implemented.
 
+## Reporting timezone
+
+`reporting-timezone.graphql` defines the self-only saved preference, independent
+positive string version and actor/operation/attempt-bound initialization/update
+recovery. See [the operation contract](../../docs/application/reporting-timezone.md)
+for validation, concurrency and lost-response behavior. This API has no Account UI
+or reporting-date consumer and does not enable banking.
+
 ## Public contract documentation
 
 Use GraphQL descriptions (`"""..."""`) for every handwritten public schema type, field, argument, input field, enum and enum value, interface, union, and scalar, including query and mutation fields and their arguments. Generated schema is exempt where applicable; update its source and regenerate instead of editing generated output. Descriptions are part of the introspectable contract; `#` comments do not replace them.

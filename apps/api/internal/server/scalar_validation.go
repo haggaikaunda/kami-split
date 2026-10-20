@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
 	"github.com/vektah/gqlparser/v2/ast"
 	"strings"
 	"unicode/utf8"
@@ -34,6 +35,9 @@ func validOperationScalars(operation *graphql.OperationContext, schema *ast.Sche
 			return ok && utf8.ValidString(text) && !strings.ContainsRune(text, 0)
 		case "MinorUnits":
 			var v ledger.MinorUnits
+			return v.UnmarshalGQL(value) == nil
+		case "ReportingTimezoneVersion":
+			var v reportingtimezone.Version
 			return v.UnmarshalGQL(value) == nil
 		case "Revision":
 			var v ledger.Revision

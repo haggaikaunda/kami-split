@@ -30,6 +30,7 @@ import (
 	"github.com/haggaikaunda/kami-split/apps/api/internal/group"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/profile"
+	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/server"
 	"github.com/jackc/pgx/v5"
 )
@@ -133,7 +134,7 @@ func newExpenseFixture(t *testing.T) *expenseFixture {
 	if e != nil {
 		t.Fatal(e)
 	}
-	graphqlServer := server.NewWithAuthentication(cfg, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Profiles: profile.New(db), Expenses: service, Groups: group.New(db), Cursors: codec}}), slog.New(slog.NewTextHandler(io.Discard, nil)), verifier)
+	graphqlServer := server.NewWithAuthentication(cfg, graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{Profiles: profile.New(db), ReportingTimezones: reportingtimezone.New(db), Expenses: service, Groups: group.New(db), Cursors: codec}}), slog.New(slog.NewTextHandler(io.Discard, nil)), verifier)
 	endpoint := httptest.NewServer(verifier.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/graphql" {
 			graphqlServer.Handler().ServeHTTP(w, r)
