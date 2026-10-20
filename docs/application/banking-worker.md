@@ -6,8 +6,9 @@ history purge and protected Item status reconciliation. The API optionally mount
 one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. The
 [enrollment API](banking-enrollment.md) adds restricted durable enrollment-recovery
 jobs to the same worker, with renewable leases and narrow user-scoped discovery
-and removal. User-facing lifecycle management, transaction sync and replacement
-activation remain separate work. Live enrollment stays disabled
+and removal. Authenticated [lifecycle management](banking-enrollment.md#managing-an-existing-connection)
+uses these same cleanup paths; transaction sync and replacement activation remain
+separate work. Live enrollment stays disabled
 under #255; synthetic checks establish no live entitlement or backup capability.
 
 ## Durable authority
@@ -64,8 +65,10 @@ environment and generation. Invalid/mismatched events write nothing. Success mea
 a committed digest and safe event-routing receipt, including durable duplicates;
 terminal receipts cannot reactivate a generation. Unavailable keys or persistence
 return retryable 503. Enrollment correlations accept durable digest hints and trigger only verified
-narrow recovery, never activation; other accepted routing awaits later lifecycle/sync dispatch;
-receipt acceptance is not completed event handling.
+narrow recovery, never activation; Item/account revocations dispatch local fences and durable cleanup in the receipt
+transaction. Temporary errors produce repair status; healthy/new-account hints
+grant no consent or selection. Other routing awaits sync; receipt acceptance is
+not completed provider cleanup.
 
 ## Runtime and privileges
 

@@ -35,6 +35,8 @@ type VerifiedWebhook struct {
 	ItemID      string
 	WebhookType string
 	WebhookCode string
+	AccountID   string
+	Revoked     bool
 	BodySHA256  [32]byte
 	IssuedAt    time.Time
 }
@@ -125,11 +127,18 @@ func (v *WebhookVerifier) Verify(ctx context.Context, signed string, raw []byte)
 		ItemID      string `json:"item_id"`
 		Type        string `json:"webhook_type"`
 		Code        string `json:"webhook_code"`
+		AccountID   string `json:"account_id"`
+		Error       struct {
+			Reason string `json:"error_code_reason"`
+		} `json:"error"`
 	}
 	if json.Unmarshal(raw, &payload) != nil || payload.Environment != v.provider.config.Environment || !webhookField(payload.ItemID) || !webhookField(payload.Type) || !webhookField(payload.Code) {
 		return VerifiedWebhook{}, ErrWebhookMismatch
 	}
-	return VerifiedWebhook{Environment: payload.Environment, ItemID: payload.ItemID, WebhookType: payload.Type, WebhookCode: payload.Code, BodySHA256: digest, IssuedAt: claims.IssuedAt.Time}, nil
+	if payload.Code == "USER_ACCOUNT_REVOKED" && !webhookField(payload.AccountID) {
+		return VerifiedWebhook{}, ErrWebhookMismatch
+	}
+	return VerifiedWebhook{AccountID: payload.AccountID, Revoked: payload.Error.Reason == "OAUTH_USER_REVOKED", Environment: payload.Environment, ItemID: payload.ItemID, WebhookType: payload.Type, WebhookCode: payload.Code, BodySHA256: digest, IssuedAt: claims.IssuedAt.Time}, nil
 }
 
 func webhookField(value string) bool {

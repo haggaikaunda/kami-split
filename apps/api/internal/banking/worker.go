@@ -200,9 +200,9 @@ func retryDelay(attempt int, provider time.Duration, jitter float64) time.Durati
 }
 
 // AcceptWebhook accepts only verified routing metadata. Nil acknowledges a
-// committed new or duplicate receipt; it never implies lifecycle event dispatch.
+// committed receipt and local lifecycle dispatch; provider cleanup remains durable.
 func (s *Service) AcceptWebhook(ctx context.Context, correlation uuid.UUID, event VerifiedWebhook) error {
-	ok, err := s.db.AcceptBankingWebhook(ctx, correlation, event.Environment, event.ItemID, event.BodySHA256[:], event.WebhookType, event.WebhookCode)
+	ok, err := s.db.AcceptBankingWebhook(ctx, correlation, event.Environment, event.ItemID, event.BodySHA256[:], event.WebhookType, event.WebhookCode, event.AccountID, event.Revoked)
 	if err != nil {
 		diagnostic.Report(ctx, diagnostic.Wrap(errors.New("banking ingress unavailable"), err, "banking.webhook_accept"))
 		return err

@@ -48,6 +48,7 @@ type bankingHTTPProvider struct {
 	items                   map[string]bankingHTTPItem
 	preparations, exchanges int
 	loseExchange            bool
+	failRemoval             bool
 }
 
 func newBankingHTTPProvider(t *testing.T) *bankingHTTPProvider {

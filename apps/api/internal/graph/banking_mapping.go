@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/banking"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/graph/model"
+	"strconv"
 	"time"
 )
 
@@ -28,4 +29,11 @@ func mapEnrollment(o banking.EnrollmentOutcome) *model.BankingEnrollmentResult {
 		result.ExpiresAt = &value
 	}
 	return result
+}
+
+func parseBankingFence(input model.BankingFenceInput) (banking.FenceInput, bool) {
+	attempt, e1 := uuid.Parse(input.AttemptID)
+	connection, e2 := uuid.Parse(input.ConnectionID)
+	generation, e3 := strconv.ParseInt(input.ExpectedGeneration, 10, 64)
+	return banking.FenceInput{AttemptID: attempt, ConnectionID: connection, ExpectedGeneration: generation}, e1 == nil && e2 == nil && e3 == nil && generation > 0 && strconv.FormatInt(generation, 10) == input.ExpectedGeneration
 }

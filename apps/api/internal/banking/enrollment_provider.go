@@ -403,3 +403,25 @@ func (p *PlaidProvider) enrollmentPost(ctx context.Context, path string, request
 	}
 	return nil
 }
+
+// PrepareRepair creates an existing-Item update-mode handoff with explicit account
+// authorization enabled. It sends neither products nor transaction parameters,
+// and never exchanges a public token or replaces the existing access token.
+func (p *PlaidProvider) PrepareRepair(ctx context.Context, environment, clientUserID string, credential Credential) (LinkPreparation, error) {
+	if environment != p.config.Environment || !validClientUserID(clientUserID) || len(credential.raw) == 0 {
+		return LinkPreparation{}, &EnrollmentError{}
+	}
+	request := map[string]any{"user": map[string]string{"client_user_id": clientUserID}, "client_name": "Kami Split", "language": "en", "country_codes": []string{"US"}, "access_token": string(credential.Bytes()), "update": map[string]bool{"account_selection_enabled": true}}
+	var payload struct {
+		LinkToken  string    `json:"link_token"`
+		Expiration time.Time `json:"expiration"`
+	}
+	if err := p.enrollmentPost(ctx, "/link/token/create", request, &payload, true); err != nil {
+		return LinkPreparation{}, err
+	}
+	now := time.Now()
+	if payload.LinkToken == "" || len(payload.LinkToken) > 4096 || !payload.Expiration.After(now) || payload.Expiration.After(now.Add(4*time.Hour)) {
+		return LinkPreparation{}, &EnrollmentError{}
+	}
+	return LinkPreparation{LinkToken: payload.LinkToken, ExpiresAt: payload.Expiration}, nil
+}

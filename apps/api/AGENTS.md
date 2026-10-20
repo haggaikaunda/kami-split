@@ -31,7 +31,8 @@ The internal [banking storage foundation](../../docs/application/banking-storage
 provides owner-private persistence, a separate credential keyring, durable attempts
 and lifecycle fences. The [lifecycle worker](../../docs/application/banking-worker.md) implements durable
 cleanup and the sole verified webhook ingress. The [enrollment API](../../docs/application/banking-enrollment.md) implements
-actor-bound start/finish/status and selected-account reads with default-disabled
+actor-bound enrollment, explicit selection, existing-Item repair, disconnect,
+private-history deletion and retained-account/status reads with default-disabled
 new enrollment. Transaction sync and replacement activation remain deferred.
 
 ## Design and implementation

@@ -249,7 +249,7 @@ type Allocation struct {
 	PercentageHundredths *int `json:"percentageHundredths,omitempty"`
 }
 
-// Selected private account stream awaiting future ingestion.
+// Retained private account stream; collection selection and retained history are separate.
 type BankingAccount struct {
 	// Logical private account UUID.
 	ID string `json:"id"`
@@ -263,6 +263,10 @@ type BankingAccount struct {
 	Currency string `json:"currency"`
 	// Initial requested history window of 365 days; actual coverage and retention are separate.
 	RequestedHistoryDays int `json:"requestedHistoryDays"`
+	// Whether this retained stream is selected for future collection. False never erases private history.
+	Selected bool `json:"selected"`
+	// Owner-private provider account reference for explicit selection changes; never identity-continuity evidence.
+	ProviderAccountID string `json:"providerAccountId"`
 }
 
 // Private lifecycle projection. No bank credentials or financial source payloads are exposed.
@@ -271,8 +275,16 @@ type BankingConnection struct {
 	ID string `json:"id"`
 	// Current active, stopped or deleted lifecycle state, distinct from import freshness.
 	State string `json:"state"`
-	// Explicitly selected, currently visible account streams; unselected provider accounts are absent.
+	// Retained visible account streams with explicit selection state; never-selected provider accounts are absent.
 	Accounts []*BankingAccount `json:"accounts"`
+	// Exact lifecycle revision for management compare-and-swap.
+	Generation string `json:"generation"`
+	// healthy, repair_required or accounts_available; a health hint grants no selection or consent.
+	Health string `json:"health"`
+	// not_requested, pending, running, needs_attention or confirmed remote Item removal.
+	Cleanup string `json:"cleanup"`
+	// not_requested, pending or complete active-copy purge, distinct from provider retention and backups.
+	Purge string `json:"purge"`
 }
 
 // Owner-authorized connection read with explicit absence/error status.
@@ -297,6 +309,34 @@ type BankingEnrollmentResult struct {
 	LinkToken *string `json:"linkToken,omitempty"`
 	// Provider-bounded handoff expiry; cleanup correlation survives this deadline.
 	ExpiresAt *string `json:"expiresAt,omitempty"`
+}
+
+// Revision-checked, owner-bound lifecycle command. Changed reuse conflicts.
+type BankingFenceInput struct {
+	// Caller-generated UUID retained across retries.
+	AttemptID string `json:"attemptId"`
+	// Owner-private connection UUID.
+	ConnectionID string `json:"connectionId"`
+	// Last observed lifecycle generation, encoded as an exact decimal integer.
+	ExpectedGeneration string `json:"expectedGeneration"`
+}
+
+// Safe opaque management receipt. READY is local success; provider teardown and purge are separate status fields.
+type BankingManagementResult struct {
+	// READY, PENDING, CONFLICT, REPAIR_REQUIRED, REPLACEMENT_REQUIRED, NOT_FOUND or safe authentication/availability status.
+	Code string `json:"code"`
+}
+
+// Explicit replacement of the selected subset; no newly visible account is implicitly selected.
+type BankingSelectionInput struct {
+	// Caller-generated recovery UUID.
+	AttemptID string `json:"attemptId"`
+	// Owner-private connection UUID.
+	ConnectionID string `json:"connectionId"`
+	// Observed lifecycle generation as an exact decimal integer.
+	ExpectedGeneration string `json:"expectedGeneration"`
+	// Explicit current provider account IDs; empty stops all streams without erasing data.
+	AccountIds []string `json:"accountIds"`
 }
 
 // One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
@@ -622,6 +662,14 @@ type FinishBankingEnrollmentInput struct {
 	// Short-lived public token from Link; must not be logged or persistently stored by the browser.
 	PublicToken string `json:"publicToken"`
 	// Explicit nonempty selected provider account IDs. Reordering is canonical; duplicates and unsupported accounts reject activation.
+	AccountIds []string `json:"accountIds"`
+}
+
+// Explicit repair completion for one prepared existing-Item attempt.
+type FinishBankingRepairInput struct {
+	// Original repair attempt UUID.
+	AttemptID string `json:"attemptId"`
+	// Explicit current authorized provider account subset, including empty.
 	AccountIds []string `json:"accountIds"`
 }
 

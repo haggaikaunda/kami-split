@@ -143,13 +143,13 @@ func (s *Service) fence(ctx context.Context, input FenceInput, erase bool) Resul
 
 // The first transaction reserves an absent attempt across server processes. The
 // second serializes effect+receipt; failure leaves durable pending recovery state.
-func (s *Service) run(ctx context.Context, attempt uuid.UUID, kind string, input any, effect func(pgx.Tx, auth.Actor) (Result, error)) Result {
+func (s *Service) reserve(ctx context.Context, attempt uuid.UUID, kind string, input any) (Result, bool) {
 	canonical, err := json.Marshal(struct {
 		Kind  string
 		Input any
 	}{kind, input})
 	if err != nil {
-		return failure(ctx, err)
+		return failure(ctx, err), false
 	}
 	var outcome Result
 	pending := false
@@ -189,12 +189,17 @@ func (s *Service) run(ctx context.Context, attempt uuid.UUID, kind string, input
 		return nil
 	})
 	if err != nil {
-		return failure(ctx, err)
+		return failure(ctx, err), false
 	}
+	return outcome, pending
+}
+
+func (s *Service) run(ctx context.Context, attempt uuid.UUID, kind string, input any, effect func(pgx.Tx, auth.Actor) (Result, error)) Result {
+	outcome, pending := s.reserve(ctx, attempt, kind, input)
 	if !pending {
 		return outcome
 	}
-	err = auth.WithActor(ctx, s.db, func(tx pgx.Tx, actor auth.Actor) error {
+	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, actor auth.Actor) error {
 		if _, err := tx.Exec(ctx, `SELECT app.lock_banking_owner()`); err != nil {
 			return err
 		}
@@ -234,27 +239,29 @@ func failure(ctx context.Context, err error) Result {
 
 // Connection exposes lifecycle state without provider credentials.
 type Connection struct {
-	ID                             uuid.UUID
-	Environment, State             string
-	Generation, DeletionGeneration int64
+	ID                                         uuid.UUID
+	Environment, State, Health, Cleanup, Purge string
+	Generation, DeletionGeneration             int64
 }
 
-// ReadConnection masks absent and other-owner identifiers with NOT_FOUND.
-func (s *Service) ReadConnection(ctx context.Context, id uuid.UUID) (Connection, Result) {
+// ReadLifecycle returns owner-only opaque lifecycle and cleanup status, including
+// deleted connections, without exposing their hidden history.
+func (s *Service) ReadLifecycle(ctx context.Context, id uuid.UUID) (Connection, Result) {
 	var result Connection
 	outcome := Result{Code: "NOT_FOUND"}
 	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
 		if _, err := tx.Exec(ctx, `SELECT app.lock_banking_owner()`); err != nil {
 			return err
 		}
-		row, err := bankingquery.New(tx).ReadConnection(ctx, pgID(id))
+		var row Connection
+		err := tx.QueryRow(ctx, `SELECT id,environment,state,generation,deletion_generation,health,cleanup,purge FROM app.banking_lifecycle_status($1)`, id).Scan(&row.ID, &row.Environment, &row.State, &row.Generation, &row.DeletionGeneration, &row.Health, &row.Cleanup, &row.Purge)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		result = Connection{ID: safeID(row.ID), Environment: row.Environment, State: row.State, Generation: row.Generation, DeletionGeneration: row.DeletionGeneration}
+		result = row
 		outcome = Result{Code: "READY", ID: result.ID}
 		return nil
 	})
@@ -362,4 +369,14 @@ func (s *Service) ReadSource(ctx context.Context, id uuid.UUID) (Source, Result)
 		return Source{}, failure(ctx, err)
 	}
 	return source, outcome
+}
+
+// ReadConnection masks absent, deleted and other-owner identities with NOT_FOUND.
+// Use ReadLifecycle only when an opaque deletion/cleanup status is required.
+func (s *Service) ReadConnection(ctx context.Context, id uuid.UUID) (Connection, Result) {
+	c, status := s.ReadLifecycle(ctx, id)
+	if status.Code == "READY" && c.State == "deleted" {
+		return Connection{}, Result{Code: "NOT_FOUND"}
+	}
+	return c, status
 }
