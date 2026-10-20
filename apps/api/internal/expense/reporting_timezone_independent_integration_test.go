@@ -277,14 +277,13 @@ func TestIndependentTimezoneExhaustionAndRestrictedRoles(t *testing.T) {
 	}
 }
 
-func TestIndependentTimezoneEnabledButRevokedIdentity(t *testing.T) {
+func TestIndependentTimezoneManagedAuthRevocation(t *testing.T) {
 	f := independentTimezoneFixture(t)
 	key := uuid.NewString()
 	requireTimezone(t, timezoneRequest(t, f, 2, timezoneInitialize, "initializeReportingTimezone", map[string]any{"key": key, "zone": "Asia/Tokyo"}), "Asia/Tokyo", "1")
-	timezoneFixtureOwner(t, f, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE app.users SET live_auth_id=NULL WHERE id=$1 AND enabled`, f.id(102))
-		return err
-	})
+	// The identity contract requires disabling the application owner before
+	// managed Auth deletion; its FK then clears the live linkage irreversibly.
+	f.exec(fmt.Sprintf(`SET ROLE kami_migrator;UPDATE app.users SET enabled=false WHERE id='%s';RESET ROLE;DELETE FROM auth.users WHERE id='%s'`, f.id(102), f.id(2)))
 	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneRead, "reportingTimezone", nil), "FORBIDDEN")
 	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneRecover, "reportingTimezoneAttempt", map[string]any{"key": key, "kind": "INITIALIZE"}), "FORBIDDEN")
 	requireTimezoneCode(t, timezoneRequest(t, f, 2, timezoneInitialize, "initializeReportingTimezone", map[string]any{"key": uuid.NewString(), "zone": "UTC"}), "FORBIDDEN")
@@ -298,7 +297,7 @@ func TestIndependentTimezoneEnabledButRevokedIdentity(t *testing.T) {
  FROM app.users u JOIN app.reporting_timezones p ON p.owner_id=u.id WHERE u.id=$1`, f.id(102)).Scan(&enabled, &linked, &zone, &version, &attempts); err != nil {
 			return err
 		}
-		if !enabled || linked || zone != "Asia/Tokyo" || version != 1 || attempts != 1 {
+		if enabled || linked || zone != "Asia/Tokyo" || version != 1 || attempts != 1 {
 			return fmt.Errorf("revoked identity/state changed: enabled=%v, linked=%v, %s/%d, receipts=%d", enabled, linked, zone, version, attempts)
 		}
 		return nil
