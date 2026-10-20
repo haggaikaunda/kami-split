@@ -121,6 +121,10 @@ optional authorization date in detail. Pending rows use their provider provision
 date, visibly marked Pending; never treat it as a posted spending contribution.
 Do not reinterpret date-only values through UTC.
 
+The [reporting-timezone API](reporting-timezone.md) implements the preference
+persistence and recovery boundary below; Account controls and date/reporting
+consumers remain separate deliveries.
+
 Save a validated IANA reporting timezone once from the initial device setting,
 using UTC if unavailable. Account can change it through a dedicated versioned
 preference operation, independent of name and appearance saves. Travel does not
