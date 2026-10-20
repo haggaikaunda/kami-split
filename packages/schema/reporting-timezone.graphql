@@ -1,0 +1,98 @@
+"""
+Independent positive preference counter, at most 9007199254740991, encoded as a canonical decimal string. Never a financial revision or authorization capability.
+"""
+scalar ReportingTimezoneVersion
+"""
+A private saved reporting zone. It determines today, never reinterprets bank calendar dates, and is not a Node lookup surface.
+"""
+type ReportingTimezone {
+  """
+  Validated IANA timezone name, stable across travel.
+  """
+  timezone: String!
+  """
+  Independent preference revision; use it to invalidate reporting dates/cursors after an explicit update.
+  """
+  version: ReportingTimezoneVersion!
+}
+"""
+Safe outcome without another owner's preference or operation metadata.
+"""
+type ReportingTimezoneProblem {
+  """
+  NOT_INITIALIZED, INVALID_INPUT, CONFLICT, ATTEMPT_MISMATCH, NOT_FOUND, FORBIDDEN, UNAUTHENTICATED or UNAVAILABLE.
+  """
+  code: String!
+  """
+  Safe recovery guidance.
+  """
+  message: String!
+}
+"""
+The authorized saved value or a safe failure. Recovered values describe the original outcome; read current state separately.
+"""
+union ReportingTimezoneResult = ReportingTimezone | ReportingTimezoneProblem
+"""
+The timezone write kind bound to a durable attempt.
+"""
+enum ReportingTimezoneOperation {
+  """
+  One-time initialization from device information or UTC fallback.
+  """
+  INITIALIZE
+  """
+  Explicit independently versioned update.
+  """
+  UPDATE
+}
+extend type Query {
+  """
+  Read the current enabled caller's preference without requiring a bank connection. Missing state returns NOT_INITIALIZED.
+  """
+  reportingTimezone: ReportingTimezoneResult!
+  """
+  Reauthorize and recover the immutable original outcome. NOT_FOUND does not prove an in-flight write failed; retry identical input/key. No other-owner target is accepted.
+  """
+  reportingTimezoneAttempt(
+    """
+    Original operation kind.
+    """
+    operation: ReportingTimezoneOperation!
+    """
+    Client-known UUID supplied before the original write.
+    """
+    attemptId: OperationKey!
+  ): ReportingTimezoneResult!
+}
+extend type Mutation {
+  """
+  Persist the caller's zone once at version 1; subsequent initialization returns the saved value without overwriting it. Same-kind/key/input replays its original outcome; changed input returns ATTEMPT_MISMATCH.
+  """
+  initializeReportingTimezone(
+    """
+    Client-known UUID, retained across response loss and retries.
+    """
+    attemptId: OperationKey!
+    """
+    Valid IANA name; omit or null when unavailable to use UTC. Empty/invalid strings fail validation.
+    """
+    deviceTimezone: String
+  ): ReportingTimezoneResult!
+  """
+  Explicitly save only the caller's reporting zone when the independent expected version matches. Every accepted update advances the version, including same-zone requests. Retry identical input/key after uncertainty; recover then read current state. Name, appearance, bank dates and enrollment are unchanged.
+  """
+  updateReportingTimezone(
+    """
+    Client-known UUID, retained across response loss and retries.
+    """
+    attemptId: OperationKey!
+    """
+    Desired validated IANA timezone name.
+    """
+    timezone: String!
+    """
+    Previously confirmed independent preference version.
+    """
+    expectedVersion: ReportingTimezoneVersion!
+  ): ReportingTimezoneResult!
+}

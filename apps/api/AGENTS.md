@@ -34,6 +34,10 @@ cleanup and the sole verified webhook ingress. The [enrollment API](../../docs/a
 actor-bound start/finish/status and selected-account reads with default-disabled
 new enrollment. Transaction sync and replacement activation remain deferred.
 
+The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
+an owner-only independent preference and immutable write recovery; Account UI and
+Personal date/reporting consumers remain separate deliveries.
+
 ## Design and implementation
 
 - Document every exported handwritten package declaration with its caller-visible contract. Preserve GraphQL descriptions on all public SDL declarations; do not manually document generated gqlgen/sqlc output.
