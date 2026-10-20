@@ -70,6 +70,14 @@ func TestBankingHTTPLifecycleRetainedHistoryAndRestartableDeletion(t *testing.T)
 	f := newBankingHTTPFixture(t)
 	handler := f.handler(true)
 	owner, other, disabled := f.token(f.owner), f.token(f.other), f.token(f.disabled)
+	zoneFields := `{__typename ... on ReportingTimezone{timezone version} ... on ReportingTimezoneProblem{code}}`
+	for token, zone := range map[string]string{owner: "America/Los_Angeles", other: "Asia/Tokyo"} {
+		query := fmt.Sprintf(`mutation{initializeReportingTimezone(attemptId:%q,deviceTimezone:%q)%s}`, uuid.NewString(), zone, zoneFields)
+		result := f.operation(handler, query, token, "initializeReportingTimezone", false)
+		if result["timezone"] != zone || result["version"] != "1" {
+			t.Fatal("timezone scalar/initialization changed during merged lifecycle setup")
+		}
+	}
 	// Cleanup only this fixture's private rows; ordinary shared records remain for
 	// the repository's later dump/restore regression checks.
 	t.Cleanup(func() {
@@ -259,12 +267,18 @@ func TestBankingHTTPLifecycleRetainedHistoryAndRestartableDeletion(t *testing.T)
 	if sharedBefore != lifecycleHTTPSharedSnapshot(t, f) {
 		t.Fatal("private deletion changed shared financial or Activity data")
 	}
+	for token, zone := range map[string]string{owner: "America/Los_Angeles", other: "Asia/Tokyo"} {
+		result := f.operation(handler, `query{reportingTimezone`+zoneFields+`}`, token, "reportingTimezone", false)
+		if result["timezone"] != zone || result["version"] != "1" {
+			t.Fatal("bank lifecycle changed independent reporting timezone")
+		}
+	}
 }
 
 func lifecycleHTTPSharedSnapshot(t *testing.T, f *bankingHTTPFixture) string {
 	t.Helper()
 	result := ""
-	for _, table := range []string{"groups", "expenses", "repayments", "expense_audit", "repayment_audit", "financial_records"} {
+	for _, table := range []string{"groups", "expenses", "repayments", "expense_audit", "repayment_audit", "financial_records", "reporting_timezones", "reporting_timezone_attempts"} {
 		var digest string
 		if err := f.admin.QueryRow(context.Background(), `SELECT md5(coalesce(jsonb_agg(to_jsonb(saved) ORDER BY to_jsonb(saved)::text)::text,'')) FROM app.`+table+` saved`).Scan(&digest); err != nil {
 			t.Fatal("shared snapshot unavailable", err)
