@@ -138,6 +138,54 @@ type ComplexityRoot struct {
 		Code func(childComplexity int) int
 	}
 
+	BankingReplacementImpact struct {
+		AnnotationCount func(childComplexity int) int
+		Count           func(childComplexity int) int
+		FromDate        func(childComplexity int) int
+		PendingCount    func(childComplexity int) int
+		SpendingMinor   func(childComplexity int) int
+		ThroughDate     func(childComplexity int) int
+		UnresolvedCount func(childComplexity int) int
+	}
+
+	BankingReplacementPreview struct {
+		Archived          func(childComplexity int) int
+		Code              func(childComplexity int) int
+		CollectionState   func(childComplexity int) int
+		Coverage          func(childComplexity int) int
+		CoverageAfter     func(childComplexity int) int
+		CoverageThrough   func(childComplexity int) int
+		DiscrepancyCount  func(childComplexity int) int
+		Intervals         func(childComplexity int) int
+		New               func(childComplexity int) int
+		OldAfterBoundary  func(childComplexity int) int
+		Overlap           func(childComplexity int) int
+		Prior             func(childComplexity int) int
+		Proposed          func(childComplexity int) int
+		ReportingRevision func(childComplexity int) int
+		Retained          func(childComplexity int) int
+		Revisions         func(childComplexity int) int
+	}
+
+	BankingReplacementResult struct {
+		Code     func(childComplexity int) int
+		ResultID func(childComplexity int) int
+	}
+
+	BankingReplacementRevisions struct {
+		Annotation func(childComplexity int) int
+		Data       func(childComplexity int) int
+		Import     func(childComplexity int) int
+		Lifecycle  func(childComplexity int) int
+		Plan       func(childComplexity int) int
+	}
+
+	BankingReportingInterval struct {
+		AfterDate   func(childComplexity int) int
+		BindingID   func(childComplexity int) int
+		ThroughDate func(childComplexity int) int
+	}
+
 	Expense struct {
 		Allocations    func(childComplexity int) int
 		CanEdit        func(childComplexity int) int
@@ -422,7 +470,9 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AcceptInvitation            func(childComplexity int, token string, key ledger.OperationKey) int
 		CancelBankingEnrollment     func(childComplexity int, attemptID string) int
+		CancelBankingReplacement    func(childComplexity int, input model.ConfirmBankingReplacementInput) int
 		ChangeBankingSelection      func(childComplexity int, input model.BankingSelectionInput) int
+		ConfirmBankingReplacement   func(childComplexity int, input model.ConfirmBankingReplacementInput) int
 		CreateExpense               func(childComplexity int, input model.CreateExpenseInput) int
 		CreateGroup                 func(childComplexity int, input model.CreateGroupInput) int
 		CreateSharedInvitation      func(childComplexity int, groupID string, key ledger.OperationKey) int
@@ -439,6 +489,7 @@ type ComplexityRoot struct {
 		RevokeInvitation            func(childComplexity int, groupID string, id string, key ledger.OperationKey) int
 		StartBankingEnrollment      func(childComplexity int, input model.StartBankingEnrollmentInput) int
 		StartBankingRepair          func(childComplexity int, input model.BankingFenceInput) int
+		StartBankingReplacement     func(childComplexity int, input model.StartBankingReplacementInput) int
 		UpdateExpense               func(childComplexity int, input model.UpdateExpenseInput) int
 		UpdateMyAppearance          func(childComplexity int, appearance model.Appearance, expectedAppearance model.Appearance) int
 		UpdateMyProfile             func(childComplexity int, displayName string, expectedDisplayName string) int
@@ -505,31 +556,33 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		ActivityEvent            func(childComplexity int, eventID string, groupID *string) int
-		BankingConnection        func(childComplexity int, connectionID string) int
-		BankingEnrollment        func(childComplexity int, attemptID string) int
-		BankingOperation         func(childComplexity int, attemptID string) int
-		BankingRepair            func(childComplexity int, attemptID string) int
-		CurrentProfile           func(childComplexity int) int
-		ExpenseOperation         func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Group                    func(childComplexity int, id string) int
-		GroupActivity            func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
-		GroupCreationOperation   func(childComplexity int, operationKey ledger.OperationKey) int
-		GroupDirectory           func(childComplexity int) int
-		GroupExpenses            func(childComplexity int, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) int
-		Health                   func(childComplexity int) int
-		HouseholdActivity        func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
-		HouseholdDashboard       func(childComplexity int) int
-		HouseholdExpenses        func(childComplexity int, first int, after *string, filter *model.StructuredExpenseFilter) int
-		InvitationAction         func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
-		Node                     func(childComplexity int, id string) int
-		OwnerInvitations         func(childComplexity int, groupID string, first int, after *string) int
-		PreviewInvitation        func(childComplexity int, token string) int
-		RepaymentOperation       func(childComplexity int, groupID string, key ledger.OperationKey) int
-		ReportingTimezone        func(childComplexity int) int
-		ReportingTimezoneAttempt func(childComplexity int, operation model.ReportingTimezoneOperation, attemptID ledger.OperationKey) int
-		UpdateExpenseOperation   func(childComplexity int, groupID string, key ledger.OperationKey) int
-		Viewer                   func(childComplexity int) int
+		ActivityEvent               func(childComplexity int, eventID string, groupID *string) int
+		BankingConnection           func(childComplexity int, connectionID string) int
+		BankingEnrollment           func(childComplexity int, attemptID string) int
+		BankingOperation            func(childComplexity int, attemptID string) int
+		BankingRepair               func(childComplexity int, attemptID string) int
+		BankingReplacementOperation func(childComplexity int, attemptID string) int
+		BankingReplacementPreview   func(childComplexity int, input model.BankingReplacementRequest) int
+		CurrentProfile              func(childComplexity int) int
+		ExpenseOperation            func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Group                       func(childComplexity int, id string) int
+		GroupActivity               func(childComplexity int, groupID string, first int, after *string, filter *model.ActivityFilter) int
+		GroupCreationOperation      func(childComplexity int, operationKey ledger.OperationKey) int
+		GroupDirectory              func(childComplexity int) int
+		GroupExpenses               func(childComplexity int, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) int
+		Health                      func(childComplexity int) int
+		HouseholdActivity           func(childComplexity int, first int, after *string, filter *model.ActivityFilter) int
+		HouseholdDashboard          func(childComplexity int) int
+		HouseholdExpenses           func(childComplexity int, first int, after *string, filter *model.StructuredExpenseFilter) int
+		InvitationAction            func(childComplexity int, kind model.InvitationOperation, key ledger.OperationKey) int
+		Node                        func(childComplexity int, id string) int
+		OwnerInvitations            func(childComplexity int, groupID string, first int, after *string) int
+		PreviewInvitation           func(childComplexity int, token string) int
+		RepaymentOperation          func(childComplexity int, groupID string, key ledger.OperationKey) int
+		ReportingTimezone           func(childComplexity int) int
+		ReportingTimezoneAttempt    func(childComplexity int, operation model.ReportingTimezoneOperation, attemptID ledger.OperationKey) int
+		UpdateExpenseOperation      func(childComplexity int, groupID string, key ledger.OperationKey) int
+		Viewer                      func(childComplexity int) int
 	}
 
 	Repayment struct {
@@ -614,6 +667,9 @@ type GroupResolver interface {
 }
 type MutationResolver interface {
 	CreateExpense(ctx context.Context, input model.CreateExpenseInput) (model.CreateExpenseResult, error)
+	StartBankingReplacement(ctx context.Context, input model.StartBankingReplacementInput) (*model.BankingEnrollmentResult, error)
+	ConfirmBankingReplacement(ctx context.Context, input model.ConfirmBankingReplacementInput) (*model.BankingReplacementResult, error)
+	CancelBankingReplacement(ctx context.Context, input model.ConfirmBankingReplacementInput) (*model.BankingReplacementResult, error)
 	StartBankingEnrollment(ctx context.Context, input model.StartBankingEnrollmentInput) (*model.BankingEnrollmentResult, error)
 	FinishBankingEnrollment(ctx context.Context, input model.FinishBankingEnrollmentInput) (*model.BankingEnrollmentResult, error)
 	CancelBankingEnrollment(ctx context.Context, attemptID string) (*model.BankingEnrollmentResult, error)
@@ -646,6 +702,8 @@ type QueryResolver interface {
 	ExpenseOperation(ctx context.Context, groupID string, key ledger.OperationKey) (model.OperationResult, error)
 	HouseholdExpenses(ctx context.Context, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
 	GroupExpenses(ctx context.Context, groupID string, first int, after *string, filter *model.StructuredExpenseFilter) (model.ExpenseViewResult, error)
+	BankingReplacementPreview(ctx context.Context, input model.BankingReplacementRequest) (*model.BankingReplacementPreview, error)
+	BankingReplacementOperation(ctx context.Context, attemptID string) (*model.BankingReplacementResult, error)
 	BankingEnrollment(ctx context.Context, attemptID string) (*model.BankingEnrollmentResult, error)
 	BankingConnection(ctx context.Context, connectionID string) (*model.BankingConnectionResult, error)
 	BankingRepair(ctx context.Context, attemptID string) (*model.BankingEnrollmentResult, error)
@@ -1072,6 +1130,209 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingManagementResult.Code(childComplexity), true
+
+	case "BankingReplacementImpact.annotationCount":
+		if e.ComplexityRoot.BankingReplacementImpact.AnnotationCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.AnnotationCount(childComplexity), true
+	case "BankingReplacementImpact.count":
+		if e.ComplexityRoot.BankingReplacementImpact.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.Count(childComplexity), true
+	case "BankingReplacementImpact.fromDate":
+		if e.ComplexityRoot.BankingReplacementImpact.FromDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.FromDate(childComplexity), true
+	case "BankingReplacementImpact.pendingCount":
+		if e.ComplexityRoot.BankingReplacementImpact.PendingCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.PendingCount(childComplexity), true
+	case "BankingReplacementImpact.spendingMinor":
+		if e.ComplexityRoot.BankingReplacementImpact.SpendingMinor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.SpendingMinor(childComplexity), true
+	case "BankingReplacementImpact.throughDate":
+		if e.ComplexityRoot.BankingReplacementImpact.ThroughDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.ThroughDate(childComplexity), true
+	case "BankingReplacementImpact.unresolvedCount":
+		if e.ComplexityRoot.BankingReplacementImpact.UnresolvedCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementImpact.UnresolvedCount(childComplexity), true
+
+	case "BankingReplacementPreview.archived":
+		if e.ComplexityRoot.BankingReplacementPreview.Archived == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Archived(childComplexity), true
+	case "BankingReplacementPreview.code":
+		if e.ComplexityRoot.BankingReplacementPreview.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Code(childComplexity), true
+	case "BankingReplacementPreview.collectionState":
+		if e.ComplexityRoot.BankingReplacementPreview.CollectionState == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.CollectionState(childComplexity), true
+	case "BankingReplacementPreview.coverage":
+		if e.ComplexityRoot.BankingReplacementPreview.Coverage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Coverage(childComplexity), true
+	case "BankingReplacementPreview.coverageAfter":
+		if e.ComplexityRoot.BankingReplacementPreview.CoverageAfter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.CoverageAfter(childComplexity), true
+	case "BankingReplacementPreview.coverageThrough":
+		if e.ComplexityRoot.BankingReplacementPreview.CoverageThrough == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.CoverageThrough(childComplexity), true
+	case "BankingReplacementPreview.discrepancyCount":
+		if e.ComplexityRoot.BankingReplacementPreview.DiscrepancyCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.DiscrepancyCount(childComplexity), true
+	case "BankingReplacementPreview.intervals":
+		if e.ComplexityRoot.BankingReplacementPreview.Intervals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Intervals(childComplexity), true
+	case "BankingReplacementPreview.new":
+		if e.ComplexityRoot.BankingReplacementPreview.New == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.New(childComplexity), true
+	case "BankingReplacementPreview.oldAfterBoundary":
+		if e.ComplexityRoot.BankingReplacementPreview.OldAfterBoundary == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.OldAfterBoundary(childComplexity), true
+	case "BankingReplacementPreview.overlap":
+		if e.ComplexityRoot.BankingReplacementPreview.Overlap == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Overlap(childComplexity), true
+	case "BankingReplacementPreview.prior":
+		if e.ComplexityRoot.BankingReplacementPreview.Prior == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Prior(childComplexity), true
+	case "BankingReplacementPreview.proposed":
+		if e.ComplexityRoot.BankingReplacementPreview.Proposed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Proposed(childComplexity), true
+	case "BankingReplacementPreview.reportingRevision":
+		if e.ComplexityRoot.BankingReplacementPreview.ReportingRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.ReportingRevision(childComplexity), true
+	case "BankingReplacementPreview.retained":
+		if e.ComplexityRoot.BankingReplacementPreview.Retained == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Retained(childComplexity), true
+	case "BankingReplacementPreview.revisions":
+		if e.ComplexityRoot.BankingReplacementPreview.Revisions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementPreview.Revisions(childComplexity), true
+
+	case "BankingReplacementResult.code":
+		if e.ComplexityRoot.BankingReplacementResult.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementResult.Code(childComplexity), true
+	case "BankingReplacementResult.resultId":
+		if e.ComplexityRoot.BankingReplacementResult.ResultID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementResult.ResultID(childComplexity), true
+
+	case "BankingReplacementRevisions.annotation":
+		if e.ComplexityRoot.BankingReplacementRevisions.Annotation == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementRevisions.Annotation(childComplexity), true
+	case "BankingReplacementRevisions.data":
+		if e.ComplexityRoot.BankingReplacementRevisions.Data == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementRevisions.Data(childComplexity), true
+	case "BankingReplacementRevisions.import":
+		if e.ComplexityRoot.BankingReplacementRevisions.Import == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementRevisions.Import(childComplexity), true
+	case "BankingReplacementRevisions.lifecycle":
+		if e.ComplexityRoot.BankingReplacementRevisions.Lifecycle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementRevisions.Lifecycle(childComplexity), true
+	case "BankingReplacementRevisions.plan":
+		if e.ComplexityRoot.BankingReplacementRevisions.Plan == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReplacementRevisions.Plan(childComplexity), true
+
+	case "BankingReportingInterval.afterDate":
+		if e.ComplexityRoot.BankingReportingInterval.AfterDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReportingInterval.AfterDate(childComplexity), true
+	case "BankingReportingInterval.bindingId":
+		if e.ComplexityRoot.BankingReportingInterval.BindingID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReportingInterval.BindingID(childComplexity), true
+	case "BankingReportingInterval.throughDate":
+		if e.ComplexityRoot.BankingReportingInterval.ThroughDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReportingInterval.ThroughDate(childComplexity), true
 
 	case "Expense.allocations":
 		if e.ComplexityRoot.Expense.Allocations == nil {
@@ -2196,6 +2457,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CancelBankingEnrollment(childComplexity, args["attemptId"].(string)), true
+	case "Mutation.cancelBankingReplacement":
+		if e.ComplexityRoot.Mutation.CancelBankingReplacement == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelBankingReplacement_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CancelBankingReplacement(childComplexity, args["input"].(model.ConfirmBankingReplacementInput)), true
 	case "Mutation.changeBankingSelection":
 		if e.ComplexityRoot.Mutation.ChangeBankingSelection == nil {
 			break
@@ -2207,6 +2479,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ChangeBankingSelection(childComplexity, args["input"].(model.BankingSelectionInput)), true
+	case "Mutation.confirmBankingReplacement":
+		if e.ComplexityRoot.Mutation.ConfirmBankingReplacement == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_confirmBankingReplacement_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ConfirmBankingReplacement(childComplexity, args["input"].(model.ConfirmBankingReplacementInput)), true
 	case "Mutation.createExpense":
 		if e.ComplexityRoot.Mutation.CreateExpense == nil {
 			break
@@ -2383,6 +2666,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.StartBankingRepair(childComplexity, args["input"].(model.BankingFenceInput)), true
+	case "Mutation.startBankingReplacement":
+		if e.ComplexityRoot.Mutation.StartBankingReplacement == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startBankingReplacement_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.StartBankingReplacement(childComplexity, args["input"].(model.StartBankingReplacementInput)), true
 	case "Mutation.updateExpense":
 		if e.ComplexityRoot.Mutation.UpdateExpense == nil {
 			break
@@ -2667,6 +2961,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.BankingRepair(childComplexity, args["attemptId"].(string)), true
+	case "Query.bankingReplacementOperation":
+		if e.ComplexityRoot.Query.BankingReplacementOperation == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bankingReplacementOperation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.BankingReplacementOperation(childComplexity, args["attemptId"].(string)), true
+	case "Query.bankingReplacementPreview":
+		if e.ComplexityRoot.Query.BankingReplacementPreview == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bankingReplacementPreview_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.BankingReplacementPreview(childComplexity, args["input"].(model.BankingReplacementRequest)), true
 	case "Query.currentProfile":
 		if e.ComplexityRoot.Query.CurrentProfile == nil {
 			break
@@ -3119,7 +3435,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputActivityFilter,
 		ec.unmarshalInputBankingFenceInput,
+		ec.unmarshalInputBankingReplacementRequest,
+		ec.unmarshalInputBankingReplacementRevisionsInput,
 		ec.unmarshalInputBankingSelectionInput,
+		ec.unmarshalInputConfirmBankingReplacementInput,
 		ec.unmarshalInputCreateExpenseInput,
 		ec.unmarshalInputCreateGroupInput,
 		ec.unmarshalInputExactAllocationInput,
@@ -3130,6 +3449,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPercentageInput,
 		ec.unmarshalInputRecordRepaymentInput,
 		ec.unmarshalInputStartBankingEnrollmentInput,
+		ec.unmarshalInputStartBankingReplacementInput,
 		ec.unmarshalInputStructuredExpenseFilter,
 		ec.unmarshalInputUpdateExpenseInput,
 	)
@@ -3207,6 +3527,289 @@ func newExecutionContext(
 }
 
 var sources = []*ast.Source{
+	{Name: "../../../../packages/schema/banking-replacement.graphql", Input: `extend type Mutation {
+  """
+  Begin explicitly targeted same-account replacement using the ordinary enrollment uncertainty/cleanup engine. Finish with finishBankingEnrollment selecting exactly one authorized compatible account; it remains staged and noncontributing.
+  """
+  startBankingReplacement(
+    input: StartBankingReplacementInput!
+  ): BankingEnrollmentResult!
+  """
+  Publish a freshly previewed date-ownership plan and recovery manifest atomically. A conflict requires a new preview and confirmation; lost responses use bankingReplacementOperation with the same attempt.
+  """
+  confirmBankingReplacement(
+    input: ConfirmBankingReplacementInput!
+  ): BankingReplacementResult!
+  """
+  Fence a staged stream while preserving the current plan. This does not attest unchanged OAuth permission or provider removal.
+  """
+  cancelBankingReplacement(
+    input: ConfirmBankingReplacementInput!
+  ): BankingReplacementResult!
+}
+extend type Query {
+  """
+  Compute complete owner-only impacts from persisted import state. Unknown coverage differs from unknown import usability; no provider call or reporting change occurs.
+  """
+  bankingReplacementPreview(
+    input: BankingReplacementRequest!
+  ): BankingReplacementPreview!
+  """
+  Recover the original opaque plan/binding outcome for an owner-private durable replacement attempt. Absence does not prove failure.
+  """
+  bankingReplacementOperation(attemptId: ID!): BankingReplacementResult!
+}
+"""
+Client-known attempt and explicit existing logical account; names/masks never establish continuity.
+"""
+input StartBankingReplacementInput {
+  """
+  UUID known before any provider effect.
+  """
+  attemptId: ID!
+  """
+  Enabled owner's retained logical account, selected explicitly.
+  """
+  accountId: ID!
+}
+"""
+Bounded operations on the latest reporting plan.
+"""
+enum BankingReplacementAction {
+  """
+  Use the selected staged binding strictly after confirmed date D.
+  """
+  ACTIVATE
+  """
+  Change only the latest boundary, retaining every preceding interval.
+  """
+  CHANGE_BOUNDARY
+  """
+  Restore the immediately preceding saved plan without restoring collection authority.
+  """
+  RESTORE_PREDECESSOR
+}
+"""
+Explicit owner reporting choice; a posted-bank date is not an authorization date.
+"""
+input BankingReplacementRequest {
+  """
+  Existing logical account UUID.
+  """
+  accountId: ID!
+  """
+  Staged stream ID from bankingConnection; required only for ACTIVATE.
+  """
+  bindingId: ID
+  """
+  Activation or bounded latest-plan recovery.
+  """
+  action: BankingReplacementAction!
+  """
+  Real ISO YYYY-MM-DD, years 0001–9999 and no later than today in the saved reporting timezone; required except for restore.
+  """
+  transitionDate: String
+}
+"""
+Opaque independent preview guards; none grants provider authority.
+"""
+input BankingReplacementRevisionsInput {
+  """
+  Saved plan history digest.
+  """
+  plan: String!
+  """
+  Import state, revision and coverage digest.
+  """
+  import: String!
+  """
+  Source facts and discrepancy-state digest.
+  """
+  data: String!
+  """
+  All annotation revisions digest.
+  """
+  annotation: String!
+  """
+  Account, connection, selection, generation and reporting-timezone digest.
+  """
+  lifecycle: String!
+}
+"""
+Explicit confirmation binds the exact preview and canonical attempt input.
+"""
+input ConfirmBankingReplacementInput {
+  """
+  Client-known UUID; identical retry recovers, changed reuse conflicts.
+  """
+  attemptId: ID!
+  """
+  Exact intended action and boundary.
+  """
+  request: BankingReplacementRequest!
+  """
+  All revisions returned by the latest preview.
+  """
+  expected: BankingReplacementRevisionsInput!
+}
+"""
+Safe durable result with opaque identity only, never bank facts or notes.
+"""
+type BankingReplacementResult {
+  """
+  READY, PENDING, CONFLICT, NOT_FOUND, INVALID_INPUT, IMPORT_UNAVAILABLE, DATA_UNAVAILABLE, DATA_ERROR or safe access/availability status.
+  """
+  code: String!
+  """
+  Original plan or cancelled binding ID, present only for a successful outcome.
+  """
+  resultId: ID
+}
+"""
+Five opaque compare-and-swap values from one coherent persisted snapshot.
+"""
+type BankingReplacementRevisions {
+  """
+  Plan history.
+  """
+  plan: String!
+  """
+  Import usability and coverage.
+  """
+  import: String!
+  """
+  Source facts and notices.
+  """
+  data: String!
+  """
+  Annotation history.
+  """
+  annotation: String!
+  """
+  Lifecycle, selection and saved timezone.
+  """
+  lifecycle: String!
+}
+"""
+One disjoint posted-date reporting owner; unbounded endpoints are null.
+"""
+type BankingReportingInterval {
+  """
+  Original source binding identity.
+  """
+  bindingId: ID!
+  """
+  Exclusive lower posted-date boundary.
+  """
+  afterDate: String
+  """
+  Inclusive upper posted-date boundary.
+  """
+  throughDate: String
+}
+"""
+Complete impact independent of client pagination; pending never contributes to spending.
+"""
+type BankingReplacementImpact {
+  """
+  Number of source identities, with no archive double contribution.
+  """
+  count: Int!
+  """
+  Earliest visible posted/pending date; not a coverage assertion.
+  """
+  fromDate: String
+  """
+  Latest visible posted/pending date; not a coverage assertion.
+  """
+  throughDate: String
+  """
+  Exact signed USD minor-unit spending using latest valid explicit classification and exclusion. Unresolved rows contribute nothing.
+  """
+  spendingMinor: String!
+  """
+  Rows with effective annotations; archive-only edits remain private and noncontributing.
+  """
+  annotationCount: Int!
+  """
+  Pending source count, never spending.
+  """
+  pendingCount: Int!
+  """
+  Posted nonexcluded rows without valid classification.
+  """
+  unresolvedCount: Int!
+}
+"""
+Server-derived impact; optional fields are present only after a successful preview.
+"""
+type BankingReplacementPreview {
+  """
+  READY or safe validation, conflict, usability, access or availability status.
+  """
+  code: String!
+  """
+  Snapshot guards for explicit confirmation.
+  """
+  revisions: BankingReplacementRevisions
+  """
+  Shared reporting revision invalidating downstream list/count/summary cursors together.
+  """
+  reportingRevision: String
+  """
+  Proposed disjoint date owners.
+  """
+  intervals: [BankingReportingInterval!]
+  """
+  Complete prior canonical set.
+  """
+  prior: BankingReplacementImpact
+  """
+  Complete proposed canonical set.
+  """
+  proposed: BankingReplacementImpact
+  """
+  Original identities retained as current.
+  """
+  retained: BankingReplacementImpact
+  """
+  Identities entering current reporting.
+  """
+  new: BankingReplacementImpact
+  """
+  Current identities leaving reporting; all remain archive referenced.
+  """
+  archived: BankingReplacementImpact
+  """
+  New-binding posted rows excluded by preserved dates; overlap does not prove duplication.
+  """
+  overlap: BankingReplacementImpact
+  """
+  Prior posted rows after D, shown explicitly before replacement.
+  """
+  oldAfterBoundary: BankingReplacementImpact
+  """
+  unknown, known_partial or known_gap; visible row dates never establish complete coverage.
+  """
+  coverage: String
+  """
+  Server-established exclusive coverage start, when known.
+  """
+  coverageAfter: String
+  """
+  Server-established inclusive coverage end, when known.
+  """
+  coverageThrough: String
+  """
+  Stored historical/cross-boundary discrepancy count, never silently reconciled.
+  """
+  discrepancyCount: Int
+  """
+  Reporting/connection/permission status; a restored retired source remains retired.
+  """
+  collectionState: String
+}
+`, BuiltIn: false},
 	{Name: "../../../../packages/schema/banking.graphql", Input: `extend type Query {
   """
   Recover an owner-private enrollment attempt; reauthorizes the enabled actor and returns no provider tokens.
@@ -6510,6 +7113,102 @@ func (ec *executionContext) childFields_BankingManagementResult(ctx context.Cont
 	return nil, fmt.Errorf("no field named %q was found under type BankingManagementResult", field.Name)
 }
 
+func (ec *executionContext) childFields_BankingReplacementImpact(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "count":
+		return ec.fieldContext_BankingReplacementImpact_count(ctx, field)
+	case "fromDate":
+		return ec.fieldContext_BankingReplacementImpact_fromDate(ctx, field)
+	case "throughDate":
+		return ec.fieldContext_BankingReplacementImpact_throughDate(ctx, field)
+	case "spendingMinor":
+		return ec.fieldContext_BankingReplacementImpact_spendingMinor(ctx, field)
+	case "annotationCount":
+		return ec.fieldContext_BankingReplacementImpact_annotationCount(ctx, field)
+	case "pendingCount":
+		return ec.fieldContext_BankingReplacementImpact_pendingCount(ctx, field)
+	case "unresolvedCount":
+		return ec.fieldContext_BankingReplacementImpact_unresolvedCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingReplacementImpact", field.Name)
+}
+
+func (ec *executionContext) childFields_BankingReplacementPreview(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "code":
+		return ec.fieldContext_BankingReplacementPreview_code(ctx, field)
+	case "revisions":
+		return ec.fieldContext_BankingReplacementPreview_revisions(ctx, field)
+	case "reportingRevision":
+		return ec.fieldContext_BankingReplacementPreview_reportingRevision(ctx, field)
+	case "intervals":
+		return ec.fieldContext_BankingReplacementPreview_intervals(ctx, field)
+	case "prior":
+		return ec.fieldContext_BankingReplacementPreview_prior(ctx, field)
+	case "proposed":
+		return ec.fieldContext_BankingReplacementPreview_proposed(ctx, field)
+	case "retained":
+		return ec.fieldContext_BankingReplacementPreview_retained(ctx, field)
+	case "new":
+		return ec.fieldContext_BankingReplacementPreview_new(ctx, field)
+	case "archived":
+		return ec.fieldContext_BankingReplacementPreview_archived(ctx, field)
+	case "overlap":
+		return ec.fieldContext_BankingReplacementPreview_overlap(ctx, field)
+	case "oldAfterBoundary":
+		return ec.fieldContext_BankingReplacementPreview_oldAfterBoundary(ctx, field)
+	case "coverage":
+		return ec.fieldContext_BankingReplacementPreview_coverage(ctx, field)
+	case "coverageAfter":
+		return ec.fieldContext_BankingReplacementPreview_coverageAfter(ctx, field)
+	case "coverageThrough":
+		return ec.fieldContext_BankingReplacementPreview_coverageThrough(ctx, field)
+	case "discrepancyCount":
+		return ec.fieldContext_BankingReplacementPreview_discrepancyCount(ctx, field)
+	case "collectionState":
+		return ec.fieldContext_BankingReplacementPreview_collectionState(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingReplacementPreview", field.Name)
+}
+
+func (ec *executionContext) childFields_BankingReplacementResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "code":
+		return ec.fieldContext_BankingReplacementResult_code(ctx, field)
+	case "resultId":
+		return ec.fieldContext_BankingReplacementResult_resultId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingReplacementResult", field.Name)
+}
+
+func (ec *executionContext) childFields_BankingReplacementRevisions(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "plan":
+		return ec.fieldContext_BankingReplacementRevisions_plan(ctx, field)
+	case "import":
+		return ec.fieldContext_BankingReplacementRevisions_import(ctx, field)
+	case "data":
+		return ec.fieldContext_BankingReplacementRevisions_data(ctx, field)
+	case "annotation":
+		return ec.fieldContext_BankingReplacementRevisions_annotation(ctx, field)
+	case "lifecycle":
+		return ec.fieldContext_BankingReplacementRevisions_lifecycle(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingReplacementRevisions", field.Name)
+}
+
+func (ec *executionContext) childFields_BankingReportingInterval(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "bindingId":
+		return ec.fieldContext_BankingReportingInterval_bindingId(ctx, field)
+	case "afterDate":
+		return ec.fieldContext_BankingReportingInterval_afterDate(ctx, field)
+	case "throughDate":
+		return ec.fieldContext_BankingReportingInterval_throughDate(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingReportingInterval", field.Name)
+}
+
 func (ec *executionContext) childFields_Expense(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -7148,12 +7847,40 @@ func (ec *executionContext) field_Mutation_cancelBankingEnrollment_args(ctx cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_cancelBankingReplacement_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.ConfirmBankingReplacementInput, error) {
+			return ec.unmarshalNConfirmBankingReplacementInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐConfirmBankingReplacementInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_changeBankingSelection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.BankingSelectionInput, error) {
 			return ec.unmarshalNBankingSelectionInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSelectionInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_confirmBankingReplacement_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.ConfirmBankingReplacementInput, error) {
+			return ec.unmarshalNConfirmBankingReplacementInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐConfirmBankingReplacementInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -7466,6 +8193,20 @@ func (ec *executionContext) field_Mutation_startBankingRepair_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_startBankingReplacement_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.StartBankingReplacementInput, error) {
+			return ec.unmarshalNStartBankingReplacementInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐStartBankingReplacementInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateExpense_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7643,6 +8384,34 @@ func (ec *executionContext) field_Query_bankingRepair_args(ctx context.Context, 
 		return nil, err
 	}
 	args["attemptId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bankingReplacementOperation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "attemptId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["attemptId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bankingReplacementPreview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.BankingReplacementRequest, error) {
+			return ec.unmarshalNBankingReplacementRequest2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -9620,6 +10389,846 @@ func (ec *executionContext) _BankingManagementResult_code(ctx context.Context, f
 }
 func (ec *executionContext) fieldContext_BankingManagementResult_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingManagementResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_count(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_fromDate(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_fromDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FromDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_fromDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_throughDate(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_throughDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThroughDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_throughDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_spendingMinor(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_spendingMinor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SpendingMinor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_spendingMinor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_annotationCount(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_annotationCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AnnotationCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_annotationCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_pendingCount(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_pendingCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PendingCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_pendingCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementImpact_unresolvedCount(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementImpact) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementImpact_unresolvedCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UnresolvedCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementImpact_unresolvedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementImpact", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_code(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_revisions(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_revisions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revisions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementRevisions) graphql.Marshaler {
+			return ec.marshalOBankingReplacementRevisions2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRevisions(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_revisions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementRevisions(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_reportingRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_reportingRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReportingRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_reportingRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_intervals(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_intervals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Intervals, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.BankingReportingInterval) graphql.Marshaler {
+			return ec.marshalOBankingReportingInterval2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingIntervalᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_intervals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReportingInterval(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_prior(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_prior(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Prior, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_prior(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_proposed(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_proposed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Proposed, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_proposed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_retained(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_retained(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Retained, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_retained(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_new(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_new(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.New, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_new(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_archived(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_archived(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Archived, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_archived(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_overlap(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_overlap(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Overlap, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_overlap(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_oldAfterBoundary(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_oldAfterBoundary(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OldAfterBoundary, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+			return ec.marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_oldAfterBoundary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingReplacementPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementImpact(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingReplacementPreview_coverage(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_coverage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Coverage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_coverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_coverageAfter(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_coverageAfter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverageAfter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_coverageAfter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_coverageThrough(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_coverageThrough(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverageThrough, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_coverageThrough(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_discrepancyCount(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_discrepancyCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DiscrepancyCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_discrepancyCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementPreview_collectionState(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementPreview_collectionState(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CollectionState, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementPreview_collectionState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementPreview", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementResult_code(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementResult_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementResult_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementResult_resultId(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementResult_resultId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ResultID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementResult_resultId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementResult", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementRevisions_plan(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementRevisions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementRevisions_plan(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Plan, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementRevisions_plan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementRevisions_import(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementRevisions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementRevisions_import(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Import, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementRevisions_import(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementRevisions_data(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementRevisions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementRevisions_data(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Data, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementRevisions_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementRevisions_annotation(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementRevisions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementRevisions_annotation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Annotation, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementRevisions_annotation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReplacementRevisions_lifecycle(ctx context.Context, field graphql.CollectedField, obj *model.BankingReplacementRevisions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReplacementRevisions_lifecycle(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Lifecycle, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReplacementRevisions_lifecycle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReportingInterval_bindingId(ctx context.Context, field graphql.CollectedField, obj *model.BankingReportingInterval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReportingInterval_bindingId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BindingID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReportingInterval_bindingId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReportingInterval", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReportingInterval_afterDate(ctx context.Context, field graphql.CollectedField, obj *model.BankingReportingInterval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReportingInterval_afterDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AfterDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReportingInterval_afterDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReportingInterval", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReportingInterval_throughDate(ctx context.Context, field graphql.CollectedField, obj *model.BankingReportingInterval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReportingInterval_throughDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThroughDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReportingInterval_throughDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReportingInterval", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Expense_id(ctx context.Context, field graphql.CollectedField, obj *model.Expense) (ret graphql.Marshaler) {
@@ -14062,6 +15671,138 @@ func (ec *executionContext) fieldContext_Mutation_createExpense(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_startBankingReplacement(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_startBankingReplacement(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().StartBankingReplacement(ctx, fc.Args["input"].(model.StartBankingReplacementInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingEnrollmentResult) graphql.Marshaler {
+			return ec.marshalNBankingEnrollmentResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingEnrollmentResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_startBankingReplacement(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingEnrollmentResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_startBankingReplacement_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_confirmBankingReplacement(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_confirmBankingReplacement(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ConfirmBankingReplacement(ctx, fc.Args["input"].(model.ConfirmBankingReplacementInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementResult) graphql.Marshaler {
+			return ec.marshalNBankingReplacementResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_confirmBankingReplacement(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_confirmBankingReplacement_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cancelBankingReplacement(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_cancelBankingReplacement(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CancelBankingReplacement(ctx, fc.Args["input"].(model.ConfirmBankingReplacementInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementResult) graphql.Marshaler {
+			return ec.marshalNBankingReplacementResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_cancelBankingReplacement(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelBankingReplacement_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_startBankingEnrollment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16049,6 +17790,94 @@ func (ec *executionContext) fieldContext_Query_groupExpenses(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_groupExpenses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankingReplacementPreview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_bankingReplacementPreview(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().BankingReplacementPreview(ctx, fc.Args["input"].(model.BankingReplacementRequest))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementPreview) graphql.Marshaler {
+			return ec.marshalNBankingReplacementPreview2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementPreview(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_bankingReplacementPreview(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementPreview(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_bankingReplacementPreview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankingReplacementOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_bankingReplacementOperation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().BankingReplacementOperation(ctx, fc.Args["attemptId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingReplacementResult) graphql.Marshaler {
+			return ec.marshalNBankingReplacementResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_bankingReplacementOperation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReplacementResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_bankingReplacementOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18924,6 +20753,115 @@ func (ec *executionContext) unmarshalInputBankingFenceInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputBankingReplacementRequest(ctx context.Context, obj any) (model.BankingReplacementRequest, error) {
+	var it model.BankingReplacementRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accountId", "bindingId", "action", "transitionDate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountID = data
+		case "bindingId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bindingId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BindingID = data
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNBankingReplacementAction2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementAction(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "transitionDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transitionDate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TransitionDate = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputBankingReplacementRevisionsInput(ctx context.Context, obj any) (model.BankingReplacementRevisionsInput, error) {
+	var it model.BankingReplacementRevisionsInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"plan", "import", "data", "annotation", "lifecycle"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "plan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("plan"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Plan = data
+		case "import":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("import"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Import = data
+		case "data":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("data"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Data = data
+		case "annotation":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("annotation"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Annotation = data
+		case "lifecycle":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lifecycle"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Lifecycle = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBankingSelectionInput(ctx context.Context, obj any) (model.BankingSelectionInput, error) {
 	var it model.BankingSelectionInput
 	if obj == nil {
@@ -18970,6 +20908,50 @@ func (ec *executionContext) unmarshalInputBankingSelectionInput(ctx context.Cont
 				return it, err
 			}
 			it.AccountIds = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputConfirmBankingReplacementInput(ctx context.Context, obj any) (model.ConfirmBankingReplacementInput, error) {
+	var it model.ConfirmBankingReplacementInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"attemptId", "request", "expected"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "attemptId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("attemptId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AttemptID = data
+		case "request":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
+			data, err := ec.unmarshalNBankingReplacementRequest2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRequest(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Request = data
+		case "expected":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expected"))
+			data, err := ec.unmarshalNBankingReplacementRevisionsInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRevisionsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Expected = data
 		}
 	}
 	return it, nil
@@ -19509,6 +21491,43 @@ func (ec *executionContext) unmarshalInputStartBankingEnrollmentInput(ctx contex
 				return it, err
 			}
 			it.Intent = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputStartBankingReplacementInput(ctx context.Context, obj any) (model.StartBankingReplacementInput, error) {
+	var it model.StartBankingReplacementInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"attemptId", "accountId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "attemptId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("attemptId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AttemptID = data
+		case "accountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountID = data
 		}
 	}
 	return it, nil
@@ -21237,6 +23256,336 @@ func (ec *executionContext) _BankingManagementResult(ctx context.Context, sel as
 		case "code":
 			out.Values[i] = ec._BankingManagementResult_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingReplacementImpactImplementors = []string{"BankingReplacementImpact"}
+
+func (ec *executionContext) _BankingReplacementImpact(ctx context.Context, sel ast.SelectionSet, obj *model.BankingReplacementImpact) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingReplacementImpactImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingReplacementImpact")
+		case "count":
+			out.Values[i] = ec._BankingReplacementImpact_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fromDate":
+			out.Values[i] = ec._BankingReplacementImpact_fromDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "throughDate":
+			out.Values[i] = ec._BankingReplacementImpact_throughDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "spendingMinor":
+			out.Values[i] = ec._BankingReplacementImpact_spendingMinor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "annotationCount":
+			out.Values[i] = ec._BankingReplacementImpact_annotationCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pendingCount":
+			out.Values[i] = ec._BankingReplacementImpact_pendingCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unresolvedCount":
+			out.Values[i] = ec._BankingReplacementImpact_unresolvedCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingReplacementPreviewImplementors = []string{"BankingReplacementPreview"}
+
+func (ec *executionContext) _BankingReplacementPreview(ctx context.Context, sel ast.SelectionSet, obj *model.BankingReplacementPreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingReplacementPreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingReplacementPreview")
+		case "code":
+			out.Values[i] = ec._BankingReplacementPreview_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revisions":
+			out.Values[i] = ec._BankingReplacementPreview_revisions(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reportingRevision":
+			out.Values[i] = ec._BankingReplacementPreview_reportingRevision(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "intervals":
+			out.Values[i] = ec._BankingReplacementPreview_intervals(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "prior":
+			out.Values[i] = ec._BankingReplacementPreview_prior(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "proposed":
+			out.Values[i] = ec._BankingReplacementPreview_proposed(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "retained":
+			out.Values[i] = ec._BankingReplacementPreview_retained(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "new":
+			out.Values[i] = ec._BankingReplacementPreview_new(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "archived":
+			out.Values[i] = ec._BankingReplacementPreview_archived(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "overlap":
+			out.Values[i] = ec._BankingReplacementPreview_overlap(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "oldAfterBoundary":
+			out.Values[i] = ec._BankingReplacementPreview_oldAfterBoundary(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverage":
+			out.Values[i] = ec._BankingReplacementPreview_coverage(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverageAfter":
+			out.Values[i] = ec._BankingReplacementPreview_coverageAfter(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverageThrough":
+			out.Values[i] = ec._BankingReplacementPreview_coverageThrough(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "discrepancyCount":
+			out.Values[i] = ec._BankingReplacementPreview_discrepancyCount(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "collectionState":
+			out.Values[i] = ec._BankingReplacementPreview_collectionState(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingReplacementResultImplementors = []string{"BankingReplacementResult"}
+
+func (ec *executionContext) _BankingReplacementResult(ctx context.Context, sel ast.SelectionSet, obj *model.BankingReplacementResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingReplacementResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingReplacementResult")
+		case "code":
+			out.Values[i] = ec._BankingReplacementResult_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resultId":
+			out.Values[i] = ec._BankingReplacementResult_resultId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingReplacementRevisionsImplementors = []string{"BankingReplacementRevisions"}
+
+func (ec *executionContext) _BankingReplacementRevisions(ctx context.Context, sel ast.SelectionSet, obj *model.BankingReplacementRevisions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingReplacementRevisionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingReplacementRevisions")
+		case "plan":
+			out.Values[i] = ec._BankingReplacementRevisions_plan(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "import":
+			out.Values[i] = ec._BankingReplacementRevisions_import(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "data":
+			out.Values[i] = ec._BankingReplacementRevisions_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "annotation":
+			out.Values[i] = ec._BankingReplacementRevisions_annotation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lifecycle":
+			out.Values[i] = ec._BankingReplacementRevisions_lifecycle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingReportingIntervalImplementors = []string{"BankingReportingInterval"}
+
+func (ec *executionContext) _BankingReportingInterval(ctx context.Context, sel ast.SelectionSet, obj *model.BankingReportingInterval) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingReportingIntervalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingReportingInterval")
+		case "bindingId":
+			out.Values[i] = ec._BankingReportingInterval_bindingId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "afterDate":
+			out.Values[i] = ec._BankingReportingInterval_afterDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "throughDate":
+			out.Values[i] = ec._BankingReportingInterval_throughDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -23388,6 +25737,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "startBankingReplacement":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_startBankingReplacement(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "confirmBankingReplacement":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_confirmBankingReplacement(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cancelBankingReplacement":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelBankingReplacement(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "startBankingEnrollment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_startBankingEnrollment(ctx, field)
@@ -24222,6 +26592,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_groupExpenses(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "bankingReplacementPreview":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankingReplacementPreview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "bankingReplacementOperation":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankingReplacementOperation(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -25794,6 +28208,61 @@ func (ec *executionContext) marshalNBankingManagementResult2ᚖgithubᚗcomᚋha
 	return ec._BankingManagementResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBankingReplacementAction2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementAction(ctx context.Context, v any) (model.BankingReplacementAction, error) {
+	var res model.BankingReplacementAction
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingReplacementAction2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementAction(ctx context.Context, sel ast.SelectionSet, v model.BankingReplacementAction) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNBankingReplacementPreview2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementPreview(ctx context.Context, sel ast.SelectionSet, v *model.BankingReplacementPreview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankingReplacementPreview(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNBankingReplacementRequest2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRequest(ctx context.Context, v any) (model.BankingReplacementRequest, error) {
+	res, err := ec.unmarshalInputBankingReplacementRequest(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNBankingReplacementRequest2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRequest(ctx context.Context, v any) (*model.BankingReplacementRequest, error) {
+	res, err := ec.unmarshalInputBankingReplacementRequest(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingReplacementResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementResult(ctx context.Context, sel ast.SelectionSet, v *model.BankingReplacementResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankingReplacementResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNBankingReplacementRevisionsInput2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRevisionsInput(ctx context.Context, v any) (*model.BankingReplacementRevisionsInput, error) {
+	res, err := ec.unmarshalInputBankingReplacementRevisionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingReportingInterval2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingInterval(ctx context.Context, sel ast.SelectionSet, v *model.BankingReportingInterval) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankingReportingInterval(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBankingSelectionInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSelectionInput(ctx context.Context, v any) (model.BankingSelectionInput, error) {
 	res, err := ec.unmarshalInputBankingSelectionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -25823,6 +28292,11 @@ func (ec *executionContext) unmarshalNCategory2githubᚗcomᚋhaggaikaundaᚋkam
 
 func (ec *executionContext) marshalNCategory2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCategory(ctx context.Context, sel ast.SelectionSet, v model.Category) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNConfirmBankingReplacementInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐConfirmBankingReplacementInput(ctx context.Context, v any) (model.ConfirmBankingReplacementInput, error) {
+	res, err := ec.unmarshalInputConfirmBankingReplacementInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCreateExpenseInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐCreateExpenseInput(ctx context.Context, v any) (model.CreateExpenseInput, error) {
@@ -26720,6 +29194,11 @@ func (ec *executionContext) unmarshalNStartBankingEnrollmentInput2githubᚗcom�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNStartBankingReplacementInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐStartBankingReplacementInput(ctx context.Context, v any) (model.StartBankingReplacementInput, error) {
+	res, err := ec.unmarshalInputStartBankingReplacementInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -26963,6 +29442,39 @@ func (ec *executionContext) marshalOBankingConnection2ᚖgithubᚗcomᚋhaggaika
 		return graphql.Null
 	}
 	return ec._BankingConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOBankingReplacementImpact2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementImpact(ctx context.Context, sel ast.SelectionSet, v *model.BankingReplacementImpact) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._BankingReplacementImpact(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOBankingReplacementRevisions2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReplacementRevisions(ctx context.Context, sel ast.SelectionSet, v *model.BankingReplacementRevisions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._BankingReplacementRevisions(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOBankingReportingInterval2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingIntervalᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BankingReportingInterval) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBankingReportingInterval2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingInterval(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {

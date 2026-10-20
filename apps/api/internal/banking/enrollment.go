@@ -63,10 +63,11 @@ func (EnrollmentOutcome) String() string { return "[redacted banking enrollment 
 func (o EnrollmentOutcome) GoString() string { return o.String() }
 
 // StartEnrollmentInput freezes different-account versus existing-account intent.
-// Existing intent can only return replacement-required, never activate replacement.
+// ReplacementAccountID explicitly reserves noncontributing staging for an owned account.
 type StartEnrollmentInput struct {
-	AttemptID uuid.UUID
-	Intent    string
+	AttemptID            uuid.UUID
+	Intent               string
+	ReplacementAccountID uuid.UUID `json:",omitempty"`
 }
 
 // FinishEnrollmentInput contains the explicit selected provider account IDs and
@@ -121,10 +122,27 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 	if input.AttemptID == uuid.Nil || (input.Intent != "different" && input.Intent != "existing") {
 		return EnrollmentOutcome{Code: "INVALID_INPUT"}
 	}
-	canonical, _ := json.Marshal(struct {
-		Input       StartEnrollmentInput
-		Environment string
-	}{input, s.config.Environment})
+	var canonical []byte
+	if input.ReplacementAccountID == uuid.Nil {
+		canonical, _ = json.Marshal(struct {
+			Input struct {
+				AttemptID uuid.UUID
+				Intent    string
+			}
+			Environment string
+		}{struct {
+			AttemptID uuid.UUID
+			Intent    string
+		}{input.AttemptID, input.Intent}, s.config.Environment})
+	} else {
+		if input.Intent != "existing" {
+			return EnrollmentOutcome{Code: "INVALID_INPUT"}
+		}
+		canonical, _ = json.Marshal(struct {
+			Input       StartEnrollmentInput
+			Environment string
+		}{input, s.config.Environment})
+	}
 	var e enrollmentRecord
 	code := ""
 	claimed := false
@@ -163,7 +181,12 @@ func (s *EnrollmentService) Start(ctx context.Context, input StartEnrollmentInpu
 				return nil
 			}
 			webhook := s.config.WebhookOrigin + "/banking/webhooks/" + input.AttemptID.String()
-			if err = tx.QueryRow(ctx, `SELECT app.banking_enrollment_start($1,$2,$3,$4,$5,$6)`, input.AttemptID, s.config.Environment, digest, version, input.Intent, webhook).Scan(&code); err != nil {
+			if input.ReplacementAccountID != uuid.Nil {
+				err = tx.QueryRow(ctx, `SELECT app.banking_replacement_enrollment_start($1,$2,$3,$4,$5,$6)`, input.AttemptID, s.config.Environment, digest, version, webhook, input.ReplacementAccountID).Scan(&code)
+			} else {
+				err = tx.QueryRow(ctx, `SELECT app.banking_enrollment_start($1,$2,$3,$4,$5,$6)`, input.AttemptID, s.config.Environment, digest, version, input.Intent, webhook).Scan(&code)
+			}
+			if err != nil {
 				return err
 			}
 			if code == "NOT_FOUND" || code == "CONFLICT" || code == "ATTEMPT_IN_PROGRESS" {
@@ -441,7 +464,7 @@ func (s *EnrollmentService) Accounts(ctx context.Context, connection uuid.UUID) 
 			return nil
 		}
 		code = "READY"
-		rows, err := tx.Query(ctx, `SELECT a.id,b.id,b.connection_id,m.display_name,a.kind,m.currency,m.requested_history_days,a.selected,b.provider_account_id FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 ORDER BY a.id`, connection)
+		rows, err := tx.Query(ctx, `SELECT a.id,b.id,b.connection_id,m.display_name,a.kind,m.currency,m.requested_history_days,(a.selected AND b.reporting_state IN('current','staged') AND NOT b.collection_stopped),b.provider_account_id FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id JOIN app.banking_enrollment_accounts m ON m.binding_id=b.id WHERE b.connection_id=$1 ORDER BY a.id`, connection)
 		if err != nil {
 			return err
 		}

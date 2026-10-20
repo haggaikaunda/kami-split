@@ -70,6 +70,7 @@ mv "$stage/supabase/migrations/20261017010000_banking_store.sql" "$stage/banking
 mv "$stage/supabase/migrations/20261018000000_banking_worker.sql" "$stage/banking-worker.sql"
 mv "$stage/supabase/migrations/20261019000000_banking_enrollment.sql" "$stage/banking-enrollment.sql"
 mv "$stage/supabase/migrations/20261020030000_banking_lifecycle.sql" "$stage/banking-lifecycle.sql"
+mv "$stage/supabase/migrations/20261020040000_banking_replacement.sql" "$stage/banking-replacement.sql"
 mv "$stage/supabase/migrations/20261020020000_reporting_timezone.sql" "$stage/reporting-timezone.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
@@ -138,6 +139,10 @@ scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/banking_lifecycle_upgraded.sql
 # Repeating the same ordinary push must be a no-op, without out-of-order flags.
 scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/banking_replacement_upgrade.sql
+mv "$stage/banking-replacement.sql" "$stage/supabase/migrations/20261020040000_banking_replacement.sql"
+scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/banking_replacement_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"

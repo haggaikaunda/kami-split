@@ -1,0 +1,282 @@
+extend type Mutation {
+  """
+  Begin explicitly targeted same-account replacement using the ordinary enrollment uncertainty/cleanup engine. Finish with finishBankingEnrollment selecting exactly one authorized compatible account; it remains staged and noncontributing.
+  """
+  startBankingReplacement(
+    input: StartBankingReplacementInput!
+  ): BankingEnrollmentResult!
+  """
+  Publish a freshly previewed date-ownership plan and recovery manifest atomically. A conflict requires a new preview and confirmation; lost responses use bankingReplacementOperation with the same attempt.
+  """
+  confirmBankingReplacement(
+    input: ConfirmBankingReplacementInput!
+  ): BankingReplacementResult!
+  """
+  Fence a staged stream while preserving the current plan. This does not attest unchanged OAuth permission or provider removal.
+  """
+  cancelBankingReplacement(
+    input: ConfirmBankingReplacementInput!
+  ): BankingReplacementResult!
+}
+extend type Query {
+  """
+  Compute complete owner-only impacts from persisted import state. Unknown coverage differs from unknown import usability; no provider call or reporting change occurs.
+  """
+  bankingReplacementPreview(
+    input: BankingReplacementRequest!
+  ): BankingReplacementPreview!
+  """
+  Recover the original opaque plan/binding outcome for an owner-private durable replacement attempt. Absence does not prove failure.
+  """
+  bankingReplacementOperation(attemptId: ID!): BankingReplacementResult!
+}
+"""
+Client-known attempt and explicit existing logical account; names/masks never establish continuity.
+"""
+input StartBankingReplacementInput {
+  """
+  UUID known before any provider effect.
+  """
+  attemptId: ID!
+  """
+  Enabled owner's retained logical account, selected explicitly.
+  """
+  accountId: ID!
+}
+"""
+Bounded operations on the latest reporting plan.
+"""
+enum BankingReplacementAction {
+  """
+  Use the selected staged binding strictly after confirmed date D.
+  """
+  ACTIVATE
+  """
+  Change only the latest boundary, retaining every preceding interval.
+  """
+  CHANGE_BOUNDARY
+  """
+  Restore the immediately preceding saved plan without restoring collection authority.
+  """
+  RESTORE_PREDECESSOR
+}
+"""
+Explicit owner reporting choice; a posted-bank date is not an authorization date.
+"""
+input BankingReplacementRequest {
+  """
+  Existing logical account UUID.
+  """
+  accountId: ID!
+  """
+  Staged stream ID from bankingConnection; required only for ACTIVATE.
+  """
+  bindingId: ID
+  """
+  Activation or bounded latest-plan recovery.
+  """
+  action: BankingReplacementAction!
+  """
+  Real ISO YYYY-MM-DD, years 0001–9999 and no later than today in the saved reporting timezone; required except for restore.
+  """
+  transitionDate: String
+}
+"""
+Opaque independent preview guards; none grants provider authority.
+"""
+input BankingReplacementRevisionsInput {
+  """
+  Saved plan history digest.
+  """
+  plan: String!
+  """
+  Import state, revision and coverage digest.
+  """
+  import: String!
+  """
+  Source facts and discrepancy-state digest.
+  """
+  data: String!
+  """
+  All annotation revisions digest.
+  """
+  annotation: String!
+  """
+  Account, connection, selection, generation and reporting-timezone digest.
+  """
+  lifecycle: String!
+}
+"""
+Explicit confirmation binds the exact preview and canonical attempt input.
+"""
+input ConfirmBankingReplacementInput {
+  """
+  Client-known UUID; identical retry recovers, changed reuse conflicts.
+  """
+  attemptId: ID!
+  """
+  Exact intended action and boundary.
+  """
+  request: BankingReplacementRequest!
+  """
+  All revisions returned by the latest preview.
+  """
+  expected: BankingReplacementRevisionsInput!
+}
+"""
+Safe durable result with opaque identity only, never bank facts or notes.
+"""
+type BankingReplacementResult {
+  """
+  READY, PENDING, CONFLICT, NOT_FOUND, INVALID_INPUT, IMPORT_UNAVAILABLE, DATA_UNAVAILABLE, DATA_ERROR or safe access/availability status.
+  """
+  code: String!
+  """
+  Original plan or cancelled binding ID, present only for a successful outcome.
+  """
+  resultId: ID
+}
+"""
+Five opaque compare-and-swap values from one coherent persisted snapshot.
+"""
+type BankingReplacementRevisions {
+  """
+  Plan history.
+  """
+  plan: String!
+  """
+  Import usability and coverage.
+  """
+  import: String!
+  """
+  Source facts and notices.
+  """
+  data: String!
+  """
+  Annotation history.
+  """
+  annotation: String!
+  """
+  Lifecycle, selection and saved timezone.
+  """
+  lifecycle: String!
+}
+"""
+One disjoint posted-date reporting owner; unbounded endpoints are null.
+"""
+type BankingReportingInterval {
+  """
+  Original source binding identity.
+  """
+  bindingId: ID!
+  """
+  Exclusive lower posted-date boundary.
+  """
+  afterDate: String
+  """
+  Inclusive upper posted-date boundary.
+  """
+  throughDate: String
+}
+"""
+Complete impact independent of client pagination; pending never contributes to spending.
+"""
+type BankingReplacementImpact {
+  """
+  Number of source identities, with no archive double contribution.
+  """
+  count: Int!
+  """
+  Earliest visible posted/pending date; not a coverage assertion.
+  """
+  fromDate: String
+  """
+  Latest visible posted/pending date; not a coverage assertion.
+  """
+  throughDate: String
+  """
+  Exact signed USD minor-unit spending using latest valid explicit classification and exclusion. Unresolved rows contribute nothing.
+  """
+  spendingMinor: String!
+  """
+  Rows with effective annotations; archive-only edits remain private and noncontributing.
+  """
+  annotationCount: Int!
+  """
+  Pending source count, never spending.
+  """
+  pendingCount: Int!
+  """
+  Posted nonexcluded rows without valid classification.
+  """
+  unresolvedCount: Int!
+}
+"""
+Server-derived impact; optional fields are present only after a successful preview.
+"""
+type BankingReplacementPreview {
+  """
+  READY or safe validation, conflict, usability, access or availability status.
+  """
+  code: String!
+  """
+  Snapshot guards for explicit confirmation.
+  """
+  revisions: BankingReplacementRevisions
+  """
+  Shared reporting revision invalidating downstream list/count/summary cursors together.
+  """
+  reportingRevision: String
+  """
+  Proposed disjoint date owners.
+  """
+  intervals: [BankingReportingInterval!]
+  """
+  Complete prior canonical set.
+  """
+  prior: BankingReplacementImpact
+  """
+  Complete proposed canonical set.
+  """
+  proposed: BankingReplacementImpact
+  """
+  Original identities retained as current.
+  """
+  retained: BankingReplacementImpact
+  """
+  Identities entering current reporting.
+  """
+  new: BankingReplacementImpact
+  """
+  Current identities leaving reporting; all remain archive referenced.
+  """
+  archived: BankingReplacementImpact
+  """
+  New-binding posted rows excluded by preserved dates; overlap does not prove duplication.
+  """
+  overlap: BankingReplacementImpact
+  """
+  Prior posted rows after D, shown explicitly before replacement.
+  """
+  oldAfterBoundary: BankingReplacementImpact
+  """
+  unknown, known_partial or known_gap; visible row dates never establish complete coverage.
+  """
+  coverage: String
+  """
+  Server-established exclusive coverage start, when known.
+  """
+  coverageAfter: String
+  """
+  Server-established inclusive coverage end, when known.
+  """
+  coverageThrough: String
+  """
+  Stored historical/cross-boundary discrepancy count, never silently reconciled.
+  """
+  discrepancyCount: Int
+  """
+  Reporting/connection/permission status; a restored retired source remains retired.
+  """
+  collectionState: String
+}

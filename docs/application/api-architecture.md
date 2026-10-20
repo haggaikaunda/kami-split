@@ -33,8 +33,7 @@ metadata and immutable financial/audit/recovery records remain unchanged.
 
 The [reporting-timezone API](reporting-timezone.md) provides a self-only saved IANA
 zone, independent version and durable same-attempt write recovery without a bank
-connection. Its consumer UI, date-bound reads and replacement integration remain
-separate deliveries.
+connection. Its consumer UI and general date-bound reads remain separate deliveries. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
 
 ## Responsibilities
 
@@ -90,7 +89,7 @@ Item observation, worker privileges/runtime and verified durable HTTP ingress.
 The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
 retained stream reads, durable unknown-exchange recovery, explicit selection,
 existing-Item repair and revision-checked disconnect/private-history deletion. New enrollment is
-disabled by default; transaction sync and replacement activation remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
+disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. Transaction sync remains deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction

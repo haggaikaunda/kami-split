@@ -333,6 +333,118 @@ type BankingManagementResult struct {
 	Code string `json:"code"`
 }
 
+// Complete impact independent of client pagination; pending never contributes to spending.
+type BankingReplacementImpact struct {
+	// Number of source identities, with no archive double contribution.
+	Count int `json:"count"`
+	// Earliest visible posted/pending date; not a coverage assertion.
+	FromDate *string `json:"fromDate,omitempty"`
+	// Latest visible posted/pending date; not a coverage assertion.
+	ThroughDate *string `json:"throughDate,omitempty"`
+	// Exact signed USD minor-unit spending using latest valid explicit classification and exclusion. Unresolved rows contribute nothing.
+	SpendingMinor string `json:"spendingMinor"`
+	// Rows with effective annotations; archive-only edits remain private and noncontributing.
+	AnnotationCount int `json:"annotationCount"`
+	// Pending source count, never spending.
+	PendingCount int `json:"pendingCount"`
+	// Posted nonexcluded rows without valid classification.
+	UnresolvedCount int `json:"unresolvedCount"`
+}
+
+// Server-derived impact; optional fields are present only after a successful preview.
+type BankingReplacementPreview struct {
+	// READY or safe validation, conflict, usability, access or availability status.
+	Code string `json:"code"`
+	// Snapshot guards for explicit confirmation.
+	Revisions *BankingReplacementRevisions `json:"revisions,omitempty"`
+	// Shared reporting revision invalidating downstream list/count/summary cursors together.
+	ReportingRevision *string `json:"reportingRevision,omitempty"`
+	// Proposed disjoint date owners.
+	Intervals []*BankingReportingInterval `json:"intervals,omitempty"`
+	// Complete prior canonical set.
+	Prior *BankingReplacementImpact `json:"prior,omitempty"`
+	// Complete proposed canonical set.
+	Proposed *BankingReplacementImpact `json:"proposed,omitempty"`
+	// Original identities retained as current.
+	Retained *BankingReplacementImpact `json:"retained,omitempty"`
+	// Identities entering current reporting.
+	New *BankingReplacementImpact `json:"new,omitempty"`
+	// Current identities leaving reporting; all remain archive referenced.
+	Archived *BankingReplacementImpact `json:"archived,omitempty"`
+	// New-binding posted rows excluded by preserved dates; overlap does not prove duplication.
+	Overlap *BankingReplacementImpact `json:"overlap,omitempty"`
+	// Prior posted rows after D, shown explicitly before replacement.
+	OldAfterBoundary *BankingReplacementImpact `json:"oldAfterBoundary,omitempty"`
+	// unknown, known_partial or known_gap; visible row dates never establish complete coverage.
+	Coverage *string `json:"coverage,omitempty"`
+	// Server-established exclusive coverage start, when known.
+	CoverageAfter *string `json:"coverageAfter,omitempty"`
+	// Server-established inclusive coverage end, when known.
+	CoverageThrough *string `json:"coverageThrough,omitempty"`
+	// Stored historical/cross-boundary discrepancy count, never silently reconciled.
+	DiscrepancyCount *int `json:"discrepancyCount,omitempty"`
+	// Reporting/connection/permission status; a restored retired source remains retired.
+	CollectionState *string `json:"collectionState,omitempty"`
+}
+
+// Explicit owner reporting choice; a posted-bank date is not an authorization date.
+type BankingReplacementRequest struct {
+	// Existing logical account UUID.
+	AccountID string `json:"accountId"`
+	// Staged stream ID from bankingConnection; required only for ACTIVATE.
+	BindingID *string `json:"bindingId,omitempty"`
+	// Activation or bounded latest-plan recovery.
+	Action BankingReplacementAction `json:"action"`
+	// Real ISO YYYY-MM-DD, years 0001–9999 and no later than today in the saved reporting timezone; required except for restore.
+	TransitionDate *string `json:"transitionDate,omitempty"`
+}
+
+// Safe durable result with opaque identity only, never bank facts or notes.
+type BankingReplacementResult struct {
+	// READY, PENDING, CONFLICT, NOT_FOUND, INVALID_INPUT, IMPORT_UNAVAILABLE, DATA_UNAVAILABLE, DATA_ERROR or safe access/availability status.
+	Code string `json:"code"`
+	// Original plan or cancelled binding ID, present only for a successful outcome.
+	ResultID *string `json:"resultId,omitempty"`
+}
+
+// Five opaque compare-and-swap values from one coherent persisted snapshot.
+type BankingReplacementRevisions struct {
+	// Plan history.
+	Plan string `json:"plan"`
+	// Import usability and coverage.
+	Import string `json:"import"`
+	// Source facts and notices.
+	Data string `json:"data"`
+	// Annotation history.
+	Annotation string `json:"annotation"`
+	// Lifecycle, selection and saved timezone.
+	Lifecycle string `json:"lifecycle"`
+}
+
+// Opaque independent preview guards; none grants provider authority.
+type BankingReplacementRevisionsInput struct {
+	// Saved plan history digest.
+	Plan string `json:"plan"`
+	// Import state, revision and coverage digest.
+	Import string `json:"import"`
+	// Source facts and discrepancy-state digest.
+	Data string `json:"data"`
+	// All annotation revisions digest.
+	Annotation string `json:"annotation"`
+	// Account, connection, selection, generation and reporting-timezone digest.
+	Lifecycle string `json:"lifecycle"`
+}
+
+// One disjoint posted-date reporting owner; unbounded endpoints are null.
+type BankingReportingInterval struct {
+	// Original source binding identity.
+	BindingID string `json:"bindingId"`
+	// Exclusive lower posted-date boundary.
+	AfterDate *string `json:"afterDate,omitempty"`
+	// Inclusive upper posted-date boundary.
+	ThroughDate *string `json:"throughDate,omitempty"`
+}
+
 // Explicit replacement of the selected subset; no newly visible account is implicitly selected.
 type BankingSelectionInput struct {
 	// Caller-generated recovery UUID.
@@ -343,6 +455,16 @@ type BankingSelectionInput struct {
 	ExpectedGeneration string `json:"expectedGeneration"`
 	// Explicit current provider account IDs; empty stops all streams without erasing data.
 	AccountIds []string `json:"accountIds"`
+}
+
+// Explicit confirmation binds the exact preview and canonical attempt input.
+type ConfirmBankingReplacementInput struct {
+	// Client-known UUID; identical retry recovers, changed reuse conflicts.
+	AttemptID string `json:"attemptId"`
+	// Exact intended action and boundary.
+	Request *BankingReplacementRequest `json:"request"`
+	// All revisions returned by the latest preview.
+	Expected *BankingReplacementRevisionsInput `json:"expected"`
 }
 
 // One immutable create intent. Caller identity is server-derived; corrections after a definitive rejection require a new key.
@@ -1314,6 +1436,14 @@ type StartBankingEnrollmentInput struct {
 	Intent BankingEnrollmentIntent `json:"intent"`
 }
 
+// Client-known attempt and explicit existing logical account; names/masks never establish continuity.
+type StartBankingReplacementInput struct {
+	// UUID known before any provider effect.
+	AttemptID string `json:"attemptId"`
+	// Enabled owner's retained logical account, selected explicitly.
+	AccountID string `json:"accountId"`
+}
+
 // Structured spending filters, distinct from participant-only ExpenseFilter; no free text search.
 type StructuredExpenseFilter struct {
 	// One currently authorized eligible source Group ID; absent means All.
@@ -1650,6 +1780,67 @@ func (e *BankingEnrollmentIntent) UnmarshalJSON(b []byte) error {
 }
 
 func (e BankingEnrollmentIntent) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Bounded operations on the latest reporting plan.
+type BankingReplacementAction string
+
+const (
+	// Use the selected staged binding strictly after confirmed date D.
+	BankingReplacementActionActivate BankingReplacementAction = "ACTIVATE"
+	// Change only the latest boundary, retaining every preceding interval.
+	BankingReplacementActionChangeBoundary BankingReplacementAction = "CHANGE_BOUNDARY"
+	// Restore the immediately preceding saved plan without restoring collection authority.
+	BankingReplacementActionRestorePredecessor BankingReplacementAction = "RESTORE_PREDECESSOR"
+)
+
+var AllBankingReplacementAction = []BankingReplacementAction{
+	BankingReplacementActionActivate,
+	BankingReplacementActionChangeBoundary,
+	BankingReplacementActionRestorePredecessor,
+}
+
+func (e BankingReplacementAction) IsValid() bool {
+	switch e {
+	case BankingReplacementActionActivate, BankingReplacementActionChangeBoundary, BankingReplacementActionRestorePredecessor:
+		return true
+	}
+	return false
+}
+
+func (e BankingReplacementAction) String() string {
+	return string(e)
+}
+
+func (e *BankingReplacementAction) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingReplacementAction(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingReplacementAction", str)
+	}
+	return nil
+}
+
+func (e BankingReplacementAction) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingReplacementAction) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingReplacementAction) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
