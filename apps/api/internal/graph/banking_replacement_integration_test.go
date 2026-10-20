@@ -57,14 +57,25 @@ func TestBankingHTTPReplacementStagePreviewPublishRecovery(t *testing.T) {
 	if err := f.admin.QueryRow(context.Background(), `SELECT id FROM app.banking_bindings WHERE connection_id=$1 AND reporting_state='staged'`, staged["connectionId"]).Scan(&binding); err != nil {
 		t.Fatal(err)
 	}
+	request := fmt.Sprintf(`{accountId:%q,bindingId:%q,action:ACTIVATE,transitionDate:"2026-09-30"}`, account.String(), binding.String())
+	query := fmt.Sprintf(`query{bankingReplacementPreview(input:%s){code revisions{plan import data annotation lifecycle} reportingRevision intervals{bindingId afterDate throughDate} proposed{count spendingMinor} coverage}}`, request)
+	unusable := f.operation(handler, query, owner, "bankingReplacementPreview", false)
+	if unusable["code"] != "IMPORT_UNAVAILABLE" || unusable["revisions"] == nil || unusable["proposed"] != nil {
+		t.Fatal("unusable import hid cancellation guards or returned an impact")
+	}
+	for _, token := range []string{other, f.token(f.disabled)} {
+		denied := f.operation(handler, query, token, "bankingReplacementPreview", false)
+		if denied["revisions"] != nil || denied["reportingRevision"] != nil {
+			t.Fatal("non-owner preview disclosed guards")
+		}
+	}
 	// Only persisted import facts/classifications are fixtures. All staging,
 	// authentication, preview, publication, recovery and transport are real.
 	f.exec(`UPDATE app.banking_bindings SET import_state='usable' WHERE id=$1`, binding)
 	source := uuid.New()
 	f.exec(`WITH source AS(INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision) VALUES($1,$2,$3,'controlled-source',1) RETURNING id) INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,processing_state,mapping_version,stage) SELECT id,$2,1,5000,'USD','2026-10-02','posted','controlled-pfc-v2','current' FROM source`, source, f.owner, binding)
 	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity) VALUES($1,$2,1,1,'purchase')`, source, f.owner)
-	request := fmt.Sprintf(`{accountId:%q,bindingId:%q,action:ACTIVATE,transitionDate:"2026-09-30"}`, account.String(), binding.String())
-	query := fmt.Sprintf(`query{bankingReplacementPreview(input:%s){code revisions{plan import data annotation lifecycle} reportingRevision intervals{bindingId afterDate throughDate} proposed{count spendingMinor} coverage}}`, request)
+
 	if denied := f.operation(handler, query, other, "bankingReplacementPreview", false); denied["code"] != "NOT_FOUND" {
 		t.Fatal("preview leaked across owner")
 	}

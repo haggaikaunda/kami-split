@@ -51,7 +51,9 @@ saved reporting timezone. D is inclusive for the complete prior plan; the staged
 binding owns dates strictly after D. Later transitions preserve every preceding
 interval and require an increasing boundary. Boundary recovery changes only the
 last boundary and cannot cross the preceding transition. Restoration selects only
-the immediately preceding saved plan. Unknown coverage remains distinct from
+the immediately preceding saved plan. Authorized non-ready previews still return their revision guards so an unusable
+stage can be cancelled. Denied, missing and unavailable account responses expose
+no guards or impacts. Unknown coverage remains distinct from
 unknown, failed, loading or unavailable import usability; only usable persisted
 imports can publish. Known coverage remains partial or explicitly gapped.
 

@@ -38,7 +38,7 @@ accounts do not silently enter storage. Transactions is initialized with
 a rolling retention policy. Exact provider `persistent_account_id` evidence,
 scoped to owner/environment/institution, rejects a known duplicate. Missing exact
 evidence never causes a guessed match; independently authorized joint holders
-remain private. Existing-account intent returns `REPLACEMENT_REQUIRED` and cleans
+remain private. Generic existing-account intent without an explicit replacement target returns `REPLACEMENT_REQUIRED` and cleans
 up the new Item rather than substituting a binding for prior history.
 
 ## Uncertainty and cleanup
@@ -120,7 +120,7 @@ and checks the current provider inventory and original lifecycle generation.
 Successful repair preserves bindings and history. A changed Item, institution,
 known persistent account identity or kind returns `REPLACEMENT_REQUIRED`.
 Institution continuity is checked across the Item even for a subset of only new
-accounts. Replacement activation remains separate. Reauthorization never selects new
+accounts. Explicit replacement uses the [staged plan contract](banking-replacement.md). Reauthorization never selects new
 accounts implicitly. Changed attempt input conflicts; replays reauthorize and
 recover the original receipt. Only one unfinished repair per connection is
 allowed until completion or expiry. Preparation uncertainty is visible and never

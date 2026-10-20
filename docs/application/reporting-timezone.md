@@ -43,6 +43,5 @@ The authoritative contract is [the timezone SDL](../../packages/schema/reporting
 The [approved Personal banking contract](personal-banking.md#dates-saved-preferences-and-navigation)
 defines downstream use: #253 supplies Account controls/device handoff, #252 resolves
 coherent date bounds/cursor invalidation, and replacement/recovery uses the saved
-zone for allowed transition dates. Those consumers, UI, transaction sync and live
-enablement are separate deliveries. This preference does not enable enrollment
+zone for allowed transition dates through the [replacement backend](banking-replacement.md). Account controls, general reporting reads, transaction sync and live enablement remain separate deliveries. This preference does not enable enrollment
 or satisfy #255's provider/live gates.

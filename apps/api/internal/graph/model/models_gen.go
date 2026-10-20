@@ -351,11 +351,11 @@ type BankingReplacementImpact struct {
 	UnresolvedCount int `json:"unresolvedCount"`
 }
 
-// Server-derived impact; optional fields are present only after a successful preview.
+// Server-derived impact. Authorized snapshots return guards even when import usability blocks impact/publication; inaccessible accounts return only a safe code.
 type BankingReplacementPreview struct {
 	// READY or safe validation, conflict, usability, access or availability status.
 	Code string `json:"code"`
-	// Snapshot guards for explicit confirmation.
+	// Snapshot guards for explicit confirmation or cancellation, including unusable imports. Absent for authentication/ownership failures, missing accounts or snapshot read failures.
 	Revisions *BankingReplacementRevisions `json:"revisions,omitempty"`
 	// Shared reporting revision invalidating downstream list/count/summary cursors together.
 	ReportingRevision *string `json:"reportingRevision,omitempty"`
@@ -1727,13 +1727,13 @@ func (e Appearance) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Explicit enrollment intent; existing-account transitions require a later replacement activation contract.
+// Explicit ordinary enrollment intent. Use startBankingReplacement with an owned logical account for noncontributing same-account staging.
 type BankingEnrollmentIntent string
 
 const (
 	// Independently authorize different accounts. Exact known duplicate evidence still rejects enrollment.
 	BankingEnrollmentIntentDifferent BankingEnrollmentIntent = "DIFFERENT"
-	// Identify existing-account intent; this delivery returns replacement-required and never substitutes bindings.
+	// Generic existing-account intent returns replacement-required and never substitutes bindings. startBankingReplacement reserves an explicit logical target instead.
 	BankingEnrollmentIntentExisting BankingEnrollmentIntent = "EXISTING"
 )
 

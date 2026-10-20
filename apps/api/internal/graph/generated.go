@@ -3741,7 +3741,7 @@ type BankingReplacementImpact {
   unresolvedCount: Int!
 }
 """
-Server-derived impact; optional fields are present only after a successful preview.
+Server-derived impact. Authorized snapshots return guards even when import usability blocks impact/publication; inaccessible accounts return only a safe code.
 """
 type BankingReplacementPreview {
   """
@@ -3749,7 +3749,7 @@ type BankingReplacementPreview {
   """
   code: String!
   """
-  Snapshot guards for explicit confirmation.
+  Snapshot guards for explicit confirmation or cancellation, including unusable imports. Absent for authentication/ownership failures, missing accounts or snapshot read failures.
   """
   revisions: BankingReplacementRevisions
   """
@@ -3839,7 +3839,7 @@ extend type Mutation {
   cancelBankingEnrollment(attemptId: ID!): BankingEnrollmentResult!
 }
 """
-Explicit enrollment intent; existing-account transitions require a later replacement activation contract.
+Explicit ordinary enrollment intent. Use startBankingReplacement with an owned logical account for noncontributing same-account staging.
 """
 enum BankingEnrollmentIntent {
   """
@@ -3847,7 +3847,7 @@ enum BankingEnrollmentIntent {
   """
   DIFFERENT
   """
-  Identify existing-account intent; this delivery returns replacement-required and never substitutes bindings.
+  Generic existing-account intent returns replacement-required and never substitutes bindings. startBankingReplacement reserves an explicit logical target instead.
   """
   EXISTING
 }

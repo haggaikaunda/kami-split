@@ -56,12 +56,15 @@ func mapReplacementImpact(i banking.ReplacementImpact) *model.BankingReplacement
 }
 func mapReplacementPreview(p banking.ReplacementPreview) *model.BankingReplacementPreview {
 	result := &model.BankingReplacementPreview{Code: p.Code}
-	if p.Code != "READY" {
+	if p.Revisions.Plan == "" {
 		return result
 	}
 	revision := strconv.FormatInt(p.ReportingRevision, 10)
 	result.ReportingRevision = &revision
 	result.Revisions = &model.BankingReplacementRevisions{Plan: p.Revisions.Plan, Import: p.Revisions.Import, Data: p.Revisions.Data, Annotation: p.Revisions.Annotation, Lifecycle: p.Revisions.Lifecycle}
+	if p.Code != "READY" {
+		return result
+	}
 	result.Intervals = []*model.BankingReportingInterval{}
 	for _, i := range p.Intervals {
 		result.Intervals = append(result.Intervals, &model.BankingReportingInterval{BindingID: i.BindingID.String(), AfterDate: i.AfterDate, ThroughDate: i.ThroughDate})

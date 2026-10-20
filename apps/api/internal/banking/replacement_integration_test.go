@@ -419,6 +419,17 @@ func TestReplacementFailedUsabilityAndPriorBoundaryValidation(t *testing.T) {
 			t.Fatal("unusable import accepted", state, p.Code)
 		}
 	}
+	// Even when impact/publication is blocked, the enabled owner can use the
+	// coherent guards to cancel the failed stage without changing the current plan.
+	failed := f.service.PreviewReplacement(f.actor(f.owner), ReplacementRequest{AccountID: f.account, BindingID: c, TransitionDate: "2026-10-10", Action: "ACTIVATE"})
+	if result := f.service.CancelReplacement(f.actor(f.owner), ReplacementConfirmation{AttemptID: uuid.New(), Request: failed.Request, Expected: failed.Revisions}); result.Code != "READY" {
+		t.Fatal("unusable import could not cancel", result.Code)
+	}
+	var plans int
+	if err := f.admin.QueryRow(context.Background(), `SELECT count(*) FROM app.banking_plans WHERE account_id=$1`, f.account).Scan(&plans); err != nil || plans != 2 {
+		t.Fatal("cancellation changed the prior reporting plan")
+	}
+
 }
 
 func TestReplacementWrongLogicalAccountCannotBypassExactIdentity(t *testing.T) {
