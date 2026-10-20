@@ -136,8 +136,56 @@ func TestLifecycleDistinctLateItemStillRequiresNarrowDiscovery(t *testing.T) {
 	if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed {
 		t.Fatal("removed original callback reset later completed recovery budget")
 	}
+	// Distinct late Items also have positive removal proof after this recovery.
+	// A later event body for that same removed Item must not erase the proof and
+	// reopen discovery that can no longer find an already removed Item.
+	if status := lifecycleEvent(t, f, enrollment, late, "LOGIN_REPAIRED", "", ""); status != http.StatusNoContent {
+		t.Fatal(status)
+	}
+	if lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != completed {
+		t.Fatal("confirmed distinct late Item callback reopened completed cleanup")
+	}
 	next := s.Start(f.actor(f.owner), StartEnrollmentInput{AttemptID: uuid.New(), Intent: "different"})
 	if next.Code != "PREPARED" {
 		t.Fatal("confirmed late cleanup blocked fresh enrollment", next.Code)
+	}
+}
+
+func TestIndependentRemovedItemProofFailureRollsBackTeardown(t *testing.T) {
+	f, s, _, worker, db := lifecycleFixture(t)
+	enrollment, connection := lifecycleReady(t, f, s, f.owner, "checking")
+	item := "item-public-" + enrollment.String()
+	requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}), "READY")
+	f.exec(`CREATE FUNCTION app.banking_terminal_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic terminal proof failure'; END $$`)
+	f.exec(`CREATE TRIGGER banking_terminal_test_fail BEFORE UPDATE OF removed_item_digest ON app.banking_webhook_correlations FOR EACH ROW EXECUTE FUNCTION app.banking_terminal_test_fail()`)
+	t.Cleanup(func() {
+		f.exec(`DROP TRIGGER IF EXISTS banking_terminal_test_fail ON app.banking_webhook_correlations`)
+		f.exec(`DROP FUNCTION IF EXISTS app.banking_terminal_test_fail()`)
+	})
+	if _, err := worker.ProcessOne(context.Background()); err == nil {
+		t.Fatal("failed terminal proof was acknowledged")
+	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_connections c JOIN app.banking_webhook_correlations w ON w.connection_id=c.id JOIN app.banking_credentials credential ON credential.connection_id=c.id WHERE c.id=$1 AND NOT c.provider_removed AND c.provider_item_id=$2 AND w.removed_item_digest IS NULL`, connection, item) != 1 {
+		t.Fatal("proof failure partially erased identity or credential")
+	}
+	f.exec(`DROP TRIGGER banking_terminal_test_fail ON app.banking_webhook_correlations`)
+	var work uuid.UUID
+	if err := f.admin.QueryRow(context.Background(), `SELECT id FROM app.banking_work WHERE connection_id=$1 AND kind='teardown'`, connection).Scan(&work); err != nil {
+		t.Fatal(err)
+	}
+	releaseDue(t, f, work)
+	restarted, err := NewWorker(db, f.service.protector, worker.provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worked, err := restarted.ProcessOne(context.Background()); err != nil || !worked {
+		t.Fatal("fresh worker lost removal/proof obligation", err)
+	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_connections c JOIN app.banking_webhook_correlations w ON w.connection_id=c.id WHERE c.id=$1 AND c.provider_removed AND c.provider_item_id=c.id::text AND octet_length(w.removed_item_digest)=32`, connection) != 1 || queryInt(t, f, `SELECT count(*) FROM app.banking_credentials WHERE connection_id=$1`, connection) != 0 {
+		t.Fatal("confirmed retry did not atomically redact and remember")
+	}
+	before := lifecycleEnrollmentRecoverySnapshot(t, f, enrollment)
+	if status := lifecycleEvent(t, f, enrollment, item, "USER_PERMISSION_REVOKED", "", ""); status != http.StatusNoContent || lifecycleEnrollmentRecoverySnapshot(t, f, enrollment) != before {
+		t.Fatal("recovered proof did not suppress old callback", status)
 	}
 }
