@@ -721,3 +721,103 @@ func TestSyncBatchPurgeDrainsNewPayloadsInBoundedSteps(t *testing.T) {
 		t.Fatal("purged batch replay resurrected data", result.Code, err)
 	}
 }
+
+func TestSyncBatchReaderSeesOnlyCommittedSourcesAndCheckpoint(t *testing.T) {
+	f := newSyncFixture(t)
+	batch := f.begin()
+	next := f.stage(batch, 0, batch.Cursor(), "reader-page", true, []SyncTransaction{syncFact("first", "2026-10-01", 100)}, nil)
+	f.stage(batch, 1, next, "reader-final", false, []SyncTransaction{syncFact("second", "2026-10-02", -40)}, nil)
+	conn, err := pgx.Connect(context.Background(), os.Getenv("TEST_WORKER_DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
+	tx, err := conn.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	var raw []byte
+	if err = tx.QueryRow(context.Background(), `SELECT app.banking_sync_commit($1,$2,$3)`, f.work.ID, f.work.Token, batch.id).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var result database.BankingSyncCommit
+	if err = json.Unmarshal(raw, &result); err != nil || result.Code != "READY" {
+		t.Fatal("uncommitted application failed", result.Code, err)
+	}
+	// Both effects have executed inside the worker transaction. An independent
+	// reader must still see the old checkpoint and no current source effects.
+	f.assertStream("", 0)
+	if err = tx.Commit(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	f.assertStream("reader-final", 2)
+	if replay := f.commit(batch, "READY"); replay != result {
+		t.Fatal("committed outcome changed on response-loss retry")
+	}
+}
+
+func TestSyncBatchRealImportedRepeatedTransitionsAndStoppedRecovery(t *testing.T) {
+	rf := newReplacementFixture(t)
+	db, err := database.OpenWorker(context.Background(), database.Config{URL: os.Getenv("TEST_WORKER_DATABASE_URL"), MaxConns: 5, Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(db.Close)
+	f := &syncStoreFixture{fixture: rf.fixture, worker: db, account: rf.account}
+	t.Cleanup(func() { f.exec(`DELETE FROM app.banking_sync_batches WHERE owner_id=$1`, f.owner) })
+	importRows := func(binding uuid.UUID, cursor string, rows []SyncTransaction) []uuid.UUID {
+		t.Helper()
+		f.binding = binding
+		if err := f.admin.QueryRow(context.Background(), `SELECT connection_id FROM app.banking_bindings WHERE id=$1`, binding).Scan(&f.connection); err != nil {
+			t.Fatal(err)
+		}
+		f.work = f.lease(f.connection)
+		batch := f.begin()
+		f.stage(batch, 0, batch.Cursor(), cursor, false, rows, nil)
+		f.commit(batch, "READY")
+		var ids []uuid.UUID
+		for _, row := range rows {
+			source := f.sourceID(row.TransactionID)
+			ids = append(ids, source)
+			// Classification editing is outside this slice. Use explicit fixture
+			// annotations while every bank fact enters through the runtime importer.
+			f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity,note,reviewed) VALUES($1,$2,1,1,'purchase','original identity note',true)`, source, f.owner)
+		}
+		return ids
+	}
+	aIDs := importRows(rf.oldBinding, "repeated-a", []SyncTransaction{syncFact("a-on-D", "2026-09-30", 100)})
+	b := rf.stage()
+	bIDs := importRows(b, "repeated-b", []SyncTransaction{syncFact("b-overlap", "2026-09-30", 999), syncFact("b-on-D2", "2026-10-10", 200), syncFact("b-after-D2", "2026-10-11", 900)})
+	rf.confirm(rf.preview(b, "2026-09-30", "ACTIVATE"))
+	c := rf.stage()
+	cIDs := importRows(c, "repeated-c", []SyncTransaction{syncFact("c-older-overlap", "2026-09-30", 888), syncFact("c-on-D2", "2026-10-10", 777), syncFact("c-after-D2", "2026-10-11", 300)})
+	preview := rf.preview(c, "2026-10-10", "ACTIVATE")
+	if preview.Proposed.SpendingMinor != "600" || len(preview.Intervals) != 3 {
+		t.Fatal("real repeated import lost disjoint date ownership", preview.Proposed.SpendingMinor)
+	}
+	rf.confirm(preview)
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_plan_intervals i JOIN app.banking_plans p ON p.id=i.plan_id WHERE p.account_id=$1 AND p.revision=(SELECT max(revision) FROM app.banking_plans WHERE account_id=$1) AND ((i.binding_id=$2 AND i.after_date IS NULL AND i.through_date='2026-09-30') OR (i.binding_id=$3 AND i.after_date='2026-09-30' AND i.through_date='2026-10-10') OR (i.binding_id=$4 AND i.after_date='2026-10-10' AND i.through_date IS NULL))`, f.account, rf.oldBinding, b, c) != 3 {
+		t.Fatal("repeated publication rewrote earlier intervals")
+	}
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sources WHERE id IN($1,$2,$3) AND revision=1`, aIDs[0], bIDs[1], cIDs[2]) != 3 {
+		t.Fatal("repeated transition replaced original source identities")
+	}
+	// Stop the active provider before reporting recovery. Restoring the saved
+	// preceding plan must preserve bank facts without restoring collection rights.
+	requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: f.connection, ExpectedGeneration: 1}), "READY")
+	recovery := rf.preview(uuid.Nil, "", "RESTORE_PREDECESSOR")
+	if recovery.Proposed.SpendingMinor != "1200" {
+		t.Fatal("preceding plan lost captured B facts", recovery.Proposed.SpendingMinor)
+	}
+	rf.confirm(recovery)
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_bindings WHERE id IN($1,$2) AND collection_stopped`, b, c) != 2 {
+		t.Fatal("reporting recovery restored stopped provider work")
+	}
+	if _, err := BeginSyncBatch(context.Background(), db, f.work, c, uuid.New()); err == nil {
+		t.Fatal("recovery restored revoked collection authority")
+	}
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='original identity note'`, bIDs[1]) != 1 {
+		t.Fatal("recovery lost the retained annotation identity")
+	}
+}
