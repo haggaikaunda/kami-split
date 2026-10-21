@@ -85,14 +85,23 @@ func TestInitialSandboxConsumer(t *testing.T) {
 		t.Fatal("Sandbox durable selection intent missing")
 	}
 	completed := false
-	for attempt := 0; attempt < 5; attempt++ {
+	for poll := 0; poll < 100; poll++ {
 		// Both clocks gate a claim. banking_finish sets due_at and then transport
 		// visibility, so waking at due_at alone can poll before pgmq exposes it.
 		// Measure remaining duration in PostgreSQL's clock domain, round upward,
 		// then preserve that full delay after receiving the query response.
 		var waitMillis, visibilityLagMicros int64
-		if err := f.admin.QueryRow(ctx, `SELECT ceil(greatest(0,extract(epoch FROM greatest(w.due_at,q.vt)-clock_timestamp())*1000))::bigint,ceil(extract(epoch FROM q.vt-w.due_at)*1000000)::bigint FROM app.banking_work w JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id WHERE w.id=$1 AND w.state='pending'`, operation).Scan(&waitMillis, &visibilityLagMicros); err != nil {
+		var olderMessages, attempts int
+		if err := f.admin.QueryRow(ctx, `
+SELECT ceil(greatest(0,extract(epoch FROM greatest(w.due_at,q.vt)-clock_timestamp())*1000))::bigint,
+ ceil(extract(epoch FROM q.vt-w.due_at)*1000000)::bigint,
+ (SELECT count(*) FROM pgmq.q_banking_lifecycle older WHERE older.msg_id<q.msg_id),w.attempts
+FROM app.banking_work w JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id
+WHERE w.id=$1 AND w.state='pending'`, operation).Scan(&waitMillis, &visibilityLagMicros, &olderMessages, &attempts); err != nil {
 			t.Fatal("Sandbox pending intent or transport unavailable")
+		}
+		if attempts >= 5 {
+			t.Fatal("Sandbox provider attempt budget exhausted")
 		}
 		t.Logf("Sandbox claim wait milliseconds=%d; transport minus durable due microseconds=%d", waitMillis, visibilityLagMicros)
 		timer := time.NewTimer(time.Duration(waitMillis) * time.Millisecond)
@@ -102,12 +111,27 @@ func TestInitialSandboxConsumer(t *testing.T) {
 			t.Fatal("Sandbox bounded readiness deadline")
 		case <-timer.C:
 		}
-		if worked, err := worker.ProcessOne(ctx); err != nil || !worked {
+		worked, err := worker.ProcessOne(ctx)
+		if err != nil {
+			t.Fatal("Sandbox actual consumer returned an error")
+		}
+		if !worked {
 			var state string
-			var attempts int
+			var remainingOlder int
 			var due, visible bool
-			if diagnosticErr := f.admin.QueryRow(ctx, `SELECT w.state,w.attempts,w.due_at<=clock_timestamp(),coalesce(q.vt<=clock_timestamp(),false) FROM app.banking_work w LEFT JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible); diagnosticErr != nil {
+			if diagnosticErr := f.admin.QueryRow(ctx, `
+SELECT w.state,w.attempts,w.due_at<=clock_timestamp(),coalesce(q.vt<=clock_timestamp(),false),
+ (SELECT count(*) FROM pgmq.q_banking_lifecycle older WHERE older.msg_id<q.msg_id)
+FROM app.banking_work w LEFT JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id
+WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible, &remainingOlder); diagnosticErr != nil {
 				t.Fatal("Sandbox actual consumer unavailable; safe state unavailable")
+			}
+			// A one-message poll can discard an earlier orphan/terminal transport
+			// without claiming this operation. Continue only on observed progress;
+			// never mask an error, target-state change or inexplicable empty claim.
+			if state == "pending" && due && visible && remainingOlder < olderMessages {
+				t.Logf("Sandbox poll removed earlier transport; remaining earlier messages=%d", remainingOlder)
+				continue
 			}
 			t.Fatalf("Sandbox actual consumer unavailable; worked=%t error=%t state=%s attempts=%d due=%t visible=%t", worked, err != nil, state, attempts, due, visible)
 		}
