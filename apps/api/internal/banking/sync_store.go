@@ -30,7 +30,7 @@ func (b SyncBatch) Binding() SyncBinding { return b.binding }
 // Cursor supplies the original protected checkpoint for this entire batch.
 func (b SyncBatch) Cursor() SyncCursor { return b.cursor }
 
-// BeginSyncBatch binds a caller-known batch ID to one current reconcile lease and
+// BeginSyncBatch binds a caller-known batch ID to one current collection lease and
 // persisted stream. Provider calls must occur after this method returns.
 func BeginSyncBatch(ctx context.Context, db *database.WorkerDB, work database.BankingWork, binding, id uuid.UUID) (SyncBatch, error) {
 	stored, err := db.BeginBankingSync(ctx, work, binding, id)

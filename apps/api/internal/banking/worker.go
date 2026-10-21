@@ -26,7 +26,8 @@ type Worker struct {
 	provider  Remover
 }
 
-// NewWorker constructs a cleanup-only consumer; it grants no collection access.
+// NewWorker constructs the durable lifecycle and selected-account import consumer.
+// Collection requires a separate exact-binding lease and current server authority.
 func NewWorker(db *database.WorkerDB, p *Protector, provider Remover) (*Worker, error) {
 	if db == nil || p == nil || provider == nil {
 		return nil, errors.New("banking worker unavailable")
@@ -42,6 +43,9 @@ func (w *Worker) Run(ctx context.Context, onFailure func()) {
 	timer := time.NewTicker(time.Minute)
 	defer timer.Stop()
 	for {
+		if _, err := w.db.CleanupBankingSync(ctx); err != nil && ctx.Err() == nil && onFailure != nil {
+			onFailure()
+		}
 		if err := w.db.ReconcileBanking(ctx); err != nil && ctx.Err() == nil && onFailure != nil {
 			onFailure()
 		}
@@ -102,6 +106,8 @@ func (w *Worker) ProcessOne(ctx context.Context) (bool, error) {
 	confirmed := false
 	retryAfter := time.Duration(0)
 	switch job.Kind {
+	case "initial_sync":
+		confirmed, retryAfter, err = w.initialSync(workCtx, job)
 	case "reconcile":
 		confirmed, retryAfter, err = w.observe(workCtx, job)
 	case "teardown":

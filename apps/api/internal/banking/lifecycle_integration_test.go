@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -42,8 +43,40 @@ func lifecycleReady(t *testing.T, f *fixture, s *EnrollmentService, owner uuid.U
 	if o.Code != "AWAITING_INITIAL_IMPORT" {
 		t.Fatal(o.Code)
 	}
+	// These lifecycle scenarios start after first import. Complete a deterministic
+	// empty batch through the real consumer, so their next-claim and bounded purge
+	// assertions continue to target lifecycle work rather than new enrollment jobs.
+	db, err := database.OpenWorker(context.Background(), database.Config{URL: os.Getenv("TEST_WORKER_DATABASE_URL"), MaxConns: 3, Timeout: 2 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	provider, ok := s.provider.(*controlledEnrollmentProvider)
+	if !ok {
+		t.Fatal("lifecycle fixture requires controlled provider")
+	}
+	worker, err := NewWorker(db, f.service.protector, &lifecycleInitialProvider{provider})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range len(ids) {
+		if worked, err := worker.ProcessOne(context.Background()); err != nil || !worked {
+			t.Fatal("fixture initial import", err)
+		}
+	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_bindings WHERE connection_id=$1 AND sync_cursor IS NOT NULL`, o.ConnectionID) != len(ids) {
+		t.Fatal("fixture first import incomplete")
+	}
 	return attempt, o.ConnectionID
 }
+
+type lifecycleInitialProvider struct{ *controlledEnrollmentProvider }
+
+func (*lifecycleInitialProvider) SyncTransactions(_ context.Context, binding SyncBinding, _ Credential, _ SyncCursor) (SyncPage, error) {
+	cursor, err := NewSyncCursor(binding, "lifecycle-fixture-checkpoint")
+	return SyncPage{Binding: binding, NextCursor: cursor}, err
+}
+
 func lifecycleGeneration(t *testing.T, f *fixture, connection uuid.UUID) int64 {
 	t.Helper()
 	var gen int64

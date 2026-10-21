@@ -24,7 +24,7 @@ func (BankingSyncBatch) String() string { return "[redacted banking sync batch]"
 // GoString redacts private stream provenance in Go diagnostics.
 func (b BankingSyncBatch) GoString() string { return b.String() }
 
-// BeginBankingSync reserves a batch using a current reconcile lease. A zero ID
+// BeginBankingSync reserves a batch using a current collection lease. A zero ID
 // means denied authority; no owner identity is supplied or impersonated.
 func (d *WorkerDB) BeginBankingSync(ctx context.Context, w BankingWork, binding, batch uuid.UUID) (BankingSyncBatch, error) {
 	var raw []byte

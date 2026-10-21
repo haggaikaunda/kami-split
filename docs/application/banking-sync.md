@@ -2,9 +2,9 @@
 
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
-restricted atomic batch persistence is implemented below. Scheduling, public
-status and the browser transaction journey remain separate work. The existing worker does not
-call this adapter. Enrollment remains disabled by default.
+restricted atomic batch persistence and the durable first-import consumer are implemented below. Public
+status, transaction reads, ongoing sync triggers and the browser transaction journey remain separate work.
+Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
 2020-09-14`, official Sandbox/Production HTTPS hosts, no redirects, a 64-KiB
@@ -141,7 +141,7 @@ Official contracts: [Transactions API](https://plaid.com/docs/api/products/trans
 `BeginSyncBatch`, `StageSyncPage`, `CommitSyncBatch` and `CancelSyncBatch` extend
 this adapter with private PostgreSQL persistence. They do not fetch pages or run
 an import loop. Begin derives the exact provider binding and original checkpoint
-from storage under an existing current `reconcile` lease. Provider requests occur
+from storage under a current `reconcile` or exact-binding `initial_sync` lease. Provider requests occur
 between these calls, outside the commit transaction. Queue messages retain opaque
 work IDs; provider pages and checkpoints must never enter queue or log payloads.
 
@@ -207,3 +207,94 @@ history, bindings and checkpoints. Cascades remain a backstop. This includes
 replacement bindings across Items and preserves unrelated sibling accounts. The additive migration extends the existing banking
 store; desired state remains in `supabase/schemas`, with migration replay,
 permissions and real-database checks owned by `make db-test`.
+
+## Durable first selected-account import
+
+The existing `cmd/worker` consumes `initial_sync` operations alongside teardown,
+purge, enrollment recovery and Item observation. A deferred database handoff runs
+at the end of a connection transition, after the complete explicit selection has
+been stored. Intent and opaque queue transport commit with enrollment/selection;
+rollback publishes neither. Only selected, eligible current/staged bindings with
+no committed checkpoint and current granted collection authority qualify.
+Reconciliation recovers eligible previously enrolled bindings without new Link.
+A unique binding/connection-generation identity gives each stream its own attempt
+budget. Changing selection fences the prior generation. Unselected inventory is
+never persisted or scheduled merely because the provider returned it.
+
+Each attempt begins from the committed account-filtered checkpoint, obtains the
+credential through a new exact-binding collection capability before every page,
+fetches through `PlaidProvider.SyncTransactions`, and stages up to 1,000 pages.
+There are no provider calls inside database transactions. Pagination mutation
+cancels every staged page; the next durable attempt starts from the original
+checkpoint. Provider-not-ready retains no checkpoint and is recorded separately
+from an actual empty completed batch. All staging, local source changes and final
+publication retain the existing identity, selection, deletion and reporting fences.
+
+For an initial import, complete batch publication and durable operation completion
+(including queue acknowledgement) share one database transaction. A kill before
+commit leaves only staging; a kill or response loss after commit cannot repeat
+the first batch. A competing/restarted worker receives a new random lease token;
+a former worker cannot stage or commit under its old token. Expired staging is
+removed in bounded batches during normal polling, without expiring retained facts.
+The existing two-minute lease, 45-second renewal, 30-second per-page provider
+bound, ten-attempt budget, backoff and operator resume apply unchanged.
+
+`banking_work.state` plus `attempts` distinguish queued (`pending`, zero attempts),
+running, retrying (`pending`, prior attempts), complete and needs-attention.
+`import_code` records safe facts such as `AWAITING_PROVIDER_HISTORY`,
+`PAGINATION_RESTART`, `REPAIR_REQUIRED` and `LOCAL_BATCH_COMMITTED`. The generic
+oldest-100 operator status remains bounded and is not a public owner-status API.
+Private work metadata saves the requested 365-day window as UTC calendar planning
+bounds anchored to enrollment creation (legacy fallback: connection creation).
+These are requested bounds, never measured institution availability or retention
+limits. Older returned facts continue to accumulate and are preserved.
+
+Bindings separately retain local commit time, provider update status and optional
+Item-level successful/failed update times. `provider_historical_update_at` records
+that a committed sequence contained the provider's historical-update-complete
+signal, even if a later page omitted status. It does not establish complete
+account history, YTD coverage or current bank freshness. `history_availability`
+remains explicitly `unknown` because this provider contract supplies no exact
+available-history boundary. Coverage dates remain unknown; neither row extrema,
+an empty page, a nonempty checkpoint nor local commit manufacture coverage.
+
+If an operation exhausts or requires repair, retain its identity. An authorized
+operator inspects the private work record and resolves the cause, then uses the
+existing `SET ROLE kami_migrator; SELECT app.banking_resume('operation-uuid'::uuid);`.
+Resume rechecks current lifecycle and cannot restore stopped selection or erased
+data. The worker role cannot invoke resume, reset attempts or read private tables.
+No raw errors, provider IDs, cursors, tokens or transaction facts belong in logs or
+queue messages.
+
+## Isolated Sandbox consumer check
+
+Build and run the worker with the separate restricted database URL and explicit
+banking configuration described in the [API README](../../apps/api/README.md).
+No new runtime gate or hosted service is introduced. The deterministic
+`TestInitialConsumer*` integration suite exercises authenticated enrollment and
+explicit selection through the real durable consumer, adapter and PostgreSQL.
+
+With a uniquely owned disposable database already migrated and the three
+`TEST_DATABASE_URL`, `TEST_WORKER_DATABASE_URL`, `TEST_DATABASE_ADMIN_URL` settings
+pointing only to it, load protected `PLAID_CLIENT_ID` and `PLAID_SANDBOX_SECRET`
+into the subprocess environment, then run from `apps/api`:
+
+```sh
+PLAID_INITIAL_SANDBOX_CHECK=1 go test -tags=integration ./internal/banking -run '^TestInitialSandboxConsumer$' -count=1 -v -timeout=6m
+```
+
+This opt-in check creates one synthetic `ins_109508` Sandbox Transactions Item
+requesting 365 days, exchanges once, explicitly selects one observed USD checking
+account, and stores its protected credential through the authenticated private
+service. A controlled database selection fixture installs only that chosen
+binding; this Sandbox check does not exercise real Link preparation or claim
+user-scoped enrollment capability. The actual restricted consumer then fetches,
+stages and commits the selected rows/checkpoint/status. Readiness retries honor
+the persisted due clock rather than forcing early provider calls. Cleanup removes
+only the test's known Item and the caller must tear down its disposable database.
+Failure/uncertainty during creation or exchange requires reconciling owned Sandbox
+inventory before retry; never replay an uncertain exchange. Output contains only
+safe stages, counts and confirmation. Fixtures establish the full authenticated
+enrollment journey separately; Sandbox establishes only the observed synthetic
+provider/consumer integration. Public transaction/status reads, browser visibility,
+ongoing triggers, live capabilities, backups and release remain separate work.

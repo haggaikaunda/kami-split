@@ -65,7 +65,7 @@ Explicit empty values are invalid. Compose sets `API_ADDR=:8080` inside the cont
 
 The [banking lifecycle worker](../../docs/application/banking-worker.md) uses a
 separate `kami_worker` pool for durable cleanup and protected Item observation.
-It also polls durable enrollment cleanup. The internal [sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted persistence atomically commits complete batches and their cursors. Worker import orchestration and public transaction/reporting APIs remain deferred. The API's sole verified
+It also polls durable enrollment cleanup. The internal [sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted persistence atomically commits complete batches and their cursors. The same worker executes durable first imports for explicitly selected bindings, with per-binding retry budgets and atomic batch/checkpoint/completion. Ongoing triggers and public transaction/reporting APIs remain deferred. The API's sole verified
 ingress is opt-in; configuring it grants no live enrollment authority. The
 [authenticated lifecycle API](../../docs/application/banking-enrollment.md#managing-an-existing-connection)
 shares the existing teardown/purge obligations and reports local stop, remote

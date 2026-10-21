@@ -64,7 +64,7 @@ func newSyncFixture(t *testing.T) *syncStoreFixture {
 func (f *syncStoreFixture) lease(connection uuid.UUID) database.BankingWork {
 	f.t.Helper()
 	work := database.BankingWork{ID: uuid.New(), Token: uuid.New(), ConnectionID: connection, Generation: 1, Kind: "reconcile"}
-	if err := f.admin.QueryRow(context.Background(), `INSERT INTO app.banking_work(id,connection_id,generation,kind,state,lease_token,lease_until) SELECT $1,id,generation,'reconcile','running',$3,clock_timestamp()+interval '30 minutes' FROM app.banking_connections WHERE id=$2 ON CONFLICT(connection_id,generation,kind) DO UPDATE SET state='running',lease_token=$3,lease_until=clock_timestamp()+interval '30 minutes' RETURNING id,generation`, work.ID, connection, work.Token).Scan(&work.ID, &work.Generation); err != nil {
+	if err := f.admin.QueryRow(context.Background(), `INSERT INTO app.banking_work(id,connection_id,generation,kind,state,lease_token,lease_until) SELECT $1,id,generation,'reconcile','running',$3,clock_timestamp()+interval '30 minutes' FROM app.banking_connections WHERE id=$2 ON CONFLICT(connection_id,generation,kind) WHERE kind<>'initial_sync' DO UPDATE SET state='running',lease_token=$3,lease_until=clock_timestamp()+interval '30 minutes' RETURNING id,generation`, work.ID, connection, work.Token).Scan(&work.ID, &work.Generation); err != nil {
 		f.t.Fatal(err)
 	}
 	return work
