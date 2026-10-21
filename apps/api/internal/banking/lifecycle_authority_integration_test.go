@@ -192,6 +192,18 @@ func TestLifecycleFreshSignedRevocationAfterReauthorization(t *testing.T) {
 			if job.Kind != "purge" {
 				t.Fatal("first deletion job is not purge")
 			}
+			// Completed import receipts now precede retained history in the
+			// bounded purge order. Drain that layer without consuming delivery
+			// fingerprints, then retain the exact 100-receipt assertion below.
+			for queryInt(t, f, `SELECT count(*) FROM app.banking_sync_batches batch JOIN app.banking_bindings binding ON binding.id=batch.binding_id WHERE binding.connection_id=$1`, connection) > 0 {
+				before := queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_deliveries WHERE correlation_id=$1`, enrollment)
+				if n, err := db.PurgeBankingBatch(context.Background(), job); err != nil || n <= 0 || n > 210 {
+					t.Fatal("bounded import receipt purge", n, err)
+				}
+				if queryInt(t, f, `SELECT count(*) FROM app.banking_webhook_deliveries WHERE correlation_id=$1`, enrollment) != before {
+					t.Fatal("import receipt phase changed fingerprints")
+				}
+			}
 			if n, err := db.PurgeBankingBatch(context.Background(), job); err != nil || n <= 0 {
 				t.Fatal("bounded fingerprint purge", n, err)
 			}

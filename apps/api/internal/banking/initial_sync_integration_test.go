@@ -476,3 +476,38 @@ func TestInitialConsumerCompetingWorkersAndLostLease(t *testing.T) {
 		t.Fatal("lease recovery budget/identity lost")
 	}
 }
+
+func TestInitialConsumerRetryDoesNotStarveLifecycleCleanup(t *testing.T) {
+	for _, mode := range []string{"disconnect", "delete"} {
+		t.Run(mode, func(t *testing.T) {
+			c := newInitialConsumer(t)
+			c.respond = func(string) (*http.Response, error) {
+				return plaidTestResponse(200, `{"accounts":[],"added":[],"modified":[],"removed":[],"has_more":false,"next_cursor":""}`), nil
+			}
+			c.run(t)
+			if queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='pending' AND attempts=1 AND import_code='AWAITING_PROVIDER_HISTORY'`, c.operation) != 1 {
+				t.Fatal("not-ready retry setup")
+			}
+			input := FenceInput{AttemptID: uuid.New(), ConnectionID: c.connection, ExpectedGeneration: 1}
+			if mode == "delete" {
+				requireCode(t, c.service.DeleteHistory(c.actor(c.owner), input), "READY")
+			} else {
+				requireCode(t, c.service.Stop(c.actor(c.owner), input), "READY")
+			}
+			for range 4 {
+				if _, err := c.worker.ProcessOne(context.Background()); err != nil {
+					t.Fatal("retry starved lifecycle cleanup", err)
+				}
+			}
+			if queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_connections WHERE id=$1 AND provider_removed`, c.connection) != 1 {
+				t.Fatal("not-ready work blocked teardown")
+			}
+			if mode == "delete" && queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_deletion_barriers WHERE connection_id=$1 AND cleanup_state='complete'`, c.connection) != 1 {
+				t.Fatal("not-ready work blocked purge")
+			}
+			if queryInt(t, c.fixture, `SELECT count(*) FROM pgmq.q_banking_lifecycle WHERE message-'operation_id'-'generation'<>'{}'::jsonb`) != 0 {
+				t.Fatal("queue contains private payload")
+			}
+		})
+	}
+}
