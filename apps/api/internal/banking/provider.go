@@ -28,7 +28,8 @@ func (PlaidConfig) String() string { return "[redacted banking provider configur
 func (c PlaidConfig) GoString() string { return c.String() }
 
 // PlaidProvider provides bounded enrollment, private inventory, Item observation,
-// verification keys and narrowly correlated removal. Callers own transaction boundaries and must invoke it outside them.
+// account-filtered transaction sync, verification keys and narrowly correlated
+// removal. Callers own transaction boundaries and must invoke it outside them.
 // It never retries externally observable calls or follows redirects.
 type PlaidProvider struct {
 	config   PlaidConfig
