@@ -1,0 +1,39 @@
+{
+  "accounts": [
+    {
+      "account_id": "account-selected",
+      "type": "depository",
+      "subtype": "checking"
+    }
+  ],
+  "added": [
+    {
+      "account_id": "account-selected",
+      "transaction_id": "pending-purchase",
+      "amount": 12.34,
+      "iso_currency_code": "USD",
+      "unofficial_currency_code": null,
+      "date": "2026-10-19",
+      "authorized_date": "2026-10-18",
+      "pending": true,
+      "pending_transaction_id": null,
+      "name": "Synthetic shop",
+      "merchant_name": null,
+      "transaction_code": "provider-future-code"
+    },
+    {
+      "account_id": "account-selected",
+      "transaction_id": "separate-credit",
+      "amount": -0.29,
+      "iso_currency_code": "USD",
+      "date": "2026-10-19",
+      "pending": false
+    }
+  ],
+  "modified": [],
+  "removed": [],
+  "next_cursor": "filtered-page-one+/=",
+  "has_more": true,
+  "transactions_update_status": "INITIAL_UPDATE_COMPLETE",
+  "request_id": "synthetic-request"
+}

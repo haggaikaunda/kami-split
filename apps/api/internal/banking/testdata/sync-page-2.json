@@ -1,0 +1,36 @@
+{
+  "accounts": [
+    {
+      "account_id": "account-selected",
+      "type": "credit",
+      "subtype": "credit card"
+    }
+  ],
+  "added": [
+    {
+      "account_id": "account-selected",
+      "transaction_id": "posted-purchase",
+      "amount": 12.34,
+      "iso_currency_code": "USD",
+      "date": "2026-10-20",
+      "pending": false,
+      "pending_transaction_id": "pending-purchase"
+    }
+  ],
+  "modified": [
+    {
+      "account_id": "account-selected",
+      "transaction_id": "separate-credit",
+      "amount": -1.01,
+      "iso_currency_code": "USD",
+      "date": "2026-10-19",
+      "pending": false,
+      "transaction_code": "refund"
+    }
+  ],
+  "removed": [{ "transaction_id": "pending-purchase" }],
+  "next_cursor": "filtered-complete+/=",
+  "has_more": false,
+  "transactions_update_status": "HISTORICAL_UPDATE_COMPLETE",
+  "request_id": "synthetic-request"
+}
