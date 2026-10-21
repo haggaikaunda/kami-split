@@ -7,7 +7,7 @@ one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. The
 [enrollment API](banking-enrollment.md) adds restricted durable enrollment-recovery
 jobs to the same worker, with renewable leases and narrow user-scoped discovery
 and removal. Authenticated [lifecycle management](banking-enrollment.md#managing-an-existing-connection)
-uses these same cleanup paths. The [replacement backend](banking-replacement.md) extends complete purge across staged and historical bindings. The protected [sync adapter](banking-sync.md) validates provider pages; restricted atomic persistence can apply complete batches, but this worker does not yet run an import loop. Live enrollment stays disabled
+uses these same cleanup paths. The [replacement backend](banking-replacement.md) extends complete purge across staged and historical bindings. The protected [sync adapter](banking-sync.md) validates provider pages; the worker imports the first selected-account batch through restricted atomic persistence and binding-scoped durable operations. Live enrollment stays disabled
 under #255; synthetic checks establish no live entitlement or backup capability.
 
 ## Durable authority

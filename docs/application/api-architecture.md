@@ -89,7 +89,7 @@ Item observation, worker privileges/runtime and verified durable HTTP ingress.
 The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
 retained stream reads, durable unknown-exchange recovery, explicit selection,
 existing-Item repair and revision-checked disconnect/private-history deletion. New enrollment is
-disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. Worker import orchestration and public transaction/reporting APIs remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
+disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. The existing worker executes durable first imports for selected bindings. Ongoing sync triggers and public transaction/reporting APIs remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
