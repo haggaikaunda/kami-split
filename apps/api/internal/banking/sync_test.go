@@ -398,6 +398,35 @@ func TestSyncTransportProtectionAndRedaction(t *testing.T) {
 	}
 }
 
+func TestSyncUnreadableResponseUsesOnlyReceivedStatus(t *testing.T) {
+	binding := syncTestBinding()
+	for _, failingPath := range []string{"/item/get", "/transactions/sync"} {
+		for _, tc := range []struct {
+			status int
+			kind   SyncErrorKind
+		}{{http.StatusOK, SyncTemporary}, {http.StatusBadRequest, SyncRejected}, {http.StatusServiceUnavailable, SyncTemporary}} {
+			t.Run(fmt.Sprintf("%s/%d", failingPath, tc.status), func(t *testing.T) {
+				provider := testPlaid(t, bankingRoundTrip(func(request *http.Request) (*http.Response, error) {
+					if request.URL.Path != failingPath {
+						return plaidTestResponse(200, syncIdentityFixture), nil
+					}
+					// Even a complete JSON prefix cannot establish a reconnect
+					// outcome when the response body was not successfully read.
+					body := io.MultiReader(strings.NewReader(`{"error_code":"ITEM_LOGIN_REQUIRED","error_message":"access-private"}`), &syncBrokenBody{})
+					response := &http.Response{StatusCode: tc.status, Header: make(http.Header), Body: io.NopCloser(body)}
+					response.Header.Set("Retry-After", "123")
+					return response, nil
+				}))
+				page, err := provider.SyncTransactions(context.Background(), binding, Credential{raw: []byte("access-private")}, syncTestCursor(t, binding, "saved"))
+				assertSyncFailure(t, page, err, tc.kind)
+				if err.(*SyncError).RetryAfter != 123*time.Second {
+					t.Fatal("minimum retry guidance lost after body failure")
+				}
+			})
+		}
+	}
+}
+
 type syncBrokenBody struct{}
 
 func (*syncBrokenBody) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }

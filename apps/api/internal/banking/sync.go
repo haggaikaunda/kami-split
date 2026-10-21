@@ -186,7 +186,7 @@ func (p *PlaidProvider) SyncTransactions(ctx context.Context, binding SyncBindin
 	raw, _ := json.Marshal(request)
 	response, err := p.post(ctx, "/transactions/sync", raw)
 	if err != nil {
-		return SyncPage{}, &SyncError{Kind: SyncTemporary, RetryAfter: response.retryAfter}
+		return SyncPage{}, syncRequestFailure(response)
 	}
 	if response.status != http.StatusOK {
 		return SyncPage{}, syncFailure(response)
@@ -203,7 +203,7 @@ func (p *PlaidProvider) syncIdentity(ctx context.Context, binding SyncBinding, c
 	raw, _ := json.Marshal(map[string]string{"access_token": string(credential.Bytes())})
 	response, err := p.post(ctx, "/item/get", raw)
 	if err != nil {
-		return SyncFreshness{}, &SyncError{Kind: SyncTemporary, RetryAfter: response.retryAfter}
+		return SyncFreshness{}, syncRequestFailure(response)
 	}
 	if response.status != http.StatusOK {
 		return SyncFreshness{}, syncFailure(response)
@@ -228,6 +228,16 @@ func (p *PlaidProvider) syncIdentity(ctx context.Context, binding SyncBinding, c
 		return SyncFreshness{}, syncFailure(plaidResponse{status: http.StatusBadRequest, body: payload.Item.Error, retryAfter: response.retryAfter})
 	}
 	return SyncFreshness{payload.Status.Transactions.Success, payload.Status.Transactions.Failed}, nil
+}
+
+func syncRequestFailure(response plaidResponse) *SyncError {
+	// A body read failure does not erase the received HTTP status or retry
+	// guidance. Discard incomplete bodies before classifying known statuses.
+	failure := syncFailure(plaidResponse{status: response.status, retryAfter: response.retryAfter})
+	if response.status == 0 || response.status == http.StatusOK {
+		failure.Kind = SyncTemporary
+	}
+	return failure
 }
 
 func syncFailure(response plaidResponse) *SyncError {
