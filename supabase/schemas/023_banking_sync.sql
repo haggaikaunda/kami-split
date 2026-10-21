@@ -190,11 +190,17 @@ BEGIN
  SELECT s.* INTO source FROM app.banking_source_identities i JOIN app.banking_sources s ON s.id=i.source_id WHERE i.binding_id=target AND i.provider_transaction_id=change->>'id';
  IF source.id IS NULL THEN SELECT s.* INTO source FROM app.banking_sources s WHERE s.binding_id=target AND s.provider_transaction_id=change->>'id'; END IF;
  IF change->>'pending_transaction_id' IS NOT NULL THEN
-  SELECT s.id INTO linked FROM app.banking_sources s JOIN app.banking_source_revisions r ON r.source_id=s.id AND r.revision=s.revision
+  SELECT s.id INTO linked FROM app.banking_sources s
    LEFT JOIN app.banking_source_identities i ON i.source_id=s.id
-   WHERE s.binding_id=target AND (i.provider_transaction_id=change->>'pending_transaction_id' OR s.provider_transaction_id=change->>'pending_transaction_id') AND r.processing_state IN('pending','removed') AND EXISTS(SELECT FROM app.banking_source_revisions prior WHERE prior.source_id=s.id AND prior.processing_state='pending' AND coalesce(prior.provider_transaction_id,s.provider_transaction_id)=change->>'pending_transaction_id') LIMIT 1;
-  IF source.id IS NULL AND linked IS NOT NULL THEN SELECT * INTO source FROM app.banking_sources WHERE id=linked;
-  ELSIF linked IS NOT NULL AND source.id<>linked THEN RAISE EXCEPTION 'conflicting explicit source identity' USING ERRCODE='23514'; END IF;
+   WHERE s.binding_id=target AND (i.provider_transaction_id=change->>'pending_transaction_id' OR s.provider_transaction_id=change->>'pending_transaction_id') LIMIT 1;
+  IF linked IS NOT NULL THEN
+   IF NOT EXISTS(SELECT FROM app.banking_source_revisions prior JOIN app.banking_sources s ON s.id=prior.source_id WHERE s.id=linked AND prior.processing_state='pending' AND coalesce(prior.provider_transaction_id,s.provider_transaction_id)=change->>'pending_transaction_id')
+    OR (source.id IS NOT NULL AND source.id<>linked)
+    OR (source.id IS NULL AND EXISTS(SELECT FROM app.banking_sources s JOIN app.banking_source_revisions r ON r.source_id=s.id AND r.revision=s.revision WHERE s.id=linked AND r.processing_state='posted')) THEN
+    RAISE EXCEPTION 'conflicting explicit source identity' USING ERRCODE='23514';
+   END IF;
+   IF source.id IS NULL THEN SELECT * INTO source FROM app.banking_sources WHERE id=linked; END IF;
+  END IF;
  END IF;
  IF source.id IS NOT NULL THEN SELECT * INTO old FROM app.banking_source_revisions WHERE source_id=source.id AND revision=source.revision; END IF;
  IF change->>'operation'='removed' THEN
@@ -272,6 +278,36 @@ BEGIN
  DELETE FROM app.banking_sync_pages WHERE batch_id=batch;
  RETURN outcome;
 END $$;
+
+-- Drain new payloads before the existing dependency-ordered retained-data
+-- purge. Cascades are a backstop, never an unbounded primary cleanup path.
+ALTER FUNCTION app.banking_purge_batch(uuid,uuid) RENAME TO banking_purge_retained_batch;
+REVOKE ALL ON FUNCTION app.banking_purge_retained_batch(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
+CREATE FUNCTION app.banking_purge_batch(target uuid, authority uuid) RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE job app.banking_work; accounts uuid[]; n integer:=0; changed integer;
+BEGIN
+ PERFORM 1 FROM app.banking_connections c JOIN app.banking_work w ON w.connection_id=c.id
+  WHERE w.id=target AND c.generation=w.generation AND c.state='deleted' FOR UPDATE OF c;
+ IF NOT FOUND THEN RETURN -1; END IF;
+ SELECT * INTO job FROM app.banking_work WHERE id=target AND kind='purge' AND state='running'
+  AND lease_token=authority AND lease_until>clock_timestamp() FOR UPDATE;
+ IF NOT FOUND THEN RETURN -1; END IF;
+ SELECT array_agg(account_id) INTO accounts FROM app.banking_deletion_accounts WHERE connection_id=job.connection_id;
+ DELETE FROM app.banking_sync_batches WHERE id IN(SELECT x.id FROM app.banking_sync_batches x JOIN app.banking_bindings b ON b.id=x.binding_id WHERE b.account_id=ANY(accounts) ORDER BY x.id LIMIT 10);
+ GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+ DELETE FROM app.banking_sync_removals WHERE (binding_id,provider_transaction_id,import_revision) IN(SELECT x.binding_id,x.provider_transaction_id,x.import_revision FROM app.banking_sync_removals x JOIN app.banking_bindings b ON b.id=x.binding_id WHERE b.account_id=ANY(accounts) ORDER BY x.binding_id,x.provider_transaction_id,x.import_revision LIMIT 100);
+ GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+ DELETE FROM app.banking_source_identities WHERE (binding_id,provider_transaction_id) IN(SELECT x.binding_id,x.provider_transaction_id FROM app.banking_source_identities x JOIN app.banking_bindings b ON b.id=x.binding_id WHERE b.account_id=ANY(accounts) ORDER BY x.binding_id,x.provider_transaction_id LIMIT 100);
+ GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+ IF n>0 THEN
+  UPDATE app.banking_work SET progress=progress+n,updated_at=clock_timestamp() WHERE id=target;
+  RETURN n;
+ END IF;
+ RETURN app.banking_purge_retained_batch(target,authority);
+END $$;
+REVOKE ALL ON FUNCTION app.banking_purge_batch(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
+GRANT EXECUTE ON FUNCTION app.banking_purge_batch(uuid,uuid) TO kami_worker;
 
 -- Bounded housekeeping is private staging cleanup, never retained bank history.
 CREATE FUNCTION app.banking_sync_cleanup() RETURNS integer

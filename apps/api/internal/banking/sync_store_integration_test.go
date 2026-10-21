@@ -293,7 +293,7 @@ func TestSyncBatchRestrictedAuthorityAndDatabaseRollback(t *testing.T) {
 				t.Fatal("worker impersonated API")
 			}
 		}
-		for _, sql := range []string{`SELECT * FROM app.banking_sync_pages`, `INSERT INTO app.banking_sources(id) VALUES(gen_random_uuid())`, `SELECT app.banking_sync_apply(NULL,NULL,'{}',false)`, `SELECT app.banking_sync_authorized(NULL,NULL,NULL)`} {
+		for _, sql := range []string{`SELECT * FROM app.banking_sync_pages`, `INSERT INTO app.banking_sources(id) VALUES(gen_random_uuid())`, `SELECT app.banking_sync_apply(NULL,NULL,'{}',false)`, `SELECT app.banking_sync_authorized(NULL,NULL,NULL)`, `SELECT app.banking_purge_retained_batch(NULL,NULL)`} {
 			if _, err = conn.Exec(context.Background(), sql); err == nil {
 				t.Fatalf("role %s gained direct authority", role)
 			}
@@ -471,6 +471,14 @@ func TestSyncBatchPendingIdentityRequiresExactUnchangedLinks(t *testing.T) {
 	if f.sourceID("explicit-posted") != original {
 		t.Fatal("explicit link lost previously removed pending provenance")
 	}
+	duplicateBatch := f.begin()
+	duplicate := posted
+	duplicate.TransactionID = "second-posted-for-same-pending"
+	f.stage(duplicateBatch, 0, duplicateBatch.Cursor(), "duplicate-posted", false, []SyncTransaction{duplicate}, nil)
+	if _, err := CommitSyncBatch(context.Background(), f.worker, f.work, duplicateBatch); err == nil {
+		t.Fatal("already-posted pending identity created a second source")
+	}
+	f.assertStream("identities-3", 3)
 	batch = f.begin()
 	posted.PendingTransactionID = &other.TransactionID
 	f.stage(batch, 0, batch.Cursor(), "identities-invalid", false, nil, []SyncTransaction{posted})
@@ -658,5 +666,58 @@ func TestSyncBatchRawWrapperRejectsInvalidFactsAtomically(t *testing.T) {
 			f.commit(batch, "CONFLICT")
 			f.assertStream("", 0)
 		})
+	}
+}
+
+func TestSyncBatchPurgeDrainsNewPayloadsInBoundedSteps(t *testing.T) {
+	f := newSyncFixture(t)
+	batch := f.begin()
+	f.stage(batch, 0, batch.Cursor(), "initial", false, []SyncTransaction{syncFact("retained", "2026-10-01", 100)}, nil)
+	f.commit(batch, "READY")
+	// More than one removal drain and batch drain are required. These are real
+	// restricted-wrapper receipts/pages, rather than direct staging table inserts.
+	batch = f.begin()
+	from := batch.Cursor()
+	for ordinal := 0; ordinal < 6; ordinal++ {
+		removed := []string{}
+		for row := 0; row < 20; row++ {
+			removed = append(removed, fmt.Sprintf("unknown-%03d", ordinal*20+row))
+		}
+		from = f.stage(batch, ordinal, from, fmt.Sprintf("remove-%d", ordinal), ordinal < 5, nil, nil, removed...)
+	}
+	f.commit(batch, "READY")
+	for i := 0; i < 11; i++ {
+		b := f.begin()
+		f.stage(b, 0, b.Cursor(), fmt.Sprintf("staged-%d", i), false, []SyncTransaction{syncFact(fmt.Sprintf("uncommitted-%d", i), "2026-10-02", 200)}, nil)
+	}
+	before := queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sync_batches WHERE binding_id=$1`, f.binding)
+	requireCode(t, f.service.DeleteHistory(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: f.connection, ExpectedGeneration: 1}), "READY")
+	var purge database.BankingWork
+	if err := f.admin.QueryRow(context.Background(), `UPDATE app.banking_work SET state='running',lease_token=gen_random_uuid(),lease_until=clock_timestamp()+interval '2 minutes' WHERE connection_id=$1 AND kind='purge' RETURNING id,connection_id,generation,lease_token`, f.connection).Scan(&purge.ID, &purge.ConnectionID, &purge.Generation, &purge.Token); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := f.worker.PurgeBankingBatch(context.Background(), purge); err != nil || n != 111 {
+		t.Fatal("unexpected first drain progress", n, err)
+	}
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sync_batches WHERE binding_id=$1`, f.binding) != before-10 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sync_removals WHERE binding_id=$1`, f.binding) != 20 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sources WHERE binding_id=$1`, f.binding) != 1 {
+		t.Fatal("first purge exceeded bounds or deleted retained data before draining staging")
+	}
+	for i := 0; i < 20; i++ {
+		n, err := f.worker.PurgeBankingBatch(context.Background(), purge)
+		if err != nil || n < 0 {
+			t.Fatal(n, err)
+		}
+		if n == 0 {
+			break
+		}
+		if i == 19 {
+			t.Fatal("bounded purge did not converge")
+		}
+	}
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_bindings WHERE id=$1`, f.binding) != 0 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sync_batches WHERE binding_id=$1`, f.binding) != 0 {
+		t.Fatal("checkpoint/staging survived complete purge")
+	}
+	if result, err := CommitSyncBatch(context.Background(), f.worker, f.work, batch); err != nil || result.Code != "DENIED" {
+		t.Fatal("purged batch replay resurrected data", result.Code, err)
 	}
 }

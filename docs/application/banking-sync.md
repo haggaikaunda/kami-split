@@ -168,7 +168,7 @@ Exact same-binding provider identity is the only source lookup. An explicit
 pending-to-posted link can retain the pending source's stable internal ID across
 pages; prior facts, original provider identity and immutable annotations remain.
 Unlinked rows get independent IDs. A changed link cannot merge existing source
-histories, and a pending removal cannot remove its superseding posted identity.
+histories, a second posted identity cannot reuse an already-posted pending link, and a pending removal cannot remove its superseding posted identity.
 Known removals append a removed revision; unknown removals retain identity-only
 history without inventing amount/date facts. Imports remain unclassified unless
 existing valid owner annotation provenance supplies activity; codes/names alone
@@ -196,9 +196,10 @@ The worker role has only capability-checked wrapper execution and no direct
 staging/source access, helper execution or user impersonation. Expired batch
 cleanup removes at most ten batches per call, using `SKIP LOCKED`; it never expires
 retained source history. Existing logical-account deletion barriers immediately
-block collection and visibility. Dependency-ordered purge also removes staging,
-receipts, identities, removal history and checkpoints through binding/source
-foreign keys, including replacement bindings across Items, while retaining
-unrelated sibling accounts. The additive migration extends the existing banking
+block collection and visibility. Before retained-data purge, each call drains at most ten batches, 100 identity
+aliases and 100 removal records for the deleted logical accounts. Only after
+these payloads are empty can the existing dependency-ordered purge remove source
+history, bindings and checkpoints. Cascades remain a backstop. This includes
+replacement bindings across Items and preserves unrelated sibling accounts. The additive migration extends the existing banking
 store; desired state remains in `supabase/schemas`, with migration replay,
 permissions and real-database checks owned by `make db-test`.
