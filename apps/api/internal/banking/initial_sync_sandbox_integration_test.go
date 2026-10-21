@@ -86,25 +86,34 @@ func TestInitialSandboxConsumer(t *testing.T) {
 	}
 	completed := false
 	for attempt := 0; attempt < 5; attempt++ {
-		if worked, err := worker.ProcessOne(ctx); err != nil || !worked {
-			t.Fatal("Sandbox actual consumer unavailable")
+		// Both clocks gate a claim. banking_finish sets due_at and then transport
+		// visibility, so waking at due_at alone can poll before pgmq exposes it.
+		// Measure remaining duration in PostgreSQL's clock domain, round upward,
+		// then preserve that full delay after receiving the query response.
+		var waitMillis, visibilityLagMicros int64
+		if err := f.admin.QueryRow(ctx, `SELECT ceil(greatest(0,extract(epoch FROM greatest(w.due_at,q.vt)-clock_timestamp())*1000))::bigint,ceil(extract(epoch FROM q.vt-w.due_at)*1000000)::bigint FROM app.banking_work w JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id WHERE w.id=$1 AND w.state='pending'`, operation).Scan(&waitMillis, &visibilityLagMicros); err != nil {
+			t.Fatal("Sandbox pending intent or transport unavailable")
 		}
-		if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete' AND import_code='LOCAL_BATCH_COMMITTED'`, operation) == 1 {
-			completed = true
-			break
-		}
-		// Preserve the durable due time and provider guidance. Never fast-forward a
-		// real Sandbox retry clock merely to make the demonstration pass.
-		var due time.Time
-		if err := f.admin.QueryRow(ctx, `SELECT due_at FROM app.banking_work WHERE id=$1 AND state='pending'`, operation).Scan(&due); err != nil {
-			t.Fatal("Sandbox import requires attention")
-		}
-		timer := time.NewTimer(time.Until(due))
+		t.Logf("Sandbox claim wait milliseconds=%d; transport minus durable due microseconds=%d", waitMillis, visibilityLagMicros)
+		timer := time.NewTimer(time.Duration(waitMillis) * time.Millisecond)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 			t.Fatal("Sandbox bounded readiness deadline")
 		case <-timer.C:
+		}
+		if worked, err := worker.ProcessOne(ctx); err != nil || !worked {
+			var state string
+			var attempts int
+			var due, visible bool
+			if diagnosticErr := f.admin.QueryRow(ctx, `SELECT w.state,w.attempts,w.due_at<=clock_timestamp(),coalesce(q.vt<=clock_timestamp(),false) FROM app.banking_work w LEFT JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible); diagnosticErr != nil {
+				t.Fatal("Sandbox actual consumer unavailable; safe state unavailable")
+			}
+			t.Fatalf("Sandbox actual consumer unavailable; worked=%t error=%t state=%s attempts=%d due=%t visible=%t", worked, err != nil, state, attempts, due, visible)
+		}
+		if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete' AND import_code='LOCAL_BATCH_COMMITTED'`, operation) == 1 {
+			completed = true
+			break
 		}
 	}
 	if !completed {
