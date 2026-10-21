@@ -42,6 +42,45 @@ notifications without deleting history. Other observation failures set actionabl
 repair status; their retry and attention budgets remain bounded. Neither a healthy observation nor an absent notification
 enables a stopped binding or grants collection permission.
 
+### Retry clocks and operational limits
+
+Integer `Retry-After` seconds are a duration from response receipt. An HTTP-date
+is converted to a remaining duration using the worker host's UTC clock at receipt.
+The worker takes the greater of that duration and its backoff, rounds upward to
+whole seconds, and passes the duration to PostgreSQL. Response-body processing,
+network and scheduling latency before persistence add waiting time; they do not
+subtract it. PostgreSQL adds the duration to `clock_timestamp()` for both durable
+due time and queue visibility. A claim requires both visible transport and an
+elapsed durable due time before any provider request.
+
+A stable database clock offset from the worker host cancels between scheduling
+and claiming. For example, a database 73 seconds behind still waits the full
+duration on its own clock. Comparing its persisted timestamp directly with a
+host/provider deadline cannot establish an early retry. Verification must compare
+elapsed durations in one clock domain or translate using measured clock brackets.
+
+This contract assumes the database clock measures elapsed time without a forward
+step or an appreciably faster rate while work is pending. A forward adjustment
+can make both queue visibility and due time elapse early; a backward adjustment
+delays eligibility. HTTP-date guidance additionally requires an accurate host UTC
+clock relative to the provider date: a host ahead at parsing can understate the
+remaining duration. Constant database offset is supported; arbitrary clock jumps
+and arbitrary host/provider skew are not. Whole-second rounding and scheduling
+latency are not clock-error budgets and must not be relied on to absorb drift.
+
+Operators must maintain and monitor host/provider UTC agreement and database
+clock continuity/rate, including VM suspend/resume and time synchronization
+corrections. No application clock monitor or cross-clock deadline repair is
+implemented. Before a planned discontinuous correction, pause consumers; after
+an unexpected discontinuity, stop further processing and validate pending retry
+deadlines against independently available provider guidance before restarting.
+The work record stores the database deadline, not the original header and host
+receipt time; if those references are unavailable, keep affected work paused until
+the operator can establish safe rescheduling. Simply restarting the worker retains
+the original database deadlines and cannot repair them. The
+same database wall clock governs leases, so changing it is an operational action,
+not a retry-test setup technique.
+
 ## Private cleanup and ingress
 
 Purge commits bounded batches (at most 100 rows per dependency table per batch),

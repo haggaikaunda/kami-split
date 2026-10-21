@@ -321,30 +321,92 @@ func TestIndependentSignedIngressRejectsRoutingAndForgeryWithoutWrites(t *testin
 }
 
 func TestIndependentProviderMinimumRetryIsNeverRoundedEarlier(t *testing.T) {
+	for _, guidance := range []string{"integer", "HTTP-date"} {
+		t.Run(guidance, func(t *testing.T) {
+			testProviderMinimumEligibility(t, guidance)
+		})
+	}
+}
+
+func testProviderMinimumEligibility(t *testing.T, guidance string) {
+	t.Helper()
 	f, db, _, _ := workerFixture(t)
 	ctx := context.Background()
 	connection := f.connection(f.owner, "independent-provider-minimum")
 	requireCode(t, f.service.Stop(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}), "READY")
-	notBefore := time.Now().Add(130 * time.Second).UTC().Truncate(time.Second)
+	var minimum time.Time
 	calls := 0
 	provider := testPlaid(t, bankingRoundTrip(func(*http.Request) (*http.Response, error) {
 		calls++
+		if calls > 1 {
+			return plaidTestResponse(http.StatusOK, `{"request_id":"retry-confirmed","removed":true}`), nil
+		}
 		response := plaidTestResponse(http.StatusTooManyRequests, `{}`)
-		response.Header.Set("Retry-After", notBefore.Format(http.TimeFormat))
+		minimum = time.Now().Add(130 * time.Second).UTC()
+		if guidance == "HTTP-date" {
+			minimum = minimum.Truncate(time.Second)
+			response.Header.Set("Retry-After", minimum.Format(http.TimeFormat))
+		} else {
+			response.Header.Set("Retry-After", "130")
+		}
 		return response, nil
 	}))
 	worker, _ := NewWorker(db, f.service.protector, provider)
+	hostBefore := time.Now()
+	var databaseBefore time.Time
+	if err := f.admin.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&databaseBefore); err != nil {
+		t.Fatal(err)
+	}
 	if worked, err := worker.ProcessOne(ctx); err != nil || !worked {
 		t.Fatal(worked, err)
 	}
+	hostAfter := time.Now()
 	if calls != 1 {
 		t.Fatalf("target provider request count=%d; worker selected different work", calls)
 	}
-	var due, databaseNow time.Time
-	if err := f.admin.QueryRow(ctx, `SELECT due_at,clock_timestamp() FROM app.banking_work WHERE connection_id=$1 AND state='pending'`, connection).Scan(&due, &databaseNow); err != nil {
+	var due, visibleAt, databaseNow time.Time
+	if err := f.admin.QueryRow(ctx, `SELECT w.due_at,q.vt,clock_timestamp() FROM app.banking_work w JOIN pgmq.q_banking_lifecycle q ON q.msg_id=w.message_id WHERE w.connection_id=$1 AND w.state='pending'`, connection).Scan(&due, &visibleAt, &databaseNow); err != nil {
 		t.Fatal(err)
 	}
-	if due.Before(notBefore) {
-		t.Fatalf("retry scheduled %s before provider minimum (host=%s database=%s due=%s minimum=%s)", notBefore.Sub(due), time.Now().UTC(), databaseNow, due, notBefore)
+	// Bound the remaining provider delay in the host domain, then compare in
+	// the database domain. Scheduling occurs after databaseBefore and parsing
+	// before hostAfter. The measured call interval is the only uncertainty;
+	// no host/database synchronization or arbitrary timing tolerance is assumed.
+	minimumRemaining := minimum.Sub(hostAfter)
+	if minimumRemaining <= 0 {
+		t.Fatal("provider minimum elapsed during test; eligibility proof unavailable")
+	}
+	if due.Sub(databaseBefore) < minimumRemaining {
+		t.Fatalf("database delay=%s below provider lower bound=%s (call bracket=%s)", due.Sub(databaseBefore), minimumRemaining, hostAfter.Sub(hostBefore))
+	}
+	if visibleAt.Before(due) || !due.After(databaseNow) {
+		t.Fatal("queue visibility preceded due time or test consumed pending delay")
+	}
+	t.Logf("guidance=%s host bracket=%s..%s database before=%s now=%s due=%s visible=%s minimum=%s", guidance, hostBefore.UTC(), hostAfter.UTC(), databaseBefore, databaseNow, due, visibleAt, minimum)
+	if worked, err := worker.ProcessOne(ctx); err != nil || worked || calls != 1 {
+		t.Fatal("invisible retry reached provider", worked, err, calls)
+	}
+	// Prove each SQL eligibility guard through the restricted worker. Releasing
+	// transport visibility cannot bypass a future durable due time.
+	f.exec(`SELECT pgmq.set_vt('banking_lifecycle',message_id,0) FROM app.banking_work WHERE connection_id=$1`, connection)
+	if worked, err := worker.ProcessOne(ctx); err != nil || worked || calls != 1 {
+		t.Fatal("visible future retry reached provider", worked, err, calls)
+	}
+	// Conversely an elapsed due time cannot bypass invisible transport. These
+	// fixture-only updates advance eligibility, never the shared system clock.
+	f.exec(`UPDATE app.banking_work SET due_at=clock_timestamp()-interval '1 second' WHERE connection_id=$1`, connection)
+	f.exec(`SELECT pgmq.set_vt('banking_lifecycle',message_id,120) FROM app.banking_work WHERE connection_id=$1`, connection)
+	if worked, err := worker.ProcessOne(ctx); err != nil || worked || calls != 1 {
+		t.Fatal("invisible due retry reached provider", worked, err, calls)
+	}
+	// Negative control: deliberately early durable/transport eligibility permits
+	// a second request before the host minimum. The original scheduled state
+	// above must reject this same request. No actual provider is contacted.
+	f.exec(`SELECT pgmq.set_vt('banking_lifecycle',message_id,0) FROM app.banking_work WHERE connection_id=$1`, connection)
+	if worked, err := worker.ProcessOne(ctx); err != nil || !worked || calls != 2 {
+		t.Fatal("due visible retry did not reach provider", worked, err, calls)
+	}
+	if !time.Now().Before(minimum) {
+		t.Fatal("negative control no longer demonstrates an early request")
 	}
 }
