@@ -3,9 +3,9 @@
 The owner-only backend in `internal/banking` implements explicit staging,
 complete impact preview and guarded publication of disjoint posted-date plans.
 It extends [enrollment](banking-enrollment.md), [private storage](banking-storage.md)
-and the [lifecycle worker](banking-worker.md). It does not implement provider
-transaction ingestion, general transaction/annotation reads or edits, browser
-management, or the separately required live-provider release gates.
+and the [lifecycle worker](banking-worker.md). The [restricted sync persistence](banking-sync.md) applies complete provider
+sequences under these plans. General transaction/annotation reads or edits, browser
+management and the separately required live-provider release gates remain separate.
 
 ## Entry and collection authority
 
@@ -97,7 +97,7 @@ annotations with snapshot annotations. Every source leaving current reporting is
 retained by immutable plan/archive provenance. Retired pending is archive-only.
 Stored historical/cross-boundary discrepancy states remain visible in preview;
 when a captured source has such a notice, a new revision cannot silently replace
-its captured fact. The future importer must persist these states and extend these
+its captured fact. The restricted atomic importer persists these states and enforces these
 fences for real provider corrections.
 
 Recovery only publishes reporting ownership. It does not restore credentials,

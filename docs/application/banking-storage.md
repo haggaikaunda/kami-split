@@ -4,7 +4,7 @@ The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
 hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
 protected Item observations and verified webhook ingress. The [enrollment API](banking-enrollment.md) adds actor-bound Link operations and
-retained-stream reads and revision-checked lifecycle management. The [replacement backend](banking-replacement.md) adds staged date-ownership plans and guarded recovery. The protected [sync adapter](banking-sync.md) validates provider changes without writing storage; transaction import and general annotation editing remain deferred. Live enrollment remains disabled by default;
+retained-stream reads and revision-checked lifecycle management. The [replacement backend](banking-replacement.md) adds staged date-ownership plans and guarded recovery. The protected [sync adapter](banking-sync.md) validates provider changes, and restricted atomic batch persistence applies complete sequences under lifecycle/reporting fences; worker orchestration and general annotation editing remain deferred. Live enrollment remains disabled by default;
 the [Personal contract](personal-banking.md) describes the planned product.
 
 ## Ownership and privileges
@@ -19,8 +19,8 @@ archive reads. Other-owner and absent identifiers have the same result.
 `kami_migrator` owns DDL and historical fixture construction. Browser roles,
 including `anon`, `authenticated` and `service_role`, receive no banking access.
 The API has read access and narrowly granted mutation functions; credentials
-cannot be selected directly. The separate `kami_worker` login has only lifecycle wrapper execution, with no
-direct banking/queue table access, source writes or user impersonation. Cleanup
+cannot be selected directly. The separate `kami_worker` login has only lifecycle and capability-checked sync wrapper execution, with no
+direct banking/queue table access or user impersonation. Cleanup
 can finish for a disabled owner; provider observation requires an enabled owner,
 granted permission, selected account and current generation.
 No banking table references expenses or contributes events to shared Activity.
