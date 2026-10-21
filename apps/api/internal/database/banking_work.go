@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// WorkerDB owns a separate, bounded kami_worker pool with only lifecycle wrapper
-// grants. It cannot impersonate a user or perform collection/source mutations.
+// WorkerDB owns a separate, bounded kami_worker pool with only capability-checked
+// lifecycle/sync wrapper grants. It cannot impersonate a user or write tables.
 type WorkerDB struct{ db *DB }
 
 // OpenWorker rejects administrative/API credentials and takes ownership of its

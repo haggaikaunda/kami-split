@@ -2,8 +2,8 @@
 
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
-cursor persistence, atomic multi-page import, scheduling, public status and the
-browser transaction journey remain separate work. The existing worker does not
+restricted atomic batch persistence is implemented below. Scheduling, public
+status and the browser transaction journey remain separate work. The existing worker does not
 call this adapter. Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
@@ -20,9 +20,8 @@ The caller obtains the credential through the existing protected ownership and
 environment boundary and supplies a server-derived `SyncBinding` containing the
 local binding, environment, Item and selected provider account. The adapter checks
 environment, credential Item identity and exact response account identities. It
-does not grant consent or selection. The future importer must recheck lifecycle
-generation and selection when committing, after network calls outside database
-transactions.
+does not grant consent or selection. The persistence boundary rechecks lifecycle generation and selection at commit,
+after network calls outside database transactions.
 
 Every sync request uses `options.account_id` and count 20. The small page size
 leaves headroom within the existing body limit; a large provider payload can still
@@ -64,8 +63,8 @@ An explicitly supplied sibling account ID rejects the entire page. Page data is
 newly decoded and caller-owned; changing it does not mutate retained provider or
 cursor state.
 
-Keep the batch's original cursor until `HasMore` is false. Only the future atomic
-importer may persist the complete changes and final cursor together. On pagination
+Keep the batch's original cursor until `HasMore` is false. Only the restricted atomic
+commit may persist the complete changes and final cursor together. On pagination
 mutation, discard every uncommitted page and restart from that original cursor.
 Never retry just the page that failed. An initial response with no changes and an
 empty next cursor is not-ready, not a successful empty import or cursor advance.
@@ -136,3 +135,75 @@ Official contracts: [Transactions API](https://plaid.com/docs/api/products/trans
 [Transactions webhooks](https://plaid.com/docs/transactions/webhooks/),
 [Item API](https://plaid.com/docs/api/items/) and
 [Sandbox API](https://plaid.com/docs/api/sandbox/).
+
+## Restricted atomic persistence
+
+`BeginSyncBatch`, `StageSyncPage`, `CommitSyncBatch` and `CancelSyncBatch` extend
+this adapter with private PostgreSQL persistence. They do not fetch pages or run
+an import loop. Begin derives the exact provider binding and original checkpoint
+from storage under an existing current `reconcile` lease. Provider requests occur
+between these calls, outside the commit transaction. Queue messages retain opaque
+work IDs; provider pages and checkpoints must never enter queue or log payloads.
+
+Each private batch captures its owner, lease, binding, original checkpoint,
+connection/deletion/binding/account generations and reporting revision. Staging
+validates consecutive ordinals, exact input/output cursor continuity, supported
+facts and account scope. Identical page replay is safe; changed replay invalidates
+the sequence. Only a final page with `has_more = false` makes a batch committable.
+A batch is limited to 1,000 pages, each at most 20 changes and 64 KiB, and expires
+after one hour. Cancellation and provider pagination mutation require discarding
+the whole sequence and beginning again from the trusted stored checkpoint.
+
+Commit locks enabled identity, connection, binding and logical account, then
+rechecks current lease, permission, selection, collection state, deletion barriers
+and captured generations/reporting revision. Competing batches from the same
+checkpoint cannot both win. Source revisions, annotation projections, removal
+history, final checkpoint, import/data/reporting revisions and local commit facts
+publish in one database transaction. An SQL failure rolls everything back; an
+identical committed-batch retry returns the same receipt while its current lease
+remains authorized. Provider timestamps and update status remain separate from
+local commit time and do not establish complete history coverage.
+
+Exact same-binding provider identity is the only source lookup. An explicit
+pending-to-posted link can retain the pending source's stable internal ID across
+pages; prior facts, original provider identity and immutable annotations remain.
+Unlinked rows get independent IDs. A changed link cannot merge existing source
+histories, a second posted identity cannot reuse a pending link consumed by any earlier posted revision, even after that successor is removed, and a pending removal cannot remove its superseding posted identity.
+Known removals append a removed revision; unknown removals retain identity-only
+history without inventing amount/date facts. Imports remain unclassified unless
+existing valid owner annotation provenance supplies activity; codes/names alone
+are not automatically classified by this persistence slice.
+
+Source revisions separately retain a material-revision anchor. Annotation
+projections retain their original material acknowledgement and all notes,
+category/activity choices and exclusions. Nonmaterial changes preserve a valid
+review; material changes clear review and require fresh acknowledgement before an
+activity override can contribute. Incompatible sign/status overrides remain
+visibly conflicted. Already stale acknowledgements never become current merely
+because a later provider update is nonmaterial. Public annotation editing remains
+separate work. Replacement/recovery archives save the exact latest applicable
+annotation revision using the same application/material-anchor selection,
+including legacy annotations and material-conflict projections. These immutable
+capture references retain their original note/exclusion/review provenance after
+later edits; live recovery independently resolves the latest valid owner edit.
+
+Current and staged bindings can collect; retired/cancelled bindings cannot.
+Existing reporting intervals remain authoritative, with D inclusive for prior
+history and replacement ownership strictly after D. Initial replacement overlap
+stays noncontributing. Later added, modified or removed pre-D facts retain
+historical-discrepancy metadata; date corrections crossing an ownership boundary
+retain a cross-boundary notice and invalidate dependent reads. Immutable captured
+facts cannot be silently replaced by these corrections. Activation/recovery uses
+the existing full revision agreement and never restores collection or erased data.
+
+The worker role has only capability-checked wrapper execution and no direct
+staging/source access, helper execution or user impersonation. Expired batch
+cleanup removes at most ten batches per call, using `SKIP LOCKED`; it never expires
+retained source history. Existing logical-account deletion barriers immediately
+block collection and visibility. Before retained-data purge, each call drains at most ten batches, 100 identity
+aliases and 100 removal records for the deleted logical accounts. Only after
+these payloads are empty can the existing dependency-ordered purge remove source
+history, bindings and checkpoints. Cascades remain a backstop. This includes
+replacement bindings across Items and preserves unrelated sibling accounts. The additive migration extends the existing banking
+store; desired state remains in `supabase/schemas`, with migration replay,
+permissions and real-database checks owned by `make db-test`.

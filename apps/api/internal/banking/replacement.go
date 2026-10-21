@@ -107,6 +107,7 @@ type replacementSource struct {
 	AnnotationRevision int64     `json:"annotation_revision"`
 	Activity           *string   `json:"activity"`
 	Excluded           bool      `json:"excluded"`
+	MaterialConflict   bool      `json:"material_conflict"`
 }
 type replacementCapture struct {
 	SourceID uuid.UUID `json:"source_id"`
@@ -516,7 +517,7 @@ func summarizeReplacement(rows []replacementSource) (ReplacementImpact, error) {
 		if row.Excluded {
 			continue
 		}
-		if row.Activity == nil {
+		if row.Activity == nil || row.MaterialConflict {
 			impact.UnresolvedCount++
 			continue
 		}
