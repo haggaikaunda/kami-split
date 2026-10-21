@@ -196,7 +196,7 @@ BEGIN
   IF linked IS NOT NULL THEN
    IF NOT EXISTS(SELECT FROM app.banking_source_revisions prior JOIN app.banking_sources s ON s.id=prior.source_id WHERE s.id=linked AND prior.processing_state='pending' AND coalesce(prior.provider_transaction_id,s.provider_transaction_id)=change->>'pending_transaction_id')
     OR (source.id IS NOT NULL AND source.id<>linked)
-    OR (source.id IS NULL AND EXISTS(SELECT FROM app.banking_sources s JOIN app.banking_source_revisions r ON r.source_id=s.id AND r.revision=s.revision WHERE s.id=linked AND r.processing_state='posted')) THEN
+    OR (source.id IS NULL AND EXISTS(SELECT FROM app.banking_source_revisions r WHERE r.source_id=linked AND r.processing_state='posted')) THEN
     RAISE EXCEPTION 'conflicting explicit source identity' USING ERRCODE='23514';
    END IF;
    IF source.id IS NULL THEN SELECT * INTO source FROM app.banking_sources WHERE id=linked; END IF;
@@ -282,6 +282,64 @@ END $$;
 -- Drain new payloads before the existing dependency-ordered retained-data
 -- purge. Cascades are a backstop, never an unbounded primary cleanup path.
 ALTER FUNCTION app.banking_purge_batch(uuid,uuid) RENAME TO banking_purge_retained_batch;
+-- Annotation projections reference both their acknowledged material fact and the
+-- displayed source revision; bounded purge must retain both until edits drain.
+CREATE OR REPLACE FUNCTION app.banking_purge_retained_batch(target uuid, authority uuid) RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE job app.banking_work; n integer:=0; changed integer; accounts uuid[];
+BEGIN
+  PERFORM 1 FROM app.banking_connections c JOIN app.banking_work w ON w.connection_id=c.id
+    WHERE w.id=target AND c.generation=w.generation AND c.state='deleted' FOR UPDATE OF c;
+  IF NOT FOUND THEN RETURN -1; END IF;
+  SELECT * INTO job FROM app.banking_work WHERE id=target AND kind='purge' AND state='running'
+    AND lease_token=authority AND lease_until>clock_timestamp() FOR UPDATE;
+  IF NOT FOUND THEN RETURN -1; END IF;
+  SELECT array_agg(account_id) INTO accounts FROM app.banking_deletion_accounts WHERE connection_id=job.connection_id;
+  UPDATE app.banking_enrollments SET replacement_account_id=NULL WHERE replacement_account_id=ANY(accounts);
+  UPDATE app.banking_sources SET revision=NULL WHERE id IN(SELECT s.id FROM app.banking_sources s JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=ANY(accounts) AND s.revision IS NOT NULL LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_captures WHERE ctid IN(SELECT x.ctid FROM app.banking_captures x JOIN app.banking_sources s ON s.id=x.source_id JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=ANY(accounts) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_plan_sources WHERE ctid IN(SELECT x.ctid FROM app.banking_plan_sources x JOIN app.banking_plans p ON p.id=x.plan_id WHERE p.account_id=ANY(accounts) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_annotations WHERE ctid IN(SELECT x.ctid FROM app.banking_annotations x JOIN app.banking_sources s ON s.id=x.source_id JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=ANY(accounts) AND NOT EXISTS(SELECT FROM app.banking_captures c WHERE c.source_id=x.source_id AND c.annotation_revision=x.revision) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_source_revisions WHERE ctid IN(SELECT x.ctid FROM app.banking_source_revisions x JOIN app.banking_sources s ON s.id=x.source_id JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=ANY(accounts)
+    AND s.revision IS NULL AND NOT EXISTS(SELECT FROM app.banking_annotations a WHERE a.source_id=x.source_id
+      AND (a.material_source_revision=x.revision OR a.applies_to_source_revision=x.revision))
+    AND NOT EXISTS(SELECT FROM app.banking_captures c WHERE c.source_id=x.source_id AND c.source_revision=x.revision)
+    AND NOT EXISTS(SELECT FROM app.banking_plan_sources p WHERE p.source_id=x.source_id AND p.source_revision=x.revision) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_sources WHERE id IN(SELECT s.id FROM app.banking_sources s JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=ANY(accounts) AND NOT EXISTS(SELECT FROM app.banking_source_revisions r WHERE r.source_id=s.id) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_archives WHERE id IN(SELECT a.id FROM app.banking_archives a JOIN app.banking_plans p ON p.id=a.plan_id WHERE p.account_id=ANY(accounts) AND NOT EXISTS(SELECT FROM app.banking_captures c WHERE c.archive_id=a.id) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_plan_intervals WHERE ctid IN(SELECT i.ctid FROM app.banking_plan_intervals i JOIN app.banking_plans p ON p.id=i.plan_id WHERE p.account_id=ANY(accounts) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_plans WHERE id IN(SELECT p.id FROM app.banking_plans p WHERE p.account_id=ANY(accounts)
+    AND NOT EXISTS(SELECT FROM app.banking_plans child WHERE child.predecessor_id=p.id)
+    AND NOT EXISTS(SELECT FROM app.banking_archives a WHERE a.plan_id=p.id)
+    AND NOT EXISTS(SELECT FROM app.banking_plan_sources s WHERE s.plan_id=p.id)
+    AND NOT EXISTS(SELECT FROM app.banking_plan_intervals i WHERE i.plan_id=p.id) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_bindings WHERE id IN(SELECT b.id FROM app.banking_bindings b WHERE b.account_id=ANY(accounts)
+    AND NOT EXISTS(SELECT FROM app.banking_sources s WHERE s.binding_id=b.id)
+    AND NOT EXISTS(SELECT FROM app.banking_plan_intervals i WHERE i.binding_id=b.id) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_account_identities WHERE ctid IN(SELECT i.ctid FROM app.banking_account_identities i WHERE i.account_id=ANY(accounts) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_accounts WHERE id IN(SELECT a.id FROM app.banking_accounts a WHERE a.id=ANY(accounts)
+    AND NOT EXISTS(SELECT FROM app.banking_plans p WHERE p.account_id=a.id)
+    AND NOT EXISTS(SELECT FROM app.banking_bindings b WHERE b.account_id=a.id)
+    AND NOT EXISTS(SELECT FROM app.banking_account_identities i WHERE i.account_id=a.id) LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  DELETE FROM app.banking_webhook_deliveries WHERE (correlation_id,delivery_digest) IN
+    (SELECT d.correlation_id,d.delivery_digest FROM app.banking_webhook_deliveries d JOIN app.banking_webhook_correlations w ON w.id=d.correlation_id WHERE w.connection_id=job.connection_id LIMIT 100);
+  GET DIAGNOSTICS changed=ROW_COUNT; n:=n+changed;
+  UPDATE app.banking_work SET progress=progress+n,updated_at=clock_timestamp() WHERE id=target;
+  IF n=0 THEN UPDATE app.banking_deletion_barriers SET cleanup_state='complete' WHERE connection_id=job.connection_id; END IF;
+  RETURN n;
+END $$;
 REVOKE ALL ON FUNCTION app.banking_purge_retained_batch(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
 CREATE OR REPLACE FUNCTION app.banking_purge_batch(target uuid, authority uuid) RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$

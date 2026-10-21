@@ -168,7 +168,7 @@ Exact same-binding provider identity is the only source lookup. An explicit
 pending-to-posted link can retain the pending source's stable internal ID across
 pages; prior facts, original provider identity and immutable annotations remain.
 Unlinked rows get independent IDs. A changed link cannot merge existing source
-histories, a second posted identity cannot reuse an already-posted pending link, and a pending removal cannot remove its superseding posted identity.
+histories, a second posted identity cannot reuse a pending link consumed by any earlier posted revision, even after that successor is removed, and a pending removal cannot remove its superseding posted identity.
 Known removals append a removed revision; unknown removals retain identity-only
 history without inventing amount/date facts. Imports remain unclassified unless
 existing valid owner annotation provenance supplies activity; codes/names alone

@@ -5,6 +5,7 @@ package banking
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/database"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type syncStoreFixture struct {
@@ -820,4 +822,161 @@ func TestSyncBatchRealImportedRepeatedTransitionsAndStoppedRecovery(t *testing.T
 	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='original identity note'`, bIDs[1]) != 1 {
 		t.Fatal("recovery lost the retained annotation identity")
 	}
+}
+
+func TestSyncBatchPurgePreservesBothAnnotationReferencesUntilBoundedDrain(t *testing.T) {
+	f := newSyncFixture(t)
+	batch := f.begin()
+	fact := syncFact("many-edits", "2026-10-01", 100)
+	f.stage(batch, 0, batch.Cursor(), "original", false, []SyncTransaction{fact}, nil)
+	f.commit(batch, "READY")
+	source := f.sourceID(fact.TransactionID)
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity,note,reviewed) VALUES($1,$2,1,1,'purchase','original owner note',true)`, source, f.owner)
+	projection := f.begin()
+	name := "nonmaterial spelling"
+	fact.Name = &name
+	f.stage(projection, 0, projection.Cursor(), "projection", false, nil, []SyncTransaction{fact})
+	f.commit(projection, "READY")
+	// All remaining edits acknowledge r1 while referring to displayed r2. After
+	// deleting at most 100 edits, neither source revision is eligible for deletion.
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,applies_to_source_revision,activity,note,reviewed) SELECT $1,$2,n,1,2,'purchase','retained private note '||n,true FROM generate_series(3,205) n`, source, f.owner)
+	sibling := *f
+	sibling.connection = f.fixture.connection(f.owner, uuid.NewString())
+	sibling.account, sibling.binding = f.fixture.binding(f.owner, sibling.connection, "checking")
+	f.exec(`UPDATE app.banking_connections SET permission_state='granted' WHERE id=$1`, sibling.connection)
+	sibling.work = sibling.lease(sibling.connection)
+	siblingBatch := sibling.begin()
+	sibling.stage(siblingBatch, 0, siblingBatch.Cursor(), "sibling-retained", false, []SyncTransaction{syncFact("sibling-fact", "2026-10-02", 300)}, nil)
+	sibling.commit(siblingBatch, "READY")
+	siblingSource := sibling.sourceID("sibling-fact")
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,note) VALUES($1,$2,1,1,'sibling owner note')`, siblingSource, f.owner)
+	requireCode(t, f.service.DeleteHistory(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: f.connection, ExpectedGeneration: 1}), "READY")
+	var purge database.BankingWork
+	if err := f.admin.QueryRow(context.Background(), `UPDATE app.banking_work SET state='running',lease_token=gen_random_uuid(),lease_until=clock_timestamp()+interval '2 minutes' WHERE connection_id=$1 AND kind='purge' RETURNING id,connection_id,generation,lease_token`, f.connection).Scan(&purge.ID, &purge.ConnectionID, &purge.Generation, &purge.Token); err != nil {
+		t.Fatal(err)
+	}
+	drained, complete := false, false
+	for pass := 0; pass < 20; pass++ {
+		before := queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1`, source)
+		progress, err := f.worker.PurgeBankingBatch(context.Background(), purge)
+		if err != nil || progress < 0 {
+			t.Fatal("bounded purge failed to progress", progress, err)
+		}
+		after := queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1`, source)
+		if before-after < 0 || before-after > 100 {
+			t.Fatal("annotation deletion exceeded its bound", before, after)
+		}
+		if after > 0 && queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_source_revisions WHERE source_id=$1`, source) != 2 {
+			t.Fatal("revision referenced by remaining annotation was removed")
+		}
+		if before > after {
+			drained = true
+			if progress <= 0 {
+				t.Fatal("deleted edits without recorded progress")
+			}
+		}
+		if progress == 0 {
+			complete = true
+			break
+		}
+	}
+	if !drained || !complete {
+		t.Fatal("bounded annotation history did not converge")
+	}
+	for _, table := range []string{"annotations", "source_revisions"} {
+		if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_`+table+` WHERE source_id=$1`, source) != 0 {
+			t.Fatal("private version survived purge", table)
+		}
+	}
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sources WHERE id=$1`, source) != 0 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_bindings WHERE id=$1`, f.binding) != 0 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_sync_batches WHERE binding_id=$1`, f.binding) != 0 {
+		t.Fatal("source/checkpoint/staging survived completed purge")
+	}
+	if result, err := CommitSyncBatch(context.Background(), f.worker, f.work, projection); err != nil || result.Code != "DENIED" {
+		t.Fatal("old projection batch resurrected history", result.Code, err)
+	}
+	sibling.assertStream("sibling-retained", 1)
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_source_revisions WHERE source_id=$1 AND revision=1 AND amount_minor=300`, siblingSource) != 1 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='sibling owner note'`, siblingSource) != 1 {
+		t.Fatal("account purge changed sibling facts or notes")
+	}
+	sibling.begin()
+}
+
+func readSyncIdentityState(t *testing.T, f *syncStoreFixture) string {
+	t.Helper()
+	var state string
+	err := f.admin.QueryRow(context.Background(), `SELECT jsonb_build_object(
+  'binding',to_jsonb(b),
+  'sources',(SELECT jsonb_agg(to_jsonb(s) ORDER BY s.id) FROM app.banking_sources s WHERE s.binding_id=b.id),
+  'revisions',(SELECT jsonb_agg(to_jsonb(r) ORDER BY r.source_id,r.revision) FROM app.banking_source_revisions r JOIN app.banking_sources s ON s.id=r.source_id WHERE s.binding_id=b.id),
+  'annotations',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.source_id,a.revision) FROM app.banking_annotations a JOIN app.banking_sources s ON s.id=a.source_id WHERE s.binding_id=b.id),
+  'identities',(SELECT jsonb_agg(to_jsonb(i) ORDER BY i.provider_transaction_id) FROM app.banking_source_identities i WHERE i.binding_id=b.id),
+  'removals',(SELECT jsonb_agg(to_jsonb(r) ORDER BY r.provider_transaction_id,r.import_revision) FROM app.banking_sync_removals r WHERE r.binding_id=b.id)
+ )::text FROM app.banking_bindings b WHERE b.id=$1`, f.binding).Scan(&state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state
+}
+
+func TestSyncBatchRemovedPostedSuccessorCannotReleasePendingIdentity(t *testing.T) {
+	f := newSyncFixture(t)
+	pending := syncFact("pending-P", "2026-10-01", 100)
+	pending.Pending = true
+	batch := f.begin()
+	f.stage(batch, 0, batch.Cursor(), "pending", false, []SyncTransaction{pending}, nil)
+	f.commit(batch, "READY")
+	source := f.sourceID(pending.TransactionID)
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity,category,note,excluded,reviewed) VALUES($1,$2,1,1,'purchase','food','original pending owner intent',true,true)`, source, f.owner)
+	posted := syncFact("posted-Q", "2026-10-02", 125)
+	posted.PendingTransactionID = &pending.TransactionID
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "posted-Q", false, []SyncTransaction{posted}, nil)
+	f.commit(batch, "READY")
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "removed-Q", false, nil, nil, posted.TransactionID)
+	f.commit(batch, "READY")
+	before := readSyncIdentityState(t, f)
+	replacement := posted
+	replacement.TransactionID = "posted-R"
+	replacement.AmountMinor = 500
+	denied := f.begin()
+	f.stage(denied, 0, denied.Cursor(), "must-not-publish-R", false, []SyncTransaction{replacement}, nil)
+	if _, err := CommitSyncBatch(context.Background(), f.worker, f.work, denied); err == nil {
+		t.Fatal("removed posted successor released consumed pending identity")
+	} else {
+		var failure *pgconn.PgError
+		if !errors.As(err, &failure) || failure.Code != "23514" {
+			t.Fatal("unexpected rejection", err)
+		}
+	}
+	if after := readSyncIdentityState(t, f); after != before {
+		t.Fatal("rejected identity reuse changed checkpoint, current source, immutable facts, annotations or provenance")
+	}
+	f.assertStream("removed-Q", 1)
+	if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_source_identities WHERE binding_id=$1 AND provider_transaction_id='posted-R'`, f.binding) != 0 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='original pending owner intent'`, source) != 3 {
+		t.Fatal("rejected identity acquired alias or changed original notes")
+	}
+}
+
+func TestSyncBatchRemovedPendingCanLinkItsFirstPostedSuccessor(t *testing.T) {
+	f := newSyncFixture(t)
+	pending := syncFact("pending-first", "2026-10-01", 100)
+	pending.Pending = true
+	batch := f.begin()
+	f.stage(batch, 0, batch.Cursor(), "first-pending", false, []SyncTransaction{pending}, nil)
+	f.commit(batch, "READY")
+	source := f.sourceID(pending.TransactionID)
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,note,excluded) VALUES($1,$2,1,1,'first pending note',true)`, source, f.owner)
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "removed-pending", false, nil, nil, pending.TransactionID)
+	f.commit(batch, "READY")
+	posted := syncFact("first-posted", "2026-10-02", 125)
+	posted.PendingTransactionID = &pending.TransactionID
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "first-posted", false, []SyncTransaction{posted}, nil)
+	f.commit(batch, "READY")
+	if f.sourceID(posted.TransactionID) != source || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_source_revisions WHERE source_id=$1`, source) != 3 || queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='first pending note' AND excluded`, source) != 3 {
+		t.Fatal("first explicit link from removed pending lost identity, history or note provenance")
+	}
+	f.assertStream("first-posted", 1)
 }

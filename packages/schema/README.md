@@ -173,7 +173,7 @@ describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent
 browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
-claim. New enrollment is disabled by default; transaction ingestion and browser Link remain separate deliveries. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
+claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints; worker import orchestration, public transaction/reporting APIs and browser Link remain separate deliveries. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
 
 ## Private banking replacement
 
