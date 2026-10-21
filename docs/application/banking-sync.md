@@ -181,7 +181,11 @@ review; material changes clear review and require fresh acknowledgement before a
 activity override can contribute. Incompatible sign/status overrides remain
 visibly conflicted. Already stale acknowledgements never become current merely
 because a later provider update is nonmaterial. Public annotation editing remains
-separate work.
+separate work. Replacement/recovery archives save the exact latest applicable
+annotation revision using the same application/material-anchor selection,
+including legacy annotations and material-conflict projections. These immutable
+capture references retain their original note/exclusion/review provenance after
+later edits; live recovery independently resolves the latest valid owner edit.
 
 Current and staged bindings can collect; retired/cancelled bindings cannot.
 Existing reporting intervals remain authoritative, with D inclusive for prior

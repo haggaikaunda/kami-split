@@ -410,4 +410,53 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
  'annotation',encode(sha256(convert_to(annotations::text,'UTF8')),'hex'),
  'lifecycle',encode(sha256(convert_to(jsonb_build_array(account,bindings,timezone)::text,'UTF8')),'hex'))) FROM payload;
 $$;
+
+CREATE OR REPLACE FUNCTION app.banking_replacement_publish(target uuid,expected jsonb,proposal jsonb) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
+DECLARE actor uuid:=app.lock_banking_owner(); snapshot jsonb; plan uuid:=gen_random_uuid(); archive uuid:=gen_random_uuid(); previous uuid; next_revision bigint; entry jsonb; active uuid;
+BEGIN
+ PERFORM 1 FROM app.banking_connections c WHERE c.owner_id=actor AND EXISTS(SELECT FROM app.banking_bindings b WHERE b.connection_id=c.id AND b.account_id=target) ORDER BY c.id FOR UPDATE;
+ PERFORM 1 FROM app.banking_bindings WHERE account_id=target ORDER BY id FOR UPDATE;
+ PERFORM 1 FROM app.banking_accounts WHERE id=target AND owner_id=actor FOR UPDATE;
+ snapshot:=app.banking_replacement_snapshot(target);
+ IF snapshot IS NULL OR snapshot->'revisions' IS DISTINCT FROM expected THEN RETURN NULL; END IF;
+ active:=(proposal->>'active_binding_id')::uuid;
+ IF NOT EXISTS(SELECT FROM app.banking_bindings WHERE id=active AND account_id=target AND owner_id=actor) THEN RETURN NULL; END IF;
+ IF NOT EXISTS(SELECT FROM app.banking_plans WHERE account_id=target) THEN
+   previous:=gen_random_uuid();
+   INSERT INTO app.banking_plans(id,owner_id,account_id,revision,active_binding_id)
+    SELECT previous,actor,target,1,b.id FROM app.banking_bindings b WHERE b.account_id=target AND b.reporting_state='current';
+   INSERT INTO app.banking_plan_intervals(plan_id,owner_id,binding_id)
+    SELECT previous,actor,b.id FROM app.banking_bindings b WHERE b.account_id=target AND b.reporting_state='current';
+   INSERT INTO app.banking_plan_sources SELECT previous,actor,s.id,s.revision FROM app.banking_sources s JOIN app.banking_bindings b ON b.id=s.binding_id WHERE b.account_id=target AND b.reporting_state='current' AND s.revision IS NOT NULL;
+ END IF;
+ SELECT p.id,p.revision+1 INTO previous,next_revision FROM app.banking_plans p WHERE p.account_id=target ORDER BY p.revision DESC LIMIT 1;
+ INSERT INTO app.banking_plans(id,owner_id,account_id,revision,predecessor_id,transition_date,active_binding_id)
+ VALUES(plan,actor,target,coalesce(next_revision,1),previous,(proposal->>'plan_transition_date')::date,active);
+ FOR entry IN SELECT * FROM jsonb_array_elements(proposal->'intervals') LOOP
+ INSERT INTO app.banking_plan_intervals VALUES(plan,actor,(entry->>'binding_id')::uuid,(entry->>'after_date')::date,(entry->>'through_date')::date);
+ END LOOP;
+ FOR entry IN SELECT * FROM jsonb_array_elements(proposal->'captures') LOOP
+ INSERT INTO app.banking_plan_sources VALUES(plan,actor,(entry->>'source_id')::uuid,(entry->>'source_revision')::bigint);
+ END LOOP;
+ INSERT INTO app.banking_archives VALUES(archive,actor,coalesce(previous,plan),(proposal->>'transition_date')::date);
+ INSERT INTO app.banking_captures(archive_id,owner_id,source_id,source_revision,annotation_revision)
+ -- Preserve the exact latest applicable annotation, including retained-intent
+ -- projections/conflicts. Match snapshot selection; material acknowledgement
+ -- alone is not the revision to which a projected note/exclusion applies.
+ SELECT archive,actor,s.id,s.revision,(
+   SELECT a.revision FROM app.banking_annotations a WHERE a.source_id=s.id
+    AND (coalesce(a.applies_to_source_revision,a.material_source_revision)=r.revision
+      OR a.material_source_revision=coalesce(r.material_revision,r.revision))
+   ORDER BY a.revision DESC LIMIT 1)
+ FROM app.banking_sources s JOIN app.banking_bindings b ON b.id=s.binding_id
+ JOIN app.banking_source_revisions r ON r.source_id=s.id AND r.revision=s.revision
+ WHERE b.account_id=target AND s.revision IS NOT NULL;
+ -- Recovery changes reporting only; a retired stream never regains collection.
+ UPDATE app.banking_bindings SET reporting_state='retired',collection_stopped=true,generation=generation+1
+ WHERE account_id=target AND reporting_state='current' AND id<>active;
+ UPDATE app.banking_bindings SET reporting_state='current' WHERE id=active AND reporting_state='staged';
+ UPDATE app.banking_accounts SET reporting_revision=reporting_revision+1 WHERE id=target;
+ RETURN plan;
+END $$;
 RESET ROLE;

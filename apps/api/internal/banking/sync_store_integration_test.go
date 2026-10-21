@@ -980,3 +980,85 @@ func TestSyncBatchRemovedPendingCanLinkItsFirstPostedSuccessor(t *testing.T) {
 	}
 	f.assertStream("first-posted", 1)
 }
+
+func TestSyncBatchReplacementArchivesCaptureExactProjectedAndLegacyAnnotations(t *testing.T) {
+	rf := newReplacementFixture(t)
+	db, err := database.OpenWorker(context.Background(), database.Config{URL: os.Getenv("TEST_WORKER_DATABASE_URL"), MaxConns: 5, Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(db.Close)
+	f := &syncStoreFixture{fixture: rf.fixture, worker: db, account: rf.account, binding: rf.oldBinding, connection: rf.oldConnection}
+	t.Cleanup(func() { f.exec(`DELETE FROM app.banking_sync_batches WHERE owner_id=$1`, f.owner) })
+	f.work = f.lease(f.connection)
+	nonmaterial := syncFact("nonmaterial-capture", "2026-09-20", 100)
+	material := syncFact("material-capture", "2026-09-21", 200)
+	batch := f.begin()
+	f.stage(batch, 0, batch.Cursor(), "capture-r1", false, []SyncTransaction{nonmaterial, material}, nil)
+	f.commit(batch, "READY")
+	nonmaterialID, materialID := f.sourceID(nonmaterial.TransactionID), f.sourceID(material.TransactionID)
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity,note,excluded,reviewed) VALUES($1,$3,1,1,'purchase','original nonmaterial intent',true,true),($2,$3,1,1,'purchase','original material intent',true,true)`, nonmaterialID, materialID, f.owner)
+	name := "nonmaterial description change"
+	nonmaterial.Name = &name
+	material.AmountMinor = -250
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "capture-r2", false, nil, []SyncTransaction{nonmaterial, material})
+	f.commit(batch, "READY")
+	// Legacy source/annotation versions have neither application nor material
+	// anchor columns. They retain the same exact selection after the extension.
+	legacyID := rf.row(rf.oldBinding, "2026-09-22", "300", "posted", true)
+	replacement := rf.stage()
+	f.binding = replacement
+	if err = f.admin.QueryRow(context.Background(), `SELECT connection_id FROM app.banking_bindings WHERE id=$1`, replacement).Scan(&f.connection); err != nil {
+		t.Fatal(err)
+	}
+	f.work = f.lease(f.connection)
+	batch = f.begin()
+	f.stage(batch, 0, batch.Cursor(), "replacement-import", false, []SyncTransaction{syncFact("replacement-after-D", "2026-10-02", 500)}, nil)
+	f.commit(batch, "READY")
+	replacementSource := f.sourceID("replacement-after-D")
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,activity,reviewed) VALUES($1,$2,1,1,'purchase',true)`, replacementSource, f.owner)
+	activation := rf.confirm(rf.preview(replacement, "2026-09-30", "ACTIVATE"))
+	archiveFor := func(plan uuid.UUID) uuid.UUID {
+		t.Helper()
+		var archive uuid.UUID
+		if err := f.admin.QueryRow(context.Background(), `SELECT a.id FROM app.banking_archives a WHERE a.plan_id=(SELECT predecessor_id FROM app.banking_plans WHERE id=$1)`, plan).Scan(&archive); err != nil {
+			t.Fatal(err)
+		}
+		return archive
+	}
+	type captureExpectation struct {
+		source                                                                    uuid.UUID
+		sourceRevision, annotationRevision, materialRevision, applicationRevision int64
+		note                                                                      string
+		excluded, reviewed, conflict                                              bool
+	}
+	assertCaptures := func(archive uuid.UUID, expected []captureExpectation) {
+		t.Helper()
+		for _, want := range expected {
+			if queryInt(t, f.fixture, `SELECT count(*) FROM app.banking_captures c JOIN app.banking_annotations a ON a.source_id=c.source_id AND a.revision=c.annotation_revision WHERE c.archive_id=$1 AND c.source_id=$2 AND c.source_revision=$3 AND c.annotation_revision=$4 AND a.material_source_revision=$5 AND coalesce(a.applies_to_source_revision,0)=$6 AND a.note=$7 AND a.excluded=$8 AND a.reviewed=$9 AND a.material_conflict=$10`, archive, want.source, want.sourceRevision, want.annotationRevision, want.materialRevision, want.applicationRevision, want.note, want.excluded, want.reviewed, want.conflict) != 1 {
+				t.Fatal("archive omitted or changed exact immutable annotation provenance", want.annotationRevision)
+			}
+		}
+	}
+	original := []captureExpectation{
+		{nonmaterialID, 2, 2, 1, 2, "original nonmaterial intent", true, true, false},
+		{materialID, 2, 2, 1, 2, "original material intent", true, false, true},
+		{legacyID, 1, 1, 1, 0, "original private note", true, false, false},
+	}
+	firstArchive := archiveFor(activation.ID)
+	assertCaptures(firstArchive, original)
+	f.exec(`INSERT INTO app.banking_annotations(source_id,owner_id,revision,material_source_revision,applies_to_source_revision,activity,note,excluded,reviewed) VALUES($1,$4,3,1,2,'purchase','latest nonmaterial edit',false,true),($2,$4,3,2,2,'refund','latest resolved material edit',false,true),($3,$4,2,1,NULL,'purchase','latest legacy edit',false,true)`, nonmaterialID, materialID, legacyID, f.owner)
+	assertCaptures(firstArchive, original)
+	recovery := rf.preview(uuid.Nil, "", "RESTORE_PREDECESSOR")
+	if recovery.Proposed.SpendingMinor != "150" {
+		t.Fatal("recovery replaced latest valid edits with archived annotations", recovery.Proposed.SpendingMinor)
+	}
+	restored := rf.confirm(recovery)
+	assertCaptures(firstArchive, original)
+	assertCaptures(archiveFor(restored.ID), []captureExpectation{
+		{nonmaterialID, 2, 3, 1, 2, "latest nonmaterial edit", false, true, false},
+		{materialID, 2, 3, 2, 2, "latest resolved material edit", false, true, false},
+		{legacyID, 1, 2, 1, 0, "latest legacy edit", false, true, false},
+	})
+}
