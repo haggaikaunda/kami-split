@@ -283,7 +283,7 @@ END $$;
 -- purge. Cascades are a backstop, never an unbounded primary cleanup path.
 ALTER FUNCTION app.banking_purge_batch(uuid,uuid) RENAME TO banking_purge_retained_batch;
 REVOKE ALL ON FUNCTION app.banking_purge_retained_batch(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
-CREATE FUNCTION app.banking_purge_batch(target uuid, authority uuid) RETURNS integer
+CREATE OR REPLACE FUNCTION app.banking_purge_batch(target uuid, authority uuid) RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE job app.banking_work; accounts uuid[]; n integer:=0; changed integer;
 BEGIN
