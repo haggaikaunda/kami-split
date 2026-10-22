@@ -40,6 +40,12 @@ beforeEach(async () => {
   sessionStorage.clear();
   requests.length = 0;
   vi.clearAllMocks();
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
   host = document.createElement('div');
   document.body.append(host);
   scope = {
@@ -48,9 +54,27 @@ beforeEach(async () => {
     isLive: () => true,
     environment: queryEnvironment((request) => requests.push(request)),
   } as FinancialScope;
+  open.mockImplementation(() => {
+    expect(host.querySelector('dialog[open]')).toBeNull();
+    expect(document.body.style.overflow).not.toBe('hidden');
+    const portal = document.createElement('div');
+    portal.dataset.providerPortal = '';
+    portal.innerHTML = '<button>Provider interaction</button>';
+    document.body.append(portal);
+  });
   window.Plaid = {
     create: vi.fn((options) => {
-      config = options;
+      config = {
+        ...options,
+        onSuccess: (...args) => {
+          document.querySelector('[data-provider-portal]')?.remove();
+          options.onSuccess(...args);
+        },
+        onExit: (error) => {
+          document.querySelector('[data-provider-portal]')?.remove();
+          options.onExit(error);
+        },
+      };
       return { open, destroy };
     }),
   };
@@ -65,6 +89,8 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   delete window.Plaid;
+  document.querySelector('[data-provider-portal]')?.remove();
+  vi.restoreAllMocks();
 });
 async function prepare() {
   await click('Connect account');
@@ -163,6 +189,7 @@ it('recovers the same attempt after response loss without another exchange or to
 });
 it('keeps cleanup pending after cancellation and ignores late success', async () => {
   await prepare();
+  await act(async () => config.onExit(null));
   await click('Cancel connection');
   expect(destroy).toHaveBeenCalled();
   await act(async () => config.onSuccess('late-token', { accounts }));
@@ -177,6 +204,8 @@ it('keeps cleanup pending after cancellation and ignores late success', async ()
     requests[2].next({ bankingEnrollment: result('RETRY_ALLOWED') }),
   );
   expect(button('Connect account')).toBeTruthy();
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(document.activeElement).toBe(button('Connect account'));
   expect(sessionStorage.length).toBe(0);
 });
 it.each([
@@ -314,4 +343,118 @@ it('reveals recovery for a saved unfinished attempt without reopening setup', as
     requests[1].next({ bankingEnrollment: result('EXCHANGE_UNKNOWN') }),
   );
   expect(button('Check connection status')).toBeTruthy();
+});
+
+it('uses a named native modal with keyboard containment and request-free close/escape', async () => {
+  await click('Connect account');
+  const dialog = host.querySelector('dialog')!;
+  expect(dialog.open).toBe(true);
+  expect(
+    document.getElementById(dialog.getAttribute('aria-labelledby')!)
+      ?.textContent,
+  ).toBe('Connect your accounts');
+  expect(document.activeElement?.tagName).toBe('H2');
+  expect(document.body.style.overflow).toBe('hidden');
+  vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(
+    () => [{ width: 10 }] as unknown as DOMRectList,
+  );
+  const controls = [...dialog.querySelectorAll<HTMLButtonElement>('button')];
+  await act(async () => {
+    controls.at(-1)!.focus();
+    controls.at(-1)!.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  expect(document.activeElement).toBe(controls[0]);
+  await act(async () =>
+    controls[0].dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    ),
+  );
+  expect(document.activeElement).toBe(controls.at(-1));
+  await act(async () =>
+    dialog.dispatchEvent(
+      new Event('cancel', { bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(document.activeElement).toBe(button('Connect account'));
+  expect(document.body.style.overflow).not.toBe('hidden');
+  expect(requests).toHaveLength(0);
+});
+it('hands native-modal focus to the provider body portal, then reopens explicit selection safely', async () => {
+  await prepare();
+  const portal = document.querySelector<HTMLElement>('[data-provider-portal]')!;
+  expect(portal.parentElement).toBe(document.body);
+  expect(host.contains(portal)).toBe(false);
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(button('Resume connection').disabled).toBe(true);
+  await act(async () => config.onSuccess('token', { accounts }));
+  expect(host.querySelector('dialog')?.open).toBe(true);
+  const checkbox = host.querySelector<HTMLInputElement>('input')!;
+  await act(async () => checkbox.click());
+  const originalCount = requests.length;
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(
+        '[aria-label="Close Connect your accounts"]',
+      )!
+      .click(),
+  );
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(sessionStorage.length).toBe(1);
+  expect(document.activeElement).toBe(button('Resume connection'));
+  await click('Resume connection');
+  expect(requests).toHaveLength(originalCount);
+  expect(host.querySelector<HTMLInputElement>('input')!.checked).toBe(true);
+  await click('Include selected accounts');
+  expect(requests.at(-1)!.name).toBe('enrollmentFinishMutation');
+});
+it('closing while preparation is pending never silently launches Plaid or cancels the attempt', async () => {
+  await click('Connect account');
+  await click('Continue with Plaid');
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(
+        '[aria-label="Close Connect your accounts"]',
+      )!
+      .click(),
+  );
+  await act(async () =>
+    requests[0].next({
+      startBankingEnrollment: {
+        ...result('PREPARED'),
+        linkToken: 'token',
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      },
+    }),
+  );
+  expect(open).not.toHaveBeenCalled();
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(sessionStorage.length).toBe(1);
+  await click('Resume connection');
+  expect(requests).toHaveLength(1);
+  expect(button('Continue secure connection')).toBeTruthy();
+});
+
+it('provider exit reopens recovery while late success after actual cancellation stays ignored', async () => {
+  await prepare();
+  await act(async () => config.onExit({ error_code: 'INVALID_LINK_TOKEN' }));
+  expect(host.querySelector('dialog')?.open).toBe(true);
+  expect(host.textContent).toContain('session expired');
+  await click('Cancel connection');
+  await act(async () => config.onSuccess('late-token', { accounts }));
+  expect(host.querySelector('input')).toBeNull();
+  expect(
+    requests.filter((request) => request.name === 'enrollmentFinishMutation'),
+  ).toHaveLength(0);
 });

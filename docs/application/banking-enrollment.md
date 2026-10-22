@@ -100,8 +100,12 @@ Provider contracts: [Users](https://plaid.com/docs/api/users/),
 
 Personal opens Overview and directs initial setup to Connections. The compact
 connection list shows selected accounts and their independent import, coverage and
-freshness states. Connect account opens eligibility and privacy information;
-Continue with Plaid creates a durable `DIFFERENT` attempt. Existing-account intent
+freshness states. Connect account opens eligibility and privacy information in a
+phone sheet or desktop side panel. Close and Escape dismiss the panel without
+canceling its durable attempt or changing the explicit account selection; Resume
+connection returns to the same attempt. Continue with Plaid creates a durable
+`DIFFERENT` attempt. The native panel closes before the SDK opens its own interface,
+then returns for account selection or an exit outcome. Existing-account intent
 leads to the management boundary without silently replacing reporting history.
 The hosted Plaid SDK returns an in-memory public token and candidate accounts;
 only explicitly checked eligible accounts enter the finish request. Provider

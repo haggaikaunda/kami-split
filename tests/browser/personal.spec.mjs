@@ -138,10 +138,20 @@ async function bankingServer(
         window.__link.options = options;
         return {
           open() {
+            window.__link.nativeModalAtOpen = Boolean(
+              document.querySelector('dialog:modal'),
+            );
             window.__link.opened++;
+            const portal = document.createElement('button');
+            portal.id = 'synthetic-plaid-handoff';
+            portal.textContent = 'Synthetic Plaid handoff';
+            portal.style.cssText =
+              'position:fixed;inset:20px auto auto 20px;z-index:2147483647';
+            document.body.append(portal);
           },
           destroy() {
             window.__link.destroyed++;
+            document.querySelector('#synthetic-plaid-handoff')?.remove();
           },
         };
       },
@@ -158,7 +168,17 @@ async function chooseAccount(page) {
     .getByRole('button', { name: 'Continue with Plaid', exact: true })
     .click();
   await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(1);
+  expect(await page.evaluate(() => window.__link.nativeModalAtOpen)).toBe(
+    false,
+  );
+  await page
+    .getByRole('button', { name: 'Synthetic Plaid handoff', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Synthetic Plaid handoff', exact: true }),
+  ).toBeFocused();
   await page.evaluate(() => {
+    document.querySelector('#synthetic-plaid-handoff')?.remove();
     const metadata = {
       accounts: [
         {
@@ -186,6 +206,10 @@ async function chooseAccount(page) {
     window.__link.options.onSuccess('public-synthetic-private', metadata);
     window.__link.options.onSuccess('public-duplicate-private', metadata);
   });
+  await expect(
+    page.getByRole('dialog', { name: 'Connect your accounts', exact: true }),
+  ).toBeVisible();
+  expect(await page.locator('dialog:modal').count()).toBe(1);
   await expect(page.getByRole('checkbox')).toHaveCount(2);
   await expect(page.getByRole('checkbox').first()).not.toBeChecked();
   await expect(page.getByRole('checkbox').last()).not.toBeChecked();
@@ -254,7 +278,35 @@ test('Personal Link requires explicit eligible account selection and ignores dup
   await app.authenticate();
   const calls = await bankingServer(page);
   await page.goto('/personal?tab=connections');
+  await page
+    .getByRole('button', { name: 'Connect account', exact: true })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Connect your accounts', exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Connect account', exact: true }),
+  ).toBeFocused();
+  expect(
+    calls.filter((call) => call.operation === 'enrollmentStartMutation'),
+  ).toHaveLength(0);
   await chooseAccount(page);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Resume connection', exact: true }),
+  ).toBeFocused();
+  await page
+    .getByRole('button', { name: 'Resume connection', exact: true })
+    .click();
+  await expect(
+    page.getByRole('checkbox', { name: /Private checking/ }),
+  ).toBeChecked();
+  expect(
+    calls.filter((call) => call.operation === 'enrollmentStartMutation'),
+  ).toHaveLength(1);
   await page.getByRole('button', { name: 'Include selected accounts' }).click();
   await expect(
     page.getByRole('heading', { name: privateName, exact: true }),
@@ -323,9 +375,10 @@ test('Personal Link cancellation and expired handoff preserve enrollment boundar
     .getByRole('button', { name: 'Continue with Plaid', exact: true })
     .click();
   await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(1);
-  await page.evaluate(() =>
-    window.__link.options.onExit({ error_code: 'INVALID_LINK_TOKEN' }),
-  );
+  await page.evaluate(() => {
+    document.querySelector('#synthetic-plaid-handoff')?.remove();
+    window.__link.options.onExit({ error_code: 'INVALID_LINK_TOKEN' });
+  });
   await expect(page.getByText(/session expired/i)).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Connect account', exact: true }),
