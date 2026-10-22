@@ -104,13 +104,14 @@ type BankingWorkStatus struct {
 	Kind, State          string
 	Attempts             int
 	AgeSeconds, Progress int64
+	ImportLagSeconds     int64
 }
 
 // BankingStatus returns up to 100 operations, prioritizing incomplete work before
 // completed history. A full page is not an
 // exhaustive queue count; callers must report that bound honestly.
 func (d *WorkerDB) BankingStatus(ctx context.Context) ([]BankingWorkStatus, error) {
-	rows, err := d.db.pool.Query(ctx, `SELECT operation_id,kind,state,attempts,age_seconds,progress FROM app.banking_work_status()`)
+	rows, err := d.db.pool.Query(ctx, `SELECT operation_id,kind,state,attempts,age_seconds,progress,import_lag_seconds FROM app.banking_work_diagnostics()`)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (d *WorkerDB) BankingStatus(ctx context.Context) ([]BankingWorkStatus, erro
 	var result []BankingWorkStatus
 	for rows.Next() {
 		var s BankingWorkStatus
-		if err := rows.Scan(&s.OperationID, &s.Kind, &s.State, &s.Attempts, &s.AgeSeconds, &s.Progress); err != nil {
+		if err := rows.Scan(&s.OperationID, &s.Kind, &s.State, &s.Attempts, &s.AgeSeconds, &s.Progress, &s.ImportLagSeconds); err != nil {
 			return nil, err
 		}
 		result = append(result, s)

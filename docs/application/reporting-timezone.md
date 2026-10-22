@@ -43,5 +43,5 @@ The authoritative contract is [the timezone SDL](../../packages/schema/reporting
 The [approved Personal banking contract](personal-banking.md#dates-saved-preferences-and-navigation)
 defines downstream use: #253 supplies Account controls/device handoff, #252 resolves
 coherent date bounds/cursor invalidation, and replacement/recovery uses the saved
-zone for allowed transition dates through the [replacement backend](banking-replacement.md). The [sync adapter and restricted persistence](banking-sync.md) implement validated pages, atomic batch/checkpoint commits and durable initial imports through the existing worker. Account controls, general reporting reads, ongoing sync triggers and live enablement remain separate deliveries. This preference does not enable enrollment
+zone for allowed transition dates through the [replacement backend](banking-replacement.md). The [sync adapter and restricted persistence](banking-sync.md) implement validated pages, atomic batch/checkpoint commits and durable initial/incremental imports with verified webhook dispatch and daily reconciliation through the existing worker. Account controls, general reporting reads and live enablement remain separate deliveries. This preference does not enable enrollment
 or satisfy #255's provider/live gates.

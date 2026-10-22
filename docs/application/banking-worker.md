@@ -7,7 +7,7 @@ one signed Plaid ingress at `/banking/webhooks/{opaque correlation UUID}`. The
 [enrollment API](banking-enrollment.md) adds restricted durable enrollment-recovery
 jobs to the same worker, with renewable leases and narrow user-scoped discovery
 and removal. Authenticated [lifecycle management](banking-enrollment.md#managing-an-existing-connection)
-uses these same cleanup paths. The [replacement backend](banking-replacement.md) extends complete purge across staged and historical bindings. The protected [sync adapter](banking-sync.md) validates provider pages; the worker imports the first selected-account batch through restricted atomic persistence and binding-scoped durable operations. Live enrollment stays disabled
+uses these same cleanup paths. The [replacement backend](banking-replacement.md) extends complete purge across staged and historical bindings. The protected [sync adapter](banking-sync.md) validates provider pages; the worker imports selected-account batches through restricted atomic persistence and binding-scoped durable operations, including verified Transactions dispatch and daily missed-notification catch-up. Live enrollment stays disabled
 under #255; synthetic checks establish no live entitlement or backup capability.
 
 ## Durable authority
@@ -126,8 +126,7 @@ original-Item callbacks neither recreate delivery fingerprints nor restart clean
 The proof is captured at removal; older records whose Item was already redacted
 without this proof continue through conservative discovery, rather than inferring
 identity or provider absence. Temporary errors produce repair status; healthy/new-account hints
-grant no consent or selection. Other routing awaits sync; receipt acceptance is
-not completed provider cleanup.
+grant no consent or selection. Transactions `SYNC_UPDATES_AVAILABLE` hints dispatch the same exact-binding sync consumer and report durable dispatch separately from imported data. Unsupported notification codes retain unhandled receipts. Receipt acceptance is not completed import or provider cleanup.
 
 ## Runtime and privileges
 
@@ -149,7 +148,7 @@ synthetic smoke runs the actual binary against a disposable restricted-role data
 and checks readiness, safe bounded status and SIGTERM completion without live calls.
 
 Operational status shows a bounded oldest-100 projection that prioritizes incomplete work, queue age, attempts,
-needs-attention and cleanup progress. It must not be represented as an exhaustive
+needs-attention, cleanup progress and oldest local import commit lag. Import lag is elapsed time since a local commit or first request; it does not measure bank freshness. It must not be represented as an exhaustive
 queue count. Logs use static failure events without request bodies, URLs, Item IDs,
 credentials or raw provider/database errors. Operators inspect `app.banking_work`
 under their authorized role, repair the cause, then resume the same operation:

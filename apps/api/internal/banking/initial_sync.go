@@ -16,6 +16,8 @@ type TransactionSyncer interface {
 	SyncTransactions(context.Context, SyncBinding, Credential, SyncCursor) (SyncPage, error)
 }
 
+// initialSync consumes the recurring exact-binding intent; the committed cursor
+// determines whether this is the first batch or an incremental pass.
 func (w *Worker) initialSync(ctx context.Context, job database.BankingWork) (confirmed bool, delay time.Duration, resultErr error) {
 	provider, ok := w.provider.(TransactionSyncer)
 	if !ok {

@@ -18,7 +18,7 @@ type Remover interface {
 	Remove(context.Context, string, Credential) (RemovalResult, error)
 }
 
-// Worker owns one sequential durable lifecycle consumer. The caller owns the
+// Worker owns one sequential durable lifecycle and transaction-sync consumer. The caller owns the
 // borrowed database/keyring/provider and must wait for Run before closing them.
 type Worker struct {
 	db        *database.WorkerDB
@@ -26,7 +26,7 @@ type Worker struct {
 	provider  Remover
 }
 
-// NewWorker constructs the durable lifecycle and selected-account import consumer.
+// NewWorker constructs the durable lifecycle and recurring selected-account import consumer.
 // Collection requires a separate exact-binding lease and current server authority.
 func NewWorker(db *database.WorkerDB, p *Protector, provider Remover) (*Worker, error) {
 	if db == nil || p == nil || provider == nil {
@@ -35,7 +35,7 @@ func NewWorker(db *database.WorkerDB, p *Protector, provider Remover) (*Worker, 
 	return &Worker{db: db, protector: p, provider: provider}, nil
 }
 
-// Run polls due work every minute and reconciles healthy binding markers on each
+// Run polls due work every minute and reconciles healthy selected streams on each
 // poll, with a durable daily eligibility guard. onFailure owns safe diagnostics;
 // it receives no provider/driver errors. Cancellation leaves claimed intent for
 // lease-expiry recovery and joins every renewal goroutine before returning.
@@ -206,7 +206,8 @@ func retryDelay(attempt int, provider time.Duration, jitter float64) time.Durati
 }
 
 // AcceptWebhook accepts only verified routing metadata. Nil acknowledges a
-// committed receipt and local lifecycle dispatch; provider cleanup remains durable.
+// committed receipt and durable lifecycle/sync dispatch; import and cleanup
+// remain asynchronous.
 func (s *Service) AcceptWebhook(ctx context.Context, correlation uuid.UUID, event VerifiedWebhook) error {
 	ok, err := s.db.AcceptBankingWebhook(ctx, correlation, event.Environment, event.ItemID, event.BodySHA256[:], event.DeliverySHA256[:], event.WebhookType, event.WebhookCode, event.AccountID, event.Revoked)
 	if err != nil {

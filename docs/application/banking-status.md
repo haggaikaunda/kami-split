@@ -2,7 +2,7 @@
 
 `bankingConnection(connectionId:)` exposes one enabled owner's persisted lifecycle,
 retained stream identities and `BankingAccount.importStatus`. It extends the
-[enrollment contract](banking-enrollment.md), [initial import consumer](banking-sync.md)
+[enrollment contract](banking-enrollment.md), [selected-account sync consumer](banking-sync.md)
 and [C5-v2 reporting plans](banking-replacement.md). It performs no Plaid request.
 The authoritative contract is [banking-status.graphql](../../packages/schema/banking-status.graphql).
 
@@ -77,7 +77,11 @@ contract fixture, with no mounted banking UI.
 | Historical correction    | `discrepancyCount` retains historical/cross-boundary notices; it never silently reconciles them or exposes transaction facts.                                      |
 
 Lifecycle, operation, usability, collection, recovery, freshness and coverage are
-separate fields. `operation` describes the current fenced initial-import work.
+separate fields. `operation` describes the current fenced selected-account work, retaining the
+`initial_sync` intent identity for both first and incremental passes. Background
+notifications and daily reconciliation can return a previously committed stream
+to `QUEUED`, `RUNNING` or retry states while `usable` remains true. These operation
+changes do not erase committed data or establish fresh bank coverage.
 Old-generation work is absent rather than advertised as executable. A stopped
 stream reports `STOPPED`; its committed usability, timestamps and coverage bounds
 remain visible. `freshness: OBSERVED` means a local timestamp exists, without an
@@ -165,7 +169,7 @@ KNOWN_GAP`. After deletion the connection's account list is empty.
 
 ## Delivered producers and remaining consumers
 
-The durable first selected-account import produces queued/running/not-ready,
+The durable first and incremental selected-account imports produce queued/running/not-ready,
 retry, reconnect/attention and atomic local-commit facts through the actual
 worker. Enrollment/management and verified lifecycle ingress produce selection,
 repair health, disconnect/revocation and deletion fences. Restricted sync storage
@@ -173,10 +177,14 @@ produces import/data revisions, local/provider observations, discrepancy signals
 and historical-update observations. Replacement publication/recovery produces
 current/staged/retired contexts and disjoint reporting intervals.
 
-Ongoing transaction-trigger scheduling and later historical-fetch producers remain
-separate work. Persisted fixture states cover later provider failures, limited
-availability, repair and discrepancy outcomes; they do not claim those background
-producers or exact-coverage determination have shipped. Current initial imports
-leave actual availability unknown. Browser Link/status presentation, transaction
+Verified Transactions notifications durably coalesce incremental work, and daily
+reconciliation recovers missed notifications through the same consumer. The
+one-minute worker poll and daily eligibility interval are operational defaults,
+not bank-freshness guarantees. Existing retries and needs-attention work retain
+their bounded budgets; status reads themselves never schedule or resume them.
+Provider failures and discrepancy outcomes can follow later committed passes.
+Exact available-history determination remains separate: current imports leave
+actual availability unknown. Limited-availability fixtures demonstrate preserved
+status semantics without claiming that exact-coverage producers have shipped. Browser Link/status presentation, transaction
 browsing/reporting and connection discovery remain downstream. Enrollment stays
 disabled by default; fixtures do not authorize live Plaid work or release.

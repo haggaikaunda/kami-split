@@ -337,7 +337,7 @@ type BankingFenceInput struct {
 
 // Owner-private import, coverage and freshness facts. Unknown values stay unknown; no transaction counts or progress percentage imply completeness.
 type BankingImportStatus struct {
-	// Current durable initial-import operation, fenced by connection and binding generations.
+	// Current durable first or incremental import operation, fenced by connection and binding generations.
 	Operation BankingSyncOperation `json:"operation"`
 	// Persisted usability, independent of operation and provider availability.
 	ImportState BankingImportState `json:"importState"`
@@ -377,7 +377,7 @@ type BankingImportStatus struct {
 	ProviderFailedAt *string `json:"providerFailedAt,omitempty"`
 	// Durable pending operation due time when collection is allowed; the worker owns retry, not the UI.
 	RetryAt *string `json:"retryAt,omitempty"`
-	// Current fenced initial-operation attempt count; absent when no current operation exists.
+	// Current fenced import-pass attempt count; absent when no current operation exists.
 	Attempts *int `json:"attempts,omitempty"`
 	// Exact decimal committed import revision; excludes staging.
 	ImportRevision string `json:"importRevision"`
@@ -1803,7 +1803,7 @@ type BankingCollectionState string
 const (
 	// Current provider authority is unknown or enrollment is pending.
 	BankingCollectionStateUnknown BankingCollectionState = "UNKNOWN"
-	// Current selected stream has collection authority; this does not promise an ongoing trigger.
+	// Current selected stream has collection authority; scheduling does not promise bank freshness.
 	BankingCollectionStateCollecting BankingCollectionState = "COLLECTING"
 	// Connection health requires repair, independently of retained data.
 	BankingCollectionStateReconnectRequired BankingCollectionState = "RECONNECT_REQUIRED"
@@ -2385,7 +2385,7 @@ type BankingSyncOperation string
 const (
 	// No current durable operation is known.
 	BankingSyncOperationUnknown BankingSyncOperation = "UNKNOWN"
-	// First import is durably queued.
+	// An import pass is durably queued.
 	BankingSyncOperationQueued BankingSyncOperation = "QUEUED"
 	// Durable work is marked running, including lease-expiry recovery until reclaimed. Staged pages remain private.
 	BankingSyncOperationRunning BankingSyncOperation = "RUNNING"

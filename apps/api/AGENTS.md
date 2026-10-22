@@ -33,7 +33,7 @@ and lifecycle fences. The [lifecycle worker](../../docs/application/banking-work
 cleanup and the sole verified webhook ingress. The [enrollment API](../../docs/application/banking-enrollment.md) implements
 actor-bound enrollment, explicit selection, existing-Item repair, disconnect,
 private-history deletion and retained-account/status reads with default-disabled
-new enrollment. The [replacement backend](../../docs/application/banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The protected [transaction sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted atomic batch persistence and the durable first selected-account import consumer are implemented. The [owner-only status API](../../docs/application/banking-status.md) exposes persisted import progress, coverage and freshness. Ongoing triggers and public transaction reads remain separate work.
+new enrollment. The [replacement backend](../../docs/application/banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The protected [transaction sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted atomic batch persistence, durable selected-account imports, verified Transactions dispatch and daily missed-notification reconciliation are implemented. The [owner-only status API](../../docs/application/banking-status.md) exposes persisted import progress, coverage and freshness. Public transaction reads remain separate work.
 
 The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
 an owner-only independent preference and immutable write recovery; Account UI and

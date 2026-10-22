@@ -4,7 +4,7 @@ The internal Go `banking` package provides owner-private connection and source
 storage, protected credential reads, durable operation recovery, and stop/history
 hiding fences. The [lifecycle worker](banking-worker.md) adds durable cleanup,
 protected Item observations and verified webhook ingress. The [enrollment API](banking-enrollment.md) adds actor-bound Link operations and
-retained-stream reads and revision-checked lifecycle management. The [replacement backend](banking-replacement.md) adds staged date-ownership plans and guarded recovery. The protected [sync adapter](banking-sync.md) validates provider changes, and restricted atomic batch persistence applies complete sequences under lifecycle/reporting fences; the existing worker executes durable first imports. General annotation editing and ongoing sync triggers remain deferred. Live enrollment remains disabled by default;
+retained-stream reads and revision-checked lifecycle management. The [replacement backend](banking-replacement.md) adds staged date-ownership plans and guarded recovery. The protected [sync adapter](banking-sync.md) validates provider changes, and restricted atomic batch persistence applies complete sequences under lifecycle/reporting fences; the existing worker executes first/incremental imports through verified Transactions dispatch and daily reconciliation. General annotation editing remains deferred. Live enrollment remains disabled by default;
 the [Personal contract](personal-banking.md) describes the planned product.
 
 ## Ownership and privileges

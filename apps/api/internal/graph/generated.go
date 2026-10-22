@@ -4092,7 +4092,7 @@ enum BankingSyncOperation {
   """
   UNKNOWN
   """
-  First import is durably queued.
+  An import pass is durably queued.
   """
   QUEUED
   """
@@ -4244,7 +4244,7 @@ enum BankingCollectionState {
   """
   UNKNOWN
   """
-  Current selected stream has collection authority; this does not promise an ongoing trigger.
+  Current selected stream has collection authority; scheduling does not promise bank freshness.
   """
   COLLECTING
   """
@@ -4300,7 +4300,7 @@ Owner-private import, coverage and freshness facts. Unknown values stay unknown;
 """
 type BankingImportStatus {
   """
-  Current durable initial-import operation, fenced by connection and binding generations.
+  Current durable first or incremental import operation, fenced by connection and binding generations.
   """
   operation: BankingSyncOperation!
   """
@@ -4380,7 +4380,7 @@ type BankingImportStatus {
   """
   retryAt: String
   """
-  Current fenced initial-operation attempt count; absent when no current operation exists.
+  Current fenced import-pass attempt count; absent when no current operation exists.
   """
   attempts: Int
   """

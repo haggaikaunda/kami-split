@@ -59,6 +59,7 @@ assert status == {
     'pending': 0, 'running': 0, 'complete': 0, 'needs_attention': 0,
     'retried_operations': 0, 'oldest_incomplete_age_seconds': 0,
     'max_attempts': 0, 'max_cleanup_progress_rows': 0,
+    'oldest_local_import_lag_seconds': 0,
 }, 'smoke requires an empty disposable banking queue'
 PYSTATUS
 kill -TERM "$worker_pid"

@@ -107,22 +107,26 @@ func operationalHandler(ctx context.Context, db operationalDatabase, ready *atom
 }
 
 type operationSummary struct {
-	SampleLimit                int   `json:"sample_limit"`
-	SampledOperations          int   `json:"sampled_operations"`
-	SampleMayBeTruncated       bool  `json:"sample_may_be_truncated"`
-	Pending                    int   `json:"pending"`
-	Running                    int   `json:"running"`
-	Complete                   int   `json:"complete"`
-	NeedsAttention             int   `json:"needs_attention"`
-	RetriedOperations          int   `json:"retried_operations"`
-	OldestIncompleteAgeSeconds int64 `json:"oldest_incomplete_age_seconds"`
-	MaxAttempts                int   `json:"max_attempts"`
-	MaxCleanupProgressRows     int64 `json:"max_cleanup_progress_rows"`
+	SampleLimit                 int   `json:"sample_limit"`
+	SampledOperations           int   `json:"sampled_operations"`
+	SampleMayBeTruncated        bool  `json:"sample_may_be_truncated"`
+	Pending                     int   `json:"pending"`
+	Running                     int   `json:"running"`
+	Complete                    int   `json:"complete"`
+	NeedsAttention              int   `json:"needs_attention"`
+	RetriedOperations           int   `json:"retried_operations"`
+	OldestIncompleteAgeSeconds  int64 `json:"oldest_incomplete_age_seconds"`
+	OldestLocalImportLagSeconds int64 `json:"oldest_local_import_lag_seconds"`
+	MaxAttempts                 int   `json:"max_attempts"`
+	MaxCleanupProgressRows      int64 `json:"max_cleanup_progress_rows"`
 }
 
 func summarize(operations []database.BankingWorkStatus) operationSummary {
 	summary := operationSummary{SampleLimit: 100, SampledOperations: len(operations), SampleMayBeTruncated: len(operations) >= 100}
 	for _, op := range operations {
+		if op.ImportLagSeconds > summary.OldestLocalImportLagSeconds {
+			summary.OldestLocalImportLagSeconds = op.ImportLagSeconds
+		}
 		switch op.State {
 		case "pending":
 			summary.Pending++
