@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -181,12 +182,15 @@ WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible, &remainingOld
 		t.Fatal("owned Sandbox receiver port unavailable")
 	}
 	var drop atomic.Bool
+	var callbacks sync.RWMutex
 	route := "/banking/webhooks/" + correlation.String()
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != route {
 			http.NotFound(w, r)
 			return
 		}
+		callbacks.RLock()
+		defer callbacks.RUnlock()
 		if drop.Load() {
 			http.Error(w, "test receiver paused", http.StatusServiceUnavailable)
 			return
@@ -236,16 +240,32 @@ WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible, &remainingOld
 	t.Log("actual consumer committed provider-created selected-account incremental transaction")
 	// Remove the callback and pause this test receiver before adding a second fact.
 	// Any delivery already in flight is refused and cannot create accepted demand.
+	callbacks.Lock()
 	drop.Store(true)
+	callbacks.Unlock()
 	if err := provider.enrollmentPost(ctx, "/item/webhook/update", map[string]any{"access_token": exchangedPayload.AccessToken, "webhook": nil}, &ignored, false); err != nil {
 		t.Fatal("Sandbox callback removal unconfirmed")
 	}
+	// Drain demand accepted before callback shutdown, then establish the exact
+	// durable baseline before the intentionally unnotified provider change.
+	consumeSandboxMarker(t, ctx, f, worker, operation, binding, marker)
+	var beforeRequest int64
+	if err := f.admin.QueryRow(ctx, `SELECT requested_version FROM app.banking_work WHERE id=$1 AND state='complete' AND requested_version=completed_version`, operation).Scan(&beforeRequest); err != nil {
+		t.Fatal("Sandbox pre-reconciliation baseline unavailable")
+	}
 	missed := "kami-missed-" + uuid.NewString()
 	add(missed)
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete' AND requested_version=$2 AND completed_version=$2`, operation, beforeRequest) != 1 {
+		t.Fatal("Sandbox absent callback unexpectedly changed demand")
+	}
 	f.exec(`UPDATE app.banking_work SET due_at=clock_timestamp()-interval '1 day' WHERE id=$1 AND state='complete'`, operation)
 	if err := db.ReconcileBanking(ctx); err != nil {
 		t.Fatal("Sandbox missed-notification reconciliation unavailable")
 	}
+	if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='pending' AND last_code='DAILY_RECONCILIATION' AND requested_version=$2 AND completed_version=$3`, operation, beforeRequest+1, beforeRequest) != 1 {
+		t.Fatal("Sandbox missed-notification demand did not originate in daily reconciliation")
+	}
+	t.Log("callbacks drained; exact daily reconciliation request watermark observed before consumption")
 	consumeSandboxMarker(t, ctx, f, worker, operation, binding, missed)
 	t.Log("daily reconciliation committed provider-created transaction with callback disabled; complete history and institution freshness remain unproven")
 }
