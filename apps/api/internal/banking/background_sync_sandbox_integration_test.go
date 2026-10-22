@@ -5,6 +5,7 @@ package banking
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -255,6 +256,20 @@ WHERE w.id=$1`, operation).Scan(&state, &attempts, &due, &visible, &remainingOld
 	}
 	missed := "kami-missed-" + uuid.NewString()
 	add(missed)
+	// Establish provider availability independently of local scheduling. The
+	// synthetic create acknowledgement alone did not prove sync visibility in a
+	// previous run. These bounded read-only probes retain the trusted checkpoint;
+	// the actual consumer below must still fetch and atomically persist the fact.
+	var checkpoint string
+	if err := f.admin.QueryRow(ctx, `SELECT sync_cursor FROM app.banking_bindings WHERE id=$1`, binding).Scan(&checkpoint); err != nil {
+		t.Fatal("Sandbox readiness checkpoint unavailable")
+	}
+	syncBinding := SyncBinding{BindingID: binding.String(), Environment: "sandbox", ItemID: exchanged.ItemID, AccountID: selected}
+	probeCursor, err := NewSyncCursor(syncBinding, checkpoint)
+	if err != nil {
+		t.Fatal("Sandbox readiness cursor unavailable")
+	}
+	awaitSandboxProviderMarker(t, ctx, provider, syncBinding, exchanged.AccessToken, probeCursor, missed)
 	if queryInt(t, f, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete' AND requested_version=$2 AND completed_version=$2`, operation, beforeRequest) != 1 {
 		t.Fatal("Sandbox absent callback unexpectedly changed demand")
 	}
@@ -315,4 +330,61 @@ func consumeSandboxMarker(t *testing.T, ctx context.Context, f *fixture, worker 
 		}
 	}
 	t.Fatal("Sandbox consumer poll budget exhausted")
+}
+
+// Read-only provider observations distinguish asynchronous Sandbox visibility
+// from local consumer progress. They never write or advance the durable cursor.
+func awaitSandboxProviderMarker(t *testing.T, ctx context.Context, provider *PlaidProvider, binding SyncBinding, credential Credential, original SyncCursor, marker string) {
+	t.Helper()
+	for attempt := 1; attempt <= 3; attempt++ {
+		cursor := original
+		delay := time.Minute
+		pages := 0
+		found := false
+		complete := false
+		for ; pages < 1000; pages++ {
+			page, err := provider.SyncTransactions(ctx, binding, credential, cursor)
+			if err != nil {
+				var failure *SyncError
+				if !errors.As(err, &failure) {
+					t.Fatal("Sandbox readiness transport unavailable")
+				}
+				switch failure.Kind {
+				case SyncNotReady, SyncTemporary, SyncRateLimited, SyncPaginationMutation:
+					if failure.RetryAfter > delay {
+						delay = failure.RetryAfter
+					}
+				default:
+					t.Fatal("Sandbox readiness provider contract rejected")
+				}
+				break
+			}
+			for _, fact := range append(page.Added, page.Modified...) {
+				if fact.Name != nil && *fact.Name == marker && fact.AmountMinor == 29 {
+					found = true
+				}
+			}
+			if !page.HasMore {
+				complete = true
+				pages++
+				break
+			}
+			cursor = page.NextCursor
+		}
+		t.Logf("read-only Sandbox readiness probe=%d pages=%d marker_available=%t", attempt, pages, found && complete)
+		if found && complete {
+			return
+		}
+		if attempt == 3 {
+			break
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			t.Fatal("Sandbox provider readiness deadline")
+		case <-timer.C:
+		}
+	}
+	t.Fatal("Sandbox provider marker unavailable after bounded readiness probes")
 }
