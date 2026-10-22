@@ -2385,7 +2385,7 @@ type BankingSyncOperation string
 const (
 	// No current durable operation is known.
 	BankingSyncOperationUnknown BankingSyncOperation = "UNKNOWN"
-	// First import is durably queued.
+	// An import pass is durably queued.
 	BankingSyncOperationQueued BankingSyncOperation = "QUEUED"
 	// Durable work is marked running, including lease-expiry recovery until reclaimed. Staged pages remain private.
 	BankingSyncOperationRunning BankingSyncOperation = "RUNNING"

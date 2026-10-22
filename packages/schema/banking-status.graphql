@@ -28,7 +28,7 @@ enum BankingSyncOperation {
   """
   UNKNOWN
   """
-  First import is durably queued.
+  An import pass is durably queued.
   """
   QUEUED
   """
