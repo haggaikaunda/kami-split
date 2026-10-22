@@ -5,6 +5,15 @@ import viewerQuery, {
   type journeyViewerQuery,
 } from './__generated__/journeyViewerQuery.graphql';
 import { createScope } from './environment';
+import inventoryDocument, {
+  type personalInventoryQuery,
+} from './__generated__/personalInventoryQuery.graphql';
+import timezoneDocument, {
+  type reportingTimezoneQuery,
+} from './__generated__/reportingTimezoneQuery.graphql';
+import recoveryDocument, {
+  type enrollmentRecoveryQuery,
+} from './__generated__/enrollmentRecoveryQuery.graphql';
 
 const viewerData = {
   data: {
@@ -99,4 +108,107 @@ describe('independent Relay session isolation', () => {
     expect(fetch).not.toHaveBeenCalled();
     scope.dispose();
   });
+});
+
+for (const typename of [
+  'BankingConnectionsResult',
+  'BankingEnrollmentResult',
+  'ReportingTimezoneProblem',
+])
+  it(`evicts private records and notifies the owner on ${typename} access denial`, async () => {
+    const onDenied = vi.fn();
+    const scope = createScope(
+      clientFor(async () => sessionFor()),
+      'actor',
+      onDenied,
+    );
+    scope.environment.commitUpdate((store) => {
+      store
+        .create('private-sentinel', 'BankingAccount')
+        .setValue('Private account', 'name');
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                [typename === 'BankingConnectionsResult'
+                  ? 'bankingConnections'
+                  : typename === 'BankingEnrollmentResult'
+                    ? 'bankingEnrollment'
+                    : 'reportingTimezone']: {
+                  __typename: typename,
+                  code: 'FORBIDDEN',
+                },
+              },
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const pending =
+      typename === 'BankingConnectionsResult'
+        ? fetchQuery<personalInventoryQuery>(
+            scope.environment,
+            inventoryDocument,
+            { first: 20 },
+            { fetchPolicy: 'network-only' },
+          ).toPromise()
+        : typename === 'BankingEnrollmentResult'
+          ? fetchQuery<enrollmentRecoveryQuery>(
+              scope.environment,
+              recoveryDocument,
+              { attemptId: 'opaque' },
+              { fetchPolicy: 'network-only' },
+            ).toPromise()
+          : fetchQuery<reportingTimezoneQuery>(
+              scope.environment,
+              timezoneDocument,
+              {},
+              { fetchPolicy: 'network-only' },
+            ).toPromise();
+    await expect(pending).rejects.toThrow('FORBIDDEN');
+    expect(onDenied).toHaveBeenCalledExactlyOnceWith('FORBIDDEN');
+    expect(scope.isLive()).toBe(false);
+    expect(
+      scope.environment.getStore().getSource().get('private-sentinel'),
+    ).toBeUndefined();
+  });
+
+it('retains the owner scope when enrollment recovery has no receipt yet', async () => {
+  const scope = createScope(
+    clientFor(async () => sessionFor()),
+    'actor',
+  );
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              bankingEnrollment: {
+                __typename: 'BankingEnrollmentResult',
+                code: 'NOT_FOUND',
+                state: null,
+                attemptId: null,
+                connectionId: null,
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    ),
+  );
+  const result = await fetchQuery<enrollmentRecoveryQuery>(
+    scope.environment,
+    recoveryDocument,
+    { attemptId: 'opaque' },
+    { fetchPolicy: 'network-only' },
+  ).toPromise();
+  expect(result?.bankingEnrollment.code).toBe('NOT_FOUND');
+  expect(scope.isLive()).toBe(true);
+  scope.dispose();
 });

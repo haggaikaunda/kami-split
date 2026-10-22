@@ -235,7 +235,7 @@ module.exports = async function verifyLayout({
 
   await page
     .locator('[data-ui~="workspace-navigation"]')
-    .getByRole('link', { name: 'Profile', exact: true })
+    .getByRole('link', { name: 'Account', exact: true })
     .click();
   await page.locator('[data-ui~="account-heading"]').waitFor();
   assert.equal(

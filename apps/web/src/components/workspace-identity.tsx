@@ -3,7 +3,13 @@
 import { cx } from './ui/classnames';
 
 import Link from 'next/link';
-import { useLayoutEffect, useRef, type ReactNode, type Ref } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { useFinancialSession } from './groups/session';
 import { ScopedLink } from './groups/navigation';
 import { useExpenseEntry } from './expenses/entry';
@@ -28,6 +34,12 @@ const icons = {
       <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
       <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
       <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+    </>
+  ),
+  wallet: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M7 5V3h10v2M16 15h2" />
     </>
   ),
   leaf: <path d="M20 3C10 2 3 6 4 14c1 7 13 8 16-11ZM3 21 16 8" />,
@@ -287,6 +299,21 @@ export function Brand() {
     </span>
   );
 }
+/** Keep the compact phone caption and the full desktop action in one owner. */
+export function ExpenseActionLabel() {
+  return (
+    <span aria-hidden="true">
+      <span className={shellStyles['expense-label-full']}>Add expense</span>
+      <span className={shellStyles['expense-label-short']}>Expense</span>
+    </span>
+  );
+}
+function subscribeNavigationLayout(changed: () => void) {
+  window.addEventListener('resize', changed);
+  return () => window.removeEventListener('resize', changed);
+}
+const phoneNavigationLayout = () => window.innerWidth <= 600;
+const initialNavigationLayout = () => true;
 /** Static navigation never reads or retains private group data. */
 export function WorkspaceNavigation({
   headerRef,
@@ -301,6 +328,13 @@ export function WorkspaceNavigation({
   const expenseEntry = useExpenseEntry();
   const pathname = usePathname();
   const navigation = useRef<HTMLElement>(null);
+  // The DOM follows the visible sequence so native keyboard navigation does too.
+  // Stable keys move the existing action slot without replacing its portal target.
+  const phone = useSyncExternalStore(
+    subscribeNavigationLayout,
+    phoneNavigationLayout,
+    initialNavigationLayout,
+  );
   useLayoutEffect(() => {
     const nav = navigation.current;
     const frame = nav?.closest('main');
@@ -340,11 +374,28 @@ export function WorkspaceNavigation({
       root.style.removeProperty('--chrome-footer');
     };
   }, []);
-  const household = pathname.startsWith('/household');
+  const household =
+    pathname === '/household' || pathname.startsWith('/household/');
+  const personal =
+    pathname === '/personal' || pathname.startsWith('/personal/');
   const profile = pathname.startsWith('/account');
   const trip = pathname.startsWith('/trips/');
+  const groups =
+    pathname === '/groups' ||
+    pathname.startsWith('/groups/') ||
+    pathname === '/trips' ||
+    trip;
   const subtitle =
-    destination ?? (profile ? 'Profile' : household ? 'Household' : 'Groups');
+    destination ??
+    (profile
+      ? 'Profile'
+      : household
+        ? 'Household'
+        : personal
+          ? 'Personal'
+          : groups
+            ? 'Groups'
+            : 'Workspace');
   const add = scope ? (
     <ScopedLink
       scope={scope}
@@ -354,12 +405,48 @@ export function WorkspaceNavigation({
       onClick={(event) => expenseEntry?.activate(event, '')}
     >
       <AppIcon name="plus" />
-      <span>Add expense</span>
+      <ExpenseActionLabel />
     </ScopedLink>
   ) : (
-    <Link href="/household/expenses?create=choose">
+    <Link href="/household/expenses?create=choose" aria-label="Add expense">
       <AppIcon name="plus" />
-      <span>Add expense</span>
+      <ExpenseActionLabel />
+    </Link>
+  );
+  const addSlot = (
+    <div
+      key="add"
+      ref={actionRef}
+      data-ui="workspace-add-slot"
+      className={shellStyles['workspace-add-slot']}
+    >
+      {actionRef ? (
+        <span
+          aria-disabled="true"
+          aria-label="Add expense"
+          className={shellStyles['workspace-add-pending']}
+        >
+          <AppIcon name="plus" />
+          <ExpenseActionLabel />
+        </span>
+      ) : (
+        add
+      )}
+    </div>
+  );
+  const groupsLink = (
+    <Link
+      key="groups"
+      href="/groups"
+      aria-current={groups ? 'page' : undefined}
+    >
+      <span
+        data-ui="workspace-navigation-icon"
+        className={shellStyles['workspace-navigation-icon']}
+      >
+        <AppIcon name="groups" />
+      </span>
+      <span>Groups</span>
     </Link>
   );
   return (
@@ -386,28 +473,6 @@ export function WorkspaceNavigation({
             {!headerRef && subtitle}
           </div>
         </div>
-        <div className={shellStyles['workspace-navigation-avatar']}>
-          {scope && !profile ? (
-            <ScopedLink
-              scope={scope}
-              id="header-profile"
-              href="/account"
-              aria-label="Profile"
-              aria-current={profile ? 'page' : undefined}
-              onClick={(event) => expenseEntry?.activate(event, '')}
-            >
-              <AppIcon name="account" />
-            </ScopedLink>
-          ) : (
-            <Link
-              href="/account"
-              aria-label="Profile"
-              aria-current={profile ? 'page' : undefined}
-            >
-              <AppIcon name="account" />
-            </Link>
-          )}
-        </div>
       </div>
       <div
         data-ui="workspace-navigation-links"
@@ -422,35 +487,48 @@ export function WorkspaceNavigation({
           </span>
           <span>Household</span>
         </Link>
-        <div
-          ref={actionRef}
-          data-ui="workspace-add-slot"
-          className={shellStyles['workspace-add-slot']}
-        >
-          {actionRef ? (
-            <span
-              aria-disabled="true"
-              className={shellStyles['workspace-add-pending']}
-            >
-              <AppIcon name="plus" />
-              <span>Add expense</span>
-            </span>
-          ) : (
-            add
-          )}
-        </div>
-        <Link
-          href="/groups"
-          aria-current={!profile && !household ? 'page' : undefined}
-        >
+        <Link href="/personal" aria-current={personal ? 'page' : undefined}>
           <span
             data-ui="workspace-navigation-icon"
             className={shellStyles['workspace-navigation-icon']}
           >
-            <AppIcon name="groups" />
+            <AppIcon name="wallet" />
           </span>
-          <span>Groups</span>
+          <span>Personal</span>
         </Link>
+        {phone ? [addSlot, groupsLink] : [groupsLink, addSlot]}
+        {scope && !profile ? (
+          <ScopedLink
+            scope={scope}
+            id="workspace-account"
+            href="/account"
+            className={shellStyles['workspace-account']}
+            onClick={(event) => expenseEntry?.activate(event, '')}
+          >
+            <span
+              data-ui="workspace-navigation-icon"
+              className={shellStyles['workspace-navigation-icon']}
+            >
+              <AppIcon name="account" />
+            </span>
+            <span>Account</span>
+          </ScopedLink>
+        ) : (
+          <Link
+            id="workspace-account"
+            href="/account"
+            className={shellStyles['workspace-account']}
+            aria-current={profile ? 'page' : undefined}
+          >
+            <span
+              data-ui="workspace-navigation-icon"
+              className={shellStyles['workspace-navigation-icon']}
+            >
+              <AppIcon name="account" />
+            </span>
+            <span>Account</span>
+          </Link>
+        )}
       </div>
     </nav>
   );

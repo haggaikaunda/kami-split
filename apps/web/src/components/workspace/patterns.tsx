@@ -28,7 +28,7 @@ export function WorkspaceHeader({
   title: string;
   context?: ReactNode;
   children?: ReactNode;
-  appearance?: 'household' | 'trip' | 'group';
+  appearance?: 'household' | 'trip' | 'group' | 'personal';
   compact?: boolean;
 }) {
   return (
@@ -59,7 +59,9 @@ export function WorkspaceHeader({
                   ? 'home'
                   : appearance === 'trip'
                     ? 'trip'
-                    : 'groups'
+                    : appearance === 'personal'
+                      ? 'wallet'
+                      : 'groups'
               }
             />
           </span>
@@ -214,7 +216,8 @@ function MoreNavigation({
   );
 }
 
-function NavigationPending() {
+/** Render inside a native route Link to share its delayed pending cue. */
+export function NavigationPending() {
   const { pending } = useLinkStatus();
   return (
     <span

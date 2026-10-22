@@ -1,0 +1,120 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin-block: 1.5rem;
+}
+.panel,
+.empty {
+  min-width: 0;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-card);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  background: var(--color-surface);
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.panel h2,
+.panel h3,
+.empty h2 {
+  margin-top: 0;
+}
+.panel p,
+.empty p {
+  line-height: 1.6;
+}
+.empty {
+  padding-block: 2rem;
+}
+.eyebrow,
+.privacy,
+.muted {
+  color: var(--color-muted);
+}
+.privacy {
+  font-size: 0.875rem;
+  margin-block: 1.25rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.choice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
+  min-height: var(--target-size);
+  padding-block: 0.75rem;
+}
+.choice input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+}
+.choice small {
+  display: block;
+  color: var(--color-muted);
+}
+.panel fieldset {
+  min-width: 0;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  margin-block: 1rem;
+}
+.notice {
+  border-inline-start: 3px solid var(--color-primary);
+  padding: 1rem;
+  background: var(--color-subtle);
+}
+.link,
+.panel summary,
+.notice a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  color: var(--color-primary);
+}
+.panel summary {
+  cursor: pointer;
+}
+.account {
+  min-width: 0;
+  border-top: 1px solid var(--color-separator);
+  padding-block: 1rem;
+}
+.accountHeading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+.accountHeading > div {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.accountHeading h4 {
+  font-size: 1rem;
+  margin: 0;
+}
+.accountHeading p {
+  margin-block: 0.25rem;
+}
+.accountHeading strong {
+  flex: 0 1 auto;
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+.facts dt {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.facts dd {
+  margin: 0.25rem 0 0;
+}

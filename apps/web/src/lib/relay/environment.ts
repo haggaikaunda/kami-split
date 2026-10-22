@@ -209,7 +209,10 @@ function accessDenial(
       (record.__typename === 'Problem' ||
         record.__typename === 'ViewerProblem' ||
         record.__typename === 'ProfileProblem' ||
-        record.__typename === 'InvitationProblem')
+        record.__typename === 'InvitationProblem' ||
+        record.__typename === 'ReportingTimezoneProblem' ||
+        record.__typename === 'BankingConnectionsResult' ||
+        record.__typename === 'BankingEnrollmentResult')
     ) {
       if (
         [

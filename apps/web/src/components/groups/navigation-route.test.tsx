@@ -47,6 +47,10 @@ it.each([
   ['/groups/new?kind=trip', undefined],
   ['/trips/new', undefined],
   ['/groups?kind=trips', undefined],
+  [
+    '/personal?tab=transactions&period=custom&from=2026-10-01&to=2026-10-22&kind=income',
+    undefined,
+  ],
 ])(
   'captures Profile source %s with the correct authorization metadata',
   async (href, group) => {
@@ -55,7 +59,7 @@ it.each([
     const scope = { visits } as FinancialScope;
     await act(async () =>
       root.render(
-        <ScopedLink scope={scope} id="header-profile" href="/account">
+        <ScopedLink scope={scope} id="workspace-account" href="/account">
           Profile
         </ScopedLink>,
       ),
@@ -67,7 +71,7 @@ it.each([
     expect(visits.get(token)).toEqual({
       href,
       group,
-      focus: 'header-profile',
+      focus: 'workspace-account',
       scroll: 0,
     });
     expect(window.history.state.financialRestore).toBe(token);

@@ -6,7 +6,11 @@ import { financialReadMessage as message } from '@/lib/relay/read-error';
 import { NetworkQuery } from '@/lib/relay/query';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
-import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
+import {
+  AppIcon,
+  ExpenseActionLabel,
+  WorkspaceNavigation,
+} from '@/components/workspace-identity';
 import Link from 'next/link';
 import { expenseFilter, expenseFilterText } from '@/lib/relay/expense-filter';
 import {
@@ -562,10 +566,11 @@ function GroupDestination({
               <ScopedLink
                 scope={scope}
                 id="workspace-add"
+                aria-label="Add expense"
                 href={`${spaceHref(group)}?tab=expenses&create=${encodeURIComponent(group.id)}`}
               >
                 <AppIcon name="plus" />
-                <span>Add expense</span>
+                <ExpenseActionLabel />
               </ScopedLink>,
               actionTarget,
             )}

@@ -141,6 +141,24 @@ export function expensePage(after) {
 }
 export function responseFor(operation, variables) {
   switch (operation) {
+    case 'reportingTimezoneQuery':
+      return {
+        reportingTimezone: {
+          __typename: 'ReportingTimezone',
+          timezone: 'America/Los_Angeles',
+          version: '1',
+        },
+      };
+    case 'personalInventoryQuery':
+      return {
+        bankingConnections: {
+          code: 'READY',
+          connections: [],
+          endCursor: null,
+          hasNextPage: false,
+        },
+      };
+
     case 'profileReturnQuery':
       return { viewer: { __typename: 'Viewer', groups } };
     case 'appearanceQuery':

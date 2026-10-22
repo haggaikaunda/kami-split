@@ -51,6 +51,12 @@ export function clearFinancialStorage() {
   sessionStorage.removeItem(privateStorageKey);
   sessionStorage.removeItem(repaymentStorageKey);
   sessionStorage.removeItem(editStorageKey);
+  // Enrollment recovery identities belong to the departing financial actor.
+  for (let index = sessionStorage.length - 1; index >= 0; index--) {
+    const key = sessionStorage.key(index);
+    if (key?.startsWith('kami-personal-enrollment:'))
+      sessionStorage.removeItem(key);
+  }
 }
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -16,6 +16,7 @@ import { useOnboarding, type Mode } from './controller';
 import { HouseIllustration, InvitationScreens, SignIn } from './screens';
 import { AppearanceEditor } from './appearance';
 import { ProfileEditor } from './profile';
+import { ReportingTimezoneControl } from '@/components/personal/reporting-timezone-control';
 import { ProfileReturn } from './profile-return';
 import { LegacyInvitations } from './legacy-invitations';
 import { ActionRecovery } from './recovery';
@@ -170,6 +171,9 @@ function OnboardingVisit({
                       <RestoreSource scope={scope} allowed={[]} />
                     )}
                     <ProfileEditor key={c.session.user.id} state={c} />
+                    {scope?.actor === c.session.user.id && (
+                      <ReportingTimezoneControl key={`timezone:${scope.id}`} />
+                    )}
                     <AppearanceEditor
                       key={`appearance:${c.session.user.id}`}
                       state={c}

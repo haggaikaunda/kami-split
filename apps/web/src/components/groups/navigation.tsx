@@ -64,11 +64,14 @@ export function SourceReturn({
   household = false,
   authorizedGroups,
   fallbackLabel,
+  authorized = true,
 }: {
   scope: FinancialScope;
   household?: boolean;
   authorizedGroups?: readonly { id: string; name: string }[];
   fallbackLabel?: string;
+  /** The owning read can deny a saved origin after fresh access validation. */
+  authorized?: boolean;
 }) {
   const params = useSearchParams();
   const trip = usePathname().startsWith('/trips/');
@@ -84,7 +87,10 @@ export function SourceReturn({
   const group = groupId
     ? authorizedGroups?.find((group) => group.id === groupId)
     : undefined;
-  const valid = visit && (!groupId || authorizedGroups === undefined || group);
+  const valid =
+    authorized &&
+    visit &&
+    (!groupId || authorizedGroups === undefined || group);
   const destination = valid ? origin : undefined;
   if (destination && token) destination.searchParams.set('restore', token);
   return (
@@ -117,6 +123,8 @@ export function SourceReturn({
 /** These names describe known routes, never text supplied through a query string. */
 function sourceReturnLabel(pathname: string, groupName?: string) {
   if (pathname.startsWith('/household')) return 'Back to Household';
+  if (pathname === '/personal' || pathname.startsWith('/personal/'))
+    return 'Back to Personal';
   if (groupName) return `Back to ${groupName}`;
   if (pathname === '/groups/activity') return 'Back to Activity';
   if (pathname === '/groups/new') return 'Back to Create group';

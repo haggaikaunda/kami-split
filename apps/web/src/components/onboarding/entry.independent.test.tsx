@@ -49,6 +49,11 @@ vi.mock('@supabase/ssr', async () => {
   const { createClient } = await import('@supabase/supabase-js');
   return { createBrowserClient: createClient };
 });
+// This suite owns Profile/controller behavior with raw-call fixtures. The
+// separate timezone feature owns its Relay environment and operation coverage.
+vi.mock('@/components/personal/reporting-timezone-control', () => ({
+  ReportingTimezoneControl: () => <section aria-label="Reporting timezone" />,
+}));
 vi.mock('next/link', () => ({
   useLinkStatus: () => ({ pending: false }),
   default: 'a',
@@ -825,7 +830,7 @@ it('keeps Account personal with shared active navigation and no group discovery 
   expect(
     container.querySelector('a[href="/account"]')?.getAttribute('aria-current'),
   ).toBe('page');
-  for (const href of ['/household', '/groups', '/account'])
+  for (const href of ['/household', '/personal', '/groups', '/account'])
     expect(container.querySelector(`nav a[href="${href}"]`)).not.toBeNull();
   expect(button('Refresh groups')).toBeUndefined();
   expect(container.textContent).not.toContain('Manage invitations');
@@ -1253,7 +1258,7 @@ it('retains primary navigation when profile loading fails and supports retry', a
   };
   await render('account');
   expect(container.textContent).toContain('Your profile could not be loaded');
-  expect(container.querySelectorAll('nav a')).toHaveLength(4);
+  expect(container.querySelectorAll('nav a')).toHaveLength(5);
   expect(button('Sign out of this session')).not.toBeUndefined();
   profileResponder('李 María');
   await click('Retry profile');
@@ -1289,7 +1294,7 @@ it('discards dirty edits, trims international names, and waits for one confirmed
     ),
   ).toHaveLength(1);
   expect(container.textContent).not.toContain('Changes saved.');
-  expect(container.querySelectorAll('nav a')).toHaveLength(4);
+  expect(container.querySelectorAll('nav a')).toHaveLength(5);
   await act(async () =>
     finish({
       data: {
