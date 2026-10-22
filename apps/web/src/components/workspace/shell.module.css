@@ -125,14 +125,15 @@
       max(0.5rem, env(safe-area-inset-bottom))
       max(0.25rem, env(safe-area-inset-left));
     flex-direction: row;
+    flex-wrap: wrap;
     justify-content: space-around;
-    gap: 0;
+    gap: 1.25rem 0;
     overflow: visible;
   }
   .workspace-navigation-links a {
     flex: 1 1 0;
     min-width: 0;
-    padding-inline: 0.125rem;
+    padding-inline: 0;
     gap: 0.125rem;
     min-height: 3.5rem;
   }
@@ -163,6 +164,7 @@
 }
 @media (max-width: 600px) {
   .workspace-navigation-icon {
+    width: 44px;
     max-width: 100%;
   }
 }
@@ -238,14 +240,21 @@
 @media (max-width: 600px) {
   .workspace-navigation-links > a,
   .workspace-add-slot {
-    /* Natural label widths give Household the space left spare by Groups. */
-    flex: 1 1 auto;
-    min-width: 0;
+    /* Keep whole labels and wrap complete controls when text is enlarged. */
+    flex: 1 0 auto;
+    min-width: 44px;
+  }
+  .workspace-add-slot {
+    min-width: 52px;
+  }
+  .workspace-navigation-links > a > span:last-child,
+  .workspace-add-slot > a > span:last-child {
+    white-space: nowrap;
   }
   .workspace-add-slot > a,
   .workspace-add-pending {
     margin-top: -1.25rem;
-    padding: 0 0.125rem;
+    padding: 0;
     color: var(--color-primary);
     background: transparent;
     border-radius: 0;

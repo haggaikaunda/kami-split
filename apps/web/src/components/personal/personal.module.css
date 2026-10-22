@@ -118,3 +118,27 @@
 .facts dd {
   margin: 0.25rem 0 0;
 }
+
+.connectionsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.connectionsToolbar h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.connectionsToolbar button {
+  font-size: 0.875rem;
+}
+.connectionsHelp {
+  margin: -0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+.connectionCard {
+  margin-block: 0;
+}

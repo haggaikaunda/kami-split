@@ -13,7 +13,11 @@ const session = vi.hoisted(() => ({
 const nav = vi.hoisted(() => ({ search: '' }));
 vi.mock('../groups/session', () => ({ useFinancialSession: () => session }));
 vi.mock('./reporting-timezone-control', () => ({
-  ReportingTimezoneInitialization: () => null,
+  ReportingTimezoneInitialization: ({
+    showPeriod,
+  }: {
+    showPeriod: boolean;
+  }) => <p data-timezone-period={showPeriod ? 'current' : 'omitted'} />,
 }));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
@@ -113,6 +117,11 @@ it('defaults to This month Overview and routes first use to Connections without 
   expect(host.querySelector('button')).toBeNull();
   await act(async () => requests[0].next(inventory()));
   expect(host.textContent).toContain('This month');
+  expect(
+    host
+      .querySelector('[data-timezone-period]')
+      ?.getAttribute('data-timezone-period'),
+  ).toBe('current');
   expect(host.textContent).toContain('Spending from your accounts');
   expect(host.querySelector('a')?.getAttribute('href')).toBe(
     '/personal?tab=connections',
@@ -128,6 +137,12 @@ it('preserves applied Personal URL state while routing Transactions to setup', a
     '/personal?tab=connections&period=last-month&account=private-id',
   );
   expect(host.textContent).not.toContain('Connect account');
+  expect(host.textContent).not.toContain('This month');
+  expect(
+    host
+      .querySelector('[data-timezone-period]')
+      ?.getAttribute('data-timezone-period'),
+  ).toBe('omitted');
 });
 it('shows a known empty Connections state only after fresh owner authorization', async () => {
   nav.search = 'tab=connections';
@@ -184,4 +199,22 @@ it('isolates a late inventory response after actor switch and hides details whil
   session.loading = true;
   await act(async () => root.render(<PersonalWorkspace />));
   expect(host.textContent).not.toContain('Sensitive long');
+});
+
+it('leads existing Connections with the compact heading and leaves setup details undisclosed', async () => {
+  nav.search = 'tab=connections';
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () => requests[0].next(inventory([connection])));
+  expect(host.querySelector('#connection-setup')).toBeNull();
+  const title = host.querySelector('#connections-heading')!;
+  const account = host.querySelector('article')!;
+  expect(
+    title.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(host.querySelector('article')?.textContent).toContain(
+    'Sensitive long',
+  );
+  expect(
+    host.querySelector('#existing-connections > p')?.textContent,
+  ).toContain('Only selected accounts');
 });

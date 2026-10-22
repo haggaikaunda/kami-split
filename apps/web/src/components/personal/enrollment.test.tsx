@@ -68,6 +68,7 @@ afterEach(() => {
 });
 async function prepare() {
   await click('Connect account');
+  await click('Continue with Plaid');
   const id = (requests[0].variables.input as { attemptId: string }).attemptId;
   expect(sessionStorage.getItem('kami-personal-enrollment:alice')).toBe(id);
   await act(async () =>
@@ -201,6 +202,7 @@ it.each([
 });
 it('does not open expired or invalid expiry handoffs and clearly reports disabled enrollment', async () => {
   await click('Connect account');
+  await click('Continue with Plaid');
   await act(async () =>
     requests[0].next({
       startBankingEnrollment: {
@@ -215,6 +217,7 @@ it('does not open expired or invalid expiry handoffs and clearly reports disable
 });
 it('shows known disabled state without trapping a nonexistent attempt', async () => {
   await click('Connect account');
+  await click('Continue with Plaid');
   await act(async () =>
     requests[0].next({
       startBankingEnrollment: {
@@ -252,6 +255,7 @@ it('isolates actor replacement and late provider callbacks', async () => {
 
 it('replays original setup with the same attempt after uncertain start and an absent status', async () => {
   await click('Connect account');
+  await click('Continue with Plaid');
   const original = requests[0].variables;
   await act(async () => requests[0].error());
   await click('Check connection status');
@@ -270,4 +274,44 @@ it('replays original setup with the same attempt after uncertain start and an ab
   expect(
     requests.filter((request) => request.name === 'enrollmentFinishMutation'),
   ).toHaveLength(0);
+});
+
+it('keeps setup collapsed until requested and permits cancel without a provider effect', async () => {
+  expect(host.querySelector('#connection-setup')).toBeNull();
+  expect(host.textContent).not.toContain('365 days');
+  expect(host.textContent).not.toContain('Replace existing account');
+  await click('Connect account');
+  expect(requests).toHaveLength(0);
+  expect(button('Connect account').getAttribute('aria-expanded')).toBe('true');
+  expect(host.textContent).toContain('365 days');
+  expect(host.textContent).toContain('Replace existing account');
+  await click('Cancel setup');
+  expect(document.activeElement).toBe(button('Connect account'));
+  expect(host.querySelector('#connection-setup')).toBeNull();
+  expect(requests).toHaveLength(0);
+});
+
+it('reveals recovery for a saved unfinished attempt without reopening setup', async () => {
+  await click('Connect account');
+  await click('Continue with Plaid');
+  const attemptId = (requests[0].variables.input as { attemptId: string })
+    .attemptId;
+  await act(async () => requests[0].error());
+  await act(async () =>
+    root.render(
+      <Enrollment key="revisit" scope={scope} onConnected={connected} />,
+    ),
+  );
+  expect(requests[1].name).toBe('enrollmentRecoveryQuery');
+  expect(requests[1].variables).toEqual({ attemptId });
+  expect(host.querySelector('#connection-setup')).not.toBeNull();
+  expect(
+    [...host.querySelectorAll('button')].some(
+      (button) => button.textContent === 'Connect account',
+    ),
+  ).toBe(false);
+  await act(async () =>
+    requests[1].next({ bankingEnrollment: result('EXCHANGE_UNKNOWN') }),
+  );
+  expect(button('Check connection status')).toBeTruthy();
 });

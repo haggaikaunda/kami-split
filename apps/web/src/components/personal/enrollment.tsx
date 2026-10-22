@@ -78,11 +78,13 @@ export function Enrollment({
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(true);
   const [existing, setExisting] = useState(false);
+  const [setup, setSetup] = useState(false);
   const [prepared, setPrepared] = useState(false);
   const active = useRef(true),
     lock = useRef(false),
     callback = useRef(false);
   const handler = useRef<LinkHandler | undefined>(undefined);
+  const setupTrigger = useRef<HTMLButtonElement>(null);
   const key = `kami-personal-enrollment:${scope.actor}`;
   const live = () => active.current && scope.isLive();
   const forget = () => {
@@ -256,132 +258,170 @@ export function Enrollment({
       ).finishBankingEnrollment,
     );
   };
+  const expanded = setup || Boolean(attempt) || Boolean(message);
   return (
-    <section aria-labelledby="connect-heading" className={styles.panel}>
-      <h2 id="connect-heading">Connect your accounts</h2>
-      <p>
-        US checking, savings and credit-card accounts, with USD activity. We
-        request 365 days of history; actual availability depends on your
-        institution. This is not a retention deadline.
-      </p>
-      <p>
-        Your authorized account activity stays private, including full
-        joint-account activity. Connecting never creates shared expenses or
-        moves money.
-      </p>
-      {message && <Status kind="info">{message}</Status>}
-      {busy && <Status kind="pending">Checking your connection…</Status>}
-      {handoff && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void action(finish);
-          }}
-        >
-          <fieldset disabled={busy}>
-            <legend>Accounts to include</legend>
-            <p>
-              Only the accounts you check will be requested. The server verifies
-              account eligibility and USD support.
-            </p>
-            {handoff.accounts.map((account) => (
-              <label key={account.id} className={styles.choice}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(account.id)}
-                  onChange={(event) =>
-                    setSelected((current) =>
-                      event.target.checked
-                        ? [...current, account.id]
-                        : current.filter((id) => id !== account.id),
-                    )
-                  }
-                />
-                <span>
-                  {account.name}
-                  {account.mask ? ` · ending ${account.mask}` : ''}
-                  <small>{account.subtype}</small>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <Button type="submit" disabled={busy || !selected.length}>
-            Include selected accounts
-          </Button>
-        </form>
-      )}
-      <div className={styles.actions}>
+    <>
+      <div className={styles.connectionsToolbar}>
+        <h2 id="connections-heading">Your connections</h2>
         {!attempt && !checking && (
-          <Button disabled={busy} onClick={() => void action(start)}>
+          <Button
+            ref={setupTrigger}
+            tone="secondary"
+            disabled={busy}
+            aria-expanded={expanded}
+            aria-controls="connection-setup"
+            onClick={() => setSetup(true)}
+          >
             Connect account
           </Button>
         )}
-        {!attempt && !checking && (
-          <Button
-            tone="secondary"
-            onClick={() => setExisting((value) => !value)}
-          >
-            Replace existing account
-          </Button>
-        )}
-        {attempt && (
-          <>
-            {prepared && !handoff && (
-              <Button
-                disabled={busy}
-                onClick={() => void action(() => start(attempt))}
-              >
-                Continue secure connection
+      </div>
+      {expanded && (
+        <section
+          id="connection-setup"
+          aria-labelledby="connect-heading"
+          className={styles.panel}
+        >
+          <h2 id="connect-heading">Connect your accounts</h2>
+          <p>
+            US checking, savings and credit-card accounts, with USD activity. We
+            request 365 days of history; actual availability depends on your
+            institution. This is not a retention deadline.
+          </p>
+          <p>
+            Your authorized account activity stays private, including full
+            joint-account activity. Connecting never creates shared expenses or
+            moves money.
+          </p>
+          {message && <Status kind="info">{message}</Status>}
+          {busy && <Status kind="pending">Checking your connection…</Status>}
+          {handoff && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void action(finish);
+              }}
+            >
+              <fieldset disabled={busy}>
+                <legend>Accounts to include</legend>
+                <p>
+                  Only the accounts you check will be requested. The server
+                  verifies account eligibility and USD support.
+                </p>
+                {handoff.accounts.map((account) => (
+                  <label key={account.id} className={styles.choice}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(account.id)}
+                      onChange={(event) =>
+                        setSelected((current) =>
+                          event.target.checked
+                            ? [...current, account.id]
+                            : current.filter((id) => id !== account.id),
+                        )
+                      }
+                    />
+                    <span>
+                      {account.name}
+                      {account.mask ? ` · ending ${account.mask}` : ''}
+                      <small>{account.subtype}</small>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <Button type="submit" disabled={busy || !selected.length}>
+                Include selected accounts
+              </Button>
+            </form>
+          )}
+          <div className={styles.actions}>
+            {!attempt && !checking && (
+              <Button disabled={busy} onClick={() => void action(start)}>
+                Continue with Plaid
               </Button>
             )}
-            <Button
-              tone="secondary"
-              disabled={busy}
-              onClick={() => void action(() => recover(attempt))}
-            >
-              Check connection status
-            </Button>
-            <Button
-              tone="text"
-              disabled={busy}
-              onClick={() =>
-                void action(async () => {
-                  callback.current = true;
-                  handler.current?.destroy();
-                  handler.current = undefined;
-                  setHandoff(undefined);
-                  accept(
-                    (
-                      await command<enrollmentCancelMutation>(
-                        scope,
-                        cancelDocument,
-                        { attemptId: attempt },
-                      )
-                    ).cancelBankingEnrollment,
-                  );
-                })
-              }
-            >
-              Cancel connection
-            </Button>
-          </>
-        )}
-      </div>
-      {existing && (
-        <div className={styles.notice}>
-          <h3>Existing account management</h3>
-          <p>
-            Prefer repairing your existing connection. Replacement needs a
-            confirmed transition date and preview that preserves prior history.
-            Those management actions are not available on this
-            initial-connection screen.
-          </p>
-          <a href="#existing-connections">Review existing accounts</a>
-          <Button tone="text" onClick={() => setExisting(false)}>
-            Cancel
-          </Button>
-        </div>
+            {!attempt && !checking && (
+              <Button
+                tone="secondary"
+                onClick={() => setExisting((value) => !value)}
+              >
+                Replace existing account
+              </Button>
+            )}
+            {!attempt && !checking && (
+              <Button
+                tone="text"
+                disabled={busy}
+                onClick={() => {
+                  setSetup(false);
+                  setExisting(false);
+                  setMessage('');
+                  setupTrigger.current?.focus();
+                }}
+              >
+                Cancel setup
+              </Button>
+            )}
+            {attempt && (
+              <>
+                {prepared && !handoff && (
+                  <Button
+                    disabled={busy}
+                    onClick={() => void action(() => start(attempt))}
+                  >
+                    Continue secure connection
+                  </Button>
+                )}
+                <Button
+                  tone="secondary"
+                  disabled={busy}
+                  onClick={() => void action(() => recover(attempt))}
+                >
+                  Check connection status
+                </Button>
+                <Button
+                  tone="text"
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      callback.current = true;
+                      handler.current?.destroy();
+                      handler.current = undefined;
+                      setHandoff(undefined);
+                      accept(
+                        (
+                          await command<enrollmentCancelMutation>(
+                            scope,
+                            cancelDocument,
+                            { attemptId: attempt },
+                          )
+                        ).cancelBankingEnrollment,
+                      );
+                    })
+                  }
+                >
+                  Cancel connection
+                </Button>
+              </>
+            )}
+          </div>
+          {existing && (
+            <div className={styles.notice}>
+              <h3>Existing account management</h3>
+              <p>
+                Prefer repairing your existing connection. Replacement needs a
+                confirmed transition date and preview that preserves prior
+                history. Those management actions are not available on this
+                initial-connection screen.
+              </p>
+              <a href="#existing-connections">Review existing accounts</a>
+              <Button tone="text" onClick={() => setExisting(false)}>
+                Cancel
+              </Button>
+            </div>
+          )}
+        </section>
       )}
-    </section>
+    </>
   );
 }

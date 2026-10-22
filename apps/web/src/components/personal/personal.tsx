@@ -63,6 +63,7 @@ function PersonalRead({
   scope: FinancialScope;
   section: PersonalSection;
 }) {
+  const paramsPeriod = useSearchParams().get('period');
   const [version, setVersion] = useState(0),
     [active, setActive] = useState(true);
   const [state, setState] = useState({ busy: true, error: false });
@@ -111,20 +112,22 @@ function PersonalRead({
               <>
                 <RestoreSource scope={scope} allowed={[]} />
                 <ReportingTimezoneInitialization
-                  showPeriod={section !== 'Connections'}
+                  showPeriod={
+                    section !== 'Connections' &&
+                    (paramsPeriod === null || paramsPeriod === 'this-month')
+                  }
                 />
-                <p className={styles.privacy}>
-                  Only you can see these bank accounts and their activity.
-                </p>
                 {section === 'Connections' ? (
                   <>
-                    <Enrollment scope={scope} onConnected={refresh} />
                     <section
                       id="existing-connections"
                       aria-labelledby="connections-heading"
                       className={styles.stack}
                     >
-                      <h2 id="connections-heading">Your connections</h2>
+                      <Enrollment scope={scope} onConnected={refresh} />
+                      <p className={styles.connectionsHelp}>
+                        Only selected accounts appear in Personal.
+                      </p>
                       {!data.bankingConnections.connections.length && (
                         <div className={styles.empty}>
                           <h3>No connected accounts yet</h3>
@@ -138,6 +141,10 @@ function PersonalRead({
                         scope={scope}
                         result={data.bankingConnections}
                       />
+                      <p className={styles.privacy}>
+                        Your bank activity is private. Connecting an account
+                        never shares it with your household or groups.
+                      </p>
                     </section>
                   </>
                 ) : (
@@ -200,12 +207,9 @@ function ActivityBoundary({
       {connected ? (
         <p>
           Your connected accounts and import status are available in
-          Connections.{' '}
-          {section === 'Overview'
-            ? 'Spending summaries'
-            : 'Transaction browsing'}{' '}
-          will be available separately; no activity or zero total is inferred
-          here.
+          Connections. No{' '}
+          {section === 'Overview' ? 'spending summary' : 'transaction list'} is
+          available here yet.
         </p>
       ) : (
         <p>
@@ -277,7 +281,7 @@ function ConnectionCard({
   connection: personalInventoryQuery['response']['bankingConnections']['connections'][number];
 }) {
   return (
-    <article className={styles.panel}>
+    <article className={`${styles.panel} ${styles.connectionCard}`}>
       <h3>Bank connection</h3>
       <p>
         {connection.health === 'repair_required'

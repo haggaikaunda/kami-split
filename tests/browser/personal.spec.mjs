@@ -153,6 +153,10 @@ async function chooseAccount(page) {
   await page
     .getByRole('button', { name: 'Connect account', exact: true })
     .click();
+  await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(0);
+  await page
+    .getByRole('button', { name: 'Continue with Plaid', exact: true })
+    .click();
   await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(1);
   await page.evaluate(() => {
     const metadata = {
@@ -210,6 +214,8 @@ test('Personal first visit keeps connect only in Connections and preserves Accou
   await expect(
     nav.getByRole('link', { name: 'Personal', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('Applied period', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^This month:/)).toHaveCount(0);
   await nav.getByRole('link', { name: 'Account', exact: true }).click();
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await expect(
@@ -311,6 +317,10 @@ test('Personal Link cancellation and expired handoff preserve enrollment boundar
   await page.goto('/personal?tab=connections');
   await page
     .getByRole('button', { name: 'Connect account', exact: true })
+    .click();
+  await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(0);
+  await page
+    .getByRole('button', { name: 'Continue with Plaid', exact: true })
     .click();
   await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(1);
   await page.evaluate(() =>
@@ -434,6 +444,41 @@ test('Personal connections reflow and five-slot navigation retain clear status i
         ).toBeVisible();
       const add = nav.getByRole('link', { name: 'Add expense', exact: true });
       await expect(add).toContainText(width < 600 ? 'Expense' : 'Add expense');
+      if (width === 320) {
+        for (const name of ['Household', 'Add expense']) {
+          const lineCount = await nav
+            .getByRole('link', { name, exact: true })
+            .evaluate((link) => {
+              const walker = document.createTreeWalker(
+                link,
+                NodeFilter.SHOW_TEXT,
+              );
+              const tops = new Set();
+              while (walker.nextNode()) {
+                if (!walker.currentNode.textContent?.trim()) continue;
+                const range = document.createRange();
+                range.selectNodeContents(walker.currentNode);
+                for (const rect of range.getClientRects()) {
+                  if (rect.width && rect.height) tops.add(Math.round(rect.top));
+                }
+              }
+              return tops.size;
+            });
+          expect(lineCount, `${name} label stays on one line at 320px`).toBe(1);
+        }
+      }
+      await expect(
+        page.getByRole('heading', {
+          name: 'Connect your accounts',
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      if (width === 390) {
+        const cardHeading = await page
+          .getByRole('heading', { name: privateName, exact: true })
+          .boundingBox();
+        expect(cardHeading.y).toBeLessThan(600);
+      }
       await page.screenshot({
         path: testInfo.outputPath(`personal-${width}-${appearance}.png`),
         fullPage: true,
