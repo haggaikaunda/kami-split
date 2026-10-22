@@ -145,7 +145,11 @@ func TestProviderReportingWalksAllRowsAndBindsFilters(t *testing.T) {
 		facts[i].ProviderConfidence = textPointer("HIGH")
 	}
 	b := f.begin()
-	f.stage(b, 0, b.Cursor(), "all", false, facts, nil)
+	cursor := b.Cursor()
+	for offset, ordinal := 0, 0; offset < len(facts); offset, ordinal = offset+20, ordinal+1 {
+		end := min(offset+20, len(facts))
+		cursor = f.stage(b, ordinal, cursor, fmt.Sprintf("all-%d", ordinal), end < len(facts), facts[offset:end], nil)
+	}
 	f.commit(b, "READY")
 	request := reportRange(f.account)
 	request.First = 7
