@@ -30,7 +30,7 @@ jobs:
       - run: node --test scripts/browser/*.test.mjs
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:browser --workers=1
+      - run: pnpm test:browser
         env:
           BROWSER_SKIP_BUILD: '1'
       - uses: actions/upload-artifact@v7

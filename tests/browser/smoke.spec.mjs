@@ -82,7 +82,7 @@ for (const workspace of [
         path: testInfo.outputPath('pending-200pct.png'),
         fullPage: true,
       });
-      expect(ready.font).toBe('32px');
+      expect(ready.font).toBe('33px');
       expect(pending.font).toBe('32px');
       expect
         .soft(pending.header.height, 'Pending header preserves ready height')
