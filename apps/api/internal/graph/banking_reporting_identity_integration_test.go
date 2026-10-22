@@ -17,6 +17,13 @@ func TestBankingHTTPReportingSnapshotIdentities(t *testing.T) {
 	if initial["code"] != "READY" {
 		t.Fatal("initial annotation failed")
 	}
+	// Compare clean period coverage before discrepancies deliberately downgrade it.
+	account := f.report(reportingHTTPFebruary + `,first:1`)["accounts"].([]any)[0].(map[string]any)
+	wider := f.report(`filter:{period:CUSTOM,start:"2023-01-01",end:"2024-02-29"},first:1`)
+	widerAccount := wider["accounts"].([]any)[0].(map[string]any)
+	if account["accountId"] != widerAccount["accountId"] || account["id"] == widerAccount["id"] || account["coverage"] != "COMPLETE" || widerAccount["coverage"] != "PARTIAL" {
+		t.Fatal("different period coverage shares an account projection")
+	}
 	plan, archive := uuid.New(), uuid.New()
 	t.Cleanup(func() {
 		f.exec(`DELETE FROM app.banking_captures WHERE archive_id=$1`, archive)
@@ -52,12 +59,6 @@ func TestBankingHTTPReportingSnapshotIdentities(t *testing.T) {
 	before := f.operation(f.handler, partial, f.token, "bankingReport", false)
 	if first["id"] != before["id"] {
 		t.Fatal("field selection changed full snapshot identity")
-	}
-	account := first["accounts"].([]any)[0].(map[string]any)
-	wider := f.report(`filter:{period:CUSTOM,start:"2023-01-01",end:"2024-02-29"},first:1`)
-	widerAccount := wider["accounts"].([]any)[0].(map[string]any)
-	if account["accountId"] != widerAccount["accountId"] || account["id"] == widerAccount["id"] || account["coverage"] != "COMPLETE" || widerAccount["coverage"] != "PARTIAL" {
-		t.Fatal("different period coverage shares an account projection")
 	}
 	edited := f.operation(f.handler, reportingHTTPAnnotation(uuid.New(), source, "1", "NOTE", `"latest note"`), f.token, "editBankingAnnotation", false)
 	if edited["code"] != "READY" {
