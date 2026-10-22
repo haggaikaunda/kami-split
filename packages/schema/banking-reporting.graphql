@@ -151,9 +151,14 @@ type BankingTransaction {
   """
   currentId: ID
   """
-  Stable opaque private identity, reauthorized on every request.
+  Opaque identity for the complete transaction fact, annotation and provenance snapshot,
+  independent of selected fields. Not a Node, navigation key or edit key; use sourceId.
   """
   id: ID!
+  """
+  Stable private source identity for authorized detail navigation and guarded edits.
+  """
+  sourceId: ID!
   """
   Owning logical bank account, independent of shared groups.
   """
@@ -341,7 +346,7 @@ Noncontributing recovery manifest; original fact and annotation provenance.
 """
 type BankingReportArchive {
   """
-  Stable opaque private identity, reauthorized on every request.
+  Immutable private manifest identity for archive navigation, reauthorized on every request.
   """
   id: ID!
   """
@@ -363,9 +368,14 @@ Logical-account inventory, coverage and latest plan recovery discovery.
 """
 type BankingReportAccount {
   """
-  Stable opaque private identity, reauthorized on every request.
+  Opaque identity for this complete account coverage/recovery snapshot, independent
+  of selected fields. Not a Node or selection key; use accountId for filters.
   """
   id: ID!
+  """
+  Stable private logical account identity for authorized account selection.
+  """
+  accountId: ID!
   """
   Saved logical account selection; stopped/deselected history remains private.
   """
@@ -542,6 +552,12 @@ Default page 50, max 100, descending bank date and stable ID. A whole read fails
 above 100000 matching current/archive facts after account/date/archive filtering; no selected range is silently clamped.
 """
 type BankingReport {
+  """
+  Opaque cache identity for the complete filtered report and exact page, including
+  unselected rows, summaries, coverage and context. Not a Node or continuation key.
+  Refetch through the authorized query and continue only with endCursor.
+  """
+  id: ID!
   """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """

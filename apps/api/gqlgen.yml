@@ -45,16 +45,29 @@ models:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ArchiveReference
   BankingTransaction:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.Transaction
+    fields:
+      id:
+        fieldName: SnapshotID
+      sourceId:
+        fieldName: ID
   BankingReportInterval:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportInterval
   BankingReportAccount:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportAccount
+    fields:
+      id:
+        fieldName: SnapshotID
+      accountId:
+        fieldName: ID
   BankingReportActivity:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportActivity
   BankingReportSummary:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportSummary
   BankingReport:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.Report
+    fields:
+      id:
+        fieldName: SnapshotID
   BankingTransactionDetail:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.TransactionDetail
 

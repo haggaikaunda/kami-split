@@ -33,7 +33,7 @@ metadata and immutable financial/audit/recovery records remain unchanged.
 
 The [reporting-timezone API](reporting-timezone.md) provides a self-only saved IANA
 zone, independent version and durable same-attempt write recovery without a bank
-connection. Its consumer UI and general date-bound reads remain separate deliveries. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
+connection. Private bank reporting resolves saved-zone date bounds; Account/browser consumers remain separate deliveries. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
 
 ## Responsibilities
 

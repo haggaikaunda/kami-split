@@ -63,3 +63,14 @@ conflicts, and operation recovery reauthorizes before fetching current facts.
 Archive-only edits affect no current totals until explicit restoration. Restored facts use latest source-wide category/note/exclusion and explicit activity/reset intent; incompatible activity remains unresolved, and an explicit reset cannot resurrect an older override. Recovery manifests capture the exact canonical facts leaving reporting and reconstruct immutable effective annotation values at their saved revision cutoff. Replacement impact previews use the same classification and exact aggregation rules as reports. Deletion
 barriers immediately hide all affected current/archive facts; receipts retain
 only safe codes and opaque IDs. Provider cleanup remains independent.
+
+`BankingReport.id` identifies the complete filtered report and exact page, while
+`BankingTransaction.id` and `BankingReportAccount.id` identify complete fact,
+annotation/provenance and period-coverage snapshots. These opaque cache keys are
+computed before GraphQL field selection. Partial refreshes therefore replace the
+report projection without retaining older unselected totals, rows or coverage.
+Use `sourceId` for transaction detail/annotation writes and `accountId` for account
+filters; `currentId` remains the current source edit owner. Immutable manifest
+`BankingReportArchive.id` remains its archive navigation key. None of these
+reporting types implements Node, and cache identities grant no access or cursor
+authority. Clients continue to use the existing actor-scoped Relay environment.

@@ -12,8 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
-const reportingHTTPRowFields = `id accountId sourceRevision materialRevision amountMinor currency bankDate authorizationDate processingState providerPrimaryCategory providerCategory providerConfidence providerCode mappingVersion annotationRevision categoryOverride activityOverride note excluded reviewed materialConflict current category activity eligible`
-const reportingHTTPFields = `{code fieldErrors start end timezone revision totalCount hasNextPage endCursor spendingContext accounts{id coverage requestedHistoryDays intervals{bindingId coverage importState}} counts{count pendingCount unresolvedCount classificationComplete} summary{count purchaseMinor refundMinor netMinor pendingCount classificationComplete} rows{` + reportingHTTPRowFields + `}}`
+const reportingHTTPRowFields = `id sourceId accountId sourceRevision materialRevision amountMinor currency bankDate authorizationDate processingState providerPrimaryCategory providerCategory providerConfidence providerCode mappingVersion annotationRevision categoryOverride activityOverride note excluded reviewed materialConflict current category activity eligible`
+const reportingHTTPFields = `{id code fieldErrors start end timezone revision totalCount hasNextPage endCursor spendingContext accounts{id accountId coverage requestedHistoryDays intervals{bindingId coverage importState}} counts{count pendingCount unresolvedCount classificationComplete} summary{count purchaseMinor refundMinor netMinor pendingCount classificationComplete} rows{` + reportingHTTPRowFields + `}}`
 const reportingHTTPDetailFields = `{code currentId transaction{` + reportingHTTPRowFields + `}}`
 const reportingHTTPAnnotationFields = `{code sourceId detail` + reportingHTTPDetailFields + `}`
 const reportingHTTPFebruary = `filter:{period:CUSTOM,start:"2024-02-01",end:"2024-02-29"}`
@@ -109,11 +109,11 @@ func TestBankingHTTPReportingCompleteDatesAndDetail(t *testing.T) {
 	requireStatusFields(t, first, map[string]any{"code": "READY", "start": "2024-02-01", "end": "2024-02-29", "timezone": "America/Los_Angeles", "totalCount": float64(4), "hasNextPage": true, "spendingContext": "SPENDING_FROM_ACCOUNTS"})
 	requireStatusFields(t, first["summary"].(map[string]any), map[string]any{"count": float64(4), "purchaseMinor": "10000", "refundMinor": "4000", "netMinor": "6000", "pendingCount": float64(1), "classificationComplete": true})
 	rows := first["rows"].([]any)
-	if len(rows) != 1 || rows[0].(map[string]any)["id"] != f.sources["refund"].String() {
+	if len(rows) != 1 || rows[0].(map[string]any)["sourceId"] != f.sources["refund"].String() {
 		t.Fatal("posted date ordering or page bound changed")
 	}
 	account := first["accounts"].([]any)[0].(map[string]any)
-	requireStatusFields(t, account, map[string]any{"id": f.account.String(), "coverage": "COMPLETE", "requestedHistoryDays": float64(365)})
+	requireStatusFields(t, account, map[string]any{"accountId": f.account.String(), "coverage": "COMPLETE", "requestedHistoryDays": float64(365)})
 	next := f.report(reportingHTTPFebruary + fmt.Sprintf(`,first:3,after:%q`, first["endCursor"]))
 	if next["code"] != "READY" || next["hasNextPage"] != false || len(next["rows"].([]any)) != 3 || !reflect.DeepEqual(next["summary"], first["summary"]) {
 		t.Fatal("pagination changed complete summary or omitted remaining rows")

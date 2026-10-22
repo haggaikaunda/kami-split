@@ -253,6 +253,7 @@ type ComplexityRoot struct {
 		HasNextPage     func(childComplexity int) int
 		Revision        func(childComplexity int) int
 		Rows            func(childComplexity int) int
+		SnapshotID      func(childComplexity int) int
 		SpendingContext func(childComplexity int) int
 		Start           func(childComplexity int) int
 		Summary         func(childComplexity int) int
@@ -271,6 +272,7 @@ type ComplexityRoot struct {
 		ReportingRevision    func(childComplexity int) int
 		RequestedHistoryDays func(childComplexity int) int
 		Selected             func(childComplexity int) int
+		SnapshotID           func(childComplexity int) int
 		TransitionDate       func(childComplexity int) int
 	}
 
@@ -371,6 +373,7 @@ type ComplexityRoot struct {
 		ProviderConfidence      func(childComplexity int) int
 		ProviderPrimaryCategory func(childComplexity int) int
 		Reviewed                func(childComplexity int) int
+		SnapshotID              func(childComplexity int) int
 		SourceRevision          func(childComplexity int) int
 	}
 
@@ -1875,6 +1878,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingReport.Rows(childComplexity), true
+	case "BankingReport.id":
+		if e.ComplexityRoot.BankingReport.SnapshotID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReport.SnapshotID(childComplexity), true
 	case "BankingReport.spendingContext":
 		if e.ComplexityRoot.BankingReport.SpendingContext == nil {
 			break
@@ -1918,7 +1927,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingReportAccount.Coverage(childComplexity), true
-	case "BankingReportAccount.id":
+	case "BankingReportAccount.accountId":
 		if e.ComplexityRoot.BankingReportAccount.ID == nil {
 			break
 		}
@@ -1966,6 +1975,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingReportAccount.Selected(childComplexity), true
+	case "BankingReportAccount.id":
+		if e.ComplexityRoot.BankingReportAccount.SnapshotID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingReportAccount.SnapshotID(childComplexity), true
 	case "BankingReportAccount.transitionDate":
 		if e.ComplexityRoot.BankingReportAccount.TransitionDate == nil {
 			break
@@ -2363,7 +2378,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingTransaction.Excluded(childComplexity), true
-	case "BankingTransaction.id":
+	case "BankingTransaction.sourceId":
 		if e.ComplexityRoot.BankingTransaction.ID == nil {
 			break
 		}
@@ -2447,6 +2462,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingTransaction.Reviewed(childComplexity), true
+	case "BankingTransaction.id":
+		if e.ComplexityRoot.BankingTransaction.SnapshotID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingTransaction.SnapshotID(childComplexity), true
 	case "BankingTransaction.sourceRevision":
 		if e.ComplexityRoot.BankingTransaction.SourceRevision == nil {
 			break
@@ -5165,9 +5186,14 @@ type BankingTransaction {
   """
   currentId: ID
   """
-  Stable opaque private identity, reauthorized on every request.
+  Opaque identity for the complete transaction fact, annotation and provenance snapshot,
+  independent of selected fields. Not a Node, navigation key or edit key; use sourceId.
   """
   id: ID!
+  """
+  Stable private source identity for authorized detail navigation and guarded edits.
+  """
+  sourceId: ID!
   """
   Owning logical bank account, independent of shared groups.
   """
@@ -5355,7 +5381,7 @@ Noncontributing recovery manifest; original fact and annotation provenance.
 """
 type BankingReportArchive {
   """
-  Stable opaque private identity, reauthorized on every request.
+  Immutable private manifest identity for archive navigation, reauthorized on every request.
   """
   id: ID!
   """
@@ -5377,9 +5403,14 @@ Logical-account inventory, coverage and latest plan recovery discovery.
 """
 type BankingReportAccount {
   """
-  Stable opaque private identity, reauthorized on every request.
+  Opaque identity for this complete account coverage/recovery snapshot, independent
+  of selected fields. Not a Node or selection key; use accountId for filters.
   """
   id: ID!
+  """
+  Stable private logical account identity for authorized account selection.
+  """
+  accountId: ID!
   """
   Saved logical account selection; stopped/deselected history remains private.
   """
@@ -5556,6 +5587,12 @@ Default page 50, max 100, descending bank date and stable ID. A whole read fails
 above 100000 matching current/archive facts after account/date/archive filtering; no selected range is silently clamped.
 """
 type BankingReport {
+  """
+  Opaque cache identity for the complete filtered report and exact page, including
+  unselected rows, summaries, coverage and context. Not a Node or continuation key.
+  Refetch through the authorized query and continue only with endCursor.
+  """
+  id: ID!
   """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """
@@ -9647,6 +9684,8 @@ func (ec *executionContext) childFields_BankingReplacementRevisions(ctx context.
 
 func (ec *executionContext) childFields_BankingReport(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "id":
+		return ec.fieldContext_BankingReport_id(ctx, field)
 	case "code":
 		return ec.fieldContext_BankingReport_code(ctx, field)
 	case "activityChoices":
@@ -9689,6 +9728,8 @@ func (ec *executionContext) childFields_BankingReportAccount(ctx context.Context
 	switch field.Name {
 	case "id":
 		return ec.fieldContext_BankingReportAccount_id(ctx, field)
+	case "accountId":
+		return ec.fieldContext_BankingReportAccount_accountId(ctx, field)
 	case "selected":
 		return ec.fieldContext_BankingReportAccount_selected(ctx, field)
 	case "kind":
@@ -9851,6 +9892,8 @@ func (ec *executionContext) childFields_BankingTransaction(ctx context.Context, 
 		return ec.fieldContext_BankingTransaction_currentId(ctx, field)
 	case "id":
 		return ec.fieldContext_BankingTransaction_id(ctx, field)
+	case "sourceId":
+		return ec.fieldContext_BankingTransaction_sourceId(ctx, field)
 	case "accountId":
 		return ec.fieldContext_BankingTransaction_accountId(ctx, field)
 	case "bindingId":
@@ -15083,6 +15126,29 @@ func (ec *executionContext) fieldContext_BankingReplacementRevisions_lifecycle(_
 	return graphql.NewScalarFieldContext("BankingReplacementRevisions", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _BankingReport_id(ctx context.Context, field graphql.CollectedField, obj *banking.Report) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReport_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotID(), nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReport_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReport", field, true, false, errors.New("field of type ID does not have child fields"))
+}
+
 func (ec *executionContext) _BankingReport_code(ctx context.Context, field graphql.CollectedField, obj *banking.Report) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15519,7 +15585,7 @@ func (ec *executionContext) _BankingReportAccount_id(ctx context.Context, field 
 			return ec.fieldContext_BankingReportAccount_id(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
+			return obj.SnapshotID(), nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -15530,6 +15596,29 @@ func (ec *executionContext) _BankingReportAccount_id(ctx context.Context, field 
 	)
 }
 func (ec *executionContext) fieldContext_BankingReportAccount_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingReportAccount", field, true, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _BankingReportAccount_accountId(ctx context.Context, field graphql.CollectedField, obj *banking.ReportAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingReportAccount_accountId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingReportAccount_accountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingReportAccount", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
@@ -16935,7 +17024,7 @@ func (ec *executionContext) _BankingTransaction_id(ctx context.Context, field gr
 			return ec.fieldContext_BankingTransaction_id(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
+			return obj.SnapshotID(), nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -16946,6 +17035,29 @@ func (ec *executionContext) _BankingTransaction_id(ctx context.Context, field gr
 	)
 }
 func (ec *executionContext) fieldContext_BankingTransaction_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingTransaction", field, true, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _BankingTransaction_sourceId(ctx context.Context, field graphql.CollectedField, obj *banking.Transaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingTransaction_sourceId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingTransaction_sourceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingTransaction", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
@@ -30767,6 +30879,11 @@ func (ec *executionContext) _BankingReport(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BankingReport")
+		case "id":
+			out.Values[i] = ec._BankingReport_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "code":
 			out.Values[i] = ec._BankingReport_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -30887,6 +31004,11 @@ func (ec *executionContext) _BankingReportAccount(ctx context.Context, sel ast.S
 			out.Values[i] = graphql.MarshalString("BankingReportAccount")
 		case "id":
 			out.Values[i] = ec._BankingReportAccount_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountId":
+			out.Values[i] = ec._BankingReportAccount_accountId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31418,6 +31540,11 @@ func (ec *executionContext) _BankingTransaction(ctx context.Context, sel ast.Sel
 			}
 		case "id":
 			out.Values[i] = ec._BankingTransaction_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceId":
+			out.Values[i] = ec._BankingTransaction_sourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
