@@ -6,8 +6,8 @@ retained stream identities and `BankingAccount.importStatus`. It extends the
 and [C5-v2 reporting plans](banking-replacement.md). It performs no Plaid request.
 The authoritative contract is [banking-status.graphql](../../packages/schema/banking-status.graphql).
 
-The caller already needs a connection UUID. This operation supplies no connection
-inventory or fresh-session discovery. Existing fields retain their meanings:
+The known-ID operation requires a connection UUID; `bankingConnections` discovers
+retained connections after a fresh login (see below). Existing fields retain their meanings:
 `BankingConnection.id`, lifecycle `state`, `generation`, `health`, `cleanup` and
 `purge`; `BankingAccount.id` is the logical account, `streamId` is its immutable
 provider binding, and `selected` describes future collection. Name, kind, currency,
@@ -185,6 +185,23 @@ their bounded budgets; status reads themselves never schedule or resume them.
 Provider failures and discrepancy outcomes can follow later committed passes.
 Exact available-history determination remains separate: current imports leave
 actual availability unknown. Limited-availability fixtures demonstrate preserved
-status semantics without claiming that exact-coverage producers have shipped. Browser Link/status presentation, transaction
-browsing/reporting and connection discovery remain downstream. Enrollment stays
+status semantics without claiming that exact-coverage producers have shipped. Personal presents the retained connection inventory and these status facts through authenticated Relay reads. Transaction browsing and reporting remain separate downstream capabilities; retained connection discovery is described below. Enrollment stays
 disabled by default; fixtures do not authorize live Plaid work or release.
+
+## Fresh-session connection discovery
+
+`bankingConnections(first: Int = 20, after: String)` discovers the enabled owner's
+retained connections without a prior browser connection ID. Pages contain at most
+50 connections, ordered by UUID, and reuse the existing `BankingConnection` and
+per-account import status contract. Stopped connections retain their history and
+status; deleted connections are absent. The default-disabled new-enrollment switch
+does not hide existing private connections.
+
+Each page reauthorizes the actor and reads one coherent persisted snapshot without
+provider I/O. `endCursor` is an opaque ordering position, not an access token.
+Continuation rechecks current visibility, so deletion/access loss takes effect on
+the next request; concurrent additions can appear on subsequent pages or a fresh
+first page. `READY` with an empty list is a successful empty inventory. Invalid
+page sizes/cursors return `INVALID_INPUT`; storage failure returns `UNAVAILABLE`
+with no partial rows, cursor or continuation claim. Institution names and account
+masks are not part of this stored projection.

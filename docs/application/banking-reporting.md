@@ -5,7 +5,7 @@
 stored data. Group access grants no bank access. Reads work independently of
 new-enrollment enablement and never request a bank refresh. The authoritative
 wire contract is [banking-reporting.graphql](../../packages/schema/banking-reporting.graphql).
-Browser Personal screens and live enrollment remain separate deliveries.
+Personal transaction/activity screens and live enrollment remain separate deliveries.
 
 The reporting service resolves each posted source against one current,
 non-overlapping interval plan. Retired history keeps its original source identity

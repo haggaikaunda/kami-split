@@ -17,7 +17,10 @@ Schema additions require approved acceptance criteria and compatibility review. 
 `reporting-timezone.graphql` defines the self-only saved preference, independent
 positive string version and actor/operation/attempt-bound initialization/update
 recovery. See [the operation contract](../../docs/application/reporting-timezone.md)
-for validation, concurrency and lost-response behavior. This API has no Account UI and does not enable banking. The private bank reporting API consumes the saved timezone for preset dates.
+for validation, concurrency and lost-response behavior. Account consumes this
+independent preference for explicit timezone changes, and Personal initializes it
+once from the device. The [private reporting API](../../docs/application/banking-reporting.md)
+uses it for preset dates; the preference does not enable banking.
 
 ## Public contract documentation
 
@@ -172,7 +175,7 @@ describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent
 browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
-claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial and incremental imports for explicitly selected accounts, verified Transactions dispatch and daily reconciliation. The [private reporting API](../../docs/application/banking-reporting.md) exposes owner-only canonical transaction/detail/archive reads, complete exact summaries and guarded single-field annotation edits/resets with durable recovery. Browser Link, Personal screens and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
+claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial and incremental imports for explicitly selected accounts, verified Transactions dispatch and daily reconciliation. The [private reporting API](../../docs/application/banking-reporting.md) exposes owner-only canonical transaction/detail/archive reads, complete exact summaries and guarded single-field annotation edits/resets with durable recovery. Personal consumes initial browser Link selection/recovery and private connection inventory/status. Transaction/activity content, existing-connection management UI and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
 
 ## Private banking replacement
 
@@ -182,7 +185,7 @@ guards, durable confirmation/cancellation and opaque operation recovery. Dates
 partition reporting by posted-bank date; archive references add no contribution.
 See [replacement semantics](../../docs/application/banking-replacement.md) for
 usable-data versus coverage, exact totals, recovery and collection fences.
-The [sync adapter](../../docs/application/banking-sync.md) supplies provider ingestion, and the [private reporting API](../../docs/application/banking-reporting.md) supplies canonical reads and guarded annotation edits. Browser management remains a separate delivery.
+The [sync adapter](../../docs/application/banking-sync.md) supplies provider ingestion, and the [private reporting API](../../docs/application/banking-reporting.md) supplies canonical reads and guarded annotation edits. Existing-connection management UI remains a separate delivery.
 
 ## Private banking import status
 

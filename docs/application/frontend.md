@@ -153,5 +153,19 @@ Prefer a component's public variant or caller-owned root class. Existing composi
 Private bank account status uses stream-specific cache identity because replacement
 bindings retain the logical account ID. Select `streamId`; absent stream identity
 stays parent-scoped. See [bank import status](banking-status.md) for snapshot
-refresh/invalidation and nullable coverage semantics. This adds contract plumbing,
-with browser banking presentation remaining a separate delivery.
+refresh/invalidation and nullable coverage semantics. The Personal route uses that contract through a bounded owner-only connection
+inventory. Each inventory page is an authorized persisted snapshot, with explicit
+continuation and no synchronous provider call. The feature owns its three route
+sections, Link handoff and enrollment recovery; tokens and account-selection
+handoffs remain in memory, while only an opaque actor-scoped attempt ID survives
+a page reload in session storage. Logout and access loss clear those identifiers.
+A lost exchange response reads the original attempt before any new enrollment.
+
+Account's reporting-timezone editor uses independently versioned operations and
+same-attempt recovery. Device initialization occurs only when the server reports
+an uninitialized preference; travel never replaces a saved zone. The initial
+Personal pages expose connection/import state and private setup guidance.
+Transaction browsing, spending summaries and existing-connection management
+remain separately owned capabilities; these pages do not infer a successful
+zero, complete history, renewed consent or a shared expense from connection
+success.

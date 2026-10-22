@@ -54,3 +54,21 @@ it('preserves account and legacy invitation destinations with safe fields only',
   expect(financialReturn('/invitations?group=G')).toBe('/invitations?group=G');
   expect(financialReturn('/invitations?token=secret')).toBe('/groups');
 });
+
+it('preserves Personal routes through sign-in without accepting token-bearing or external destinations', () => {
+  expect(financialReturn('/personal?tab=connections')).toBe(
+    '/personal?tab=connections',
+  );
+  expect(
+    financialReturn(
+      '/personal?tab=transactions&period=last-month&category=custom',
+    ),
+  ).toBe('/personal?tab=transactions&period=last-month&category=custom');
+  for (const path of [
+    '/personal?token=secret',
+    '/personal?next=https://evil.test',
+    '/personal/unknown',
+    '/personal#secret',
+  ])
+    expect(financialReturn(path)).toBe('/groups');
+});

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { HouseholdAccess } from './household-access';
 import type { FinancialScope } from '@/lib/relay/environment';
-import { AppIcon } from '@/components/workspace-identity';
+import { AppIcon, ExpenseActionLabel } from '@/components/workspace-identity';
 import { useForegroundRefresh } from './foreground';
 import workspaceStyles from '../workspace/patterns.module.css';
 
@@ -31,6 +31,7 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
   const disabled = (failed: boolean) => (
     <span
       id="workspace-add"
+      aria-label="Add expense"
       data-ui="banner-action"
       className={workspaceStyles['banner-action']}
       aria-disabled="true"
@@ -38,7 +39,7 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
         failed ? 'Household access is unavailable' : 'Checking Household access'
       }
     >
-      <AppIcon name="plus" /> Add expense
+      <AppIcon name="plus" /> <ExpenseActionLabel />
     </span>
   );
   const next =
@@ -61,13 +62,14 @@ export function HouseholdBannerAction({ scope }: { scope: FinancialScope }) {
         return (
           <Link
             id="workspace-add"
+            aria-label="Add expense"
             onClick={(event) => expenseEntry?.activate(event, source)}
             scroll={false}
             data-ui="banner-action"
             className={workspaceStyles['banner-action']}
             href={`/household/expenses?${destination}`}
           >
-            <AppIcon name="plus" /> Add expense
+            <AppIcon name="plus" /> <ExpenseActionLabel />
           </Link>
         );
       }}

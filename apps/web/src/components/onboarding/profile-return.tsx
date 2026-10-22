@@ -17,6 +17,10 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
   const groupId = visit
     ? groupRouteId(new URL(visit.href, 'https://workspace.invalid').pathname)
     : undefined;
+  const origin = visit
+    ? new URL(visit.href, 'https://workspace.invalid').pathname
+    : '';
+  const personal = origin === '/personal' || origin.startsWith('/personal/');
   const [version, setVersion] = useState(0);
   const [active, setActive] = useState(true);
   useForegroundRefresh(
@@ -25,12 +29,13 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
       setVersion((value) => value + 1);
       setActive(true);
     },
-    Boolean(groupId),
+    Boolean(groupId) || personal,
   );
   const fallback = (
     <SourceReturn
       scope={scope}
       authorizedGroups={[]}
+      authorized={!personal}
       fallbackLabel="Go to Groups"
     />
   );
@@ -39,7 +44,7 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
       Checking return destination…
     </span>
   );
-  if (!groupId) return fallback;
+  if (!groupId && !personal) return fallback;
   if (!active) return pending;
   return (
     <NetworkQuery<profileReturnQuery>
@@ -54,6 +59,7 @@ export function ProfileReturn({ scope }: { scope: FinancialScope }) {
         <SourceReturn
           scope={scope}
           fallbackLabel="Go to Groups"
+          authorized={data.viewer.__typename === 'Viewer'}
           authorizedGroups={
             data.viewer.__typename === 'Viewer' ? data.viewer.groups : []
           }

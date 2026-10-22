@@ -51,8 +51,8 @@ only recent rows; complete money still comes from server projections. Under #227
 Group/Trip and Household Overview request four recent expenses. Structured
 Expenses operations request six rows initially and on each Load more; their
 complete totals and signed cursor/anchor semantics remain unchanged. The signed-in
-shell presents Household and Groups (including trips), a labeled Add expense action
-and the Profile avatar through shared desktop and phone chrome; its layout does not change private read
+shell presents Household, Personal, Groups (including trips), a labeled Add expense action
+and Account through shared desktop and phone chrome; its layout does not change private read
 ownership. See the [persistent navigation contract](../application/relay-expenses.md#persistent-navigation-and-content-widths-238) and the historical [visual implementation note](https://github.com/haggaikaunda/kami-split/issues/227).
 
 The composed Group operation supplies the initial ledger/feed reference directly
