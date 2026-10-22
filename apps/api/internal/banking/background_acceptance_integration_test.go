@@ -134,3 +134,49 @@ func TestIndependentBackgroundHintsRespectRetryDeadline(t *testing.T) {
 		t.Fatal("failed increment changed checkpoint")
 	}
 }
+
+func TestIndependentBackgroundPoisonWorkRequiresAttention(t *testing.T) {
+	c := newInitialConsumer(t)
+	c.run(t)
+	// An unbound, malformed transport cannot manufacture authorized work or stop
+	// later legitimate work. The real restricted claim removes only that message.
+	c.exec(`SELECT pgmq.send('banking_lifecycle','{"operation_id":"invalid","generation":"invalid"}'::jsonb)`)
+	if worked, err := c.worker.ProcessOne(context.Background()); err != nil || worked {
+		t.Fatal("poison transport acquired work", err)
+	}
+	if len(c.requests) != 1 || queryInt(t, c.fixture, `SELECT count(*) FROM pgmq.q_banking_lifecycle`) != 0 {
+		t.Fatal("poison transport produced effects or remained queued")
+	}
+	h := newBackgroundIngress(t, c)
+	h.notify(t)
+	c.respond = func(string) (*http.Response, error) {
+		return plaidTestResponse(200, `{"accounts":[],"added":[{"transaction_id":"invalid-fact","account_id":"checking","amount":0.001,"iso_currency_code":"USD","date":"2026-10-02","pending":false}],"modified":[],"removed":[],"has_more":false,"next_cursor":"must-not-commit"}`), nil
+	}
+	c.run(t)
+	for range 3 {
+		h.notify(t)
+		if err := c.db.ReconcileBanking(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.worker.ProcessOne(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(c.requests) != 2 || c.sources(t) != 1 || queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='needs_attention' AND attempts=1 AND import_code='INVALID_DATA'`, c.operation) != 1 || queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_bindings WHERE id=$1 AND sync_cursor='committed'`, c.binding) != 1 {
+		t.Fatal("poison provider batch repeated, committed or lost attention state")
+	}
+	var resumed bool
+	if err := c.admin.QueryRow(context.Background(), `SELECT app.banking_resume($1)`, c.operation).Scan(&resumed); err != nil || !resumed {
+		t.Fatal("poison operation authorized resume", err)
+	}
+	c.respond = func(cursor string) (*http.Response, error) {
+		if cursor != "committed" {
+			return nil, fmt.Errorf("poison resume lost checkpoint")
+		}
+		return plaidTestResponse(200, `{"accounts":[],"added":[],"modified":[],"removed":[],"has_more":false,"next_cursor":"poison-recovered"}`), nil
+	}
+	c.run(t)
+	if len(c.requests) != 3 || c.sources(t) != 1 || queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete' AND attempts=1 AND requested_version=completed_version`, c.operation) != 1 {
+		t.Fatal("poison recovery did not retain bounded operation identity")
+	}
+}
