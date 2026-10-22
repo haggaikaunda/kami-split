@@ -59,6 +59,29 @@ it.each(['overview', 'expenses', 'balances', 'activity', 'members'] as const)(
     button.remove();
   },
 );
+it('a content retry restarts both feedback thresholds and disposes its timers', () => {
+  act(() => root.render(<ContentLoading layout="balances" />));
+  tick(8_000);
+  expect(host.textContent).toBe('Still loading balances…');
+  act(() => root.render(<p role="alert">Unavailable. Try again.</p>));
+  expect(vi.getTimerCount()).toBe(0);
+
+  act(() => root.render(<ContentLoading layout="balances" />));
+  tick(149);
+  expect(host.textContent).toBe('');
+  tick(1);
+  expect(host.textContent).toBe('Loading balances…');
+  tick(7_849);
+  expect(host.textContent).toBe('Loading balances…');
+  tick(1);
+  expect(host.textContent).toBe('Still loading balances…');
+
+  act(() => root.render(<p>Ready balances</p>));
+  expect(vi.getTimerCount()).toBe(0);
+  tick(8_000);
+  expect(host.textContent).toBe('Ready balances');
+});
+
 it('uses only public startup copy, progresses to truthful slow feedback, and resets on a new visit', () => {
   act(() => root.render(<ScreenLoading />));
   expect(host.textContent).toBe('Kami Grow');

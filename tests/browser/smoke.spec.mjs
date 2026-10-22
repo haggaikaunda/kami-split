@@ -3,6 +3,10 @@ import { writeFile } from 'node:fs/promises';
 import { test, expect } from './fixtures.mjs';
 import { responseFor } from './data.mjs';
 
+// Contexts, fixture state, held routes and testInfo output paths are test-owned.
+// Keep other files serial unless their ownership has also been audited.
+test.describe.configure({ mode: 'parallel' });
+
 const axePath = createRequire(
   new URL('../../apps/web/package.json', import.meta.url),
 ).resolve('axe-core/axe.min.js');
@@ -16,7 +20,7 @@ for (const workspace of [
   },
 ]) {
   for (const width of [320, 390]) {
-    test(`${workspace.name} enlarged header geometry at ${width}px stays stable during a protected read`, async ({
+    test(`${workspace.name} enlarged header geometry at ${width}px stays stable during a protected read @owns-viewport`, async ({
       page,
       app,
     }, testInfo) => {
@@ -1091,7 +1095,7 @@ test('authorized Create opens details directly and preserves directory selection
   ).toBeFocused();
 });
 
-test('directory cards contain long exact amounts across responsive themes and enlarged text', async ({
+test('directory cards contain long exact amounts across responsive themes and enlarged text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -1516,7 +1520,7 @@ async function expectAlignedIdentity(page, title, helpLabel) {
   }
 }
 
-test('shared header aligns Household help and every destination with unavailable artwork', async ({
+test('shared header aligns Household help and every destination with unavailable artwork @owns-viewport', async ({
   page,
   app,
 }) => {
@@ -1564,7 +1568,7 @@ test('shared header aligns Household help and every destination with unavailable
   }
 });
 
-test('compact identity and navigation remain readable across responsive themes and doubled text', async ({
+test('compact identity and navigation remain readable across responsive themes and doubled text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -2095,7 +2099,7 @@ test('Group balances: another recorder, overpayment, duplicate activation and fr
   );
 });
 
-test('Balance layout: long names and amounts, keyboard details, ineligible parties and unavailable sources', async ({
+test('Balance layout: long names and amounts, keyboard details, ineligible parties and unavailable sources @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -2176,7 +2180,7 @@ for (const source of [
   { name: 'Trip', path: '/trips/T?tab=expenses' },
   { name: 'Household', path: '/household/expenses' },
 ]) {
-  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer`, async ({
+  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer @owns-viewport`, async ({
     page,
     app,
   }, testInfo) => {
@@ -2930,7 +2934,7 @@ test('contextual uncertain repayment keeps the original operation across dismiss
   await expect(trigger).toBeFocused();
 });
 
-test('balance and repayment layout retains readable controls across appearance, enlarged text and short viewports', async ({
+test('balance and repayment layout retains readable controls across appearance, enlarged text and short viewports @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -3269,7 +3273,7 @@ for (const count of [0, 1, 3, 12]) {
   });
 }
 
-test('creation recovery and validation stay readable at 320px with doubled text', async ({
+test('creation recovery and validation stay readable at 320px with doubled text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -3444,7 +3448,7 @@ const overviewSources = [
   },
 ];
 for (const source of overviewSources) {
-  test(`Overview ${source.id} compact vertical composition, complete money and accessible reflow`, async ({
+  test(`Overview ${source.id} compact vertical composition, complete money and accessible reflow @owns-viewport`, async ({
     page,
     app,
   }, testInfo) => {
@@ -3717,7 +3721,7 @@ test('Overview refresh hides private content while pending and retains truthful 
   await expect(page.locator('[data-ui~="balance-summary"]')).toBeVisible();
 });
 
-test('Overview exact long amounts and labels reflow without hiding the preview or secondary totals', async ({
+test('Overview exact long amounts and labels reflow without hiding the preview or secondary totals @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {

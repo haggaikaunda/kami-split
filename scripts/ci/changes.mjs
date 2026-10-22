@@ -42,6 +42,7 @@ const syntheticBrowser = new Set([
   'scripts/browser/auth-server.mjs',
   'scripts/browser/required-reporter.mjs',
   'scripts/browser/required-reporter.test.mjs',
+  'scripts/browser/discovery.test.mjs',
   'scripts/browser/session.mjs',
   'scripts/browser/settings.mjs',
   'tests/browser/data.mjs',
@@ -49,6 +50,8 @@ const syntheticBrowser = new Set([
   'tests/browser/smoke.spec.mjs',
   'tests/browser/activity.spec.mjs',
   'tests/browser/members.spec.mjs',
+  'tests/browser/creation.spec.mjs',
+  'tests/browser/touch-focus.spec.mjs',
 ]);
 const integratedBrowser = new Set([
   'scripts/edit-real-browser.cjs',
