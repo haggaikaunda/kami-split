@@ -556,11 +556,7 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
 test('loading handoff: route cue, one slow content status, failure and one explicit retry preserve navigation and focus', async ({
   page,
   app,
-}, testInfo) => {
-  // Install before navigation so every application timer has the same owner.
-  // Stay near real time: this does not test token expiry or cache freshness.
-  const now = Date.now();
-  await page.clock.install({ time: now });
+}) => {
   await app.authenticate();
   const routeStarted = Promise.withResolvers();
   const routeReleased = Promise.withResolvers();
@@ -582,58 +578,6 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
-    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
-    // A visible React commit does not prove its passive effect registered timers.
-    // Observe the real registrations without changing timers, callbacks or IDs.
-    await page.evaluate(() => {
-      const schedule = window.setTimeout.bind(window);
-      window.__browserLoadingTimers = [];
-      window.setTimeout = (callback, delay, ...args) => {
-        if (delay === 150 || delay === 8_000)
-          window.__browserLoadingTimers.push({
-            sequence: window.__browserLoadingTimers.length + 1,
-            delay,
-            at: Date.now(),
-          });
-        return schedule(callback, delay, ...args);
-      };
-    });
-    async function registeredAfter(sequence, owner) {
-      let pair;
-      await expect
-        .poll(async () => {
-          pair = await page.evaluate((after) => {
-            const records = window.__browserLoadingTimers;
-            const index = records.findIndex((show, index) => {
-              const slow = records[index + 1];
-              return (
-                show.sequence > after &&
-                show.delay === 150 &&
-                slow?.delay === 8_000 &&
-                slow.at === show.at
-              );
-            });
-            return index === -1
-              ? null
-              : {
-                  show: records[index],
-                  slow: records[index + 1],
-                  now: Date.now(),
-                  records,
-                };
-          }, sequence);
-          return Boolean(pair);
-        }, `${owner} registers a new loading timer pair`)
-        .toBe(true);
-      await testInfo.attach(`loading-timers-${owner}`, {
-        body: JSON.stringify(pair),
-        contentType: 'application/json',
-      });
-      expect(pair.now, `${owner} starts at the paused registration time`).toBe(
-        pair.show.at,
-      );
-      return pair.slow.sequence;
-    }
     const tabs = page.locator('[data-ui~="workspace-tabs"]');
     const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
     const before = await balances.boundingBox();
@@ -649,27 +593,16 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await routeStarted.promise;
     const cue = balances.locator('[data-ui="workspace-navigation-pending"]');
     await expect(cue).toHaveAttribute('data-pending', 'true');
-    await registeredAfter(0, 'route-cue');
-    await page.clock.runFor(150);
     await expect(cue.locator('span')).not.toHaveCount(0);
     await expect(
       tabs.getByRole('link', { name: 'Overview', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('[data-ui="screen-loading"]')).toHaveCount(0);
     expect(await balances.boundingBox()).toEqual(before);
-    const beforeContent = await page.evaluate(
-      () => window.__browserLoadingTimers.length,
-    );
     routeReleased.resolve();
     await pending.started;
     const loading = page.locator('[data-ui="content-loading"]:visible');
     await expect(loading).toHaveAttribute('data-layout', 'balances');
-    const status = page.getByRole('status');
-    const slow = page.getByText('Still loading balances…', { exact: true });
-    await registeredAfter(beforeContent, 'content');
-    await page.clock.runFor(149);
-    await expect(status).toHaveText('');
-    await page.clock.runFor(1);
     await expect(
       page.getByRole('status').filter({ hasText: 'Loading balances…' }),
     ).toBeVisible();
@@ -685,10 +618,9 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(balances).toHaveAttribute('aria-current', 'page');
     expect(await balances.boundingBox()).toEqual(before);
     await expect(page.locator('[data-ui~="group-balances"]')).toHaveCount(0);
-    await page.clock.runFor(7_849);
-    await expect(slow).toHaveCount(0);
-    await page.clock.runFor(1);
-    await expect(slow).toBeVisible();
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toBeVisible({ timeout: 10_000 });
     expect(reads()).toBe(baseline + 1);
     await pending.release();
     await expect(loading).toHaveCount(0);
@@ -696,52 +628,22 @@ test('loading handoff: route cue, one slow content status, failure and one expli
       page.getByRole('button', { name: 'Try again', exact: true }),
     ).toBeVisible();
     const retry = app.hold('journeyWorkspaceQuery');
-    const beforeRetry = await page.evaluate(
-      () => window.__browserLoadingTimers.length,
-    );
     await page.getByRole('button', { name: 'Try again', exact: true }).click();
     await retry.started;
-    await expect(loading).toHaveAttribute('data-layout', 'balances');
-    await expect(slow).toHaveCount(0);
-    await registeredAfter(beforeRetry, 'retry');
-    await page.clock.runFor(149);
-    await expect(status).toHaveText('');
-    await page.clock.runFor(1);
     await expect(
       page.getByRole('status').filter({ hasText: 'Loading balances…' }),
     ).toBeVisible();
     await expect(page.getByRole('status')).toHaveCount(1);
     expect(reads()).toBe(baseline + 2);
-    await page.clock.runFor(7_849);
-    await expect(slow).toHaveCount(0);
-    await page.clock.runFor(1);
-    await expect(slow).toBeVisible();
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toBeVisible({ timeout: 10_000 });
     expect(reads()).toBe(baseline + 2);
     await retry.release();
     await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
     await expect(loading).toHaveCount(0);
-    await page.clock.runFor(8_000);
-    await expect(loading).toHaveCount(0);
-    await expect(slow).toHaveCount(0);
+    await page.waitForTimeout(200);
     expect(reads()).toBe(baseline + 2);
-
-    // Next owns its route scheduling: let navigation render normally, then
-    // control time again to detect feedback leaking from the disposed read.
-    await page.clock.resume();
-    const abandoned = app.hold('journeyWorkspaceQuery');
-    await page.goto('/groups/F?tab=balances');
-    await abandoned.started;
-    await expect(loading).toBeVisible();
-    await page.getByRole('link', { name: 'Profile', exact: true }).click();
-    await expect(
-      page.getByLabel('Display name', { exact: true }),
-    ).toBeVisible();
-    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
-    await page.clock.runFor(8_000);
-    await expect(loading).toHaveCount(0);
-    await expect(slow).toHaveCount(0);
-    await abandoned.release();
-    await expect(loading).toHaveCount(0);
   } finally {
     routeReleased.resolve();
   }

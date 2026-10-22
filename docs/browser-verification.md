@@ -70,16 +70,18 @@ missing required files/cases, missing desktop counterparts or unexpected tag
 ownership. Update its reviewed inventory deliberately with coverage changes.
 Focused commands remain diagnostic subsets; they do not satisfy full-suite gates.
 
-The loading-handoff test uses the pinned Playwright clock for the 150ms feedback
-and 8s slow-status thresholds, including just-before/at-threshold observations,
-retry reset and completion. A test-only observer forwards original timer calls
-unchanged and waits for each new effect to register its timer pair before
-advancing time; visible DOM alone does not establish that boundary. Held requests
-still own real browser network/rendering
-transitions. Time resumes for the final route transition before advancing again
-to inspect disposal. This narrowly scoped clock does not verify token expiry or
-cache freshness. Startup-frame, cache-expiry and interaction/paint synchronization
-cases keep real time because their assertions concern those boundaries.
+The loading-handoff browser case retains its real 8s slow-status wait for both
+initial loading and retry. Playwright's clock controls browser timers, but the
+visible React loading commit does not establish which passive effect/remount
+owns the final status timer. Observing a first timer registration alone cannot
+safely establish that boundary. Keep real rendering, held responses, route cues,
+focus and retry assertions here; do not reset application events or change
+production delays to accelerate it. Exact 149/150ms and 7,999/8,000ms boundaries,
+content-retry reset and timer cleanup have deterministic component tests in
+`loading.test.tsx`. The existing rapid-destination browser case owns navigation
+away and late-response disposal checks. Startup-frame, cache-expiry and
+interaction/paint synchronization also retain real time for their behavioral
+boundaries.
 
 Use the same discovered workload with one worker for serial diagnosis:
 
