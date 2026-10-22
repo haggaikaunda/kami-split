@@ -1,0 +1,772 @@
+"""
+Approved inclusive bank-calendar period. Presets use the saved reporting timezone.
+"""
+enum BankingPeriod {
+  """
+  First day of the saved-zone current month through today.
+  """
+  THIS_MONTH
+  """
+  Complete previous calendar month, including leap days.
+  """
+  LAST_MONTH
+  """
+  Today minus 59 calendar days through today, inclusive.
+  """
+  LAST_60_DAYS
+  """
+  Today minus 89 calendar days through today, inclusive.
+  """
+  LAST_90_DAYS
+  """
+  January 1 of the saved-zone current year through today.
+  """
+  YEAR_TO_DATE
+  """
+  Explicit inclusive start/end bank dates; no future end or history clamping.
+  """
+  CUSTOM
+}
+
+"""
+Filters combine with AND; alternatives within a field use OR. Amounts and dates
+remain provider facts. Category changes alone do not change spending eligibility.
+"""
+input BankingReportFilter {
+  """
+  Inspect latest source discrepancies separately, with counts and no spending contribution; mutually exclusive with archiveId.
+  """
+  sourceDiscrepancies: Boolean = false
+  """
+  Saved-zone preset or explicit CUSTOM bounds; defaults to THIS_MONTH.
+  """
+  period: BankingPeriod = THIS_MONTH
+  """
+  Inclusive ISO bank date, required only for CUSTOM; never clamped to imported history.
+  """
+  start: String
+  """
+  Inclusive ISO bank date, required only for CUSTOM and no later than saved-zone today.
+  """
+  end: String
+  """
+  Optional owner-authorized recovery manifest; archive rows never add to current spending.
+  """
+  archiveId: ID
+  """
+  Logical account IDs; every requested account must be authorized. Omission selects all retained visible accounts.
+  """
+  accountIds: [ID!]
+  """
+  Approved grouping keys from categoryChoices, combined with OR.
+  """
+  categories: [String!]
+  """
+  Approved activity keys from activityChoices, combined with OR.
+  """
+  activities: [String!]
+  """
+  Provider processing states posted, pending or removed; independent from activity.
+  """
+  states: [String!]
+  """
+  Filter private exclusion state; omitted includes either state.
+  """
+  excluded: Boolean
+  """
+  Filter current material acknowledgement; review-only views have counts without a spending headline.
+  """
+  reviewed: Boolean
+}
+
+"""
+Original immutable annotation values captured by a recovery manifest.
+"""
+type BankingAnnotationSnapshot {
+  """
+  Captured private annotation version.
+  """
+  revision: String!
+  """
+  Original source material acknowledgement.
+  """
+  materialRevision: String!
+  """
+  Original owner category override, if any.
+  """
+  category: String
+  """
+  Original owner activity override, if any.
+  """
+  activity: String
+  """
+  Original private plain-text note, if any.
+  """
+  note: String
+  """
+  Original private exclusion state.
+  """
+  excluded: Boolean!
+  """
+  Original review acknowledgement, before subsequent edits.
+  """
+  reviewed: Boolean!
+}
+
+"""
+One source's immutable recovery provenance. Follow currentId for current edits.
+"""
+type BankingArchiveReference {
+  """
+  Immutable captured values; current/private edits never overwrite these.
+  """
+  annotation: BankingAnnotationSnapshot
+  """
+  Optional owner-authorized recovery manifest; archive rows never add to current spending.
+  """
+  archiveId: ID!
+  """
+  Immutable source fact version; required for guarded edits.
+  """
+  sourceRevision: String!
+  """
+  Immutable global annotation cutoff captured by this manifest; later edits cannot replace it.
+  """
+  annotationRevision: String
+}
+
+"""
+Private source facts and separate overrides. Activity is the effective approved
+classification; materialConflict preserves stale intent without counting it.
+Minor-unit strings are signed exact USD cents. Removed/pending/excluded records
+never contribute. No shared-expense relationship or allocation is implied.
+"""
+type BankingTransaction {
+  """
+  Latest stored source version; a discrepancy can retain an older canonical sourceRevision.
+  """
+  latestSourceRevision: String!
+  """
+  Current source edit owner, including on older archive snapshots; null when archive-only.
+  """
+  currentId: ID
+  """
+  Stable opaque private identity, reauthorized on every request.
+  """
+  id: ID!
+  """
+  Owning logical bank account, independent of shared groups.
+  """
+  accountId: ID!
+  """
+  Original provider stream provenance; never inferred from similar transactions.
+  """
+  bindingId: ID!
+  """
+  Immutable source fact version; required for guarded edits.
+  """
+  sourceRevision: String!
+  """
+  Material fact anchor acknowledged by private classification/review.
+  """
+  materialRevision: String!
+  """
+  Exact canonical signed USD minor-unit string; positive debit, negative credit.
+  """
+  amountMinor: String!
+  """
+  Supported source currency, USD; no implicit FX.
+  """
+  currency: String!
+  """
+  Posted bank calendar date, or visibly pending provisional date.
+  """
+  bankDate: String!
+  """
+  Optional original authorization date, shown only as detail context.
+  """
+  authorizationDate: String
+  """
+  Provider posted/pending/removed state, independent from activity classification.
+  """
+  processingState: String!
+  """
+  Original nullable PFC v2 primary; unknown values remain visible.
+  """
+  providerPrimaryCategory: String
+  """
+  Original nullable PFC v2 detailed identifier.
+  """
+  providerCategory: String
+  """
+  Original nullable provider confidence; only HIGH/VERY_HIGH supports default category classification.
+  """
+  providerConfidence: String
+  """
+  Original nullable provider transaction code; generic payment/adjustment is insufficient evidence.
+  """
+  providerCode: String
+  """
+  Persisted provider fact mapping version for auditability.
+  """
+  mappingVersion: String!
+  """
+  Optional original source description, visible only to its owner.
+  """
+  name: String
+  """
+  Optional original provider merchant name; never used to infer refunds or duplicates.
+  """
+  merchantName: String
+  """
+  Source discrepancy notice; non-none can indicate possible cross-boundary gaps/duplicates.
+  """
+  discrepancy: String!
+  """
+  Latest private annotation version, or zero before any edit.
+  """
+  annotationRevision: String!
+  """
+  Visible owner grouping override, distinct from provider facts.
+  """
+  categoryOverride: String
+  """
+  Visible retained owner activity intent, including stale/conflicted values.
+  """
+  activityOverride: String
+  """
+  Owner-only plain text annotation; null means no note.
+  """
+  note: String
+  """
+  Owner exclusion state; excluded records never contribute to spending.
+  """
+  excluded: Boolean!
+  """
+  Whether the selected material facts were explicitly acknowledged; independent from activity classification.
+  """
+  reviewed: Boolean!
+  """
+  Retained activity intent is stale or incompatible and cannot contribute.
+  """
+  materialConflict: Boolean!
+  """
+  This exact fact belongs to the current canonical plan; archive-only facts are false.
+  """
+  current: Boolean!
+  """
+  Immutable capture provenance; references never contribute a second time.
+  """
+  archives: [BankingArchiveReference!]!
+  """
+  Effective grouping key after optional owner override.
+  """
+  category: String!
+  """
+  Effective approved classification; unresolved is not silently counted.
+  """
+  activity: String!
+  """
+  Whether this current posted fact contributes to the approved spending formula.
+  """
+  eligible: Boolean!
+}
+
+"""
+Independent coverage/freshness evidence for one (afterDate, throughDate] owner.
+Null coverage dates mean unknown. Observed provider history completion is not
+proof of exact available history. Retired and disconnected freshness is retained.
+"""
+type BankingReportInterval {
+  """
+  Original provider stream provenance; never inferred from similar transactions.
+  """
+  bindingId: ID!
+  """
+  Exclusive lower posted-date boundary; null means unbounded.
+  """
+  afterDate: String
+  """
+  Inclusive upper posted-date boundary; null means unbounded.
+  """
+  throughDate: String
+  """
+  Persisted import usability, independent from coverage completeness.
+  """
+  importState: String!
+  """
+  Known exclusive earliest coverage boundary; null means unknown.
+  """
+  coverageAfter: String
+  """
+  Known inclusive latest coverage boundary; null means unknown.
+  """
+  coverageThrough: String
+  """
+  Provider availability evidence, separate from 365-day request depth.
+  """
+  historyAvailability: String!
+  """
+  Last successful local source commit; null means no observed commit.
+  """
+  lastLocalCommit: String
+  """
+  Available provider-reported freshness timestamp; null means unknown.
+  """
+  providerSuccessAt: String
+  """
+  Observed historical-update completion; not proof of exact coverage.
+  """
+  historicalUpdateAt: String
+  """
+  Original stream/reporting, connection and permission states; retained history stays visible.
+  """
+  collectionState: String!
+  """
+  Collection authority is stopped for this binding; reading does not restart it.
+  """
+  collectionStopped: Boolean!
+  """
+  Complete count of source discrepancy notices for this binding.
+  """
+  discrepancyCount: Int!
+  """
+  Complete/partial/unknown/unavailable coverage context composed over the selected bounds.
+  """
+  coverage: String!
+}
+
+"""
+Noncontributing recovery manifest; original fact and annotation provenance.
+"""
+type BankingReportArchive {
+  """
+  Stable opaque private identity, reauthorized on every request.
+  """
+  id: ID!
+  """
+  Current or captured plan identity; null before an explicit replacement plan.
+  """
+  planId: ID!
+  """
+  Immutable confirmed posted-date transition boundary.
+  """
+  boundaryDate: String!
+  """
+  Complete matching record count, independent of loaded rows.
+  """
+  count: Int!
+}
+
+"""
+Logical-account inventory, coverage and latest plan recovery discovery.
+"""
+type BankingReportAccount {
+  """
+  Stable opaque private identity, reauthorized on every request.
+  """
+  id: ID!
+  """
+  Saved logical account selection; stopped/deselected history remains private.
+  """
+  selected: Boolean!
+  """
+  Supported checking, savings or credit_card account kind.
+  """
+  kind: String!
+  """
+  Opaque account revision invalidated by relevant source/annotation/lifecycle changes.
+  """
+  reportingRevision: String!
+  """
+  Current or captured plan identity; null before an explicit replacement plan.
+  """
+  planId: ID
+  """
+  Immediately preceding saved plan, when exact recovery discovery is available.
+  """
+  predecessorId: ID
+  """
+  Latest confirmed inclusive transition boundary; null for an original plan.
+  """
+  transitionDate: String
+  """
+  Disjoint reporting date owners with their own coverage and freshness.
+  """
+  intervals: [BankingReportInterval!]!
+  """
+  Complete/partial/unknown/unavailable coverage context composed over the selected bounds.
+  """
+  coverage: String!
+  """
+  Immutable capture provenance; references never contribute a second time.
+  """
+  archives: [BankingReportArchive!]!
+  """
+  Requested initial depth, 365; neither retention expiry nor proof of actual coverage.
+  """
+  requestedHistoryDays: Int!
+}
+
+"""
+Complete filtered count and eligible signed net for an activity/category key.
+"""
+type BankingReportActivity {
+  """
+  Stable activity or category key for this complete grouping.
+  """
+  key: String!
+  """
+  Complete matching record count, independent of loaded rows.
+  """
+  count: Int!
+  """
+  Exact signed eligible USD minor-unit net; refunds can make it negative.
+  """
+  netMinor: String!
+}
+
+"""
+Complete activity counts, including views without a spending headline.
+"""
+type BankingReportCounts {
+  """
+  Complete matching record count, independent of loaded rows.
+  """
+  count: Int!
+  """
+  Complete matching posted count, including nonspending activity.
+  """
+  postedCount: Int!
+  """
+  Complete matching pending count; contributes no spending.
+  """
+  pendingCount: Int!
+  """
+  Complete matching removed-history count; contributes no spending.
+  """
+  removedCount: Int!
+  """
+  Complete count of matching privately excluded records.
+  """
+  excludedCount: Int!
+  """
+  Complete count of unresolved classifications or material conflicts.
+  """
+  unresolvedCount: Int!
+  """
+  Complete count acknowledged against current material facts.
+  """
+  reviewedCount: Int!
+  """
+  Complete count of exactly zero-valued source records.
+  """
+  zeroCount: Int!
+  """
+  False when matching activity remains unresolved/conflicted; distinct from date coverage.
+  """
+  classificationComplete: Boolean!
+}
+
+"""
+Complete filtered USD spending: purchases/fees/debit interest minus identified
+refunds in their posting period. Independent of page size. Income, transfers,
+repayments, withdrawals, pending and unresolved activity stay separate. An
+unresolved/partial zero retains its warnings; unavailable results have no summary.
+"""
+type BankingReportSummary {
+  """
+  Complete matching record count, independent of loaded rows.
+  """
+  count: Int!
+  """
+  Complete matching posted count, including nonspending activity.
+  """
+  postedCount: Int!
+  """
+  Complete matching pending count; contributes no spending.
+  """
+  pendingCount: Int!
+  """
+  Complete matching removed-history count; contributes no spending.
+  """
+  removedCount: Int!
+  """
+  Complete count of matching privately excluded records.
+  """
+  excludedCount: Int!
+  """
+  Complete count of unresolved classifications or material conflicts.
+  """
+  unresolvedCount: Int!
+  """
+  Complete count acknowledged against current material facts.
+  """
+  reviewedCount: Int!
+  """
+  Complete count of exactly zero-valued source records.
+  """
+  zeroCount: Int!
+  """
+  Exact positive purchase/bank-fee/debit-interest subtotal in USD minor units.
+  """
+  purchaseMinor: String!
+  """
+  Exact identified refund magnitude in USD minor units; never manufactured from ambiguous credits.
+  """
+  refundMinor: String!
+  """
+  Exact signed eligible USD minor-unit net; refunds can make it negative.
+  """
+  netMinor: String!
+  """
+  False when matching activity remains unresolved/conflicted; distinct from date coverage.
+  """
+  classificationComplete: Boolean!
+  """
+  Complete matching activity counts and eligible signed nets, independent of page size.
+  """
+  activities: [BankingReportActivity!]!
+  """
+  Complete matching category counts and eligible signed nets, independent of page size.
+  """
+  categories: [BankingReportActivity!]!
+}
+
+"""
+One coherent list/count/spending/coverage revision. Code READY is usable, not a
+claim of complete history. SETUP_REQUIRED, NOT_INITIALIZED, DATA_UNAVAILABLE,
+QUERY_LIMIT and DATA_ERROR have no successful zero summary. INVALID_INPUT has
+fieldErrors. RESTART_REQUIRED discards incompatible pages and retains filters.
+Default page 50, max 100, descending bank date and stable ID. A whole read fails
+above 100000 matching current/archive facts after account/date/archive filtering; no selected range is silently clamped.
+"""
+type BankingReport {
+  """
+  Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
+  """
+  code: String!
+  """
+  Concrete approved activity keys accepted by edits and filters.
+  """
+  activityChoices: [String!]!
+  """
+  Pinned PFC v2 primary keys plus UNCATEGORIZED, accepted by edits and filters.
+  """
+  categoryChoices: [String!]!
+  """
+  Invalid input field names; empty unless validation failed.
+  """
+  fieldErrors: [String!]!
+  """
+  Resolved inclusive selected bank-calendar start for every preset or custom range.
+  """
+  start: String!
+  """
+  Resolved inclusive selected bank-calendar end, never clamped to imported history.
+  """
+  end: String!
+  """
+  Today resolved once in the saved timezone for this read snapshot.
+  """
+  asOfDate: String!
+  """
+  Saved reporting timezone; travel does not change it automatically.
+  """
+  timezone: String!
+  """
+  Opaque coherent report revision bound into signed continuation cursors.
+  """
+  revision: String!
+  """
+  Authorized retained account/plan/archive inventory with composed coverage.
+  """
+  accounts: [BankingReportAccount!]!
+  """
+  Bounded descending bank-date/stable-ID page from the complete filtered snapshot.
+  """
+  rows: [BankingTransaction!]!
+  """
+  Complete activity context; null on unavailable/error results.
+  """
+  counts: BankingReportCounts
+  """
+  Complete spending summary; null for errors, unavailable data, archive or activity-only views.
+  """
+  summary: BankingReportSummary
+  """
+  Signed opaque continuation bound to actor, filters and snapshot; null for an empty page.
+  """
+  endCursor: String
+  """
+  More matching rows exist in this exact snapshot.
+  """
+  hasNextPage: Boolean!
+  """
+  Complete matching count independent of first/after, zero only in a READY result.
+  """
+  totalCount: Int!
+  """
+  SPENDING_FROM_ACCOUNTS, ACTIVITY_CONTEXT, RECOVERY_ARCHIVE or SOURCE_DISCREPANCIES; activity/archive views have no spending headline.
+  """
+  spendingContext: String!
+}
+
+"""
+READY detail or masked NOT_FOUND for absent/foreign/deleted/staged data. Archive
+snapshots are immutable; currentId links the sole current annotation edit owner.
+"""
+type BankingTransactionDetail {
+  """
+  Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
+  """
+  code: String!
+  """
+  Freshly authorized selected fact, or null for masked/error outcomes.
+  """
+  transaction: BankingTransaction
+  """
+  Sole current edit owner for an archive-referenced source, or null when archive-only.
+  """
+  currentId: ID
+}
+
+"""
+Change/reset one private field. Null value resets only that field. Activity and
+category use the documented approved taxonomy. Note is plain text <=2000 Unicode
+code points. Boolean fields accept true/false strings. Source amount/date cannot
+be edited. Reuse the same attempt and exact input after response loss.
+"""
+input BankingAnnotationInput {
+  """
+  Client-known UUID retained unchanged across retries and uncertain responses.
+  """
+  attemptId: ID!
+  """
+  Stable private source ID, reauthorized for every lookup/edit.
+  """
+  sourceId: ID!
+  """
+  Immutable source fact version; required for guarded edits.
+  """
+  sourceRevision: String!
+  """
+  Expected latest annotation version; zero before first edit. Stale drafts conflict.
+  """
+  expectedRevision: String!
+  """
+  Material fact anchor acknowledged by private classification/review.
+  """
+  materialRevision: String!
+  """
+  Exactly one approved private field to change/reset.
+  """
+  field: BankingAnnotationField!
+  """
+  New enumerated/plain-text/boolean-string value; null resets only the selected field.
+  """
+  value: String
+}
+
+"""
+Approved private single-transaction fields; resets leave other overrides intact.
+"""
+enum BankingAnnotationField {
+  """
+  Change grouping only; null resets the category override.
+  """
+  CATEGORY
+  """
+  Confirm an approved sign-compatible activity against the material revision; null resets.
+  """
+  ACTIVITY
+  """
+  Private plain text; null removes the note only.
+  """
+  NOTE
+  """
+  Private spending exclusion; null resets to included when otherwise eligible.
+  """
+  EXCLUDED
+  """
+  Acknowledgement of current material facts; does not establish activity classification.
+  """
+  REVIEWED
+}
+
+"""
+Original safe durable outcome plus freshly authorized facts. CONFLICT preserves
+the caller draft; fresh facts do not apply it. Receipt/status holds no bank facts.
+"""
+type BankingAnnotationResult {
+  """
+  Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
+  """
+  code: String!
+  """
+  Stable private source ID, reauthorized for every lookup/edit.
+  """
+  sourceId: ID
+  """
+  Freshly authorized current source detail after original safe receipt recovery.
+  """
+  detail: BankingTransactionDetail
+}
+
+extend type Query {
+  """
+  Complete private reporting from stored data; performs no provider refresh.
+  """
+  bankingReport(
+    """
+    One normalized filter shared by rows, complete counts, spending and coverage.
+    """
+    filter: BankingReportFilter
+    """
+    Bounded page size, default 50 and maximum 100.
+    """
+    first: Int = 50
+    """
+    Signed prior endCursor; stale/tampered/cross-actor cursors require restart.
+    """
+    after: String
+  ): BankingReport!
+  """
+  Owner-only current detail or an explicitly selected immutable archive fact.
+  """
+  bankingTransaction(
+    """
+    Stable private source ID, reauthorized for every lookup/edit.
+    """
+    sourceId: ID!
+    """
+    Optional owner-authorized recovery manifest; archive rows never add to current spending.
+    """
+    archiveId: ID
+    """
+    Inspect the latest discrepant correction rather than canonical/archive facts; cannot be combined with archiveId.
+    """
+    discrepancy: Boolean = false
+  ): BankingTransactionDetail!
+  """
+  Recover the original annotation operation receipt, then fetch current data.
+  """
+  bankingAnnotationOperation(
+    """
+    Client-known UUID retained unchanged across retries and uncertain responses.
+    """
+    attemptId: ID!
+  ): BankingAnnotationResult!
+}
+
+extend type Mutation {
+  """
+  Version/material-checked private edit/reset, with durable attempt recovery.
+  """
+  editBankingAnnotation(
+    """
+    Client-known durable attempt and exact guarded single-field edit intent.
+    """
+    input: BankingAnnotationInput!
+  ): BankingAnnotationResult!
+}

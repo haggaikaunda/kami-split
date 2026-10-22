@@ -49,18 +49,21 @@ func BeginSyncBatch(ctx context.Context, db *database.WorkerDB, work database.Ba
 }
 
 type syncStoredChange struct {
-	Operation      string  `json:"operation"`
-	ID             string  `json:"id"`
-	AccountID      *string `json:"account_id,omitempty"`
-	Amount         *string `json:"amount_minor,omitempty"`
-	Currency       string  `json:"currency,omitempty"`
-	Date           string  `json:"date,omitempty"`
-	Pending        *bool   `json:"pending,omitempty"`
-	PendingID      *string `json:"pending_transaction_id,omitempty"`
-	AuthorizedDate *string `json:"authorized_date,omitempty"`
-	Name           *string `json:"name,omitempty"`
-	MerchantName   *string `json:"merchant_name,omitempty"`
-	Code           *string `json:"transaction_code,omitempty"`
+	Operation               string  `json:"operation"`
+	ID                      string  `json:"id"`
+	AccountID               *string `json:"account_id,omitempty"`
+	Amount                  *string `json:"amount_minor,omitempty"`
+	Currency                string  `json:"currency,omitempty"`
+	Date                    string  `json:"date,omitempty"`
+	Pending                 *bool   `json:"pending,omitempty"`
+	PendingID               *string `json:"pending_transaction_id,omitempty"`
+	AuthorizedDate          *string `json:"authorized_date,omitempty"`
+	Name                    *string `json:"name,omitempty"`
+	MerchantName            *string `json:"merchant_name,omitempty"`
+	Code                    *string `json:"transaction_code,omitempty"`
+	ProviderPrimaryCategory *string `json:"provider_primary_category,omitempty"`
+	ProviderCategory        *string `json:"provider_category,omitempty"`
+	ProviderConfidence      *string `json:"provider_confidence,omitempty"`
 }
 
 type syncStoredPage struct {
@@ -84,7 +87,7 @@ func encodeSyncPage(batch SyncBatch, from SyncCursor, page SyncPage) ([]byte, er
 	}{{"added", page.Added}, {"modified", page.Modified}} {
 		for _, row := range group.rows {
 			amount := strconv.FormatInt(row.AmountMinor, 10)
-			payload.Changes = append(payload.Changes, syncStoredChange{Operation: group.operation, ID: row.TransactionID, AccountID: &row.AccountID, Amount: &amount, Currency: row.Currency, Date: row.Date, Pending: &row.Pending, PendingID: row.PendingTransactionID, AuthorizedDate: row.AuthorizedDate, Name: row.Name, MerchantName: row.MerchantName, Code: row.TransactionCode})
+			payload.Changes = append(payload.Changes, syncStoredChange{Operation: group.operation, ID: row.TransactionID, AccountID: &row.AccountID, Amount: &amount, Currency: row.Currency, Date: row.Date, Pending: &row.Pending, PendingID: row.PendingTransactionID, AuthorizedDate: row.AuthorizedDate, Name: row.Name, MerchantName: row.MerchantName, Code: row.TransactionCode, ProviderPrimaryCategory: row.ProviderPrimaryCategory, ProviderCategory: row.ProviderCategory, ProviderConfidence: row.ProviderConfidence})
 		}
 	}
 	for _, row := range page.Removed {

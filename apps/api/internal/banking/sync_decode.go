@@ -21,6 +21,11 @@ type plaidSyncTransaction struct {
 	Name                 *string         `json:"name"`
 	MerchantName         *string         `json:"merchant_name"`
 	Code                 *string         `json:"transaction_code"`
+	Category             *struct {
+		Primary    *string `json:"primary"`
+		Detailed   *string `json:"detailed"`
+		Confidence *string `json:"confidence_level"`
+	} `json:"personal_finance_category"`
 }
 
 func decodeSyncPage(raw []byte, binding SyncBinding, cursor SyncCursor) (SyncPage, error) {
@@ -106,9 +111,15 @@ func decodeSyncTransaction(row plaidSyncTransaction, accountID string) (SyncTran
 	if !ok {
 		return SyncTransaction{}, false
 	}
-	return SyncTransaction{TransactionID: row.ID, AccountID: row.Account, Date: row.Date, AmountMinor: amount, Currency: row.Currency,
+	fact := SyncTransaction{TransactionID: row.ID, AccountID: row.Account, Date: row.Date, AmountMinor: amount, Currency: row.Currency,
 		Pending: *row.Pending, PendingTransactionID: row.PendingTransactionID, AuthorizedDate: row.AuthorizedDate,
-		Name: row.Name, MerchantName: row.MerchantName, TransactionCode: row.Code}, true
+		Name: row.Name, MerchantName: row.MerchantName, TransactionCode: row.Code}
+	if row.Category != nil {
+		fact.ProviderPrimaryCategory = row.Category.Primary
+		fact.ProviderCategory = row.Category.Detailed
+		fact.ProviderConfidence = row.Category.Confidence
+	}
+	return fact, true
 }
 
 func validBankDate(value string) bool {

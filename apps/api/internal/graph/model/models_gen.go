@@ -8,6 +8,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/haggaikaunda/kami-split/apps/api/internal/banking"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/expense"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/ledger"
 	"github.com/haggaikaunda/kami-split/apps/api/internal/reportingtimezone"
@@ -277,6 +278,38 @@ type BankingAccount struct {
 	ProviderAccountID string `json:"providerAccountId"`
 }
 
+// Change/reset one private field. Null value resets only that field. Activity and
+// category use the documented approved taxonomy. Note is plain text <=2000 Unicode
+// code points. Boolean fields accept true/false strings. Source amount/date cannot
+// be edited. Reuse the same attempt and exact input after response loss.
+type BankingAnnotationInput struct {
+	// Client-known UUID retained unchanged across retries and uncertain responses.
+	AttemptID string `json:"attemptId"`
+	// Stable private source ID, reauthorized for every lookup/edit.
+	SourceID string `json:"sourceId"`
+	// Immutable source fact version; required for guarded edits.
+	SourceRevision string `json:"sourceRevision"`
+	// Expected latest annotation version; zero before first edit. Stale drafts conflict.
+	ExpectedRevision string `json:"expectedRevision"`
+	// Material fact anchor acknowledged by private classification/review.
+	MaterialRevision string `json:"materialRevision"`
+	// Exactly one approved private field to change/reset.
+	Field BankingAnnotationField `json:"field"`
+	// New enumerated/plain-text/boolean-string value; null resets only the selected field.
+	Value *string `json:"value,omitempty"`
+}
+
+// Original safe durable outcome plus freshly authorized facts. CONFLICT preserves
+// the caller draft; fresh facts do not apply it. Receipt/status holds no bank facts.
+type BankingAnnotationResult struct {
+	// Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
+	Code string `json:"code"`
+	// Stable private source ID, reauthorized for every lookup/edit.
+	SourceID *string `json:"sourceId,omitempty"`
+	// Freshly authorized current source detail after original safe receipt recovery.
+	Detail *banking.TransactionDetail `json:"detail,omitempty"`
+}
+
 // Private lifecycle projection. No bank credentials or financial source payloads are exposed.
 type BankingConnection struct {
 	// Stable private connection UUID.
@@ -503,6 +536,33 @@ type BankingReplacementRevisionsInput struct {
 	Annotation string `json:"annotation"`
 	// Account, connection, selection, generation and reporting-timezone digest.
 	Lifecycle string `json:"lifecycle"`
+}
+
+// Filters combine with AND; alternatives within a field use OR. Amounts and dates
+// remain provider facts. Category changes alone do not change spending eligibility.
+type BankingReportFilter struct {
+	// Inspect latest source discrepancies separately, with counts and no spending contribution; mutually exclusive with archiveId.
+	SourceDiscrepancies *bool `json:"sourceDiscrepancies,omitempty"`
+	// Saved-zone preset or explicit CUSTOM bounds; defaults to THIS_MONTH.
+	Period *BankingPeriod `json:"period,omitempty"`
+	// Inclusive ISO bank date, required only for CUSTOM; never clamped to imported history.
+	Start *string `json:"start,omitempty"`
+	// Inclusive ISO bank date, required only for CUSTOM and no later than saved-zone today.
+	End *string `json:"end,omitempty"`
+	// Optional owner-authorized recovery manifest; archive rows never add to current spending.
+	ArchiveID *string `json:"archiveId,omitempty"`
+	// Logical account IDs; every requested account must be authorized. Omission selects all retained visible accounts.
+	AccountIds []string `json:"accountIds,omitempty"`
+	// Approved grouping keys from categoryChoices, combined with OR.
+	Categories []string `json:"categories,omitempty"`
+	// Approved activity keys from activityChoices, combined with OR.
+	Activities []string `json:"activities,omitempty"`
+	// Provider processing states posted, pending or removed; independent from activity.
+	States []string `json:"states,omitempty"`
+	// Filter private exclusion state; omitted includes either state.
+	Excluded *bool `json:"excluded,omitempty"`
+	// Filter current material acknowledgement; review-only views have counts without a spending headline.
+	Reviewed *bool `json:"reviewed,omitempty"`
 }
 
 // One disjoint posted-date reporting owner; unbounded endpoints are null.
@@ -1797,6 +1857,73 @@ func (e Appearance) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Approved private single-transaction fields; resets leave other overrides intact.
+type BankingAnnotationField string
+
+const (
+	// Change grouping only; null resets the category override.
+	BankingAnnotationFieldCategory BankingAnnotationField = "CATEGORY"
+	// Confirm an approved sign-compatible activity against the material revision; null resets.
+	BankingAnnotationFieldActivity BankingAnnotationField = "ACTIVITY"
+	// Private plain text; null removes the note only.
+	BankingAnnotationFieldNote BankingAnnotationField = "NOTE"
+	// Private spending exclusion; null resets to included when otherwise eligible.
+	BankingAnnotationFieldExcluded BankingAnnotationField = "EXCLUDED"
+	// Acknowledgement of current material facts; does not establish activity classification.
+	BankingAnnotationFieldReviewed BankingAnnotationField = "REVIEWED"
+)
+
+var AllBankingAnnotationField = []BankingAnnotationField{
+	BankingAnnotationFieldCategory,
+	BankingAnnotationFieldActivity,
+	BankingAnnotationFieldNote,
+	BankingAnnotationFieldExcluded,
+	BankingAnnotationFieldReviewed,
+}
+
+func (e BankingAnnotationField) IsValid() bool {
+	switch e {
+	case BankingAnnotationFieldCategory, BankingAnnotationFieldActivity, BankingAnnotationFieldNote, BankingAnnotationFieldExcluded, BankingAnnotationFieldReviewed:
+		return true
+	}
+	return false
+}
+
+func (e BankingAnnotationField) String() string {
+	return string(e)
+}
+
+func (e *BankingAnnotationField) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingAnnotationField(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingAnnotationField", str)
+	}
+	return nil
+}
+
+func (e BankingAnnotationField) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingAnnotationField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingAnnotationField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 // CollectionState dimension, independent of the other status facts.
 type BankingCollectionState string
 
@@ -2249,6 +2376,76 @@ func (e *BankingImportState) UnmarshalJSON(b []byte) error {
 }
 
 func (e BankingImportState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Approved inclusive bank-calendar period. Presets use the saved reporting timezone.
+type BankingPeriod string
+
+const (
+	// First day of the saved-zone current month through today.
+	BankingPeriodThisMonth BankingPeriod = "THIS_MONTH"
+	// Complete previous calendar month, including leap days.
+	BankingPeriodLastMonth BankingPeriod = "LAST_MONTH"
+	// Today minus 59 calendar days through today, inclusive.
+	BankingPeriodLast60Days BankingPeriod = "LAST_60_DAYS"
+	// Today minus 89 calendar days through today, inclusive.
+	BankingPeriodLast90Days BankingPeriod = "LAST_90_DAYS"
+	// January 1 of the saved-zone current year through today.
+	BankingPeriodYearToDate BankingPeriod = "YEAR_TO_DATE"
+	// Explicit inclusive start/end bank dates; no future end or history clamping.
+	BankingPeriodCustom BankingPeriod = "CUSTOM"
+)
+
+var AllBankingPeriod = []BankingPeriod{
+	BankingPeriodThisMonth,
+	BankingPeriodLastMonth,
+	BankingPeriodLast60Days,
+	BankingPeriodLast90Days,
+	BankingPeriodYearToDate,
+	BankingPeriodCustom,
+}
+
+func (e BankingPeriod) IsValid() bool {
+	switch e {
+	case BankingPeriodThisMonth, BankingPeriodLastMonth, BankingPeriodLast60Days, BankingPeriodLast90Days, BankingPeriodYearToDate, BankingPeriodCustom:
+		return true
+	}
+	return false
+}
+
+func (e BankingPeriod) String() string {
+	return string(e)
+}
+
+func (e *BankingPeriod) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingPeriod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingPeriod", str)
+	}
+	return nil
+}
+
+func (e BankingPeriod) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingPeriod) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingPeriod) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

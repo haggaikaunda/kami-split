@@ -18,16 +18,16 @@ func TestReplacementCalendarDateUsesSavedZone(t *testing.T) {
 }
 func TestReplacementSpendingExactSignedAndBounded(t *testing.T) {
 	purchase, refund, income := "purchase", "refund", "income"
-	rows := []replacementSource{{Amount: "10000", Activity: &purchase, Processing: "posted"}, {Amount: "-4000", Activity: &refund, Processing: "posted"}, {Amount: "10000", Activity: &purchase, Processing: "pending"}, {Amount: "10000", Activity: &purchase, Processing: "posted", Excluded: true}, {Amount: "-10000", Activity: &income, Processing: "posted"}}
+	rows := []replacementSource{{Currency: "USD", Amount: "10000", Activity: &purchase, Processing: "posted"}, {Currency: "USD", Amount: "-4000", Activity: &refund, Processing: "posted"}, {Currency: "USD", Amount: "10000", Activity: &purchase, Processing: "pending"}, {Currency: "USD", Amount: "10000", Activity: &purchase, Processing: "posted", Excluded: true}, {Currency: "USD", Amount: "-10000", Activity: &income, Processing: "posted"}}
 	impact, err := summarizeReplacement(rows)
 	if err != nil || impact.SpendingMinor != "6000" || impact.PendingCount != 1 {
 		t.Fatal("exact spending eligibility changed")
 	}
-	_, err = summarizeReplacement([]replacementSource{{Amount: "9007199254740991", Activity: &purchase}, {Amount: "1", Activity: &purchase}})
+	_, err = summarizeReplacement([]replacementSource{{Currency: "USD", Amount: "9007199254740991", Activity: &purchase, Processing: "posted"}, {Currency: "USD", Amount: "1", Activity: &purchase, Processing: "posted"}})
 	if err == nil {
 		t.Fatal("overflow returned successful partial total")
 	}
-	impact, err = summarizeReplacement([]replacementSource{{Amount: "-1", Activity: &purchase}, {Amount: "1", Activity: &refund}})
+	impact, err = summarizeReplacement([]replacementSource{{Currency: "USD", Amount: "-1", Activity: &purchase, Processing: "posted"}, {Currency: "USD", Amount: "1", Activity: &refund, Processing: "posted"}})
 	if err != nil || impact.SpendingMinor != "0" || impact.UnresolvedCount != 2 {
 		t.Fatal("invalid sign classified as spending")
 	}

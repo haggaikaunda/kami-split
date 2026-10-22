@@ -17,8 +17,7 @@ Schema additions require approved acceptance criteria and compatibility review. 
 `reporting-timezone.graphql` defines the self-only saved preference, independent
 positive string version and actor/operation/attempt-bound initialization/update
 recovery. See [the operation contract](../../docs/application/reporting-timezone.md)
-for validation, concurrency and lost-response behavior. This API has no Account UI
-or reporting-date consumer and does not enable banking.
+for validation, concurrency and lost-response behavior. This API has no Account UI and does not enable banking. The private bank reporting API consumes the saved timezone for preset dates.
 
 ## Public contract documentation
 
@@ -194,3 +193,7 @@ and freshness dimensions. See [the status contract](../../docs/application/banki
 for unknown/null meanings, requested-bound provenance, snapshot/cache invalidation
 and remaining producers. Logical account IDs repeat across replacement streams;
 Relay consumers select `streamId` for the existing actor-scoped cache identity.
+
+## Private bank reporting
+
+`banking-reporting.graphql` defines actor-only canonical transaction/detail/archive reads, complete filtered counts and exact account spending, saved-zone presets, coverage and signed snapshot pagination. It also defines private single-row annotation edits/reset with durable attempt recovery. See [the reporting operation contract](../../docs/application/banking-reporting.md) for unavailable versus partial/empty/activity-only states, taxonomy choices, query limits, concurrency and archive ownership.

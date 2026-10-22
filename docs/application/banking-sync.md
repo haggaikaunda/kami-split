@@ -3,7 +3,7 @@
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
 restricted atomic batch persistence and durable initial/incremental consumption through verified Transactions dispatch and daily reconciliation are implemented below. The [owner-only status API](banking-status.md) exposes persisted progress, coverage and freshness.
-Transaction reads and the browser transaction journey remain separate work.
+The [private reporting API](banking-reporting.md) reads stored canonical activity and guarded annotations; the browser transaction journey remains separate work.
 Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
@@ -170,9 +170,7 @@ pages; prior facts, original provider identity and immutable annotations remain.
 Unlinked rows get independent IDs. A changed link cannot merge existing source
 histories, a second posted identity cannot reuse a pending link consumed by any earlier posted revision, even after that successor is removed, and a pending removal cannot remove its superseding posted identity.
 Known removals append a removed revision; unknown removals retain identity-only
-history without inventing amount/date facts. Imports remain unclassified unless
-existing valid owner annotation provenance supplies activity; codes/names alone
-are not automatically classified by this persistence slice.
+history without inventing amount/date facts. The [private reporting service](banking-reporting.md) classifies preserved PFC v2 and transaction-code facts or valid owner overrides. Persistence itself keeps bank facts separate from annotations; names alone never establish activity.
 
 Source revisions separately retain a material-revision anchor. Annotation
 projections retain their original material acknowledgement and all notes,
@@ -180,8 +178,7 @@ category/activity choices and exclusions. Nonmaterial changes preserve a valid
 review; material changes clear review and require fresh acknowledgement before an
 activity override can contribute. Incompatible sign/status overrides remain
 visibly conflicted. Already stale acknowledgements never become current merely
-because a later provider update is nonmaterial. Public annotation editing remains
-separate work. Replacement/recovery archives save the exact latest applicable
+because a later provider update is nonmaterial. The [private reporting API](banking-reporting.md) supplies guarded annotation editing. Replacement/recovery archives save the exact latest applicable
 annotation revision using the same application/material-anchor selection,
 including legacy annotations and material-conflict projections. These immutable
 capture references retain their original note/exclusion/review provenance after
@@ -296,7 +293,7 @@ Failure/uncertainty during creation or exchange requires reconciling owned Sandb
 inventory before retry; never replay an uncertain exchange. Output contains only
 safe stages, counts and confirmation. Fixtures establish the full authenticated
 enrollment journey separately; Sandbox establishes only the observed synthetic
-provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Public transaction reads, browser visibility,
+provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Private transaction reads and annotations are implemented by [reporting](banking-reporting.md); browser visibility,
 live capabilities, backups and release remain separate work.
 
 ## Background dispatch and reconciliation

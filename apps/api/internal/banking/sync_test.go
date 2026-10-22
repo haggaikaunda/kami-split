@@ -70,7 +70,7 @@ func TestSyncFilteredPaginationPreservesFacts(t *testing.T) {
 		_ = json.Unmarshal(body["cursor"], &cursor)
 		var options map[string]string
 		_ = json.Unmarshal(body["options"], &options)
-		if cursor != cursors[pageIndex] || len(options) != 1 || options["account_id"] != binding.AccountID {
+		if cursor != cursors[pageIndex] || len(options) != 2 || options["account_id"] != binding.AccountID || options["personal_finance_category_version"] != "v2" {
 			t.Error("selected account/cursor changed or history initialization repeated")
 		}
 		pageIndex++

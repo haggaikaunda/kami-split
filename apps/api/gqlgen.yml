@@ -41,3 +41,28 @@ models:
         type: github.com/haggaikaunda/kami-split/apps/api/internal/expense.PageRequest
       Filter:
         type: github.com/haggaikaunda/kami-split/apps/api/internal/ledger.Filter
+  BankingArchiveReference:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ArchiveReference
+  BankingTransaction:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.Transaction
+  BankingReportInterval:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportInterval
+  BankingReportAccount:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportAccount
+  BankingReportActivity:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportActivity
+  BankingReportSummary:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportSummary
+  BankingReport:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.Report
+  BankingTransactionDetail:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.TransactionDetail
+
+  BankingReportArchive:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportArchive
+
+  BankingReportCounts:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportCounts
+
+  BankingAnnotationSnapshot:
+    model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.AnnotationSnapshot
