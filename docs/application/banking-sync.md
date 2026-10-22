@@ -2,8 +2,8 @@
 
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
-restricted atomic batch persistence and the durable first-import consumer are implemented below. Public
-status, transaction reads, ongoing sync triggers and the browser transaction journey remain separate work.
+restricted atomic batch persistence and durable initial/incremental consumption through verified Transactions dispatch and daily reconciliation are implemented below. Public
+status, transaction reads and the browser transaction journey remain separate work.
 Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
@@ -208,14 +208,14 @@ replacement bindings across Items and preserves unrelated sibling accounts. The 
 store; desired state remains in `supabase/schemas`, with migration replay,
 permissions and real-database checks owned by `make db-test`.
 
-## Durable first selected-account import
+## Durable selected-account import
 
 The existing `cmd/worker` consumes `initial_sync` operations alongside teardown,
 purge, enrollment recovery and Item observation. A deferred database handoff runs
 at the end of a connection transition, after the complete explicit selection has
 been stored. Intent and opaque queue transport commit with enrollment/selection;
 rollback publishes neither. Only selected, eligible current/staged bindings with
-no committed checkpoint and current granted collection authority qualify.
+current granted collection authority qualify. A stored checkpoint makes a later pass incremental.
 Reconciliation recovers eligible previously enrolled bindings without new Link.
 A unique binding/connection-generation identity gives each stream its own attempt
 budget. Changing selection fences the prior generation. Unselected inventory is
@@ -230,7 +230,7 @@ checkpoint. Provider-not-ready retains no checkpoint and is recorded separately
 from an actual empty completed batch. All staging, local source changes and final
 publication retain the existing identity, selection, deletion and reporting fences.
 
-For an initial import, complete batch publication and durable operation completion
+For every import pass, complete batch publication and durable operation completion
 (including queue acknowledgement) share one database transaction. A kill before
 commit leaves only staging; a kill or response loss after commit cannot repeat
 the first batch. A competing/restarted worker receives a new random lease token;
@@ -297,4 +297,108 @@ inventory before retry; never replay an uncertain exchange. Output contains only
 safe stages, counts and confirmation. Fixtures establish the full authenticated
 enrollment journey separately; Sandbox establishes only the observed synthetic
 provider/consumer integration. Public transaction/status reads, browser visibility,
-ongoing triggers, live capabilities, backups and release remain separate work.
+live capabilities, backups and release remain separate work.
+
+## Background dispatch and reconciliation
+
+The sole verified ingress recognizes Transactions `SYNC_UPDATES_AVAILABLE` for
+its exact correlated environment and Item. It schedules only currently authorized
+selected current/staged bindings. An account ID in a notification cannot expand
+selection. Existing Item revocation, enrollment-recovery and terminal digest
+handling remain authoritative. Other Transactions codes are retained as unhandled
+receipts because `/transactions/sync` requires `SYNC_UPDATES_AVAILABLE`.
+
+The private work kind remains `initial_sync` for compatibility. Each binding and
+connection generation retains one recurring intent, cursor and attempt identity.
+`requested_version`, `claimed_version` and `completed_version` record demand,
+claim and successful publication. Exact verified-JWS fingerprints deduplicate
+deliveries; body equality and signature timestamps are not provider event IDs or
+ordering authority. A newly signed identical body conservatively records demand.
+Receipt `dispatch_state` distinguishes `dispatched`, `no_eligible_binding`,
+`terminal` and `unhandled`; `dispatched` means durable acceptance, not imported
+transactions. Fingerprints follow existing deletion cleanup and retention.
+
+Claim snapshots outstanding demand. Final source/checkpoint commit acknowledges
+only that snapshot in the same transaction. New demand arriving while a batch is
+active rearms the same operation with another due pass; a crash cannot lose it
+between publication and queue acknowledgement. Pending hints coalesce without
+moving retry deadlines or resetting attempts. After a successful pass the next
+daily eligibility deadline is persisted. A newly requested pass starts a fresh
+bounded attempt budget; needs-attention work always requires authorized resume.
+
+The worker polls immediately on start and every minute thereafter. On each poll,
+a bounded sweep schedules completed healthy eligible streams whose daily deadline
+has elapsed, including streams recovered after missed scheduler runs. Existing
+pending/not-ready retries retain their due times and budgets. Explicit selection
+or lifecycle repair can create a new generation's eligible intent; a sweep never
+restores consent, selection, stopped collection or erased data. Item health
+observation and transaction reconciliation are separate operations using the
+same worker. Daily scheduling and one-minute polling are operational defaults,
+not bank-update or freshness guarantees.
+
+### Diagnosis and safe recovery
+
+1. Inspect the worker's private `/ready` and `/status` on its protected operational
+   listener. Status is a bounded oldest-100 sample with incomplete work first;
+   queue age, retries, needs-attention and `oldest_local_import_lag_seconds` are
+   safe aggregates. A full sample is not an exhaustive queue count. Local commit
+   lag cannot establish provider history availability or bank freshness.
+2. Under the authorized operator role, inspect the opaque operation's `state`,
+   `attempts`, `due_at`, `last_code`, `import_code`, request watermarks and
+   `requested_at`. Inspect its binding's local commit time and independent provider
+   status facts. Receipt acceptance alone does not establish batch completion.
+   Never copy tokens, cursors, provider IDs, source rows or raw errors into logs.
+3. For pending work, compare database due time and transport visibility in the
+   database clock domain. Respect provider backoff; do not force deadlines earlier.
+   A restart or normal `banking_reconcile()` repairs missing transport under the
+   same attempt/generation. Do not create another operation, reset its checkpoint
+   or replay an uncertain provider exchange.
+4. For needs-attention, resolve the provider/configuration or invalid-data cause,
+   then call `SET ROLE kami_migrator; SELECT app.banking_resume('operation-uuid'::uuid);`.
+   Resume preserves intent/checkpoint and rechecks current lifecycle authority.
+   Workers cannot reset their own budgets. Poison receipts do not dispatch;
+   malformed provider batches stop under the same bounded operation policy.
+5. After an outage or missed scheduler run, restart the owned worker or use the
+   normal restricted `banking_reconcile()` wrapper. It catches up due eligible
+   streams without restoring stopped authority or resetting exhausted work.
+   Observe actual commit/checkpoint progress separately from provider update
+   status; coverage and institution freshness can remain unknown after success.
+
+### Sandbox background consumer check
+
+Use a uniquely owned disposable migrated database and protected Sandbox client
+credentials as described above. Assign a dedicated loopback listener and an
+approved test-only HTTPS callback origin forwarding only to that listener. The
+runner exposes only the existing signed handler for its one opaque synthetic
+correlation, with bounded HTTP reads and shutdown. A temporary forwarding process
+belongs to its caller and must be stopped separately after the test. Do not point
+the tunnel at the application API, operational status, database or admin ports.
+
+```sh
+PLAID_BACKGROUND_SANDBOX_CHECK=1 \
+PLAID_BACKGROUND_LISTEN_ADDR=127.0.0.1:3297 \
+PLAID_BACKGROUND_WEBHOOK_ORIGIN=https://your-test-only-callback.example \
+go test -tags=integration ./internal/banking -run '^TestBackgroundSandboxConsumer$' -count=1 -v -timeout=7m
+```
+
+The runner creates and exchanges one `ins_109508` Sandbox Item once, explicitly
+selects one observed USD checking binding through a controlled selection fixture,
+and runs the actual restricted initial consumer. It assigns the callback with
+`/item/webhook/update`, adds an exact synthetic transaction to that selected
+account using `/sandbox/transactions/create`, requests a Transactions webhook,
+and separately checks provider dispatch acknowledgement, an actual verified
+Transactions receipt and persisted incremental facts. The Item webhook-update
+acknowledgement is not Transactions evidence. It then removes the callback,
+refuses any in-flight delivery and adds another transaction, proving daily
+reconciliation through the same actual consumer with notifications unavailable.
+Only non-sensitive stage/count observations are emitted. The known owned Item is
+removed and receiver shutdown is joined; uncertainty during create/exchange or
+cleanup must be reconciled before retrying. The caller removes its database and
+forwarder. Missing callback/credentials are explicit unavailable verification,
+not fixture evidence of actual Sandbox delivery.
+
+Sandbox additions and signed delivery do not establish real-institution history,
+provider mutation/removal timing, production entitlement or release readiness.
+Deterministic persistence/consumer fixtures cover rate failures, notification
+loss, duplicates/out-of-order delivery, material corrections, removals, lifecycle
+races and replacement history where the synthetic provider cannot reproduce them.

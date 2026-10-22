@@ -77,7 +77,7 @@ func (f fakeOperations) BankingStatus(ctx context.Context) ([]database.BankingWo
 func TestOperationalStatusAggregatesWithoutIdentities(t *testing.T) {
 	id := uuid.New()
 	operations := []database.BankingWorkStatus{
-		{OperationID: id, Kind: "teardown", State: "pending", Attempts: 2, AgeSeconds: 120},
+		{OperationID: id, Kind: "teardown", State: "pending", Attempts: 2, AgeSeconds: 120, ImportLagSeconds: 3600},
 		{OperationID: id, Kind: "purge", State: "running", Attempts: 1, AgeSeconds: 90, Progress: 35},
 		{OperationID: id, Kind: "purge", State: "complete", Attempts: 3, AgeSeconds: 9999, Progress: 72},
 		{OperationID: id, Kind: "teardown", State: "needs_attention", Attempts: 10, AgeSeconds: 1000},
@@ -101,7 +101,7 @@ func TestOperationalStatusAggregatesWithoutIdentities(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &status); err != nil {
 		t.Fatal(err)
 	}
-	expected := operationSummary{SampleLimit: 100, SampledOperations: 4, Pending: 1, Running: 1, Complete: 1, NeedsAttention: 1, RetriedOperations: 3, OldestIncompleteAgeSeconds: 1000, MaxAttempts: 10, MaxCleanupProgressRows: 72}
+	expected := operationSummary{SampleLimit: 100, SampledOperations: 4, Pending: 1, Running: 1, Complete: 1, NeedsAttention: 1, RetriedOperations: 3, OldestIncompleteAgeSeconds: 1000, MaxAttempts: 10, MaxCleanupProgressRows: 72, OldestLocalImportLagSeconds: 3600}
 	if status != expected {
 		t.Fatalf("unexpected aggregate: %+v", status)
 	}

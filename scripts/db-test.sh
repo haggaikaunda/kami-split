@@ -73,6 +73,7 @@ mv "$stage/supabase/migrations/20261020030000_banking_lifecycle.sql" "$stage/ban
 mv "$stage/supabase/migrations/20261020040000_banking_replacement.sql" "$stage/banking-replacement.sql"
 mv "$stage/supabase/migrations/20261021000000_banking_sync.sql" "$stage/banking-sync.sql"
 mv "$stage/supabase/migrations/20261021010000_banking_initial_sync.sql" "$stage/banking-initial-sync.sql"
+mv "$stage/supabase/migrations/20261022000000_banking_background_sync.sql" "$stage/banking-background-sync.sql"
 mv "$stage/supabase/migrations/20261020020000_reporting_timezone.sql" "$stage/reporting-timezone.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
@@ -147,6 +148,7 @@ scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/banking_replacement_upgraded.sql
 mv "$stage/banking-sync.sql" "$stage/supabase/migrations/20261021000000_banking_sync.sql"
 mv "$stage/banking-initial-sync.sql" "$stage/supabase/migrations/20261021010000_banking_initial_sync.sql"
+mv "$stage/banking-background-sync.sql" "$stage/supabase/migrations/20261022000000_banking_background_sync.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.

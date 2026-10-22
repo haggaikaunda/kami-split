@@ -80,7 +80,7 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 ## Future integrations
 
-Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial imports for explicitly selected accounts. Ongoing sync triggers, public transaction/reporting reads and browser UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
+Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial/incremental imports for explicitly selected accounts, verified notification dispatch and daily missed-notification reconciliation. Public transaction/reporting reads and browser UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
 
 The internal [private banking storage](banking-storage.md) foundation implements
 owner-only persistence, protected credential storage, durable attempts and lifecycle
@@ -89,7 +89,7 @@ Item observation, worker privileges/runtime and verified durable HTTP ingress.
 The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
 retained stream reads, durable unknown-exchange recovery, explicit selection,
 existing-Item repair and revision-checked disconnect/private-history deletion. New enrollment is
-disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. The existing worker executes durable first imports for selected bindings. Ongoing sync triggers and public transaction/reporting APIs remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
+disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. The existing worker executes durable first/incremental imports for selected bindings through verified notification dispatch and daily reconciliation. Public transaction/reporting APIs remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction
