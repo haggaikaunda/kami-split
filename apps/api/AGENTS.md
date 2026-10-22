@@ -36,8 +36,9 @@ private-history deletion and retained-account/status reads with default-disabled
 new enrollment. The [replacement backend](../../docs/application/banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The protected [transaction sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted atomic batch persistence, durable selected-account imports, verified Transactions dispatch and daily missed-notification reconciliation are implemented. The [owner-only status API](../../docs/application/banking-status.md) exposes persisted import progress, coverage and freshness. Public transaction reads remain separate work.
 
 The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
-an owner-only independent preference and immutable write recovery; Account UI and
-Personal date/reporting consumers remain separate deliveries.
+an owner-only independent preference and immutable write recovery. Account consumes
+its independent control, and Personal initializes the device zone once. General
+date/reporting APIs and activity content remain separate deliveries.
 
 ## Design and implementation
 

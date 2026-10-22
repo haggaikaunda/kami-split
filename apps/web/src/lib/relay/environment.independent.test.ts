@@ -1,3 +1,7 @@
+import cancelDocument, {
+  type enrollmentCancelMutation,
+} from './__generated__/enrollmentCancelMutation.graphql';
+import { command } from '@/components/personal/relay-command';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchQuery } from 'relay-runtime';
@@ -212,3 +216,62 @@ it('retains the owner scope when enrollment recovery has no receipt yet', async 
   expect(scope.isLive()).toBe(true);
   scope.dispose();
 });
+
+it.each(['NOT_FOUND', 'FORBIDDEN', 'UNAUTHENTICATED'])(
+  'handles enrollment cancellation %s through the actual transport and generated command',
+  async (code) => {
+    const onDenied = vi.fn();
+    const scope = createScope(
+      clientFor(async () => sessionFor()),
+      'actor',
+      onDenied,
+    );
+    scope.environment.commitUpdate((store) =>
+      store
+        .create('private-sentinel', 'BankingAccount')
+        .setValue('Private account', 'name'),
+    );
+    const attemptId = '11ef2b3d-90af-4a26-b836-771294c16eab';
+    const fetch = vi.fn(async (_url: unknown, options: RequestInit) => {
+      const body = JSON.parse(options.body as string);
+      expect(body.query).toContain('mutation enrollmentCancelMutation');
+      expect(body.variables).toEqual({ attemptId });
+      return new Response(
+        JSON.stringify({
+          data: {
+            cancelBankingEnrollment: {
+              __typename: 'BankingEnrollmentResult',
+              code,
+              state: null,
+              attemptId: null,
+              connectionId: null,
+            },
+          },
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', fetch);
+    const pending = command<enrollmentCancelMutation>(scope, cancelDocument, {
+      attemptId,
+    });
+    if (code === 'NOT_FOUND') {
+      await expect(pending).resolves.toMatchObject({
+        cancelBankingEnrollment: { code },
+      });
+      expect(scope.isLive()).toBe(true);
+      expect(onDenied).not.toHaveBeenCalled();
+      expect(
+        scope.environment.getStore().getSource().get('private-sentinel'),
+      ).not.toBeUndefined();
+    } else {
+      await expect(pending).rejects.toThrow(code);
+      expect(scope.isLive()).toBe(false);
+      expect(onDenied).toHaveBeenCalledExactlyOnceWith(code);
+      expect(
+        scope.environment.getStore().getSource().get('private-sentinel'),
+      ).toBeUndefined();
+    }
+    scope.dispose();
+  },
+);

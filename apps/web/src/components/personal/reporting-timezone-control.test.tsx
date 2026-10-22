@@ -181,3 +181,71 @@ it('renders concrete initial month dates in saved zone across a UTC boundary', a
     root.render(<ReportingTimezoneInitialization showPeriod />),
   );
 });
+
+it.each([
+  ['UNAVAILABLE', 'success'],
+  ['UNAVAILABLE', 'conflict'],
+  ['replay-unavailable', 'success'],
+  ['replay-unavailable', 'conflict'],
+  ['UNKNOWN_FUTURE_OUTCOME', 'success'],
+])(
+  'keeps the frozen write after %s recovery until later definitive %s',
+  async (failure, terminal) => {
+    await act(async () => requests[0].next({ reportingTimezone: saved() }));
+    await input('Europe/London');
+    await click('Save timezone');
+    const original = requests[1].variables;
+    await act(async () => requests[1].error());
+    await input('Asia/Tokyo');
+    await click('Check saved timezone');
+    if (failure === 'replay-unavailable') {
+      await act(async () =>
+        requests[2].next({ reportingTimezoneAttempt: problem('NOT_FOUND') }),
+      );
+      expect(requests[3].variables).toEqual(original);
+      await act(async () =>
+        requests[3].next({ updateReportingTimezone: problem('UNAVAILABLE') }),
+      );
+    } else {
+      await act(async () =>
+        requests[2].next({ reportingTimezoneAttempt: problem(failure) }),
+      );
+    }
+    const afterUncertainty = requests.length;
+    expect(button('Save timezone').disabled).toBe(true);
+    expect(host.querySelector('input')!.value).toBe('Asia/Tokyo');
+    expect(
+      requests.filter((request) => request.name === 'reportingTimezoneQuery'),
+    ).toHaveLength(1);
+    // The next check still recovers the original UUID, never a new mutation.
+    await click('Check saved timezone');
+    expect(requests[afterUncertainty].name).toBe(
+      'reportingTimezoneRecoveryQuery',
+    );
+    expect(requests[afterUncertainty].variables).toEqual({
+      attemptId: original.attemptId,
+      operation: 'UPDATE',
+    });
+    await act(async () =>
+      requests[afterUncertainty].next({
+        reportingTimezoneAttempt:
+          terminal === 'success'
+            ? saved('Europe/London', '2')
+            : problem('CONFLICT'),
+      }),
+    );
+    expect(requests[afterUncertainty + 1].name).toBe('reportingTimezoneQuery');
+    await act(async () =>
+      requests[afterUncertainty + 1].next({
+        reportingTimezone: saved('Europe/London', '2'),
+      }),
+    );
+    expect(button('Save timezone').disabled).toBe(false);
+    await click('Save timezone');
+    expect(requests.at(-1)!.variables).toMatchObject({
+      timezone: 'Asia/Tokyo',
+      expectedVersion: '2',
+    });
+    expect(requests.at(-1)!.variables.attemptId).not.toBe(original.attemptId);
+  },
+);

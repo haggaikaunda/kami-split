@@ -458,3 +458,36 @@ it('provider exit reopens recovery while late success after actual cancellation 
     requests.filter((request) => request.name === 'enrollmentFinishMutation'),
   ).toHaveLength(0);
 });
+
+it('retains the original attempt after cancellation finds no reservation yet', async () => {
+  await click('Connect account');
+  await click('Continue with Plaid');
+  const original = requests[0].variables;
+  const attemptId = (original.input as { attemptId: string }).attemptId;
+  await act(async () => requests[0].error());
+  await click('Cancel connection');
+  await act(async () =>
+    requests[1].next({
+      cancelBankingEnrollment: {
+        ...result('NOT_FOUND'),
+        attemptId: null,
+        state: null,
+      },
+    }),
+  );
+  expect(sessionStorage.getItem('kami-personal-enrollment:alice')).toBe(
+    attemptId,
+  );
+  expect(host.querySelector('dialog')?.open).toBe(true);
+  expect(
+    [...host.querySelectorAll('button')].some(
+      (button) => button.textContent === 'Connect account',
+    ),
+  ).toBe(false);
+  await click('Continue secure connection');
+  expect(requests[2].name).toBe('enrollmentStartMutation');
+  expect(requests[2].variables).toEqual(original);
+  expect(
+    requests.filter((request) => request.name === 'enrollmentFinishMutation'),
+  ).toHaveLength(0);
+});

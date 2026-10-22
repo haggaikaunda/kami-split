@@ -653,3 +653,185 @@ test('Personal cold HTML and Flight deny access and sign-in restores the safe Pe
     page.getByRole('heading', { name: 'No connected accounts yet' }),
   ).toBeVisible();
 });
+
+test('Personal absent cancellation preserves an uncertain start for same-attempt recovery', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await bankingServer(page);
+  const starts = [];
+  let cancellations = 0;
+  await page.route('**/api/graphql', (route) => {
+    const { query, variables = {} } = route.request().postDataJSON();
+    if (query.includes('mutation enrollmentStartMutation')) {
+      starts.push(variables.input);
+      if (starts.length === 1) return route.abort('failed');
+    }
+    if (query.includes('mutation enrollmentCancelMutation')) {
+      cancellations++;
+      return route.fulfill({
+        json: {
+          data: {
+            cancelBankingEnrollment: {
+              __typename: 'BankingEnrollmentResult',
+              code: 'NOT_FOUND',
+              attemptId: variables.input.attemptId,
+            },
+          },
+        },
+      });
+    }
+    if (query.includes('query enrollmentRecoveryQuery')) {
+      return route.fulfill({
+        json: {
+          data: {
+            bankingEnrollment: {
+              __typename: 'BankingEnrollmentResult',
+              code: 'NOT_FOUND',
+              attemptId: variables.attemptId,
+            },
+          },
+        },
+      });
+    }
+    return route.fallback();
+  });
+  await page.goto('/personal?tab=connections');
+  await page
+    .getByRole('button', { name: 'Connect account', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Continue with Plaid', exact: true })
+    .click();
+  await expect(page.getByText(/outcome could not be confirmed/i)).toBeVisible();
+  const attempt = starts[0].attemptId;
+  await page
+    .getByRole('button', { name: 'Cancel connection', exact: true })
+    .click();
+  await expect(
+    page.getByText(/No saved outcome is available yet/),
+  ).toBeVisible();
+  expect(cancellations).toBe(1);
+  const stored = await page.evaluate(() =>
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith('kami-personal-enrollment:'))
+      .map((key) => sessionStorage.getItem(key)),
+  );
+  expect(stored).toEqual([attempt]);
+  await expect(page.getByText(/Financial access is unavailable/)).toHaveCount(
+    0,
+  );
+  await page
+    .getByRole('button', { name: 'Check connection status', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Continue secure connection', exact: true })
+    .click();
+  await expect.poll(() => page.evaluate(() => window.__link.opened)).toBe(1);
+  expect(starts).toHaveLength(2);
+  expect(starts[1]).toEqual(starts[0]);
+  expect(starts[1].attemptId).toBe(attempt);
+});
+
+for (const unresolved of ['receipt', 'replay']) {
+  test(`Account unavailable timezone ${unresolved} retains the frozen attempt until definitive recovery`, async ({
+    page,
+    app,
+  }) => {
+    await app.authenticate();
+    const writes = [];
+    let reads = 0,
+      recoveries = 0,
+      definitive = false;
+    let timezone = 'America/Los_Angeles',
+      version = '1';
+    const saved = () => ({
+      __typename: 'ReportingTimezone',
+      timezone,
+      version,
+    });
+    const problem = (code) => ({
+      __typename: 'ReportingTimezoneProblem',
+      code,
+    });
+    await page.route('**/api/graphql', (route) => {
+      const { query, variables = {} } = route.request().postDataJSON();
+      if (query.includes('query reportingTimezoneQuery')) {
+        reads++;
+        return route.fulfill({
+          json: { data: { reportingTimezone: saved() } },
+        });
+      }
+      if (query.includes('mutation reportingTimezoneUpdateMutation')) {
+        writes.push(variables);
+        if (writes.length === 1) return route.abort('failed');
+        if (!definitive)
+          return route.fulfill({
+            json: { data: { updateReportingTimezone: problem('UNAVAILABLE') } },
+          });
+        timezone = variables.timezone;
+        version = '3';
+        return route.fulfill({
+          json: { data: { updateReportingTimezone: saved() } },
+        });
+      }
+      if (query.includes('query reportingTimezoneRecoveryQuery')) {
+        recoveries++;
+        if (definitive) {
+          timezone = 'Europe/London';
+          version = '2';
+        }
+        return route.fulfill({
+          json: {
+            data: {
+              reportingTimezoneAttempt: definitive
+                ? saved()
+                : problem(
+                    unresolved === 'receipt' ? 'UNAVAILABLE' : 'NOT_FOUND',
+                  ),
+            },
+          },
+        });
+      }
+      return route.fallback();
+    });
+    await page.goto('/account');
+    const zone = page.getByRole('textbox', {
+      name: 'IANA timezone',
+      exact: true,
+    });
+    const save = page.getByRole('button', {
+      name: 'Save timezone',
+      exact: true,
+    });
+    const check = page.getByRole('button', {
+      name: 'Check saved timezone',
+      exact: true,
+    });
+    await zone.fill('Europe/London');
+    await save.click();
+    await expect(save).toBeDisabled();
+    await expect(check).toBeEnabled();
+    const initialReads = reads;
+    await check.click();
+    await expect.poll(() => recoveries).toBe(1);
+    await expect(check).toBeEnabled();
+    await expect(save).toBeDisabled();
+    expect(reads).toBe(initialReads);
+    expect(writes).toHaveLength(unresolved === 'receipt' ? 1 : 2);
+    if (writes.length === 2) expect(writes[1]).toEqual(writes[0]);
+    definitive = true;
+    await check.click();
+    await expect(save).toBeEnabled();
+    await expect(zone).toHaveValue('Europe/London');
+    expect(reads).toBe(initialReads + 1);
+    await zone.fill('Asia/Tokyo');
+    await save.click();
+    await expect(
+      page.getByText('Reporting timezone saved.', { exact: true }),
+    ).toBeVisible();
+    expect(writes.at(-1).expectedVersion).toBe('2');
+    expect(writes.at(-1).attemptId).not.toBe(writes[0].attemptId);
+  });
+}

@@ -190,7 +190,8 @@ export function createScope(
 export type FinancialScope = ReturnType<typeof createScope>;
 
 /** Inspect only typed domain problems and GraphQL error codes, never user text.
- * Recovery NOT_FOUND is an operation outcome, not proof of resource revocation. */
+ * Recovery and typed enrollment NOT_FOUND are operation outcomes, not proof of
+ * resource revocation; even cancellation can precede an in-flight reservation. */
 function accessDenial(
   result: GraphQLResponse,
   recovery: boolean,
@@ -222,7 +223,9 @@ function accessDenial(
           'UNPROVISIONED',
           'FORBIDDEN',
         ].includes(code) ||
-        (code === 'NOT_FOUND' && !recovery)
+        (code === 'NOT_FOUND' &&
+          !recovery &&
+          record.__typename !== 'BankingEnrollmentResult')
       )
         return code;
     }

@@ -17,8 +17,10 @@ Schema additions require approved acceptance criteria and compatibility review. 
 `reporting-timezone.graphql` defines the self-only saved preference, independent
 positive string version and actor/operation/attempt-bound initialization/update
 recovery. See [the operation contract](../../docs/application/reporting-timezone.md)
-for validation, concurrency and lost-response behavior. This API has no Account UI
-or reporting-date consumer and does not enable banking.
+for validation, concurrency and lost-response behavior. Account consumes this
+independent preference for explicit timezone changes, and Personal initializes it
+once from the device. Reporting-date APIs remain separate; the preference does
+not enable banking.
 
 ## Public contract documentation
 
@@ -173,7 +175,7 @@ describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent
 browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
-claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial imports for explicitly selected accounts; ongoing sync triggers, public transaction/reporting APIs, browser Link and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
+claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial/incremental imports for explicitly selected accounts through verified notifications and daily reconciliation. Personal consumes initial browser Link selection/recovery and private connection inventory/status. Public transaction/reporting APIs, activity content, existing-connection management UI and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
 
 ## Private banking replacement
 

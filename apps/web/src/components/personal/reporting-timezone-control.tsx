@@ -21,6 +21,22 @@ import { command, readFresh } from './relay-command';
 import styles from './personal.module.css';
 type Saved = { timezone: string; version: string };
 type Pending = { attemptId: string; timezone: string; expectedVersion: string };
+type TimezoneOutcome = reportingTimezoneQuery['response']['reportingTimezone'];
+/** Only durable success or a definitive rejection resolves the frozen write.
+ * Unavailable, absent and future unknown outcomes keep the original attempt. */
+function definitiveTimezoneOutcome(value: TimezoneOutcome) {
+  return (
+    value.__typename === 'ReportingTimezone' ||
+    (value.__typename === 'ReportingTimezoneProblem' &&
+      [
+        'INVALID_INPUT',
+        'CONFLICT',
+        'NOT_INITIALIZED',
+        'ATTEMPT_MISMATCH',
+      ].includes(value.code))
+  );
+}
+
 export function ReportingTimezoneControl() {
   return <TimezoneOwner editable />;
 }
@@ -199,7 +215,7 @@ function TimezoneEditor({
         recovery,
         { attemptId: pending.current.attemptId, operation: 'UPDATE' },
       );
-      const receipt = result.reportingTimezoneAttempt;
+      let receipt = result.reportingTimezoneAttempt;
       if (
         receipt.__typename === 'ReportingTimezoneProblem' &&
         receipt.code === 'NOT_FOUND'
@@ -210,13 +226,9 @@ function TimezoneEditor({
           update,
           pending.current,
         );
-        if (
-          replay.updateReportingTimezone.__typename !== 'ReportingTimezone' &&
-          replay.updateReportingTimezone.__typename !==
-            'ReportingTimezoneProblem'
-        )
-          throw new Error('UNAVAILABLE');
+        receipt = replay.updateReportingTimezone;
       }
+      if (!definitiveTimezoneOutcome(receipt)) throw new Error('UNAVAILABLE');
     }
     if (!saved && initialization.current) {
       await initializeZone();
