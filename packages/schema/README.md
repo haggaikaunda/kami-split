@@ -172,7 +172,7 @@ describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent
 browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
-claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial imports for explicitly selected accounts; ongoing sync triggers, public transaction/reporting APIs, browser Link and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
+claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial and incremental imports for explicitly selected accounts, verified Transactions dispatch and daily reconciliation. The [private reporting API](../../docs/application/banking-reporting.md) exposes owner-only canonical transaction/detail/archive reads, complete exact summaries and guarded single-field annotation edits/resets with durable recovery. Browser Link, Personal screens and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
 
 ## Private banking replacement
 
@@ -182,8 +182,7 @@ guards, durable confirmation/cancellation and opaque operation recovery. Dates
 partition reporting by posted-bank date; archive references add no contribution.
 See [replacement semantics](../../docs/application/banking-replacement.md) for
 usable-data versus coverage, exact totals, recovery and collection fences.
-Provider ingestion, general banking reporting/edit surfaces and browser management
-remain separate deliveries.
+The [sync adapter](../../docs/application/banking-sync.md) supplies provider ingestion, and the [private reporting API](../../docs/application/banking-reporting.md) supplies canonical reads and guarded annotation edits. Browser management remains a separate delivery.
 
 ## Private banking import status
 
