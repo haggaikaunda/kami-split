@@ -149,3 +149,9 @@ judgments, not file-size rules or source-pattern tests.
 Use colocated CSS Modules for component-owned presentation. `app/tokens.css` owns global theme values and `app/base.css` owns intentional document defaults; components import their own styles. Neutral UI lives in `components/ui/primitives`, reusable workspace patterns in `components/workspace/patterns`, application chrome in `components/workspace/shell.module.css`, and exact financial presentation in `components/financial/presentation`. Shared presentation accepts ordinary props and does not fetch data. Native form defaults are an explicit `ui/form-layout.module.css` scope with control slots; category presentation lives in `financial/category`. Every production feature stylesheet is colocated; the UI guide maps the owners and documented variants.
 
 Prefer a component's public variant or caller-owned root class. Existing compositional layouts use the documented `data-ui` slots; never depend on a generated class name or another component's private child tags. The root layout anchors the shared module imports before route sheets; preserve that order, import shared components before feature customization styles and verify a production build with direct loads and route-order transitions, since Next may retain and merge CSS chunks. See the [UI guide](ui.md) for token roles, the slot contract, responsive thresholds, safe areas and enlarged-text behavior; use the [executable gallery](../primitives-preview/README.md) to inspect shared states.
+
+Private bank account status uses stream-specific cache identity because replacement
+bindings retain the logical account ID. Select `streamId`; absent stream identity
+stays parent-scoped. See [bank import status](banking-status.md) for snapshot
+refresh/invalidation and nullable coverage semantics. This adds contract plumbing,
+with browser banking presentation remaining a separate delivery.

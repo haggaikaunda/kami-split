@@ -269,6 +269,8 @@ type BankingAccount struct {
 	Currency string `json:"currency"`
 	// Initial requested history window of 365 days; actual coverage and retention are separate.
 	RequestedHistoryDays int `json:"requestedHistoryDays"`
+	// One persisted stream status from the same authorized snapshot as connection lifecycle and every sibling. No synchronous provider call.
+	ImportStatus *BankingImportStatus `json:"importStatus"`
 	// Whether this retained stream is selected for future collection. False never erases private history.
 	Selected bool `json:"selected"`
 	// Owner-private provider account reference for explicit selection changes; never identity-continuity evidence.
@@ -283,6 +285,12 @@ type BankingConnection struct {
 	State string `json:"state"`
 	// Retained visible account streams with explicit selection state; never-selected provider accounts are absent.
 	Accounts []*BankingAccount `json:"accounts"`
+	// Opaque digest of this complete persisted status snapshot. Changed values invalidate all cached status dimensions together; never an authorization token.
+	SnapshotRevision string `json:"snapshotRevision"`
+	// Exact decimal deletion fence, independent of provider cleanup.
+	DeletionGeneration string `json:"deletionGeneration"`
+	// Current granted, revoked or unknown provider permission; reporting ownership grants no permission.
+	Permission string `json:"permission"`
 	// Exact lifecycle revision for management compare-and-swap.
 	Generation string `json:"generation"`
 	// healthy, repair_required or accounts_available; a health hint grants no selection or consent.
@@ -325,6 +333,68 @@ type BankingFenceInput struct {
 	ConnectionID string `json:"connectionId"`
 	// Last observed lifecycle generation, encoded as an exact decimal integer.
 	ExpectedGeneration string `json:"expectedGeneration"`
+}
+
+// Owner-private import, coverage and freshness facts. Unknown values stay unknown; no transaction counts or progress percentage imply completeness.
+type BankingImportStatus struct {
+	// Current durable initial-import operation, fenced by connection and binding generations.
+	Operation BankingSyncOperation `json:"operation"`
+	// Persisted usability, independent of operation and provider availability.
+	ImportState BankingImportState `json:"importState"`
+	// True only for an established usable import, including a valid empty committed batch; staged remains noncontributing.
+	Usable bool `json:"usable"`
+	// Safe next action; never replay a one-use exchange or reset an exhausted attempt.
+	Recovery BankingImportRecovery `json:"recovery"`
+	// Selection and permission context for this stream; separate from reporting.
+	Collection BankingCollectionState `json:"collection"`
+	// Current, staged, retired or cancelled source context.
+	ReportingState BankingReportingState `json:"reportingState"`
+	// Freshness evidence without an invented elapsed-time threshold.
+	Freshness BankingImportFreshness `json:"freshness"`
+	// Source availability/gap facts only; filtered reporting completeness belongs to the reporting consumer.
+	Coverage BankingHistoryCoverage `json:"coverage"`
+	// Persisted unknown or provider_reported availability. No current producer establishes exact complete history.
+	HistoryAvailability string `json:"historyAvailability"`
+	// Exclusive requested initial-history date in UTC, absent when no durable request is known.
+	RequestedAfter *string `json:"requestedAfter,omitempty"`
+	// Inclusive initial request date in UTC. Enrollment requestedHistoryDays is depth, never retention.
+	RequestedThrough *string `json:"requestedThrough,omitempty"`
+	// Exclusive server-established actual coverage start; null means unknown, never inferred from earliest transaction.
+	CoverageAfter *string `json:"coverageAfter,omitempty"`
+	// Inclusive server-established actual coverage end; null means unknown.
+	CoverageThrough *string `json:"coverageThrough,omitempty"`
+	// Provider historical phase independently from local commit and availability.
+	HistoricalUpdate BankingHistoricalUpdate `json:"historicalUpdate"`
+	// Last committed provider phase verbatim, including unrecognized future values; absent remains null.
+	ProviderUpdateStatus *string `json:"providerUpdateStatus,omitempty"`
+	// Local timestamp when provider historical completion was first committed; not a provider timestamp or coverage promise.
+	HistoricalUpdateAt *string `json:"historicalUpdateAt,omitempty"`
+	// RFC3339 local atomic batch commit time; null when unknown.
+	LastLocalCommit *string `json:"lastLocalCommit,omitempty"`
+	// Optional Item-level provider success observation, not per-account coverage or local commit time.
+	ProviderSuccessAt *string `json:"providerSuccessAt,omitempty"`
+	// Optional Item-level provider failure observation; absent means unknown.
+	ProviderFailedAt *string `json:"providerFailedAt,omitempty"`
+	// Durable pending operation due time when collection is allowed; the worker owns retry, not the UI.
+	RetryAt *string `json:"retryAt,omitempty"`
+	// Current fenced initial-operation attempt count; absent when no current operation exists.
+	Attempts *int `json:"attempts,omitempty"`
+	// Exact decimal committed import revision; excludes staging.
+	ImportRevision string `json:"importRevision"`
+	// Exact decimal source-data revision; excludes staging.
+	DataRevision string `json:"dataRevision"`
+	// Exact decimal stream lifecycle fence.
+	BindingGeneration string `json:"bindingGeneration"`
+	// Exact decimal logical-account lifecycle fence.
+	AccountGeneration string `json:"accountGeneration"`
+	// Exact decimal shared logical-account invalidation revision for data, plans and lifecycle.
+	ReportingRevision string `json:"reportingRevision"`
+	// Exact decimal latest published plan revision; null means implicit original plan.
+	PlanRevision *string `json:"planRevision,omitempty"`
+	// Current disjoint logical-account posted-date owners, including prior streams; empty staged-only contexts contribute nothing. Archive references add no interval.
+	Intervals []*BankingReportingInterval `json:"intervals"`
+	// Exact decimal count of this stream sources with historical or cross-boundary discrepancy signals; no transaction facts are exposed.
+	DiscrepancyCount string `json:"discrepancyCount"`
 }
 
 // Safe opaque management receipt. READY is local success; provider teardown and purge are separate status fields.
@@ -1727,6 +1797,82 @@ func (e Appearance) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// CollectionState dimension, independent of the other status facts.
+type BankingCollectionState string
+
+const (
+	// Current provider authority is unknown or enrollment is pending.
+	BankingCollectionStateUnknown BankingCollectionState = "UNKNOWN"
+	// Current selected stream has collection authority; this does not promise an ongoing trigger.
+	BankingCollectionStateCollecting BankingCollectionState = "COLLECTING"
+	// Connection health requires repair, independently of retained data.
+	BankingCollectionStateReconnectRequired BankingCollectionState = "RECONNECT_REQUIRED"
+	// Collection is stopped for this retained stream.
+	BankingCollectionStateDeselected BankingCollectionState = "DESELECTED"
+	// Connection is stopped and retained history remains.
+	BankingCollectionStateDisconnected BankingCollectionState = "DISCONNECTED"
+	// Provider permission was revoked; retained history remains.
+	BankingCollectionStateRevoked BankingCollectionState = "REVOKED"
+	// Replacement retired this stream; reporting recovery never restarts collection.
+	BankingCollectionStateRetired BankingCollectionState = "RETIRED"
+	// Staged replacement was cancelled and cannot collect.
+	BankingCollectionStateCancelled BankingCollectionState = "CANCELLED"
+)
+
+var AllBankingCollectionState = []BankingCollectionState{
+	BankingCollectionStateUnknown,
+	BankingCollectionStateCollecting,
+	BankingCollectionStateReconnectRequired,
+	BankingCollectionStateDeselected,
+	BankingCollectionStateDisconnected,
+	BankingCollectionStateRevoked,
+	BankingCollectionStateRetired,
+	BankingCollectionStateCancelled,
+}
+
+func (e BankingCollectionState) IsValid() bool {
+	switch e {
+	case BankingCollectionStateUnknown, BankingCollectionStateCollecting, BankingCollectionStateReconnectRequired, BankingCollectionStateDeselected, BankingCollectionStateDisconnected, BankingCollectionStateRevoked, BankingCollectionStateRetired, BankingCollectionStateCancelled:
+		return true
+	}
+	return false
+}
+
+func (e BankingCollectionState) String() string {
+	return string(e)
+}
+
+func (e *BankingCollectionState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingCollectionState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingCollectionState", str)
+	}
+	return nil
+}
+
+func (e BankingCollectionState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingCollectionState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingCollectionState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 // Explicit ordinary enrollment intent. Use startBankingReplacement with an owned logical account for noncontributing same-account staging.
 type BankingEnrollmentIntent string
 
@@ -1780,6 +1926,329 @@ func (e *BankingEnrollmentIntent) UnmarshalJSON(b []byte) error {
 }
 
 func (e BankingEnrollmentIntent) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// HistoricalUpdate dimension, independent of the other status facts.
+type BankingHistoricalUpdate string
+
+const (
+	// Provider history phase was absent or unrecognized.
+	BankingHistoricalUpdateUnknown BankingHistoricalUpdate = "UNKNOWN"
+	// Provider says history is not ready.
+	BankingHistoricalUpdatePending BankingHistoricalUpdate = "PENDING"
+	// Provider initial update is available; later history may still arrive.
+	BankingHistoricalUpdateInitialAvailable BankingHistoricalUpdate = "INITIAL_AVAILABLE"
+	// Provider historical-update completion was observed; actual coverage may still be unknown.
+	BankingHistoricalUpdateComplete BankingHistoricalUpdate = "COMPLETE"
+)
+
+var AllBankingHistoricalUpdate = []BankingHistoricalUpdate{
+	BankingHistoricalUpdateUnknown,
+	BankingHistoricalUpdatePending,
+	BankingHistoricalUpdateInitialAvailable,
+	BankingHistoricalUpdateComplete,
+}
+
+func (e BankingHistoricalUpdate) IsValid() bool {
+	switch e {
+	case BankingHistoricalUpdateUnknown, BankingHistoricalUpdatePending, BankingHistoricalUpdateInitialAvailable, BankingHistoricalUpdateComplete:
+		return true
+	}
+	return false
+}
+
+func (e BankingHistoricalUpdate) String() string {
+	return string(e)
+}
+
+func (e *BankingHistoricalUpdate) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingHistoricalUpdate(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingHistoricalUpdate", str)
+	}
+	return nil
+}
+
+func (e BankingHistoricalUpdate) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingHistoricalUpdate) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingHistoricalUpdate) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// HistoryCoverage dimension, independent of the other status facts.
+type BankingHistoryCoverage string
+
+const (
+	// Actual available history is unknown, even after historical-update completion.
+	BankingHistoryCoverageUnknown BankingHistoryCoverage = "UNKNOWN"
+	// Provider-reported availability or known bounds exist; no full-range completeness guarantee.
+	BankingHistoryCoverageLimited BankingHistoryCoverage = "LIMITED"
+	// Collection is disconnected, revoked or deselected; retained history cannot cover that interruption.
+	BankingHistoryCoverageKnownGap BankingHistoryCoverage = "KNOWN_GAP"
+)
+
+var AllBankingHistoryCoverage = []BankingHistoryCoverage{
+	BankingHistoryCoverageUnknown,
+	BankingHistoryCoverageLimited,
+	BankingHistoryCoverageKnownGap,
+}
+
+func (e BankingHistoryCoverage) IsValid() bool {
+	switch e {
+	case BankingHistoryCoverageUnknown, BankingHistoryCoverageLimited, BankingHistoryCoverageKnownGap:
+		return true
+	}
+	return false
+}
+
+func (e BankingHistoryCoverage) String() string {
+	return string(e)
+}
+
+func (e *BankingHistoryCoverage) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingHistoryCoverage(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingHistoryCoverage", str)
+	}
+	return nil
+}
+
+func (e BankingHistoryCoverage) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingHistoryCoverage) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingHistoryCoverage) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// ImportFreshness dimension, independent of the other status facts.
+type BankingImportFreshness string
+
+const (
+	// No local commit time is known.
+	BankingImportFreshnessUnknown BankingImportFreshness = "UNKNOWN"
+	// A local commit time is known; no age or current-bank freshness guarantee.
+	BankingImportFreshnessObserved BankingImportFreshness = "OBSERVED"
+	// Retained usable history has stopped collection, a repair/failure signal or operational attention.
+	BankingImportFreshnessStale BankingImportFreshness = "STALE"
+)
+
+var AllBankingImportFreshness = []BankingImportFreshness{
+	BankingImportFreshnessUnknown,
+	BankingImportFreshnessObserved,
+	BankingImportFreshnessStale,
+}
+
+func (e BankingImportFreshness) IsValid() bool {
+	switch e {
+	case BankingImportFreshnessUnknown, BankingImportFreshnessObserved, BankingImportFreshnessStale:
+		return true
+	}
+	return false
+}
+
+func (e BankingImportFreshness) String() string {
+	return string(e)
+}
+
+func (e *BankingImportFreshness) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingImportFreshness(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingImportFreshness", str)
+	}
+	return nil
+}
+
+func (e BankingImportFreshness) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingImportFreshness) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingImportFreshness) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// ImportRecovery dimension, independent of the other status facts.
+type BankingImportRecovery string
+
+const (
+	// No recovery is currently requested.
+	BankingImportRecoveryNone BankingImportRecovery = "NONE"
+	// Poll for durable progress.
+	BankingImportRecoveryWait BankingImportRecovery = "WAIT"
+	// The worker owns the scheduled retry; do not enroll again.
+	BankingImportRecoveryRetryScheduled BankingImportRecovery = "RETRY_SCHEDULED"
+	// Use explicit existing-Item repair; no consent is restored by this status.
+	BankingImportRecoveryReconnect BankingImportRecovery = "RECONNECT"
+	// The bounded operation needs operator attention; do not reset its budget.
+	BankingImportRecoveryContactSupport BankingImportRecovery = "CONTACT_SUPPORT"
+	// Collection is stopped; reporting recovery does not restore permission.
+	BankingImportRecoveryStopped BankingImportRecovery = "STOPPED"
+)
+
+var AllBankingImportRecovery = []BankingImportRecovery{
+	BankingImportRecoveryNone,
+	BankingImportRecoveryWait,
+	BankingImportRecoveryRetryScheduled,
+	BankingImportRecoveryReconnect,
+	BankingImportRecoveryContactSupport,
+	BankingImportRecoveryStopped,
+}
+
+func (e BankingImportRecovery) IsValid() bool {
+	switch e {
+	case BankingImportRecoveryNone, BankingImportRecoveryWait, BankingImportRecoveryRetryScheduled, BankingImportRecoveryReconnect, BankingImportRecoveryContactSupport, BankingImportRecoveryStopped:
+		return true
+	}
+	return false
+}
+
+func (e BankingImportRecovery) String() string {
+	return string(e)
+}
+
+func (e *BankingImportRecovery) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingImportRecovery(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingImportRecovery", str)
+	}
+	return nil
+}
+
+func (e BankingImportRecovery) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingImportRecovery) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingImportRecovery) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// ImportState dimension, independent of the other status facts.
+type BankingImportState string
+
+const (
+	// No established import usability.
+	BankingImportStateUnknown BankingImportState = "UNKNOWN"
+	// Persisted import is loading.
+	BankingImportStateLoading BankingImportState = "LOADING"
+	// Committed data is usable, including an empty batch with a valid checkpoint.
+	BankingImportStateUsable BankingImportState = "USABLE"
+	// Persisted import failed.
+	BankingImportStateFailed BankingImportState = "FAILED"
+	// Persisted data is unavailable.
+	BankingImportStateUnavailable BankingImportState = "UNAVAILABLE"
+)
+
+var AllBankingImportState = []BankingImportState{
+	BankingImportStateUnknown,
+	BankingImportStateLoading,
+	BankingImportStateUsable,
+	BankingImportStateFailed,
+	BankingImportStateUnavailable,
+}
+
+func (e BankingImportState) IsValid() bool {
+	switch e {
+	case BankingImportStateUnknown, BankingImportStateLoading, BankingImportStateUsable, BankingImportStateFailed, BankingImportStateUnavailable:
+		return true
+	}
+	return false
+}
+
+func (e BankingImportState) String() string {
+	return string(e)
+}
+
+func (e *BankingImportState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingImportState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingImportState", str)
+	}
+	return nil
+}
+
+func (e BankingImportState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingImportState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingImportState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1841,6 +2310,146 @@ func (e *BankingReplacementAction) UnmarshalJSON(b []byte) error {
 }
 
 func (e BankingReplacementAction) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// ReportingState dimension, independent of the other status facts.
+type BankingReportingState string
+
+const (
+	// Current source context; the disjoint intervals determine reporting ownership.
+	BankingReportingStateCurrent BankingReportingState = "CURRENT"
+	// Noncontributing replacement context; imported transactions remain staged.
+	BankingReportingStateStaged BankingReportingState = "STAGED"
+	// Retained prior context; only its assigned plan intervals can contribute.
+	BankingReportingStateRetired BankingReportingState = "RETIRED"
+	// Cancelled staged context contributes no transactions.
+	BankingReportingStateCancelled BankingReportingState = "CANCELLED"
+)
+
+var AllBankingReportingState = []BankingReportingState{
+	BankingReportingStateCurrent,
+	BankingReportingStateStaged,
+	BankingReportingStateRetired,
+	BankingReportingStateCancelled,
+}
+
+func (e BankingReportingState) IsValid() bool {
+	switch e {
+	case BankingReportingStateCurrent, BankingReportingStateStaged, BankingReportingStateRetired, BankingReportingStateCancelled:
+		return true
+	}
+	return false
+}
+
+func (e BankingReportingState) String() string {
+	return string(e)
+}
+
+func (e *BankingReportingState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingReportingState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingReportingState", str)
+	}
+	return nil
+}
+
+func (e BankingReportingState) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingReportingState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingReportingState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// SyncOperation dimension, independent of the other status facts.
+type BankingSyncOperation string
+
+const (
+	// No current durable operation is known.
+	BankingSyncOperationUnknown BankingSyncOperation = "UNKNOWN"
+	// First import is durably queued.
+	BankingSyncOperationQueued BankingSyncOperation = "QUEUED"
+	// Durable work is marked running, including lease-expiry recovery until reclaimed. Staged pages remain private.
+	BankingSyncOperationRunning BankingSyncOperation = "RUNNING"
+	// Provider history is not ready; no successful local commit is implied.
+	BankingSyncOperationHistoryPending BankingSyncOperation = "HISTORY_PENDING"
+	// A failed attempt is durably waiting for its next retry.
+	BankingSyncOperationRetryWait BankingSyncOperation = "RETRY_WAIT"
+	// A complete local batch committed; provider availability may remain unknown.
+	BankingSyncOperationCommitted BankingSyncOperation = "COMMITTED"
+	// An exhausted or terminal operation needs explicit recovery.
+	BankingSyncOperationNeedsAttention BankingSyncOperation = "NEEDS_ATTENTION"
+	// Current lifecycle or selection prevents collection.
+	BankingSyncOperationStopped BankingSyncOperation = "STOPPED"
+)
+
+var AllBankingSyncOperation = []BankingSyncOperation{
+	BankingSyncOperationUnknown,
+	BankingSyncOperationQueued,
+	BankingSyncOperationRunning,
+	BankingSyncOperationHistoryPending,
+	BankingSyncOperationRetryWait,
+	BankingSyncOperationCommitted,
+	BankingSyncOperationNeedsAttention,
+	BankingSyncOperationStopped,
+}
+
+func (e BankingSyncOperation) IsValid() bool {
+	switch e {
+	case BankingSyncOperationUnknown, BankingSyncOperationQueued, BankingSyncOperationRunning, BankingSyncOperationHistoryPending, BankingSyncOperationRetryWait, BankingSyncOperationCommitted, BankingSyncOperationNeedsAttention, BankingSyncOperationStopped:
+		return true
+	}
+	return false
+}
+
+func (e BankingSyncOperation) String() string {
+	return string(e)
+}
+
+func (e *BankingSyncOperation) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BankingSyncOperation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BankingSyncOperation", str)
+	}
+	return nil
+}
+
+func (e BankingSyncOperation) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BankingSyncOperation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BankingSyncOperation) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

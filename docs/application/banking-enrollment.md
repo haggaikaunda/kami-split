@@ -5,7 +5,7 @@ operation status, connection/retained-account reads, explicit selection, existin
 repair, disconnect and private-history deletion. It uses the private
 [storage](banking-storage.md), the existing [worker and verified ingress](banking-worker.md),
 and the [Personal banking contract](personal-banking.md). There is no browser Link
-consumer, transaction ingestion or live enrollment authority. The [replacement backend](banking-replacement.md) supplies explicit staging, preview, activation and bounded recovery.
+consumer or live enrollment authority. The [initial import consumer](banking-sync.md) ingests selected streams; the [status API](banking-status.md) exposes their persisted progress, coverage and freshness. The [replacement backend](banking-replacement.md) supplies explicit staging, preview, activation and bounded recovery.
 New enrollment is disabled by default. An active connection returns
 `AWAITING_INITIAL_IMPORT`; this establishes neither transactions nor freshness,
 complete history, a zero-spending result or provider retention.
