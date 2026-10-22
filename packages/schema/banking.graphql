@@ -282,3 +282,43 @@ extend type BankingAccount {
   """
   providerAccountId: String!
 }
+
+"""
+One freshly authorized page of the owner's retained connections, including stopped
+connections and excluding deleted history. Failure returns no partial inventory.
+"""
+type BankingConnectionsResult {
+  """
+  READY, INVALID_INPUT or safe authentication/availability status; READY may be empty.
+  """
+  code: String!
+  """
+  Existing owner-private connection/status snapshots in ascending connection UUID order.
+  """
+  connections: [BankingConnection!]!
+  """
+  Opaque continuation position, null for an empty page; grants no authority.
+  """
+  endCursor: String
+  """
+  Whether another connection existed in this authorized snapshot. Later pages reauthorize.
+  """
+  hasNextPage: Boolean!
+}
+
+extend type Query {
+  """
+  Discover retained owner-only connections after a fresh login without provider calls.
+  Every page rechecks the enabled actor; concurrent additions/deletions may change later pages.
+  """
+  bankingConnections(
+    """
+    Maximum connections per page, from 1 through 50; defaults to 20.
+    """
+    first: Int = 20
+    """
+    Opaque endCursor from an earlier page, or null to start at the beginning.
+    """
+    after: String
+  ): BankingConnectionsResult!
+}

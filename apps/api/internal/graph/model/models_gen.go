@@ -309,6 +309,19 @@ type BankingConnectionResult struct {
 	Connection *BankingConnection `json:"connection,omitempty"`
 }
 
+// One freshly authorized page of the owner's retained connections, including stopped
+// connections and excluding deleted history. Failure returns no partial inventory.
+type BankingConnectionsResult struct {
+	// READY, INVALID_INPUT or safe authentication/availability status; READY may be empty.
+	Code string `json:"code"`
+	// Existing owner-private connection/status snapshots in ascending connection UUID order.
+	Connections []*BankingConnection `json:"connections"`
+	// Opaque continuation position, null for an empty page; grants no authority.
+	EndCursor *string `json:"endCursor,omitempty"`
+	// Whether another connection existed in this authorized snapshot. Later pages reauthorize.
+	HasNextPage bool `json:"hasNextPage"`
+}
+
 // Safe durable enrollment result. Ready means awaiting initial import, with no assertion of transactions, freshness or spending.
 type BankingEnrollmentResult struct {
 	// Safe actionable outcome such as PREPARED, EXCHANGING, EXCHANGE_UNKNOWN, CLEANUP_PENDING, RETRY_ALLOWED, NEEDS_ATTENTION or AWAITING_INITIAL_IMPORT.
