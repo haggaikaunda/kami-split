@@ -185,3 +185,12 @@ See [replacement semantics](../../docs/application/banking-replacement.md) for
 usable-data versus coverage, exact totals, recovery and collection fences.
 Provider ingestion, general banking reporting/edit surfaces and browser management
 remain separate deliveries.
+
+## Private banking import status
+
+`banking-status.graphql` extends the existing owner-only connection/account read
+with separate operation, usability, recovery, collection, reporting, availability
+and freshness dimensions. See [the status contract](../../docs/application/banking-status.md)
+for unknown/null meanings, requested-bound provenance, snapshot/cache invalidation
+and remaining producers. Logical account IDs repeat across replacement streams;
+Relay consumers select `streamId` for the existing actor-scoped cache identity.

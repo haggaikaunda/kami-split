@@ -7,7 +7,6 @@ package graph
 
 import (
 	"context"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -135,23 +134,12 @@ func (r *queryResolver) BankingConnection(ctx context.Context, connectionID stri
 		result.Code = "INVALID_INPUT"
 		return result, nil
 	}
-	connection, status := r.BankingStorage.ReadLifecycle(ctx, id)
+	connection, status := r.BankingStorage.ReadConnectionStatus(ctx, id)
 	result.Code = status.Code
-	if status.Code != "READY" {
-		return result, nil
+	if status.Code == "READY" {
+		result.Connection = mapBankingStatus(connection)
 	}
-	accounts := []banking.Account{}
-	if connection.State != "deleted" {
-		accounts, status = r.Banking.Accounts(ctx, id)
-	}
-	result.Code = status.Code
-	if status.Code != "READY" {
-		return result, nil
-	}
-	result.Connection = &model.BankingConnection{ID: connection.ID.String(), State: connection.State, Generation: strconv.FormatInt(connection.Generation, 10), Health: connection.Health, Cleanup: connection.Cleanup, Purge: connection.Purge, Accounts: []*model.BankingAccount{}}
-	for _, a := range accounts {
-		result.Connection.Accounts = append(result.Connection.Accounts, &model.BankingAccount{ID: a.ID.String(), StreamID: a.BindingID.String(), Name: a.Name, Kind: a.Kind, Currency: a.Currency, RequestedHistoryDays: a.RequestedHistoryDays, Selected: a.Selected, ProviderAccountID: a.ProviderAccountID})
-	}
+
 	return result, nil
 }
 

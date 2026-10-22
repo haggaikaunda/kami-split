@@ -102,6 +102,7 @@ type ComplexityRoot struct {
 	BankingAccount struct {
 		Currency             func(childComplexity int) int
 		ID                   func(childComplexity int) int
+		ImportStatus         func(childComplexity int) int
 		Kind                 func(childComplexity int) int
 		Name                 func(childComplexity int) int
 		ProviderAccountID    func(childComplexity int) int
@@ -111,13 +112,16 @@ type ComplexityRoot struct {
 	}
 
 	BankingConnection struct {
-		Accounts   func(childComplexity int) int
-		Cleanup    func(childComplexity int) int
-		Generation func(childComplexity int) int
-		Health     func(childComplexity int) int
-		ID         func(childComplexity int) int
-		Purge      func(childComplexity int) int
-		State      func(childComplexity int) int
+		Accounts           func(childComplexity int) int
+		Cleanup            func(childComplexity int) int
+		DeletionGeneration func(childComplexity int) int
+		Generation         func(childComplexity int) int
+		Health             func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		Permission         func(childComplexity int) int
+		Purge              func(childComplexity int) int
+		SnapshotRevision   func(childComplexity int) int
+		State              func(childComplexity int) int
 	}
 
 	BankingConnectionResult struct {
@@ -132,6 +136,38 @@ type ComplexityRoot struct {
 		ExpiresAt    func(childComplexity int) int
 		LinkToken    func(childComplexity int) int
 		State        func(childComplexity int) int
+	}
+
+	BankingImportStatus struct {
+		AccountGeneration    func(childComplexity int) int
+		Attempts             func(childComplexity int) int
+		BindingGeneration    func(childComplexity int) int
+		Collection           func(childComplexity int) int
+		Coverage             func(childComplexity int) int
+		CoverageAfter        func(childComplexity int) int
+		CoverageThrough      func(childComplexity int) int
+		DataRevision         func(childComplexity int) int
+		DiscrepancyCount     func(childComplexity int) int
+		Freshness            func(childComplexity int) int
+		HistoricalUpdate     func(childComplexity int) int
+		HistoricalUpdateAt   func(childComplexity int) int
+		HistoryAvailability  func(childComplexity int) int
+		ImportRevision       func(childComplexity int) int
+		ImportState          func(childComplexity int) int
+		Intervals            func(childComplexity int) int
+		LastLocalCommit      func(childComplexity int) int
+		Operation            func(childComplexity int) int
+		PlanRevision         func(childComplexity int) int
+		ProviderFailedAt     func(childComplexity int) int
+		ProviderSuccessAt    func(childComplexity int) int
+		ProviderUpdateStatus func(childComplexity int) int
+		Recovery             func(childComplexity int) int
+		ReportingRevision    func(childComplexity int) int
+		ReportingState       func(childComplexity int) int
+		RequestedAfter       func(childComplexity int) int
+		RequestedThrough     func(childComplexity int) int
+		RetryAt              func(childComplexity int) int
+		Usable               func(childComplexity int) int
 	}
 
 	BankingManagementResult struct {
@@ -994,6 +1030,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingAccount.ID(childComplexity), true
+	case "BankingAccount.importStatus":
+		if e.ComplexityRoot.BankingAccount.ImportStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingAccount.ImportStatus(childComplexity), true
 	case "BankingAccount.kind":
 		if e.ComplexityRoot.BankingAccount.Kind == nil {
 			break
@@ -1043,6 +1085,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingConnection.Cleanup(childComplexity), true
+	case "BankingConnection.deletionGeneration":
+		if e.ComplexityRoot.BankingConnection.DeletionGeneration == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingConnection.DeletionGeneration(childComplexity), true
 	case "BankingConnection.generation":
 		if e.ComplexityRoot.BankingConnection.Generation == nil {
 			break
@@ -1061,12 +1109,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingConnection.ID(childComplexity), true
+	case "BankingConnection.permission":
+		if e.ComplexityRoot.BankingConnection.Permission == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingConnection.Permission(childComplexity), true
 	case "BankingConnection.purge":
 		if e.ComplexityRoot.BankingConnection.Purge == nil {
 			break
 		}
 
 		return e.ComplexityRoot.BankingConnection.Purge(childComplexity), true
+	case "BankingConnection.snapshotRevision":
+		if e.ComplexityRoot.BankingConnection.SnapshotRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingConnection.SnapshotRevision(childComplexity), true
 	case "BankingConnection.state":
 		if e.ComplexityRoot.BankingConnection.State == nil {
 			break
@@ -1123,6 +1183,181 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingEnrollmentResult.State(childComplexity), true
+
+	case "BankingImportStatus.accountGeneration":
+		if e.ComplexityRoot.BankingImportStatus.AccountGeneration == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.AccountGeneration(childComplexity), true
+	case "BankingImportStatus.attempts":
+		if e.ComplexityRoot.BankingImportStatus.Attempts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Attempts(childComplexity), true
+	case "BankingImportStatus.bindingGeneration":
+		if e.ComplexityRoot.BankingImportStatus.BindingGeneration == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.BindingGeneration(childComplexity), true
+	case "BankingImportStatus.collection":
+		if e.ComplexityRoot.BankingImportStatus.Collection == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Collection(childComplexity), true
+	case "BankingImportStatus.coverage":
+		if e.ComplexityRoot.BankingImportStatus.Coverage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Coverage(childComplexity), true
+	case "BankingImportStatus.coverageAfter":
+		if e.ComplexityRoot.BankingImportStatus.CoverageAfter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.CoverageAfter(childComplexity), true
+	case "BankingImportStatus.coverageThrough":
+		if e.ComplexityRoot.BankingImportStatus.CoverageThrough == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.CoverageThrough(childComplexity), true
+	case "BankingImportStatus.dataRevision":
+		if e.ComplexityRoot.BankingImportStatus.DataRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.DataRevision(childComplexity), true
+	case "BankingImportStatus.discrepancyCount":
+		if e.ComplexityRoot.BankingImportStatus.DiscrepancyCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.DiscrepancyCount(childComplexity), true
+	case "BankingImportStatus.freshness":
+		if e.ComplexityRoot.BankingImportStatus.Freshness == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Freshness(childComplexity), true
+	case "BankingImportStatus.historicalUpdate":
+		if e.ComplexityRoot.BankingImportStatus.HistoricalUpdate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.HistoricalUpdate(childComplexity), true
+	case "BankingImportStatus.historicalUpdateAt":
+		if e.ComplexityRoot.BankingImportStatus.HistoricalUpdateAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.HistoricalUpdateAt(childComplexity), true
+	case "BankingImportStatus.historyAvailability":
+		if e.ComplexityRoot.BankingImportStatus.HistoryAvailability == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.HistoryAvailability(childComplexity), true
+	case "BankingImportStatus.importRevision":
+		if e.ComplexityRoot.BankingImportStatus.ImportRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ImportRevision(childComplexity), true
+	case "BankingImportStatus.importState":
+		if e.ComplexityRoot.BankingImportStatus.ImportState == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ImportState(childComplexity), true
+	case "BankingImportStatus.intervals":
+		if e.ComplexityRoot.BankingImportStatus.Intervals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Intervals(childComplexity), true
+	case "BankingImportStatus.lastLocalCommit":
+		if e.ComplexityRoot.BankingImportStatus.LastLocalCommit == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.LastLocalCommit(childComplexity), true
+	case "BankingImportStatus.operation":
+		if e.ComplexityRoot.BankingImportStatus.Operation == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Operation(childComplexity), true
+	case "BankingImportStatus.planRevision":
+		if e.ComplexityRoot.BankingImportStatus.PlanRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.PlanRevision(childComplexity), true
+	case "BankingImportStatus.providerFailedAt":
+		if e.ComplexityRoot.BankingImportStatus.ProviderFailedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ProviderFailedAt(childComplexity), true
+	case "BankingImportStatus.providerSuccessAt":
+		if e.ComplexityRoot.BankingImportStatus.ProviderSuccessAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ProviderSuccessAt(childComplexity), true
+	case "BankingImportStatus.providerUpdateStatus":
+		if e.ComplexityRoot.BankingImportStatus.ProviderUpdateStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ProviderUpdateStatus(childComplexity), true
+	case "BankingImportStatus.recovery":
+		if e.ComplexityRoot.BankingImportStatus.Recovery == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Recovery(childComplexity), true
+	case "BankingImportStatus.reportingRevision":
+		if e.ComplexityRoot.BankingImportStatus.ReportingRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ReportingRevision(childComplexity), true
+	case "BankingImportStatus.reportingState":
+		if e.ComplexityRoot.BankingImportStatus.ReportingState == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.ReportingState(childComplexity), true
+	case "BankingImportStatus.requestedAfter":
+		if e.ComplexityRoot.BankingImportStatus.RequestedAfter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.RequestedAfter(childComplexity), true
+	case "BankingImportStatus.requestedThrough":
+		if e.ComplexityRoot.BankingImportStatus.RequestedThrough == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.RequestedThrough(childComplexity), true
+	case "BankingImportStatus.retryAt":
+		if e.ComplexityRoot.BankingImportStatus.RetryAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.RetryAt(childComplexity), true
+	case "BankingImportStatus.usable":
+		if e.ComplexityRoot.BankingImportStatus.Usable == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingImportStatus.Usable(childComplexity), true
 
 	case "BankingManagementResult.code":
 		if e.ComplexityRoot.BankingManagementResult.Code == nil {
@@ -3825,6 +4060,361 @@ type BankingReplacementPreview {
   Reporting/connection/permission status; a restored retired source remains retired.
   """
   collectionState: String
+}
+`, BuiltIn: false},
+	{Name: "../../../../packages/schema/banking-status.graphql", Input: `extend type BankingConnection {
+  """
+  Opaque digest of this complete persisted status snapshot. Changed values invalidate all cached status dimensions together; never an authorization token.
+  """
+  snapshotRevision: String!
+  """
+  Exact decimal deletion fence, independent of provider cleanup.
+  """
+  deletionGeneration: String!
+  """
+  Current granted, revoked or unknown provider permission; reporting ownership grants no permission.
+  """
+  permission: String!
+}
+extend type BankingAccount {
+  """
+  One persisted stream status from the same authorized snapshot as connection lifecycle and every sibling. No synchronous provider call.
+  """
+  importStatus: BankingImportStatus!
+}
+
+"""
+SyncOperation dimension, independent of the other status facts.
+"""
+enum BankingSyncOperation {
+  """
+  No current durable operation is known.
+  """
+  UNKNOWN
+  """
+  First import is durably queued.
+  """
+  QUEUED
+  """
+  A worker holds the import lease; staged pages remain private.
+  """
+  RUNNING
+  """
+  Provider history is not ready; no successful local commit is implied.
+  """
+  HISTORY_PENDING
+  """
+  A failed attempt is durably waiting for its next retry.
+  """
+  RETRY_WAIT
+  """
+  A complete local batch committed; provider availability may remain unknown.
+  """
+  COMMITTED
+  """
+  An exhausted or terminal operation needs explicit recovery.
+  """
+  NEEDS_ATTENTION
+  """
+  Current lifecycle or selection prevents collection.
+  """
+  STOPPED
+}
+
+"""
+ImportState dimension, independent of the other status facts.
+"""
+enum BankingImportState {
+  """
+  No established import usability.
+  """
+  UNKNOWN
+  """
+  Persisted import is loading.
+  """
+  LOADING
+  """
+  Committed data is usable, including an empty batch with a valid checkpoint.
+  """
+  USABLE
+  """
+  Persisted import failed.
+  """
+  FAILED
+  """
+  Persisted data is unavailable.
+  """
+  UNAVAILABLE
+}
+
+"""
+ImportRecovery dimension, independent of the other status facts.
+"""
+enum BankingImportRecovery {
+  """
+  No recovery is currently requested.
+  """
+  NONE
+  """
+  Poll for durable progress.
+  """
+  WAIT
+  """
+  The worker owns the scheduled retry; do not enroll again.
+  """
+  RETRY_SCHEDULED
+  """
+  Use explicit existing-Item repair; no consent is restored by this status.
+  """
+  RECONNECT
+  """
+  The bounded operation needs operator attention; do not reset its budget.
+  """
+  CONTACT_SUPPORT
+  """
+  Collection is stopped; reporting recovery does not restore permission.
+  """
+  STOPPED
+}
+
+"""
+ImportFreshness dimension, independent of the other status facts.
+"""
+enum BankingImportFreshness {
+  """
+  No local commit time is known.
+  """
+  UNKNOWN
+  """
+  A local commit time is known; no age or current-bank freshness guarantee.
+  """
+  OBSERVED
+  """
+  Retained usable history has stopped collection, a repair/failure signal or operational attention.
+  """
+  STALE
+}
+
+"""
+HistoryCoverage dimension, independent of the other status facts.
+"""
+enum BankingHistoryCoverage {
+  """
+  Actual available history is unknown, even after historical-update completion.
+  """
+  UNKNOWN
+  """
+  Provider-reported availability or known bounds exist; no full-range completeness guarantee.
+  """
+  LIMITED
+  """
+  Collection is disconnected, revoked or deselected; retained history cannot cover that interruption.
+  """
+  KNOWN_GAP
+}
+
+"""
+HistoricalUpdate dimension, independent of the other status facts.
+"""
+enum BankingHistoricalUpdate {
+  """
+  Provider history phase was absent or unrecognized.
+  """
+  UNKNOWN
+  """
+  Provider says history is not ready.
+  """
+  PENDING
+  """
+  Provider initial update is available; later history may still arrive.
+  """
+  INITIAL_AVAILABLE
+  """
+  Provider historical-update completion was observed; actual coverage may still be unknown.
+  """
+  COMPLETE
+}
+
+"""
+CollectionState dimension, independent of the other status facts.
+"""
+enum BankingCollectionState {
+  """
+  Current provider authority is unknown or enrollment is pending.
+  """
+  UNKNOWN
+  """
+  Current selected stream has collection authority; this does not promise an ongoing trigger.
+  """
+  COLLECTING
+  """
+  Connection health requires repair, independently of retained data.
+  """
+  RECONNECT_REQUIRED
+  """
+  Collection is stopped for this retained stream.
+  """
+  DESELECTED
+  """
+  Connection is stopped and retained history remains.
+  """
+  DISCONNECTED
+  """
+  Provider permission was revoked; retained history remains.
+  """
+  REVOKED
+  """
+  Replacement retired this stream; reporting recovery never restarts collection.
+  """
+  RETIRED
+  """
+  Staged replacement was cancelled and cannot collect.
+  """
+  CANCELLED
+}
+
+"""
+ReportingState dimension, independent of the other status facts.
+"""
+enum BankingReportingState {
+  """
+  Current source context; the disjoint intervals determine reporting ownership.
+  """
+  CURRENT
+  """
+  Noncontributing replacement context; imported transactions remain staged.
+  """
+  STAGED
+  """
+  Retained prior context; only its assigned plan intervals can contribute.
+  """
+  RETIRED
+  """
+  Cancelled staged context contributes no transactions.
+  """
+  CANCELLED
+}
+
+"""
+Owner-private import, coverage and freshness facts. Unknown values stay unknown; no transaction counts or progress percentage imply completeness.
+"""
+type BankingImportStatus {
+  """
+  Current durable initial-import operation, fenced by connection and binding generations.
+  """
+  operation: BankingSyncOperation!
+  """
+  Persisted usability, independent of operation and provider availability.
+  """
+  importState: BankingImportState!
+  """
+  True only for an established usable import, including a valid empty committed batch; staged remains noncontributing.
+  """
+  usable: Boolean!
+  """
+  Safe next action; never replay a one-use exchange or reset an exhausted attempt.
+  """
+  recovery: BankingImportRecovery!
+  """
+  Selection and permission context for this stream; separate from reporting.
+  """
+  collection: BankingCollectionState!
+  """
+  Current, staged, retired or cancelled source context.
+  """
+  reportingState: BankingReportingState!
+  """
+  Freshness evidence without an invented elapsed-time threshold.
+  """
+  freshness: BankingImportFreshness!
+  """
+  Source availability/gap facts only; filtered reporting completeness belongs to the reporting consumer.
+  """
+  coverage: BankingHistoryCoverage!
+  """
+  Persisted unknown or provider_reported availability. No current producer establishes exact complete history.
+  """
+  historyAvailability: String!
+  """
+  Exclusive requested initial-history date in UTC, absent when no durable request is known.
+  """
+  requestedAfter: String
+  """
+  Inclusive initial request date in UTC. Enrollment requestedHistoryDays is depth, never retention.
+  """
+  requestedThrough: String
+  """
+  Exclusive server-established actual coverage start; null means unknown, never inferred from earliest transaction.
+  """
+  coverageAfter: String
+  """
+  Inclusive server-established actual coverage end; null means unknown.
+  """
+  coverageThrough: String
+  """
+  Provider historical phase independently from local commit and availability.
+  """
+  historicalUpdate: BankingHistoricalUpdate!
+  """
+  Last committed provider phase verbatim, including unrecognized future values; absent remains null.
+  """
+  providerUpdateStatus: String
+  """
+  Local timestamp when provider historical completion was first committed; not a provider timestamp or coverage promise.
+  """
+  historicalUpdateAt: String
+  """
+  RFC3339 local atomic batch commit time; null when unknown.
+  """
+  lastLocalCommit: String
+  """
+  Optional Item-level provider success observation, not per-account coverage or local commit time.
+  """
+  providerSuccessAt: String
+  """
+  Optional Item-level provider failure observation; absent means unknown.
+  """
+  providerFailedAt: String
+  """
+  Durable pending operation due time when collection is allowed; the worker owns retry, not the UI.
+  """
+  retryAt: String
+  """
+  Current fenced initial-operation attempt count; absent when no current operation exists.
+  """
+  attempts: Int
+  """
+  Exact decimal committed import revision; excludes staging.
+  """
+  importRevision: String!
+  """
+  Exact decimal source-data revision; excludes staging.
+  """
+  dataRevision: String!
+  """
+  Exact decimal stream lifecycle fence.
+  """
+  bindingGeneration: String!
+  """
+  Exact decimal logical-account lifecycle fence.
+  """
+  accountGeneration: String!
+  """
+  Exact decimal shared logical-account invalidation revision for data, plans and lifecycle.
+  """
+  reportingRevision: String!
+  """
+  Exact decimal latest published plan revision; null means implicit original plan.
+  """
+  planRevision: String
+  """
+  Current disjoint logical-account posted-date owners, including prior streams; empty staged-only contexts contribute nothing. Archive references add no interval.
+  """
+  intervals: [BankingReportingInterval!]!
+  """
+  Exact decimal count of this stream sources with historical or cross-boundary discrepancy signals; no transaction facts are exposed.
+  """
+  discrepancyCount: String!
 }
 `, BuiltIn: false},
 	{Name: "../../../../packages/schema/banking.graphql", Input: `extend type Query {
@@ -7066,6 +7656,8 @@ func (ec *executionContext) childFields_BankingAccount(ctx context.Context, fiel
 		return ec.fieldContext_BankingAccount_currency(ctx, field)
 	case "requestedHistoryDays":
 		return ec.fieldContext_BankingAccount_requestedHistoryDays(ctx, field)
+	case "importStatus":
+		return ec.fieldContext_BankingAccount_importStatus(ctx, field)
 	case "selected":
 		return ec.fieldContext_BankingAccount_selected(ctx, field)
 	case "providerAccountId":
@@ -7082,6 +7674,12 @@ func (ec *executionContext) childFields_BankingConnection(ctx context.Context, f
 		return ec.fieldContext_BankingConnection_state(ctx, field)
 	case "accounts":
 		return ec.fieldContext_BankingConnection_accounts(ctx, field)
+	case "snapshotRevision":
+		return ec.fieldContext_BankingConnection_snapshotRevision(ctx, field)
+	case "deletionGeneration":
+		return ec.fieldContext_BankingConnection_deletionGeneration(ctx, field)
+	case "permission":
+		return ec.fieldContext_BankingConnection_permission(ctx, field)
 	case "generation":
 		return ec.fieldContext_BankingConnection_generation(ctx, field)
 	case "health":
@@ -7120,6 +7718,70 @@ func (ec *executionContext) childFields_BankingEnrollmentResult(ctx context.Cont
 		return ec.fieldContext_BankingEnrollmentResult_expiresAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type BankingEnrollmentResult", field.Name)
+}
+
+func (ec *executionContext) childFields_BankingImportStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "operation":
+		return ec.fieldContext_BankingImportStatus_operation(ctx, field)
+	case "importState":
+		return ec.fieldContext_BankingImportStatus_importState(ctx, field)
+	case "usable":
+		return ec.fieldContext_BankingImportStatus_usable(ctx, field)
+	case "recovery":
+		return ec.fieldContext_BankingImportStatus_recovery(ctx, field)
+	case "collection":
+		return ec.fieldContext_BankingImportStatus_collection(ctx, field)
+	case "reportingState":
+		return ec.fieldContext_BankingImportStatus_reportingState(ctx, field)
+	case "freshness":
+		return ec.fieldContext_BankingImportStatus_freshness(ctx, field)
+	case "coverage":
+		return ec.fieldContext_BankingImportStatus_coverage(ctx, field)
+	case "historyAvailability":
+		return ec.fieldContext_BankingImportStatus_historyAvailability(ctx, field)
+	case "requestedAfter":
+		return ec.fieldContext_BankingImportStatus_requestedAfter(ctx, field)
+	case "requestedThrough":
+		return ec.fieldContext_BankingImportStatus_requestedThrough(ctx, field)
+	case "coverageAfter":
+		return ec.fieldContext_BankingImportStatus_coverageAfter(ctx, field)
+	case "coverageThrough":
+		return ec.fieldContext_BankingImportStatus_coverageThrough(ctx, field)
+	case "historicalUpdate":
+		return ec.fieldContext_BankingImportStatus_historicalUpdate(ctx, field)
+	case "providerUpdateStatus":
+		return ec.fieldContext_BankingImportStatus_providerUpdateStatus(ctx, field)
+	case "historicalUpdateAt":
+		return ec.fieldContext_BankingImportStatus_historicalUpdateAt(ctx, field)
+	case "lastLocalCommit":
+		return ec.fieldContext_BankingImportStatus_lastLocalCommit(ctx, field)
+	case "providerSuccessAt":
+		return ec.fieldContext_BankingImportStatus_providerSuccessAt(ctx, field)
+	case "providerFailedAt":
+		return ec.fieldContext_BankingImportStatus_providerFailedAt(ctx, field)
+	case "retryAt":
+		return ec.fieldContext_BankingImportStatus_retryAt(ctx, field)
+	case "attempts":
+		return ec.fieldContext_BankingImportStatus_attempts(ctx, field)
+	case "importRevision":
+		return ec.fieldContext_BankingImportStatus_importRevision(ctx, field)
+	case "dataRevision":
+		return ec.fieldContext_BankingImportStatus_dataRevision(ctx, field)
+	case "bindingGeneration":
+		return ec.fieldContext_BankingImportStatus_bindingGeneration(ctx, field)
+	case "accountGeneration":
+		return ec.fieldContext_BankingImportStatus_accountGeneration(ctx, field)
+	case "reportingRevision":
+		return ec.fieldContext_BankingImportStatus_reportingRevision(ctx, field)
+	case "planRevision":
+		return ec.fieldContext_BankingImportStatus_planRevision(ctx, field)
+	case "intervals":
+		return ec.fieldContext_BankingImportStatus_intervals(ctx, field)
+	case "discrepancyCount":
+		return ec.fieldContext_BankingImportStatus_discrepancyCount(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BankingImportStatus", field.Name)
 }
 
 func (ec *executionContext) childFields_BankingManagementResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -9976,6 +10638,38 @@ func (ec *executionContext) fieldContext_BankingAccount_requestedHistoryDays(_ c
 	return graphql.NewScalarFieldContext("BankingAccount", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
+func (ec *executionContext) _BankingAccount_importStatus(ctx context.Context, field graphql.CollectedField, obj *model.BankingAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingAccount_importStatus(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImportStatus, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BankingImportStatus) graphql.Marshaler {
+			return ec.marshalNBankingImportStatus2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportStatus(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingAccount_importStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingImportStatus(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BankingAccount_selected(ctx context.Context, field graphql.CollectedField, obj *model.BankingAccount) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10098,6 +10792,75 @@ func (ec *executionContext) fieldContext_BankingConnection_accounts(_ context.Co
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _BankingConnection_snapshotRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingConnection_snapshotRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingConnection_snapshotRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingConnection", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingConnection_deletionGeneration(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingConnection_deletionGeneration(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DeletionGeneration, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingConnection_deletionGeneration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingConnection", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingConnection_permission(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingConnection_permission(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Permission, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingConnection_permission(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingConnection", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _BankingConnection_generation(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
@@ -10383,6 +11146,682 @@ func (ec *executionContext) _BankingEnrollmentResult_expiresAt(ctx context.Conte
 }
 func (ec *executionContext) fieldContext_BankingEnrollmentResult_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingEnrollmentResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_operation(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_operation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Operation, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingSyncOperation) graphql.Marshaler {
+			return ec.marshalNBankingSyncOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSyncOperation(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_operation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingSyncOperation does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_importState(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_importState(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImportState, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingImportState) graphql.Marshaler {
+			return ec.marshalNBankingImportState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_importState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingImportState does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_usable(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_usable(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Usable, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_usable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_recovery(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_recovery(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Recovery, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingImportRecovery) graphql.Marshaler {
+			return ec.marshalNBankingImportRecovery2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportRecovery(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_recovery(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingImportRecovery does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_collection(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_collection(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Collection, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingCollectionState) graphql.Marshaler {
+			return ec.marshalNBankingCollectionState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingCollectionState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_collection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingCollectionState does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_reportingState(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_reportingState(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReportingState, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingReportingState) graphql.Marshaler {
+			return ec.marshalNBankingReportingState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_reportingState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingReportingState does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_freshness(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_freshness(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Freshness, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingImportFreshness) graphql.Marshaler {
+			return ec.marshalNBankingImportFreshness2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportFreshness(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_freshness(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingImportFreshness does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_coverage(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_coverage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Coverage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingHistoryCoverage) graphql.Marshaler {
+			return ec.marshalNBankingHistoryCoverage2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoryCoverage(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_coverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingHistoryCoverage does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_historyAvailability(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_historyAvailability(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HistoryAvailability, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_historyAvailability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_requestedAfter(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_requestedAfter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedAfter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_requestedAfter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_requestedThrough(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_requestedThrough(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedThrough, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_requestedThrough(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_coverageAfter(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_coverageAfter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverageAfter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_coverageAfter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_coverageThrough(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_coverageThrough(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverageThrough, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_coverageThrough(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_historicalUpdate(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_historicalUpdate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HistoricalUpdate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.BankingHistoricalUpdate) graphql.Marshaler {
+			return ec.marshalNBankingHistoricalUpdate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoricalUpdate(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_historicalUpdate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type BankingHistoricalUpdate does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_providerUpdateStatus(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_providerUpdateStatus(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderUpdateStatus, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_providerUpdateStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_historicalUpdateAt(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_historicalUpdateAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HistoricalUpdateAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_historicalUpdateAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_lastLocalCommit(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_lastLocalCommit(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastLocalCommit, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_lastLocalCommit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_providerSuccessAt(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_providerSuccessAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderSuccessAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_providerSuccessAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_providerFailedAt(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_providerFailedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderFailedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_providerFailedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_retryAt(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_retryAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RetryAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_retryAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_attempts(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_attempts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Attempts, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_attempts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_importRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_importRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImportRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_importRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_dataRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_dataRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DataRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_dataRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_bindingGeneration(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_bindingGeneration(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BindingGeneration, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_bindingGeneration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_accountGeneration(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_accountGeneration(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AccountGeneration, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_accountGeneration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_reportingRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_reportingRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReportingRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_reportingRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_planRevision(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_planRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PlanRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_planRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingImportStatus_intervals(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_intervals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Intervals, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.BankingReportingInterval) graphql.Marshaler {
+			return ec.marshalNBankingReportingInterval2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingIntervalᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_intervals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankingImportStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BankingReportingInterval(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankingImportStatus_discrepancyCount(ctx context.Context, field graphql.CollectedField, obj *model.BankingImportStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingImportStatus_discrepancyCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DiscrepancyCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingImportStatus_discrepancyCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingImportStatus", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _BankingManagementResult_code(ctx context.Context, field graphql.CollectedField, obj *model.BankingManagementResult) (ret graphql.Marshaler) {
@@ -23053,6 +24492,11 @@ func (ec *executionContext) _BankingAccount(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "importStatus":
+			out.Values[i] = ec._BankingAccount_importStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "selected":
 			out.Values[i] = ec._BankingAccount_selected(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -23108,6 +24552,21 @@ func (ec *executionContext) _BankingConnection(ctx context.Context, sel ast.Sele
 			}
 		case "accounts":
 			out.Values[i] = ec._BankingConnection_accounts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "snapshotRevision":
+			out.Values[i] = ec._BankingConnection_snapshotRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deletionGeneration":
+			out.Values[i] = ec._BankingConnection_deletionGeneration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "permission":
+			out.Values[i] = ec._BankingConnection_permission(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -23235,6 +24694,184 @@ func (ec *executionContext) _BankingEnrollmentResult(ctx context.Context, sel as
 		case "expiresAt":
 			out.Values[i] = ec._BankingEnrollmentResult_expiresAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bankingImportStatusImplementors = []string{"BankingImportStatus"}
+
+func (ec *executionContext) _BankingImportStatus(ctx context.Context, sel ast.SelectionSet, obj *model.BankingImportStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankingImportStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankingImportStatus")
+		case "operation":
+			out.Values[i] = ec._BankingImportStatus_operation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importState":
+			out.Values[i] = ec._BankingImportStatus_importState(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "usable":
+			out.Values[i] = ec._BankingImportStatus_usable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recovery":
+			out.Values[i] = ec._BankingImportStatus_recovery(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "collection":
+			out.Values[i] = ec._BankingImportStatus_collection(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reportingState":
+			out.Values[i] = ec._BankingImportStatus_reportingState(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freshness":
+			out.Values[i] = ec._BankingImportStatus_freshness(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "coverage":
+			out.Values[i] = ec._BankingImportStatus_coverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "historyAvailability":
+			out.Values[i] = ec._BankingImportStatus_historyAvailability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestedAfter":
+			out.Values[i] = ec._BankingImportStatus_requestedAfter(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "requestedThrough":
+			out.Values[i] = ec._BankingImportStatus_requestedThrough(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverageAfter":
+			out.Values[i] = ec._BankingImportStatus_coverageAfter(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverageThrough":
+			out.Values[i] = ec._BankingImportStatus_coverageThrough(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "historicalUpdate":
+			out.Values[i] = ec._BankingImportStatus_historicalUpdate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "providerUpdateStatus":
+			out.Values[i] = ec._BankingImportStatus_providerUpdateStatus(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "historicalUpdateAt":
+			out.Values[i] = ec._BankingImportStatus_historicalUpdateAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lastLocalCommit":
+			out.Values[i] = ec._BankingImportStatus_lastLocalCommit(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "providerSuccessAt":
+			out.Values[i] = ec._BankingImportStatus_providerSuccessAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "providerFailedAt":
+			out.Values[i] = ec._BankingImportStatus_providerFailedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "retryAt":
+			out.Values[i] = ec._BankingImportStatus_retryAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "attempts":
+			out.Values[i] = ec._BankingImportStatus_attempts(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "importRevision":
+			out.Values[i] = ec._BankingImportStatus_importRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dataRevision":
+			out.Values[i] = ec._BankingImportStatus_dataRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bindingGeneration":
+			out.Values[i] = ec._BankingImportStatus_bindingGeneration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountGeneration":
+			out.Values[i] = ec._BankingImportStatus_accountGeneration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reportingRevision":
+			out.Values[i] = ec._BankingImportStatus_reportingRevision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "planRevision":
+			out.Values[i] = ec._BankingImportStatus_planRevision(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "intervals":
+			out.Values[i] = ec._BankingImportStatus_intervals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "discrepancyCount":
+			out.Values[i] = ec._BankingImportStatus_discrepancyCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -28180,6 +29817,16 @@ func (ec *executionContext) marshalNBankingAccount2ᚖgithubᚗcomᚋhaggaikaund
 	return ec._BankingAccount(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBankingCollectionState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingCollectionState(ctx context.Context, v any) (model.BankingCollectionState, error) {
+	var res model.BankingCollectionState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingCollectionState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingCollectionState(ctx context.Context, sel ast.SelectionSet, v model.BankingCollectionState) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNBankingConnectionResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingConnectionResult(ctx context.Context, sel ast.SelectionSet, v *model.BankingConnectionResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -28213,6 +29860,66 @@ func (ec *executionContext) marshalNBankingEnrollmentResult2ᚖgithubᚗcomᚋha
 func (ec *executionContext) unmarshalNBankingFenceInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingFenceInput(ctx context.Context, v any) (model.BankingFenceInput, error) {
 	res, err := ec.unmarshalInputBankingFenceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNBankingHistoricalUpdate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoricalUpdate(ctx context.Context, v any) (model.BankingHistoricalUpdate, error) {
+	var res model.BankingHistoricalUpdate
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingHistoricalUpdate2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoricalUpdate(ctx context.Context, sel ast.SelectionSet, v model.BankingHistoricalUpdate) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNBankingHistoryCoverage2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoryCoverage(ctx context.Context, v any) (model.BankingHistoryCoverage, error) {
+	var res model.BankingHistoryCoverage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingHistoryCoverage2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingHistoryCoverage(ctx context.Context, sel ast.SelectionSet, v model.BankingHistoryCoverage) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNBankingImportFreshness2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportFreshness(ctx context.Context, v any) (model.BankingImportFreshness, error) {
+	var res model.BankingImportFreshness
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingImportFreshness2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportFreshness(ctx context.Context, sel ast.SelectionSet, v model.BankingImportFreshness) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNBankingImportRecovery2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportRecovery(ctx context.Context, v any) (model.BankingImportRecovery, error) {
+	var res model.BankingImportRecovery
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingImportRecovery2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportRecovery(ctx context.Context, sel ast.SelectionSet, v model.BankingImportRecovery) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNBankingImportState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportState(ctx context.Context, v any) (model.BankingImportState, error) {
+	var res model.BankingImportState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingImportState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportState(ctx context.Context, sel ast.SelectionSet, v model.BankingImportState) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNBankingImportStatus2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingImportStatus(ctx context.Context, sel ast.SelectionSet, v *model.BankingImportStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankingImportStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNBankingManagementResult2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingManagementResult(ctx context.Context, sel ast.SelectionSet, v *model.BankingManagementResult) graphql.Marshaler {
@@ -28270,6 +29977,22 @@ func (ec *executionContext) unmarshalNBankingReplacementRevisionsInput2ᚖgithub
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNBankingReportingInterval2ᚕᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingIntervalᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BankingReportingInterval) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBankingReportingInterval2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingInterval(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNBankingReportingInterval2ᚖgithubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingInterval(ctx context.Context, sel ast.SelectionSet, v *model.BankingReportingInterval) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -28280,9 +30003,29 @@ func (ec *executionContext) marshalNBankingReportingInterval2ᚖgithubᚗcomᚋh
 	return ec._BankingReportingInterval(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBankingReportingState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingState(ctx context.Context, v any) (model.BankingReportingState, error) {
+	var res model.BankingReportingState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingReportingState2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingReportingState(ctx context.Context, sel ast.SelectionSet, v model.BankingReportingState) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNBankingSelectionInput2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSelectionInput(ctx context.Context, v any) (model.BankingSelectionInput, error) {
 	res, err := ec.unmarshalInputBankingSelectionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNBankingSyncOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSyncOperation(ctx context.Context, v any) (model.BankingSyncOperation, error) {
+	var res model.BankingSyncOperation
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankingSyncOperation2githubᚗcomᚋhaggaikaundaᚋkamiᚑsplitᚋappsᚋapiᚋinternalᚋgraphᚋmodelᚐBankingSyncOperation(ctx context.Context, sel ast.SelectionSet, v model.BankingSyncOperation) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {

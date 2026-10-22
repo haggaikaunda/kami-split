@@ -2,8 +2,8 @@
 
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
-restricted atomic batch persistence and the durable first-import consumer are implemented below. Public
-status, transaction reads, ongoing sync triggers and the browser transaction journey remain separate work.
+restricted atomic batch persistence and the durable first-import consumer are implemented below. The [owner-only status API](banking-status.md) exposes persisted progress, coverage and freshness.
+Transaction reads, ongoing sync triggers and the browser transaction journey remain separate work.
 Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
@@ -296,5 +296,5 @@ Failure/uncertainty during creation or exchange requires reconciling owned Sandb
 inventory before retry; never replay an uncertain exchange. Output contains only
 safe stages, counts and confirmation. Fixtures establish the full authenticated
 enrollment journey separately; Sandbox establishes only the observed synthetic
-provider/consumer integration. Public transaction/status reads, browser visibility,
+provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Public transaction reads, browser visibility,
 ongoing triggers, live capabilities, backups and release remain separate work.
