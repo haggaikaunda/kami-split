@@ -13,6 +13,12 @@ export function financialDataID(
   record: Record<string, unknown>,
   typeName: string,
 ) {
+  // Logical banking account IDs repeat across replacement bindings. Missing
+  // stream identity stays parent-scoped rather than aliasing another stream.
+  if (typeName === 'BankingAccount')
+    return typeof record.streamId === 'string'
+      ? `BankingAccount:${record.streamId}`
+      : null;
   if (typeof record.id !== 'string') return null;
   return typeName === 'GroupSummary' || typeName === 'ActivityIdentity'
     ? `${typeName}:${record.id}`
