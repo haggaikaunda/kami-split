@@ -699,7 +699,7 @@ test('rapid destinations: the latest balance view survives an older expense repl
     .getByRole('link', { name: 'Expenses', exact: true })
     .click();
   await abandoned.started;
-  await page.getByRole('link', { name: 'Profile', exact: true }).click();
+  await page.getByRole('link', { name: 'Account', exact: true }).click();
   await expect(page.getByLabel('Display name', { exact: true })).toBeVisible();
   await abandoned.release();
   await expect(page).toHaveURL(/\/account(?:\?|$)/);
@@ -1219,7 +1219,7 @@ test('fresh directory reads reflect expense corrections and repayment-only balan
 
 const tabsFor = (page) => page.locator('[data-ui~="workspace-tabs"]');
 const profileFor = (page) =>
-  page.getByRole('link', { name: 'Profile', exact: true });
+  page.getByRole('link', { name: 'Account', exact: true });
 
 test('compact shell keeps native More destinations and keyboard dismissal without financial intent reads', async ({
   page,
@@ -1262,7 +1262,7 @@ test('compact shell keeps native More destinations and keyboard dismissal withou
   await page.keyboard.press('Escape');
 });
 
-test('Profile returns a filtered late-page ledger with its loaded extent, scroll and avatar focus', async ({
+test('Profile returns a filtered late-page ledger with its loaded extent, scroll and Account focus', async ({
   page,
   app,
 }) => {
@@ -1285,7 +1285,7 @@ test('Profile returns a filtered late-page ledger with its loaded extent, scroll
   await expect(profileFor(page)).toHaveAttribute('aria-current', 'page');
   await expect(
     page.locator('[data-ui~="workspace-navigation-links"] [aria-current]'),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await expect(
     page.getByLabel('Email address', { exact: true }),
   ).toHaveAttribute('readonly', '');
@@ -1505,13 +1505,20 @@ async function expectAlignedIdentity(page, title, helpLabel) {
   const brand = header.getByText('Kami Grow', { exact: true });
   const leaf = header.locator('[data-ui~="workspace-brand"] [data-ui~="icon"]');
   const destination = header.getByText(title, { exact: true });
-  const avatar = header.getByRole('link', { name: 'Profile', exact: true });
-  const [brandBox, leafBox, destinationBox, avatarBox] = await Promise.all(
-    [brand, leaf, destination, avatar].map((item) => item.boundingBox()),
+  await expect(
+    header.getByRole('link', { name: 'Account', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: 'Account', exact: true }),
+  ).toBeVisible();
+  const [brandBox, leafBox, destinationBox] = await Promise.all(
+    [brand, leaf, destination].map((item) => item.boundingBox()),
   );
   expect(Math.abs(brandBox.x - destinationBox.x)).toBeLessThanOrEqual(1);
   expect(leafBox.x + leafBox.width).toBeLessThan(brandBox.x);
-  expect(destinationBox.x + destinationBox.width).toBeLessThan(avatarBox.x);
+  expect(destinationBox.x + destinationBox.width).toBeLessThanOrEqual(
+    (await header.boundingBox()).x + (await header.boundingBox()).width,
+  );
   if (helpLabel) {
     const helpBox = await header
       .getByRole('button', { name: helpLabel, exact: true })

@@ -14,7 +14,7 @@ import {
   spaceRepaymentHref,
 } from '@/lib/relay/space-routes';
 import { OverviewExpense, OverviewExpenseLink } from './overview-expense';
-import { AppIcon } from '@/components/workspace-identity';
+import { AppIcon, ExpenseActionLabel } from '@/components/workspace-identity';
 import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -194,12 +194,13 @@ export function GroupWorkspaceContent({
     <Link
       onClick={(event) => expenseEntry?.activate(event, group.id)}
       id="workspace-add"
+      aria-label="Add expense"
       scroll={false}
       data-ui="banner-action"
       className={workspaceStyles['banner-action']}
       href={`${base}?${addParams}`}
     >
-      <AppIcon name="plus" /> Add expense
+      <AppIcon name="plus" /> <ExpenseActionLabel />
     </Link>
   );
   const workspaceHeader = (

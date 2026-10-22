@@ -410,6 +410,37 @@ it('restores logical focus and scroll only for an authorized source; missing sou
   vi.unstubAllGlobals();
 });
 
+it('restores Personal focus and scroll through the same actor-scoped source store after its authorized read', async () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  scope.visits.set('personal-visit', {
+    href: '/personal?tab=transactions&kind=income',
+    focus: 'workspace-account',
+    scroll: 420,
+  });
+  mock.search = 'restore=personal-visit';
+  await render(
+    <>
+      <h1 data-page-heading tabIndex={-1}>
+        Personal
+      </h1>
+      <Link id="workspace-account" href="/account">
+        Account
+      </Link>
+      <RestoreSource scope={scope as never} allowed={[]} />
+    </>,
+  );
+  await act(async () => frames.shift()!(0));
+  expect(document.activeElement!.id).toBe('workspace-account');
+  expect(scroll).toHaveBeenLastCalledWith(0, 420);
+  vi.unstubAllGlobals();
+});
+
 it('does not repeat focus or scroll on background remount, but permits another explicit source return', async () => {
   const frames: FrameRequestCallback[] = [];
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {

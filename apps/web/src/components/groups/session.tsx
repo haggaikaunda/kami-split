@@ -53,8 +53,19 @@ export function FinancialSession({ children }: { children: React.ReactNode }) {
             else sessionStorage.removeItem('kami-financial-subject');
             if (actor && !scope)
               scope = createScope(client, actor, () => {
+                if (!active) return;
                 ticket++;
+                // Revoke memory before browser storage: denial cleanup can throw,
+                // and failed cleanup must be retried before any later admission.
+                scope?.dispose();
                 scope = undefined;
+                pendingPurge = true;
+                try {
+                  clearFinancialStorage();
+                  pendingPurge = false;
+                } catch {
+                  // Keep pendingPurge set even when part of the purge succeeded.
+                }
                 setAccess({
                   loading: false,
                   client,

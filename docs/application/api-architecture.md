@@ -33,7 +33,7 @@ metadata and immutable financial/audit/recovery records remain unchanged.
 
 The [reporting-timezone API](reporting-timezone.md) provides a self-only saved IANA
 zone, independent version and durable same-attempt write recovery without a bank
-connection. Its consumer UI and general date-bound reads remain separate deliveries. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
+connection. Account provides its independent control, and Personal initializes the device zone once; general date-bound reads remain a separate delivery. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
 
 ## Responsibilities
 
@@ -80,7 +80,7 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 ## Future integrations
 
-Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial/incremental imports for explicitly selected accounts, verified notification dispatch and daily missed-notification reconciliation. Public transaction/reporting reads and browser UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
+Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial/incremental imports for explicitly selected accounts, verified notification dispatch and daily missed-notification reconciliation. Personal supplies shared navigation, initial Link selection/recovery and private connection inventory/status. Public transaction/reporting reads, activity content and existing-connection management UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
 
 The internal [private banking storage](banking-storage.md) foundation implements
 owner-only persistence, protected credential storage, durable attempts and lifecycle

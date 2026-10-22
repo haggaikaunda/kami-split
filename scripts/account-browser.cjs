@@ -148,7 +148,15 @@ withAuthFixture(origin, session, async () => {
             },
           };
           let data;
-          if (query.includes('updateMyProfile')) {
+          if (query.includes('reportingTimezone'))
+            data = {
+              reportingTimezone: {
+                __typename: 'ReportingTimezone',
+                timezone: 'America/Los_Angeles',
+                version: '1',
+              },
+            };
+          else if (query.includes('updateMyProfile')) {
             saveCount++;
             if (conflict) {
               conflict = false;
@@ -260,7 +268,7 @@ withAuthFixture(origin, session, async () => {
         assert.equal(
           await page
             .getByRole('navigation', { name: 'Financial navigation' })
-            .getByRole('link', { name: 'Profile', exact: true })
+            .getByRole('link', { name: 'Account', exact: true })
             .getAttribute('aria-current'),
           'page',
         );

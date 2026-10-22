@@ -166,3 +166,23 @@ func (r *queryResolver) BankingOperation(ctx context.Context, attemptID string) 
 	}
 	return &model.BankingManagementResult{Code: r.BankingStorage.OperationStatus(ctx, id).Code}, nil
 }
+
+// BankingConnections is the resolver for the bankingConnections field.
+func (r *queryResolver) BankingConnections(ctx context.Context, first *int, after *string) (*model.BankingConnectionsResult, error) {
+	result := &model.BankingConnectionsResult{Code: "FEATURE_DISABLED", Connections: []*model.BankingConnection{}}
+	if r.BankingStorage == nil {
+		return result, nil
+	}
+	limit := 20
+	if first != nil {
+		limit = *first
+	}
+	page, status := r.BankingStorage.ReadConnections(ctx, limit, after)
+	result.Code = status.Code
+	result.EndCursor = page.EndCursor
+	result.HasNextPage = page.HasNextPage
+	for _, connection := range page.Connections {
+		result.Connections = append(result.Connections, mapBankingStatus(connection))
+	}
+	return result, nil
+}

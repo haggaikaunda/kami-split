@@ -4,8 +4,10 @@ The authenticated GraphQL API delivers owner-bound start, finish, cancellation,
 operation status, connection/retained-account reads, explicit selection, existing-Item
 repair, disconnect and private-history deletion. It uses the private
 [storage](banking-storage.md), the existing [worker and verified ingress](banking-worker.md),
-and the [Personal banking contract](personal-banking.md). There is no browser Link
-consumer or live enrollment authority. The [initial import consumer](banking-sync.md) ingests selected streams; the [status API](banking-status.md) exposes their persisted progress, coverage and freshness. The [replacement backend](banking-replacement.md) supplies explicit staging, preview, activation and bounded recovery.
+and the [Personal banking contract](personal-banking.md). Personal Connections
+consumes initial Link enrollment with explicit account selection and same-attempt
+recovery. Existing-connection management remains a separate UI delivery; live
+enrollment authority remains separately gated. The [initial import consumer](banking-sync.md) ingests selected streams; the [status API](banking-status.md) exposes their persisted progress, coverage and freshness. The [replacement backend](banking-replacement.md) supplies explicit staging, preview, activation and bounded recovery.
 New enrollment is disabled by default. An active connection returns
 `AWAITING_INITIAL_IMPORT`; this establishes neither transactions nor freshness,
 complete history, a zero-spending result or provider retention.
@@ -93,6 +95,60 @@ production credentials are supplied by this implementation.
 Provider contracts: [Users](https://plaid.com/docs/api/users/),
 [Link initialization](https://plaid.com/docs/api/link/), and
 [Item exchange and removal](https://plaid.com/docs/api/items/).
+
+## Browser enrollment and authorized Sandbox checks
+
+Personal opens Overview and directs initial setup to Connections. The compact
+connection list shows selected accounts and their independent import, coverage and
+freshness states. Connect account opens eligibility and privacy information in a
+phone sheet or desktop side panel. Close and Escape dismiss the panel without
+canceling its durable attempt or changing the explicit account selection; Resume
+connection returns to the same attempt. Continue with Plaid creates a durable
+`DIFFERENT` attempt. The native panel closes before the SDK opens its own interface,
+then returns for account selection or an exit outcome. Existing-account intent
+leads to the management boundary without silently replacing reporting history.
+The hosted Plaid SDK returns an in-memory public token and candidate accounts;
+only explicitly checked eligible accounts enter the finish request. Provider
+metadata is a display hint, while the server remains the eligibility authority.
+
+Duplicate callbacks cannot repeat exchange. A lost response recovers the original
+attempt; cancellation keeps new enrollment blocked until durable cleanup allows
+retry. Only the opaque actor-scoped attempt UUID may persist in session storage.
+The shared session clears it on logout, actor change and access denial. Link and
+public tokens and bank details never enter browser persistence. Full OAuth
+redirect continuation is not implemented; institution flows requiring it need a
+separate completion and verification before rollout.
+
+Deterministic browser SDK fixtures and authenticated database tests cover client
+state and server persistence. They do not establish real provider acceptance.
+An authorized operator can perform the following Sandbox Link check with a
+uniquely owned test user, isolated database and explicitly enabled Sandbox
+configuration after confirming the required Users API capabilities:
+
+1. Open Personal Connections in each supported browser appearance. Start a
+   non-redirect Sandbox institution flow and confirm the US/USD eligibility,
+   private full joint-account activity and requested 365-day availability copy.
+2. Select one eligible checking, savings or credit-card account explicitly. Leave
+   another unchecked; confirm only the selected account appears and the initial
+   status does not promise complete history, current bank data or zero spending.
+3. Cancel and expire separate owned attempts. Confirm no account activates and a
+   new attempt stays blocked while provider cleanup is pending.
+4. Reload an unfinished attempt and interrupt a finish response in the isolated
+   environment. Recover by the same UUID; verify no second exchange or additional
+   selected account. Reconcile an uncertain provider outcome before retrying.
+5. Confirm a second test actor cannot discover accounts or resume the first
+   actor's attempt; logout/access denial clears private UI and browser recovery
+   storage. Confirm connection creates neither a shared expense nor a transfer.
+6. Reconcile every owned Item and durable attempt through the existing teardown
+   operations. Confirm exact provider removal and local cleanup before removing
+   the disposable environment; an unknown result remains an operator obligation.
+
+Record the actual environment, observed states and limits on the owning issue or
+PR without credentials or bank payloads. This checklist grants no provisioning or
+enrollment authority. Real institutions, redirect flows, restricted provider
+capabilities, retention-compatible consent and production release remain #255
+gates. The [adapter/consumer checks](banking-sync.md) exercise separate server
+contracts and do not substitute for the browser Link journey.
 
 ## Managing an existing connection
 

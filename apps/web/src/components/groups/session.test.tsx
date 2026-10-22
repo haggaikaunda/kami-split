@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { act, useEffect } from 'react';
 import { useRelayEnvironment } from 'react-relay';
-import type { IEnvironment } from 'relay-runtime';
+import { fetchQuery, type IEnvironment } from 'relay-runtime';
+import inventoryDocument, {
+  type personalInventoryQuery,
+} from '@/lib/relay/__generated__/personalInventoryQuery.graphql';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FinancialSession, useFinancialSession } from './session';
@@ -74,6 +77,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   act(() => root.unmount());
   host.remove();
@@ -284,4 +288,106 @@ it('reports the verified presentation actor when a different account cannot open
   expect(original?.isLive()).toBe(false);
   expect(current.error).toContain('Private storage is unavailable');
   expect(current.appearanceActor).toBe('bob');
+});
+
+async function denyBankingInventory() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              bankingConnections: {
+                __typename: 'BankingConnectionsResult',
+                code: 'FORBIDDEN',
+                connections: [],
+                endCursor: null,
+                hasNextPage: false,
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    ),
+  );
+  await act(async () => {
+    await expect(
+      fetchQuery<personalInventoryQuery>(
+        current.scope!.environment,
+        inventoryDocument,
+        { first: 20 },
+        { fetchPolicy: 'network-only' },
+      ).toPromise(),
+    ).rejects.toThrow('FORBIDDEN');
+  });
+}
+it('purges enrollment recovery identifiers and private drafts after confirmed banking access loss', async () => {
+  await render();
+  const original = current.scope!;
+  sessionStorage.setItem('kami-personal-enrollment:alice', 'opaque-attempt');
+  sessionStorage.setItem(privateStorageKey, 'private-draft');
+  sessionStorage.setItem('unrelated-setting', 'retained');
+  original.environment.commitUpdate((store) =>
+    store
+      .create('private-sentinel', 'BankingAccount')
+      .setValue('Private account', 'name'),
+  );
+  const remove = Storage.prototype.removeItem;
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (
+    this: Storage,
+    key,
+  ) {
+    expect(original.isLive()).toBe(false);
+    return remove.call(this, key);
+  });
+  await denyBankingInventory();
+  expect(original.isLive()).toBe(false);
+  expect(
+    original.environment.getStore().getSource().get('private-sentinel'),
+  ).toBeUndefined();
+  expect(current.scope).toBeUndefined();
+  expect(current.discardAppearance).toBe(true);
+  expect(sessionStorage.getItem('kami-personal-enrollment:alice')).toBeNull();
+  expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
+  expect(sessionStorage.getItem('unrelated-setting')).toBe('retained');
+  expect(host.textContent).not.toContain('Private alice');
+});
+it('keeps failed access-loss cleanup pending and retries it before admitting the same actor again', async () => {
+  await render();
+  const original = current.scope!;
+  sessionStorage.setItem('kami-personal-enrollment:alice', 'opaque-attempt');
+  sessionStorage.setItem(privateStorageKey, 'private-draft');
+  const remove = Storage.prototype.removeItem;
+  const blocked = vi
+    .spyOn(Storage.prototype, 'removeItem')
+    .mockImplementation(function (this: Storage, key) {
+      expect(original.isLive()).toBe(false);
+      if (key.startsWith('kami-personal-enrollment:'))
+        throw new DOMException('Blocked', 'SecurityError');
+      return remove.call(this, key);
+    });
+  await denyBankingInventory();
+  expect(current.scope).toBeUndefined();
+  expect(current.error).toContain('Financial access is unavailable');
+  expect(sessionStorage.getItem(privateStorageKey)).toBeNull();
+  expect(sessionStorage.getItem('kami-personal-enrollment:alice')).toBe(
+    'opaque-attempt',
+  );
+  // A second failed admission must not forget the remaining cleanup intent.
+  await act(async () => {
+    sdk.changed('TOKEN_REFRESHED', { user: { id: 'alice' } });
+    await vi.runAllTimersAsync();
+  });
+  expect(current.scope).toBeUndefined();
+  expect(current.error).toContain('Private storage is unavailable');
+  blocked.mockRestore();
+  await act(async () => {
+    sdk.changed('TOKEN_REFRESHED', { user: { id: 'alice' } });
+    await vi.runAllTimersAsync();
+  });
+  expect(sessionStorage.getItem('kami-personal-enrollment:alice')).toBeNull();
+  expect(current.scope?.actor).toBe('alice');
+  expect(current.scope?.id).not.toBe(original.id);
+  expect(original.isLive()).toBe(false);
 });

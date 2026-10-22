@@ -75,3 +75,19 @@ it('retains actor/group scope and frozen input, blocks malformed storage and cle
   clearFinancialStorage();
   expect(sessionStorage.getItem(repaymentStorageKey)).toBeNull();
 });
+
+it('clears every actor enrollment recovery identity without erasing unrelated presentation storage', () => {
+  sessionStorage.setItem(
+    'kami-personal-enrollment:actor-a',
+    'opaque-attempt-a',
+  );
+  sessionStorage.setItem(
+    'kami-personal-enrollment:actor-b',
+    'opaque-attempt-b',
+  );
+  sessionStorage.setItem('unrelated-presentation', 'retained');
+  clearFinancialStorage();
+  expect(sessionStorage.getItem('kami-personal-enrollment:actor-a')).toBeNull();
+  expect(sessionStorage.getItem('kami-personal-enrollment:actor-b')).toBeNull();
+  expect(sessionStorage.getItem('unrelated-presentation')).toBe('retained');
+});

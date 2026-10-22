@@ -77,12 +77,13 @@ OS-wide and Account-only dark palettes have been removed.
 
 ## Browser editing and navigation
 
-`/account` is the full-page Profile destination, reached through the shared header
-avatar on phones and desktop. The compact content uses an identity divider,
+`/account` is the full-page Profile destination, reached through Account in the shared
+phone navigation or at the desktop sidebar bottom. Account remains selected and global navigation stays available. The compact content uses an identity divider,
 stacked read-only email and editable display-name fields, and a native Appearance
 selector in a leading column bounded to 560px. Appearance still saves independently
 and immediately. It loads no financial overview. Its return link uses the actor-scoped
-source visit. Household and directory visits have descriptive labels; a Group/Trip
+source visit. Personal origins require a fresh authenticated response and retain the
+exact local section, dates and filters before source content restores scroll and focus. Household and directory visits have descriptive labels; a Group/Trip
 origin, including nested expense, repayment and activity routes, resolves its name from a fresh, retained authorized group-name query, which
 is revalidated on foreground return. While that authorization is pending, the return
 waits without offering an unconfirmed destination. Failed or missing access falls

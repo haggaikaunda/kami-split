@@ -48,7 +48,7 @@ beforeEach(() => {
         {
           href: '/trips/T?tab=expenses&categories=FOOD&sort=OLDEST',
           group: 'T',
-          focus: 'header-profile',
+          focus: 'workspace-account',
           scroll: 300,
         },
       ],
@@ -111,7 +111,7 @@ it('uses truthful directory and Household labels without URL-provided names; mis
     ['/household?tab=balances', 'Household'],
     ['/household/expenses?view=breakdown', 'Household'],
   ]) {
-    scope.visits.set('visit', { href, focus: 'header-profile', scroll: 3 });
+    scope.visits.set('visit', { href, focus: 'workspace-account', scroll: 3 });
     await act(async () =>
       root.render(<ProfileReturn key={href} scope={scope} />),
     );
@@ -135,7 +135,11 @@ it.each([
 ])(
   'reauthorizes nested origin %s and preserves its exact return path',
   async (href) => {
-    scope.visits.set('visit', { href, focus: 'header-profile', scroll: 300 });
+    scope.visits.set('visit', {
+      href,
+      focus: 'workspace-account',
+      scroll: 300,
+    });
     await act(async () => root.render(<ProfileReturn scope={scope} />));
     expect(host.querySelector('a')).toBeNull();
     expect(requests).toHaveLength(1);
@@ -168,7 +172,7 @@ it.each([
     scope.visits.set('visit', {
       href,
       group: legacyGroup,
-      focus: 'header-profile',
+      focus: 'workspace-account',
       scroll: 3,
     });
     await act(async () => root.render(<ProfileReturn scope={scope} />));
@@ -179,3 +183,41 @@ it.each([
     );
   },
 );
+
+it('reauthorizes filtered Personal origins before preserving the exact return URL', async () => {
+  const href =
+    '/personal?tab=transactions&period=custom&from=2026-10-01&to=2026-10-22&kind=income';
+  scope.visits.set('visit', { href, focus: 'workspace-account', scroll: 420 });
+  await act(async () => root.render(<ProfileReturn scope={scope} />));
+  expect(host.querySelector('a')).toBeNull();
+  expect(requests).toHaveLength(1);
+  await act(async () => requests[0].next(response([])));
+  expect(host.textContent).toBe('Back to Personal');
+  expect(host.querySelector('a')!.getAttribute('href')).toBe(
+    `${href}&restore=visit`,
+  );
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  expect(host.querySelector('a')).toBeNull();
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  await act(async () =>
+    requests
+      .at(-1)!
+      .next({ viewer: { __typename: 'Problem', code: 'UNAUTHENTICATED' } }),
+  );
+  expect(host.textContent).toBe('Go to Groups');
+  expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
+});
+
+it('cannot restore an old actor Personal visit after scope disposal or replacement', async () => {
+  scope.visits.set('visit', {
+    href: '/personal?tab=connections',
+    focus: 'workspace-account',
+    scroll: 42,
+  });
+  scope = { ...scope, isLive: () => false };
+  await act(async () => root.render(<ProfileReturn scope={scope} />));
+  expect(host.querySelector('a')!.getAttribute('href')).toBe('/groups');
+  expect(requests).toHaveLength(0);
+});

@@ -29,6 +29,7 @@ export function financialReturn(value: string | null) {
     '/household/activity',
     '/household/ledger',
   ].includes(url.pathname);
+  const personal = url.pathname === '/personal';
   const creation = ['/groups/new', '/trips/new'].includes(url.pathname);
   const repayment = /^\/(?:groups|trips)\/[^/?#]+\/repayments\/new$/.test(
     url.pathname,
@@ -38,6 +39,7 @@ export function financialReturn(value: string | null) {
     url.hash ||
     !(
       household ||
+      personal ||
       url.pathname === '/account' ||
       url.pathname === '/invitations' ||
       url.pathname === '/groups' ||
@@ -48,8 +50,9 @@ export function financialReturn(value: string | null) {
     )
   )
     return '/groups';
-  const allowed =
-    url.pathname === '/account'
+  const allowed = personal
+    ? ['tab', 'period', 'from', 'to', 'category', 'status', 'account']
+    : url.pathname === '/account'
       ? []
       : url.pathname === '/invitations'
         ? ['group']

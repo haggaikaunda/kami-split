@@ -372,3 +372,7 @@
     padding-inline: 0.125rem;
   }
 }
+
+.workspace-header--personal {
+  color: var(--color-ink);
+}
