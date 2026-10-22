@@ -117,6 +117,11 @@ function PersonalRead({
                     (paramsPeriod === null || paramsPeriod === 'this-month')
                   }
                 />
+                {section !== 'Connections' && (
+                  <p className={styles.privacy}>
+                    Only you can see these bank accounts and their activity.
+                  </p>
+                )}
                 {section === 'Connections' ? (
                   <>
                     <section

@@ -218,3 +218,16 @@ it('leads existing Connections with the compact heading and leaves setup details
     host.querySelector('#existing-connections > p')?.textContent,
   ).toContain('Only selected accounts');
 });
+
+it.each(['overview', 'transactions'])(
+  'shows the owner-only privacy notice on first-use %s',
+  async (section) => {
+    nav.search = `tab=${section}`;
+    await act(async () => root.render(<PersonalWorkspace />));
+    await act(async () => requests[0].next(inventory()));
+    expect(host.textContent).toContain(
+      'Only you can see these bank accounts and their activity.',
+    );
+    expect(host.textContent).not.toContain('Connect account');
+  },
+);
