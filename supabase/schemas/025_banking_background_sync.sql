@@ -152,10 +152,17 @@ END $$;
 -- elapsed local commit time, never a bank freshness or history-coverage claim.
 CREATE FUNCTION app.banking_work_diagnostics() RETURNS TABLE(operation_id uuid,kind text,state text,attempts integer,age_seconds bigint,progress bigint,import_lag_seconds bigint)
 LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
- SELECT w.id,w.kind,w.state,w.attempts,greatest(0,extract(epoch FROM clock_timestamp()-CASE WHEN w.kind='initial_sync' THEN w.requested_at ELSE w.created_at END))::bigint,w.progress,
- CASE WHEN w.kind='initial_sync' AND app.banking_work_authorized(w.id) THEN greatest(0,extract(epoch FROM clock_timestamp()-coalesce(b.last_local_commit,w.requested_at)))::bigint ELSE 0 END
- FROM app.banking_work w LEFT JOIN app.banking_bindings b ON b.id=w.binding_id
- ORDER BY (w.state='complete'),w.requested_at,w.id LIMIT 100;
+ SELECT operation_id,kind,state,attempts,age_seconds,progress,import_lag_seconds FROM (
+  SELECT w.id AS operation_id,w.kind,w.state,w.attempts,
+   greatest(0,extract(epoch FROM clock_timestamp()-CASE WHEN w.kind='initial_sync' THEN w.requested_at ELSE w.created_at END))::bigint AS age_seconds,w.progress,
+   CASE WHEN w.kind='initial_sync' AND app.banking_work_authorized(w.id) THEN greatest(0,extract(epoch FROM clock_timestamp()-coalesce(b.last_local_commit,w.requested_at)))::bigint ELSE 0 END AS import_lag_seconds,
+   CASE WHEN w.kind='initial_sync' THEN w.requested_at ELSE w.created_at END AS requested_at
+  FROM app.banking_work w LEFT JOIN app.banking_bindings b ON b.id=w.binding_id
+  UNION ALL
+  SELECT e.id,'enrollment_recovery',j.state,j.attempts,
+   greatest(0,extract(epoch FROM clock_timestamp()-e.created_at))::bigint,cardinality(j.removed_items)::bigint,0,e.created_at
+  FROM app.banking_enrollment_jobs j JOIN app.banking_enrollments e ON e.id=j.attempt_id
+ ) operations ORDER BY (state='complete'),requested_at,operation_id LIMIT 100;
 $$;
 REVOKE ALL ON FUNCTION app.banking_initial_enqueue(uuid),app.banking_sync_claim_version(),app.banking_sync_dispatch(uuid),app.banking_accept_item_webhook(uuid,text,text,bytea,bytea,text,text,text,boolean),app.banking_accept_lifecycle_webhook(uuid,text,text,bytea,bytea,text,text,text,boolean),app.banking_finish_lifecycle(uuid,uuid,boolean,integer),app.banking_finish(uuid,uuid,boolean,integer),app.banking_reconcile_initial(),app.banking_reconcile(),app.banking_work_diagnostics() FROM PUBLIC,anon,authenticated,service_role,kami_api,kami_worker;
 GRANT EXECUTE ON FUNCTION app.banking_accept_lifecycle_webhook(uuid,text,text,bytea,bytea,text,text,text,boolean) TO kami_api;

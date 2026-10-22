@@ -360,3 +360,33 @@ func TestBackgroundConcurrentReceiptAndPublicationConverge(t *testing.T) {
 		t.Fatal("concurrent hint lost at publication")
 	}
 }
+
+func TestBackgroundDiagnosticsPreserveEnrollmentAndCurrentRequestAge(t *testing.T) {
+	c := newInitialConsumer(t)
+	c.run(t)
+	h := newBackgroundIngress(t, c)
+	c.exec(`INSERT INTO app.banking_enrollment_jobs(attempt_id,state,attempts) VALUES($1,'needs_attention',4) ON CONFLICT(attempt_id) DO UPDATE SET state='needs_attention',attempts=4`, h.correlation)
+	c.exec(`UPDATE app.banking_work SET created_at=clock_timestamp()-interval '10 days',requested_at=clock_timestamp()-interval '2 minutes' WHERE id=$1`, c.operation)
+	c.exec(`UPDATE app.banking_bindings SET last_local_commit=clock_timestamp()-interval '10 minutes' WHERE id=$1`, c.binding)
+	operations, err := c.db.BankingStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundEnrollment, foundImport := false, false
+	for _, op := range operations {
+		if op.OperationID == h.correlation {
+			foundEnrollment = op.Kind == "enrollment_recovery" && op.State == "needs_attention" && op.Attempts == 4 && op.ImportLagSeconds == 0
+		}
+		if op.OperationID == c.operation {
+			foundImport = op.AgeSeconds >= 119 && op.AgeSeconds < 130 && op.ImportLagSeconds >= 599 && op.ImportLagSeconds < 610
+		}
+	}
+	if !foundEnrollment || !foundImport {
+		t.Fatal("safe diagnostics lost existing enrollment recovery or confused stream lifetime with outstanding request/commit age")
+	}
+	// The combined projection preserves incomplete-first ordering and a hard100
+	// limit even when both enrollment and recurring import operations exist.
+	if len(operations) > 100 || len(operations) == 0 || operations[0].State == "complete" {
+		t.Fatal("diagnostic priority/bound changed")
+	}
+}
