@@ -34,8 +34,8 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
      'planRevision',(SELECT p.revision::text FROM app.banking_plans p WHERE p.account_id=b.account_id ORDER BY p.revision DESC LIMIT 1),
      'intervals',coalesce((SELECT jsonb_agg(jsonb_build_object('bindingId',i.binding_id,'afterDate',i.after_date,'throughDate',i.through_date) ORDER BY i.after_date NULLS FIRST)
        FROM app.banking_plan_intervals i WHERE i.plan_id=(SELECT p.id FROM app.banking_plans p WHERE p.account_id=b.account_id ORDER BY p.revision DESC LIMIT 1)),
-       CASE WHEN b.reporting_state='current' AND NOT EXISTS(SELECT FROM app.banking_plans p WHERE p.account_id=b.account_id)
-        THEN jsonb_build_array(jsonb_build_object('bindingId',b.id,'afterDate',NULL,'throughDate',NULL)) ELSE '[]'::jsonb END),
+       (SELECT coalesce(jsonb_agg(jsonb_build_object('bindingId',original.id,'afterDate',NULL,'throughDate',NULL) ORDER BY original.id),'[]'::jsonb)
+        FROM app.banking_bindings original WHERE original.account_id=b.account_id AND original.reporting_state='current')),
      'historyAvailability',b.history_availability,'coverageAfter',b.coverage_after,'coverageThrough',b.coverage_through,
      'lastLocalCommit',b.last_local_commit,'providerUpdateStatus',b.provider_update_status,
      'providerSuccessAt',b.provider_success_at,'providerFailedAt',b.provider_failed_at,

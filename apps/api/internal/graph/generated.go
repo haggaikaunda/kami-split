@@ -4096,7 +4096,7 @@ enum BankingSyncOperation {
   """
   QUEUED
   """
-  A worker holds the import lease; staged pages remain private.
+  Durable work is marked running, including lease-expiry recovery until reclaimed. Staged pages remain private.
   """
   RUNNING
   """

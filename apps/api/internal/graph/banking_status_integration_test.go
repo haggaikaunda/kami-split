@@ -284,16 +284,17 @@ func TestBankingHTTPStatusReplacementRecoveryAndDiscrepancy(t *testing.T) {
 	if old["accounts"].([]any)[0].(map[string]any)["id"] != stage["accounts"].([]any)[0].(map[string]any)["id"] {
 		t.Fatal("replacement lost logical identity")
 	}
-	if len(stageStatus["intervals"].([]any)) != 0 {
-		t.Fatal("staged import published reporting interval")
+	if !reflect.DeepEqual(stageStatus["intervals"], oldStatus["intervals"]) || len(stageStatus["intervals"].([]any)) != 1 || stageStatus["intervals"].([]any)[0].(map[string]any)["bindingId"] != s.original.String() {
+		t.Fatal("staged context did not preserve the shared implicit original reporting plan")
 	}
-	// Later producer fixtures establish usable staged data and a persisted notice;
+	// Later producer fixtures establish usable staged-binding data; committed
+	// source revisions are current while binding context controls contribution.
 	// no transaction payload is returned by status or counted twice from archives.
 	f.exec(`UPDATE app.banking_bindings SET import_state='usable',last_local_commit='2026-10-21T12:00:00Z',provider_success_at='2026-10-20T12:00:00Z',provider_failed_at='2026-10-21T11:00:00Z' WHERE id=$1`, s.binding)
 	source := uuid.New()
-	f.exec(`WITH saved AS (INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision,discrepancy) VALUES($1,$2,$3,'status-discrepancy-fixture',1,'cross_boundary_change') RETURNING id) INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,processing_state,mapping_version,stage) SELECT id,$2,1,125,'USD','2026-10-01','posted','controlled','staged' FROM saved`, source, f.owner, s.binding)
+	f.exec(`WITH saved AS (INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision,discrepancy) VALUES($1,$2,$3,'status-discrepancy-fixture',1,'none') RETURNING id) INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,processing_state,mapping_version,stage) SELECT id,$2,1,125,'USD','2026-10-01','posted','controlled','current' FROM saved`, source, f.owner, s.binding)
 	_, later := readBankingImport(t, f, s.handler, newConnection, s.owner)
-	requireStatusFields(t, later, map[string]any{"usable": true, "freshness": "STALE", "discrepancyCount": "1", "reportingState": "STAGED"})
+	requireStatusFields(t, later, map[string]any{"usable": true, "freshness": "STALE", "discrepancyCount": "0", "reportingState": "STAGED"})
 	p := f.operation(s.handler, s.preview, s.owner, "bankingReplacementPreview", false)
 	confirm := fmt.Sprintf(`mutation{confirmBankingReplacement(input:{attemptId:%q,request:%s,expected:%s}){code}}`, uuid.NewString(), s.request, replacementHTTPExpected(t, p))
 	if got := f.operation(s.handler, confirm, s.owner, "confirmBankingReplacement", false); got["code"] != "READY" {
@@ -302,12 +303,19 @@ func TestBankingHTTPStatusReplacementRecoveryAndDiscrepancy(t *testing.T) {
 	retired, prior := readBankingImport(t, f, s.handler, oldConnection, s.owner)
 	active, current := readBankingImport(t, f, s.handler, newConnection, s.owner)
 	requireStatusFields(t, prior, map[string]any{"reportingState": "RETIRED", "collection": "RETIRED", "operation": "STOPPED", "usable": true, "freshness": "STALE"})
-	requireStatusFields(t, current, map[string]any{"reportingState": "CURRENT", "usable": true, "discrepancyCount": "1"})
+	requireStatusFields(t, current, map[string]any{"reportingState": "CURRENT", "usable": true, "discrepancyCount": "0"})
 	if prior["planRevision"] == nil || prior["planRevision"] != current["planRevision"] || len(current["intervals"].([]any)) != 2 || !reflect.DeepEqual(prior["intervals"], current["intervals"]) {
 		t.Fatal("reporting plan was not coherent across source contexts")
 	}
 	if retired["snapshotRevision"] == old["snapshotRevision"] || active["snapshotRevision"] == stage["snapshotRevision"] {
 		t.Fatal("activation did not invalidate both status contexts")
+	}
+	// A later correction signal invalidates the same shared reporting view.
+	f.exec(`UPDATE app.banking_sources SET discrepancy='cross_boundary_change' WHERE id=$1`, source)
+	corrected, notice := readBankingImport(t, f, s.handler, newConnection, s.owner)
+	requireStatusFields(t, notice, map[string]any{"discrepancyCount": "1", "reportingState": "CURRENT"})
+	if corrected["snapshotRevision"] == active["snapshotRevision"] || notice["reportingRevision"] == current["reportingRevision"] {
+		t.Fatal("late correction did not invalidate status/reporting together")
 	}
 	restoreRequest := fmt.Sprintf(`{accountId:%q,action:RESTORE_PREDECESSOR}`, s.account.String())
 	preview := fmt.Sprintf(`query{bankingReplacementPreview(input:%s){code revisions{plan import data annotation lifecycle}}}`, restoreRequest)

@@ -173,7 +173,8 @@ func deriveImportStatus(c ConnectionStatus, a *StatusAccount) {
 			s.Recovery = "RECONNECT"
 		}
 	}
-	if s.ImportState == "failed" || s.ImportState == "unavailable" {
+	// Failed retained usability must not hide a live retry or its recovery action.
+	if (s.ImportState == "failed" || s.ImportState == "unavailable") && (s.Work == nil || s.Work.State == "complete") {
 		s.Operation = "NEEDS_ATTENTION"
 		s.Recovery = "CONTACT_SUPPORT"
 	}

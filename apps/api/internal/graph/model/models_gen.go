@@ -2387,7 +2387,7 @@ const (
 	BankingSyncOperationUnknown BankingSyncOperation = "UNKNOWN"
 	// First import is durably queued.
 	BankingSyncOperationQueued BankingSyncOperation = "QUEUED"
-	// A worker holds the import lease; staged pages remain private.
+	// Durable work is marked running, including lease-expiry recovery until reclaimed. Staged pages remain private.
 	BankingSyncOperationRunning BankingSyncOperation = "RUNNING"
 	// Provider history is not ready; no successful local commit is implied.
 	BankingSyncOperationHistoryPending BankingSyncOperation = "HISTORY_PENDING"
