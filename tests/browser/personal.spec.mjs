@@ -676,7 +676,7 @@ test('Personal absent cancellation preserves an uncertain start for same-attempt
             cancelBankingEnrollment: {
               __typename: 'BankingEnrollmentResult',
               code: 'NOT_FOUND',
-              attemptId: variables.input.attemptId,
+              attemptId: variables.attemptId,
             },
           },
         },
@@ -813,6 +813,7 @@ for (const unresolved of ['receipt', 'replay']) {
     await save.click();
     await expect(save).toBeDisabled();
     await expect(check).toBeEnabled();
+    await zone.fill('Asia/Tokyo');
     const initialReads = reads;
     await check.click();
     await expect.poll(() => recoveries).toBe(1);
@@ -824,7 +825,7 @@ for (const unresolved of ['receipt', 'replay']) {
     definitive = true;
     await check.click();
     await expect(save).toBeEnabled();
-    await expect(zone).toHaveValue('Europe/London');
+    await expect(zone).toHaveValue('Asia/Tokyo');
     expect(reads).toBe(initialReads + 1);
     await zone.fill('Asia/Tokyo');
     await save.click();
