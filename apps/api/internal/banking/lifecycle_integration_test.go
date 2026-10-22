@@ -59,6 +59,17 @@ func lifecycleReady(t *testing.T, f *fixture, s *EnrollmentService, owner uuid.U
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Reauthorization now legitimately leaves incremental work on earlier
+	// connections. Give this setup's exact new connection exclusive transport
+	// visibility, then restore every previous deadline before returning. No
+	// durable work or financial fact is removed, and the exact assertions below
+	// still require one actual consumer completion per selected binding.
+	f.exec(`CREATE TEMP TABLE lifecycle_initial_visibility AS SELECT q.msg_id,q.vt FROM pgmq.q_banking_lifecycle q LEFT JOIN app.banking_work w ON w.message_id=q.msg_id WHERE w.connection_id IS DISTINCT FROM $1`, o.ConnectionID)
+	f.exec(`UPDATE pgmq.q_banking_lifecycle q SET vt=clock_timestamp()+interval '10 minutes' FROM lifecycle_initial_visibility saved WHERE saved.msg_id=q.msg_id`)
+	defer func() {
+		f.exec(`UPDATE pgmq.q_banking_lifecycle q SET vt=saved.vt FROM lifecycle_initial_visibility saved WHERE saved.msg_id=q.msg_id`)
+		f.exec(`DROP TABLE lifecycle_initial_visibility`)
+	}()
 	for range len(ids) {
 		if worked, err := worker.ProcessOne(context.Background()); err != nil || !worked {
 			t.Fatal("fixture initial import", err)
@@ -454,4 +465,21 @@ func TestLifecycleActualItemObservationRecoversMissedRevocation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// discardFencedLifecycleTransport exercises the real restricted claim only when
+// the earliest visible message is proven unauthorized. It asserts that fenced
+// work cannot obtain a lease, before the caller's unchanged exact purge claim.
+func discardFencedLifecycleTransport(t *testing.T, f *fixture, db *database.WorkerDB) {
+	t.Helper()
+	for poll := 0; poll < 100; poll++ {
+		fenced := queryInt(t, f, `SELECT count(*) FROM (SELECT msg_id FROM pgmq.q_banking_lifecycle WHERE vt<=clock_timestamp() ORDER BY msg_id LIMIT 1) first_message JOIN app.banking_work w ON w.message_id=first_message.msg_id WHERE NOT app.banking_work_authorized(w.id)`)
+		if fenced == 0 {
+			return
+		}
+		if _, err := db.ClaimBankingWork(context.Background()); !database.IsEmptyBankingQueue(err) {
+			t.Fatal("fenced transport unexpectedly acquired a lease", err)
+		}
+	}
+	t.Fatal("fenced transport exceeded fixture disposal budget")
 }

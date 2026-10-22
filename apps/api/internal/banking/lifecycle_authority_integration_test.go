@@ -188,6 +188,7 @@ func TestLifecycleFreshSignedRevocationAfterReauthorization(t *testing.T) {
 			// More than one page proves explicit deletion uses bounded receipt batches.
 			f.exec(`INSERT INTO app.banking_webhook_deliveries SELECT $1,sha256(convert_to(i::text,'UTF8')) FROM generate_series(1,203) i`, enrollment)
 			requireCode(t, f.service.DeleteHistory(f.actor(f.owner), FenceInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 4}), "READY")
+			discardFencedLifecycleTransport(t, f, db)
 			job := requireWork(t, db)
 			if job.Kind != "purge" {
 				t.Fatal("first deletion job is not purge")

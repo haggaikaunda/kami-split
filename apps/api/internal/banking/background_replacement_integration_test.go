@@ -30,9 +30,15 @@ func replacementBackgroundConsumer(t *testing.T, f *replacementFixture, binding 
 	if err := f.admin.QueryRow(context.Background(), `SELECT id FROM app.banking_work WHERE binding_id=$1 AND kind='initial_sync'`, binding).Scan(&c.operation); err != nil {
 		t.Fatal(err)
 	}
-	// Other selected streams remain intact and are exercised separately; postpone
-	// only this fixture's sibling transport to run its target deterministically.
-	f.exec(`SELECT pgmq.set_vt('banking_lifecycle',w.message_id,600) FROM app.banking_work w JOIN app.banking_connections c ON c.id=w.connection_id WHERE c.owner_id=$1 AND w.id<>$2 AND w.message_id IS NOT NULL`, f.owner, c.operation)
+	// The suite runs serially in one owned disposable database. Isolate this
+	// exact target's visibility from prior fixtures and siblings, retaining their
+	// work and restoring each original deadline at cleanup.
+	f.exec(`CREATE TEMP TABLE replacement_sync_visibility AS SELECT msg_id,vt FROM pgmq.q_banking_lifecycle WHERE msg_id<>(SELECT message_id FROM app.banking_work WHERE id=$1)`, c.operation)
+	f.exec(`UPDATE pgmq.q_banking_lifecycle q SET vt=clock_timestamp()+interval '10 minutes' FROM replacement_sync_visibility saved WHERE saved.msg_id=q.msg_id`)
+	t.Cleanup(func() {
+		f.exec(`UPDATE pgmq.q_banking_lifecycle q SET vt=saved.vt FROM replacement_sync_visibility saved WHERE saved.msg_id=q.msg_id`)
+		f.exec(`DROP TABLE replacement_sync_visibility`)
+	})
 	var expectedItem string
 	if err := f.admin.QueryRow(context.Background(), `SELECT provider_item_id FROM app.banking_connections WHERE id=$1`, c.connection).Scan(&expectedItem); err != nil {
 		t.Fatal(err)
