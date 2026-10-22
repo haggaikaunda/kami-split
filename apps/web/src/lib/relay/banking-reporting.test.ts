@@ -17,6 +17,11 @@ import transactionFragment, {
   type bankingReportingContractTransaction$key,
 } from './__generated__/bankingReportingContractTransaction.graphql';
 
+import contextQuery, {
+  type bankingReportingContractContextQuery,
+} from './__generated__/bankingReportingContractContextQuery.graphql';
+import contextPartialQuery from './__generated__/bankingReportingContractContextPartialQuery.graphql';
+
 const source = 'stable-source';
 const row = (version = 1, note: string | null = null) => ({
   id: `BankingTransaction:fact-${version}:note-${note ?? 'none'}`,
@@ -74,9 +79,24 @@ const payload = (
   note: string | null = null,
 ) => ({
   bankingReport: report(period, version, note),
-  canonical: { transaction: row(1, note) },
-  correction: { transaction: row(2, note) },
-  archived: { transaction: row(2, note) },
+  canonical: {
+    id: `BankingTransactionDetail:canonical:${note}`,
+    code: 'READY',
+    currentId: source,
+    transaction: row(1, note),
+  },
+  correction: {
+    id: `BankingTransactionDetail:correction:${note}`,
+    code: 'READY',
+    currentId: source,
+    transaction: row(2, note),
+  },
+  archived: {
+    id: `BankingTransactionDetail:archived:${note}`,
+    code: 'READY',
+    currentId: source,
+    transaction: row(2, note),
+  },
 });
 function readTransaction(ref: bankingReportingContractTransaction$key) {
   return readInlineData(transactionFragment, ref);
@@ -169,4 +189,53 @@ describe('private banking snapshot normalization in the actual Relay store', () 
       ).bankingReport.rows[0].note,
     ).toBe('new note');
   });
+});
+
+it('partial detail and receipt refreshes cannot retain old edit ownership or pending outcomes', () => {
+  const env = environment();
+  const variables = { source, archive: 'archive', attempt: 'attempt' };
+  const full = createOperationDescriptor(contextQuery, variables);
+  const partial = createOperationDescriptor(contextPartialQuery, variables);
+  const before = {
+    id: 'BankingTransactionDetail:current',
+    code: 'READY',
+    currentId: source,
+    transaction: row(1),
+  };
+  env.commitPayload(full, {
+    bankingTransaction: before,
+    bankingAnnotationOperation: {
+      id: 'BankingAnnotationResult:missing',
+      code: 'NOT_FOUND',
+      sourceId: null,
+      detail: null,
+    },
+  });
+  const saved = env.lookup(full.fragment)
+    .data as bankingReportingContractContextQuery['response'];
+  env.commitPayload(partial, {
+    bankingTransaction: {
+      id: 'BankingTransactionDetail:archive-only',
+      transaction: {
+        ...row(1),
+        id: 'BankingTransaction:archive-only',
+        current: false,
+      },
+    },
+    bankingAnnotationOperation: {
+      id: 'BankingAnnotationResult:committed',
+      detail: { id: 'BankingTransactionDetail:committed', code: 'READY' },
+    },
+  });
+  const snapshot = env.lookup(full.fragment);
+  const refreshed =
+    snapshot.data as bankingReportingContractContextQuery['response'];
+  expect(snapshot.isMissingData).toBe(true);
+  expect(refreshed.bankingTransaction.currentId).toBeUndefined();
+  expect(refreshed.bankingTransaction.transaction?.current).toBe(false);
+  expect(refreshed.bankingAnnotationOperation.code).toBeUndefined();
+  expect(refreshed.bankingAnnotationOperation.sourceId).toBeUndefined();
+  expect(refreshed.bankingAnnotationOperation.detail?.code).toBe('READY');
+  expect(saved.bankingTransaction.currentId).toBe(source);
+  expect(saved.bankingAnnotationOperation.code).toBe('NOT_FOUND');
 });

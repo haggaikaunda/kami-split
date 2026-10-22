@@ -14,8 +14,8 @@ import (
 
 const reportingHTTPRowFields = `id sourceId accountId sourceRevision materialRevision amountMinor currency bankDate authorizationDate processingState providerPrimaryCategory providerCategory providerConfidence providerCode mappingVersion annotationRevision categoryOverride activityOverride note excluded reviewed materialConflict current category activity eligible`
 const reportingHTTPFields = `{id code fieldErrors start end timezone revision totalCount hasNextPage endCursor spendingContext accounts{id accountId coverage requestedHistoryDays intervals{bindingId coverage importState}} counts{count pendingCount unresolvedCount classificationComplete} summary{count purchaseMinor refundMinor netMinor pendingCount classificationComplete} rows{` + reportingHTTPRowFields + `}}`
-const reportingHTTPDetailFields = `{code currentId transaction{` + reportingHTTPRowFields + `}}`
-const reportingHTTPAnnotationFields = `{code sourceId detail` + reportingHTTPDetailFields + `}`
+const reportingHTTPDetailFields = `{id code currentId transaction{` + reportingHTTPRowFields + `}}`
+const reportingHTTPAnnotationFields = `{id code sourceId detail` + reportingHTTPDetailFields + `}`
 const reportingHTTPFebruary = `filter:{period:CUSTOM,start:"2024-02-01",end:"2024-02-29"}`
 
 type reportingHTTPFixture struct {

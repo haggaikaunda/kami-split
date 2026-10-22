@@ -634,6 +634,11 @@ snapshots are immutable; currentId links the sole current annotation edit owner.
 """
 type BankingTransactionDetail {
   """
+  Opaque cache identity for the complete detail outcome, current edit owner and
+  transaction snapshot, independent of selected fields. Not a Node or source key.
+  """
+  id: ID!
+  """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """
   code: String!
@@ -715,6 +720,11 @@ Original safe durable outcome plus freshly authorized facts. CONFLICT preserves
 the caller draft; fresh facts do not apply it. Receipt/status holds no bank facts.
 """
 type BankingAnnotationResult {
+  """
+  Opaque cache identity for the complete receipt outcome and freshly authorized
+  detail, independent of selected fields. Not an attempt, Node or source key.
+  """
+  id: ID!
   """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """

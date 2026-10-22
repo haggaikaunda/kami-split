@@ -13,9 +13,16 @@ import (
 func TestBankingHTTPReportingSnapshotIdentities(t *testing.T) {
 	f := newReportingHTTPFixture(t)
 	source := f.sources["purchase"]
-	initial := f.operation(f.handler, reportingHTTPAnnotation(uuid.New(), source, "0", "NOTE", `"captured note"`), f.token, "editBankingAnnotation", false)
+	attempt := uuid.New()
+	receiptQuery := fmt.Sprintf(`query{bankingAnnotationOperation(attemptId:%q){id code sourceId detail{id code}}}`, attempt.String())
+	missing := f.operation(f.handler, receiptQuery, f.token, "bankingAnnotationOperation", false)
+	initial := f.operation(f.handler, reportingHTTPAnnotation(attempt, source, "0", "NOTE", `"captured note"`), f.token, "editBankingAnnotation", false)
 	if initial["code"] != "READY" {
 		t.Fatal("initial annotation failed")
+	}
+	committed := f.operation(f.handler, receiptQuery, f.token, "bankingAnnotationOperation", false)
+	if missing["code"] != "NOT_FOUND" || committed["code"] != "READY" || missing["id"] == committed["id"] || !strings.HasPrefix(committed["id"].(string), "BankingAnnotationResult:") {
+		t.Fatal("pending and committed receipt contexts share identity")
 	}
 	// Compare clean period coverage before discrepancies deliberately downgrade it.
 	account := f.report(reportingHTTPFebruary + `,first:1`)["accounts"].([]any)[0].(map[string]any)
@@ -41,6 +48,10 @@ func TestBankingHTTPReportingSnapshotIdentities(t *testing.T) {
 	f.exec(`INSERT INTO app.banking_captures(archive_id,owner_id,source_id,source_revision,annotation_revision) VALUES($1,$2,$3,2,1)`, archive, f.owner, source)
 	query := fmt.Sprintf(`query{canonical:bankingTransaction(sourceId:%q)%s correction:bankingTransaction(sourceId:%q,discrepancy:true)%s archived:bankingTransaction(sourceId:%q,archiveId:%q)%s}`, source.String(), reportingHTTPDetailFields, source.String(), reportingHTTPDetailFields, source.String(), archive.String(), reportingHTTPDetailFields)
 	data := f.post(f.handler, query, f.token, false)["data"].(map[string]any)
+	canonicalDetail := data["canonical"].(map[string]any)
+	if !strings.HasPrefix(canonicalDetail["id"].(string), "BankingTransactionDetail:") || canonicalDetail["id"] == data["correction"].(map[string]any)["id"] {
+		t.Fatal("detail outcomes share a contextual identity")
+	}
 	current := data["canonical"].(map[string]any)["transaction"].(map[string]any)
 	correction := data["correction"].(map[string]any)["transaction"].(map[string]any)
 	captured := data["archived"].(map[string]any)["transaction"].(map[string]any)
@@ -68,7 +79,11 @@ func TestBankingHTTPReportingSnapshotIdentities(t *testing.T) {
 	if after["id"] == before["id"] {
 		t.Fatal("partial refresh reused report with old unselected summary")
 	}
-	updated := f.detail(source)["transaction"].(map[string]any)
+	updatedDetail := f.detail(source)
+	if updatedDetail["id"] == canonicalDetail["id"] {
+		t.Fatal("detail identity ignores changed transaction annotation")
+	}
+	updated := updatedDetail["transaction"].(map[string]any)
 	if updated["id"] == current["id"] || updated["sourceId"] != current["sourceId"] || updated["note"] != "latest note" {
 		t.Fatal("annotation refresh lost snapshot or navigation identity")
 	}

@@ -27,16 +27,25 @@ export const bankingReportingContractQuery = graphql`
       }
     }
     canonical: bankingTransaction(sourceId: $source) {
+      id
+      code
+      currentId
       transaction {
         ...bankingReportingContractTransaction
       }
     }
     correction: bankingTransaction(sourceId: $source, discrepancy: true) {
+      id
+      code
+      currentId
       transaction {
         ...bankingReportingContractTransaction
       }
     }
     archived: bankingTransaction(sourceId: $source, archiveId: $archive) {
+      id
+      code
+      currentId
       transaction {
         ...bankingReportingContractTransaction
       }
@@ -73,6 +82,60 @@ export const bankingReportingContractPartialQuery = graphql`
         id
         sourceId
         note
+      }
+    }
+  }
+`;
+
+export const bankingReportingContractContextQuery = graphql`
+  query bankingReportingContractContextQuery(
+    $source: ID!
+    $archive: ID!
+    $attempt: ID!
+  ) {
+    bankingTransaction(sourceId: $source, archiveId: $archive) {
+      id
+      code
+      currentId
+      transaction {
+        id
+        sourceId
+        current
+      }
+    }
+    bankingAnnotationOperation(attemptId: $attempt) {
+      id
+      code
+      sourceId
+      detail {
+        id
+        code
+        currentId
+        transaction {
+          id
+          sourceId
+          current
+        }
+      }
+    }
+  }
+`;
+export const bankingReportingContractContextPartialQuery = graphql`
+  query bankingReportingContractContextPartialQuery(
+    $source: ID!
+    $archive: ID!
+    $attempt: ID!
+  ) {
+    bankingTransaction(sourceId: $source, archiveId: $archive) {
+      transaction {
+        id
+        sourceId
+        current
+      }
+    }
+    bankingAnnotationOperation(attemptId: $attempt) {
+      detail {
+        code
       }
     }
   }

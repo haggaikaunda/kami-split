@@ -302,6 +302,9 @@ type BankingAnnotationInput struct {
 // Original safe durable outcome plus freshly authorized facts. CONFLICT preserves
 // the caller draft; fresh facts do not apply it. Receipt/status holds no bank facts.
 type BankingAnnotationResult struct {
+	// Opaque cache identity for the complete receipt outcome and freshly authorized
+	// detail, independent of selected fields. Not an attempt, Node or source key.
+	ID string `json:"id"`
 	// Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
 	Code string `json:"code"`
 	// Stable private source ID, reauthorized for every lookup/edit.

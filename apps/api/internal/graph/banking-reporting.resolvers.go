@@ -18,7 +18,7 @@ import (
 // EditBankingAnnotation is the resolver for the editBankingAnnotation field.
 func (r *mutationResolver) EditBankingAnnotation(ctx context.Context, input model.BankingAnnotationInput) (*model.BankingAnnotationResult, error) {
 	if r.BankingStorage == nil {
-		return &model.BankingAnnotationResult{Code: "FEATURE_DISABLED"}, nil
+		return r.annotationResult(ctx, banking.Result{Code: "FEATURE_DISABLED"}), nil
 	}
 	attempt, e1 := uuid.Parse(input.AttemptID)
 	source, e2 := uuid.Parse(input.SourceID)
@@ -26,7 +26,7 @@ func (r *mutationResolver) EditBankingAnnotation(ctx context.Context, input mode
 	expected, e4 := strconv.ParseInt(input.ExpectedRevision, 10, 64)
 	material, e5 := strconv.ParseInt(input.MaterialRevision, 10, 64)
 	if e1 != nil || e2 != nil || e3 != nil || e4 != nil || e5 != nil {
-		return &model.BankingAnnotationResult{Code: "INVALID_INPUT"}, nil
+		return r.annotationResult(ctx, banking.Result{Code: "INVALID_INPUT"}), nil
 	}
 	result := r.BankingStorage.EditAnnotation(ctx, banking.AnnotationInput{AttemptID: attempt, SourceID: source, SourceRevision: fact, ExpectedRevision: expected, MaterialRevision: material, Field: strings.ToLower(string(input.Field)), Value: input.Value})
 	return r.annotationResult(ctx, result), nil
@@ -89,11 +89,11 @@ func (r *queryResolver) BankingTransaction(ctx context.Context, sourceID string,
 // BankingAnnotationOperation is the resolver for the bankingAnnotationOperation field.
 func (r *queryResolver) BankingAnnotationOperation(ctx context.Context, attemptID string) (*model.BankingAnnotationResult, error) {
 	if r.BankingStorage == nil {
-		return &model.BankingAnnotationResult{Code: "FEATURE_DISABLED"}, nil
+		return r.annotationResult(ctx, banking.Result{Code: "FEATURE_DISABLED"}), nil
 	}
 	attempt, err := uuid.Parse(attemptID)
 	if err != nil {
-		return &model.BankingAnnotationResult{Code: "INVALID_INPUT"}, nil
+		return r.annotationResult(ctx, banking.Result{Code: "INVALID_INPUT"}), nil
 	}
 	return r.annotationResult(ctx, r.BankingStorage.AnnotationOperationStatus(ctx, attempt)), nil
 }

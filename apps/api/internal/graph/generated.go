@@ -115,6 +115,7 @@ type ComplexityRoot struct {
 	BankingAnnotationResult struct {
 		Code     func(childComplexity int) int
 		Detail   func(childComplexity int) int
+		ID       func(childComplexity int) int
 		SourceID func(childComplexity int) int
 	}
 
@@ -380,6 +381,7 @@ type ComplexityRoot struct {
 	BankingTransactionDetail struct {
 		Code        func(childComplexity int) int
 		CurrentID   func(childComplexity int) int
+		SnapshotID  func(childComplexity int) int
 		Transaction func(childComplexity int) int
 	}
 
@@ -1254,6 +1256,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingAnnotationResult.Detail(childComplexity), true
+	case "BankingAnnotationResult.id":
+		if e.ComplexityRoot.BankingAnnotationResult.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingAnnotationResult.ID(childComplexity), true
 	case "BankingAnnotationResult.sourceId":
 		if e.ComplexityRoot.BankingAnnotationResult.SourceID == nil {
 			break
@@ -2487,6 +2495,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingTransactionDetail.CurrentID(childComplexity), true
+	case "BankingTransactionDetail.id":
+		if e.ComplexityRoot.BankingTransactionDetail.SnapshotID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingTransactionDetail.SnapshotID(childComplexity), true
 	case "BankingTransactionDetail.transaction":
 		if e.ComplexityRoot.BankingTransactionDetail.Transaction == nil {
 			break
@@ -5669,6 +5683,11 @@ snapshots are immutable; currentId links the sole current annotation edit owner.
 """
 type BankingTransactionDetail {
   """
+  Opaque cache identity for the complete detail outcome, current edit owner and
+  transaction snapshot, independent of selected fields. Not a Node or source key.
+  """
+  id: ID!
+  """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """
   code: String!
@@ -5750,6 +5769,11 @@ Original safe durable outcome plus freshly authorized facts. CONFLICT preserves
 the caller draft; fresh facts do not apply it. Receipt/status holds no bank facts.
 """
 type BankingAnnotationResult {
+  """
+  Opaque cache identity for the complete receipt outcome and freshly authorized
+  detail, independent of selected fields. Not an attempt, Node or source key.
+  """
+  id: ID!
   """
   Safe operation outcome; unavailable/error/restart results never supply a successful spending zero.
   """
@@ -9428,6 +9452,8 @@ func (ec *executionContext) childFields_BankingAccount(ctx context.Context, fiel
 
 func (ec *executionContext) childFields_BankingAnnotationResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "id":
+		return ec.fieldContext_BankingAnnotationResult_id(ctx, field)
 	case "code":
 		return ec.fieldContext_BankingAnnotationResult_code(ctx, field)
 	case "sourceId":
@@ -9958,6 +9984,8 @@ func (ec *executionContext) childFields_BankingTransaction(ctx context.Context, 
 
 func (ec *executionContext) childFields_BankingTransactionDetail(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "id":
+		return ec.fieldContext_BankingTransactionDetail_id(ctx, field)
 	case "code":
 		return ec.fieldContext_BankingTransactionDetail_code(ctx, field)
 	case "transaction":
@@ -12882,6 +12910,29 @@ func (ec *executionContext) _BankingAccount_providerAccountId(ctx context.Contex
 }
 func (ec *executionContext) fieldContext_BankingAccount_providerAccountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingAccount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingAnnotationResult_id(ctx context.Context, field graphql.CollectedField, obj *model.BankingAnnotationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingAnnotationResult_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingAnnotationResult_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingAnnotationResult", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _BankingAnnotationResult_code(ctx context.Context, field graphql.CollectedField, obj *model.BankingAnnotationResult) (ret graphql.Marshaler) {
@@ -17735,6 +17786,29 @@ func (ec *executionContext) _BankingTransaction_eligible(ctx context.Context, fi
 }
 func (ec *executionContext) fieldContext_BankingTransaction_eligible(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingTransaction", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _BankingTransactionDetail_id(ctx context.Context, field graphql.CollectedField, obj *banking.TransactionDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingTransactionDetail_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotID(), nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BankingTransactionDetail_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingTransactionDetail", field, true, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _BankingTransactionDetail_code(ctx context.Context, field graphql.CollectedField, obj *banking.TransactionDetail) (ret graphql.Marshaler) {
@@ -30023,6 +30097,11 @@ func (ec *executionContext) _BankingAnnotationResult(ctx context.Context, sel as
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BankingAnnotationResult")
+		case "id":
+			out.Values[i] = ec._BankingAnnotationResult_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "code":
 			out.Values[i] = ec._BankingAnnotationResult_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -31726,6 +31805,11 @@ func (ec *executionContext) _BankingTransactionDetail(ctx context.Context, sel a
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BankingTransactionDetail")
+		case "id":
+			out.Values[i] = ec._BankingTransactionDetail_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "code":
 			out.Values[i] = ec._BankingTransactionDetail_code(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

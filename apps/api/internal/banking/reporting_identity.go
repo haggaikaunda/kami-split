@@ -28,6 +28,13 @@ func (r Report) SnapshotID() string {
 	return reportIdentity("BankingReport", encoded)
 }
 
+// SnapshotID isolates the complete detail outcome, current edit ownership and
+// transaction projection so a partial refresh cannot retain an older owner link.
+func (r TransactionDetail) SnapshotID() string {
+	encoded, _ := json.Marshal(r)
+	return reportIdentity("BankingTransactionDetail", encoded)
+}
+
 func reportIdentity(kind string, encoded []byte) string {
 	digest := sha256.Sum256(encoded)
 	return kind + ":" + base64.RawURLEncoding.EncodeToString(digest[:])

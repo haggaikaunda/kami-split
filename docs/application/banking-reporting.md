@@ -73,4 +73,7 @@ Use `sourceId` for transaction detail/annotation writes and `accountId` for acco
 filters; `currentId` remains the current source edit owner. Immutable manifest
 `BankingReportArchive.id` remains its archive navigation key. None of these
 reporting types implements Node, and cache identities grant no access or cursor
-authority. Clients continue to use the existing actor-scoped Relay environment.
+authority. `BankingTransactionDetail.id` isolates the complete outcome/current-edit-owner
+context, and `BankingAnnotationResult.id` isolates the complete receipt outcome and
+freshly authorized detail. Partial responses cannot retain a previous edit-owner
+link or an earlier missing-receipt outcome alongside newly returned detail. Clients continue to use the existing actor-scoped Relay environment.

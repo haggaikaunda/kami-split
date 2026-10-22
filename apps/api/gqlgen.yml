@@ -70,6 +70,9 @@ models:
         fieldName: SnapshotID
   BankingTransactionDetail:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.TransactionDetail
+    fields:
+      id:
+        fieldName: SnapshotID
 
   BankingReportArchive:
     model: github.com/haggaikaunda/kami-split/apps/api/internal/banking.ReportArchive

@@ -53,3 +53,19 @@ func TestReportSnapshotIdentityPreservesFinancialContext(t *testing.T) {
 		t.Fatal("page boundary excluded from identity")
 	}
 }
+
+func TestReportDetailIdentityIncludesCurrentEditOwner(t *testing.T) {
+	row := reportFact("10000", "purchase")
+	detail := TransactionDetail{Code: "READY", CurrentID: textPointer("source"), Transaction: &row}
+	original := detail.SnapshotID()
+	archived := detail
+	archived.CurrentID = nil
+	archived.Transaction = &Transaction{ID: "source", AmountMinor: "10000", Current: false}
+	if archived.SnapshotID() == original {
+		t.Fatal("current and archive-only detail share identity")
+	}
+	missing := TransactionDetail{Code: "NOT_FOUND"}
+	if missing.SnapshotID() == original {
+		t.Fatal("detail outcome excluded from identity")
+	}
+}

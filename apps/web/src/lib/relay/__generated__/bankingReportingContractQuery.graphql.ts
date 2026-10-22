@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47046548a36cd08b48ec65997de336db>>
+ * @generated SignedSource<<bb07a5fb7a26a36c574d445f57cfed30>>
  * @lightSyntaxTransform
  */
 
@@ -31,6 +31,9 @@ export type bankingReportingContractQuery$variables = {
 };
 export type bankingReportingContractQuery$data = {
   readonly archived: {
+    readonly code: string;
+    readonly currentId: string | null | undefined;
+    readonly id: string;
     readonly transaction: {
       readonly " $fragmentSpreads": FragmentRefs<"bankingReportingContractTransaction">;
     } | null | undefined;
@@ -54,11 +57,17 @@ export type bankingReportingContractQuery$data = {
     } | null | undefined;
   };
   readonly canonical: {
+    readonly code: string;
+    readonly currentId: string | null | undefined;
+    readonly id: string;
     readonly transaction: {
       readonly " $fragmentSpreads": FragmentRefs<"bankingReportingContractTransaction">;
     } | null | undefined;
   };
   readonly correction: {
+    readonly code: string;
+    readonly currentId: string | null | undefined;
+    readonly id: string;
     readonly transaction: {
       readonly " $fragmentSpreads": FragmentRefs<"bankingReportingContractTransaction">;
     } | null | undefined;
@@ -287,7 +296,24 @@ v13 = {
 v14 = [
   (v13/*:: as any*/)
 ],
-v15 = [
+v15 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "code",
+  "storageKey": null
+},
+v16 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currentId",
+  "storageKey": null
+},
+v17 = [
+  (v5/*:: as any*/),
+  (v15/*:: as any*/),
+  (v16/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -299,7 +325,7 @@ v15 = [
     "storageKey": null
   }
 ],
-v16 = [
+v18 = [
   {
     "kind": "Literal",
     "name": "discrepancy",
@@ -307,7 +333,7 @@ v16 = [
   },
   (v13/*:: as any*/)
 ],
-v17 = [
+v19 = [
   {
     "kind": "Variable",
     "name": "archiveId",
@@ -315,7 +341,10 @@ v17 = [
   },
   (v13/*:: as any*/)
 ],
-v18 = [
+v20 = [
+  (v5/*:: as any*/),
+  (v15/*:: as any*/),
+  (v16/*:: as any*/),
   {
     "alias": null,
     "args": null,
@@ -370,27 +399,27 @@ return {
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v15/*:: as any*/),
+        "selections": (v17/*:: as any*/),
         "storageKey": null
       },
       {
         "alias": "correction",
-        "args": (v16/*:: as any*/),
+        "args": (v18/*:: as any*/),
         "concreteType": "BankingTransactionDetail",
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v15/*:: as any*/),
+        "selections": (v17/*:: as any*/),
         "storageKey": null
       },
       {
         "alias": "archived",
-        "args": (v17/*:: as any*/),
+        "args": (v19/*:: as any*/),
         "concreteType": "BankingTransactionDetail",
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v15/*:: as any*/),
+        "selections": (v17/*:: as any*/),
         "storageKey": null
       }
     ],
@@ -439,42 +468,42 @@ return {
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v18/*:: as any*/),
+        "selections": (v20/*:: as any*/),
         "storageKey": null
       },
       {
         "alias": "correction",
-        "args": (v16/*:: as any*/),
+        "args": (v18/*:: as any*/),
         "concreteType": "BankingTransactionDetail",
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v18/*:: as any*/),
+        "selections": (v20/*:: as any*/),
         "storageKey": null
       },
       {
         "alias": "archived",
-        "args": (v17/*:: as any*/),
+        "args": (v19/*:: as any*/),
         "concreteType": "BankingTransactionDetail",
         "kind": "LinkedField",
         "name": "bankingTransaction",
         "plural": false,
-        "selections": (v18/*:: as any*/),
+        "selections": (v20/*:: as any*/),
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "99169987798516654fd4408026f40a9d",
+    "cacheID": "9c6830ac0e3d7bd01071c952d889bdc3",
     "id": null,
     "metadata": {},
     "name": "bankingReportingContractQuery",
     "operationKind": "query",
-    "text": "query bankingReportingContractQuery(\n  $filter: BankingReportFilter\n  $after: String\n  $source: ID!\n  $archive: ID!\n) {\n  bankingReport(filter: $filter, first: 1, after: $after) {\n    id\n    summary {\n      netMinor\n    }\n    accounts {\n      id\n      accountId\n      coverage\n      intervals {\n        bindingId\n        coverage\n      }\n    }\n    rows {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  canonical: bankingTransaction(sourceId: $source) {\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  correction: bankingTransaction(sourceId: $source, discrepancy: true) {\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  archived: bankingTransaction(sourceId: $source, archiveId: $archive) {\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n}\n\nfragment bankingReportingContractTransaction on BankingTransaction {\n  id\n  sourceId\n  sourceRevision\n  amountMinor\n  annotationRevision\n  note\n  excluded\n  current\n  archives {\n    archiveId\n    annotation {\n      revision\n      note\n      excluded\n    }\n  }\n}\n"
+    "text": "query bankingReportingContractQuery(\n  $filter: BankingReportFilter\n  $after: String\n  $source: ID!\n  $archive: ID!\n) {\n  bankingReport(filter: $filter, first: 1, after: $after) {\n    id\n    summary {\n      netMinor\n    }\n    accounts {\n      id\n      accountId\n      coverage\n      intervals {\n        bindingId\n        coverage\n      }\n    }\n    rows {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  canonical: bankingTransaction(sourceId: $source) {\n    id\n    code\n    currentId\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  correction: bankingTransaction(sourceId: $source, discrepancy: true) {\n    id\n    code\n    currentId\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n  archived: bankingTransaction(sourceId: $source, archiveId: $archive) {\n    id\n    code\n    currentId\n    transaction {\n      ...bankingReportingContractTransaction\n      id\n    }\n  }\n}\n\nfragment bankingReportingContractTransaction on BankingTransaction {\n  id\n  sourceId\n  sourceRevision\n  amountMinor\n  annotationRevision\n  note\n  excluded\n  current\n  archives {\n    archiveId\n    annotation {\n      revision\n      note\n      excluded\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7636b0365f4897f7c9589942bba8fbea";
+(node as any).hash = "1fef6b8f0594964ef7e4193e8f66c358";
 
 export default node;
