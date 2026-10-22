@@ -48,7 +48,7 @@ func TestSyncStorageEncodingPreservesExactFactsAndProvenance(t *testing.T) {
 
 func TestReplacementMaterialConflictCannotContribute(t *testing.T) {
 	purchase := "purchase"
-	impact, err := summarizeReplacement([]replacementSource{{Amount: "2500", Date: "2026-10-01", Processing: "posted", Activity: &purchase, MaterialConflict: true}})
+	impact, err := summarizeReplacement([]replacementSource{{Currency: "USD", Amount: "2500", Date: "2026-10-01", Processing: "posted", Activity: &purchase, MaterialConflict: true}})
 	if err != nil || impact.SpendingMinor != "0" || impact.UnresolvedCount != 1 {
 		t.Fatal("conflicted retained override contributed", err)
 	}

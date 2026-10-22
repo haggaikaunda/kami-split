@@ -314,6 +314,9 @@ func (s *Service) ReadCredential(ctx context.Context, id uuid.UUID) (Credential,
 // OperationStatus reauthorizes a durable attempt and returns only its pending or
 // original opaque outcome. It never treats a missing browser response as failure.
 func (s *Service) OperationStatus(ctx context.Context, attempt uuid.UUID) Result {
+	return s.operationStatus(ctx, attempt, "")
+}
+func (s *Service) operationStatus(ctx context.Context, attempt uuid.UUID, kind string) Result {
 	outcome := Result{Code: "NOT_FOUND"}
 	err := auth.WithActor(ctx, s.db, func(tx pgx.Tx, _ auth.Actor) error {
 		if _, err := tx.Exec(ctx, `SELECT app.lock_banking_owner()`); err != nil {
@@ -325,6 +328,9 @@ func (s *Service) OperationStatus(ctx context.Context, attempt uuid.UUID) Result
 		}
 		if err != nil {
 			return err
+		}
+		if kind != "" && row.Kind != kind {
+			return nil
 		}
 		outcome.Code = "PENDING"
 		if row.State == "complete" {

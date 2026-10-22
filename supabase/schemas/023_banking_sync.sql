@@ -11,6 +11,7 @@ ALTER TABLE app.banking_source_revisions ADD COLUMN provider_transaction_id text
 ALTER TABLE app.banking_source_revisions ADD COLUMN pending_transaction_id text;
 ALTER TABLE app.banking_source_revisions ADD COLUMN name text;
 ALTER TABLE app.banking_source_revisions ADD COLUMN merchant_name text;
+ALTER TABLE app.banking_source_revisions ADD COLUMN provider_primary_category text;
 ALTER TABLE app.banking_annotations ADD COLUMN material_conflict boolean NOT NULL DEFAULT false;
 ALTER TABLE app.banking_annotations ADD COLUMN applies_to_source_revision bigint;
 ALTER TABLE app.banking_annotations ADD CONSTRAINT banking_annotation_application FOREIGN KEY(source_id,applies_to_source_revision,owner_id) REFERENCES app.banking_source_revisions(source_id,revision,owner_id);
@@ -134,7 +135,7 @@ BEGIN
    OR coalesce(change->>'date','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN RETURN false; END IF;
   PERFORM (change->>'amount_minor')::bigint; day:=(change->>'date')::date;
   IF day NOT BETWEEN DATE '0001-01-01' AND DATE '9999-12-31' THEN RETURN false; END IF;
-  FOREACH value IN ARRAY ARRAY['pending_transaction_id','authorized_date','name','merchant_name','transaction_code'] LOOP
+  FOREACH value IN ARRAY ARRAY['pending_transaction_id','authorized_date','name','merchant_name','transaction_code','provider_primary_category','provider_category','provider_confidence'] LOOP
    IF change ? value AND jsonb_typeof(change->value) NOT IN('string','null') THEN RETURN false; END IF;
   END LOOP;
   IF change->>'pending_transaction_id' IS NOT NULL AND (length(change->>'pending_transaction_id') NOT BETWEEN 1 AND 256 OR change->>'pending_transaction_id'=change->>'id' OR (change->>'pending')::boolean) THEN RETURN false; END IF;
@@ -185,7 +186,7 @@ END $$;
 CREATE FUNCTION app.banking_sync_apply(target uuid, owner uuid, change jsonb, initial boolean) RETURNS void
 LANGUAGE plpgsql SET search_path=pg_catalog,pg_temp AS $$
 DECLARE source app.banking_sources; old app.banking_source_revisions; annotation app.banking_annotations;
- linked uuid; next_revision bigint; processing text; material boolean; conflict boolean; notice text:='none'; lower_bound date; upper_bound date; outside_old boolean; outside_new boolean;
+ linked uuid; next_revision bigint; processing text; mapping text:='plaid-pfc-v2'; material boolean; conflict boolean; notice text:='none'; lower_bound date; upper_bound date; outside_old boolean; outside_new boolean;
 BEGIN
  SELECT s.* INTO source FROM app.banking_source_identities i JOIN app.banking_sources s ON s.id=i.source_id WHERE i.binding_id=target AND i.provider_transaction_id=change->>'id';
  IF source.id IS NULL THEN SELECT s.* INTO source FROM app.banking_sources s WHERE s.binding_id=target AND s.provider_transaction_id=change->>'id'; END IF;
@@ -205,13 +206,14 @@ BEGIN
  IF source.id IS NOT NULL THEN SELECT * INTO old FROM app.banking_source_revisions WHERE source_id=source.id AND revision=source.revision; END IF;
  IF change->>'operation'='removed' THEN
   IF old.source_id IS NULL OR coalesce(old.provider_transaction_id,source.provider_transaction_id)<>change->>'id' OR old.processing_state='removed' THEN RETURN; END IF;
-  change:=jsonb_build_object('id',change->>'id','amount_minor',old.amount_minor::text,'currency',old.currency,'date',old.bank_date::text,'authorized_date',old.authorization_date::text,'pending_transaction_id',old.pending_transaction_id,'name',old.name,'merchant_name',old.merchant_name,'transaction_code',old.provider_code,'operation','removed');
+  change:=jsonb_build_object('id',change->>'id','amount_minor',old.amount_minor::text,'currency',old.currency,'date',old.bank_date::text,'authorized_date',old.authorization_date::text,'pending_transaction_id',old.pending_transaction_id,'name',old.name,'merchant_name',old.merchant_name,'transaction_code',old.provider_code,'provider_primary_category',old.provider_primary_category,'provider_category',old.provider_category,'provider_confidence',old.provider_confidence,'operation','removed');
+  mapping:=old.mapping_version;
   processing:='removed';
  ELSE processing:=CASE WHEN (change->>'pending')::boolean THEN 'pending' ELSE 'posted' END;
  END IF;
  -- Exact duplicate facts do not create extra source or annotation versions.
- IF old.source_id IS NOT NULL AND (old.amount_minor,old.currency,old.bank_date,old.authorization_date,old.processing_state,old.provider_code,old.pending_transaction_id,old.name,old.merchant_name,coalesce(old.provider_transaction_id,source.provider_transaction_id))
-  IS NOT DISTINCT FROM ((change->>'amount_minor')::bigint,change->>'currency',(change->>'date')::date,(change->>'authorized_date')::date,processing,change->>'transaction_code',change->>'pending_transaction_id',change->>'name',change->>'merchant_name',change->>'id') THEN RETURN; END IF;
+ IF old.source_id IS NOT NULL AND (old.amount_minor,old.currency,old.bank_date,old.authorization_date,old.processing_state,old.provider_code,old.provider_primary_category,old.provider_category,old.provider_confidence,old.mapping_version,old.pending_transaction_id,old.name,old.merchant_name,coalesce(old.provider_transaction_id,source.provider_transaction_id))
+  IS NOT DISTINCT FROM ((change->>'amount_minor')::bigint,change->>'currency',(change->>'date')::date,(change->>'authorized_date')::date,processing,change->>'transaction_code',change->>'provider_primary_category',change->>'provider_category',change->>'provider_confidence',mapping,change->>'pending_transaction_id',change->>'name',change->>'merchant_name',change->>'id') THEN RETURN; END IF;
  SELECT i.after_date,i.through_date INTO lower_bound,upper_bound FROM app.banking_plan_intervals i JOIN app.banking_plans p ON p.id=i.plan_id WHERE p.account_id=(SELECT account_id FROM app.banking_bindings WHERE id=target) AND i.binding_id=target ORDER BY p.revision DESC LIMIT 1;
  outside_new:=coalesce((change->>'date')::date<=lower_bound,false) OR coalesce((change->>'date')::date>upper_bound,false);
  outside_old:=coalesce(old.bank_date<=lower_bound,false) OR coalesce(old.bank_date>upper_bound,false);
@@ -223,10 +225,10 @@ BEGIN
   INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision,discrepancy) VALUES(source.id,owner,target,change->>'id',1,notice);
  END IF;
  next_revision:=source.revision+1;
- material:=(old.amount_minor,old.currency,old.bank_date,old.processing_state,old.provider_code) IS DISTINCT FROM ((change->>'amount_minor')::bigint,'USD',(change->>'date')::date,processing,change->>'transaction_code');
+ material:=(old.amount_minor,old.currency,old.bank_date,old.processing_state,old.provider_code,old.provider_primary_category,old.provider_category,old.provider_confidence,old.mapping_version) IS DISTINCT FROM ((change->>'amount_minor')::bigint,'USD',(change->>'date')::date,processing,change->>'transaction_code',change->>'provider_primary_category',change->>'provider_category',change->>'provider_confidence',mapping);
  INSERT INTO app.banking_source_identities VALUES(target,change->>'id',source.id) ON CONFLICT DO NOTHING;
- INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,authorization_date,processing_state,provider_code,mapping_version,stage,provider_transaction_id,pending_transaction_id,name,merchant_name,material_revision)
- VALUES(source.id,owner,next_revision,(change->>'amount_minor')::bigint,'USD',(change->>'date')::date,(change->>'authorized_date')::date,processing,change->>'transaction_code','sync-v1-unclassified','current',change->>'id',change->>'pending_transaction_id',change->>'name',change->>'merchant_name',CASE WHEN material THEN next_revision ELSE coalesce(old.material_revision,old.revision) END);
+ INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,authorization_date,processing_state,provider_code,provider_primary_category,provider_category,provider_confidence,mapping_version,stage,provider_transaction_id,pending_transaction_id,name,merchant_name,material_revision)
+ VALUES(source.id,owner,next_revision,(change->>'amount_minor')::bigint,'USD',(change->>'date')::date,(change->>'authorized_date')::date,processing,change->>'transaction_code',change->>'provider_primary_category',change->>'provider_category',change->>'provider_confidence',mapping,'current',change->>'id',change->>'pending_transaction_id',change->>'name',change->>'merchant_name',CASE WHEN material THEN next_revision ELSE coalesce(old.material_revision,old.revision) END);
  UPDATE app.banking_sources s SET revision=next_revision,discrepancy=CASE WHEN s.discrepancy='none' OR notice='cross_boundary_change' THEN notice ELSE s.discrepancy END WHERE s.id=source.id;
  SELECT * INTO annotation FROM app.banking_annotations WHERE source_id=source.id ORDER BY revision DESC LIMIT 1;
  IF FOUND THEN

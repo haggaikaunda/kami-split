@@ -55,6 +55,8 @@ func (v SyncCursor) GoString() string { return v.String() }
 // sign: positive is outflow, negative is inflow, for checking, savings and cards.
 // Date and AuthorizedDate are bank calendar dates, without timezone conversion.
 // Nil optional fields mean unavailable; unknown provider strings are preserved.
+// ProviderCategory is the detailed PFC taxonomy value; ProviderPrimaryCategory
+// and ProviderConfidence retain the separate PFC v2 provider facts.
 // PendingTransactionID is only explicit provider linkage, never a purchase/refund
 // association. A credit alone is not evidence of a refund.
 type SyncTransaction struct {
@@ -66,6 +68,9 @@ type SyncTransaction struct {
 	AuthorizedDate                 *string
 	Name, MerchantName             *string
 	TransactionCode                *string
+	ProviderPrimaryCategory        *string
+	ProviderCategory               *string
+	ProviderConfidence             *string
 }
 
 // String prevents financial facts and identities from entering diagnostics.
@@ -177,12 +182,14 @@ func (p *PlaidProvider) SyncTransactions(ctx context.Context, binding SyncBindin
 		Cursor      string `json:"cursor"`
 		Count       int    `json:"count"`
 		Options     struct {
-			AccountID string `json:"account_id"`
+			AccountID       string `json:"account_id"`
+			CategoryVersion string `json:"personal_finance_category_version"`
 		} `json:"options"`
 	}{AccessToken: string(credential.Bytes()), Cursor: cursor.value, Count: 20}
 	// Twenty updates leave headroom within the existing 64-KiB body protection;
 	// oversized pages still fail closed rather than weakening that shared bound.
 	request.Options.AccountID = binding.AccountID
+	request.Options.CategoryVersion = "v2"
 	raw, _ := json.Marshal(request)
 	response, err := p.post(ctx, "/transactions/sync", raw)
 	if err != nil {

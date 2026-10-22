@@ -1,7 +1,8 @@
 # Personal banking: planned M1 contract
 
-This is a design candidate for private **connect and see**, not implemented banking.
-The [application guide](README.md) remains the current-state authority.
+This approved domain contract describes private **connect and see**.
+The [application guide](README.md) identifies the implemented backend subset and
+the remaining browser/provider/live-release work.
 Product decisions are approved in [C1](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230836850),
 [C2](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230848166),
 [C3](https://github.com/haggaikaunda/kami-split/issues/222#issuecomment-6230994616) and
@@ -122,8 +123,10 @@ date, visibly marked Pending; never treat it as a posted spending contribution.
 Do not reinterpret date-only values through UTC.
 
 The [reporting-timezone API](reporting-timezone.md) implements the preference
-persistence and recovery boundary below; Account controls and date/reporting
-consumers remain separate deliveries.
+persistence and recovery boundary below; the [private reporting API](banking-reporting.md)
+uses that saved zone for preset dates. Account timezone controls and Personal
+navigation are implemented; transaction/reporting browser content remains a
+separate delivery.
 
 Save a validated IANA reporting timezone once from the initial device setting,
 using UTC if unavailable. Account can change it through a dedicated versioned

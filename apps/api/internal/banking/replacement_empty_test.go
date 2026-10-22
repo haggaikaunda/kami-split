@@ -22,7 +22,7 @@ func TestReplacementEmptyPublicationArrays(t *testing.T) {
 			}{Zone: "UTC"}
 			request := ReplacementRequest{AccountID: snapshot.Account.ID, BindingID: newBinding, Action: "ACTIVATE", TransitionDate: boundary}
 			if scenario == "filter to empty" {
-				snapshot.Sources = []replacementSource{{ID: uuid.New(), BindingID: oldBinding, Revision: 1, Latest: true, Discrepancy: "none", Amount: "100", Date: "2026-10-01", Processing: "posted"}, {ID: uuid.New(), BindingID: newBinding, Revision: 1, Latest: true, Discrepancy: "none", Amount: "100", Date: "2026-09-29", Processing: "posted"}}
+				snapshot.Sources = []replacementSource{{ID: uuid.New(), BindingID: oldBinding, Revision: 1, Latest: true, Discrepancy: "none", Currency: "USD", Amount: "100", Date: "2026-10-01", Processing: "posted"}, {ID: uuid.New(), BindingID: newBinding, Revision: 1, Latest: true, Discrepancy: "none", Currency: "USD", Amount: "100", Date: "2026-09-29", Processing: "posted"}}
 			}
 			if scenario == "empty boundary change" || scenario == "empty predecessor restore" {
 				snapshot.Bindings[0].ReportingState = "retired"

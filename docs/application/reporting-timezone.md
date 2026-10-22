@@ -44,7 +44,7 @@ The [approved Personal banking contract](personal-banking.md#dates-saved-prefere
 defines its consumers: Account supplies the independent control and Personal the
 one-time device handoff; #252 owns
 coherent date bounds/cursor invalidation, and replacement/recovery uses the saved
-zone for allowed transition dates through the [replacement backend](banking-replacement.md). The [sync adapter and restricted persistence](banking-sync.md) implement validated pages, atomic batch/checkpoint commits and durable initial/incremental imports with verified webhook dispatch and daily reconciliation through the existing worker. The Account control freezes each unresolved write key/input until a definitive
+zone for allowed transition dates through the [replacement backend](banking-replacement.md). The [sync adapter and restricted persistence](banking-sync.md) implement validated pages, atomic batch/checkpoint commits and durable initial/incremental imports with verified webhook dispatch and daily reconciliation through the existing worker. The [private reporting API](banking-reporting.md) uses the saved zone for coherent preset bounds. The Account control freezes each unresolved write key/input until a definitive
 receipt or identical replay resolves it, then reads current state before another
-explicit update. General reporting reads and live enablement remain separate deliveries. This preference does not enable enrollment
+explicit update. Live enablement remains a separate delivery. This preference does not enable enrollment
 or satisfy #255's provider/live gates.

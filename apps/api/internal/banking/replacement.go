@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"time"
 
 	// The minimal production image has no system zoneinfo database.
@@ -96,18 +95,25 @@ type replacementBinding struct {
 	CoverageThrough *string   `json:"coverage_through"`
 }
 type replacementSource struct {
-	ID                 uuid.UUID `json:"id"`
-	BindingID          uuid.UUID `json:"binding_id"`
-	Revision           int64     `json:"revision"`
-	Latest             bool      `json:"is_latest"`
-	Discrepancy        string    `json:"discrepancy"`
-	Amount             string    `json:"amount_minor"`
-	Date               string    `json:"bank_date"`
-	Processing         string    `json:"processing_state"`
-	AnnotationRevision int64     `json:"annotation_revision"`
-	Activity           *string   `json:"activity"`
-	Excluded           bool      `json:"excluded"`
-	MaterialConflict   bool      `json:"material_conflict"`
+	ID                      uuid.UUID `json:"id"`
+	BindingID               uuid.UUID `json:"binding_id"`
+	Revision                int64     `json:"revision"`
+	Latest                  bool      `json:"is_latest"`
+	Discrepancy             string    `json:"discrepancy"`
+	Amount                  string    `json:"amount_minor"`
+	Currency                string    `json:"currency"`
+	ProviderPrimaryCategory *string   `json:"provider_primary_category"`
+	ProviderCategory        *string   `json:"provider_category"`
+	ProviderConfidence      *string   `json:"provider_confidence"`
+	ProviderCode            *string   `json:"provider_code"`
+	MappingVersion          string    `json:"mapping_version"`
+	ActivityOverride        *string   `json:"activity_override"`
+	Date                    string    `json:"bank_date"`
+	Processing              string    `json:"processing_state"`
+	AnnotationRevision      int64     `json:"annotation_revision"`
+	Activity                *string   `json:"activity"`
+	Excluded                bool      `json:"excluded"`
+	MaterialConflict        bool      `json:"material_conflict"`
 }
 type replacementCapture struct {
 	SourceID uuid.UUID `json:"source_id"`
@@ -497,7 +503,7 @@ func effectiveSources(s replacementSnapshot, intervals []ReportingInterval, acti
 }
 func summarizeReplacement(rows []replacementSource) (ReplacementImpact, error) {
 	impact := ReplacementImpact{Count: len(rows), SpendingMinor: "0"}
-	total := new(big.Int)
+	transactions := make([]Transaction, 0, len(rows))
 	for _, row := range rows {
 		if impact.FromDate == nil || row.Date < *impact.FromDate {
 			date := row.Date
@@ -510,43 +516,25 @@ func summarizeReplacement(rows []replacementSource) (ReplacementImpact, error) {
 		if row.AnnotationRevision > 0 {
 			impact.AnnotationCount++
 		}
-		if row.Processing == "pending" {
-			impact.PendingCount++
-			continue
+		activity := row.ActivityOverride
+		if activity == nil {
+			activity = row.Activity
 		}
-		if row.Excluded {
-			continue
+		fact := Transaction{AmountMinor: row.Amount, Currency: row.Currency, ProcessingState: row.Processing,
+			ProviderPrimaryCategory: row.ProviderPrimaryCategory, ProviderCategory: row.ProviderCategory,
+			ProviderConfidence: row.ProviderConfidence, ProviderCode: row.ProviderCode, MappingVersion: row.MappingVersion,
+			ActivityOverride: activity, MaterialConflict: row.MaterialConflict, Excluded: row.Excluded, Current: true}
+		if err := classifyTransaction(&fact); err != nil {
+			return impact, err
 		}
-		if row.Activity == nil || row.MaterialConflict {
-			impact.UnresolvedCount++
-			continue
-		}
-		amount, ok := new(big.Int).SetString(row.Amount, 10)
-		if !ok {
-			return impact, errors.New("invalid source amount")
-		}
-		switch *row.Activity {
-		case "purchase", "bank_fee", "debit_interest":
-			if amount.Sign() <= 0 {
-				impact.UnresolvedCount++
-				continue
-			}
-			total.Add(total, amount)
-		case "refund":
-			if amount.Sign() >= 0 {
-				impact.UnresolvedCount++
-				continue
-			}
-			total.Add(total, amount)
-		case "income", "transfer", "card_repayment", "cash_withdrawal":
-		default:
-			impact.UnresolvedCount++
-		}
+		transactions = append(transactions, fact)
 	}
-	limit := big.NewInt(9007199254740991)
-	if new(big.Int).Abs(new(big.Int).Set(total)).Cmp(limit) > 0 {
-		return impact, errors.New("spending overflow")
+	summary, err := summarizeReport(transactions)
+	if err != nil {
+		return impact, err
 	}
-	impact.SpendingMinor = total.String()
+	impact.SpendingMinor = summary.NetMinor
+	impact.PendingCount = summary.PendingCount
+	impact.UnresolvedCount = summary.UnresolvedCount
 	return impact, nil
 }

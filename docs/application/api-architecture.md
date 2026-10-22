@@ -33,7 +33,7 @@ metadata and immutable financial/audit/recovery records remain unchanged.
 
 The [reporting-timezone API](reporting-timezone.md) provides a self-only saved IANA
 zone, independent version and durable same-attempt write recovery without a bank
-connection. Account provides its independent control, and Personal initializes the device zone once; general date-bound reads remain a separate delivery. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
+connection. Account provides its independent control, and Personal initializes the device zone once. Private bank reporting resolves saved-zone date bounds. The [replacement backend](banking-replacement.md) validates boundaries against the saved zone.
 
 ## Responsibilities
 
@@ -80,7 +80,7 @@ Map expected validation, access, version-conflict, and duplicate-operation outco
 
 ## Future integrations
 
-Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial/incremental imports for explicitly selected accounts, verified notification dispatch and daily missed-notification reconciliation. Personal supplies shared navigation, initial Link selection/recovery and private connection inventory/status. Public transaction/reporting reads, activity content and existing-connection management UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
+Keep imported bank transactions separate from shared expenses until explicitly assigned and split. Plaid credentials and provider-specific behavior remain private to the integration. Work requiring durable retries must use durable processing; Supabase Queues with the restricted Go lifecycle worker is implemented for cleanup, protected status observations and durable initial/incremental imports for explicitly selected accounts, verified notification dispatch and daily missed-notification reconciliation. The [private reporting API](banking-reporting.md) adds coherent canonical transaction/archive reads and guarded annotations; Personal supplies shared navigation, initial Link selection/recovery and private connection inventory/status; transaction/activity content and existing-connection management UI remain downstream. Hosted provisioning and live rollout remain separately authorized.
 
 The internal [private banking storage](banking-storage.md) foundation implements
 owner-only persistence, protected credential storage, durable attempts and lifecycle
@@ -89,7 +89,7 @@ Item observation, worker privileges/runtime and verified durable HTTP ingress.
 The [enrollment API](banking-enrollment.md) implements actor-bound Link operations,
 retained stream reads, durable unknown-exchange recovery, explicit selection,
 existing-Item repair and revision-checked disconnect/private-history deletion. New enrollment is
-disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. The existing worker executes durable first/incremental imports for selected bindings through verified notification dispatch and daily reconciliation. The [owner-only status API](banking-status.md) reads lifecycle, progress, coverage and freshness in one authorized persisted snapshot. Public transaction/reporting APIs remain deferred. The [planned Personal banking contract](personal-banking.md) defines owner-only
+disabled by default; the [replacement backend](banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The [transaction sync adapter and restricted persistence](banking-sync.md) validate account-filtered pages and atomically commit complete batches with lifecycle/reporting fences. The existing worker executes durable first/incremental imports for selected bindings through verified notification dispatch and daily reconciliation. The [owner-only status API](banking-status.md) reads lifecycle, progress, coverage and freshness in one authorized persisted snapshot. The [private reporting API](banking-reporting.md) implements complete canonical reporting and versioned private annotations. The [planned Personal banking contract](personal-banking.md) defines owner-only
 source/binding/annotation boundaries, exact posted-date spending, saved reporting
 preferences, durable lifecycle fencing and explicit exchange uncertainty. The
 lifecycle slice owns the minimum queue consumer and verified ingress; transaction

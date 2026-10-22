@@ -33,12 +33,13 @@ and lifecycle fences. The [lifecycle worker](../../docs/application/banking-work
 cleanup and the sole verified webhook ingress. The [enrollment API](../../docs/application/banking-enrollment.md) implements
 actor-bound enrollment, explicit selection, existing-Item repair, disconnect,
 private-history deletion and retained-account/status reads with default-disabled
-new enrollment. The [replacement backend](../../docs/application/banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The protected [transaction sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted atomic batch persistence, durable selected-account imports, verified Transactions dispatch and daily missed-notification reconciliation are implemented. The [owner-only status API](../../docs/application/banking-status.md) exposes persisted import progress, coverage and freshness. Public transaction reads remain separate work.
+new enrollment. The [replacement backend](../../docs/application/banking-replacement.md) implements explicit staged date-ownership plans and bounded recovery. The protected [transaction sync adapter](../../docs/application/banking-sync.md) validates account-filtered provider pages; restricted atomic batch persistence, durable selected-account imports, verified Transactions dispatch and daily missed-notification reconciliation are implemented. The [owner-only status API](../../docs/application/banking-status.md) exposes persisted import progress, coverage and freshness. The [private reporting API](../../docs/application/banking-reporting.md) adds coherent canonical transaction/archive reads, complete exact summaries and guarded private annotation edits. Personal provides shared navigation, initial Link selection/recovery and private connection inventory/status; existing-connection management UI remains separate.
 
 The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
 an owner-only independent preference and immutable write recovery. Account consumes
-its independent control, and Personal initializes the device zone once. General
-date/reporting APIs and activity content remain separate deliveries.
+its independent control, and Personal initializes the device zone once. Private
+bank reporting uses this saved preference for date bounds. Personal transaction
+and activity content remain separate deliveries.
 
 ## Design and implementation
 

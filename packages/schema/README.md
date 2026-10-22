@@ -19,8 +19,8 @@ positive string version and actor/operation/attempt-bound initialization/update
 recovery. See [the operation contract](../../docs/application/reporting-timezone.md)
 for validation, concurrency and lost-response behavior. Account consumes this
 independent preference for explicit timezone changes, and Personal initializes it
-once from the device. Reporting-date APIs remain separate; the preference does
-not enable banking.
+once from the device. The [private reporting API](../../docs/application/banking-reporting.md)
+uses it for preset dates; the preference does not enable banking.
 
 ## Public contract documentation
 
@@ -175,7 +175,7 @@ describes canonical attempts, explicit server-verified US/USD selection, the
 365-day requested history window and non-active uncertainty/cleanup states. Only
 start returns the short-lived Link handoff; tokens must never enter persistent
 browser storage. `AWAITING_INITIAL_IMPORT` supplies no transaction or freshness
-claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial/incremental imports for explicitly selected accounts through verified notifications and daily reconciliation. Personal consumes initial browser Link selection/recovery and private connection inventory/status. Public transaction/reporting APIs, activity content, existing-connection management UI and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
+claim. New enrollment is disabled by default. The [sync adapter and restricted persistence](../../docs/application/banking-sync.md) validate provider pages and atomically commit complete batches/checkpoints. The same worker executes durable initial and incremental imports for explicitly selected accounts, verified Transactions dispatch and daily reconciliation. The [private reporting API](../../docs/application/banking-reporting.md) exposes owner-only canonical transaction/detail/archive reads, complete exact summaries and guarded single-field annotation edits/resets with durable recovery. Personal consumes initial browser Link selection/recovery and private connection inventory/status. Transaction/activity content, existing-connection management UI and live rollout remain downstream. The [replacement backend](../../docs/application/banking-replacement.md) supplies explicit staging, activation and recovery.
 
 ## Private banking replacement
 
@@ -185,8 +185,7 @@ guards, durable confirmation/cancellation and opaque operation recovery. Dates
 partition reporting by posted-bank date; archive references add no contribution.
 See [replacement semantics](../../docs/application/banking-replacement.md) for
 usable-data versus coverage, exact totals, recovery and collection fences.
-Provider ingestion, general banking reporting/edit surfaces and browser management
-remain separate deliveries.
+The [sync adapter](../../docs/application/banking-sync.md) supplies provider ingestion, and the [private reporting API](../../docs/application/banking-reporting.md) supplies canonical reads and guarded annotation edits. Existing-connection management UI remains a separate delivery.
 
 ## Private banking import status
 
@@ -196,3 +195,7 @@ and freshness dimensions. See [the status contract](../../docs/application/banki
 for unknown/null meanings, requested-bound provenance, snapshot/cache invalidation
 and remaining producers. Logical account IDs repeat across replacement streams;
 Relay consumers select `streamId` for the existing actor-scoped cache identity.
+
+## Private bank reporting
+
+`banking-reporting.graphql` defines actor-only canonical transaction/detail/archive reads, complete filtered counts and exact account spending, saved-zone presets, coverage and signed snapshot pagination. It also defines private single-row annotation edits/reset with durable attempt recovery. See [the reporting operation contract](../../docs/application/banking-reporting.md) for unavailable versus partial/empty/activity-only states, taxonomy choices, query limits, concurrency and archive ownership.
