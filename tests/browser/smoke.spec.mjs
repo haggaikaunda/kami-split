@@ -3,6 +3,10 @@ import { writeFile } from 'node:fs/promises';
 import { test, expect } from './fixtures.mjs';
 import { responseFor } from './data.mjs';
 
+// Contexts, fixture state, held routes and testInfo output paths are test-owned.
+// Keep other files serial unless their ownership has also been audited.
+test.describe.configure({ mode: 'parallel' });
+
 const axePath = createRequire(
   new URL('../../apps/web/package.json', import.meta.url),
 ).resolve('axe-core/axe.min.js');
@@ -16,7 +20,7 @@ for (const workspace of [
   },
 ]) {
   for (const width of [320, 390]) {
-    test(`${workspace.name} enlarged header geometry at ${width}px stays stable during a protected read`, async ({
+    test(`${workspace.name} enlarged header geometry at ${width}px stays stable during a protected read @owns-viewport`, async ({
       page,
       app,
     }, testInfo) => {
@@ -552,7 +556,11 @@ test('Household Expenses and Activity reuse initial reads through repeat and Bac
 test('loading handoff: route cue, one slow content status, failure and one explicit retry preserve navigation and focus', async ({
   page,
   app,
-}) => {
+}, testInfo) => {
+  // Install before navigation so every application timer has the same owner.
+  // Stay near real time: this does not test token expiry or cache freshness.
+  const now = Date.now();
+  await page.clock.install({ time: now });
   await app.authenticate();
   const routeStarted = Promise.withResolvers();
   const routeReleased = Promise.withResolvers();
@@ -574,6 +582,58 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+    // A visible React commit does not prove its passive effect registered timers.
+    // Observe the real registrations without changing timers, callbacks or IDs.
+    await page.evaluate(() => {
+      const schedule = window.setTimeout.bind(window);
+      window.__browserLoadingTimers = [];
+      window.setTimeout = (callback, delay, ...args) => {
+        if (delay === 150 || delay === 8_000)
+          window.__browserLoadingTimers.push({
+            sequence: window.__browserLoadingTimers.length + 1,
+            delay,
+            at: Date.now(),
+          });
+        return schedule(callback, delay, ...args);
+      };
+    });
+    async function registeredAfter(sequence, owner) {
+      let pair;
+      await expect
+        .poll(async () => {
+          pair = await page.evaluate((after) => {
+            const records = window.__browserLoadingTimers;
+            const index = records.findIndex((show, index) => {
+              const slow = records[index + 1];
+              return (
+                show.sequence > after &&
+                show.delay === 150 &&
+                slow?.delay === 8_000 &&
+                slow.at === show.at
+              );
+            });
+            return index === -1
+              ? null
+              : {
+                  show: records[index],
+                  slow: records[index + 1],
+                  now: Date.now(),
+                  records,
+                };
+          }, sequence);
+          return Boolean(pair);
+        }, `${owner} registers a new loading timer pair`)
+        .toBe(true);
+      await testInfo.attach(`loading-timers-${owner}`, {
+        body: JSON.stringify(pair),
+        contentType: 'application/json',
+      });
+      expect(pair.now, `${owner} starts at the paused registration time`).toBe(
+        pair.show.at,
+      );
+      return pair.slow.sequence;
+    }
     const tabs = page.locator('[data-ui~="workspace-tabs"]');
     const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
     const before = await balances.boundingBox();
@@ -589,16 +649,27 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await routeStarted.promise;
     const cue = balances.locator('[data-ui="workspace-navigation-pending"]');
     await expect(cue).toHaveAttribute('data-pending', 'true');
+    await registeredAfter(0, 'route-cue');
+    await page.clock.runFor(150);
     await expect(cue.locator('span')).not.toHaveCount(0);
     await expect(
       tabs.getByRole('link', { name: 'Overview', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('[data-ui="screen-loading"]')).toHaveCount(0);
     expect(await balances.boundingBox()).toEqual(before);
+    const beforeContent = await page.evaluate(
+      () => window.__browserLoadingTimers.length,
+    );
     routeReleased.resolve();
     await pending.started;
     const loading = page.locator('[data-ui="content-loading"]:visible');
     await expect(loading).toHaveAttribute('data-layout', 'balances');
+    const status = page.getByRole('status');
+    const slow = page.getByText('Still loading balances…', { exact: true });
+    await registeredAfter(beforeContent, 'content');
+    await page.clock.runFor(149);
+    await expect(status).toHaveText('');
+    await page.clock.runFor(1);
     await expect(
       page.getByRole('status').filter({ hasText: 'Loading balances…' }),
     ).toBeVisible();
@@ -614,9 +685,10 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(balances).toHaveAttribute('aria-current', 'page');
     expect(await balances.boundingBox()).toEqual(before);
     await expect(page.locator('[data-ui~="group-balances"]')).toHaveCount(0);
-    await expect(
-      page.getByText('Still loading balances…', { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    await page.clock.runFor(7_849);
+    await expect(slow).toHaveCount(0);
+    await page.clock.runFor(1);
+    await expect(slow).toBeVisible();
     expect(reads()).toBe(baseline + 1);
     await pending.release();
     await expect(loading).toHaveCount(0);
@@ -624,22 +696,52 @@ test('loading handoff: route cue, one slow content status, failure and one expli
       page.getByRole('button', { name: 'Try again', exact: true }),
     ).toBeVisible();
     const retry = app.hold('journeyWorkspaceQuery');
+    const beforeRetry = await page.evaluate(
+      () => window.__browserLoadingTimers.length,
+    );
     await page.getByRole('button', { name: 'Try again', exact: true }).click();
     await retry.started;
+    await expect(loading).toHaveAttribute('data-layout', 'balances');
+    await expect(slow).toHaveCount(0);
+    await registeredAfter(beforeRetry, 'retry');
+    await page.clock.runFor(149);
+    await expect(status).toHaveText('');
+    await page.clock.runFor(1);
     await expect(
       page.getByRole('status').filter({ hasText: 'Loading balances…' }),
     ).toBeVisible();
     await expect(page.getByRole('status')).toHaveCount(1);
     expect(reads()).toBe(baseline + 2);
-    await expect(
-      page.getByText('Still loading balances…', { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    await page.clock.runFor(7_849);
+    await expect(slow).toHaveCount(0);
+    await page.clock.runFor(1);
+    await expect(slow).toBeVisible();
     expect(reads()).toBe(baseline + 2);
     await retry.release();
     await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
     await expect(loading).toHaveCount(0);
-    await page.waitForTimeout(200);
+    await page.clock.runFor(8_000);
+    await expect(loading).toHaveCount(0);
+    await expect(slow).toHaveCount(0);
     expect(reads()).toBe(baseline + 2);
+
+    // Next owns its route scheduling: let navigation render normally, then
+    // control time again to detect feedback leaking from the disposed read.
+    await page.clock.resume();
+    const abandoned = app.hold('journeyWorkspaceQuery');
+    await page.goto('/groups/F?tab=balances');
+    await abandoned.started;
+    await expect(loading).toBeVisible();
+    await page.getByRole('link', { name: 'Profile', exact: true }).click();
+    await expect(
+      page.getByLabel('Display name', { exact: true }),
+    ).toBeVisible();
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+    await page.clock.runFor(8_000);
+    await expect(loading).toHaveCount(0);
+    await expect(slow).toHaveCount(0);
+    await abandoned.release();
+    await expect(loading).toHaveCount(0);
   } finally {
     routeReleased.resolve();
   }
@@ -1091,7 +1193,7 @@ test('authorized Create opens details directly and preserves directory selection
   ).toBeFocused();
 });
 
-test('directory cards contain long exact amounts across responsive themes and enlarged text', async ({
+test('directory cards contain long exact amounts across responsive themes and enlarged text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -1516,7 +1618,7 @@ async function expectAlignedIdentity(page, title, helpLabel) {
   }
 }
 
-test('shared header aligns Household help and every destination with unavailable artwork', async ({
+test('shared header aligns Household help and every destination with unavailable artwork @owns-viewport', async ({
   page,
   app,
 }) => {
@@ -1564,7 +1666,7 @@ test('shared header aligns Household help and every destination with unavailable
   }
 });
 
-test('compact identity and navigation remain readable across responsive themes and doubled text', async ({
+test('compact identity and navigation remain readable across responsive themes and doubled text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -2095,7 +2197,7 @@ test('Group balances: another recorder, overpayment, duplicate activation and fr
   );
 });
 
-test('Balance layout: long names and amounts, keyboard details, ineligible parties and unavailable sources', async ({
+test('Balance layout: long names and amounts, keyboard details, ineligible parties and unavailable sources @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -2176,7 +2278,7 @@ for (const source of [
   { name: 'Trip', path: '/trips/T?tab=expenses' },
   { name: 'Household', path: '/household/expenses' },
 ]) {
-  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer`, async ({
+  test(`${source.name} short enlarged viewport keeps expense controls reachable by pointer @owns-viewport`, async ({
     page,
     app,
   }, testInfo) => {
@@ -2930,7 +3032,7 @@ test('contextual uncertain repayment keeps the original operation across dismiss
   await expect(trigger).toBeFocused();
 });
 
-test('balance and repayment layout retains readable controls across appearance, enlarged text and short viewports', async ({
+test('balance and repayment layout retains readable controls across appearance, enlarged text and short viewports @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -3269,7 +3371,7 @@ for (const count of [0, 1, 3, 12]) {
   });
 }
 
-test('creation recovery and validation stay readable at 320px with doubled text', async ({
+test('creation recovery and validation stay readable at 320px with doubled text @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -3444,7 +3546,7 @@ const overviewSources = [
   },
 ];
 for (const source of overviewSources) {
-  test(`Overview ${source.id} compact vertical composition, complete money and accessible reflow`, async ({
+  test(`Overview ${source.id} compact vertical composition, complete money and accessible reflow @owns-viewport`, async ({
     page,
     app,
   }, testInfo) => {
@@ -3717,7 +3819,7 @@ test('Overview refresh hides private content while pending and retains truthful 
   await expect(page.locator('[data-ui~="balance-summary"]')).toBeVisible();
 });
 
-test('Overview exact long amounts and labels reflow without hiding the preview or secondary totals', async ({
+test('Overview exact long amounts and labels reflow without hiding the preview or secondary totals @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {

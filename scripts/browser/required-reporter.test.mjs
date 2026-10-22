@@ -42,3 +42,39 @@ test('zero discovery and expected failures cannot satisfy required coverage', ()
     assert.equal(reporter.onEnd({ status: 'passed' }).status, 'failed');
   }
 });
+
+test('an unsuccessful earlier attempt cannot be masked by a later pass', () => {
+  const reporter = new Reporter();
+  reporter.onBegin(
+    {},
+    {
+      allTests: () => [
+        {
+          expectedStatus: 'passed',
+          results: [{ status: 'failed' }, { status: 'passed' }],
+        },
+      ],
+    },
+  );
+  assert.equal(reporter.onEnd({ status: 'passed' }).status, 'failed');
+});
+
+test('startup failure, unrun cases and aggregate interruption remain failures', () => {
+  const reporter = new Reporter();
+  assert.equal(reporter.onEnd({ status: 'failed' }).status, 'failed');
+  reporter.onBegin(
+    {},
+    { allTests: () => [{ expectedStatus: 'passed', results: [] }] },
+  );
+  assert.equal(reporter.onEnd({ status: 'passed' }).status, 'failed');
+  reporter.onBegin(
+    {},
+    {
+      allTests: () => [
+        { expectedStatus: 'passed', results: [{ status: 'passed' }] },
+      ],
+    },
+  );
+  for (const status of ['failed', 'timedout', 'interrupted'])
+    assert.equal(reporter.onEnd({ status }).status, status);
+});

@@ -285,3 +285,17 @@ test('Members browser cases require web verification without deploying; unknown 
     conservative(),
   );
 });
+
+for (const path of [
+  'scripts/browser/discovery.test.mjs',
+  'tests/browser/creation.spec.mjs',
+  'tests/browser/touch-focus.spec.mjs',
+])
+  test(`browser selection input ${path} requires web verification only`, () => {
+    assert.deepEqual(classify([path]), {
+      verify_web: true,
+      verify_api: false,
+      deploy_web: false,
+      deploy_api: false,
+    });
+  });

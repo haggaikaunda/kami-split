@@ -304,7 +304,7 @@ for (const workspace of workspaces) {
 }
 
 for (const workspace of workspaces) {
-  test(`${workspace.name} Members reflows long names, themes, enlarged text and empty data`, async ({
+  test(`${workspace.name} Members reflows long names, themes, enlarged text and empty data @owns-viewport`, async ({
     page,
     app,
     context,

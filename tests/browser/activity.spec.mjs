@@ -357,7 +357,7 @@ for (const workspace of workspaces.slice(0, 2)) {
 }
 
 for (const width of [320, 390, 440, 1280, 1440]) {
-  test(`activity row composition and enlarged text at ${width}px`, async ({
+  test(`activity row composition and enlarged text at ${width}px @owns-viewport`, async ({
     page,
     app,
     context,

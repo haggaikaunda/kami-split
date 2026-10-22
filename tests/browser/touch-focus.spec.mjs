@@ -209,7 +209,7 @@ test('focus restoration: empty fresh return uses Filters and newer intent beats 
   await expect(filters).toBeFocused();
 });
 
-test('focus presentation: enlarged short filters preserve text-entry and forced-color indicators', async ({
+test('focus presentation: enlarged short filters preserve text-entry and forced-color indicators @owns-viewport', async ({
   page,
   app,
 }) => {

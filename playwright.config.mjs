@@ -10,7 +10,7 @@ export default defineConfig({
   testDir: './tests/browser',
   testMatch: '**/*.spec.mjs',
   fullyParallel: false,
-  workers: 1,
+  workers: 2,
   retries: 0,
   forbidOnly: true,
   timeout: 45_000,
@@ -31,6 +31,8 @@ export default defineConfig({
   },
   projects: [390, 1280].map((width) => ({
     name: `chromium-${width}`,
+    // These tests own their relevant viewport coverage inside the case.
+    ...(width === 1280 ? { grepInvert: /@owns-viewport/ } : {}),
     use: { viewport: { width, height: 900 } },
   })),
   webServer: [

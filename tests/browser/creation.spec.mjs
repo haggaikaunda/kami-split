@@ -150,7 +150,7 @@ test('known corrupt storage blocks until explicit acknowledged recovery', async 
 });
 
 for (const width of [320, 390, 440, 1280]) {
-  test(`creation page keeps fields and actions reachable at ${width}px`, async ({
+  test(`creation page keeps fields and actions reachable at ${width}px @owns-viewport`, async ({
     page,
     app,
   }, testInfo) => {
