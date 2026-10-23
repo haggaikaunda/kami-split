@@ -435,3 +435,25 @@ it('keeps the normal complete list compact with a whole-row target and no all-ze
     'Activity context; no spending total applies.',
   );
 });
+it('restores a selected archive-record origin only after its fresh source read', async () => {
+  scope.visits.set('selected-return', {
+    href: '/personal?tab=transactions&archive=archive&transaction=source-1',
+    focus: 'current-source-1',
+    scroll: 100,
+  });
+  nav.search =
+    'tab=transactions&archive=archive&transaction=source-1&restore=selected-return';
+  await act(async () => render());
+  await answer(report({ summary: null, spendingContext: 'RECOVERY_ARCHIVE' }));
+  expect(document.activeElement?.id).not.toBe('current-source-1');
+  await answer({
+    bankingTransaction: {
+      id: 'archive-selected-fresh',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: row(),
+    },
+  } as unknown as ReturnType<typeof report>);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+  expect(document.activeElement?.id).toBe('current-source-1');
+});

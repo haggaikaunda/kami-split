@@ -760,12 +760,15 @@ function SelectedTransaction({ scope, names }: Context) {
         {(data) =>
           data.bankingTransaction.code === 'READY' &&
           data.bankingTransaction.transaction ? (
-            <TransactionRow
-              scope={scope}
-              names={names}
-              row={data.bankingTransaction.transaction}
-              selected
-            />
+            <>
+              <RestoreSource scope={scope} allowed={[]} />
+              <TransactionRow
+                scope={scope}
+                names={names}
+                row={data.bankingTransaction.transaction}
+                selected
+              />
+            </>
           ) : (
             <Status kind="error">
               This private record is unavailable or no longer accessible.
