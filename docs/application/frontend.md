@@ -179,6 +179,12 @@ noncontributing source facts. The narrow selected-row reader freshly authorizes
 `bankingTransaction` outside list filters. It supplies source/return continuity for
 the separately owned full detail/editor. Current-record links clear archive and
 discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
+The actor-owned transaction navigator retains only each report revision and loaded
+page extent. A valid source return across contexts replays that extent from fresh
+signed continuations, then restores focus and scroll after fresh authorization.
+Changed revisions or denied pages discard the traversal and require an explicit
+restart; manual filter changes begin at page one. Restoring a source inside native
+reporting-history disclosures reveals its authorized ancestors before focus.
 Snapshot IDs never become navigation or edit keys. Archive annotations are shown
 as immutable captured provenance and copies never join current totals.
 

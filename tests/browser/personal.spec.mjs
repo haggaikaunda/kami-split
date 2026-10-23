@@ -1192,6 +1192,107 @@ test('Personal transaction pagination restarts on changed snapshots and keeps fi
   ).toBeVisible();
 });
 
+test('Personal archive returns replay fresh signed extent and discard changed or denied sources', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let mode = 'ready',
+    returning = false;
+  const calls = await transactionServer(page, (operation, variables) => {
+    if (operation !== 'personalTransactionsQuery') return;
+    if (!variables.filter.archiveId)
+      return transactionReport({ hasNextPage: false });
+    const extra = { summary: null, spendingContext: 'RECOVERY_ARCHIVE' };
+    if (variables.after)
+      return transactionReport({
+        ...extra,
+        ...(returning && mode === 'denied' ? { code: 'FORBIDDEN' } : {}),
+        rows: [
+          transactionRow('archive-later', {
+            merchantName: 'Later archived income',
+            activity: 'income',
+            bankDate: '2026-09-12',
+            currentId: 'current-outside',
+          }),
+        ],
+        hasNextPage: false,
+        endCursor: null,
+      });
+    return transactionReport({
+      ...extra,
+      revision:
+        returning && mode === 'revision'
+          ? 'changed-revision'
+          : 'revision-private',
+      endCursor: returning ? 'fresh-signed-page' : 'signed-page',
+      rows: [
+        transactionRow('archive-first', {
+          merchantName: 'First archived income',
+          activity: 'income',
+          bankDate: '2026-09-10',
+        }),
+      ],
+    });
+  });
+  for (mode of ['ready', 'revision', 'denied']) {
+    returning = false;
+    await page.goto(
+      '/personal?tab=transactions&period=custom&start=2026-09-01&end=2026-09-30&activity=income&archive=archive-private',
+    );
+    await page
+      .getByRole('button', { name: 'Load more transactions', exact: true })
+      .click();
+    await page.locator('#current-archive-later').click();
+    await expect(
+      page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-source-id="current-outside"]:visible'),
+    ).toHaveCount(1);
+    returning = true;
+    const before = calls.length;
+    await page
+      .getByRole('link', { name: 'Back to recovery archive', exact: true })
+      .click();
+    if (mode === 'ready') {
+      await expect(page.locator('#current-archive-later')).toBeFocused();
+      await expect(
+        page.getByRole('link', { name: 'Later archived income', exact: true }),
+      ).toBeVisible();
+      expect(
+        calls
+          .slice(before)
+          .some((call) => call.variables.after === 'fresh-signed-page'),
+      ).toBe(true);
+      const ids = await page
+        .locator('[id]')
+        .evaluateAll((nodes) => nodes.map((node) => node.id));
+      expect(new Set(ids).size).toBe(ids.length);
+    } else {
+      await expect(
+        page.getByRole('button', { name: 'Restart activity', exact: true }),
+      ).toBeVisible();
+      await expect(page.locator('[data-source-id]')).toHaveCount(0);
+      returning = false;
+      await page
+        .getByRole('button', { name: 'Restart activity', exact: true })
+        .click();
+      await expect(
+        page.getByRole('button', {
+          name: 'Load more transactions',
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
+    await expect(page).toHaveURL(/start=2026-09-01/);
+    expect(calls.at(-1).variables.filter).toMatchObject({
+      archiveId: 'archive-private',
+      activities: ['income'],
+    });
+  }
+});
+
 test('Personal transaction context distinguishes pending, unavailable and fully covered empty results', async ({
   page,
   app,

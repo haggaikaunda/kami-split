@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { useFragment } from 'react-relay';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { NetworkQuery } from '@/lib/relay/query';
@@ -36,10 +36,41 @@ type Context = {
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
 };
-export function PersonalTransactions({ scope, names, statuses }: Context) {
+type Traversal = { revision: string | null; pages: number; owner: object };
+type PageProgress = (revision: string | null, pages: number) => void;
+function restoreToken(scope: FinancialScope, params: URLSearchParams) {
+  const historyToken =
+    typeof window !== 'undefined'
+      ? (window.history.state?.financialRestore as string | undefined)
+      : undefined;
+  const visit = historyToken ? scope.visits.get(historyToken) : undefined;
+  return visit?.href ===
+    (typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search
+      : '')
+    ? historyToken
+    : params.get('restore');
+}
+export function PersonalTransactions(context: Context) {
+  return <TransactionNavigation key={context.scope.id} {...context} />;
+}
+/** Retain only actor-owned revision/extent; private rows and signed cursors always
+ * come from fresh authorized queries when returning across report contexts. */
+function TransactionNavigation({ scope, names, statuses }: Context) {
   const params = useSearchParams();
   const filter = reportFilter(new URLSearchParams(params));
   const identity = JSON.stringify(filter);
+  const [traversals, setTraversals] = useState(new Map<string, Traversal>());
+  const token = restoreToken(scope, new URLSearchParams(params));
+  const visit = token && scope.isLive() ? scope.visits.get(token) : undefined;
+  const origin = visit
+    ? new URL(visit.href, 'https://workspace.invalid')
+    : null;
+  const resume =
+    origin?.pathname === '/personal' &&
+    JSON.stringify(reportFilter(origin.searchParams)) === identity
+      ? traversals.get(identity)
+      : undefined;
   return (
     <TransactionRead
       key={`${scope.id}:${identity}`}
@@ -47,6 +78,21 @@ export function PersonalTransactions({ scope, names, statuses }: Context) {
       names={names}
       statuses={statuses}
       filter={filter}
+      resume={resume}
+      onPage={(revision, pages, owner) => {
+        setTraversals((previous) => {
+          const saved = previous.get(identity);
+          if (
+            saved?.owner === owner &&
+            saved.revision === revision &&
+            saved.pages >= pages
+          )
+            return previous;
+          const next = new Map(previous);
+          next.set(identity, { revision, pages, owner });
+          return next;
+        });
+      }}
     />
   );
 }
@@ -55,10 +101,20 @@ function TransactionRead({
   names,
   statuses,
   filter,
-}: Context & { filter: personalTransactionsQuery['variables']['filter'] }) {
+  resume,
+  onPage,
+}: Context & {
+  filter: personalTransactionsQuery['variables']['filter'];
+  resume?: Traversal;
+  onPage: (revision: string | null, pages: number, owner: object) => void;
+}) {
+  const [owner, setOwner] = useState({});
+  const [restoring, setRestoring] = useState(resume);
   const [version, setVersion] = useState(0),
     [restart, setRestart] = useState(false);
   const retry = () => {
+    setOwner({});
+    setRestoring(undefined);
     setRestart(false);
     setVersion((value) => value + 1);
   };
@@ -97,6 +153,8 @@ function TransactionRead({
               statuses={statuses}
               report={data.bankingReport}
               filter={filter}
+              resume={restoring}
+              onPage={(revision, pages) => onPage(revision, pages, owner)}
               onRestart={() => setRestart(true)}
               onRetry={retry}
             />
@@ -114,7 +172,11 @@ function ReportContent({
   filter,
   onRestart,
   onRetry,
+  resume,
+  onPage,
 }: Context & {
+  resume?: Traversal;
+  onPage: PageProgress;
   report: Report;
   filter: personalTransactionsQuery['variables']['filter'];
   onRestart: () => void;
@@ -122,21 +184,9 @@ function ReportContent({
 }) {
   const params = useSearchParams(),
     selection = transactionSelection(params);
-  const historyToken =
-    typeof window !== 'undefined'
-      ? (window.history.state?.financialRestore as string | undefined)
-      : undefined;
-  const historyVisit = historyToken
-    ? scope.visits.get(historyToken)
-    : undefined;
-  const restore =
-    historyVisit?.href ===
-    (typeof window !== 'undefined'
-      ? window.location.pathname + window.location.search
-      : '')
-      ? historyToken
-      : params.get('restore');
+  const restore = restoreToken(scope, new URLSearchParams(params));
   const [returnReady, setReturnReady] = useState<string | null>(null);
+  const [extentReady, setExtentReady] = useState(!resume || resume.pages <= 1);
   useEffect(() => {
     if (report.code !== 'READY' || !report.timezone) return;
     const timer = window.setInterval(() => {
@@ -157,6 +207,13 @@ function ReportContent({
     tab: 'connections',
     transaction: null,
   });
+  if (
+    report.code === 'READY' &&
+    resume &&
+    (report.revision !== resume.revision ||
+      (resume.pages > 1 && !report.rows.length))
+  )
+    return <InvalidPage onRestart={onRestart} />;
   return (
     <>
       <TransactionControls
@@ -199,9 +256,11 @@ function ReportContent({
               Boolean(restore && returnReady !== restore)
             }
           >
-            {!selection.source && (!restore || returnReady === restore) && (
-              <RestoreSource key={restore} scope={scope} allowed={[]} />
-            )}
+            {!selection.source &&
+              extentReady &&
+              (!restore || returnReady === restore) && (
+                <RestoreSource key={restore} scope={scope} allowed={[]} />
+              )}
             {selection.archive && (
               <div className={styles.notice}>
                 <h2>Recovery archive</h2>
@@ -322,6 +381,10 @@ function ReportContent({
                 report={report}
                 filter={filter}
                 onRestart={onRestart}
+                depth={1}
+                resumePages={resume?.pages ?? 1}
+                onPage={onPage}
+                onExtentReady={() => setExtentReady(true)}
               />
             )}
             <details className={styles.provenance}>
@@ -514,13 +577,30 @@ function TransactionPage({
   report,
   filter,
   onRestart,
+  depth,
+  resumePages,
+  onPage,
+  onExtentReady,
 }: Context & {
+  depth: number;
+  resumePages: number;
+  onPage: PageProgress;
+  onExtentReady: () => void;
   report: Report;
   filter: personalTransactionsQuery['variables']['filter'];
   onRestart: () => void;
 }) {
-  const [more, setMore] = useState(false),
+  const [more, setMore] = useState(resumePages > depth),
     [retry, setRetry] = useState(0);
+  const progress = useEffectEvent(() => {
+    onPage(report.revision, depth);
+    if (depth >= resumePages) onExtentReady();
+    else if (!report.hasNextPage || !report.endCursor) onRestart();
+  });
+  useEffect(
+    () => progress(),
+    [report.revision, depth, resumePages, report.hasNextPage, report.endCursor],
+  );
   return (
     <>
       <ul className={styles.rows}>
@@ -559,6 +639,10 @@ function TransactionPage({
                   report={data.bankingReport}
                   filter={filter}
                   onRestart={onRestart}
+                  depth={depth + 1}
+                  resumePages={resumePages}
+                  onPage={onPage}
+                  onExtentReady={onExtentReady}
                 />
               ) : (
                 <InvalidPage onRestart={onRestart} />
@@ -675,7 +759,7 @@ function TransactionRow({
           {value.currentId && (
             <ScopedLink
               scope={scope}
-              id={`current-${value.sourceId}`}
+              id={`${selected ? 'selected-current' : 'current'}-${value.sourceId}`}
               href={personalHref(new URLSearchParams(params), {
                 transaction: value.currentId,
                 source: null,

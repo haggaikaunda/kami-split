@@ -438,14 +438,14 @@ it('keeps the normal complete list compact with a whole-row target and no all-ze
 it('restores a selected archive-record origin only after its fresh source read', async () => {
   scope.visits.set('selected-return', {
     href: '/personal?tab=transactions&archive=archive&transaction=source-1',
-    focus: 'current-source-1',
+    focus: 'selected-current-source-1',
     scroll: 100,
   });
   nav.search =
     'tab=transactions&archive=archive&transaction=source-1&restore=selected-return';
   await act(async () => render());
   await answer(report({ summary: null, spendingContext: 'RECOVERY_ARCHIVE' }));
-  expect(document.activeElement?.id).not.toBe('current-source-1');
+  expect(document.activeElement?.id).not.toBe('selected-current-source-1');
   await answer({
     bankingTransaction: {
       id: 'archive-selected-fresh',
@@ -455,5 +455,79 @@ it('restores a selected archive-record origin only after its fresh source read',
     },
   } as unknown as ReturnType<typeof report>);
   await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
-  expect(document.activeElement?.id).toBe('current-source-1');
+  expect(document.activeElement?.id).toBe('selected-current-source-1');
 });
+
+it.each(['ready', 'revision', 'denied'])(
+  'replays fresh signed archive pages across a current-record context: %s',
+  async (outcome) => {
+    const archive = 'tab=transactions&archive=archive&activity=income';
+    nav.search = archive;
+    await act(async () => render());
+    await answer();
+    await click('Load more transactions');
+    await answer(report({ rows: [row('archive-later')], hasNextPage: false }));
+    scope.visits.set('archive-return', {
+      href: `/personal?${archive}`,
+      focus: 'current-archive-later',
+      scroll: 100,
+    });
+    nav.search = 'tab=transactions&activity=income&transaction=current-outside';
+    await act(async () => render());
+    await answer();
+    nav.search = `${archive}&restore=archive-return`;
+    await act(async () => render());
+    const initial = requests.length - 1;
+    await answer(
+      report({
+        revision: outcome === 'revision' ? 'changed' : 'rev',
+        endCursor: 'fresh-signed',
+      }),
+      initial,
+    );
+    if (outcome !== 'revision') {
+      const continuation = requests.findIndex(
+        (request, index) =>
+          index > initial && request.variables.after === 'fresh-signed',
+      );
+      expect(continuation).toBeGreaterThan(initial);
+      expect(document.activeElement?.id).not.toBe('current-archive-later');
+      await answer(
+        report(
+          outcome === 'denied'
+            ? { code: 'FORBIDDEN', rows: [] }
+            : { rows: [row('archive-later')], hasNextPage: false },
+        ),
+        continuation,
+      );
+      if (outcome === 'ready') {
+        const authorization = requests.findIndex(
+          (request, index) => index > initial && !request.variables.after,
+        );
+        await answer(report({ endCursor: 'fresh-signed' }), authorization);
+        await act(
+          async () => new Promise((resolve) => setTimeout(resolve, 10)),
+        );
+        expect(document.activeElement?.id).toBe('current-archive-later');
+        expect(host.querySelectorAll('[data-source-id]')).toHaveLength(2);
+        nav.search = 'tab=transactions&activity=refund';
+        await act(async () => render());
+        nav.search = archive;
+        await act(async () => render());
+        await answer();
+        expect(host.textContent).toContain('Load more transactions');
+        expect(host.querySelector('#current-archive-later')).toBeNull();
+        return;
+      }
+    }
+    expect(host.textContent).toContain('Restart activity');
+    expect(host.querySelectorAll('[data-source-id]')).toHaveLength(0);
+    await click('Restart activity');
+    await answer();
+    expect(host.textContent).toContain('Load more transactions');
+    expect(requests.at(-1)?.variables.filter).toMatchObject({
+      archiveId: 'archive',
+      activities: ['income'],
+    });
+  },
+);

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 // Update deliberately when adding/removing a journey, not to bless lost discovery.
 const groups = {
   'personal.spec.mjs': [
-    15,
+    16,
     [/^Personal connections reflow/, /^Personal transactions reflow/],
   ],
   'activity.spec.mjs': [16, [/^activity row composition/]],
