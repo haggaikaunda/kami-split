@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { readInlineData } from 'relay-runtime';
 import type { FinancialScope } from '@/lib/relay/environment';
 import type { managementConnectionQuery } from '@/lib/relay/__generated__/managementConnectionQuery.graphql';
@@ -79,6 +79,9 @@ export function Replacement({
   onDifferent: () => void;
   onChanged: () => void;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const archiveTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => heading.current?.focus(), []);
   const [intent, setIntent] = useState<'replace' | 'recover' | 'different'>();
   const [action, setAction] = useState<Request['action']>('ACTIVATE');
   const [date, setDate] = useState(''),
@@ -110,7 +113,9 @@ export function Replacement({
     );
   return (
     <>
-      <h3>{account.name}: replacement and recovery</h3>
+      <h3 ref={heading} tabIndex={-1}>
+        {account.name}: replacement and recovery
+      </h3>
       <p>
         Prefer repairing the existing connection. Names, masks and similar
         transactions never establish account identity.
@@ -267,7 +272,13 @@ export function Replacement({
                       Plan {a.planId} · captured boundary {a.boundaryDate} ·{' '}
                       {a.count} records.
                     </p>
-                    <Button tone="secondary" onClick={() => setArchive(a.id)}>
+                    <Button
+                      tone="secondary"
+                      onClick={(event) => {
+                        archiveTrigger.current = event.currentTarget;
+                        setArchive(a.id);
+                      }}
+                    >
                       View recovery archive — {a.boundaryDate}
                     </Button>
                   </div>
@@ -281,7 +292,12 @@ export function Replacement({
                   accountId={accountId}
                   archiveId={archive}
                   today={report.asOfDate}
-                  onBack={() => setArchive(undefined)}
+                  onBack={() => {
+                    setArchive(undefined);
+                    if (archiveTrigger.current?.isConnected)
+                      archiveTrigger.current.focus();
+                    else heading.current?.focus();
+                  }}
                 />
               )}
               {(intent === 'recover' ||
@@ -569,9 +585,18 @@ function Archive({
 }) {
   const [after, setAfter] = useState<string | undefined>();
   const [current, setCurrent] = useState<string>();
+  const heading = useRef<HTMLHeadingElement>(null),
+    currentHeading = useRef<HTMLHeadingElement>(null),
+    currentTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => heading.current?.focus(), [archiveId]);
+  useEffect(() => {
+    if (current) currentHeading.current?.focus();
+  }, [current]);
   return (
     <section aria-label="Recovery archive">
-      <h4>Recovery archive</h4>
+      <h4 ref={heading} tabIndex={-1}>
+        Recovery archive
+      </h4>
       <p>
         Immutable snapshots and annotation provenance. Archive-only activity
         contributes nothing to current totals; private edits remain attached to
@@ -634,7 +659,10 @@ function Archive({
                   {row.currentId && (
                     <Button
                       tone="text"
-                      onClick={() => setCurrent(row.currentId!)}
+                      onClick={(event) => {
+                        currentTrigger.current = event.currentTarget;
+                        setCurrent(row.currentId!);
+                      }}
                     >
                       View single current record
                     </Button>
@@ -660,7 +688,9 @@ function Archive({
       </NetworkQuery>
       {current && (
         <section aria-label="Single current record">
-          <h4>Single current record</h4>
+          <h4 ref={currentHeading} tabIndex={-1}>
+            Single current record
+          </h4>
           <NetworkQuery<managementCurrentQuery>
             key={current}
             scope={scope}
@@ -704,7 +734,15 @@ function Archive({
               )
             }
           </NetworkQuery>
-          <Button tone="secondary" onClick={() => setCurrent(undefined)}>
+          <Button
+            tone="secondary"
+            onClick={() => {
+              setCurrent(undefined);
+              if (currentTrigger.current?.isConnected)
+                currentTrigger.current.focus();
+              else heading.current?.focus();
+            }}
+          >
             Back to recovery archive
           </Button>
         </section>

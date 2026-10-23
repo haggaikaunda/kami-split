@@ -55,7 +55,7 @@ export function Management({
     <>
       <Button
         ref={trigger}
-        tone={needsRepair ? 'primary' : 'secondary'}
+        tone={needsRepair ? 'primary' : 'text'}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
@@ -171,6 +171,12 @@ function ConnectionManagement({
   const [repairChoices, setRepairChoices] = useState<LinkAccount[]>();
   const [repairId, setRepairId] = useState<string>();
   const [replacement, setReplacement] = useState<string>();
+  const [lastAccount, setLastAccount] = useState<string>();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const replacementTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!replacement) replacementTrigger.current?.focus();
+  }, [replacement]);
   const handler = useRef<LinkHandler | undefined>(undefined),
     callback = useRef(false);
   const work = useManagementAttempt(scope, () => setConfirmed(true));
@@ -317,10 +323,6 @@ function ConnectionManagement({
         .
       </p>
       <p>
-        <strong>Affected accounts:</strong>{' '}
-        {accountNames || 'No retained account details'}
-      </p>
-      <p>
         {connection.permission === 'revoked'
           ? 'Provider permission revoked'
           : connection.health.replaceAll('_', ' ')}{' '}
@@ -329,11 +331,15 @@ function ConnectionManagement({
           ? 'Only selected accounts collect updates.'
           : 'Updates stopped; imported private history remains.'}
       </p>
-      <p>
-        Provider removal: {connection.cleanup.replaceAll('_', ' ')}. Active-copy
-        purge: {connection.purge.replaceAll('_', ' ')}. These do not attest
-        provider retention or backup erasure.
-      </p>
+      {(connection.cleanup !== 'not_requested' ||
+        connection.purge !== 'not_requested' ||
+        !canCollect) && (
+        <p>
+          Provider removal: {connection.cleanup.replaceAll('_', ' ')}.
+          Active-copy purge: {connection.purge.replaceAll('_', ' ')}. These do
+          not attest provider retention or backup erasure.
+        </p>
+      )}
       {work.message && <Status kind="info">{work.message}</Status>}
       <ManagementRecovery
         scope={scope}
@@ -346,9 +352,8 @@ function ConnectionManagement({
       <fieldset disabled={work.busy || !canCollect}>
         <legend>Selected accounts</legend>
         <p>
-          Removing an account stops collection and keeps private history. Adding
-          accounts requires current provider authorization. No account is added
-          implicitly.
+          Only checked accounts collect updates. Deselecting keeps private
+          history; additions require provider authorization.
         </p>
         {choices.map((a) => (
           <label className={styles.choice} key={a.id}>
@@ -428,121 +433,137 @@ function ConnectionManagement({
         <Button tone="text" disabled={work.busy} onClick={close}>
           Cancel
         </Button>
-        <Button
-          tone="secondary"
-          disabled={work.busy}
-          onClick={() => {
-            onChanged();
-            reload();
-          }}
-        >
-          Reload current state
-        </Button>
+        {work.message && (
+          <Button
+            tone="secondary"
+            disabled={work.busy}
+            onClick={() => {
+              onChanged();
+              reload();
+            }}
+          >
+            Reload current state
+          </Button>
+        )}
       </div>
-      <h3>History and recovery</h3>
-      {[...new Map(connection.accounts.map((a) => [a.id, a])).values()].map(
-        (a) => (
-          <div key={a.id} className={styles.account}>
-            <p>{a.name}</p>
-            {a.importStatus.discrepancyCount !== '0' && (
-              <Status kind="info">
-                Historical discrepancy: {a.importStatus.discrepancyCount}.
-                Retained facts are preserved; changed dates may cause gaps or
-                differently identified duplicates.
-              </Status>
-            )}
-            <Button
-              tone="secondary"
-              disabled={work.busy}
-              onClick={() => setReplacement(a.id)}
-            >
-              Replacement and recovery — {a.name}
-            </Button>
-          </div>
-        ),
-      )}
-      <h3>Stop updates or erase history</h3>
-      <p>
-        Disconnect removes this provider connection and stops its updates while
-        keeping imported private history. Delete connection and history also
-        erases affected current, staged and archived private records and
-        annotations across replacement bindings; siblings outside this
-        connection’s affected logical accounts and shared expenses remain
-        unchanged.
-      </p>
-      <div className={styles.actions}>
-        <Button
-          tone="secondary"
-          disabled={work.busy || !canCollect}
-          onClick={() => setConfirm('disconnect')}
-        >
-          Disconnect
-        </Button>
-        <Button
-          tone="text"
-          disabled={work.busy || connection.state === 'deleted'}
-          onClick={() => setConfirm('delete')}
-        >
-          Delete connection and history
-        </Button>
-      </div>
-      {confirm && (
-        <section
-          className={styles.notice}
-          aria-label="Confirm connection change"
-        >
-          <h3 ref={confirmationHeading} tabIndex={-1}>
-            {confirm === 'delete'
-              ? 'Delete connection and private history?'
-              : 'Disconnect this connection?'}
-          </h3>
-          <p>
-            {connection.institutionName ?? 'Institution name unavailable'}:{' '}
-            {accountNames}.{' '}
-            {confirm === 'delete'
-              ? 'Stop updates and irreversibly delete affected current, staged and archived private history and annotations across bindings. Shared expenses and other logical accounts are protected. Deleted data cannot be restored by recovery.'
-              : 'Stop updates and request provider removal. Previously imported private history remains; provider removal may remain pending.'}
-          </p>
-          <div className={styles.actions}>
-            <Button
-              tone="secondary"
-              disabled={work.busy}
-              onClick={() => setConfirm(undefined)}
-            >
-              Keep connection
-            </Button>
-            <Button
-              disabled={work.busy}
-              onClick={() =>
-                void work.run('management', async (attemptId) => {
-                  const input = {
-                    attemptId,
-                    connectionId: connection.id,
-                    expectedGeneration: connection.generation,
-                  };
-                  return confirm === 'delete'
-                    ? (
-                        await command<managementDeleteMutation>(
-                          scope,
-                          deleteDocument,
-                          { input },
-                        )
-                      ).deleteBankingHistory.code
-                    : (
-                        await command<managementDisconnectMutation>(
-                          scope,
-                          disconnectDocument,
-                          { input },
-                        )
-                      ).disconnectBanking.code;
-                })
-              }
-            >
-              {confirm === 'delete' ? 'Confirm deletion' : 'Confirm disconnect'}
-            </Button>
-          </div>
-        </section>
-      )}
+      <details
+        className={styles.historyControls}
+        open={historyOpen}
+        onToggle={(event) => setHistoryOpen(event.currentTarget.open)}
+      >
+        <summary>Disconnect &amp; history</summary>
+        <h3>History and recovery</h3>
+        {[...new Map(connection.accounts.map((a) => [a.id, a])).values()].map(
+          (a) => (
+            <div key={a.id} className={styles.account}>
+              <p>{a.name}</p>
+              {a.importStatus.discrepancyCount !== '0' && (
+                <Status kind="info">
+                  Historical discrepancy: {a.importStatus.discrepancyCount}.
+                  Retained facts are preserved; changed dates may cause gaps or
+                  differently identified duplicates.
+                </Status>
+              )}
+              <Button
+                ref={lastAccount === a.id ? replacementTrigger : undefined}
+                tone="secondary"
+                disabled={work.busy}
+                onClick={() => {
+                  setLastAccount(a.id);
+                  setHistoryOpen(true);
+                  setReplacement(a.id);
+                }}
+              >
+                Replacement and recovery — {a.name}
+              </Button>
+            </div>
+          ),
+        )}
+        <h3>Stop updates or erase history</h3>
+        <p>
+          Disconnect removes this provider connection and stops its updates
+          while keeping imported private history. Delete connection and history
+          also erases affected current, staged and archived private records and
+          annotations across replacement bindings; siblings outside this
+          connection’s affected logical accounts and shared expenses remain
+          unchanged.
+        </p>
+        <div className={styles.actions}>
+          <Button
+            tone="secondary"
+            disabled={work.busy || !canCollect}
+            onClick={() => setConfirm('disconnect')}
+          >
+            Disconnect
+          </Button>
+          <Button
+            tone="text"
+            disabled={work.busy || connection.state === 'deleted'}
+            onClick={() => setConfirm('delete')}
+          >
+            Delete connection and history
+          </Button>
+        </div>
+        {confirm && (
+          <section
+            className={styles.notice}
+            aria-label="Confirm connection change"
+          >
+            <h3 ref={confirmationHeading} tabIndex={-1}>
+              {confirm === 'delete'
+                ? 'Delete connection and private history?'
+                : 'Disconnect this connection?'}
+            </h3>
+            <p>
+              {connection.institutionName ?? 'Institution name unavailable'}:{' '}
+              {accountNames}.{' '}
+              {confirm === 'delete'
+                ? 'Stop updates and irreversibly delete affected current, staged and archived private history and annotations across bindings. Shared expenses and other logical accounts are protected. Deleted data cannot be restored by recovery.'
+                : 'Stop updates and request provider removal. Previously imported private history remains; provider removal may remain pending.'}
+            </p>
+            <div className={styles.actions}>
+              <Button
+                tone="secondary"
+                disabled={work.busy}
+                onClick={() => setConfirm(undefined)}
+              >
+                Keep connection
+              </Button>
+              <Button
+                disabled={work.busy}
+                onClick={() =>
+                  void work.run('management', async (attemptId) => {
+                    const input = {
+                      attemptId,
+                      connectionId: connection.id,
+                      expectedGeneration: connection.generation,
+                    };
+                    return confirm === 'delete'
+                      ? (
+                          await command<managementDeleteMutation>(
+                            scope,
+                            deleteDocument,
+                            { input },
+                          )
+                        ).deleteBankingHistory.code
+                      : (
+                          await command<managementDisconnectMutation>(
+                            scope,
+                            disconnectDocument,
+                            { input },
+                          )
+                        ).disconnectBanking.code;
+                  })
+                }
+              >
+                {confirm === 'delete'
+                  ? 'Confirm deletion'
+                  : 'Confirm disconnect'}
+              </Button>
+            </div>
+          </section>
+        )}
+      </details>
     </>
   );
 }

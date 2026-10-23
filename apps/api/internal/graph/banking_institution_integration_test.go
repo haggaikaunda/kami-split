@@ -37,6 +37,13 @@ func TestBankingInstitutionNameFollowsOwnerAndDeletion(t *testing.T) {
 		t.Fatal("enrollment failed", enrolled["code"])
 	}
 	id := enrolled["connectionId"].(string)
+	t.Cleanup(func() {
+		// Generic fixture cleanup removes work rows. Remove this test's exact
+		// queue receipts first so later bounded worker tests see no orphan work.
+		if _, err := f.admin.Exec(context.Background(), `SELECT pgmq.delete('banking_lifecycle',message_id) FROM app.banking_work WHERE connection_id=$1`, id); err != nil {
+			t.Error("owned institution queue cleanup failed", err)
+		}
+	})
 	query := fmt.Sprintf(`query{bankingConnection(connectionId:%q){code connection{id generation institutionName accounts{id}}}}`, id)
 	own := f.operation(h, query, token, "bankingConnection", false)
 	row := own["connection"].(map[string]any)

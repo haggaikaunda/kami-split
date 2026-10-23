@@ -56,7 +56,13 @@ function button(text: string) {
   return found;
 }
 async function click(text: string) {
-  await act(async () => button(text).click());
+  await act(async () => {
+    const target = button(text),
+      disclosure = target.closest('details');
+    if (disclosure && !disclosure.open)
+      disclosure.querySelector('summary')?.click();
+    target.click();
+  });
 }
 async function reply(name: string, data: unknown) {
   const request = requests.findLast((r) => r.name === name);
@@ -529,4 +535,24 @@ it('keeps server date-boundary errors persistent on the field and prevents confi
   expect(host.textContent).toContain('after the preceding transition boundary');
   expect(button('Confirm recovery').disabled).toBe(true);
   expect(host.querySelector('form')?.noValidate).toBe(true);
+});
+
+it('keeps history controls collapsed until requested and restores account-trigger focus after recovery', async () => {
+  await manage();
+  const history = [...host.querySelectorAll('details')].find(
+    (d) => d.querySelector('summary')?.textContent === 'Disconnect & history',
+  )!;
+  expect(history.open).toBe(false);
+  await click('Replacement and recovery — Private checking');
+  expect(document.activeElement?.textContent).toContain(
+    'Private checking: replacement and recovery',
+  );
+  await click('Cancel');
+  expect(document.activeElement).toBe(
+    button('Replacement and recovery — Private checking'),
+  );
+  expect(
+    button('Replacement and recovery — Private checking').closest('details')
+      ?.open,
+  ).toBe(true);
 });

@@ -223,6 +223,7 @@ withAuthFixture(origin, session, async () => {
         'Recovered selection must survive reload',
       );
       await checkpoint('selection');
+      await page.getByText('Disconnect & history', { exact: true }).click();
       await click('Disconnect');
       await screenshot('disconnect-confirmation');
       await click('Keep connection');
@@ -235,6 +236,7 @@ withAuthFixture(origin, session, async () => {
       await open();
       await waitText('Provider removal: pending.');
       await screenshot('disconnect-pending');
+      await page.getByText('Disconnect & history', { exact: true }).click();
       await click('Delete connection and history');
       await waitText(
         'irreversibly delete affected current, staged and archived',
@@ -249,6 +251,7 @@ withAuthFixture(origin, session, async () => {
           name: 'Replacement and recovery — Selected checking',
           exact: true,
         });
+      await page.getByText('Disconnect & history', { exact: true }).click();
       await replacement().click();
       await click('Replace existing');
       await page.getByRole('radio', { name: /Selected checking/ }).check();
@@ -290,6 +293,7 @@ withAuthFixture(origin, session, async () => {
         .toBe('READY');
       assert.equal(observed.bankingReplacementOperation.code, 'READY');
       await open();
+      await page.getByText('Disconnect & history', { exact: true }).click();
       await replacement().click();
       await click('Restore preceding plan');
       await click('Preview recovery');
