@@ -14,6 +14,7 @@ import (
 // ConnectionStatus is one freshly authorized persisted snapshot. Revision changes
 // invalidate the whole projection; it never grants access on subsequent reads.
 type ConnectionStatus struct {
+	InstitutionName    *string         `json:"institutionName"`
 	ID                 string          `json:"id"`
 	State              string          `json:"state"`
 	Generation         string          `json:"generation"`

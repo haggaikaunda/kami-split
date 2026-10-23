@@ -58,7 +58,8 @@ logical `id`. Always select `streamId`. An operation omitting it remains
 parent-scoped rather than falling back to a colliding logical ID. Actor disposal
 clears the whole store. The compiled
 [consumer operation](../../apps/web/src/lib/relay/bankingStatusContract.ts) is a
-contract fixture, with no mounted banking UI.
+contract fixture. Mounted Personal inventory and management use their own
+feature-owned operations beside the components.
 
 ## Independent state dimensions
 
@@ -203,5 +204,6 @@ Continuation rechecks current visibility, so deletion/access loss takes effect o
 the next request; concurrent additions can appear on subsequent pages or a fresh
 first page. `READY` with an empty list is a successful empty inventory. Invalid
 page sizes/cursors return `INVALID_INPUT`; storage failure returns `UNAVAILABLE`
-with no partial rows, cursor or continuation claim. Institution names and account
-masks are not part of this stored projection.
+with no partial rows, cursor or continuation claim. The nullable `institutionName` comes from the existing authenticated provider lookup and is stored within the connection owner/deletion boundary. Legacy rows can lack it; clients must label that absence without guessing. Deletion clears the stored name, and deleted connections are omitted from discovery. Account masks are not part of this stored projection.
+
+Connections keeps selected account scope and attention states visible in compact institution cards. Local-save and provider-success observations are distinct, and the card’s latest observations may belong to different accounts. The Import details disclosure retains each account’s complete import, coverage, requested-history and timestamp facts; a local save or provider observation does not establish complete bank freshness or coverage. Cards use two columns on larger desktop layouts and remain a single flowing column on narrow screens.

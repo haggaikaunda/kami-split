@@ -315,6 +315,8 @@ type BankingAnnotationResult struct {
 
 // Private lifecycle projection. No bank credentials or financial source payloads are exposed.
 type BankingConnection struct {
+	// Server-observed institution display name. Null for legacy/unknown metadata or deleted connections; never guessed from account names or provider identifiers.
+	InstitutionName *string `json:"institutionName,omitempty"`
 	// Stable private connection UUID.
 	ID string `json:"id"`
 	// Current active, stopped or deleted lifecycle state, distinct from import freshness.

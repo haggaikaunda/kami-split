@@ -99,8 +99,8 @@ func (v ProviderAccount) GoString() string { return v.String() }
 // AccountInventory is the server-observed inventory for one credential. Callers
 // match ItemID and enforce eligibility and explicit selection before retaining it.
 type AccountInventory struct {
-	ItemID, InstitutionID, CountryCode string
-	Accounts                           []ProviderAccount
+	ItemID, InstitutionID, InstitutionName, CountryCode string
+	Accounts                                            []ProviderAccount
 }
 
 // String prevents private inventory disclosure in diagnostics.
@@ -272,6 +272,7 @@ func (p *PlaidProvider) Accounts(ctx context.Context, environment string, creden
 	var institution struct {
 		Institution struct {
 			ID        string   `json:"institution_id"`
+			Name      string   `json:"name"`
 			Countries []string `json:"country_codes"`
 		} `json:"institution"`
 	}
@@ -282,10 +283,10 @@ func (p *PlaidProvider) Accounts(ctx context.Context, environment string, creden
 	if err := p.enrollmentPost(ctx, "/institutions/get_by_id", request, &institution, false); err != nil {
 		return AccountInventory{}, err
 	}
-	if institution.Institution.ID != payload.Item.InstitutionID || len(institution.Institution.Countries) != 1 || institution.Institution.Countries[0] != "US" {
+	if len(institution.Institution.Name) > 512 || strings.ContainsAny(institution.Institution.Name, "\x00\r\n\t") || institution.Institution.ID != payload.Item.InstitutionID || len(institution.Institution.Countries) != 1 || institution.Institution.Countries[0] != "US" {
 		return AccountInventory{}, &EnrollmentError{}
 	}
-	result := AccountInventory{ItemID: payload.Item.ID, InstitutionID: payload.Item.InstitutionID, CountryCode: "US", Accounts: make([]ProviderAccount, 0, len(payload.Accounts))}
+	result := AccountInventory{ItemID: payload.Item.ID, InstitutionID: payload.Item.InstitutionID, InstitutionName: strings.TrimSpace(institution.Institution.Name), CountryCode: "US", Accounts: make([]ProviderAccount, 0, len(payload.Accounts))}
 	seen := make(map[string]bool)
 	for _, account := range payload.Accounts {
 		if !validProviderID(account.ID) || seen[account.ID] || len(account.Name) > 512 || len(account.Persistent) > 256 {

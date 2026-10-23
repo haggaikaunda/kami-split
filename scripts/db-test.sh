@@ -77,6 +77,7 @@ mv "$stage/supabase/migrations/20261022000000_banking_background_sync.sql" "$sta
 mv "$stage/supabase/migrations/20261022010000_banking_status.sql" "$stage/banking-status.sql"
 mv "$stage/supabase/migrations/20261022015000_banking_pfc.sql" "$stage/banking-pfc.sql"
 mv "$stage/supabase/migrations/20261022020000_banking_reporting.sql" "$stage/banking-reporting.sql"
+mv "$stage/supabase/migrations/20261023000000_banking_institution_name.sql" "$stage/banking-institution-name.sql"
 mv "$stage/supabase/migrations/20261020020000_reporting_timezone.sql" "$stage/reporting-timezone.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/group_creation_upgrade.sql
@@ -155,6 +156,7 @@ mv "$stage/banking-background-sync.sql" "$stage/supabase/migrations/202610220000
 mv "$stage/banking-status.sql" "$stage/supabase/migrations/20261022010000_banking_status.sql"
 mv "$stage/banking-pfc.sql" "$stage/supabase/migrations/20261022015000_banking_pfc.sql"
 mv "$stage/banking-reporting.sql" "$stage/supabase/migrations/20261022020000_banking_reporting.sql"
+mv "$stage/banking-institution-name.sql" "$stage/supabase/migrations/20261023000000_banking_institution_name.sql"
 scripts/db-tool.sh supabase migration up --local --workdir "$stage"
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.

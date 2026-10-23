@@ -431,7 +431,13 @@ func (s *EnrollmentService) Finish(ctx context.Context, input FinishEnrollmentIn
 	}
 	encoded, _ := json.Marshal(selected)
 	err = s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
-		return tx.QueryRow(ctx, `SELECT app.banking_enrollment_activate($1,$2,$3)`, e.ID, encoded, inventory.InstitutionID).Scan(&code)
+		if err := tx.QueryRow(ctx, `SELECT app.banking_enrollment_activate($1,$2,$3)`, e.ID, encoded, inventory.InstitutionID).Scan(&code); err != nil {
+			return err
+		}
+		if code == "AWAITING_INITIAL_IMPORT" {
+			return saveInstitutionName(ctx, tx, connection, inventory)
+		}
+		return nil
 	})
 	if err != nil {
 		return enrollmentFailure(ctx, err)

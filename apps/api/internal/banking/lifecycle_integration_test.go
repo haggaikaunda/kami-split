@@ -483,3 +483,68 @@ func discardFencedLifecycleTransport(t *testing.T, f *fixture, db *database.Work
 	}
 	t.Fatal("fenced transport exceeded fixture disposal budget")
 }
+
+func TestLifecycleRepairReservationSurvivesMissingDependency(t *testing.T) {
+	for _, mode := range []string{"missing_connection", "missing_credential", "deleted_after_claim"} {
+		t.Run(mode, func(t *testing.T) {
+			f, s, _, _, _ := lifecycleFixture(t)
+			_, connection := lifecycleReady(t, f, s, f.owner, "checking")
+			input := RepairInput{AttemptID: uuid.New(), ConnectionID: connection, ExpectedGeneration: 1}
+			if mode == "missing_connection" {
+				input.ConnectionID = uuid.New()
+				outcome := s.StartRepair(f.actor(f.owner), input)
+				if outcome.Code != "NOT_FOUND" || outcome.AttemptID != uuid.Nil || outcome.State != "" || queryInt(t, f, `SELECT count(*) FROM app.banking_repairs WHERE id=$1`, input.AttemptID) != 0 {
+					t.Fatal("missing connection fabricated a reservation", outcome.Code, outcome.State)
+				}
+				return
+			}
+			// Interleave a real lifecycle fence or credential loss exactly after the
+			// reservation commits its INSERT, before StartRepair reads dependencies.
+			action := `DELETE FROM app.banking_credentials WHERE connection_id=NEW.connection_id;`
+			if mode == "deleted_after_claim" {
+				action = `PERFORM app.banking_fence(NEW.connection_id,NEW.generation,true);`
+			}
+			f.exec(`CREATE FUNCTION app.repair_dependency_test() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$ BEGIN ` + action + ` RETURN NEW; END $$`)
+			f.exec(fmt.Sprintf(`CREATE TRIGGER repair_dependency_test AFTER INSERT ON app.banking_repairs FOR EACH ROW WHEN (NEW.connection_id='%s'::uuid) EXECUTE FUNCTION app.repair_dependency_test()`, connection))
+			t.Cleanup(func() {
+				f.exec(`DROP TRIGGER repair_dependency_test ON app.banking_repairs`)
+				f.exec(`DROP FUNCTION app.repair_dependency_test()`)
+			})
+			outcome := s.StartRepair(f.actor(f.owner), input)
+			wantCode, wantState, storedCode := "NOT_FOUND", "preparing", "PREPARING"
+			if mode == "deleted_after_claim" {
+				wantCode, wantState, storedCode = "CONFLICT", "complete", "CONFLICT"
+			}
+			if outcome.Code != wantCode || outcome.AttemptID != input.AttemptID || outcome.State != wantState || outcome.LinkToken != "" {
+				t.Fatal("post-claim failure lost reservation", outcome.Code, outcome.State)
+			}
+			if queryInt(t, f, `SELECT count(*) FROM app.banking_repairs WHERE id=$1 AND state=$2 AND result_code=$3`, input.AttemptID, wantState, storedCode) != 1 {
+				t.Fatal("post-claim failure changed durable repair")
+			}
+			status := s.RepairStatus(f.actor(f.owner), input.AttemptID)
+			want := "PREPARING"
+			if mode == "deleted_after_claim" {
+				want = "CONFLICT"
+			}
+			if status.Code != want || status.State != wantState || status.AttemptID != input.AttemptID || status.LinkToken != "" {
+				t.Fatal("reserved status lost identity or fence", status.Code, status.State)
+			}
+			if mode == "deleted_after_claim" {
+				f.exec(`UPDATE app.banking_repairs SET state='preparing',result_code='PREPARING' WHERE id=$1`, input.AttemptID)
+				status = s.RepairStatus(f.actor(f.owner), input.AttemptID)
+				if status.Code != "CONFLICT" || status.State != "preparing" || status.AttemptID != input.AttemptID || status.LinkToken != "" {
+					t.Fatal("incomplete receipt missed deletion fence", status.Code, status.State)
+				}
+			}
+			other := s.RepairStatus(f.actor(f.other), input.AttemptID)
+			if other.Code != "NOT_FOUND" || other.AttemptID != uuid.Nil || other.State != "" {
+				t.Fatal("other actor saw reservation")
+			}
+			f.exec(`UPDATE app.banking_repairs SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1`, input.AttemptID)
+			status = s.RepairStatus(f.actor(f.owner), input.AttemptID)
+			if mode == "missing_credential" && (status.Code != "REPAIR_REQUIRED" || status.AttemptID != input.AttemptID || status.State != "preparing") {
+				t.Fatal("missing credential blocked expiry recovery", status.Code, status.State)
+			}
+		})
+	}
+}

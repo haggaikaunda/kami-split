@@ -473,3 +473,97 @@ it('relinquishes revoked scope authority once so late denial cannot revoke a lat
     active.environment.getStore().getSource().get('new-actor-private'),
   ).toBeUndefined();
 });
+
+for (const typename of [
+  'BankingConnectionResult',
+  'BankingManagementResult',
+  'BankingReplacementResult',
+  'BankingReplacementPreview',
+  'BankingReport',
+  'BankingTransactionDetail',
+])
+  it(`clears the entire actor store before a ${typename} management denial can normalize`, async () => {
+    const denied = vi.fn();
+    const scope = createScope(
+      clientFor(async () => sessionFor()),
+      'actor',
+      denied,
+    );
+    scope.environment.commitUpdate((store) =>
+      store
+        .create('private-management-sentinel', 'BankingAccount')
+        .setValue('Sensitive connection', 'name'),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                bankingOperation: { __typename: typename, code: 'FORBIDDEN' },
+              },
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const { default: document } =
+      await import('./__generated__/managementOperationQuery.graphql');
+    await expect(
+      fetchQuery(
+        scope.environment,
+        document,
+        { attemptId: 'opaque-attempt' },
+        { fetchPolicy: 'network-only' },
+      ).toPromise(),
+    ).rejects.toThrow('FORBIDDEN');
+    expect(denied).toHaveBeenCalledExactlyOnceWith('FORBIDDEN');
+    expect(scope.isLive()).toBe(false);
+    expect(
+      scope.environment
+        .getStore()
+        .getSource()
+        .get('private-management-sentinel'),
+    ).toBeUndefined();
+  });
+
+it('a missing management receipt retains the live actor and never implies rollback', async () => {
+  const scope = createScope(
+    clientFor(async () => sessionFor()),
+    'actor',
+  );
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              bankingOperation: {
+                __typename: 'BankingManagementResult',
+                code: 'NOT_FOUND',
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    ),
+  );
+  const { default: document } =
+    await import('./__generated__/managementOperationQuery.graphql');
+  const result = await fetchQuery(
+    scope.environment,
+    document,
+    { attemptId: 'opaque-attempt' },
+    { fetchPolicy: 'network-only' },
+  ).toPromise();
+  expect(result).toEqual({
+    bankingOperation: {
+      __typename: 'BankingManagementResult',
+      code: 'NOT_FOUND',
+    },
+  });
+  expect(scope.isLive()).toBe(true);
+  scope.dispose();
+});
