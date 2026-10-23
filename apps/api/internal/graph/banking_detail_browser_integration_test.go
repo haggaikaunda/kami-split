@@ -34,7 +34,7 @@ func TestBankingDetailRealBrowserJourney(t *testing.T) {
 	f := newReportingHTTPFixture(t)
 	// Keep target rows on page one; older purchases make the complete summary
 	// differ from any sum of the first 50 loaded records.
-	f.exec(`UPDATE app.banking_source_revisions SET name='Exact private purchase',bank_date='2024-02-29',authorization_date='2024-02-27' WHERE source_id=$1`, f.sources["purchase"])
+	f.sources["purchase"] = insertDetailBrowserSource(f, "Exact private purchase", "2024-02-29", 10000)
 	for index := 0; index < 60; index++ {
 		f.exec(`WITH source AS (INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision) VALUES($1,$2,$3,$4,1) RETURNING id)
  INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,material_revision,amount_minor,currency,bank_date,processing_state,provider_primary_category,provider_category,provider_confidence,provider_code,mapping_version,stage,name)
@@ -79,8 +79,8 @@ func TestBankingDetailRealBrowserJourney(t *testing.T) {
 
 func prepareDetailBrowserArchive(t *testing.T, f *reportingHTTPFixture) uuid.UUID {
 	t.Helper()
-	archivedSource := f.sources["next-month"]
-	f.exec(`UPDATE app.banking_source_revisions SET name='Archived-only transaction' WHERE source_id=$1`, archivedSource)
+	archivedSource := insertDetailBrowserSource(f, "Archived-only transaction", "2024-03-01", 9000)
+	f.sources["next-month"] = archivedSource
 	result := f.operation(f.handler, reportingHTTPAnnotation(uuid.New(), archivedSource, "0", "NOTE", `"Original captured private note"`), f.token, "editBankingAnnotation", false)
 	if result["code"] != "READY" {
 		t.Fatal("archive annotation preparation failed")
@@ -104,4 +104,12 @@ func prepareDetailBrowserArchive(t *testing.T, f *reportingHTTPFixture) uuid.UUI
 		t.Fatal("archive-only fixture unexpectedly has a current edit owner")
 	}
 	return archive
+}
+
+func insertDetailBrowserSource(f *reportingHTTPFixture, name, date string, amount int64) uuid.UUID {
+	source := uuid.New()
+	f.exec(`WITH source AS (INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision) VALUES($1,$2,$3,$4,1) RETURNING id)
+ INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,material_revision,amount_minor,currency,bank_date,authorization_date,processing_state,provider_primary_category,provider_category,provider_confidence,provider_code,mapping_version,stage,name)
+ SELECT id,$2,1,1,$5,'USD',$6::date,'2024-02-27','posted','FOOD_AND_DRINK','FOOD_AND_DRINK_GROCERIES','HIGH','purchase','plaid-pfc-v2','current',$7 FROM source`, source, f.owner, f.binding, uuid.NewString(), amount, date, name)
+	return source
 }

@@ -209,10 +209,10 @@ withAuthFixture(origin, session, async () => {
   }
   try {
     const initial = await report();
-    assert.equal(initial.totalCount, 64);
+    assert.equal(initial.totalCount, 65);
     assert.equal(initial.rows.length, 50);
     assert.equal(initial.hasNextPage, true);
-    assert.equal(initial.summary.netMinor, '12000');
+    assert.equal(initial.summary.netMinor, '22000');
     await page.goto(origin + listHref);
     await page
       .getByRole('heading', { name: 'Account activity', exact: true })
@@ -260,14 +260,14 @@ withAuthFixture(origin, session, async () => {
     await editButton.click();
     await page.getByLabel('Exclude from spending', { exact: true }).check();
     await save();
-    await back('$20.00');
-    assert.equal((await report()).summary.netMinor, '2000');
+    await back('$120.00');
+    assert.equal((await report()).summary.netMinor, '12000');
     assert(
       reports.some(
         (value) =>
-          value.summary?.netMinor === '2000' &&
+          value.summary?.netMinor === '12000' &&
           value.rows.length === 50 &&
-          value.totalCount === 64,
+          value.totalCount === 65,
       ),
       'Reconciliation must fetch a complete server summary while only one page is loaded',
     );
@@ -275,7 +275,7 @@ withAuthFixture(origin, session, async () => {
     await editButton.click();
     await page.getByLabel('Exclude from spending', { exact: true }).uncheck();
     await save();
-    await back('$120.00');
+    await back('$220.00');
 
     stage = 'complete activity classification summaries';
     await open();
@@ -284,15 +284,15 @@ withAuthFixture(origin, session, async () => {
       .getByLabel('Activity type', { exact: true })
       .selectOption('transfer');
     await save();
-    await back('$20.00');
-    assert.equal((await report()).summary.netMinor, '2000');
+    await back('$120.00');
+    assert.equal((await report()).summary.netMinor, '12000');
     await open();
     await editButton.click();
     await page
       .getByRole('button', { name: 'Reset activity type', exact: true })
       .click();
     await save();
-    await back('$120.00');
+    await back('$220.00');
 
     // A real second writer advances the annotation version after the form opens.
     stage = 'concurrent annotation conflict';
@@ -351,7 +351,7 @@ withAuthFixture(origin, session, async () => {
     assert.equal(persisted.amountMinor, '10000');
     assert.equal(persisted.bankDate, '2024-02-29');
     assert.equal(persisted.authorizationDate, '2024-02-27');
-    assert.equal((await report()).summary.netMinor, '12000');
+    assert.equal((await report()).summary.netMinor, '22000');
     stage = 'foreign actor isolation and return focus';
     const foreignToken = process.env.BANKING_DETAIL_BROWSER_FOREIGN_TOKEN;
     const foreign = await graphql(
@@ -370,7 +370,7 @@ withAuthFixture(origin, session, async () => {
       path: path.join(evidence, 'real-detail-mobile.png'),
       fullPage: true,
     });
-    await back('$120.00');
+    await back('$220.00');
     await expect(
       page.getByRole('link', { name: 'Exact private purchase', exact: true }),
     ).toBeFocused();
@@ -387,7 +387,7 @@ withAuthFixture(origin, session, async () => {
     await page
       .getByRole('link', { name: 'Exact private purchase', exact: true })
       .click();
-    await page
+    await detail
       .getByRole('link', { name: 'View current record', exact: true })
       .click();
     await editButton.waitFor();
@@ -427,7 +427,7 @@ withAuthFixture(origin, session, async () => {
     );
     assert.equal(
       (await report()).summary.netMinor,
-      '12000',
+      '22000',
       'Archive edits never alter current spending',
     );
     const deniedArchive = await graphql(
@@ -443,7 +443,7 @@ withAuthFixture(origin, session, async () => {
     });
     assert.deepEqual(errors, []);
     console.log(
-      'Real HTTP/database detail: filtered 50/64 rows, immutable exact facts, note persistence/reload, complete exclusion/classification totals, conflict input retention, original-attempt lost-response recovery, foreign-actor read/write denial, return focus and current/archive edit ownership passed.',
+      'Real HTTP/database detail: filtered 50/65 rows, immutable exact facts, note persistence/reload, complete exclusion/classification totals, conflict input retention, original-attempt lost-response recovery, foreign-actor read/write denial, return focus and current/archive edit ownership passed.',
     );
   } catch (error) {
     console.error('Failed real banking detail stage: ' + stage);
