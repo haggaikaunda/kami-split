@@ -1373,6 +1373,32 @@ test('Personal archive returns replay fresh signed extent and discard changed or
     await page
       .getByRole('link', { name: 'Back to recovery archive', exact: true })
       .click();
+    if (mode === 'denied') {
+      // Typed banking access denial invalidates the actor before normalization;
+      // a local restart cannot reauthorize the denied report.
+      await expect(
+        page.getByText(/Account verification is unavailable/),
+      ).toBeVisible();
+      await expect(page.locator('[data-source-id]')).toHaveCount(0);
+      await expect(
+        page.getByText('Later archived income', { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByText(
+          'Long private grocery merchant with a full descriptive name',
+          { exact: true },
+        ),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole('button', { name: 'Restart activity', exact: true }),
+      ).toHaveCount(0);
+      expect(
+        calls
+          .slice(before)
+          .filter((call) => call.operation === 'personalTransactionsQuery'),
+      ).toHaveLength(2);
+      continue;
+    }
     if (mode === 'ready') {
       await expect(page.locator('#current-archive-later')).toBeFocused();
       await expect(
