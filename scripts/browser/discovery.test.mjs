@@ -6,7 +6,10 @@ import { test } from 'node:test';
 // A reviewed inventory of distinct cases, independent of project grep/tag rules.
 // Update deliberately when adding/removing a journey, not to bless lost discovery.
 const groups = {
-  'personal.spec.mjs': [11, [/^Personal connections reflow/]],
+  'personal.spec.mjs': [
+    15,
+    [/^Personal connections reflow/, /^Personal transactions reflow/],
+  ],
   'activity.spec.mjs': [16, [/^activity row composition/]],
   'creation.spec.mjs': [7, [/^creation page keeps fields/]],
   'members.spec.mjs': [9, [/ Members reflows long names/]],

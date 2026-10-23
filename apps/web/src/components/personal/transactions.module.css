@@ -1,0 +1,211 @@
+.transactions {
+  min-width: 0;
+  margin-block: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.toolbar,
+.actions,
+.chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.toolbar {
+  justify-content: space-between;
+}
+.period,
+.context,
+.coverage,
+.rowMain > span {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.5rem 1.25rem;
+}
+.period > span {
+  flex-basis: 100%;
+}
+.coverage {
+  margin-block: 0.75rem;
+}
+.coverage p {
+  margin-block: 0.4rem;
+  line-height: 1.5;
+}
+.summary {
+  margin-block: 1rem;
+  line-height: 1.6;
+}
+.summary > span {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+.listMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.listMeta h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.listMeta > span {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+.context {
+  line-height: 1.6;
+}
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-separator);
+  align-items: center;
+}
+.rowMain {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.rowMain strong {
+  font-weight: 500;
+}
+.row a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+.rowMain strong a {
+  display: inline-flex;
+  min-height: var(--target-size);
+  align-items: center;
+}
+.amount {
+  min-width: 0;
+  max-width: 15rem;
+  text-align: right;
+  font-weight: 500;
+}
+.rowProvenance {
+  grid-column: 1 / -1;
+  font-size: 0.875rem;
+}
+.rowProvenance a,
+.provenance a,
+.selected > a,
+.notice a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-size);
+  color: var(--color-primary);
+  margin-inline-end: 0.75rem;
+}
+.notice,
+.empty {
+  padding: 1rem;
+  margin-block: 1rem;
+  background: var(--color-subtle);
+  border-radius: var(--radius-card);
+  line-height: 1.6;
+}
+.provenance {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+.provenance summary {
+  cursor: pointer;
+  min-height: var(--target-size);
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+}
+.provenance h3 {
+  font-size: 1rem;
+}
+.dialogHost {
+  display: contents;
+}
+.dialogHost [data-ui~='dialog'] {
+  width: min(100%, 440px);
+  max-width: none;
+  margin: 5rem 2rem 0 auto;
+  max-height: calc(100dvh - 6rem);
+  overflow-wrap: anywhere;
+}
+.dialogHost form {
+  min-width: 0;
+}
+.presets {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+.presets [aria-pressed='true'] {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-subtle);
+}
+.fields {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.fields label {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.fields select {
+  max-width: 100%;
+  width: 100%;
+  min-height: var(--target-size);
+  padding: 0.75rem;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.actions {
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+@media (max-width: 759px) {
+  .dialogHost [data-ui~='dialog'] {
+    width: 100%;
+    margin: auto 0 0;
+    max-height: 90dvh;
+    border-radius: 24px 24px 0 0;
+    padding: 1.25rem max(1.25rem, env(safe-area-inset-right))
+      max(1.25rem, env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
+  }
+}
+@media (max-width: 479px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+  .amount {
+    text-align: left;
+    max-width: 100%;
+  }
+  .rowProvenance {
+    grid-column: 1;
+  }
+}

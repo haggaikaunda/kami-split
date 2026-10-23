@@ -163,9 +163,28 @@ A lost exchange response reads the original attempt before any new enrollment.
 
 Account's reporting-timezone editor uses independently versioned operations and
 same-attempt recovery. Device initialization occurs only when the server reports
-an uninitialized preference; travel never replaces a saved zone. The initial
-Personal pages expose connection/import state and private setup guidance.
-Transaction browsing, spending summaries and existing-connection management
-remain separately owned capabilities; these pages do not infer a successful
-zero, complete history, renewed consent or a shared expense from connection
-success.
+an uninitialized preference; travel never replaces a saved zone. Personal Transactions owns a retained `personalTransactionsQuery` per actor and
+applied URL filter identity. Complete server counts, spending and coverage belong
+to the first coherent report; signed continuation pages are rendered only when
+their revision matches. A stale or denied continuation discards the traversal and
+offers a restart with applied filters preserved. Date/filter dialogs own only
+unapplied drafts. Presets are resolved by the saved-zone server read, including
+new-day restart; custom dates stay fixed. Overview navigation preserves those URL
+parameters for its separately owned presentation.
+
+Recovery archives and latest source discrepancies use separate report contexts.
+The `transaction` URL parameter is the stable source identity, `archive` is an
+optional immutable manifest identity, and `discrepancies=true` selects latest
+noncontributing source facts. The narrow selected-row reader freshly authorizes
+`bankingTransaction` outside list filters. It supplies source/return continuity for
+the separately owned full detail/editor. Current-record links clear archive and
+discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
+Snapshot IDs never become navigation or edit keys. Archive annotations are shown
+as immutable captured provenance and copies never join current totals.
+
+Account names come from the freshly authorized connection inventory; a record
+beyond its loaded pages uses a labeled retained-account fallback rather than
+inventing bank names or masks. Reporting coverage and import/freshness facts remain
+independent. Existing-connection management and full detail/private mutations
+remain separate capabilities; connection success never proves zero spending,
+complete history, renewed consent or a shared expense.

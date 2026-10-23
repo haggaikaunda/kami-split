@@ -15,6 +15,7 @@ import { WorkspaceRefresh } from '../workspace-refresh';
 import { WorkspaceLoading } from '../workspace-loading';
 import { useForegroundRefresh } from '../groups/foreground';
 import { Enrollment } from './enrollment';
+import { PersonalTransactions } from './transactions';
 import { ReportingTimezoneInitialization } from './reporting-timezone-control';
 import { importSummary, coverageSummary } from './status';
 import styles from './personal.module.css';
@@ -110,10 +111,12 @@ function PersonalRead({
           {(data) =>
             data.bankingConnections.code === 'READY' ? (
               <>
-                <RestoreSource scope={scope} allowed={[]} />
+                {section !== 'Transactions' && (
+                  <RestoreSource scope={scope} allowed={[]} />
+                )}
                 <ReportingTimezoneInitialization
                   showPeriod={
-                    section !== 'Connections' &&
+                    section === 'Overview' &&
                     (paramsPeriod === null || paramsPeriod === 'this-month')
                   }
                 />
@@ -152,6 +155,24 @@ function PersonalRead({
                       </p>
                     </section>
                   </>
+                ) : section === 'Transactions' &&
+                  (data.bankingConnections.connections.some(
+                    (connection) => connection.accounts.length > 0,
+                  ) ||
+                    data.bankingConnections.hasNextPage) ? (
+                  <PersonalTransactions
+                    scope={scope}
+                    names={
+                      new Map(
+                        data.bankingConnections.connections.flatMap(
+                          (connection) =>
+                            connection.accounts.map(
+                              (account) => [account.id, account.name] as const,
+                            ),
+                        ),
+                      )
+                    }
+                  />
                 ) : (
                   <ActivityBoundary
                     section={section}
