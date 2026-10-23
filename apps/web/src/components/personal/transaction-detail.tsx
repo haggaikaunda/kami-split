@@ -115,7 +115,8 @@ export function TransactionDetail({
     Boolean(
       initial.edit &&
       !initial.edit.pending &&
-      (initial.edit.sourceRevision !== fact.sourceRevision ||
+      (initial.edit.requiresReview ||
+        initial.edit.sourceRevision !== fact.sourceRevision ||
         initial.edit.annotationRevision !== fact.annotationRevision),
     ),
   );
@@ -123,7 +124,9 @@ export function TransactionDetail({
     initial.error ||
       (initial.edit?.pending
         ? 'The original save is unconfirmed. Check its result before sending anything else.'
-        : ''),
+        : initial.edit?.requiresReview
+          ? 'Newer saved changes need review. Check the current record before reapplying your remaining input.'
+          : ''),
   );
   const [storageError, setStorageError] = useState(Boolean(initial.error));
   const [unavailable, setUnavailable] = useState(false);
@@ -287,15 +290,21 @@ export function TransactionDetail({
       const field = sent.pending!.field as AnnotationField;
       next.draft[field] = next.baseline[field];
       if (field === 'ACTIVITY') delete next.confirmActivity;
-      if (
+      const bankChanged =
         current.sourceRevision !== sent.sourceRevision ||
-        current.materialRevision !== sent.materialRevision
-      ) {
+        current.materialRevision !== sent.materialRevision;
+      const interveningPrivateEdit =
+        BigInt(current.annotationRevision) !==
+        BigInt(sent.pending!.expectedRevision) + 1n;
+      if (bankChanged || interveningPrivateEdit) {
+        next.requiresReview = true;
         retain(next);
         setConflict(true);
         setFresh(current);
         setMessage(
-          'The field save is confirmed, but bank facts changed. Remaining changes need explicit review and reapplication.',
+          bankChanged
+            ? 'The field save is confirmed, but bank facts changed. Remaining changes need explicit review and reapplication.'
+            : 'The field save is confirmed, but newer private changes were saved elsewhere. Remaining input needs explicit review and reapplication.',
         );
         return null;
       }
@@ -312,7 +321,7 @@ export function TransactionDetail({
         'IDEMPOTENCY_CONFLICT',
       ].includes(result.code)
     ) {
-      const next = { ...sent };
+      const next = { ...sent, requiresReview: true };
       delete next.pending;
       retain(next);
       setConflict(true);

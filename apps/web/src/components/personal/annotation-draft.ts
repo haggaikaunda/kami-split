@@ -22,6 +22,7 @@ export type Edit = {
   draft: Values;
   pending?: BankingAnnotationInput;
   confirmActivity?: boolean;
+  requiresReview?: boolean;
   returnTo?: { href: string; focus: string; scroll: number };
 };
 export function annotationValues(fact: Fact): Values {
@@ -153,6 +154,13 @@ export function loadEdit(actor: string, source: string): Edit | null {
       edit.returnTo.scroll > 100000000)
   )
     throw new Error('INVALID_RETURN');
+  if (
+    (edit.requiresReview !== undefined &&
+      typeof edit.requiresReview !== 'boolean') ||
+    (edit.confirmActivity !== undefined &&
+      typeof edit.confirmActivity !== 'boolean')
+  )
+    throw new Error('INVALID_DRAFT');
   const pending = edit.pending;
   if (
     pending &&

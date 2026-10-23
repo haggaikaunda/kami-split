@@ -926,3 +926,77 @@ it('keeps a confirmed save distinct from failed local draft cleanup', async () =
   ).toBe(true);
   remove.mockRestore();
 });
+
+it('does not silently advance a remaining field past another private writer and keeps review required after reload', async () => {
+  await openDetail();
+  await click('Edit');
+  const select = async (index: number, value: string) =>
+    act(async () => {
+      const element = host.querySelectorAll('select')[index];
+      Object.getOwnPropertyDescriptor(
+        HTMLSelectElement.prototype,
+        'value',
+      )!.set!.call(element, value);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  await select(0, 'transfer');
+  await select(1, 'TRAVEL');
+  await click('Save changes');
+  expect(latestMutation().variables.input).toMatchObject({
+    field: 'ACTIVITY',
+    value: 'transfer',
+    expectedRevision: '0',
+  });
+  const concurrent = {
+    ...row(),
+    annotationRevision: '2',
+    activity: 'transfer',
+    activityOverride: 'transfer',
+    category: 'GENERAL_MERCHANDISE',
+    categoryOverride: 'GENERAL_MERCHANDISE',
+  };
+  await answer(result('READY', concurrent));
+  expect(
+    requests.filter(
+      (request) => request.name === 'personalTransactionAnnotationMutation',
+    ),
+  ).toHaveLength(1);
+  expect(host.textContent).toContain(
+    'newer private changes were saved elsewhere',
+  );
+  expect(host.querySelectorAll('select')[1].value).toBe('TRAVEL');
+  await act(async () => root.unmount());
+  root = relayRoot(createRoot(host), () => scope);
+  await act(async () => render());
+  await answer(report());
+  await answer({
+    bankingTransaction: {
+      id: 'fresh-concurrent',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: concurrent,
+    },
+  });
+  expect(
+    [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Save changes',
+    )?.disabled,
+  ).toBe(true);
+  expect(host.querySelectorAll('select')[1].value).toBe('TRAVEL');
+  await click('Check current record');
+  await answer({
+    bankingTransaction: {
+      id: 'checked-concurrent',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: concurrent,
+    },
+  });
+  await click('Use current versions');
+  await click('Save changes');
+  expect(latestMutation().variables.input).toMatchObject({
+    field: 'CATEGORY',
+    value: 'TRAVEL',
+    expectedRevision: '2',
+  });
+});
