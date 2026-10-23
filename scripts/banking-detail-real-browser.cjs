@@ -229,10 +229,14 @@ withAuthFixture(origin, session, async () => {
       'Bank amount/date are immutable',
     );
     await expect(
-      page.getByText('Posted bank date', { exact: true }),
+      page
+        .getByText('Posted bank date', { exact: true })
+        .filter({ visible: true }),
     ).toBeVisible();
     await expect(
-      page.getByText('Authorization date', { exact: true }),
+      page
+        .getByText('Authorization date', { exact: true })
+        .filter({ visible: true }),
     ).toBeVisible();
     const detail = page.getByRole('dialog', {
       name: 'Transaction detail',
@@ -241,8 +245,12 @@ withAuthFixture(origin, session, async () => {
     await expect(detail.locator('[data-ui~="money-value"]').first()).toHaveText(
       '$100.00',
     );
-    await expect(detail.getByText('2024-02-29', { exact: true })).toBeVisible();
-    await expect(detail.getByText('2024-02-27', { exact: true })).toBeVisible();
+    await expect(
+      detail.getByText('2024-02-29', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
+    await expect(
+      detail.getByText('2024-02-27', { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
     stage = 'private note persistence and reload';
     await editButton.click();
     await page
