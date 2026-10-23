@@ -194,7 +194,11 @@ it('reads complete server counts and exact negative spending independently from 
   expect(host.textContent).toContain('−$40.00');
   expect(host.textContent).toContain('Partial coverage');
   expect(host.textContent).toContain('Classification incomplete');
-  expect(host.textContent).toContain('Posted bank date');
+  expect(
+    host
+      .querySelector('time[datetime="2026-10-17"]')
+      ?.getAttribute('aria-label'),
+  ).toBe('Posted bank date 2026-10-17');
   expect(host.textContent).not.toContain('Connect account');
   expect(
     host.querySelector('[data-source-id] a')?.getAttribute('href'),
@@ -390,4 +394,44 @@ it('keeps stale/reconnect import facts visible beside a usable complete current 
     ),
   );
   expect(host.textContent).toContain('updates are stale');
+});
+
+it('keeps the normal complete list compact with a whole-row target and no all-zero status block', async () => {
+  await act(async () => render());
+  await answer(
+    report({
+      counts: {
+        count: 1,
+        postedCount: 1,
+        pendingCount: 0,
+        removedCount: 0,
+        excludedCount: 0,
+        unresolvedCount: 0,
+        reviewedCount: 1,
+        classificationComplete: true,
+      },
+      summary: null,
+      totalCount: 1,
+      hasNextPage: false,
+      rows: [{ ...row(), reviewed: true }],
+      accounts: [
+        {
+          ...report().bankingReport.accounts[0],
+          coverage: 'COMPLETE',
+          intervals: [],
+        },
+      ],
+    }),
+  );
+  const link = host.querySelector<HTMLAnchorElement>('#transaction-source-1')!;
+  expect(link.textContent).toContain('Private merchant');
+  expect(link.textContent).toContain('$100.00');
+  expect(link.getAttribute('aria-describedby')).toContain(
+    'row-source-1-context',
+  );
+  expect(host.textContent).not.toContain('0 pending');
+  expect(host.textContent).not.toContain('0 unresolved');
+  expect(host.textContent).not.toContain(
+    'Activity context; no spending total applies.',
+  );
 });

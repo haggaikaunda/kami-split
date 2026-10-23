@@ -1,9 +1,11 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AppIcon } from '../workspace-identity';
 import { Button, Dialog, Field } from '../ui/primitives';
 import {
   appliedPeriod,
+  bankDateLabel,
   customDateError,
   periods,
   personalHref,
@@ -105,6 +107,7 @@ export function TransactionControls({
           aria-controls={panel ? `personal-${panel}-panel` : undefined}
           onClick={() => open('dates')}
         >
+          <AppIcon name="calendar" />
           {periods[appliedPeriod(params)]}
         </Button>
         <Button
@@ -115,14 +118,16 @@ export function TransactionControls({
           aria-controls={panel ? `personal-${panel}-panel` : undefined}
           onClick={() => open('filters')}
         >
+          <AppIcon name="sliders" />
           Filters{active.length ? ` · ${active.length}` : ''}
         </Button>
       </div>
       <p className={styles.period}>
-        {start || 'Dates unavailable'} – {end || 'Dates unavailable'} · USD{' '}
         <span>
-          Posted bank dates · {timezone || 'Saved timezone unavailable'}
+          {start ? bankDateLabel(start) : 'Dates unavailable'} –{' '}
+          {end ? bankDateLabel(end) : 'Dates unavailable'}
         </span>
+        <span>USD</span>
       </p>
       {active.length > 0 && (
         <div className={styles.chips}>
@@ -166,8 +171,9 @@ export function TransactionControls({
               {panel === 'dates' ? (
                 <>
                   <p>
-                    Applies to Overview and Transactions. Available history may
-                    be partial.
+                    Applies to Overview and Transactions. Posted bank dates ·{' '}
+                    {timezone || 'Saved timezone unavailable'}. Available
+                    history may be partial.
                   </p>
                   <div className={styles.presets}>
                     {Object.entries(periods).map(([key, label]) => (

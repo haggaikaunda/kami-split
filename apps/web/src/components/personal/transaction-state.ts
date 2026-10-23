@@ -96,3 +96,25 @@ export function readable(value: string) {
     .replaceAll('_', ' ')
     .replace(/^./, (letter) => letter.toUpperCase());
 }
+
+/** Calendar display only: do not parse a bank date as a zoned instant. */
+export function bankDateLabel(value: string, includeYear = true) {
+  const [year, month, day] = value.split('-');
+  const label = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][Number(month) - 1];
+  return label
+    ? `${label} ${Number(day)}${includeYear ? `, ${year}` : ''}`
+    : value;
+}

@@ -22,6 +22,7 @@ export function ScopedLink({
 }: {
   onClick?: MouseEventHandler<HTMLAnchorElement>;
   'aria-label'?: string;
+  'aria-describedby'?: string;
   'aria-current'?: 'page';
   className?: string;
   scope: FinancialScope;
@@ -172,6 +173,15 @@ export function RestoreSource({
       const heading = document.querySelector<HTMLElement>(
         '[data-page-heading]',
       );
+      // Native disclosures may remount collapsed when a reporting context changes.
+      // Only a freshly authorized actor-owned target can reveal its ancestors.
+      for (
+        let parent = target?.parentElement;
+        parent;
+        parent = parent.parentElement
+      ) {
+        if (parent instanceof HTMLDetailsElement) parent.open = true;
+      }
       (target ?? heading)?.focus({ preventScroll: true });
       window.scrollTo(0, target && visit ? visit.scroll : 0);
     });

@@ -14,6 +14,7 @@ import rowDocument, {
 import selectionDocument, {
   type personalTransactionSelectionQuery,
 } from '@/lib/relay/__generated__/personalTransactionSelectionQuery.graphql';
+import { AppIcon, type IconName } from '../workspace-identity';
 import { Button, Status } from '../ui/primitives';
 import { ContentLoading } from '../ui/loading';
 import { Money } from '../financial/presentation';
@@ -21,6 +22,7 @@ import { RestoreSource, ScopedLink, SourceReturn } from '../groups/navigation';
 import { TransactionControls } from './transaction-controls';
 import {
   bankMoney,
+  bankDateLabel,
   personalHref,
   readable,
   reportFilter,
@@ -287,16 +289,16 @@ function ReportContent({
                     : 'Account activity'}
               </h2>
               <span>
-                {report.totalCount} transactions · complete matching count
+                {report.totalCount} transactions
+                <span className={styles.srOnly}>
+                  {' '}
+                  · complete matching count
+                </span>
               </span>
             </div>
-            {report.counts && (
+            {reportStatusText(report.counts) && (
               <p className={styles.context}>
-                {report.counts.pendingCount} pending ·{' '}
-                {report.counts.unresolvedCount} unresolved ·{' '}
-                {report.counts.count - report.counts.reviewedCount} not reviewed
-                · {report.counts.excludedCount} excluded ·{' '}
-                {report.counts.removedCount} removed
+                {reportStatusText(report.counts)}
                 {!report.summary &&
                   ' · Activity context; no spending total applies.'}
               </p>
@@ -324,6 +326,10 @@ function ReportContent({
             )}
             <details className={styles.provenance}>
               <summary>Reporting history and recovery archives</summary>
+              <p>
+                Applied posted bank dates: {report.start} – {report.end}. Saved
+                reporting timezone: {report.timezone}.
+              </p>
               {report.accounts.map((account) => (
                 <div key={account.accountId}>
                   <h3>
@@ -389,6 +395,9 @@ function ReportContent({
                 </ScopedLink>
               )}
             </details>
+            <p className={styles.privacy}>
+              Only you can see these bank accounts and their activity.
+            </p>
           </div>
         </>
       )}
@@ -431,6 +440,27 @@ function ReturnAuthorization({
     </NetworkQuery>
   );
 }
+function reportStatusText(counts: Report['counts']) {
+  if (!counts) return '';
+  return [
+    counts.pendingCount && `${counts.pendingCount} pending`,
+    counts.unresolvedCount && `${counts.unresolvedCount} unresolved`,
+    counts.count - counts.reviewedCount &&
+      `${counts.count - counts.reviewedCount} not reviewed`,
+    counts.excludedCount && `${counts.excludedCount} excluded`,
+    counts.removedCount && `${counts.removedCount} removed`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+function importNeedsContext(status: ImportFacts) {
+  return (
+    !status.usable ||
+    status.freshness === 'STALE' ||
+    status.recovery === 'CONTACT_SUPPORT' ||
+    status.collection !== 'COLLECTING'
+  );
+}
 function Coverage({
   report,
   names,
@@ -453,12 +483,12 @@ function Coverage({
             </strong>{' '}
             · {readable(account.coverage)} coverage
             {!account.selected && ' · Updates stopped; retained history'}
-            {account.coverage !== 'COMPLETE' &&
-              '. Selected dates are preserved; earlier or recent activity may be missing.'}
+            {account.coverage !== 'COMPLETE' && ' · Activity may be missing.'}
           </p>
-          {statuses?.get(account.accountId) && (
-            <p>{importSummary(statuses.get(account.accountId)!)}</p>
-          )}
+          {statuses?.get(account.accountId) &&
+            importNeedsContext(statuses.get(account.accountId)!) && (
+              <p>{importSummary(statuses.get(account.accountId)!)}</p>
+            )}
           {(statuses?.get(account.accountId)?.collection ===
             'RECONNECT_REQUIRED' ||
             account.intervals.some(
@@ -555,56 +585,77 @@ function TransactionRow({
 }: Context & { row: personalTransactionRow$key; selected?: boolean }) {
   const value = useFragment(rowDocument, row),
     params = useSearchParams();
-  const archive = params.get('archive');
-  const label = value.merchantName || value.name || 'Bank transaction';
+  const archive = params.get('archive'),
+    label = value.merchantName || value.name || 'Bank transaction';
+  const context = [
+    readable(value.activity),
+    names.get(value.accountId) ?? 'Retained bank account',
+    value.processingState !== 'posted' ? readable(value.processingState) : '',
+    !value.reviewed || value.materialConflict ? 'Needs review' : '',
+    value.excluded ? 'Excluded' : '',
+    value.materialConflict ? 'Classification changed' : '',
+    !value.current ? 'Archive only' : '',
+    value.discrepancy !== 'none' ? 'Historical discrepancy' : '',
+    selected
+      ? `${readable(value.category)} · Source revision ${value.sourceRevision}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const identity = `${selected ? 'selected' : 'row'}-${value.sourceId}`;
+  const includeYear =
+    selected ||
+    (params.get('period') === 'custom' &&
+      params.get('start')?.slice(0, 4) !== params.get('end')?.slice(0, 4));
+  const content = (
+    <>
+      <span className={styles.category} aria-hidden="true">
+        <AppIcon name={bankingIcon(value.activity, value.category)} />
+      </span>
+      <span className={styles.rowMain}>
+        <strong>{label}</strong>
+        <span id={`${identity}-context`}>{context}</span>
+      </span>
+      <span className={styles.amount} id={`${identity}-amount`}>
+        <Money
+          value={bankMoney(value.amountMinor)}
+          currency={value.currency}
+          focusable={selected}
+        />
+        <span>
+          <time
+            dateTime={value.bankDate}
+            aria-label={`${value.processingState === 'pending' ? 'Provisional date' : 'Posted bank date'} ${value.bankDate}`}
+          >
+            {bankDateLabel(value.bankDate, includeYear)}
+          </time>
+        </span>
+      </span>
+    </>
+  );
   return (
     <article
       className={styles.row}
       data-source-id={value.sourceId}
       tabIndex={selected ? -1 : undefined}
     >
-      <div className={styles.rowMain}>
-        <strong>
-          {selected ? (
-            label
-          ) : (
-            <ScopedLink
-              scope={scope}
-              id={`transaction-${value.sourceId}`}
-              href={personalHref(new URLSearchParams(params), {
-                transaction: value.sourceId,
-                source: null,
-              })}
-            >
-              {label}
-            </ScopedLink>
-          )}
-        </strong>
-        <span>{names.get(value.accountId) ?? 'Retained bank account'}</span>
-        <span>
-          {readable(value.activity)} ·{' '}
-          {value.processingState !== 'posted' &&
-            `${readable(value.processingState)} · `}
-          {(!value.reviewed || value.materialConflict) && 'Needs review · '}
-          {value.excluded && 'Excluded · '}
-          {value.materialConflict && 'Classification changed · '}
-          {!value.current && 'Archive only · '}
-          {value.discrepancy !== 'none' && 'Historical discrepancy · '}
-          {selected &&
-            `${readable(value.category)} · Source revision ${value.sourceRevision}`}
-        </span>
-      </div>
-      <div className={styles.amount}>
-        <Money value={bankMoney(value.amountMinor)} currency={value.currency} />
-        <span>
-          <time dateTime={value.bankDate}>{value.bankDate}</time>
-          <span>
-            {value.processingState === 'pending'
-              ? 'Provisional date'
-              : 'Posted bank date'}
-          </span>
-        </span>
-      </div>
+      {selected ? (
+        <div className={styles.rowLink}>{content}</div>
+      ) : (
+        <ScopedLink
+          scope={scope}
+          id={`transaction-${value.sourceId}`}
+          className={styles.rowLink}
+          aria-label={label}
+          aria-describedby={`${identity}-context ${identity}-amount`}
+          href={personalHref(new URLSearchParams(params), {
+            transaction: value.sourceId,
+            source: null,
+          })}
+        >
+          {content}
+        </ScopedLink>
+      )}
       {archive && (
         <div className={styles.rowProvenance}>
           <p>
@@ -639,6 +690,20 @@ function TransactionRow({
       )}
     </article>
   );
+}
+function bankingIcon(activity: string, category: string): IconName {
+  if (activity === 'refund') return 'back';
+  if (activity === 'income') return 'wallet';
+  if (['transfer', 'repayment'].includes(activity)) return 'activity';
+  const icons: Record<string, IconName> = {
+    FOOD_AND_DRINK: 'dining',
+    TRANSPORTATION: 'car',
+    TRAVEL: 'trip',
+    RENT_AND_UTILITIES: 'home',
+    HOME_IMPROVEMENT: 'home',
+    ENTERTAINMENT: 'activity',
+  };
+  return icons[category] ?? 'expense';
 }
 /** A fresh selected-row read outside list filters. #259 owns the full detail/editor;
  * this source/archive/discrepancy contract and ScopedLink origin remain its handoff. */

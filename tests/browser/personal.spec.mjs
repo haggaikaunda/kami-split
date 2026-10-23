@@ -1098,6 +1098,15 @@ test('Personal transactions apply drafts, preserve shared dates, and restore row
   await expect(
     page.getByRole('heading', { name: 'Recovery archive', exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Back to current activity', exact: true })
+    .click();
+  await expect(page.locator('#archive-archive-private')).toBeFocused();
+  await expect(
+    page
+      .getByText('Reporting history and recovery archives', { exact: true })
+      .locator('..'),
+  ).toHaveAttribute('open', '');
 });
 
 test('Personal transaction pagination restarts on changed snapshots and keeps filters through failure', async ({
