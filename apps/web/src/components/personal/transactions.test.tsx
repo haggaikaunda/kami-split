@@ -5,11 +5,15 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
 import type { FinancialScope } from '@/lib/relay/environment';
 import { PersonalTransactions } from './transactions';
-const nav = vi.hoisted(() => ({ search: 'tab=transactions', push: vi.fn() }));
+const nav = vi.hoisted(() => ({
+  search: 'tab=transactions',
+  push: vi.fn(),
+  replace: vi.fn(),
+}));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
   usePathname: () => '/personal',
-  useRouter: () => ({ push: nav.push }),
+  useRouter: () => ({ push: nav.push, replace: nav.replace }),
 }));
 vi.mock('next/link', () => ({
   default: ({
@@ -37,6 +41,18 @@ const row = (id = 'source-1') => ({
   accountId: 'account',
   bindingId: 'binding',
   sourceRevision: '1',
+  materialRevision: '1',
+  annotationRevision: '0',
+  categoryOverride: null,
+  activityOverride: null,
+  note: null,
+  eligible: true,
+  authorizationDate: '2026-10-16',
+  providerPrimaryCategory: 'FOOD_AND_DRINK',
+  providerCategory: 'FOOD_AND_DRINK_GROCERIES',
+  providerConfidence: 'HIGH',
+  providerCode: 'purchase',
+  mappingVersion: 'pfc-v2',
   latestSourceRevision: '2',
   bankDate: '2026-10-17',
   amountMinor: '10000',
@@ -59,6 +75,9 @@ const row = (id = 'source-1') => ({
       annotationRevision: '3',
       annotation: {
         revision: '3',
+        materialRevision: '1',
+        category: null,
+        activity: null,
         note: 'Original private note',
         excluded: true,
         reviewed: false,
@@ -158,6 +177,8 @@ async function click(label: string) {
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   requests.length = 0;
+  sessionStorage.clear();
+  window.history.replaceState({}, '', '/personal?tab=transactions');
   nav.search = 'tab=transactions';
   nav.push.mockReset();
   HTMLDialogElement.prototype.showModal = function () {
@@ -531,3 +552,282 @@ it.each(['ready', 'revision', 'denied'])(
     });
   },
 );
+
+async function openDetail(extra: Record<string, unknown> = {}) {
+  nav.search = 'tab=transactions&transaction=source-1';
+  await act(async () => render());
+  await answer(report());
+  await answer({
+    bankingTransaction: {
+      id: 'detail-initial',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: { ...row(), ...extra },
+    },
+  } as unknown as ReturnType<typeof report>);
+}
+async function textInput(value: string) {
+  const input = host.querySelector('textarea')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      'value',
+    )!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+const result = (
+  code: string,
+  value: Record<string, unknown> = row(),
+  name = 'editBankingAnnotation',
+) => ({
+  [name]: {
+    id: `result-${crypto.randomUUID()}`,
+    code,
+    sourceId: 'source-1',
+    detail: {
+      id: `detail-${crypto.randomUUID()}`,
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: value,
+    },
+  },
+});
+it('opens read-only, separates immutable dates, and protects edited input on Close and browser Back', async () => {
+  await openDetail();
+  expect(host.querySelector('textarea')).toBeNull();
+  expect(host.textContent).toContain('Authorization date2026-10-16');
+  await click('Edit');
+  await textInput('Intended private note');
+  await click('Close');
+  expect(host.textContent).toContain('Discard unsaved changes?');
+  await click('Keep editing');
+  expect(host.querySelector('textarea')?.value).toBe('Intended private note');
+  await act(async () => window.dispatchEvent(new PopStateEvent('popstate')));
+  expect(host.textContent).toContain('Discard unsaved changes?');
+  expect(nav.replace).not.toHaveBeenCalled();
+  expect(
+    requests.filter((request) => request.name.includes('Mutation')),
+  ).toHaveLength(0);
+});
+it('serializes only changed fields and retains remaining intended input after a partial-save conflict', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('My note');
+  await act(async () =>
+    host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click(),
+  );
+  await click('Save changes');
+  expect(requests.at(-1)?.variables.input).toMatchObject({
+    field: 'NOTE',
+    value: 'My note',
+    expectedRevision: '0',
+    sourceRevision: '1',
+    materialRevision: '1',
+  });
+  await answer(
+    result('READY', {
+      ...row(),
+      annotationRevision: '1',
+      note: 'My note',
+    }) as unknown as ReturnType<typeof report>,
+  );
+  expect(requests.at(-1)?.variables.input).toMatchObject({
+    field: 'EXCLUDED',
+    value: 'true',
+    expectedRevision: '1',
+  });
+  await answer(
+    result('CONFLICT', {
+      ...row(),
+      annotationRevision: '2',
+      note: 'Other saved note',
+    }) as unknown as ReturnType<typeof report>,
+  );
+  expect(host.textContent).toContain('remaining input is preserved');
+  expect(host.querySelector('textarea')?.value).toBe('My note');
+  expect(
+    host.querySelector<HTMLInputElement>('input[type=checkbox]')?.checked,
+  ).toBe(true);
+  expect(
+    [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Save changes',
+    )?.disabled,
+  ).toBe(true);
+  await click('Use current versions');
+  await click('Save changes');
+  expect(requests.at(-1)?.variables.input).toMatchObject({
+    field: 'EXCLUDED',
+    expectedRevision: '2',
+    value: 'true',
+  });
+});
+it('recovers response loss after remount and replays the exact frozen input only for a missing receipt', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Recovered note');
+  await click('Save changes');
+  const frozen = requests.at(-1)!.variables.input;
+  await act(async () => requests.at(-1)!.error());
+  expect(host.textContent).toContain('could not be confirmed');
+  await act(async () => root.unmount());
+  root = relayRoot(createRoot(host), () => scope);
+  await act(async () => render());
+  await answer(report());
+  await answer({
+    bankingTransaction: {
+      id: 'reopened',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: row(),
+    },
+  } as unknown as ReturnType<typeof report>);
+  expect(host.querySelector('textarea')?.value).toBe('Recovered note');
+  await click('Check original save');
+  expect(requests.at(-1)?.name).toBe(
+    'personalTransactionAnnotationRecoveryQuery',
+  );
+  await answer({
+    bankingAnnotationOperation: {
+      id: 'missing',
+      code: 'NOT_FOUND',
+      sourceId: null,
+      detail: null,
+    },
+  } as unknown as ReturnType<typeof report>);
+  expect(requests.at(-1)?.variables.input).toEqual(frozen);
+  await answer(
+    result('READY', {
+      ...row(),
+      annotationRevision: '1',
+      note: 'Recovered note',
+    }) as unknown as ReturnType<typeof report>,
+  );
+  expect(requests.at(-1)?.name).toBe('personalTransactionsQuery');
+});
+it('masks stale private detail after a denied mutation', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Sensitive draft');
+  await click('Save changes');
+  await answer({
+    editBankingAnnotation: {
+      id: 'denied',
+      code: 'NOT_FOUND',
+      sourceId: null,
+      detail: null,
+    },
+  } as unknown as ReturnType<typeof report>);
+  expect(host.textContent).toContain('no longer accessible');
+  expect(host.querySelector('dialog')?.textContent).not.toContain(
+    'Private merchant',
+  );
+  expect(host.querySelector('textarea')).toBeNull();
+});
+it('keeps current archive copies read-only and permits archive-only annotations with immutable captured provenance', async () => {
+  nav.search = 'tab=transactions&archive=archive&transaction=source-1';
+  await act(async () => render());
+  await answer(report({ summary: null }));
+  await answer({
+    bankingTransaction: {
+      id: 'archive-current',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: row(),
+    },
+  } as unknown as ReturnType<typeof report>);
+  expect(
+    [...host.querySelectorAll('button')].some(
+      (button) => button.textContent === 'Edit',
+    ),
+  ).toBe(false);
+  expect(host.textContent).toContain('Captured note: Original private note');
+});
+
+it('requires explicit reapplication when source material changes between a confirmed field and remaining writes', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Note survives');
+  await act(async () =>
+    host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click(),
+  );
+  await click('Save changes');
+  const mutations = requests.filter(
+    (request) => request.name === 'personalTransactionAnnotationMutation',
+  ).length;
+  await answer(
+    result('READY', {
+      ...row(),
+      sourceRevision: '2',
+      materialRevision: '2',
+      annotationRevision: '1',
+      note: 'Note survives',
+      amountMinor: '-10000',
+      activity: 'unresolved',
+    }) as unknown as ReturnType<typeof report>,
+  );
+  expect(
+    requests.filter(
+      (request) => request.name === 'personalTransactionAnnotationMutation',
+    ),
+  ).toHaveLength(mutations);
+  expect(host.textContent).toContain('bank facts changed');
+  expect(
+    host.querySelector<HTMLInputElement>('input[type=checkbox]')?.checked,
+  ).toBe(true);
+  expect(
+    [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Save changes',
+    )?.disabled,
+  ).toBe(true);
+});
+it('allows explicit compatible activity acknowledgement while reviewed alone keeps unresolved spending separate', async () => {
+  await openDetail({
+    activity: 'unresolved',
+    activityOverride: 'purchase',
+    materialConflict: true,
+    reviewed: false,
+    eligible: false,
+  });
+  expect(host.textContent).toContain(
+    'A reviewed flag alone does not resolve unknown activity',
+  );
+  await click('Edit');
+  await click('Confirm activity type');
+  await click('Save changes');
+  expect(requests.at(-1)?.variables.input).toMatchObject({
+    field: 'ACTIVITY',
+    value: 'purchase',
+    sourceRevision: '1',
+    materialRevision: '1',
+  });
+});
+it('ignores a delayed annotation response after the owning actor scope is replaced', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Alice-only draft');
+  await click('Save changes');
+  const original = requests.at(-1)!;
+  const departed = scope;
+  departed.isLive = () => false;
+  scope = {
+    ...departed,
+    id: 'bob',
+    actor: 'bob',
+    isLive: () => true,
+    visits: new Map(),
+    environment: queryEnvironment((request) => requests.push(request)),
+  };
+  await act(async () => render());
+  await act(async () =>
+    original.next(
+      result('READY', {
+        ...row(),
+        note: 'Alice-only draft',
+        annotationRevision: '1',
+      }),
+    ),
+  );
+  expect(host.textContent).not.toContain('Alice-only draft');
+  expect(host.querySelector('textarea')).toBeNull();
+});

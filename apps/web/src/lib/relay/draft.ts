@@ -54,7 +54,10 @@ export function clearFinancialStorage() {
   // Enrollment recovery identities belong to the departing financial actor.
   for (let index = sessionStorage.length - 1; index >= 0; index--) {
     const key = sessionStorage.key(index);
-    if (key?.startsWith('kami-personal-enrollment:'))
+    if (
+      key?.startsWith('kami-personal-enrollment:') ||
+      key?.startsWith('kami-personal-annotation:')
+    )
       sessionStorage.removeItem(key);
   }
 }

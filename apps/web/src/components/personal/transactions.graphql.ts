@@ -121,6 +121,7 @@ export const selection = graphql`
       currentId
       transaction {
         ...personalTransactionRow
+        ...personalTransactionDetail
       }
     }
   }

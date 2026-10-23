@@ -176,8 +176,18 @@ Recovery archives and latest source discrepancies use separate report contexts.
 The `transaction` URL parameter is the stable source identity, `archive` is an
 optional immutable manifest identity, and `discrepancies=true` selects latest
 noncontributing source facts. The narrow selected-row reader freshly authorizes
-`bankingTransaction` outside list filters. It supplies source/return continuity for
-the separately owned full detail/editor. Current-record links clear archive and
+`bankingTransaction` outside list filters. It supplies source/return continuity for the reusable `TransactionDetail` panel.
+The panel opens read-only, separates bank facts from private annotations and uses
+a full explicit edit form. Its actor/source-scoped tab draft retains the opened
+source/material/annotation baseline and any frozen pending command. Each changed
+field saves independently; confirmed fields remain saved after a later failure.
+Conflicts require explicit current-version reapplication, and uncertain results
+recover the original receipt before an identical frozen retry. Current archive
+copies link to their sole current editor; archive-only saves reread the selected
+manifest after the safe receipt. Native modal focus/inertness and dirty Back/Close
+protection preserve unfinished input. Logout, actor changes and access denial
+purge these drafts with existing financial storage. Complete reporting is read
+again after saves; no client total is derived from loaded rows. Current-record links clear archive and
 discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded
 page extent. A valid source return across contexts replays that extent from fresh
@@ -192,6 +202,6 @@ Account names come from all pages of the freshly authorized connection inventory
 current bindings take precedence over retired copies of one logical account.
 Genuinely unavailable retained identities use a labeled account fallback rather
 than invented bank names or masks. Reporting coverage and import/freshness facts remain
-independent. Existing-connection management and full detail/private mutations
-remain separate capabilities; connection success never proves zero spending,
+independent. Existing-connection management and Overview presentation remain separate
+capabilities; connection success never proves zero spending,
 complete history, renewed consent or a shared expense.

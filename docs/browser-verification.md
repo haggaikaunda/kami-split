@@ -118,6 +118,38 @@ For compact expense-filter coverage, run `FILTER_TESTS=1 LEDGER_TESTS=1 node scr
 
 The optional `edit-real-browser.cjs` and `percentage-real-browser.cjs` additionally require their disposable Go/database integration setup and verified synthetic bearer. Their local Auth fixture models the web session boundary; actual financial transport still reaches the test API. Component-only synthetic GraphQL responses do not prove persistence, authorization or provider delivery.
 
+### Real private transaction detail journey
+
+`scripts/banking-detail-real-browser.cjs` is driven by the opt-in
+`TestBankingDetailRealBrowserJourney` Go integration fixture. It forwards the
+application's actual GraphQL operations to an owned HTTP/API/database service;
+only Auth is synthetic. The fixture creates private current/archive facts and
+more than one page of activity, then verifies persisted notes, exclusion and
+classification totals, conflicts, original-attempt recovery after response loss,
+archive ownership/provenance and foreign-member denial. It does not call Plaid.
+
+Start a matching production preview from the owned checkout on port 3359 with
+`ONBOARDING_PUBLIC_SUPABASE_URL=http://localhost:4359` and
+`ONBOARDING_PUBLIC_SUPABASE_KEY=synthetic-public`. Stop other processes using its
+`.next` output before building or starting that preview. With the documented
+[disposable database prerequisites](application/database-development.md) and
+owned restricted/admin test URLs, run from `apps/api`:
+
+```sh
+BROWSER_AUTH_ORIGIN=http://localhost:4359 \
+BANKING_DETAIL_BROWSER_ORIGIN=http://localhost:3359 \
+BANKING_DETAIL_PLAYWRIGHT_MODULE="$(node -p "require.resolve('@playwright/test')")" \
+TEST_DATABASE_URL=<owned-disposable-restricted-role-url> \
+TEST_DATABASE_ADMIN_URL=<owned-disposable-admin-url> \
+go test -tags=integration -count=1 -run '^TestBankingDetailRealBrowserJourney$' ./internal/graph
+```
+
+Use Node 24 on `PATH`; choose distinct owned preview/Auth ports through the same
+variables for concurrent worktrees. Keep captures/logs in ignored `test-results/`
+or temporary storage. The fixture owns its HTTP/Auth service lifetime; the caller
+owns its database and preview teardown. This opt-in journey supplements the
+required Chromium suite and does not prove provider or live-release readiness.
+
 ## Reference captures and comparisons
 
 The original Material reference pack and checksums are linked from [issue #227](https://github.com/haggaikaunda/kami-split/issues/227). It is an approved design input, not current implementation evidence. [Current UI rules](application/ui.md) supersede its older typography and navigation details.

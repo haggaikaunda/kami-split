@@ -20,6 +20,7 @@ import { ContentLoading } from '../ui/loading';
 import { Money } from '../financial/presentation';
 import { RestoreSource, ScopedLink, SourceReturn } from '../groups/navigation';
 import { TransactionControls } from './transaction-controls';
+import { TransactionDetail } from './transaction-detail';
 import {
   bankMoney,
   bankDateLabel,
@@ -239,7 +240,11 @@ function ReportContent({
       ) : (
         <>
           {selection.source && (
-            <SelectedTransaction scope={scope} names={names} />
+            <SelectedTransaction
+              scope={scope}
+              names={names}
+              onSaved={onRetry}
+            />
           )}
           {!selection.source && restore && (
             <ReturnAuthorization
@@ -250,12 +255,7 @@ function ReportContent({
               onRetry={onRetry}
             />
           )}
-          <div
-            hidden={
-              Boolean(selection.source) ||
-              Boolean(restore && returnReady !== restore)
-            }
-          >
+          <div hidden={Boolean(restore && returnReady !== restore)}>
             {!selection.source &&
               extentReady &&
               (!restore || returnReady === restore) && (
@@ -789,78 +789,70 @@ function bankingIcon(activity: string, category: string): IconName {
   };
   return icons[category] ?? 'expense';
 }
-/** A fresh selected-row read outside list filters. #259 owns the full detail/editor;
- * this source/archive/discrepancy contract and ScopedLink origin remain its handoff. */
-function SelectedTransaction({ scope, names }: Context) {
+/** Fresh owner-only detail outside filters; URL source identity remains stable. */
+function SelectedTransaction({
+  scope,
+  names,
+  onSaved,
+}: Context & { onSaved: () => void }) {
   const params = useSearchParams(),
     selected = transactionSelection(params);
   const [retry, setRetry] = useState(0);
   return (
-    <section className={styles.selected}>
-      <h2>Selected transaction</h2>
-      {params.get('source') && scope.visits.has(params.get('source')!) && (
-        <SourceReturn
-          scope={scope}
-          label={
-            new URL(
-              scope.visits.get(params.get('source')!)!.href,
-              'https://workspace.invalid',
-            ).searchParams.has('archive')
-              ? 'Back to recovery archive'
-              : 'Back to transactions'
-          }
-        />
-      )}
-      {!(params.get('source') && scope.visits.has(params.get('source')!)) && (
-        <Link
-          href={personalHref(new URLSearchParams(params), {
-            transaction: null,
-          })}
-        >
-          Back to transactions
-        </Link>
-      )}
-      <NetworkQuery<personalTransactionSelectionQuery>
-        key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
-        scope={scope}
-        document={selectionDocument}
-        variables={{
-          source: selected.source!,
-          archive: selected.archive,
-          discrepancy: selected.discrepancy,
-        }}
-        fallback={
-          <ContentLoading layout="expenses" label="selected transaction" />
-        }
-        failure={
+    <NetworkQuery<personalTransactionSelectionQuery>
+      key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
+      scope={scope}
+      document={selectionDocument}
+      variables={{
+        source: selected.source!,
+        archive: selected.archive,
+        discrepancy: selected.discrepancy,
+      }}
+      fallback={
+        <ContentLoading layout="expenses" label="selected transaction" />
+      }
+      failure={
+        <Status kind="error">
+          The selected private record could not be loaded.{' '}
+          <Button onClick={() => setRetry((value) => value + 1)}>
+            Retry selected transaction
+          </Button>
+          <Link
+            href={personalHref(new URLSearchParams(params), {
+              transaction: null,
+            })}
+          >
+            Back to transactions
+          </Link>
+        </Status>
+      }
+    >
+      {(data) =>
+        data.bankingTransaction.code === 'READY' &&
+        data.bankingTransaction.transaction ? (
+          <TransactionDetail
+            key={`${scope.id}:${selected.source}:${selected.archive}:${selected.discrepancy}`}
+            scope={scope}
+            names={names}
+            transaction={data.bankingTransaction.transaction}
+            archive={selected.archive}
+            discrepancy={selected.discrepancy}
+            onSaved={onSaved}
+          />
+        ) : (
           <Status kind="error">
-            The selected private record could not be loaded.{' '}
-            <Button onClick={() => setRetry((v) => v + 1)}>
-              Retry selected transaction
-            </Button>
+            This private record is unavailable or no longer accessible.{' '}
+            <Link
+              href={personalHref(new URLSearchParams(params), {
+                transaction: null,
+              })}
+            >
+              Back to transactions
+            </Link>
           </Status>
-        }
-      >
-        {(data) =>
-          data.bankingTransaction.code === 'READY' &&
-          data.bankingTransaction.transaction ? (
-            <>
-              <RestoreSource scope={scope} allowed={[]} />
-              <TransactionRow
-                scope={scope}
-                names={names}
-                row={data.bankingTransaction.transaction}
-                selected
-              />
-            </>
-          ) : (
-            <Status kind="error">
-              This private record is unavailable or no longer accessible.
-            </Status>
-          )
-        }
-      </NetworkQuery>
-    </section>
+        )
+      }
+    </NetworkQuery>
   );
 }
 function reportProblem(code: string) {

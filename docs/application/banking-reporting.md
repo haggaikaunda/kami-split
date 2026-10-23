@@ -6,8 +6,10 @@ stored data. Group access grants no bank access. Reads work independently of
 new-enrollment enablement and never request a bank refresh. The authoritative
 wire contract is [banking-reporting.graphql](../../packages/schema/banking-reporting.graphql).
 The Personal Transactions screen consumes these stored-data reads with actor-scoped
-Relay ownership; full detail/private editing, Overview presentation and live
-enrollment retain their separate delivery boundaries.
+Relay ownership. Its reusable detail panel keeps provider facts read-only and
+exposes explicit private category/activity/note/exclusion/review editing and
+resets. Overview presentation and live enrollment retain their separate delivery
+boundaries.
 
 The reporting service resolves each posted source against one current,
 non-overlapping interval plan. Retired history keeps its original source identity
@@ -79,3 +81,28 @@ authority. `BankingTransactionDetail.id` isolates the complete outcome/current-e
 context, and `BankingAnnotationResult.id` isolates the complete receipt outcome and
 freshly authorized detail. Partial responses cannot retain a previous edit-owner
 link or an earlier missing-receipt outcome alongside newly returned detail. Clients continue to use the existing actor-scoped Relay environment.
+
+## Browser annotation ownership
+
+The detail editor retains an actor/source-scoped tab draft and exact opened
+source, material and annotation versions. Save sends only changed fields in a
+serial sequence of independently durable operations, with a distinct attempt
+per field. The interface explains partial completion: an earlier confirmed field
+is not rolled back when another fails. Source changes stop remaining writes for
+explicit review. Reset clears only its named override. A retained conflicted
+activity can be explicitly confirmed against fresh material facts; marking a
+record reviewed alone does not resolve classification.
+
+Receipt recovery precedes retry after a lost response. A missing receipt permits
+only the original frozen command and attempt, since the first request may still
+be in flight. Confirmed receipts and current detail remain separate facts.
+Archive-only outcomes may have no canonical detail; the editor freshly reads the
+selected archive before adopting current private annotation versions. Immutable
+capture provenance remains distinct from the latest editable annotation.
+
+The native contextual dialog contains focus, makes other navigation inert and
+uses explicit Back/Close/Cancel discard protection. Dirty browser traversal is
+held at the detail until the user keeps editing or discards; reload warns and
+restores the actor-owned draft. Tab storage failure blocks new effects. Successful
+saves trigger a complete server report refresh. Signed continuation revisions
+remain authoritative, so changed multi-page traversals require a restart.
