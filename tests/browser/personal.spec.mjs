@@ -1295,6 +1295,29 @@ test('Personal transactions reflow long activity and controls in every appearanc
       path: testInfo.outputPath(`transactions-${width}-${scale}-${theme}.png`),
       fullPage: true,
     });
+    await page.getByRole('button', { name: 'This month', exact: true }).click();
+    const dates = page.getByRole('dialog', { name: 'Date range' });
+    await expect(dates).toBeVisible();
+    if (scale === 1 && width < 760) {
+      const geometry = await dates.evaluate((element) => ({
+        height: element.getBoundingClientRect().height,
+        bottomGap:
+          element.getBoundingClientRect().bottom -
+          element.querySelector('form').getBoundingClientRect().bottom,
+      }));
+      expect(geometry.height).toBeLessThan(630);
+      expect(geometry.bottomGap).toBeLessThan(64);
+    }
+    await dates
+      .getByRole('button', { name: 'Apply dates', exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      dates.getByRole('button', { name: 'Apply dates', exact: true }),
+    ).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', { name: 'This month', exact: true }),
+    ).toBeFocused();
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Filter transactions' });
     await expect(dialog).toBeVisible();
