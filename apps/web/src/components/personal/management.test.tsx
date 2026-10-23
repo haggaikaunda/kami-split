@@ -892,28 +892,32 @@ it('resolves an authoritative fenced repair receipt without claiming a completed
   expect(host.textContent).not.toContain('local change is confirmed');
 });
 
-it('retains a reserved start NOT_FOUND until its original fenced receipt is known', async () => {
-  await manage();
-  await click('Authorize account additions');
-  const attemptId = (requests.at(-1)!.variables.input as { attemptId: string })
-    .attemptId;
-  const key = 'kami-personal-enrollment:alice:manage:repair';
-  await reply('managementRepairStartMutation', {
-    startBankingRepair: {
-      code: 'NOT_FOUND',
-      state: 'preparing',
-      attemptId,
-      linkToken: null,
-      expiresAt: null,
-    },
-  });
-  expect(sessionStorage.getItem(key)).toBe(attemptId);
-  expect(open).not.toHaveBeenCalled();
-  await click('Cancel');
-  await click('Check repair outcome');
-  await reply('managementRepairQuery', {
-    bankingRepair: { code: 'CONFLICT', state: 'preparing', attemptId },
-  });
-  expect(sessionStorage.getItem(key)).toBeNull();
-  expect(changed).not.toHaveBeenCalled();
-});
+it.each(['preparing', null])(
+  'retains a reserved start NOT_FOUND (%s) until its original fenced receipt is known',
+  async (state) => {
+    await manage();
+    await click('Authorize account additions');
+    const attemptId = (
+      requests.at(-1)!.variables.input as { attemptId: string }
+    ).attemptId;
+    const key = 'kami-personal-enrollment:alice:manage:repair';
+    await reply('managementRepairStartMutation', {
+      startBankingRepair: {
+        code: 'NOT_FOUND',
+        state,
+        attemptId,
+        linkToken: null,
+        expiresAt: null,
+      },
+    });
+    expect(sessionStorage.getItem(key)).toBe(attemptId);
+    expect(open).not.toHaveBeenCalled();
+    await click('Cancel');
+    await click('Check repair outcome');
+    await reply('managementRepairQuery', {
+      bankingRepair: { code: 'CONFLICT', state: 'preparing', attemptId },
+    });
+    expect(sessionStorage.getItem(key)).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+  },
+);

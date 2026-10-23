@@ -70,11 +70,27 @@ func repairOutcome(id uuid.UUID, r repairRecord) EnrollmentOutcome {
 
 // repairReadFailure keeps an actor-authorized reservation distinguishable from
 // a fresh request rejected before insertion. Access failures still mask metadata.
-func repairReadFailure(id uuid.UUID, r repairRecord, status Result) EnrollmentOutcome {
+func (s *EnrollmentService) repairReadFailure(ctx context.Context, id uuid.UUID, r repairRecord, status Result) EnrollmentOutcome {
 	if status.Code != "NOT_FOUND" {
 		return EnrollmentOutcome{Code: status.Code}
 	}
-	r.code = status.Code
+	// A lifecycle fence can complete the reservation between the earlier read
+	// and the dependency failure. Reauthorize and prefer its current receipt.
+	var current repairRecord
+	err := s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
+		var err error
+		current, err = readRepair(ctx, tx, id)
+		return err
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return enrollmentFailure(ctx, err)
+	}
+	if err == nil {
+		r = current
+	}
+	if r.state != "complete" {
+		r.code = status.Code
+	}
 	return repairOutcome(id, r)
 }
 
@@ -92,7 +108,7 @@ func (s *EnrollmentService) RepairStatus(ctx context.Context, id uuid.UUID) Enro
 	if r.state != "complete" {
 		c, status := s.storage.ReadLifecycle(ctx, r.connection)
 		if status.Code != "READY" {
-			return repairReadFailure(id, r, status)
+			return s.repairReadFailure(ctx, id, r, status)
 		}
 		if c.State != "active" || c.Generation != r.generation {
 			r.code = "CONFLICT"
@@ -148,11 +164,11 @@ func (s *EnrollmentService) StartRepair(ctx context.Context, input RepairInput) 
 		}
 		c, status := s.storage.ReadConnection(ctx, input.ConnectionID)
 		if status.Code != "READY" {
-			return repairReadFailure(input.AttemptID, record, status)
+			return s.repairReadFailure(ctx, input.AttemptID, record, status)
 		}
 		credential, status := s.storage.ReadCredential(ctx, input.ConnectionID)
 		if status.Code != "READY" {
-			return repairReadFailure(input.AttemptID, record, status)
+			return s.repairReadFailure(ctx, input.AttemptID, record, status)
 		}
 		defer clear(credential.raw)
 		prepared, providerErr := provider.PrepareRepair(ctx, c.Environment, "kami-"+record.owner.String()+"-"+c.Environment, credential)
@@ -190,7 +206,7 @@ func (s *EnrollmentService) StartRepair(ctx context.Context, input RepairInput) 
 	if len(r.link) > 0 {
 		c, status := s.storage.ReadConnection(ctx, r.connection)
 		if status.Code != "READY" {
-			return repairReadFailure(input.AttemptID, r, status)
+			return s.repairReadFailure(ctx, input.AttemptID, r, status)
 		}
 		raw, err := s.storage.protector.decrypt(r.link, r.tokenVersion, r.owner.String(), "repair/"+input.AttemptID.String(), c.Environment)
 		if err != nil {

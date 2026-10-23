@@ -393,9 +393,13 @@ withAuthFixture(origin, session, async () => {
         attemptId: repairStarts.at(-1).attemptId,
       });
       await click('Reload current state');
-      await expect(
-        page.getByRole('button', { name: 'Manage connection', exact: true }),
-      ).toHaveCount(0);
+      await page
+        .getByRole('heading', {
+          name: 'No connected accounts yet',
+          exact: true,
+        })
+        .waitFor();
+      assert.deepEqual(observed.bankingConnections.connections, []);
     } else {
       const replacement = () =>
         page.getByRole('button', {

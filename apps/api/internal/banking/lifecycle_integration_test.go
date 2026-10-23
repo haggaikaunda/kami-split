@@ -511,10 +511,14 @@ func TestLifecycleRepairReservationSurvivesMissingDependency(t *testing.T) {
 				f.exec(`DROP FUNCTION app.repair_dependency_test()`)
 			})
 			outcome := s.StartRepair(f.actor(f.owner), input)
-			if outcome.Code != "NOT_FOUND" || outcome.AttemptID != input.AttemptID || outcome.State != "preparing" || outcome.LinkToken != "" {
+			wantCode, wantState, storedCode := "NOT_FOUND", "preparing", "PREPARING"
+			if mode == "deleted_after_claim" {
+				wantCode, wantState, storedCode = "CONFLICT", "complete", "CONFLICT"
+			}
+			if outcome.Code != wantCode || outcome.AttemptID != input.AttemptID || outcome.State != wantState || outcome.LinkToken != "" {
 				t.Fatal("post-claim failure lost reservation", outcome.Code, outcome.State)
 			}
-			if queryInt(t, f, `SELECT count(*) FROM app.banking_repairs WHERE id=$1 AND state='preparing' AND result_code='PREPARING'`, input.AttemptID) != 1 {
+			if queryInt(t, f, `SELECT count(*) FROM app.banking_repairs WHERE id=$1 AND state=$2 AND result_code=$3`, input.AttemptID, wantState, storedCode) != 1 {
 				t.Fatal("post-claim failure changed durable repair")
 			}
 			status := s.RepairStatus(f.actor(f.owner), input.AttemptID)
@@ -522,8 +526,15 @@ func TestLifecycleRepairReservationSurvivesMissingDependency(t *testing.T) {
 			if mode == "deleted_after_claim" {
 				want = "CONFLICT"
 			}
-			if status.Code != want || status.State != "preparing" || status.AttemptID != input.AttemptID || status.LinkToken != "" {
+			if status.Code != want || status.State != wantState || status.AttemptID != input.AttemptID || status.LinkToken != "" {
 				t.Fatal("reserved status lost identity or fence", status.Code, status.State)
+			}
+			if mode == "deleted_after_claim" {
+				f.exec(`UPDATE app.banking_repairs SET state='preparing',result_code='PREPARING' WHERE id=$1`, input.AttemptID)
+				status = s.RepairStatus(f.actor(f.owner), input.AttemptID)
+				if status.Code != "CONFLICT" || status.State != "preparing" || status.AttemptID != input.AttemptID || status.LinkToken != "" {
+					t.Fatal("incomplete receipt missed deletion fence", status.Code, status.State)
+				}
 			}
 			other := s.RepairStatus(f.actor(f.other), input.AttemptID)
 			if other.Code != "NOT_FOUND" || other.AttemptID != uuid.Nil || other.State != "" {
