@@ -303,3 +303,25 @@ it('hides late responses after an actor switch', async () => {
   await answer(report(), 0);
   expect(host.textContent).not.toContain('Private merchant');
 });
+it('reauthorizes a selected-row return before restoring a retained later-page row', async () => {
+  await act(async () => render());
+  await answer();
+  await click('Load more transactions');
+  await answer(report({ rows: [row('later-source')], hasNextPage: false }));
+  nav.search = 'tab=transactions&transaction=later-source';
+  await act(async () => render());
+  expect(requests.at(-1)?.name).toBe('personalTransactionSelectionQuery');
+  scope.visits.set('return-token', {
+    href: '/personal?tab=transactions',
+    focus: 'transaction-later-source',
+    scroll: 100,
+  });
+  nav.search = 'tab=transactions&restore=return-token';
+  await act(async () => render());
+  expect(requests.at(-1)?.name).toBe('personalTransactionsQuery');
+  expect(document.activeElement?.id).not.toBe('transaction-later-source');
+  await answer();
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+  expect(document.activeElement?.id).toBe('transaction-later-source');
+  expect(host.querySelectorAll('[data-source-id]')).toHaveLength(2);
+});

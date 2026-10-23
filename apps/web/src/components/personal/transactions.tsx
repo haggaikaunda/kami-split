@@ -26,10 +26,15 @@ import {
   reportFilter,
   transactionSelection,
 } from './transaction-state';
+import { importSummary, type ImportFacts } from './status';
 import styles from './transactions.module.css';
 type Report = personalTransactionsQuery['response']['bankingReport'];
-type Context = { scope: FinancialScope; names: ReadonlyMap<string, string> };
-export function PersonalTransactions({ scope, names }: Context) {
+type Context = {
+  scope: FinancialScope;
+  names: ReadonlyMap<string, string>;
+  statuses?: ReadonlyMap<string, ImportFacts>;
+};
+export function PersonalTransactions({ scope, names, statuses }: Context) {
   const params = useSearchParams();
   const filter = reportFilter(new URLSearchParams(params));
   const identity = JSON.stringify(filter);
@@ -38,6 +43,7 @@ export function PersonalTransactions({ scope, names }: Context) {
       key={`${scope.id}:${identity}`}
       scope={scope}
       names={names}
+      statuses={statuses}
       filter={filter}
     />
   );
@@ -45,6 +51,7 @@ export function PersonalTransactions({ scope, names }: Context) {
 function TransactionRead({
   scope,
   names,
+  statuses,
   filter,
 }: Context & { filter: personalTransactionsQuery['variables']['filter'] }) {
   const [version, setVersion] = useState(0),
@@ -85,6 +92,7 @@ function TransactionRead({
             <ReportContent
               scope={scope}
               names={names}
+              statuses={statuses}
               report={data.bankingReport}
               filter={filter}
               onRestart={() => setRestart(true)}
@@ -99,6 +107,7 @@ function TransactionRead({
 function ReportContent({
   scope,
   names,
+  statuses,
   report,
   filter,
   onRestart,
@@ -111,6 +120,21 @@ function ReportContent({
 }) {
   const params = useSearchParams(),
     selection = transactionSelection(params);
+  const historyToken =
+    typeof window !== 'undefined'
+      ? (window.history.state?.financialRestore as string | undefined)
+      : undefined;
+  const historyVisit = historyToken
+    ? scope.visits.get(historyToken)
+    : undefined;
+  const restore =
+    historyVisit?.href ===
+    (typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search
+      : '')
+      ? historyToken
+      : params.get('restore');
+  const [returnReady, setReturnReady] = useState<string | null>(null);
   useEffect(() => {
     if (report.code !== 'READY' || !report.timezone) return;
     const timer = window.setInterval(() => {
@@ -155,199 +179,248 @@ function ReportContent({
         </Status>
       ) : (
         <>
-          <RestoreSource scope={scope} allowed={[]} />
-          {selection.source ? (
+          {selection.source && (
             <SelectedTransaction scope={scope} names={names} />
-          ) : (
-            <>
-              {selection.archive && (
-                <div className={styles.notice}>
-                  <h2>Recovery archive</h2>
-                  <p>
-                    Captured history and annotations. These copies contribute
-                    nothing to current activity, counts or spending.
-                  </p>
-                  {params.get('source') &&
-                    scope.visits.has(params.get('source')!) && (
-                      <SourceReturn
-                        scope={scope}
-                        fallbackLabel="Back to current activity"
-                      />
-                    )}
-                  <Link
-                    href={personalHref(new URLSearchParams(params), {
-                      archive: null,
-                      transaction: null,
-                      discrepancies: null,
-                    })}
-                  >
-                    Back to current activity
-                  </Link>
-                </div>
-              )}
-              {selection.discrepancy && (
-                <div className={styles.notice}>
-                  <h2>Source discrepancies</h2>
-                  <p>
-                    Latest source changes are shown separately. They do not
-                    replace retained canonical facts or contribute to spending.
-                    A date crossing the transition can leave a gap or
-                    differently identified duplicate.
-                  </p>
-                  <Link
-                    href={personalHref(new URLSearchParams(params), {
-                      discrepancies: null,
-                      transaction: null,
-                    })}
-                  >
-                    Back to current activity
-                  </Link>
-                </div>
-              )}
-              <Coverage
-                report={report}
-                names={names}
-                connections={connections}
-              />
-              {report.summary && (
-                <p className={styles.summary}>
-                  Spending from your accounts:{' '}
-                  <strong>
-                    <Money
-                      value={bankMoney(report.summary.netMinor)}
-                      currency="USD"
-                    />
-                  </strong>
-                  <span>
-                    Purchases &amp; charges{' '}
-                    {bankMoney(report.summary.purchaseMinor)} − refunds{' '}
-                    {bankMoney(report.summary.refundMinor)}. Refunds reduce
-                    their posting period.
-                  </span>
-                  {!report.summary.classificationComplete && (
-                    <span>
-                      Classification incomplete. Unresolved activity is separate
-                      from this subtotal.
-                    </span>
-                  )}
-                </p>
-              )}
-              <div className={styles.listMeta}>
-                <h2>
-                  {selection.archive
-                    ? 'Captured account activity'
-                    : selection.discrepancy
-                      ? 'Changed source activity'
-                      : 'Account activity'}
-                </h2>
-                <span>
-                  {report.totalCount} transactions · complete matching count
-                </span>
-              </div>
-              {report.counts && (
-                <p className={styles.context}>
-                  {report.counts.pendingCount} pending ·{' '}
-                  {report.counts.unresolvedCount} unresolved ·{' '}
-                  {report.counts.count - report.counts.reviewedCount} not
-                  reviewed · {report.counts.excludedCount} excluded ·{' '}
-                  {report.counts.removedCount} removed
-                  {!report.summary &&
-                    ' · Activity context; no spending total applies.'}
-                </p>
-              )}
-              {!report.rows.length ? (
-                <div className={styles.empty}>
-                  <h3>No matching transactions</h3>
-                  <p>
-                    {report.accounts.length &&
-                    report.accounts.every(
-                      (account) => account.coverage === 'COMPLETE',
-                    )
-                      ? 'No activity matches these dates and filters in the covered history.'
-                      : 'No matching imported activity. History coverage is incomplete or unknown; this is not confirmation of zero spending.'}
-                  </p>
-                </div>
-              ) : (
-                <TransactionPage
-                  scope={scope}
-                  names={names}
-                  report={report}
-                  filter={filter}
-                  onRestart={onRestart}
-                />
-              )}
-              <details className={styles.provenance}>
-                <summary>Reporting history and recovery archives</summary>
-                {report.accounts.map((account) => (
-                  <div key={account.accountId}>
-                    <h3>
-                      {names.get(account.accountId) ??
-                        `Retained ${readable(account.kind)} account`}
-                    </h3>
-                    {account.transitionDate && (
-                      <p>
-                        Retained canonical history through{' '}
-                        {account.transitionDate} inclusive; replacement activity
-                        strictly after the boundary. Each interval keeps its
-                        original source identity and annotations.
-                      </p>
-                    )}
-                    {account.intervals.map((interval) => (
-                      <p key={interval.bindingId}>
-                        Reporting interval: after{' '}
-                        {interval.afterDate ??
-                          'the beginning of retained history'}{' '}
-                        through {interval.throughDate ?? 'the current period'}.{' '}
-                        {interval.discrepancyCount > 0 &&
-                          `${interval.discrepancyCount} historical discrepancies.`}
-                      </p>
-                    ))}
-                    {account.archives.map((archive) => (
-                      <p key={archive.id}>
-                        <ScopedLink
-                          scope={scope}
-                          id={`archive-${archive.id}`}
-                          href={personalHref(new URLSearchParams(params), {
-                            archive: archive.id,
-                            discrepancies: null,
-                            transaction: null,
-                          })}
-                        >
-                          View recovery archive · through {archive.boundaryDate}{' '}
-                          · {archive.count} records · plan {archive.planId}
-                        </ScopedLink>
-                      </p>
-                    ))}
-                  </div>
-                ))}
-                {!selection.archive && (
-                  <ScopedLink
-                    scope={scope}
-                    id="source-discrepancies"
-                    href={personalHref(new URLSearchParams(params), {
-                      discrepancies: 'true',
-                      archive: null,
-                      transaction: null,
-                    })}
-                  >
-                    Inspect source discrepancies
-                  </ScopedLink>
-                )}
-              </details>
-            </>
           )}
+          {!selection.source && restore && (
+            <ReturnAuthorization
+              key={restore}
+              scope={scope}
+              filter={filter}
+              onReady={() => setReturnReady(restore)}
+              onRetry={onRetry}
+            />
+          )}
+          <div
+            hidden={
+              Boolean(selection.source) ||
+              Boolean(restore && returnReady !== restore)
+            }
+          >
+            {!selection.source && (!restore || returnReady === restore) && (
+              <RestoreSource key={restore} scope={scope} allowed={[]} />
+            )}
+            {selection.archive && (
+              <div className={styles.notice}>
+                <h2>Recovery archive</h2>
+                <p>
+                  Captured history and annotations. These copies contribute
+                  nothing to current activity, counts or spending.
+                </p>
+                {params.get('source') &&
+                  scope.visits.has(params.get('source')!) && (
+                    <SourceReturn
+                      scope={scope}
+                      fallbackLabel="Back to current activity"
+                    />
+                  )}
+                <Link
+                  href={personalHref(new URLSearchParams(params), {
+                    archive: null,
+                    transaction: null,
+                    discrepancies: null,
+                  })}
+                >
+                  Back to current activity
+                </Link>
+              </div>
+            )}
+            {selection.discrepancy && (
+              <div className={styles.notice}>
+                <h2>Source discrepancies</h2>
+                <p>
+                  Latest source changes are shown separately. They do not
+                  replace retained canonical facts or contribute to spending. A
+                  date crossing the transition can leave a gap or differently
+                  identified duplicate.
+                </p>
+                <Link
+                  href={personalHref(new URLSearchParams(params), {
+                    discrepancies: null,
+                    transaction: null,
+                  })}
+                >
+                  Back to current activity
+                </Link>
+              </div>
+            )}
+            <Coverage report={report} names={names} connections={connections} />
+            {report.summary && (
+              <p className={styles.summary}>
+                Spending from your accounts:{' '}
+                <strong>
+                  <Money
+                    value={bankMoney(report.summary.netMinor)}
+                    currency="USD"
+                  />
+                </strong>
+                <span>
+                  Purchases &amp; charges{' '}
+                  {bankMoney(report.summary.purchaseMinor)} − refunds{' '}
+                  {bankMoney(report.summary.refundMinor)}. Refunds reduce their
+                  posting period.
+                </span>
+                {!report.summary.classificationComplete && (
+                  <span>
+                    Classification incomplete. Unresolved activity is separate
+                    from this subtotal.
+                  </span>
+                )}
+              </p>
+            )}
+            <div className={styles.listMeta}>
+              <h2>
+                {selection.archive
+                  ? 'Captured account activity'
+                  : selection.discrepancy
+                    ? 'Changed source activity'
+                    : 'Account activity'}
+              </h2>
+              <span>
+                {report.totalCount} transactions · complete matching count
+              </span>
+            </div>
+            {report.counts && (
+              <p className={styles.context}>
+                {report.counts.pendingCount} pending ·{' '}
+                {report.counts.unresolvedCount} unresolved ·{' '}
+                {report.counts.count - report.counts.reviewedCount} not reviewed
+                · {report.counts.excludedCount} excluded ·{' '}
+                {report.counts.removedCount} removed
+                {!report.summary &&
+                  ' · Activity context; no spending total applies.'}
+              </p>
+            )}
+            {!report.rows.length ? (
+              <div className={styles.empty}>
+                <h3>No matching transactions</h3>
+                <p>
+                  {report.accounts.length &&
+                  report.accounts.every(
+                    (account) => account.coverage === 'COMPLETE',
+                  )
+                    ? 'No activity matches these dates and filters in the covered history.'
+                    : 'No matching imported activity. History coverage is incomplete or unknown; this is not confirmation of zero spending.'}
+                </p>
+              </div>
+            ) : (
+              <TransactionPage
+                scope={scope}
+                names={names}
+                report={report}
+                filter={filter}
+                onRestart={onRestart}
+              />
+            )}
+            <details className={styles.provenance}>
+              <summary>Reporting history and recovery archives</summary>
+              {report.accounts.map((account) => (
+                <div key={account.accountId}>
+                  <h3>
+                    {names.get(account.accountId) ??
+                      `Retained ${readable(account.kind)} account`}
+                  </h3>
+                  {account.transitionDate && (
+                    <p>
+                      Retained canonical history through{' '}
+                      {account.transitionDate} inclusive; replacement activity
+                      strictly after the boundary. Each interval keeps its
+                      original source identity and annotations.
+                    </p>
+                  )}
+                  {account.intervals.map((interval) => (
+                    <p key={interval.bindingId}>
+                      Reporting interval: after{' '}
+                      {interval.afterDate ??
+                        'the beginning of retained history'}{' '}
+                      through {interval.throughDate ?? 'the current period'}.{' '}
+                      {interval.discrepancyCount > 0 &&
+                        `${interval.discrepancyCount} historical discrepancies.`}
+                    </p>
+                  ))}
+                  {account.archives.map((archive) => (
+                    <p key={archive.id}>
+                      <ScopedLink
+                        scope={scope}
+                        id={`archive-${archive.id}`}
+                        href={personalHref(new URLSearchParams(params), {
+                          archive: archive.id,
+                          discrepancies: null,
+                          transaction: null,
+                        })}
+                      >
+                        View recovery archive · through {archive.boundaryDate} ·{' '}
+                        {archive.count} records · plan {archive.planId}
+                      </ScopedLink>
+                    </p>
+                  ))}
+                </div>
+              ))}
+              {!selection.archive && (
+                <ScopedLink
+                  scope={scope}
+                  id="source-discrepancies"
+                  href={personalHref(new URLSearchParams(params), {
+                    discrepancies: 'true',
+                    archive: null,
+                    transaction: null,
+                  })}
+                >
+                  Inspect source discrepancies
+                </ScopedLink>
+              )}
+            </details>
+          </div>
         </>
       )}
     </>
   );
 }
+/** Reauthorize the complete source before revealing retained pages or restoring
+ * focus. Relay updates the first snapshot; incompatible continuation revisions
+ * still discard the traversal through its existing restart boundary. */
+function ReturnAuthorization({
+  scope,
+  filter,
+  onReady,
+  onRetry,
+}: {
+  scope: FinancialScope;
+  filter: personalTransactionsQuery['variables']['filter'];
+  onReady: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <NetworkQuery<personalTransactionsQuery>
+      scope={scope}
+      document={reportDocument}
+      variables={{ filter }}
+      fallback={
+        <ContentLoading layout="expenses" label="returning transactions" />
+      }
+      failure={
+        <Status kind="error">
+          Activity could not be reauthorized.{' '}
+          <Button onClick={onRetry}>Retry activity</Button>
+        </Status>
+      }
+      onState={(state) => {
+        if (!state.busy && !state.error) onReady();
+      }}
+    >
+      {() => null}
+    </NetworkQuery>
+  );
+}
 function Coverage({
   report,
   names,
+  statuses,
   connections,
 }: {
   report: Report;
   names: ReadonlyMap<string, string>;
+  statuses?: ReadonlyMap<string, ImportFacts>;
   connections: string;
 }) {
   return (
@@ -364,12 +437,17 @@ function Coverage({
             {account.coverage !== 'COMPLETE' &&
               '. Selected dates are preserved; earlier or recent activity may be missing.'}
           </p>
-          {account.intervals.some(
-            (interval) =>
-              interval.collectionStopped ||
-              !['usable'].includes(interval.importState) ||
-              interval.discrepancyCount > 0,
-          ) && (
+          {statuses?.get(account.accountId) && (
+            <p>{importSummary(statuses.get(account.accountId)!)}</p>
+          )}
+          {(statuses?.get(account.accountId)?.collection ===
+            'RECONNECT_REQUIRED' ||
+            account.intervals.some(
+              (interval) =>
+                interval.collectionStopped ||
+                !['usable'].includes(interval.importState) ||
+                interval.discrepancyCount > 0,
+            )) && (
             <p>
               Import or connection needs attention; retained activity can be
               incomplete, stale or corrected.{' '}
@@ -482,29 +560,30 @@ function TransactionRow({
             </ScopedLink>
           )}
         </strong>
+        <span>{names.get(value.accountId) ?? 'Retained bank account'}</span>
         <span>
-          {names.get(value.accountId) ?? 'Retained bank account'} ·{' '}
-          <time dateTime={value.bankDate}>{value.bankDate}</time>
-          {value.processingState === 'pending'
-            ? ' · Provisional date'
-            : ' · Posted bank date'}
-        </span>
-        <span>
-          {readable(value.activity)} · {readable(value.category)}
-        </span>
-        <span>
+          {readable(value.activity)} ·{' '}
           {value.processingState !== 'posted' &&
             `${readable(value.processingState)} · `}
           {(!value.reviewed || value.materialConflict) && 'Needs review · '}
           {value.excluded && 'Excluded · '}
           {value.materialConflict && 'Classification changed · '}
           {!value.current && 'Archive only · '}
-          {value.discrepancy !== 'none' && 'Historical discrepancy · '}Source
-          revision {value.sourceRevision}
+          {value.discrepancy !== 'none' && 'Historical discrepancy · '}
+          {selected &&
+            `${readable(value.category)} · Source revision ${value.sourceRevision}`}
         </span>
       </div>
       <div className={styles.amount}>
         <Money value={bankMoney(value.amountMinor)} currency={value.currency} />
+        <span>
+          <time dateTime={value.bankDate}>{value.bankDate}</time>
+          <span>
+            {value.processingState === 'pending'
+              ? 'Provisional date'
+              : 'Posted bank date'}
+          </span>
+        </span>
       </div>
       {archive && (
         <div className={styles.rowProvenance}>

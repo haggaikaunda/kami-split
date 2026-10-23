@@ -1153,8 +1153,20 @@ test('Personal transaction pagination restarts on changed snapshots and keeps fi
   await expect(
     page.getByText('Second signed page', { exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Second signed page', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Back to Personal', exact: true })
+    .click();
+  await expect(page.locator('#transaction-second-page')).toBeFocused();
   expect(
-    calls.every((call) => call.variables.filter.activities[0] === 'income'),
+    calls
+      .filter((call) => call.operation === 'personalTransactionsQuery')
+      .every((call) => call.variables.filter.activities[0] === 'income'),
   ).toBe(true);
   fail = true;
   await page.reload();

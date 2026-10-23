@@ -186,6 +186,7 @@ export function TransactionControls({
                       <Field
                         type="date"
                         label="Start date"
+                        error={error}
                         value={from}
                         max={today}
                         min="0001-01-01"
@@ -194,6 +195,7 @@ export function TransactionControls({
                       <Field
                         type="date"
                         label="End date"
+                        error={error}
                         value={to}
                         max={today}
                         min="0001-01-01"

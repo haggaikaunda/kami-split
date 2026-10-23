@@ -111,9 +111,10 @@ function PersonalRead({
           {(data) =>
             data.bankingConnections.code === 'READY' ? (
               <>
-                {section !== 'Transactions' && (
-                  <RestoreSource scope={scope} allowed={[]} />
-                )}
+                {(section !== 'Transactions' ||
+                  !data.bankingConnections.connections.some(
+                    (connection) => connection.accounts.length > 0,
+                  )) && <RestoreSource scope={scope} allowed={[]} />}
                 <ReportingTimezoneInitialization
                   showPeriod={
                     section === 'Overview' &&
@@ -162,6 +163,17 @@ function PersonalRead({
                     data.bankingConnections.hasNextPage) ? (
                   <PersonalTransactions
                     scope={scope}
+                    statuses={
+                      new Map(
+                        data.bankingConnections.connections.flatMap(
+                          (connection) =>
+                            connection.accounts.map(
+                              (account) =>
+                                [account.id, account.importStatus] as const,
+                            ),
+                        ),
+                      )
+                    }
                     names={
                       new Map(
                         data.bankingConnections.connections.flatMap(
