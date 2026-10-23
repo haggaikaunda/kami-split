@@ -135,6 +135,7 @@ it('reads the exact fresh generation, preserves cancellation and submits only ex
   expect(checkboxes().map((c) => c.checked)).toEqual([true, false]);
   await act(async () => checkboxes()[1].click());
   await click('Cancel');
+  expect(changed).not.toHaveBeenCalled();
   await manage();
   expect(checkboxes().map((c) => c.checked)).toEqual([true, false]);
   await act(async () => checkboxes()[0].click());
@@ -153,6 +154,49 @@ it('reads the exact fresh generation, preserves cancellation and submits only ex
   });
   expect(host.textContent).toContain('local change is confirmed');
   expect(host.textContent).toContain('pending removal is not complete');
+});
+it.each(['Close management', 'Escape'])(
+  'refreshes confirmed inventory when dismissed with %s',
+  async (dismiss) => {
+    await manage();
+    await act(async () => checkboxes()[1].click());
+    await click('Apply selection');
+    await reply('managementSelectionMutation', {
+      changeBankingSelection: {
+        __typename: 'BankingManagementResult',
+        code: 'READY',
+      },
+    });
+    expect(changed).not.toHaveBeenCalled();
+    if (dismiss === 'Escape') {
+      await act(async () =>
+        host
+          .querySelector('dialog')!
+          .dispatchEvent(
+            new Event('cancel', { cancelable: true, bubbles: true }),
+          ),
+      );
+    } else await click(dismiss);
+    expect(host.querySelector('dialog')).toBeNull();
+    expect(changed).toHaveBeenCalledTimes(1);
+  },
+);
+it('retains unresolved recovery context after dismissing a lost response', async () => {
+  await manage();
+  await act(async () => checkboxes()[1].click());
+  await click('Apply selection');
+  await act(async () => requests.at(-1)!.error());
+  await act(async () =>
+    host
+      .querySelector('dialog')!
+      .dispatchEvent(new Event('cancel', { cancelable: true, bubbles: true })),
+  );
+  expect(changed).not.toHaveBeenCalled();
+  expect(host.textContent).toContain(
+    'earlier connection change has an unresolved outcome',
+  );
+  expect(button('Check management outcome')).toBeDefined();
+  expect(host.textContent).not.toContain('local change is confirmed');
 });
 it('prevents duplicate submissions and recovers a lost response with the original ID without resending', async () => {
   await manage();

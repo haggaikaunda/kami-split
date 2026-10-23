@@ -68,6 +68,7 @@ export function Replacement({
   accountId,
   onBack,
   onChanged,
+  onCommitted,
   onDifferent,
   setProviderOpen,
 }: {
@@ -78,6 +79,7 @@ export function Replacement({
   onBack: () => void;
   onDifferent: () => void;
   onChanged: () => void;
+  onCommitted: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const archiveTrigger = useRef<HTMLButtonElement>(null);
@@ -94,7 +96,10 @@ export function Replacement({
   const [archive, setArchive] = useState<string>();
   const [version, setVersion] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
-  const work = useManagementAttempt(scope, () => setConfirmed(true));
+  const work = useManagementAttempt(scope, () => {
+    setConfirmed(true);
+    onCommitted();
+  });
   const account = connection.accounts.find((a) => a.id === accountId)!;
   const invalidate = () => {
     setPreview(undefined);

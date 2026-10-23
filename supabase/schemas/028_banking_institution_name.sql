@@ -2,7 +2,7 @@ SET ROLE kami_migrator;
 
 -- Display metadata follows the existing connection's owner/deletion boundary.
 ALTER TABLE app.banking_connections ADD COLUMN institution_name text
- CHECK (institution_name IS NULL OR (length(institution_name) BETWEEN 1 AND 512 AND institution_name !~ '[[:cntrl:]]'));
+ CHECK (institution_name IS NULL OR (length(institution_name) >= 1 AND length(institution_name) <= 512 AND institution_name !~ '[[:cntrl:]]'));
 
 CREATE FUNCTION app.banking_institution_name(target uuid, institution text, display_name text) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$

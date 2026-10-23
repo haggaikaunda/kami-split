@@ -48,6 +48,7 @@ export function Management({
   needsRepair: boolean;
   onChanged: () => void;
 }) {
+  const [committed, setCommitted] = useState(false);
   const [open, setOpen] = useState(false),
     [version, setVersion] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -58,7 +59,10 @@ export function Management({
         tone={needsRepair ? 'primary' : 'text'}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setCommitted(false);
+          setOpen(true);
+        }}
       >
         {needsRepair ? 'Repair / manage accounts' : 'Manage accounts'}
       </Button>
@@ -68,7 +72,11 @@ export function Management({
           scope={scope}
           connectionId={connectionId}
           trigger={trigger}
-          close={() => setOpen(false)}
+          close={() => {
+            setOpen(false);
+            if (committed) onChanged();
+          }}
+          onCommitted={() => setCommitted(true)}
           reload={() => setVersion((v) => v + 1)}
           onChanged={onChanged}
         />
@@ -83,6 +91,7 @@ function ManagementDialog({
   close,
   reload,
   onChanged,
+  onCommitted,
 }: {
   scope: FinancialScope;
   connectionId: string;
@@ -90,6 +99,7 @@ function ManagementDialog({
   close: () => void;
   reload: () => void;
   onChanged: () => void;
+  onCommitted: () => void;
 }) {
   const [providerOpen, setProviderOpen] = useState(false);
   useEffect(() => {
@@ -127,6 +137,7 @@ function ManagementDialog({
                   close={close}
                   reload={reload}
                   onChanged={onChanged}
+                  onCommitted={onCommitted}
                   setProviderOpen={setProviderOpen}
                 />
               ) : (
@@ -147,6 +158,7 @@ function ConnectionManagement({
   close,
   reload,
   onChanged,
+  onCommitted,
   setProviderOpen,
 }: {
   scope: FinancialScope;
@@ -154,6 +166,7 @@ function ConnectionManagement({
   close: () => void;
   reload: () => void;
   onChanged: () => void;
+  onCommitted: () => void;
   setProviderOpen: (open: boolean) => void;
 }) {
   // The fresh read is an explicit edit baseline; background records cannot advance its generation.
@@ -179,7 +192,10 @@ function ConnectionManagement({
   }, [replacement]);
   const handler = useRef<LinkHandler | undefined>(undefined),
     callback = useRef(false);
-  const work = useManagementAttempt(scope, () => setConfirmed(true));
+  const work = useManagementAttempt(scope, () => {
+    setConfirmed(true);
+    onCommitted();
+  });
   useEffect(
     () => () => {
       callback.current = true;
@@ -311,6 +327,7 @@ function ConnectionManagement({
         onBack={() => setReplacement(undefined)}
         onDifferent={close}
         onChanged={onChanged}
+        onCommitted={onCommitted}
         setProviderOpen={setProviderOpen}
       />
     );

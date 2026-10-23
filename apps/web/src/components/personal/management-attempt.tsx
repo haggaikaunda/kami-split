@@ -142,6 +142,12 @@ export function ManagementRecovery({
   }, [scope]);
   return (
     <>
+      {pending.length > 0 && (
+        <p>
+          An earlier connection change has an unresolved outcome. Check its
+          original attempt before making another change.
+        </p>
+      )}
       {work.message && <Status kind="info">{work.message}</Status>}
       {pending.map((kind) => (
         <Button
