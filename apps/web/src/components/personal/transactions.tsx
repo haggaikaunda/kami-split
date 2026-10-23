@@ -21,6 +21,7 @@ import { Money } from '../financial/presentation';
 import { RestoreSource, ScopedLink, SourceReturn } from '../groups/navigation';
 import { TransactionControls } from './transaction-controls';
 import { TransactionDetail } from './transaction-detail';
+import type { SavedOrigin } from './annotation-draft';
 import {
   bankMoney,
   bankDateLabel,
@@ -37,7 +38,12 @@ type Context = {
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
 };
-type Traversal = { revision: string | null; pages: number; owner: object };
+type Traversal = {
+  revision: string | null;
+  pages: number;
+  owner: object;
+  refresh?: boolean;
+};
 type PageProgress = (revision: string | null, pages: number) => void;
 function restoreToken(scope: FinancialScope, params: URLSearchParams) {
   const historyToken =
@@ -69,11 +75,25 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
   const origin = visit
     ? new URL(visit.href, 'https://workspace.invalid')
     : null;
+  const freshTraversal = traversals.get(identity);
+  const sourceVisit = params.get('source')
+    ? scope.visits.get(params.get('source')!)
+    : undefined;
+  const sourceIdentity = sourceVisit
+    ? JSON.stringify(
+        reportFilter(
+          new URL(sourceVisit.href, 'https://workspace.invalid').searchParams,
+        ),
+      )
+    : identity;
+  const originPages = traversals.get(sourceIdentity)?.pages ?? 1;
   const resume =
-    origin?.pathname === '/personal' &&
-    JSON.stringify(reportFilter(origin.searchParams)) === identity
-      ? traversals.get(identity)
-      : undefined;
+    freshTraversal?.refresh && (selection.source || visit)
+      ? freshTraversal
+      : origin?.pathname === '/personal' &&
+          JSON.stringify(reportFilter(origin.searchParams)) === identity
+        ? traversals.get(identity)
+        : undefined;
   return (
     <>
       <TransactionRead
@@ -102,7 +122,34 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
         <SelectedTransaction
           scope={scope}
           names={names}
-          onSaved={() => setReportVersion((value) => value + 1)}
+          originPages={originPages}
+          onSaved={(savedOrigin) => {
+            const returnIdentity = savedOrigin
+              ? JSON.stringify(
+                  reportFilter(
+                    new URL(savedOrigin.href, 'https://workspace.invalid')
+                      .searchParams,
+                  ),
+                )
+              : identity;
+            setTraversals((previous) => {
+              const next = new Map(previous);
+              for (const target of new Set([identity, returnIdentity])) {
+                const pages = Math.max(
+                  previous.get(target)?.pages ?? 1,
+                  target === returnIdentity ? (savedOrigin?.pages ?? 1) : 1,
+                );
+                next.set(target, {
+                  revision: null,
+                  pages,
+                  owner: {},
+                  refresh: true,
+                });
+              }
+              return next;
+            });
+            setReportVersion((value) => value + 1);
+          }}
         />
       )}
     </>
@@ -199,6 +246,13 @@ function ReportContent({
   const restore = restoreToken(scope, new URLSearchParams(params));
   const [returnReady, setReturnReady] = useState<string | null>(null);
   const [extentReady, setExtentReady] = useState(!resume || resume.pages <= 1);
+  const replayPages = resume?.refresh
+    ? Math.min(resume.pages, Math.max(1, Math.ceil(report.totalCount / 50)))
+    : (resume?.pages ?? 1);
+  const emptyProgress = useEffectEvent(() => onPage(report.revision, 1));
+  useEffect(() => {
+    if (report.code === 'READY' && !report.rows.length) emptyProgress();
+  }, [report.code, report.revision, report.rows.length]);
   useEffect(() => {
     if (report.code !== 'READY' || !report.timezone) return;
     const timer = window.setInterval(() => {
@@ -222,6 +276,7 @@ function ReportContent({
   if (
     report.code === 'READY' &&
     resume &&
+    !resume.refresh &&
     (report.revision !== resume.revision ||
       (resume.pages > 1 && !report.rows.length))
   )
@@ -261,7 +316,7 @@ function ReportContent({
           )}
           <div hidden={Boolean(restore && returnReady !== restore)}>
             {!selection.source &&
-              extentReady &&
+              (extentReady || !report.rows.length) &&
               (!restore || returnReady === restore) && (
                 <RestoreSource key={restore} scope={scope} allowed={[]} />
               )}
@@ -386,7 +441,7 @@ function ReportContent({
                 filter={filter}
                 onRestart={onRestart}
                 depth={1}
-                resumePages={resume?.pages ?? 1}
+                resumePages={replayPages}
                 onPage={onPage}
                 onExtentReady={() => setExtentReady(true)}
               />
@@ -798,7 +853,8 @@ function SelectedTransaction({
   scope,
   names,
   onSaved,
-}: Context & { onSaved: () => void }) {
+  originPages,
+}: Context & { onSaved: (origin?: SavedOrigin) => void; originPages: number }) {
   const params = useSearchParams(),
     selected = transactionSelection(params);
   const [retry, setRetry] = useState(0);
@@ -841,6 +897,7 @@ function SelectedTransaction({
             transaction={data.bankingTransaction.transaction}
             archive={selected.archive}
             discrepancy={selected.discrepancy}
+            originPages={originPages}
             onFieldSaved={onSaved}
             onSaved={() => setRetry((value) => value + 1)}
           />

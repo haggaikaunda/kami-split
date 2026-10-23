@@ -104,5 +104,6 @@ The native contextual dialog contains focus, makes other navigation inert and
 uses explicit Back/Close/Cancel discard protection. Dirty browser traversal is
 held at the detail until the user keeps editing or discards; reload warns and
 restores the actor-owned draft. Tab storage failure blocks new effects. Each confirmed field triggers a complete server report refresh while the
-independent editor retains any remaining draft. Signed continuation revisions
-remain authoritative, so changed multi-page traversals require a restart.
+independent editor retains any remaining draft. After a confirmed edit the navigator replays the originating extent from a fresh
+signed anchor, capped by the complete matching count when records leave a filter.
+A revision change or denied continuation during that traversal requires a restart.

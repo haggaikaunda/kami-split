@@ -97,4 +97,27 @@ it('rejects tampered external or unrelated durable return origins', () => {
     );
     expect(() => loadEdit('alice', 'source')).toThrow();
   }
+  for (const pages of [0, 2001, 1.5]) {
+    sessionStorage.setItem(
+      storageKey('alice', 'source'),
+      JSON.stringify({ ...edit, returnTo: { ...edit.returnTo, pages } }),
+    );
+    expect(() => loadEdit('alice', 'source')).toThrow();
+  }
+});
+
+it('permits unrelated private edits while retaining an incompatible stale activity, but rejects reconfirming it', () => {
+  const changedBank = {
+    ...fact,
+    amountMinor: '-10000',
+    activityOverride: 'purchase',
+    materialConflict: true,
+  } as Fact;
+  const edit = beginEdit('alice', changedBank);
+  edit.draft.NOTE = 'Private context';
+  edit.draft.CATEGORY = 'TRAVEL';
+  edit.draft.EXCLUDED = 'true';
+  expect(annotationError(edit, changedBank)).toBe('');
+  edit.confirmActivity = true;
+  expect(annotationError(edit, changedBank)).toContain('compatible');
 });

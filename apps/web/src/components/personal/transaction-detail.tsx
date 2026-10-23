@@ -34,6 +34,7 @@ import {
   type AnnotationField,
   type Edit,
   type Fact,
+  type SavedOrigin,
 } from './annotation-draft';
 import formStyles from '../ui/form-layout.module.css';
 import styles from './transaction-detail.module.css';
@@ -77,6 +78,7 @@ export function TransactionDetail({
   names,
   onSaved,
   onFieldSaved,
+  originPages,
 }: {
   scope: FinancialScope;
   transaction: personalTransactionDetail$key;
@@ -84,7 +86,8 @@ export function TransactionDetail({
   discrepancy: boolean;
   names: ReadonlyMap<string, string>;
   onSaved: () => void;
-  onFieldSaved: () => void;
+  onFieldSaved: (origin?: SavedOrigin) => void;
+  originPages: number;
 }) {
   const fact = readInlineData<personalTransactionDetail$key>(
     detailDocument,
@@ -276,7 +279,7 @@ export function TransactionDetail({
       return null;
     }
     if (result.code === 'READY' && !current) {
-      onFieldSaved();
+      onFieldSaved(sent.returnTo);
       setUnavailable(true);
       setMessage(
         'The original field save is confirmed, but the current private record is unavailable. No further change was sent.',
@@ -284,7 +287,7 @@ export function TransactionDetail({
       return null;
     }
     if (result.code === 'READY' && current) {
-      onFieldSaved();
+      onFieldSaved(sent.returnTo);
       const next = rebaseEdit(sent, current);
       // Only this operation's field is confirmed. Other intended values remain.
       const field = sent.pending!.field as AnnotationField;
@@ -647,6 +650,10 @@ export function TransactionDetail({
                         href: visit.href,
                         focus: visit.focus,
                         scroll: visit.scroll,
+                        pages:
+                          'pages' in visit && typeof visit.pages === 'number'
+                            ? visit.pages
+                            : originPages,
                       },
                     }
                   : {}),

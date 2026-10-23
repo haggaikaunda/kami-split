@@ -1457,7 +1457,13 @@ test('Personal detail protects drafts, validates private values and recovers con
   app,
 }) => {
   await app.authenticate();
-  let fact = transactionRow(),
+  let fact = transactionRow('source-private', {
+      amountMinor: '-10000',
+      activity: 'unresolved',
+      activityOverride: 'purchase',
+      materialConflict: true,
+      eligible: false,
+    }),
     mode = 'ready',
     frozen;
   const receipts = new Map();
@@ -1481,6 +1487,36 @@ test('Personal detail protects drafts, validates private values and recovers con
           detail: null,
         },
       };
+    if (operation === 'personalTransactionsQuery')
+      return transactionReport({
+        revision: `revision-${fact.annotationRevision}`,
+        totalCount: 51,
+        rows: variables.after
+          ? [fact]
+          : Array.from({ length: 50 }, (_, index) =>
+              transactionRow(`first-${index}`, {
+                merchantName: `Earlier purchase ${index}`,
+              }),
+            ),
+        hasNextPage: !variables.after,
+        endCursor: variables.after ? null : 'signed-page',
+        counts: {
+          count: 51,
+          postedCount: 51,
+          pendingCount: 0,
+          removedCount: 0,
+          excludedCount: 0,
+          unresolvedCount: 1,
+          reviewedCount: 0,
+          classificationComplete: false,
+        },
+        summary: {
+          netMinor: '500000',
+          purchaseMinor: '500000',
+          refundMinor: '0',
+          classificationComplete: false,
+        },
+      });
     if (operation !== 'personalTransactionAnnotationMutation') return;
     const input = variables.input;
     frozen = input;
@@ -1528,9 +1564,10 @@ test('Personal detail protects drafts, validates private values and recovers con
     }
     return { editBankingAnnotation: result };
   });
-  await page.goto(
-    '/personal?tab=transactions&period=last-month&activity=purchase',
-  );
+  await page.goto('/personal?tab=transactions&period=last-month&state=posted');
+  await page
+    .getByRole('button', { name: 'Load more transactions', exact: true })
+    .click();
   await page.locator('#transaction-source-private').click();
   const dialog = page.getByRole('dialog', {
     name: 'Transaction detail',
@@ -1609,7 +1646,7 @@ test('Personal detail protects drafts, validates private values and recovers con
     .click();
   await expect(page.locator('#transaction-source-private')).toBeFocused();
   await expect(page).toHaveURL(/period=last-month/);
-  await expect(page).toHaveURL(/activity=purchase/);
+  await expect(page).toHaveURL(/state=posted/);
 });
 
 test('Personal detail reflows private facts and editor across themes, narrow screens and enlarged text @owns-viewport', async ({

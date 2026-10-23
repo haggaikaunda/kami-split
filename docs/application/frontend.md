@@ -192,7 +192,9 @@ discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded
 page extent. A valid source return across contexts replays that extent from fresh
 signed continuations, then restores focus and scroll after fresh authorization.
-Changed revisions or denied pages discard the traversal and require an explicit
+Confirmed private edits replay the bounded originating extent under a fresh signed
+anchor, including after recovery reload through navigation-only draft metadata.
+A change or denied page during that fresh traversal still requires an explicit
 restart; manual filter changes begin at page one. Restoring a source inside native
 reporting-history disclosures reveals its authorized ancestors before focus.
 Snapshot IDs never become navigation or edit keys. Archive annotations are shown

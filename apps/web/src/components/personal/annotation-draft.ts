@@ -11,6 +11,13 @@ export const fields = [
 ] as const;
 export type AnnotationField = (typeof fields)[number];
 export type Values = Record<AnnotationField, string | null>;
+/** Bounded actor-owned return geometry; never cached bank facts or signed cursors. */
+export type SavedOrigin = {
+  href: string;
+  focus: string;
+  scroll: number;
+  pages?: number;
+};
 export type Edit = {
   version: 1;
   actor: string;
@@ -23,7 +30,7 @@ export type Edit = {
   pending?: BankingAnnotationInput;
   confirmActivity?: boolean;
   requiresReview?: boolean;
-  returnTo?: { href: string; focus: string; scroll: number };
+  returnTo?: SavedOrigin;
 };
 export function annotationValues(fact: Fact): Values {
   return {
@@ -63,7 +70,11 @@ export function annotationError(edit: Edit, fact: Fact) {
   )
     return 'Private note must contain at most 2,000 characters and no control characters except line breaks and tabs.';
   const activity = edit.draft.ACTIVITY;
-  if (activity && !activityChoices(fact.amountMinor).includes(activity))
+  if (
+    activity &&
+    changedFields(edit).includes('ACTIVITY') &&
+    !activityChoices(fact.amountMinor).includes(activity)
+  )
     return 'Choose an activity type compatible with the original bank amount.';
   return '';
 }
@@ -151,7 +162,11 @@ export function loadEdit(actor: string, source: string): Edit | null {
       typeof edit.returnTo.scroll !== 'number' ||
       !Number.isFinite(edit.returnTo.scroll) ||
       edit.returnTo.scroll < 0 ||
-      edit.returnTo.scroll > 100000000)
+      edit.returnTo.scroll > 100000000 ||
+      (edit.returnTo.pages !== undefined &&
+        (!Number.isInteger(edit.returnTo.pages) ||
+          edit.returnTo.pages < 1 ||
+          edit.returnTo.pages > 2000)))
   )
     throw new Error('INVALID_RETURN');
   if (
