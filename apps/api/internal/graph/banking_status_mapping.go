@@ -8,7 +8,7 @@ import (
 )
 
 func mapBankingStatus(c banking.ConnectionStatus) *model.BankingConnection {
-	result := &model.BankingConnection{ID: c.ID, State: c.State, Generation: c.Generation, DeletionGeneration: c.DeletionGeneration, Permission: c.Permission, Health: c.Health, Cleanup: c.Cleanup, Purge: c.Purge, SnapshotRevision: c.SnapshotRevision, Accounts: []*model.BankingAccount{}}
+	result := &model.BankingConnection{ID: c.ID, InstitutionName: c.InstitutionName, State: c.State, Generation: c.Generation, DeletionGeneration: c.DeletionGeneration, Permission: c.Permission, Health: c.Health, Cleanup: c.Cleanup, Purge: c.Purge, SnapshotRevision: c.SnapshotRevision, Accounts: []*model.BankingAccount{}}
 	for _, a := range c.Accounts {
 		result.Accounts = append(result.Accounts, &model.BankingAccount{ID: a.ID, StreamID: a.StreamID, Name: a.Name, Kind: a.Kind, Currency: a.Currency, RequestedHistoryDays: a.RequestedHistoryDays, ProviderAccountID: a.ProviderAccountID, Selected: a.Selected, ImportStatus: mapBankingImportStatus(a.Status)})
 	}

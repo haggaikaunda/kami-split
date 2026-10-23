@@ -68,6 +68,32 @@ func repairOutcome(id uuid.UUID, r repairRecord) EnrollmentOutcome {
 	return EnrollmentOutcome{Code: r.code, State: r.state, AttemptID: id, ConnectionID: r.connection, ExpiresAt: r.expires}
 }
 
+// repairReadFailure keeps an actor-authorized reservation distinguishable from
+// a fresh request rejected before insertion. Access failures still mask metadata.
+func (s *EnrollmentService) repairReadFailure(ctx context.Context, id uuid.UUID, r repairRecord, status Result) EnrollmentOutcome {
+	if status.Code != "NOT_FOUND" {
+		return EnrollmentOutcome{Code: status.Code}
+	}
+	// A lifecycle fence can complete the reservation between the earlier read
+	// and the dependency failure. Reauthorize and prefer its current receipt.
+	var current repairRecord
+	err := s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
+		var err error
+		current, err = readRepair(ctx, tx, id)
+		return err
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return enrollmentFailure(ctx, err)
+	}
+	if err == nil {
+		r = current
+	}
+	if r.state != "complete" {
+		r.code = status.Code
+	}
+	return repairOutcome(id, r)
+}
+
 // RepairStatus reauthorizes the current actor; it returns only safe operation
 // status, never the encrypted handoff or private provider inventory.
 func (s *EnrollmentService) RepairStatus(ctx context.Context, id uuid.UUID) EnrollmentOutcome {
@@ -80,9 +106,9 @@ func (s *EnrollmentService) RepairStatus(ctx context.Context, id uuid.UUID) Enro
 		return enrollmentFailure(ctx, err)
 	}
 	if r.state != "complete" {
-		c, status := s.storage.ReadConnection(ctx, r.connection)
+		c, status := s.storage.ReadLifecycle(ctx, r.connection)
 		if status.Code != "READY" {
-			return EnrollmentOutcome{Code: status.Code}
+			return s.repairReadFailure(ctx, id, r, status)
 		}
 		if c.State != "active" || c.Generation != r.generation {
 			r.code = "CONFLICT"
@@ -138,11 +164,11 @@ func (s *EnrollmentService) StartRepair(ctx context.Context, input RepairInput) 
 		}
 		c, status := s.storage.ReadConnection(ctx, input.ConnectionID)
 		if status.Code != "READY" {
-			return EnrollmentOutcome{Code: status.Code}
+			return s.repairReadFailure(ctx, input.AttemptID, record, status)
 		}
 		credential, status := s.storage.ReadCredential(ctx, input.ConnectionID)
 		if status.Code != "READY" {
-			return EnrollmentOutcome{Code: status.Code}
+			return s.repairReadFailure(ctx, input.AttemptID, record, status)
 		}
 		defer clear(credential.raw)
 		prepared, providerErr := provider.PrepareRepair(ctx, c.Environment, "kami-"+record.owner.String()+"-"+c.Environment, credential)
@@ -180,7 +206,7 @@ func (s *EnrollmentService) StartRepair(ctx context.Context, input RepairInput) 
 	if len(r.link) > 0 {
 		c, status := s.storage.ReadConnection(ctx, r.connection)
 		if status.Code != "READY" {
-			return EnrollmentOutcome{Code: status.Code}
+			return s.repairReadFailure(ctx, input.AttemptID, r, status)
 		}
 		raw, err := s.storage.protector.decrypt(r.link, r.tokenVersion, r.owner.String(), "repair/"+input.AttemptID.String(), c.Environment)
 		if err != nil {
@@ -274,6 +300,9 @@ func (s *EnrollmentService) ChangeSelection(ctx context.Context, input Selection
 	return s.storage.run(ctx, input.AttemptID, "selection", input, func(tx pgx.Tx, _ auth.Actor) (Result, error) {
 		var code string
 		err := tx.QueryRow(ctx, `SELECT app.banking_selection($1,$2,$3,$4,$5)`, input.ConnectionID, input.ExpectedGeneration, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code)
+		if err == nil && code == "READY" {
+			err = saveInstitutionName(ctx, tx, input.ConnectionID, inventory)
+		}
 		return Result{Code: code, ID: input.ConnectionID}, err
 	})
 }
@@ -334,7 +363,13 @@ func (s *EnrollmentService) FinishRepair(ctx context.Context, input FinishRepair
 	encoded, _ := json.Marshal(selected)
 	code := ""
 	err = s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
-		return tx.QueryRow(ctx, `SELECT app.banking_repair_finish($1,$2,$3,$4,$5)`, input.AttemptID, digest, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code)
+		if err := tx.QueryRow(ctx, `SELECT app.banking_repair_finish($1,$2,$3,$4,$5)`, input.AttemptID, digest, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code); err != nil {
+			return err
+		}
+		if code == "READY" {
+			return saveInstitutionName(ctx, tx, r.connection, inventory)
+		}
+		return nil
 	})
 	if err != nil {
 		return enrollmentFailure(ctx, err)
@@ -390,4 +425,15 @@ func (s *EnrollmentService) deselection(ctx context.Context, connection uuid.UUI
 		return inventory, nil, enrollmentFailure(ctx, err).Code
 	}
 	return inventory, selected, code
+}
+
+// saveInstitutionName retains only validated server-observed display metadata in
+// the same authorized transaction as enrollment/repair/selection. Legacy or
+// offline inventory without a name does not overwrite a previously observed name.
+func saveInstitutionName(ctx context.Context, tx pgx.Tx, connection uuid.UUID, inventory AccountInventory) error {
+	if inventory.InstitutionName == "" {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `SELECT app.banking_institution_name($1,$2,$3)`, connection, inventory.InstitutionID, inventory.InstitutionName)
+	return err
 }

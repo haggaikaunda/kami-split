@@ -141,3 +141,27 @@ Set `REFERENCE_DIR` and `REFERENCE_LUCIDE_PATH` in the environment for the first
 Check 320/390/768/1280px as relevant, actual 200% root text, long names and large exact amounts, Light/System/Dark, keyboard/focus, reduced motion, failure/recovery and source restoration. Check the actual LAN HTTP origin for phone-preview changes. Record application head/build, fixture state, viewport, theme, font, reference state and limits with each result on the PR.
 
 Fixture-rendered layouts establish client behavior only. Real API/database tests establish their own financial and access contracts. Neither proves hosted SMTP, real production configuration, physical iOS/Android safe areas/keyboards or spoken assistive technology. Do not infer a commit or authorization success from a toast, screenshot or HTTP 200.
+
+## Existing bank-connection management against the API
+
+The opt-in `scripts/banking-management-real-browser.sh` owns a unique disposable
+Supabase project and invokes its integration-tagged Go/browser bridge. Start an
+exclusively owned production preview first, configured with the same loopback
+Auth origin as `BROWSER_AUTH_ORIGIN`. Supply the preview's
+`BANKING_MANAGEMENT_BROWSER_ORIGIN` and resolve the pinned workspace Playwright
+module into `BANKING_MANAGEMENT_PLAYWRIGHT_MODULE`. The runner uses managed
+Chromium by default; `BANKING_MANAGEMENT_CHROMIUM` is an optional executable
+override for local diagnostics.
+
+The browser forwards GraphQL requests to the authenticated Go handler and real
+restricted-role database; only the external provider and browser Auth boundary
+are deterministic fixtures. It exercises canceled/finished repair, explicit
+selection with a lost response, disconnect/deletion, version-checked replacement,
+operation recovery, preceding-plan restoration, archive preservation, worker purge
+and a same-group second actor. Its fixture checkpoints can advance only owned
+pending work and inspect durable outcomes. They are unavailable in production.
+This proves the controlled application contracts, not live provider ordering,
+real-institution behavior, backup erasure or production enrollment authority.
+Store captures and results outside source, and rerun against the exact candidate
+build after relevant changes. Normal database integration runs compile this bridge
+but skip its browser launch unless the opt-in environment is explicitly supplied.

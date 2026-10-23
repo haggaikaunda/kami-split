@@ -209,14 +209,14 @@ func TestEnrollmentInventoryUsesServerEvidenceWithoutContinuityGuesses(t *testin
 			if !reflect.DeepEqual(request, map[string]any{"institution_id": "ins_private", "country_codes": []any{"US"}}) {
 				t.Fatal("institution lookup changed identity")
 			}
-			return plaidTestResponse(200, `{"institution":{"institution_id":"ins_private","country_codes":["US"]}}`), nil
+			return plaidTestResponse(200, `{"institution":{"institution_id":"ins_private","name":"Example Community Credit Union","country_codes":["US"]}}`), nil
 		default:
 			t.Fatal("unexpected inventory endpoint")
 			return nil, errors.New("unexpected")
 		}
 	}))
 	result, err := provider.Accounts(context.Background(), "sandbox", Credential{raw: []byte("access-private")})
-	if err != nil || calls != 2 || result.ItemID != "item-private" || result.CountryCode != "US" || len(result.Accounts) != 3 {
+	if err != nil || calls != 2 || result.InstitutionName != "Example Community Credit Union" || result.ItemID != "item-private" || result.CountryCode != "US" || len(result.Accounts) != 3 {
 		t.Fatal("server inventory was not returned")
 	}
 	if result.Accounts[0].StableID != "exact-stable-id" || result.Accounts[1].StableID != "" || result.Accounts[2].Currency != "EUR" {
@@ -303,6 +303,7 @@ func TestEnrollmentMalformedResponsesNeverInventEvidence(t *testing.T) {
 		{"duplicate accounts", "/accounts/get", `{"item":{"item_id":"id","institution_id":"ins"},"accounts":[{"account_id":"same"},{"account_id":"same"}]}`},
 		{"wrong institution", "/institutions/get_by_id", `{"institution":{"institution_id":"wrong","country_codes":["US"]}}`},
 		{"unsupported country", "/institutions/get_by_id", `{"institution":{"institution_id":"ins","country_codes":["CA"]}}`},
+		{"control institution name", "/institutions/get_by_id", `{"institution":{"institution_id":"ins","name":"bad\nname","country_codes":["US"]}}`},
 		{"ambiguous country", "/institutions/get_by_id", `{"institution":{"institution_id":"ins","country_codes":["US","CA"]}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

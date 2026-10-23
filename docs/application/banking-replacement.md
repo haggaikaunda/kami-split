@@ -4,8 +4,10 @@ The owner-only backend in `internal/banking` implements explicit staging,
 complete impact preview and guarded publication of disjoint posted-date plans.
 It extends [enrollment](banking-enrollment.md), [private storage](banking-storage.md)
 and the [lifecycle worker](banking-worker.md). The [restricted sync persistence](banking-sync.md) applies complete provider
-sequences under these plans. General transaction/annotation reads or edits, browser
-management and the separately required live-provider release gates remain separate.
+sequences under these plans. The Connections browser panel consumes these operations for staged replacement,
+impact confirmation, latest-boundary/predecessor recovery and read-only recovery
+archive inspection. General transaction browsing and editing and the separately
+required live-provider release gates remain separate.
 
 ## Entry and collection authority
 

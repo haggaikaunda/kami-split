@@ -85,9 +85,25 @@ it('clears every actor enrollment recovery identity without erasing unrelated pr
     'kami-personal-enrollment:actor-b',
     'opaque-attempt-b',
   );
+  sessionStorage.setItem(
+    'kami-personal-enrollment:actor-a:manage:plan',
+    'opaque-plan',
+  );
+  sessionStorage.setItem(
+    'kami-personal-enrollment:actor-a:manage:management',
+    'opaque-management',
+  );
   sessionStorage.setItem('unrelated-presentation', 'retained');
   clearFinancialStorage();
   expect(sessionStorage.getItem('kami-personal-enrollment:actor-a')).toBeNull();
   expect(sessionStorage.getItem('kami-personal-enrollment:actor-b')).toBeNull();
+  expect(
+    sessionStorage.getItem('kami-personal-enrollment:actor-a:manage:plan'),
+  ).toBeNull();
+  expect(
+    sessionStorage.getItem(
+      'kami-personal-enrollment:actor-a:manage:management',
+    ),
+  ).toBeNull();
   expect(sessionStorage.getItem('unrelated-presentation')).toBe('retained');
 });

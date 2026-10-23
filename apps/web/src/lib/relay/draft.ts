@@ -51,7 +51,7 @@ export function clearFinancialStorage() {
   sessionStorage.removeItem(privateStorageKey);
   sessionStorage.removeItem(repaymentStorageKey);
   sessionStorage.removeItem(editStorageKey);
-  // Enrollment recovery identities belong to the departing financial actor.
+  // Enrollment and management recovery identities belong to the departing actor.
   for (let index = sessionStorage.length - 1; index >= 0; index--) {
     const key = sessionStorage.key(index);
     if (key?.startsWith('kami-personal-enrollment:'))

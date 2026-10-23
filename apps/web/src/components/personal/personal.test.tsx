@@ -59,6 +59,8 @@ const connection = {
   id: 'c1',
   state: 'active',
   health: 'healthy',
+  permission: 'granted',
+  institutionName: 'Example Community Credit Union',
   cleanup: 'not_requested',
   purge: 'not_requested',
   accounts: [
@@ -216,7 +218,10 @@ it('leads existing Connections with the compact heading and leaves setup details
   );
   expect(
     host.querySelector('#existing-connections > p')?.textContent,
-  ).toContain('Only selected accounts');
+  ).toContain('Selection controls updates');
+  expect(
+    host.querySelector('#existing-connections > p')?.textContent,
+  ).toContain('History is retained');
 });
 
 it.each(['overview', 'transactions'])(
@@ -231,6 +236,50 @@ it.each(['overview', 'transactions'])(
     expect(host.textContent).not.toContain('Connect account');
   },
 );
+it('keeps import facts collapsed while exposing selection and truthful distinct observations', async () => {
+  nav.search = 'tab=connections';
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () =>
+    requests[0].next(
+      inventory([
+        {
+          ...connection,
+          accounts: [
+            {
+              ...connection.accounts[0],
+              id: 'a2',
+              streamId: 's2',
+              name: 'Unselected savings',
+              selected: false,
+            },
+            connection.accounts[0],
+          ],
+        },
+      ]),
+    ),
+  );
+  const card = host.querySelector('article')!;
+  const disclosure = card.querySelector('details')!;
+  expect(disclosure.open).toBe(false);
+  expect(disclosure.querySelector('summary')?.textContent).toContain(
+    'Latest local save:',
+  );
+  expect(disclosure.querySelector('summary')?.textContent).toContain(
+    'Latest bank success: Unknown',
+  );
+  expect(card.querySelector('section h4')?.textContent).toContain(
+    'Sensitive long',
+  );
+  expect(card.textContent).toContain('1 of 2 accounts included');
+  expect(card.textContent).toContain('Not collecting');
+  await act(async () => disclosure.querySelector('summary')!.click());
+  expect(disclosure.open).toBe(true);
+  expect(disclosure.textContent).toContain('coverage is unknown');
+  expect(disclosure.textContent).toContain(
+    '365 days, subject to institution availability',
+  );
+});
+
 function transactionReportAccounts(ids: string[]) {
   return {
     bankingReport: {

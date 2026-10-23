@@ -94,7 +94,8 @@ runner with a 15-minute limit:
 Runner isolation prevents cross-job port/project conflicts and teardown. No Docker
 state is assumed to be shared across runners. The Dockerfile's `verify` target
 remains available for manual use, but CI does not duplicate host Go verification
-through it. Web checks retain their own runner and 15-minute limit.
+through it. Web checks retain their own runner and a 25-minute aggregate limit, including
+browser dependency installation and the complete required suite.
 
 The **Verify** job waits for repository validation and both calls with `always()`.
 It requires successful repository validation and each affected result to equal
