@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { queryEnvironment, relayRoot } from '@/lib/relay/test-queries';
-import { act } from 'react';
+import { act, startTransition } from 'react';
+import { flushSync } from 'react-dom';
 import { foregroundRefresh } from '../workspace-refresh.test-utils';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -448,4 +449,56 @@ it('clears an accepted foreground page when the URL-controlled filter changes an
   expect(host.textContent).not.toContain('Late private');
   await respond(connection([]));
   expect(host.textContent).toContain('No activity matches these filters.');
+});
+
+it('keeps queued prior-read acceptances out of a delayed URL-controlled filter', async () => {
+  const renderKind = (kind: string) =>
+    root.render(
+      <ActivityFeed
+        scope={scope}
+        groupId=""
+        kind={kind}
+        onKindChange={() => {}}
+      />,
+    );
+  await act(async () => renderKind(''));
+  await respond(connection());
+  // The control initiates a refresh before its URL-owned prop has caught up.
+  const select = host.querySelector('select')!;
+  await act(async () => {
+    select.value = 'EXPENSE_UPDATED';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const old = boundary.requests.length - 1;
+  expect(boundary.requests[old].variables).toMatchObject({
+    filter: { kind: null },
+  });
+  await act(async () => {
+    startTransition(() =>
+      boundary.requests[old].next?.({
+        householdActivity: connection([
+          { ...row, description: 'Queued prior private result' },
+        ]),
+      }),
+    );
+    flushSync(() => renderKind('EXPENSE_UPDATED'));
+  });
+  const filtered = boundary.requests.length - 1;
+  expect(boundary.requests[filtered].variables).toMatchObject({
+    filter: { kind: 'EXPENSE_UPDATED' },
+  });
+  expect(host.querySelector('[data-ui~="activity-events"]')).toBeNull();
+  expect(host.textContent).not.toContain('Queued prior private result');
+  await respond(
+    connection([
+      {
+        ...row,
+        kind: 'EXPENSE_UPDATED',
+        description: 'Authorized current filter',
+      },
+    ]),
+    filtered,
+  );
+  expect(host.textContent).toContain('Authorized current filter');
+  expect(host.textContent).not.toContain('Queued prior private result');
 });
