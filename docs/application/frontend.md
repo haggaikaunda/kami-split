@@ -166,8 +166,12 @@ same-attempt recovery. Device initialization occurs only when the server reports
 an uninitialized preference; travel never replaces a saved zone. Personal Transactions owns a retained `personalTransactionsQuery` per actor and
 applied URL filter identity. Complete server counts, spending and coverage belong
 to the first coherent report; signed continuation pages are rendered only when
-their revision matches. A stale or denied continuation discards the traversal and
-offers a restart with applied filters preserved. Date/filter dialogs own only
+their revision matches. An invalid cursor/window or changed revision discards the
+traversal and offers an explicit local restart with applied filters preserved.
+A typed banking authorization denial instead disposes the actor scope before
+normalization, removes protected content and enters the global access-recovery
+boundary. Recovery requires fresh access verification, not a local restart on a
+disposed scope. Date/filter dialogs own only
 unapplied drafts. Presets are resolved by the saved-zone server read, including
 new-day restart; custom dates stay fixed. Overview navigation preserves those URL
 parameters for its separately owned presentation.
@@ -182,8 +186,9 @@ discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded
 page extent. A valid source return across contexts replays that extent from fresh
 signed continuations, then restores focus and scroll after fresh authorization.
-Changed revisions or denied pages discard the traversal and require an explicit
-restart; manual filter changes begin at page one. Restoring a source inside native
+Changed revisions or invalid signed continuations discard the traversal and
+require an explicit restart; actor authorization loss follows the global
+access-recovery boundary above. Manual filter changes begin at page one. Restoring a source inside native
 reporting-history disclosures reveals its authorized ancestors before focus.
 Snapshot IDs never become navigation or edit keys. Archive annotations are shown
 as immutable captured provenance and copies never join current totals.

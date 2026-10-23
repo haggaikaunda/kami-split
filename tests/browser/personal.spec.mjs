@@ -1392,11 +1392,23 @@ test('Personal archive returns replay fresh signed extent and discard changed or
       await expect(
         page.getByRole('button', { name: 'Restart activity', exact: true }),
       ).toHaveCount(0);
+      // TransactionRead remounts its first page; ReturnAuthorization independently
+      // reauthorizes that source before replaying the fresh signed continuation.
+      const returns = calls
+        .slice(before)
+        .filter((call) => call.operation === 'personalTransactionsQuery');
+      expect(returns.map((call) => call.variables.after ?? null)).toEqual([
+        null,
+        null,
+        'fresh-signed-page',
+      ]);
       expect(
-        calls
-          .slice(before)
-          .filter((call) => call.operation === 'personalTransactionsQuery'),
-      ).toHaveLength(2);
+        returns.every(
+          (call) =>
+            call.variables.filter.archiveId === 'archive-private' &&
+            call.variables.filter.activities[0] === 'income',
+        ),
+      ).toBe(true);
       continue;
     }
     if (mode === 'ready') {
