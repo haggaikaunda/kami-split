@@ -218,7 +218,10 @@ it('leads existing Connections with the compact heading and leaves setup details
   );
   expect(
     host.querySelector('#existing-connections > p')?.textContent,
-  ).toContain('Only selected accounts');
+  ).toContain('Only explicitly authorized accounts collect updates');
+  expect(
+    host.querySelector('#existing-connections > p')?.textContent,
+  ).toContain('Retained private history remains after deselection');
 });
 
 it.each(['overview', 'transactions'])(
