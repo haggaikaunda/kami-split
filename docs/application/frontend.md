@@ -182,9 +182,10 @@ discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 Snapshot IDs never become navigation or edit keys. Archive annotations are shown
 as immutable captured provenance and copies never join current totals.
 
-Account names come from the freshly authorized connection inventory; a record
-beyond its loaded pages uses a labeled retained-account fallback rather than
-inventing bank names or masks. Reporting coverage and import/freshness facts remain
+Account names come from all pages of the freshly authorized connection inventory;
+current bindings take precedence over retired copies of one logical account.
+Genuinely unavailable retained identities use a labeled account fallback rather
+than invented bank names or masks. Reporting coverage and import/freshness facts remain
 independent. Existing-connection management and full detail/private mutations
 remain separate capabilities; connection success never proves zero spending,
 complete history, renewed consent or a shared expense.
