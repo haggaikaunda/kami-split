@@ -1286,6 +1286,17 @@ test('Personal archive returns replay fresh signed extent and discard changed or
         .locator('[id]')
         .evaluateAll((nodes) => nodes.map((node) => node.id));
       expect(new Set(ids).size).toBe(ids.length);
+    } else if (mode === 'denied') {
+      await expect(
+        page.getByText(
+          /Financial access is unavailable|Account verification is unavailable/,
+        ),
+      ).toBeVisible();
+      await expect(page.locator('[data-source-id]')).toHaveCount(0);
+      await expect(
+        page.getByRole('link', { name: 'Later archived income', exact: true }),
+      ).toHaveCount(0);
+      break;
     } else {
       await expect(
         page.getByRole('button', { name: 'Restart activity', exact: true }),
@@ -1520,11 +1531,23 @@ test('Personal detail protects drafts, validates private values and recovers con
     if (operation !== 'personalTransactionAnnotationMutation') return;
     const input = variables.input;
     frozen = input;
+    if (mode === 'forbidden')
+      return {
+        editBankingAnnotation: {
+          __typename: 'BankingAnnotationResult',
+          id: 'denied-actor',
+          code: 'FORBIDDEN',
+          sourceId: null,
+          detail: null,
+        },
+      };
     if (mode === 'conflict') {
       mode = 'ready';
       fact = {
         ...fact,
         id: 'changed-bank-fact',
+        amountMinor: '12345',
+        bankDate: '2026-10-18',
         sourceRevision: '2',
         materialRevision: '2',
         annotationRevision: '1',
@@ -1620,6 +1643,19 @@ test('Personal detail protects drafts, validates private values and recovers con
   await dialog
     .getByRole('button', { name: 'Use current versions', exact: true })
     .click();
+  await expect(
+    dialog.getByText('Money out · Posted · 2026-10-18', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog
+      .getByLabel('Activity type', { exact: true })
+      .locator('option[value=refund]'),
+  ).toHaveCount(0);
+  await expect(
+    dialog
+      .getByLabel('Activity type', { exact: true })
+      .locator('option[value=purchase]'),
+  ).toHaveCount(1);
   mode = 'lost';
   await dialog
     .getByRole('button', { name: 'Save changes', exact: true })
@@ -1649,6 +1685,33 @@ test('Personal detail protects drafts, validates private values and recovers con
   await expect(page.locator('#transaction-source-private')).toBeFocused();
   await expect(page).toHaveURL(/period=last-month/);
   await expect(page).toHaveURL(/state=posted/);
+  // A definitive actor denial disposes normalized records and purges durable
+  // drafts through the real financial session transport, before normalization.
+  await page.locator('#transaction-source-private').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page
+    .getByLabel('Private note', { exact: true })
+    .fill('Actor-private denied draft');
+  mode = 'forbidden';
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(
+    page.getByText(
+      /Financial access is unavailable|Account verification is unavailable/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Transaction detail', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText(fact.merchantName, { exact: true })).toHaveCount(
+    0,
+  );
+  expect(
+    await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((key) =>
+        key.startsWith('kami-personal-annotation:'),
+      ),
+    ),
+  ).toEqual([]);
 });
 
 test('Personal detail reflows private facts and editor across themes, narrow screens and enlarged text @owns-viewport', async ({

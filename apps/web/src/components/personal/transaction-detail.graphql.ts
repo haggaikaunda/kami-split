@@ -53,10 +53,12 @@ export const mutation = graphql`
     $input: BankingAnnotationInput!
   ) {
     editBankingAnnotation(input: $input) {
+      __typename
       id
       code
       sourceId
       detail {
+        __typename
         id
         code
         currentId
@@ -70,10 +72,12 @@ export const mutation = graphql`
 export const recovery = graphql`
   query personalTransactionAnnotationRecoveryQuery($attemptId: ID!) {
     bankingAnnotationOperation(attemptId: $attemptId) {
+      __typename
       id
       code
       sourceId
       detail {
+        __typename
         id
         code
         currentId

@@ -182,11 +182,20 @@ a full explicit edit form. Its actor/source-scoped tab draft retains the opened
 source/material/annotation baseline and any frozen pending command. Each changed
 field saves independently; confirmed fields remain saved after a later failure.
 Conflicts require explicit current-version reapplication, and uncertain results
-recover the original receipt before an identical frozen retry. Current archive
+recover the original receipt before an identical frozen retry. Explicit version
+reapplication also adopts the selected immutable bank facts for the displayed
+amount/date/status and compatible activity choices, while preserving remaining
+user input. Captured archive provenance remains separate from that editor baseline.
+Current archive
 copies link to their sole current editor; archive-only saves reread the selected
 manifest after the safe receipt. Native modal focus/inertness and dirty Back/Close
 protection preserve unfinished input. Logout, actor changes and access denial
-purge these drafts with existing financial storage. The navigator owns detail separately from reporting, so each confirmed field
+purge these drafts with existing financial storage. Typed annotation, detail and
+report actor denials are consumed before normalization. A definitive domain
+fallback calls the scope's idempotent `revokeAccess` boundary, which delegates to
+the same disposal/session-purge owner; a disposed scope cannot revoke a later
+actor. Receipt `NOT_FOUND` and operation `UNAVAILABLE` remain domain outcomes,
+not actor revocation. The navigator owns detail separately from reporting, so each confirmed field
 refreshes complete reporting without disposing remaining input; no client total is derived from loaded rows. Current-record links clear archive and
 discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded

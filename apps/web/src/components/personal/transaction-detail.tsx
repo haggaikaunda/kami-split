@@ -93,10 +93,14 @@ export function TransactionDetail({
   focusEdit?: boolean;
   onFocusedEdit?: () => void;
 }) {
-  const fact = readInlineData<personalTransactionDetail$key>(
+  const selectedFact = readInlineData<personalTransactionDetail$key>(
     detailDocument,
     transaction,
   );
+  // Explicitly adopted immutable bank facts are the editor's revision baseline,
+  // not a mirror of newer live data. Archive provenance stays on selectedFact.
+  const [adopted, setAdopted] = useState<Fact | null>(null);
+  const fact = adopted ?? selectedFact;
   const router = useRouter(),
     params = useSearchParams();
   const [initial] = useState(() => {
@@ -291,8 +295,31 @@ export function TransactionDetail({
       if (live()) setBusy(false);
     }
   };
+  const revokeDenied = (code: string | undefined) => {
+    if (
+      !code ||
+      ![
+        'FORBIDDEN',
+        'UNAUTHENTICATED',
+        'DISABLED',
+        'UNPROVISIONED',
+        'SESSION_CHANGED',
+      ].includes(code)
+    )
+      return false;
+    // The typed transport normally consumes this before normalization. Keep a
+    // direct definitive-result path on the same FinancialSession revocation owner.
+    setUnavailable(true);
+    setMessage(
+      'Financial access is unavailable. Reload to check current access.',
+    );
+    scope.revokeAccess(code);
+    return true;
+  };
   const accept = (result: Result, sent: Edit): Edit | null => {
     if (!live()) return null;
+    if (revokeDenied(result.code) || revokeDenied(result.detail?.code))
+      return null;
     const current = factFrom(result);
     if (result.code === 'NOT_FOUND') {
       setUnavailable(true);
@@ -328,6 +355,17 @@ export function TransactionDetail({
           bankChanged
             ? 'The field save is confirmed, but bank facts changed. Remaining changes need explicit review and reapplication.'
             : 'The field save is confirmed, but newer private changes were saved elsewhere. Remaining input needs explicit review and reapplication.',
+        );
+        return null;
+      }
+      setAdopted(current);
+      if (archive && current.currentId) {
+        next.requiresReview = true;
+        retain(next);
+        setConflict(true);
+        setFresh(current);
+        setMessage(
+          'This archived source has a current record. Remaining input is kept; open its sole current editor before continuing.',
         );
         return null;
       }
@@ -377,7 +415,7 @@ export function TransactionDetail({
     onSaved();
   };
   const withArchiveDetail = async (result: Result): Promise<Result> => {
-    if (result.code !== 'READY' || factFrom(result) || !archive) return result;
+    if (result.code !== 'READY' || !archive) return result;
     const detail = (
       await readFresh<personalTransactionSelectionQuery>(
         scope,
@@ -388,7 +426,7 @@ export function TransactionDetail({
     return { ...result, detail };
   };
   const save = async () => {
-    if (!edit || edit.pending || conflict || storageError) return;
+    if (!edit || edit.pending || conflict || storageError || !editable) return;
     const error = annotationError(edit, fresh ?? fact);
     if (error) {
       setMessage(error);
@@ -454,11 +492,12 @@ export function TransactionDetail({
         selectionDocument,
         {
           source: fact.sourceId,
-          archive: archive && !fact.currentId ? archive : null,
+          archive,
         },
       )
     ).bankingTransaction;
     if (!live()) return;
+    if (revokeDenied(result.code)) return;
     if (result.code !== 'READY' || !result.transaction) {
       setUnavailable(true);
       setFresh(null);
@@ -481,7 +520,8 @@ export function TransactionDetail({
     if (edit && !busy && !edit.pending && !conflict)
       retain({ ...edit, draft: { ...edit.draft, [field]: value } });
   };
-  const editable = !discrepancy && !(archive && fact.currentId);
+  const currentId = (fresh ?? fact).currentId;
+  const editable = !discrepancy && !(archive && currentId);
   if (unavailable)
     return (
       <Dialog open title="Transaction detail" panel onClose={close}>
@@ -591,12 +631,12 @@ export function TransactionDetail({
             duplicates.
           </Status>
         )}
-        {archive && fact.currentId && (
+        {archive && currentId && (
           <ScopedLink
             scope={scope}
             id={`selected-current-${fact.sourceId}`}
             href={personalHref(new URLSearchParams(params), {
-              transaction: fact.currentId,
+              transaction: currentId,
               source: null,
               archive: null,
               discrepancies: null,
@@ -702,7 +742,9 @@ export function TransactionDetail({
             </p>
             <fieldset
               className={styles.fields}
-              disabled={busy || !!edit.pending || conflict || storageError}
+              disabled={
+                busy || !!edit.pending || conflict || storageError || !editable
+              }
             >
               <SelectField
                 label="Activity type"
@@ -819,6 +861,7 @@ export function TransactionDetail({
                 type="submit"
                 disabled={
                   busy ||
+                  !editable ||
                   !!edit.pending ||
                   conflict ||
                   storageError ||
@@ -855,6 +898,7 @@ export function TransactionDetail({
                     <Button
                       disabled={busy || !editable}
                       onClick={() => {
+                        setAdopted(fresh);
                         retain(rebaseEdit(edit, fresh));
                         setConflict(false);
                         setFresh(null);
@@ -874,7 +918,7 @@ export function TransactionDetail({
         {archive && (
           <section>
             <h3>Immutable archive provenance</h3>
-            {fact.archives
+            {selectedFact.archives
               .filter((item) => item.archiveId === archive)
               .map((item) => (
                 <div key={item.archiveId}>

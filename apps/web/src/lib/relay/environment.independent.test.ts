@@ -1,3 +1,16 @@
+import reportDocument, {
+  type personalTransactionsQuery,
+} from './__generated__/personalTransactionsQuery.graphql';
+import annotationDocument, {
+  type personalTransactionAnnotationMutation,
+} from './__generated__/personalTransactionAnnotationMutation.graphql';
+import annotationRecoveryDocument, {
+  type personalTransactionAnnotationRecoveryQuery,
+} from './__generated__/personalTransactionAnnotationRecoveryQuery.graphql';
+import selectionDocument, {
+  type personalTransactionSelectionQuery,
+} from './__generated__/personalTransactionSelectionQuery.graphql';
+import { readFresh } from '@/components/personal/relay-command';
 import cancelDocument, {
   type enrollmentCancelMutation,
 } from './__generated__/enrollmentCancelMutation.graphql';
@@ -275,3 +288,188 @@ it.each(['NOT_FOUND', 'FORBIDDEN', 'UNAUTHENTICATED'])(
     scope.dispose();
   },
 );
+
+it.each(['save', 'recovery', 'selection'] as const)(
+  'uses typed %s responses to revoke actor access before normalization, preserving domain negatives',
+  async (operation) => {
+    for (const code of [
+      'FORBIDDEN',
+      'UNAUTHENTICATED',
+      'NOT_FOUND',
+      'UNAVAILABLE',
+    ]) {
+      const denied = vi.fn();
+      const scope = createScope(
+        clientFor(async () => sessionFor()),
+        'actor',
+        denied,
+      );
+      scope.environment.commitUpdate((store) =>
+        store
+          .create('annotation-private-sentinel', 'BankingAccount')
+          .setValue('Private merchant', 'name'),
+      );
+      const annotation = operation !== 'selection';
+      const field =
+        operation === 'save'
+          ? 'editBankingAnnotation'
+          : operation === 'recovery'
+            ? 'bankingAnnotationOperation'
+            : 'bankingTransaction';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (_url, options: RequestInit) => {
+          const query = JSON.parse(options.body as string).query;
+          expect(query).toContain('__typename');
+          return new Response(
+            JSON.stringify({
+              data: {
+                [field]: annotation
+                  ? {
+                      __typename: 'BankingAnnotationResult',
+                      id: 'result',
+                      code,
+                      sourceId: null,
+                      detail: null,
+                    }
+                  : {
+                      __typename: 'BankingTransactionDetail',
+                      id: 'detail',
+                      code,
+                      currentId: null,
+                      transaction: null,
+                    },
+              },
+            }),
+            { status: 200 },
+          );
+        }),
+      );
+      const attemptId = '11ef2b3d-90af-4a26-b836-771294c16eab';
+      const pending =
+        operation === 'save'
+          ? command<personalTransactionAnnotationMutation>(
+              scope,
+              annotationDocument,
+              {
+                input: {
+                  attemptId,
+                  sourceId: 'source',
+                  sourceRevision: '1',
+                  materialRevision: '1',
+                  expectedRevision: '0',
+                  field: 'NOTE',
+                  value: 'Private intended note',
+                },
+              },
+            )
+          : operation === 'recovery'
+            ? readFresh<personalTransactionAnnotationRecoveryQuery>(
+                scope,
+                annotationRecoveryDocument,
+                { attemptId },
+              )
+            : readFresh<personalTransactionSelectionQuery>(
+                scope,
+                selectionDocument,
+                { source: 'source', archive: 'archive' },
+              );
+      if (code === 'FORBIDDEN' || code === 'UNAUTHENTICATED') {
+        await expect(pending).rejects.toThrow(code);
+        expect(scope.isLive()).toBe(false);
+        expect(denied).toHaveBeenCalledExactlyOnceWith(code);
+        expect(
+          scope.environment
+            .getStore()
+            .getSource()
+            .get('annotation-private-sentinel'),
+        ).toBeUndefined();
+      } else {
+        await expect(pending).resolves.toMatchObject({ [field]: { code } });
+        expect(scope.isLive()).toBe(true);
+        expect(denied).not.toHaveBeenCalled();
+        expect(
+          scope.environment
+            .getStore()
+            .getSource()
+            .get('annotation-private-sentinel'),
+        ).toBeDefined();
+      }
+      scope.dispose();
+    }
+  },
+);
+
+it('revokes actor access on a typed fresh report denial before normalizing private rows', async () => {
+  const denied = vi.fn();
+  const scope = createScope(
+    clientFor(async () => sessionFor()),
+    'actor',
+    denied,
+  );
+  scope.environment.commitUpdate((store) =>
+    store
+      .create('private-report-sentinel', 'BankingAccount')
+      .setValue('Private account', 'name'),
+  );
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              bankingReport: {
+                __typename: 'BankingReport',
+                id: 'denied-report',
+                code: 'FORBIDDEN',
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    ),
+  );
+  await expect(
+    readFresh<personalTransactionsQuery>(scope, reportDocument, {}),
+  ).rejects.toThrow('FORBIDDEN');
+  expect(denied).toHaveBeenCalledExactlyOnceWith('FORBIDDEN');
+  expect(scope.isLive()).toBe(false);
+  expect(
+    scope.environment.getStore().getSource().get('private-report-sentinel'),
+  ).toBeUndefined();
+  scope.dispose();
+});
+
+it('relinquishes revoked scope authority once so late denial cannot revoke a later actor', () => {
+  const retiredDenied = vi.fn(),
+    activeDenied = vi.fn();
+  const retired = createScope(
+    clientFor(async () => sessionFor()),
+    'actor',
+    retiredDenied,
+  );
+  retired.dispose();
+  const active = createScope(
+    clientFor(async () => sessionFor('new', 'other')),
+    'other',
+    activeDenied,
+  );
+  active.environment.commitUpdate((store) =>
+    store
+      .create('new-actor-private', 'BankingAccount')
+      .setValue('Other actor account', 'name'),
+  );
+  retired.revokeAccess('FORBIDDEN');
+  expect(retiredDenied).not.toHaveBeenCalled();
+  expect(active.isLive()).toBe(true);
+  expect(
+    active.environment.getStore().getSource().get('new-actor-private'),
+  ).toBeDefined();
+  active.revokeAccess('UNAUTHENTICATED');
+  active.revokeAccess('FORBIDDEN');
+  expect(activeDenied).toHaveBeenCalledExactlyOnceWith('UNAUTHENTICATED');
+  expect(
+    active.environment.getStore().getSource().get('new-actor-private'),
+  ).toBeUndefined();
+});

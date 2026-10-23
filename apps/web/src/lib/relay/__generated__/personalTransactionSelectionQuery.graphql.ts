@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<53ac0ba8403403a014caa709685736ee>>
+ * @generated SignedSource<<db92e21a4ecb71f662afd202662c8974>>
  * @lightSyntaxTransform
  */
 
@@ -16,6 +16,7 @@ export type personalTransactionSelectionQuery$variables = {
 };
 export type personalTransactionSelectionQuery$data = {
   readonly bankingTransaction: {
+    readonly __typename: "BankingTransactionDetail";
     readonly code: string;
     readonly currentId: string | null | undefined;
     readonly id: string;
@@ -66,241 +67,248 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "id",
+  "name": "__typename",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "code",
+  "name": "id",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "currentId",
+  "name": "code",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sourceId",
+  "name": "currentId",
   "storageKey": null
 },
 v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "accountId",
+  "name": "sourceId",
   "storageKey": null
 },
 v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "bindingId",
+  "name": "accountId",
   "storageKey": null
 },
 v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sourceRevision",
+  "name": "bindingId",
   "storageKey": null
 },
 v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "latestSourceRevision",
+  "name": "sourceRevision",
   "storageKey": null
 },
 v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "materialRevision",
+  "name": "latestSourceRevision",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "annotationRevision",
+  "name": "materialRevision",
   "storageKey": null
 },
 v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "amountMinor",
+  "name": "annotationRevision",
   "storageKey": null
 },
 v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "currency",
+  "name": "amountMinor",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "bankDate",
+  "name": "currency",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "authorizationDate",
+  "name": "bankDate",
   "storageKey": null
 },
 v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "processingState",
+  "name": "authorizationDate",
   "storageKey": null
 },
 v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "providerPrimaryCategory",
+  "name": "processingState",
   "storageKey": null
 },
 v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "providerCategory",
+  "name": "providerPrimaryCategory",
   "storageKey": null
 },
 v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "providerConfidence",
+  "name": "providerCategory",
   "storageKey": null
 },
 v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "providerCode",
+  "name": "providerConfidence",
   "storageKey": null
 },
 v23 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "mappingVersion",
+  "name": "providerCode",
   "storageKey": null
 },
 v24 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "mappingVersion",
   "storageKey": null
 },
 v25 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "merchantName",
+  "name": "name",
   "storageKey": null
 },
 v26 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "categoryOverride",
+  "name": "merchantName",
   "storageKey": null
 },
 v27 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "activityOverride",
+  "name": "categoryOverride",
   "storageKey": null
 },
 v28 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "note",
+  "name": "activityOverride",
   "storageKey": null
 },
 v29 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "excluded",
+  "name": "note",
   "storageKey": null
 },
 v30 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "reviewed",
+  "name": "excluded",
   "storageKey": null
 },
 v31 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "materialConflict",
+  "name": "reviewed",
   "storageKey": null
 },
 v32 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "current",
+  "name": "materialConflict",
   "storageKey": null
 },
 v33 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "discrepancy",
+  "name": "current",
   "storageKey": null
 },
 v34 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "category",
+  "name": "discrepancy",
   "storageKey": null
 },
 v35 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "activity",
+  "name": "category",
   "storageKey": null
 },
 v36 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "eligible",
+  "name": "activity",
   "storageKey": null
 },
 v37 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "archiveId",
+  "name": "eligible",
   "storageKey": null
 },
 v38 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "archiveId",
+  "storageKey": null
+},
+v39 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -329,6 +337,7 @@ return {
           (v4/*:: as any*/),
           (v5/*:: as any*/),
           (v6/*:: as any*/),
+          (v7/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -346,7 +355,6 @@ return {
                 "kind": "InlineDataFragmentSpread",
                 "name": "personalTransactionDetail",
                 "selections": [
-                  (v7/*:: as any*/),
                   (v8/*:: as any*/),
                   (v9/*:: as any*/),
                   (v10/*:: as any*/),
@@ -372,11 +380,12 @@ return {
                   (v30/*:: as any*/),
                   (v31/*:: as any*/),
                   (v32/*:: as any*/),
-                  (v6/*:: as any*/),
                   (v33/*:: as any*/),
+                  (v7/*:: as any*/),
                   (v34/*:: as any*/),
                   (v35/*:: as any*/),
                   (v36/*:: as any*/),
+                  (v37/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -385,9 +394,9 @@ return {
                     "name": "archives",
                     "plural": true,
                     "selections": [
-                      (v37/*:: as any*/),
-                      (v10/*:: as any*/),
-                      (v13/*:: as any*/),
+                      (v38/*:: as any*/),
+                      (v11/*:: as any*/),
+                      (v14/*:: as any*/),
                       {
                         "alias": null,
                         "args": null,
@@ -396,13 +405,13 @@ return {
                         "name": "annotation",
                         "plural": false,
                         "selections": [
-                          (v38/*:: as any*/),
-                          (v12/*:: as any*/),
-                          (v34/*:: as any*/),
+                          (v39/*:: as any*/),
+                          (v13/*:: as any*/),
                           (v35/*:: as any*/),
-                          (v28/*:: as any*/),
+                          (v36/*:: as any*/),
                           (v29/*:: as any*/),
-                          (v30/*:: as any*/)
+                          (v30/*:: as any*/),
+                          (v31/*:: as any*/)
                         ],
                         "storageKey": null
                       }
@@ -444,6 +453,7 @@ return {
           (v4/*:: as any*/),
           (v5/*:: as any*/),
           (v6/*:: as any*/),
+          (v7/*:: as any*/),
           {
             "alias": null,
             "args": null,
@@ -452,25 +462,25 @@ return {
             "name": "transaction",
             "plural": false,
             "selections": [
-              (v7/*:: as any*/),
               (v8/*:: as any*/),
               (v9/*:: as any*/),
               (v10/*:: as any*/),
               (v11/*:: as any*/),
-              (v16/*:: as any*/),
-              (v14/*:: as any*/),
+              (v12/*:: as any*/),
+              (v17/*:: as any*/),
               (v15/*:: as any*/),
+              (v16/*:: as any*/),
+              (v26/*:: as any*/),
               (v25/*:: as any*/),
-              (v24/*:: as any*/),
-              (v18/*:: as any*/),
+              (v19/*:: as any*/),
+              (v36/*:: as any*/),
               (v35/*:: as any*/),
-              (v34/*:: as any*/),
-              (v29/*:: as any*/),
               (v30/*:: as any*/),
               (v31/*:: as any*/),
               (v32/*:: as any*/),
-              (v6/*:: as any*/),
               (v33/*:: as any*/),
+              (v7/*:: as any*/),
+              (v34/*:: as any*/),
               {
                 "alias": null,
                 "args": null,
@@ -479,9 +489,9 @@ return {
                 "name": "archives",
                 "plural": true,
                 "selections": [
-                  (v37/*:: as any*/),
-                  (v10/*:: as any*/),
-                  (v13/*:: as any*/),
+                  (v38/*:: as any*/),
+                  (v11/*:: as any*/),
+                  (v14/*:: as any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -490,32 +500,32 @@ return {
                     "name": "annotation",
                     "plural": false,
                     "selections": [
-                      (v38/*:: as any*/),
-                      (v28/*:: as any*/),
+                      (v39/*:: as any*/),
                       (v29/*:: as any*/),
                       (v30/*:: as any*/),
-                      (v12/*:: as any*/),
-                      (v34/*:: as any*/),
-                      (v35/*:: as any*/)
+                      (v31/*:: as any*/),
+                      (v13/*:: as any*/),
+                      (v35/*:: as any*/),
+                      (v36/*:: as any*/)
                     ],
                     "storageKey": null
                   }
                 ],
                 "storageKey": null
               },
-              (v12/*:: as any*/),
               (v13/*:: as any*/),
-              (v17/*:: as any*/),
-              (v19/*:: as any*/),
+              (v14/*:: as any*/),
+              (v18/*:: as any*/),
               (v20/*:: as any*/),
               (v21/*:: as any*/),
               (v22/*:: as any*/),
               (v23/*:: as any*/),
-              (v26/*:: as any*/),
+              (v24/*:: as any*/),
               (v27/*:: as any*/),
               (v28/*:: as any*/),
-              (v36/*:: as any*/),
-              (v4/*:: as any*/)
+              (v29/*:: as any*/),
+              (v37/*:: as any*/),
+              (v5/*:: as any*/)
             ],
             "storageKey": null
           }
@@ -525,16 +535,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "727b9952389d14f75c6208c4430fdf57",
+    "cacheID": "3cb01c0c06ab04d3b57242593cf3bbfb",
     "id": null,
     "metadata": {},
     "name": "personalTransactionSelectionQuery",
     "operationKind": "query",
-    "text": "query personalTransactionSelectionQuery(\n  $source: ID!\n  $archive: ID\n  $discrepancy: Boolean\n) {\n  bankingTransaction(sourceId: $source, archiveId: $archive, discrepancy: $discrepancy) {\n    id\n    code\n    currentId\n    transaction {\n      ...personalTransactionRow\n      ...personalTransactionDetail\n      id\n    }\n  }\n}\n\nfragment personalTransactionDetail on BankingTransaction {\n  sourceId\n  accountId\n  bindingId\n  sourceRevision\n  latestSourceRevision\n  materialRevision\n  annotationRevision\n  amountMinor\n  currency\n  bankDate\n  authorizationDate\n  processingState\n  providerPrimaryCategory\n  providerCategory\n  providerConfidence\n  providerCode\n  mappingVersion\n  name\n  merchantName\n  categoryOverride\n  activityOverride\n  note\n  excluded\n  reviewed\n  materialConflict\n  current\n  currentId\n  discrepancy\n  category\n  activity\n  eligible\n  archives {\n    archiveId\n    sourceRevision\n    annotationRevision\n    annotation {\n      revision\n      materialRevision\n      category\n      activity\n      note\n      excluded\n      reviewed\n    }\n  }\n}\n\nfragment personalTransactionRow on BankingTransaction {\n  sourceId\n  accountId\n  bindingId\n  sourceRevision\n  latestSourceRevision\n  bankDate\n  amountMinor\n  currency\n  merchantName\n  name\n  processingState\n  activity\n  category\n  excluded\n  reviewed\n  materialConflict\n  current\n  currentId\n  discrepancy\n  archives {\n    archiveId\n    sourceRevision\n    annotationRevision\n    annotation {\n      revision\n      note\n      excluded\n      reviewed\n    }\n  }\n}\n"
+    "text": "query personalTransactionSelectionQuery(\n  $source: ID!\n  $archive: ID\n  $discrepancy: Boolean\n) {\n  bankingTransaction(sourceId: $source, archiveId: $archive, discrepancy: $discrepancy) {\n    __typename\n    id\n    code\n    currentId\n    transaction {\n      ...personalTransactionRow\n      ...personalTransactionDetail\n      id\n    }\n  }\n}\n\nfragment personalTransactionDetail on BankingTransaction {\n  sourceId\n  accountId\n  bindingId\n  sourceRevision\n  latestSourceRevision\n  materialRevision\n  annotationRevision\n  amountMinor\n  currency\n  bankDate\n  authorizationDate\n  processingState\n  providerPrimaryCategory\n  providerCategory\n  providerConfidence\n  providerCode\n  mappingVersion\n  name\n  merchantName\n  categoryOverride\n  activityOverride\n  note\n  excluded\n  reviewed\n  materialConflict\n  current\n  currentId\n  discrepancy\n  category\n  activity\n  eligible\n  archives {\n    archiveId\n    sourceRevision\n    annotationRevision\n    annotation {\n      revision\n      materialRevision\n      category\n      activity\n      note\n      excluded\n      reviewed\n    }\n  }\n}\n\nfragment personalTransactionRow on BankingTransaction {\n  sourceId\n  accountId\n  bindingId\n  sourceRevision\n  latestSourceRevision\n  bankDate\n  amountMinor\n  currency\n  merchantName\n  name\n  processingState\n  activity\n  category\n  excluded\n  reviewed\n  materialConflict\n  current\n  currentId\n  discrepancy\n  archives {\n    archiveId\n    sourceRevision\n    annotationRevision\n    annotation {\n      revision\n      note\n      excluded\n      reviewed\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1c619132c5135ad77dc137ac09c2c055";
+(node as any).hash = "cd36270e3c66599516125355999bfb1e";
 
 export default node;

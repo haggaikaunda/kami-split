@@ -88,6 +88,7 @@ const row = (id = 'source-1') => ({
 let reportSequence = 0;
 const report = (overrides: Record<string, unknown> = {}) => ({
   bankingReport: {
+    __typename: 'BankingReport',
     id: `report-${reportSequence++}`,
     code: 'READY',
     fieldErrors: [],
@@ -225,6 +226,7 @@ beforeEach(() => {
     visits: new Map(),
     restored: new Set(),
     invalidate: vi.fn(),
+    revokeAccess: vi.fn(),
     environment: queryEnvironment((request) => requests.push(request)),
   } as unknown as FinancialScope;
   root = relayRoot(createRoot(host), () => scope);
@@ -309,6 +311,7 @@ it('uses source identity for selected current records outside archive date/activ
   });
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'detail',
       code: 'READY',
       currentId: 'current-source',
@@ -496,6 +499,7 @@ it('restores a selected archive-record origin only after its fresh source read',
   expect(document.activeElement?.id).not.toBe('selected-current-source-1');
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'archive-selected-fresh',
       code: 'READY',
       currentId: 'source-1',
@@ -586,6 +590,7 @@ async function openDetail(extra: Record<string, unknown> = {}) {
   await answer(report());
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'detail-initial',
       code: 'READY',
       currentId: 'source-1',
@@ -609,10 +614,12 @@ const result = (
   name = 'editBankingAnnotation',
 ) => ({
   [name]: {
+    __typename: 'BankingAnnotationResult',
     id: `result-${crypto.randomUUID()}`,
     code,
     sourceId: 'source-1',
     detail: {
+      __typename: 'BankingTransactionDetail',
       id: `detail-${crypto.randomUUID()}`,
       code: 'READY',
       currentId: 'source-1',
@@ -725,6 +732,7 @@ it('recovers response loss after remount and replays the exact frozen input only
   await answer(report());
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'reopened',
       code: 'READY',
       currentId: 'source-1',
@@ -738,6 +746,7 @@ it('recovers response loss after remount and replays the exact frozen input only
   );
   await answer({
     bankingAnnotationOperation: {
+      __typename: 'BankingAnnotationResult',
       id: 'missing',
       code: 'NOT_FOUND',
       sourceId: null,
@@ -781,6 +790,7 @@ it('keeps current archive copies read-only and permits archive-only annotations 
   await answer(report({ summary: null }));
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'archive-current',
       code: 'READY',
       currentId: 'source-1',
@@ -894,6 +904,7 @@ it('distinguishes a confirmed receipt from an unavailable follow-up detail', asy
       code: 'READY',
       sourceId: 'source-1',
       detail: {
+        __typename: 'BankingTransactionDetail',
         id: 'unavailable',
         code: 'NOT_FOUND',
         currentId: null,
@@ -979,6 +990,7 @@ it('does not silently advance a remaining field past another private writer and 
   await answer(report());
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'fresh-concurrent',
       code: 'READY',
       currentId: 'source-1',
@@ -994,6 +1006,7 @@ it('does not silently advance a remaining field past another private writer and 
   await click('Check current record');
   await answer({
     bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
       id: 'checked-concurrent',
       code: 'READY',
       currentId: 'source-1',
@@ -1007,4 +1020,203 @@ it('does not silently advance a remaining field past another private writer and 
     value: 'TRAVEL',
     expectedRevision: '2',
   });
+});
+
+it.each([false, true])(
+  'keeps explicitly adopted corrected facts and retained activity intent: %s',
+  async (retainPurchase) => {
+    await openDetail();
+    await click('Edit');
+    await textInput('Remaining private intention');
+    if (retainPurchase) {
+      const activity = host.querySelector('select')!;
+      await act(async () => {
+        activity.value = 'purchase';
+        activity.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+    await click('Save changes');
+    const corrected = {
+      ...row(),
+      id: 'new-immutable-corrected-snapshot',
+      sourceRevision: '2',
+      materialRevision: '2',
+      annotationRevision: '1',
+      amountMinor: '-12345',
+      bankDate: '2026-10-18',
+      authorizationDate: '2026-10-15',
+      activity: 'unresolved',
+      materialConflict: true,
+      eligible: false,
+    };
+    await answer(result('CONFLICT', corrected));
+    await click('Check current record');
+    await answer({
+      bankingTransaction: {
+        __typename: 'BankingTransactionDetail',
+        id: 'checked-corrected',
+        code: 'READY',
+        currentId: 'source-1',
+        transaction: corrected,
+      },
+    });
+    await click('Use current versions');
+    const dialog = host.querySelector('dialog')!;
+    expect(dialog.textContent).toContain('−$123.45');
+    expect(dialog.textContent).toContain('Money in');
+    expect(dialog.textContent).toContain('2026-10-18');
+    expect(dialog.textContent).toContain('Authorization date2026-10-15');
+    expect(host.querySelector('textarea')?.value).toBe(
+      'Remaining private intention',
+    );
+    const activity = host.querySelector('select')!;
+    expect([...activity.options].map((option) => option.value)).toContain(
+      'refund',
+    );
+    expect(
+      [...activity.options].map((option) => option.value).includes('purchase'),
+    ).toBe(retainPurchase);
+    if (retainPurchase) {
+      expect(activity.value).toBe('purchase');
+      expect(dialog.textContent).toContain(
+        'compatible with the original bank amount',
+      );
+    }
+    await act(async () => {
+      activity.value = 'refund';
+      activity.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await click('Save changes');
+    expect(latestMutation().variables.input).toMatchObject({
+      field: 'ACTIVITY',
+      value: 'refund',
+      sourceRevision: '2',
+      materialRevision: '2',
+      expectedRevision: '1',
+    });
+    await answer(
+      result('READY', {
+        ...corrected,
+        activity: 'refund',
+        activityOverride: 'refund',
+        annotationRevision: '2',
+        materialConflict: false,
+      }),
+    );
+    const frozen = latestMutation().variables.input;
+    expect(frozen).toMatchObject({
+      field: 'NOTE',
+      value: 'Remaining private intention',
+      sourceRevision: '2',
+      materialRevision: '2',
+      expectedRevision: '2',
+    });
+    await act(async () => latestMutation().error());
+    await click('Check original save');
+    await answer({
+      bankingAnnotationOperation: {
+        __typename: 'BankingAnnotationResult',
+        id: 'missing-receipt',
+        code: 'NOT_FOUND',
+        sourceId: null,
+        detail: null,
+      },
+    });
+    expect(latestMutation().variables.input).toEqual(frozen);
+  },
+);
+
+it('retains the selected archive snapshot and provenance when a receipt also contains a canonical current detail', async () => {
+  nav.search = 'tab=transactions&archive=archive&transaction=source-1';
+  await act(async () => render());
+  await answer(report({ summary: null }));
+  const captured = {
+    ...row(),
+    id: 'archive-captured-snapshot',
+    current: false,
+    currentId: null,
+  };
+  await answer({
+    bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
+      id: 'archive-only',
+      code: 'READY',
+      currentId: null,
+      transaction: captured,
+    },
+  });
+  await click('Edit');
+  await textInput('Archive intended note');
+  await act(async () =>
+    host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click(),
+  );
+  await click('Save changes');
+  await answer(
+    result('READY', {
+      ...row(),
+      id: 'canonical-latest',
+      sourceRevision: '2',
+      materialRevision: '2',
+      amountMinor: '-10000',
+      note: 'Archive intended note',
+      annotationRevision: '1',
+    }),
+  );
+  const archiveRead = requests
+    .filter((request) => request.name === 'personalTransactionSelectionQuery')
+    .at(-1)!;
+  expect(archiveRead.variables).toMatchObject({
+    source: 'source-1',
+    archive: 'archive',
+  });
+  await answer({
+    bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
+      id: 'fresh-archive-now-current',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: {
+        ...captured,
+        currentId: 'source-1',
+        note: 'Archive intended note',
+        annotationRevision: '1',
+      },
+    },
+  });
+  expect(host.querySelector('dialog')?.textContent).toContain('$100.00');
+  expect(host.querySelector('dialog')?.textContent).not.toContain('−$100.00');
+  expect(host.textContent).toContain('Captured note: Original private note');
+  expect(host.querySelector('textarea')?.value).toBe('Archive intended note');
+  expect(
+    host.querySelector('a[id="selected-current-source-1"]'),
+  ).not.toBeNull();
+  expect(
+    requests.filter(
+      (request) => request.name === 'personalTransactionAnnotationMutation',
+    ),
+  ).toHaveLength(1);
+});
+
+it('delegates a directly delivered definitive actor denial to the financial session owner and masks private details', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Private denied actor draft');
+  await click('Save changes');
+  await answer({
+    editBankingAnnotation: {
+      __typename: 'BankingAnnotationResult',
+      id: 'actor-forbidden',
+      code: 'FORBIDDEN',
+      sourceId: null,
+      detail: null,
+    },
+  });
+  expect(scope.revokeAccess).toHaveBeenCalledExactlyOnceWith('FORBIDDEN');
+  expect(host.querySelector('textarea')).toBeNull();
+  // This isolated owner's revokeAccess is a spy; the real FinancialSession
+  // whole-page purge is verified through the browser transport regression.
+  expect(host.querySelector('dialog')?.textContent).not.toContain(
+    'Private merchant',
+  );
+  expect(host.textContent).not.toContain('original save is unconfirmed');
 });

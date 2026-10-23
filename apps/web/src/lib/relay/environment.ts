@@ -81,8 +81,10 @@ export function createScope(
     environment.getStore().notify();
   };
   const deny = (code: string) => {
-    dispose();
-    onDenied?.(code);
+    if (live) {
+      dispose();
+      onDenied?.(code);
+    }
     return new Error(code);
   };
   const restoreHistory = () => {
@@ -183,6 +185,10 @@ export function createScope(
     id: createSessionId(),
     environment,
     isLive: () => live,
+    /** Definitive domain denial shares the transport's disposal and session purge owner. */
+    revokeAccess: (code: string) => {
+      deny(code);
+    },
     invalidate,
     dispose,
   };
@@ -212,6 +218,9 @@ function accessDenial(
         record.__typename === 'ProfileProblem' ||
         record.__typename === 'InvitationProblem' ||
         record.__typename === 'ReportingTimezoneProblem' ||
+        record.__typename === 'BankingAnnotationResult' ||
+        record.__typename === 'BankingTransactionDetail' ||
+        record.__typename === 'BankingReport' ||
         record.__typename === 'BankingConnectionsResult' ||
         record.__typename === 'BankingEnrollmentResult')
     ) {
@@ -225,7 +234,10 @@ function accessDenial(
         ].includes(code) ||
         (code === 'NOT_FOUND' &&
           !recovery &&
-          record.__typename !== 'BankingEnrollmentResult')
+          record.__typename !== 'BankingEnrollmentResult' &&
+          record.__typename !== 'BankingAnnotationResult' &&
+          record.__typename !== 'BankingTransactionDetail' &&
+          record.__typename !== 'BankingReport')
       )
         return code;
     }
