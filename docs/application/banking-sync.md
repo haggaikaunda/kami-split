@@ -3,7 +3,7 @@
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
 restricted atomic batch persistence and durable initial/incremental consumption through verified Transactions dispatch and daily reconciliation are implemented below. The [owner-only status API](banking-status.md) exposes persisted progress, coverage and freshness.
-The [private reporting API](banking-reporting.md) reads stored canonical activity and guarded annotations; the browser transaction journey remains separate work.
+The [private reporting API](banking-reporting.md) reads stored canonical activity and guarded annotations; Personal Transactions consumes those stored report snapshots through the owner-scoped browser journey described in the [frontend guide](frontend.md).
 Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:
@@ -293,8 +293,7 @@ Failure/uncertainty during creation or exchange requires reconciling owned Sandb
 inventory before retry; never replay an uncertain exchange. Output contains only
 safe stages, counts and confirmation. Fixtures establish the full authenticated
 enrollment journey separately; Sandbox establishes only the observed synthetic
-provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Private transaction reads and annotations are implemented by [reporting](banking-reporting.md); browser visibility,
-live capabilities, backups and release remain separate work.
+provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Private transaction reads and annotations are implemented by [reporting](banking-reporting.md); Personal Transactions presents current/archive activity and persisted status. Full detail/private editing, Overview presentation, live capabilities, backups and release remain separate work.
 
 ## Background dispatch and reconciliation
 

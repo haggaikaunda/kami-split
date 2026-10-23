@@ -38,8 +38,8 @@ new enrollment. The [replacement backend](../../docs/application/banking-replace
 The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
 an owner-only independent preference and immutable write recovery. Account consumes
 its independent control, and Personal initializes the device zone once. Private
-bank reporting uses this saved preference for date bounds. Personal transaction
-and activity content remain separate deliveries.
+bank reporting uses this saved preference for date bounds. Personal Transactions consumes these stored report reads; full transaction detail/private
+editing and Overview presentation remain separately owned capabilities.
 
 ## Design and implementation
 

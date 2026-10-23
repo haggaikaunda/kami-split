@@ -22,6 +22,7 @@ export function ScopedLink({
 }: {
   onClick?: MouseEventHandler<HTMLAnchorElement>;
   'aria-label'?: string;
+  'aria-describedby'?: string;
   'aria-current'?: 'page';
   className?: string;
   scope: FinancialScope;
@@ -64,12 +65,15 @@ export function SourceReturn({
   household = false,
   authorizedGroups,
   fallbackLabel,
+  label,
   authorized = true,
 }: {
   scope: FinancialScope;
   household?: boolean;
   authorizedGroups?: readonly { id: string; name: string }[];
   fallbackLabel?: string;
+  /** A source-specific visible return label; authorization and href ownership stay here. */
+  label?: string;
   /** The owning read can deny a saved origin after fresh access validation. */
   authorized?: boolean;
 }) {
@@ -109,14 +113,15 @@ export function SourceReturn({
         if (token) scope.restored.delete(token);
       }}
     >
-      {destination
-        ? sourceReturnLabel(destination.pathname, group?.name)
-        : (fallbackLabel ??
-          (household
-            ? 'Back to Household'
-            : trip
-              ? 'Back to Trips'
-              : 'Back to Groups'))}
+      {label ??
+        (destination
+          ? sourceReturnLabel(destination.pathname, group?.name)
+          : (fallbackLabel ??
+            (household
+              ? 'Back to Household'
+              : trip
+                ? 'Back to Trips'
+                : 'Back to Groups')))}
     </Link>
   );
 }
@@ -168,6 +173,15 @@ export function RestoreSource({
       const heading = document.querySelector<HTMLElement>(
         '[data-page-heading]',
       );
+      // Native disclosures may remount collapsed when a reporting context changes.
+      // Only a freshly authorized actor-owned target can reveal its ancestors.
+      for (
+        let parent = target?.parentElement;
+        parent;
+        parent = parent.parentElement
+      ) {
+        if (parent instanceof HTMLDetailsElement) parent.open = true;
+      }
       (target ?? heading)?.focus({ preventScroll: true });
       window.scrollTo(0, target && visit ? visit.scroll : 0);
     });

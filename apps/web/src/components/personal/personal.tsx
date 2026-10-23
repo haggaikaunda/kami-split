@@ -17,8 +17,9 @@ import { useForegroundRefresh } from '../groups/foreground';
 import { Enrollment } from './enrollment';
 import { Management } from './management';
 import { ManagementRecovery } from './management-attempt';
+import { PersonalTransactions } from './transactions';
 import { ReportingTimezoneInitialization } from './reporting-timezone-control';
-import { importSummary, coverageSummary } from './status';
+import { importSummary, coverageSummary, type ImportFacts } from './status';
 import styles from './personal.module.css';
 export const personalSections = [
   'Overview',
@@ -112,18 +113,26 @@ function PersonalRead({
           {(data) =>
             data.bankingConnections.code === 'READY' ? (
               <>
-                <RestoreSource scope={scope} allowed={[]} />
+                {(section !== 'Transactions' ||
+                  !data.bankingConnections.connections.some(
+                    (connection) => connection.accounts.length > 0,
+                  )) && <RestoreSource scope={scope} allowed={[]} />}
                 <ReportingTimezoneInitialization
                   showPeriod={
-                    section !== 'Connections' &&
+                    section === 'Overview' &&
                     (paramsPeriod === null || paramsPeriod === 'this-month')
                   }
                 />
-                {section !== 'Connections' && (
-                  <p className={styles.privacy}>
-                    Only you can see these bank accounts and their activity.
-                  </p>
-                )}
+                {section !== 'Connections' &&
+                  (section !== 'Transactions' ||
+                    (!data.bankingConnections.connections.some(
+                      (connection) => connection.accounts.length > 0,
+                    ) &&
+                      !data.bankingConnections.hasNextPage)) && (
+                    <p className={styles.privacy}>
+                      Only you can see these bank accounts and their activity.
+                    </p>
+                  )}
                 {section === 'Connections' ? (
                   <>
                     <section
@@ -158,6 +167,15 @@ function PersonalRead({
                       </p>
                     </section>
                   </>
+                ) : section === 'Transactions' &&
+                  (data.bankingConnections.connections.some(
+                    (connection) => connection.accounts.length > 0,
+                  ) ||
+                    data.bankingConnections.hasNextPage) ? (
+                  <TransactionInventory
+                    scope={scope}
+                    result={data.bankingConnections}
+                  />
                 ) : (
                   <ActivityBoundary
                     section={section}
@@ -232,6 +250,84 @@ function ActivityBoundary({
         Go to Connections
       </Link>
     </section>
+  );
+}
+type AccountLabel = { name: string; status: ImportFacts; current: boolean };
+/** Retain every authorized inventory page for report account labels. Logical
+ * account IDs can appear on retired bindings; current bindings own status/name
+ * preference without erasing truthful retained-only account identity. */
+function TransactionInventory({
+  scope,
+  result,
+  known = new Map(),
+}: {
+  scope: FinancialScope;
+  result: personalInventoryQuery['response']['bankingConnections'];
+  known?: ReadonlyMap<string, AccountLabel>;
+}) {
+  const [retry, setRetry] = useState(0);
+  const labels = new Map(known);
+  for (const connection of result.connections)
+    for (const account of connection.accounts) {
+      const current = account.importStatus.reportingState === 'CURRENT';
+      if (
+        !labels.has(account.id) ||
+        current ||
+        !labels.get(account.id)!.current
+      )
+        labels.set(account.id, {
+          name: account.name,
+          status: account.importStatus,
+          current,
+        });
+    }
+  if (result.hasNextPage && !result.endCursor)
+    return (
+      <Status kind="error">
+        Private account identities cannot be continued. Retry to check current
+        access.
+      </Status>
+    );
+  if (result.hasNextPage && result.endCursor)
+    return (
+      <NetworkQuery<personalInventoryQuery>
+        key={retry}
+        scope={scope}
+        document={document}
+        variables={{ first: 20, after: result.endCursor }}
+        fallback={<ContentLoading layout="cards" label="account identities" />}
+        failure={
+          <Status kind="error">
+            Account identities could not be loaded.{' '}
+            <Button tone="text" onClick={() => setRetry((value) => value + 1)}>
+              Retry account identities
+            </Button>
+          </Status>
+        }
+      >
+        {(data) =>
+          data.bankingConnections.code === 'READY' ? (
+            <TransactionInventory
+              scope={scope}
+              result={data.bankingConnections}
+              known={labels}
+            />
+          ) : (
+            <Status kind="error">
+              Private accounts are unavailable. Retry to check current access.
+            </Status>
+          )
+        }
+      </NetworkQuery>
+    );
+  return (
+    <PersonalTransactions
+      scope={scope}
+      names={new Map([...labels].map(([id, account]) => [id, account.name]))}
+      statuses={
+        new Map([...labels].map(([id, account]) => [id, account.status]))
+      }
+    />
   );
 }
 function InventoryPage({

@@ -183,6 +183,8 @@ function ConnectionManagement({
   const [confirmed, setConfirmed] = useState(false);
   const [repairChoices, setRepairChoices] = useState<LinkAccount[]>();
   const [repairId, setRepairId] = useState<string>();
+  // Once a finish is sent, its selection is immutable; only the original receipt can resolve uncertainty.
+  const [repairFinishSubmitted, setRepairFinishSubmitted] = useState(false);
   const [replacement, setReplacement] = useState<string>();
   const [lastAccount, setLastAccount] = useState<string>();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -366,7 +368,7 @@ function ConnectionManagement({
         }}
       />
       {work.busy && <Status kind="pending">Checking the connection…</Status>}
-      <fieldset disabled={work.busy || !canCollect}>
+      <fieldset disabled={work.busy || repairFinishSubmitted || !canCollect}>
         <legend>Selected accounts</legend>
         <p>
           Only checked accounts collect updates. Deselecting keeps private
@@ -394,10 +396,16 @@ function ConnectionManagement({
       </fieldset>
       <div className={styles.actions}>
         <Button
-          disabled={work.busy || !canCollect || (!repairChoices && !changed)}
+          disabled={
+            work.busy ||
+            repairFinishSubmitted ||
+            !canCollect ||
+            (!repairChoices && !changed)
+          }
           onClick={() =>
             void (repairChoices && repairId
               ? work.run(null, async () => {
+                  setRepairFinishSubmitted(true);
                   const code = (
                     await command<managementRepairFinishMutation>(
                       scope,
@@ -484,7 +492,7 @@ function ConnectionManagement({
               <Button
                 ref={lastAccount === a.id ? replacementTrigger : undefined}
                 tone="secondary"
-                disabled={work.busy}
+                disabled={work.busy || repairFinishSubmitted}
                 onClick={() => {
                   setLastAccount(a.id);
                   setHistoryOpen(true);
@@ -508,14 +516,18 @@ function ConnectionManagement({
         <div className={styles.actions}>
           <Button
             tone="secondary"
-            disabled={work.busy || !canCollect}
+            disabled={work.busy || repairFinishSubmitted || !canCollect}
             onClick={() => setConfirm('disconnect')}
           >
             Disconnect
           </Button>
           <Button
             tone="text"
-            disabled={work.busy || connection.state === 'deleted'}
+            disabled={
+              work.busy ||
+              repairFinishSubmitted ||
+              connection.state === 'deleted'
+            }
             onClick={() => setConfirm('delete')}
           >
             Delete connection and history
@@ -547,7 +559,7 @@ function ConnectionManagement({
                 Keep connection
               </Button>
               <Button
-                disabled={work.busy}
+                disabled={work.busy || repairFinishSubmitted}
                 onClick={() =>
                   void work.run('management', async (attemptId) => {
                     const input = {

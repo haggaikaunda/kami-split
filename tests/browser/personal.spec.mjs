@@ -954,3 +954,601 @@ test('Connections keeps healthy institution management compact and uses the R2 d
     ).toBeLessThanOrEqual(1);
   }
 });
+
+function transactionRow(sourceId = 'source-private', extra = {}) {
+  return {
+    __typename: 'BankingTransaction',
+    id: `fact-${sourceId}`,
+    sourceId,
+    accountId: 'account-private',
+    bindingId: 'binding-private',
+    sourceRevision: '1',
+    latestSourceRevision: '2',
+    bankDate: '2026-10-17',
+    amountMinor: '10000',
+    currency: 'USD',
+    merchantName: 'Long private grocery merchant with a full descriptive name',
+    name: 'Bank fact',
+    processingState: 'posted',
+    activity: 'purchase',
+    category: 'FOOD_AND_DRINK',
+    excluded: false,
+    reviewed: false,
+    materialConflict: false,
+    current: true,
+    currentId: sourceId,
+    discrepancy: 'none',
+    archives: [
+      {
+        __typename: 'BankingArchiveReference',
+        archiveId: 'archive-private',
+        sourceRevision: '1',
+        annotationRevision: '2',
+        annotation: {
+          __typename: 'BankingAnnotationSnapshot',
+          revision: '2',
+          note: 'Immutable captured private note',
+          excluded: true,
+          reviewed: false,
+        },
+      },
+    ],
+    ...extra,
+  };
+}
+let reportSequence = 0;
+function transactionReport(extra = {}) {
+  return {
+    bankingReport: {
+      __typename: 'BankingReport',
+      id: `report-${reportSequence++}`,
+      code: 'READY',
+      fieldErrors: [],
+      start: '2026-10-01',
+      end: '2026-10-17',
+      asOfDate: '2026-10-17',
+      timezone: 'America/Los_Angeles',
+      revision: 'revision-private',
+      totalCount: 125,
+      spendingContext: 'SPENDING_FROM_ACCOUNTS',
+      endCursor: 'signed-page',
+      hasNextPage: true,
+      activityChoices: [
+        'purchase',
+        'refund',
+        'transfer',
+        'income',
+        'unresolved',
+      ],
+      categoryChoices: ['FOOD_AND_DRINK', 'UNCATEGORIZED'],
+      counts: {
+        __typename: 'BankingReportCounts',
+        count: 125,
+        postedCount: 121,
+        pendingCount: 2,
+        removedCount: 2,
+        excludedCount: 1,
+        unresolvedCount: 1,
+        reviewedCount: 120,
+        classificationComplete: false,
+      },
+      summary: {
+        __typename: 'BankingReportSummary',
+        netMinor: '-4000',
+        purchaseMinor: '10000',
+        refundMinor: '14000',
+        classificationComplete: false,
+      },
+      accounts: [
+        {
+          __typename: 'BankingReportAccount',
+          id: 'account-snapshot',
+          accountId: 'account-private',
+          kind: 'checking',
+          selected: true,
+          coverage: 'PARTIAL',
+          planId: 'plan-private',
+          transitionDate: '2026-09-30',
+          archives: [
+            {
+              __typename: 'BankingReportArchive',
+              id: 'archive-private',
+              planId: 'old-plan',
+              boundaryDate: '2026-09-30',
+              count: 130,
+            },
+          ],
+          intervals: [
+            {
+              __typename: 'BankingReportInterval',
+              bindingId: 'binding-private',
+              afterDate: null,
+              throughDate: '2026-09-30',
+              importState: 'usable',
+              coverage: 'UNKNOWN',
+              coverageAfter: null,
+              coverageThrough: null,
+              collectionState: 'retired/active/granted',
+              collectionStopped: true,
+              lastLocalCommit: null,
+              providerSuccessAt: null,
+              discrepancyCount: 1,
+            },
+          ],
+        },
+      ],
+      rows: [
+        transactionRow(),
+        transactionRow('transfer', {
+          merchantName: 'Transfer between accounts',
+          activity: 'transfer',
+        }),
+        transactionRow('income', {
+          merchantName: 'Income from employer',
+          activity: 'income',
+          amountMinor: '-200000',
+        }),
+        transactionRow('pending', {
+          merchantName: 'Provisional pending activity',
+          processingState: 'pending',
+          bankDate: '2026-10-17',
+        }),
+      ],
+      ...extra,
+    },
+  };
+}
+async function transactionServer(page, handler = () => undefined) {
+  const calls = [];
+  await page.route('**/api/graphql', async (route) => {
+    const { query, variables = {} } = route.request().postDataJSON();
+    const operation = query.match(/(?:query|mutation) (\w+)/)?.[1];
+    if (operation === 'personalInventoryQuery')
+      return route.fulfill({ json: { data: inventory() } });
+    if (
+      operation !== 'personalTransactionsQuery' &&
+      operation !== 'personalTransactionSelectionQuery'
+    )
+      return route.fallback();
+    calls.push({ operation, variables });
+    const custom = await handler(operation, variables, route);
+    if (custom === false) return;
+    const data =
+      custom ??
+      (operation === 'personalTransactionSelectionQuery'
+        ? {
+            bankingTransaction: {
+              __typename: 'BankingTransactionDetail',
+              id: 'selected-fact',
+              code: 'READY',
+              currentId: variables.source,
+              transaction: transactionRow(variables.source),
+            },
+          }
+        : transactionReport());
+    return route.fulfill({ json: { data } });
+  });
+  return calls;
+}
+
+test('Personal transactions apply drafts, preserve shared dates, and restore row and archive origins', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const calls = await transactionServer(page, (operation, variables) =>
+    operation === 'personalTransactionsQuery'
+      ? transactionReport({
+          ...(variables.filter.archiveId
+            ? { summary: null, spendingContext: 'RECOVERY_ARCHIVE' }
+            : {}),
+        })
+      : undefined,
+  );
+  await page.goto('/personal?tab=transactions');
+  await expect(
+    page.getByText('125 transactions · complete matching count'),
+  ).toBeVisible();
+  await expect(page.getByText('−$40.00', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'This month', exact: true }).click();
+  await page.getByRole('button', { name: 'Custom range', exact: true }).click();
+  await page.getByLabel('Start date', { exact: true }).fill('2026-09-01');
+  await page.getByLabel('End date', { exact: true }).fill('2026-09-30');
+  const reads = calls.length;
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'This month', exact: true }),
+  ).toBeFocused();
+  expect(calls).toHaveLength(reads);
+  await page.getByRole('button', { name: 'This month', exact: true }).click();
+  await page.getByRole('button', { name: 'Last month', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click();
+  await expect(page).toHaveURL(/period=last-month/);
+  await expect(
+    page.getByRole('button', { name: 'Last month', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Personal workspace' })
+    .getByRole('link', { name: 'Overview', exact: true })
+    .click();
+  await expect(page).toHaveURL(/period=last-month/);
+  await page
+    .getByRole('navigation', { name: 'Personal workspace' })
+    .getByRole('link', { name: 'Transactions', exact: true })
+    .click();
+  await page
+    .getByRole('link', {
+      name: 'Long private grocery merchant with a full descriptive name',
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Back to transactions', exact: true })
+    .click();
+  await expect(page.locator('#transaction-source-private')).toBeFocused();
+  await page
+    .getByText('Reporting history and recovery archives', { exact: true })
+    .click();
+  await page.getByRole('link', { name: /View recovery archive/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Recovery archive', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Immutable captured private note', { exact: false }).first(),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'View current record', exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+  ).toBeVisible();
+  expect(calls.at(-1)).toEqual({
+    operation: 'personalTransactionSelectionQuery',
+    variables: { source: 'source-private', archive: null, discrepancy: false },
+  });
+  await page
+    .getByRole('link', { name: 'Back to recovery archive', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Recovery archive', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Back to current activity', exact: true })
+    .click();
+  await expect(page.locator('#archive-archive-private')).toBeFocused();
+  await expect(
+    page
+      .getByText('Reporting history and recovery archives', { exact: true })
+      .locator('..'),
+  ).toHaveAttribute('open', '');
+});
+
+test('Personal transaction pagination restarts on changed snapshots and keeps filters through failure', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let restart = true,
+    fail = false;
+  const calls = await transactionServer(
+    page,
+    async (operation, variables, route) => {
+      if (operation !== 'personalTransactionsQuery') return;
+      if (fail) {
+        await route.abort('failed');
+        return false;
+      }
+      if (variables.after && restart)
+        return transactionReport({
+          code: 'RESTART_REQUIRED',
+          rows: [],
+          summary: null,
+          counts: null,
+        });
+      if (variables.after)
+        return transactionReport({
+          rows: [
+            transactionRow('second-page', {
+              merchantName: 'Second signed page',
+            }),
+          ],
+          hasNextPage: false,
+          endCursor: null,
+        });
+      return transactionReport();
+    },
+  );
+  await page.goto('/personal?tab=transactions&activity=income');
+  await page
+    .getByRole('button', { name: 'Load more transactions', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Restart activity', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-source-id]')).toHaveCount(0);
+  restart = false;
+  await page
+    .getByRole('button', { name: 'Restart activity', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Load more transactions', exact: true })
+    .click();
+  await expect(
+    page.getByText('Second signed page', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Second signed page', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('link', { name: 'Back to transactions', exact: true })
+    .click();
+  await expect(page.locator('#transaction-second-page')).toBeFocused();
+  expect(
+    calls
+      .filter((call) => call.operation === 'personalTransactionsQuery')
+      .every((call) => call.variables.filter.activities[0] === 'income'),
+  ).toBe(true);
+  fail = true;
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: 'Retry activity', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-source-id]')).toHaveCount(0);
+  fail = false;
+  await page
+    .getByRole('button', { name: 'Retry activity', exact: true })
+    .click();
+  await expect(
+    page.getByText('125 transactions · complete matching count'),
+  ).toBeVisible();
+});
+
+test('Personal archive returns replay fresh signed extent and discard changed or denied sources', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let mode = 'ready',
+    returning = false;
+  const calls = await transactionServer(page, (operation, variables) => {
+    if (operation !== 'personalTransactionsQuery') return;
+    if (!variables.filter.archiveId)
+      return transactionReport({ hasNextPage: false });
+    const extra = { summary: null, spendingContext: 'RECOVERY_ARCHIVE' };
+    if (variables.after)
+      return transactionReport({
+        ...extra,
+        ...(returning && mode === 'denied' ? { code: 'FORBIDDEN' } : {}),
+        rows: [
+          transactionRow('archive-later', {
+            merchantName: 'Later archived income',
+            activity: 'income',
+            bankDate: '2026-09-12',
+            currentId: 'current-outside',
+          }),
+        ],
+        hasNextPage: false,
+        endCursor: null,
+      });
+    return transactionReport({
+      ...extra,
+      revision:
+        returning && mode === 'revision'
+          ? 'changed-revision'
+          : 'revision-private',
+      endCursor: returning ? 'fresh-signed-page' : 'signed-page',
+      rows: [
+        transactionRow('archive-first', {
+          merchantName: 'First archived income',
+          activity: 'income',
+          bankDate: '2026-09-10',
+        }),
+      ],
+    });
+  });
+  for (mode of ['ready', 'revision', 'denied']) {
+    returning = false;
+    await page.goto(
+      '/personal?tab=transactions&period=custom&start=2026-09-01&end=2026-09-30&activity=income&archive=archive-private',
+    );
+    await page
+      .getByRole('button', { name: 'Load more transactions', exact: true })
+      .click();
+    await page.locator('#current-archive-later').click();
+    await expect(
+      page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-source-id="current-outside"]:visible'),
+    ).toHaveCount(1);
+    returning = true;
+    const before = calls.length;
+    await page
+      .getByRole('link', { name: 'Back to recovery archive', exact: true })
+      .click();
+    if (mode === 'ready') {
+      await expect(page.locator('#current-archive-later')).toBeFocused();
+      await expect(
+        page.getByRole('link', { name: 'Later archived income', exact: true }),
+      ).toBeVisible();
+      expect(
+        calls
+          .slice(before)
+          .some((call) => call.variables.after === 'fresh-signed-page'),
+      ).toBe(true);
+      const ids = await page
+        .locator('[id]')
+        .evaluateAll((nodes) => nodes.map((node) => node.id));
+      expect(new Set(ids).size).toBe(ids.length);
+    } else {
+      await expect(
+        page.getByRole('button', { name: 'Restart activity', exact: true }),
+      ).toBeVisible();
+      await expect(page.locator('[data-source-id]')).toHaveCount(0);
+      returning = false;
+      await page
+        .getByRole('button', { name: 'Restart activity', exact: true })
+        .click();
+      await expect(
+        page.getByRole('button', {
+          name: 'Load more transactions',
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
+    await expect(page).toHaveURL(/start=2026-09-01/);
+    expect(calls.at(-1).variables.filter).toMatchObject({
+      archiveId: 'archive-private',
+      activities: ['income'],
+    });
+  }
+});
+
+test('Personal transaction context distinguishes pending, unavailable and fully covered empty results', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let state = 'pending';
+  await transactionServer(page, () =>
+    state === 'pending'
+      ? transactionReport({
+          summary: null,
+          spendingContext: 'ACTIVITY_CONTEXT',
+        })
+      : state === 'unavailable'
+        ? transactionReport({
+            code: 'DATA_UNAVAILABLE',
+            summary: null,
+            counts: null,
+            rows: [],
+          })
+        : transactionReport({
+            rows: [],
+            totalCount: 0,
+            hasNextPage: false,
+            summary: {
+              __typename: 'BankingReportSummary',
+              netMinor: '0',
+              purchaseMinor: '0',
+              refundMinor: '0',
+              classificationComplete: true,
+            },
+            accounts: [
+              {
+                ...transactionReport().bankingReport.accounts[0],
+                coverage: 'COMPLETE',
+              },
+            ],
+          }),
+  );
+  await page.goto('/personal?tab=transactions&state=pending');
+  await expect(
+    page.getByText(/Activity context; no spending total applies/),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Spending from your accounts:', { exact: false }),
+  ).toHaveCount(0);
+  state = 'unavailable';
+  await page.reload();
+  await expect(
+    page.getByText(/Initial history is importing or unavailable/),
+  ).toBeVisible();
+  await expect(
+    page.getByText('No matching transactions', { exact: true }),
+  ).toHaveCount(0);
+  state = 'empty';
+  await page.goto('/personal?tab=transactions');
+  await expect(
+    page.getByRole('heading', {
+      name: 'No matching transactions',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      'No activity matches these dates and filters in the covered history.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+});
+
+test('Personal transactions reflow long activity and controls in every appearance @owns-viewport', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  await transactionServer(page);
+  for (const [width, scale, theme] of [
+    [320, 1, 'LIGHT'],
+    [390, 1, 'DARK'],
+    [440, 2, 'SYSTEM'],
+    [1280, 2, 'LIGHT'],
+  ]) {
+    app.setAppearance(theme);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/personal?tab=transactions');
+    await expect(
+      page.getByText('125 transactions · complete matching count'),
+    ).toBeVisible();
+    await page.evaluate((scale) => {
+      document.documentElement.style.fontSize = `${16 * scale}px`;
+    }, scale);
+    for (const label of ['Transfer', 'Income', 'Needs review'])
+      await expect(
+        page.getByText(label, { exact: false }).first(),
+      ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`transactions-${width}-${scale}-${theme}.png`),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'This month', exact: true }).click();
+    const dates = page.getByRole('dialog', { name: 'Date range' });
+    await expect(dates).toBeVisible();
+    if (scale === 1 && width < 760) {
+      const geometry = await dates.evaluate((element) => ({
+        height: element.getBoundingClientRect().height,
+        bottomGap:
+          element.getBoundingClientRect().bottom -
+          element.querySelector('form').getBoundingClientRect().bottom,
+      }));
+      expect(geometry.height).toBeLessThan(630);
+      expect(geometry.bottomGap).toBeLessThan(64);
+    }
+    await dates
+      .getByRole('button', { name: 'Apply dates', exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      dates.getByRole('button', { name: 'Apply dates', exact: true }),
+    ).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', { name: 'This month', exact: true }),
+    ).toBeFocused();
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Filter transactions' });
+    await expect(dialog).toBeVisible();
+    await dialog
+      .getByRole('button', { name: 'Apply filters', exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      dialog.getByRole('button', { name: 'Apply filters', exact: true }),
+    ).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', { name: 'Filters', exact: true }),
+    ).toBeFocused();
+  }
+});

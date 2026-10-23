@@ -60,6 +60,7 @@ withAuthFixture(origin, session, async () => {
   fs.mkdirSync(evidence, { recursive: true });
   const errors = [];
   const observed = {};
+  const repairFinishes = [];
   let lose;
   page.on('pageerror', (error) => errors.push(error.message));
   await seedSession(page.context(), origin, session);
@@ -100,6 +101,8 @@ withAuthFixture(origin, session, async () => {
       `Unexpected GraphQL errors in ${r.request().postDataJSON().operationName || 'operation'}`,
     );
     Object.assign(observed, result.data);
+    if (Object.hasOwn(result.data, 'finishBankingRepair'))
+      repairFinishes.push(r.request().postDataJSON().variables.input);
     if (lose && Object.hasOwn(result.data, lose)) {
       lose = undefined;
       await r.abort('failed');
@@ -201,12 +204,38 @@ withAuthFixture(origin, session, async () => {
       await click('Reconnect with Plaid');
       await waitText('Link success alone is not renewed consent');
       assert(await savings().isChecked());
+      lose = 'finishBankingRepair';
       await click('Apply repair');
-      await waitText('The local change is confirmed.');
+      await waitText('The response was lost or unavailable.');
       assert.equal(observed.finishBankingRepair.code, 'READY');
-      await checkpoint('retained');
-      await click('Close management');
+      await expect(savings()).toBeDisabled();
+      await expect(
+        page.getByRole('button', { name: 'Apply repair', exact: true }),
+      ).toBeDisabled();
+      await savings().evaluate((element) => element.click());
+      await page
+        .getByRole('button', { name: 'Apply repair', exact: true })
+        .evaluate((element) => element.click());
+      assert.equal(
+        repairFinishes.length,
+        1,
+        'Ambiguous repair cannot resend changed input',
+      );
+      assert.equal(repairFinishes[0].accountIds.length, 2);
+      await screenshot('uncertain-repair-finish');
+      await click('Cancel');
+      await click('Check repair outcome');
+      await expect.poll(() => observed.bankingRepair?.code).toBe('READY');
+      assert.equal(
+        observed.bankingRepair.attemptId,
+        repairFinishes[0].attemptId,
+      );
       await open();
+      assert(
+        await savings().isChecked(),
+        'Original committed repair selection survives recovery',
+      );
+      await checkpoint('retained');
       await savings().uncheck();
       lose = 'changeBankingSelection';
       await click('Apply selection');

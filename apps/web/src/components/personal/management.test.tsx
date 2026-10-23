@@ -306,6 +306,69 @@ it('repair filters eligibility, never selects a new account implicitly, sends no
     requests.filter((r) => r.name === 'enrollmentFinishMutation'),
   ).toHaveLength(0);
 });
+it('freezes an ambiguous repair finish and recovers its original receipt without changed-input retry', async () => {
+  const attemptId = await repair();
+  await act(async () =>
+    config.onSuccess('unused-token', {
+      accounts: [
+        {
+          id: 'checking',
+          name: 'Private checking',
+          type: 'depository',
+          subtype: 'checking',
+        },
+        {
+          id: 'savings',
+          name: 'Private savings',
+          type: 'depository',
+          subtype: 'savings',
+        },
+      ],
+    }),
+  );
+  await act(async () => checkboxes()[1].click());
+  await click('Disconnect');
+  await click('Apply repair');
+  const original = requests.at(-1)!;
+  expect(original.variables.input).toEqual({
+    attemptId,
+    accountIds: ['checking', 'savings'],
+  });
+  // The server may have committed before the response was lost.
+  await act(async () => original.error());
+  expect(host.textContent).toContain('response was lost');
+  expect(checkboxes().every((c) => c.matches(':disabled'))).toBe(true);
+  expect(button('Apply repair').disabled).toBe(true);
+  expect(button('Confirm disconnect').disabled).toBe(true);
+  await click('Confirm disconnect');
+  expect(requests.some((r) => r.name === 'managementDisconnectMutation')).toBe(
+    false,
+  );
+  await act(async () => checkboxes()[1].click());
+  await click('Apply repair');
+  expect(checkboxes().map((c) => c.checked)).toEqual([true, true]);
+  expect(
+    requests.filter((r) => r.name === 'managementRepairFinishMutation'),
+  ).toHaveLength(1);
+  expect(
+    sessionStorage.getItem('kami-personal-enrollment:alice:manage:repair'),
+  ).toBe(attemptId);
+  await click('Cancel');
+  await click('Check repair outcome');
+  expect(requests.at(-1)?.variables).toEqual({ attemptId });
+  await reply('managementRepairQuery', {
+    bankingRepair: {
+      __typename: 'BankingRepairResult',
+      code: 'READY',
+      attemptId,
+      state: 'ready',
+    },
+  });
+  expect(changed).toHaveBeenCalledOnce();
+  expect(
+    sessionStorage.getItem('kami-personal-enrollment:alice:manage:repair'),
+  ).toBeNull();
+});
 it('canceled repair keeps saved selection and does not claim unchanged provider permission', async () => {
   await repair();
   await act(async () => config.onExit(null));

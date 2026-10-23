@@ -236,7 +236,6 @@ it.each(['overview', 'transactions'])(
     expect(host.textContent).not.toContain('Connect account');
   },
 );
-
 it('keeps import facts collapsed while exposing selection and truthful distinct observations', async () => {
   nav.search = 'tab=connections';
   await act(async () => root.render(<PersonalWorkspace />));
@@ -279,4 +278,202 @@ it('keeps import facts collapsed while exposing selection and truthful distinct 
   expect(disclosure.textContent).toContain(
     '365 days, subject to institution availability',
   );
+});
+
+function transactionReportAccounts(ids: string[]) {
+  return {
+    bankingReport: {
+      id: 'report-inventory-boundary',
+      code: 'READY',
+      fieldErrors: [],
+      start: '2026-10-01',
+      end: '2026-10-17',
+      asOfDate: '2026-10-17',
+      timezone: 'America/Los_Angeles',
+      revision: 'report-revision',
+      totalCount: 0,
+      spendingContext: 'ACTIVITY_CONTEXT',
+      endCursor: null,
+      hasNextPage: false,
+      activityChoices: ['purchase', 'transfer', 'income'],
+      categoryChoices: ['UNCATEGORIZED'],
+      summary: null,
+      counts: {
+        count: 0,
+        postedCount: 0,
+        pendingCount: 0,
+        removedCount: 0,
+        excludedCount: 0,
+        unresolvedCount: 0,
+        reviewedCount: 0,
+        classificationComplete: true,
+      },
+      rows: [],
+      accounts: ids.map((accountId) => ({
+        id: `snapshot-${accountId}`,
+        accountId,
+        kind: 'checking',
+        selected: true,
+        coverage: 'COMPLETE',
+        planId: null,
+        transitionDate: null,
+        archives: [],
+        intervals: [
+          {
+            bindingId: `binding-${accountId}`,
+            afterDate: null,
+            throughDate: null,
+            importState: 'usable',
+            coverage: 'COMPLETE',
+            coverageAfter: '2026-09-30',
+            coverageThrough: '2026-10-17',
+            collectionState: 'current/active/granted',
+            collectionStopped: false,
+            lastLocalCommit: null,
+            providerSuccessAt: null,
+            discrepancyCount: 0,
+          },
+        ],
+      })),
+    },
+  };
+}
+const pagedInventory = () => ({
+  bankingConnections: {
+    ...inventory([connection]).bankingConnections,
+    hasNextPage: true,
+    endCursor: 'next-connections',
+  },
+});
+it('loads later inventory pages for distinct current-account labels and independent stale/reconnect status', async () => {
+  nav.search = 'tab=transactions';
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () => requests[0].next(pagedInventory()));
+  expect(requests[1].name).toBe('personalInventoryQuery');
+  expect(requests[1].variables).toEqual({
+    first: 20,
+    after: 'next-connections',
+  });
+  const accounts = [
+    {
+      ...connection.accounts[0],
+      id: 'later-one',
+      streamId: 'later-stream-one',
+      name: 'Distinct later checking one',
+      importStatus: { ...status, collection: 'RECONNECT_REQUIRED' },
+    },
+    {
+      ...connection.accounts[0],
+      id: 'later-two',
+      streamId: 'later-stream-two',
+      name: 'Distinct later checking two',
+      importStatus: { ...status, freshness: 'STALE' },
+    },
+  ];
+  await act(async () =>
+    requests[1].next(
+      inventory([{ ...connection, id: 'later-connection', accounts }]),
+    ),
+  );
+  expect(requests[2].name).toBe('personalTransactionsQuery');
+  await act(async () =>
+    requests[2].next(transactionReportAccounts(['later-one', 'later-two'])),
+  );
+  expect(host.textContent).toContain('Distinct later checking one');
+  expect(host.textContent).toContain('Distinct later checking two');
+  expect(host.textContent).toContain('Reconnect needed');
+  expect(host.textContent).toContain('updates are stale');
+  expect(
+    [...host.querySelectorAll('a')].some(
+      (link) => link.textContent === 'View status in Connections',
+    ),
+  ).toBe(true);
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '');
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open');
+  };
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((button) => button.textContent === 'Filters')!
+      .click(),
+  );
+  expect(
+    [...host.querySelectorAll('select option')].map(
+      (option) => option.textContent,
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      'Distinct later checking one',
+      'Distinct later checking two',
+    ]),
+  );
+});
+it('does not fabricate current metadata or start a report after an inventory continuation denial', async () => {
+  nav.search = 'tab=transactions';
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () => requests[0].next(pagedInventory()));
+  await act(async () => requests[1].next(inventory([], 'FORBIDDEN')));
+  expect(host.textContent).toContain('Private accounts are unavailable');
+  expect(
+    requests.some((request) => request.name === 'personalTransactionsQuery'),
+  ).toBe(false);
+  expect(host.textContent).not.toContain('Sensitive long');
+});
+it('offers a bounded metadata retry after transport failure without rendering an incomplete report', async () => {
+  const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    nav.search = 'tab=transactions';
+    await act(async () => root.render(<PersonalWorkspace />));
+    await act(async () => requests[0].next(pagedInventory()));
+    await act(async () =>
+      requests[1].error(new Error('synthetic transport failure')),
+    );
+    expect(host.textContent).toContain(
+      'Account identities could not be loaded',
+    );
+    expect(
+      requests.some((request) => request.name === 'personalTransactionsQuery'),
+    ).toBe(false);
+    await act(async () =>
+      [...host.querySelectorAll('button')]
+        .find((button) => button.textContent === 'Retry account identities')!
+        .click(),
+    );
+    expect(requests[2].variables).toEqual({
+      first: 20,
+      after: 'next-connections',
+    });
+  } finally {
+    diagnostic.mockRestore();
+  }
+});
+it('disposes a pending inventory continuation before a late actor response can reveal account labels', async () => {
+  nav.search = 'tab=transactions';
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () => requests[0].next(pagedInventory()));
+  session.scope = {
+    ...session.scope!,
+    id: 'bob',
+    actor: 'bob',
+    environment: queryEnvironment((request) => requests.push(request)),
+  };
+  await act(async () => root.render(<PersonalWorkspace />));
+  await act(async () =>
+    requests[1].next(
+      inventory([
+        {
+          ...connection,
+          accounts: [
+            { ...connection.accounts[0], name: 'Foreign later private name' },
+          ],
+        },
+      ]),
+    ),
+  );
+  expect(host.textContent).not.toContain('Foreign later private name');
+  expect(
+    requests.some((request) => request.name === 'personalTransactionsQuery'),
+  ).toBe(false);
 });

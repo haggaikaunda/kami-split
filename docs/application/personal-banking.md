@@ -125,8 +125,8 @@ Do not reinterpret date-only values through UTC.
 The [reporting-timezone API](reporting-timezone.md) implements the preference
 persistence and recovery boundary below; the [private reporting API](banking-reporting.md)
 uses that saved zone for preset dates. Account timezone controls and Personal
-navigation are implemented; transaction/reporting browser content remains a
-separate delivery.
+navigation and transaction/report browsing are implemented. Full transaction
+detail/private editing and Overview presentation remain separate deliveries.
 
 Save a validated IANA reporting timezone once from the initial device setting,
 using UTC if unavailable. Account can change it through a dedicated versioned
