@@ -131,8 +131,7 @@ withAuthFixture(origin, session, async () => {
       .click();
     await page.getByRole('dialog', { name: 'Manage connection' }).waitFor();
     await page
-      .getByText('Affected accounts:', { exact: false })
-      .first()
+      .getByRole('group', { name: 'Selected accounts', exact: true })
       .waitFor();
     await expect
       .poll(() => observed.bankingConnection?.connection?.id)
