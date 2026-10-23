@@ -54,6 +54,7 @@ const syntheticBrowser = new Set([
   'tests/browser/touch-focus.spec.mjs',
 ]);
 const integratedBrowser = new Set([
+  'scripts/banking-detail-real-browser.cjs',
   'scripts/edit-real-browser.cjs',
   'scripts/percentage-real-browser.cjs',
   'scripts/browser-auth-fixture.cjs',

@@ -164,9 +164,33 @@ const render = () =>
       names={new Map([['account', 'Private checking']])}
     />,
   );
-async function answer(value = report(), index = requests.length - 1) {
-  await act(async () => requests[index].next(value));
+const answered = new WeakSet<Request>();
+async function answer(value: unknown = report(), index?: number) {
+  const name = Object.hasOwn(value as object, 'bankingReport')
+    ? 'personalTransactionsQuery'
+    : Object.hasOwn(value as object, 'bankingTransaction')
+      ? 'personalTransactionSelectionQuery'
+      : Object.hasOwn(value as object, 'bankingAnnotationOperation')
+        ? 'personalTransactionAnnotationRecoveryQuery'
+        : Object.hasOwn(value as object, 'editBankingAnnotation')
+          ? 'personalTransactionAnnotationMutation'
+          : null;
+  const request =
+    index === undefined
+      ? [...requests]
+          .reverse()
+          .find((item) => !answered.has(item) && (!name || item.name === name))!
+      : requests[index];
+  answered.add(request);
+  await act(async () => request.next(value));
 }
+const latestMutation = () =>
+  requests
+    .filter(
+      (request) => request.name === 'personalTransactionAnnotationMutation',
+    )
+    .at(-1)!;
+
 async function click(label: string) {
   const target = [...host.querySelectorAll('button')].find(
     (button) => button.textContent === label,
@@ -343,7 +367,9 @@ it('reauthorizes a selected-row return before restoring a retained later-page ro
   });
   nav.search = 'tab=transactions&restore=return-token';
   await act(async () => render());
-  expect(requests.at(-1)?.name).toBe('personalTransactionsQuery');
+  expect(
+    requests.some((request) => request.name === 'personalTransactionsQuery'),
+  ).toBe(true);
   expect(document.activeElement?.id).not.toBe('transaction-later-source');
   await answer();
   await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
@@ -618,7 +644,7 @@ it('serializes only changed fields and retains remaining intended input after a 
     host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click(),
   );
   await click('Save changes');
-  expect(requests.at(-1)?.variables.input).toMatchObject({
+  expect(latestMutation()?.variables.input).toMatchObject({
     field: 'NOTE',
     value: 'My note',
     expectedRevision: '0',
@@ -632,11 +658,26 @@ it('serializes only changed fields and retains remaining intended input after a 
       note: 'My note',
     }) as unknown as ReturnType<typeof report>,
   );
-  expect(requests.at(-1)?.variables.input).toMatchObject({
+  expect(latestMutation()?.variables.input).toMatchObject({
     field: 'EXCLUDED',
     value: 'true',
     expectedRevision: '1',
   });
+  expect(
+    requests.filter((request) => request.name === 'personalTransactionsQuery'),
+  ).toHaveLength(2);
+  await answer(
+    report({
+      summary: {
+        netMinor: '25000',
+        purchaseMinor: '25000',
+        refundMinor: '0',
+        classificationComplete: true,
+      },
+    }),
+  );
+  expect(host.textContent).toContain('$250.00');
+  expect(host.querySelector('textarea')?.value).toBe('My note');
   await answer(
     result('CONFLICT', {
       ...row(),
@@ -656,7 +697,7 @@ it('serializes only changed fields and retains remaining intended input after a 
   ).toBe(true);
   await click('Use current versions');
   await click('Save changes');
-  expect(requests.at(-1)?.variables.input).toMatchObject({
+  expect(latestMutation()?.variables.input).toMatchObject({
     field: 'EXCLUDED',
     expectedRevision: '2',
     value: 'true',
@@ -667,8 +708,8 @@ it('recovers response loss after remount and replays the exact frozen input only
   await click('Edit');
   await textInput('Recovered note');
   await click('Save changes');
-  const frozen = requests.at(-1)!.variables.input;
-  await act(async () => requests.at(-1)!.error());
+  const frozen = latestMutation().variables.input;
+  await act(async () => latestMutation().error());
   expect(host.textContent).toContain('could not be confirmed');
   await act(async () => root.unmount());
   root = relayRoot(createRoot(host), () => scope);
@@ -695,7 +736,7 @@ it('recovers response loss after remount and replays the exact frozen input only
       detail: null,
     },
   } as unknown as ReturnType<typeof report>);
-  expect(requests.at(-1)?.variables.input).toEqual(frozen);
+  expect(latestMutation()?.variables.input).toEqual(frozen);
   await answer(
     result('READY', {
       ...row(),
@@ -703,7 +744,9 @@ it('recovers response loss after remount and replays the exact frozen input only
       note: 'Recovered note',
     }) as unknown as ReturnType<typeof report>,
   );
-  expect(requests.at(-1)?.name).toBe('personalTransactionsQuery');
+  expect(
+    requests.some((request) => request.name === 'personalTransactionsQuery'),
+  ).toBe(true);
 });
 it('masks stale private detail after a denied mutation', async () => {
   await openDetail();
@@ -795,7 +838,7 @@ it('allows explicit compatible activity acknowledgement while reviewed alone kee
   await click('Edit');
   await click('Confirm activity type');
   await click('Save changes');
-  expect(requests.at(-1)?.variables.input).toMatchObject({
+  expect(latestMutation()?.variables.input).toMatchObject({
     field: 'ACTIVITY',
     value: 'purchase',
     sourceRevision: '1',
@@ -807,7 +850,7 @@ it('ignores a delayed annotation response after the owning actor scope is replac
   await click('Edit');
   await textInput('Alice-only draft');
   await click('Save changes');
-  const original = requests.at(-1)!;
+  const original = latestMutation();
   const departed = scope;
   departed.isLive = () => false;
   scope = {
@@ -830,4 +873,56 @@ it('ignores a delayed annotation response after the owning actor scope is replac
   );
   expect(host.textContent).not.toContain('Alice-only draft');
   expect(host.querySelector('textarea')).toBeNull();
+});
+
+it('distinguishes a confirmed receipt from an unavailable follow-up detail', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Committed before removal');
+  await click('Save changes');
+  await answer({
+    editBankingAnnotation: {
+      id: 'saved-inaccessible',
+      code: 'READY',
+      sourceId: 'source-1',
+      detail: {
+        id: 'unavailable',
+        code: 'NOT_FOUND',
+        currentId: null,
+        transaction: null,
+      },
+    },
+  });
+  expect(host.querySelector('dialog')?.textContent).toContain(
+    'original field save is confirmed',
+  );
+  expect(host.querySelector('textarea')).toBeNull();
+});
+
+it('keeps a confirmed save distinct from failed local draft cleanup', async () => {
+  await openDetail();
+  await click('Edit');
+  await textInput('Confirmed value');
+  await click('Save changes');
+  const remove = vi
+    .spyOn(Storage.prototype, 'removeItem')
+    .mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+  await answer(
+    result('READY', {
+      ...row(),
+      annotationRevision: '1',
+      note: 'Confirmed value',
+    }),
+  );
+  expect(host.textContent).toContain(
+    'Private changes are confirmed, but tab storage cleanup failed',
+  );
+  expect(
+    [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Save changes',
+    )?.disabled,
+  ).toBe(true);
+  remove.mockRestore();
 });

@@ -186,8 +186,8 @@ recover the original receipt before an identical frozen retry. Current archive
 copies link to their sole current editor; archive-only saves reread the selected
 manifest after the safe receipt. Native modal focus/inertness and dirty Back/Close
 protection preserve unfinished input. Logout, actor changes and access denial
-purge these drafts with existing financial storage. Complete reporting is read
-again after saves; no client total is derived from loaded rows. Current-record links clear archive and
+purge these drafts with existing financial storage. The navigator owns detail separately from reporting, so each confirmed field
+refreshes complete reporting without disposing remaining input; no client total is derived from loaded rows. Current-record links clear archive and
 discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded
 page extent. A valid source return across contexts replays that extent from fresh

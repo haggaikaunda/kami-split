@@ -1639,18 +1639,19 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
   for (const [width, theme, text, stateValue] of [
     [320, 'light', 1, 'pending'],
     [390, 'dark', 1, 'removed'],
-    [1280, 'system', 2, 'posted'],
+    [440, 'system', 2, 'posted'],
+    [1280, 'light', 2, 'posted'],
+    [1280, 'system', 1, 'posted'],
   ]) {
     state = stateValue;
+    app.setAppearance(theme.toUpperCase());
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({
-      colorScheme: theme === 'dark' ? 'dark' : 'light',
+      colorScheme: theme === 'light' ? 'light' : 'dark',
     });
     await page.goto('/personal?tab=transactions&transaction=source-private');
     await page.evaluate(
-      ({ theme, text }) => {
-        document.documentElement.dataset.theme =
-          theme === 'system' ? 'light' : theme;
+      ({ text }) => {
         document.documentElement.style.fontSize = `${text * 100}%`;
       },
       { theme, text },
@@ -1660,6 +1661,14 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
       exact: true,
     });
     await expect(dialog).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-theme',
+      theme === 'light' ? 'light' : 'dark',
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`detail-read-${width}-${theme}-${text}.png`),
+      fullPage: true,
+    });
     await expect(
       dialog.getByText('$90,071,992,547,409.91', { exact: true }),
     ).toBeVisible();

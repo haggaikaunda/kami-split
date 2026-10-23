@@ -181,3 +181,5 @@ release carry-forward. These tests do not constitute hosted runner-allocation or
 provider deployment evidence.
 
 Hosted allocation and deployment results belong on the owning issue ([#214](https://github.com/haggaikaunda/kami-split/issues/214) or [#296](https://github.com/haggaikaunda/kami-split/issues/296)) and its PRs. Local classifier tests do not prove provider configuration or complete the separate #161 migration.
+
+The integrated browser inventory also includes `scripts/banking-detail-real-browser.cjs`, driven by its opt-in Go private-detail HTTP/database fixture.

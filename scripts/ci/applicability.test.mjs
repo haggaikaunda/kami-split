@@ -90,6 +90,10 @@ for (const [paths, expected] of [
     choices(true, false, true, false),
   ],
   [['scripts/edit-real-browser.cjs'], choices(true, true, false, false)],
+  [
+    ['scripts/banking-detail-real-browser.cjs'],
+    choices(true, true, false, false),
+  ],
   [['scripts/percentage-real-browser.cjs'], choices(true, true, false, false)],
   [['scripts/browser-auth-fixture.cjs'], choices(true, true, false, false)],
   [

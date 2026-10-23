@@ -59,6 +59,8 @@ export function PersonalTransactions(context: Context) {
  * come from fresh authorized queries when returning across report contexts. */
 function TransactionNavigation({ scope, names, statuses }: Context) {
   const params = useSearchParams();
+  const selection = transactionSelection(params);
+  const [reportVersion, setReportVersion] = useState(0);
   const filter = reportFilter(new URLSearchParams(params));
   const identity = JSON.stringify(filter);
   const [traversals, setTraversals] = useState(new Map<string, Traversal>());
@@ -73,28 +75,37 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
       ? traversals.get(identity)
       : undefined;
   return (
-    <TransactionRead
-      key={`${scope.id}:${identity}`}
-      scope={scope}
-      names={names}
-      statuses={statuses}
-      filter={filter}
-      resume={resume}
-      onPage={(revision, pages, owner) => {
-        setTraversals((previous) => {
-          const saved = previous.get(identity);
-          if (
-            saved?.owner === owner &&
-            saved.revision === revision &&
-            saved.pages >= pages
-          )
-            return previous;
-          const next = new Map(previous);
-          next.set(identity, { revision, pages, owner });
-          return next;
-        });
-      }}
-    />
+    <>
+      <TransactionRead
+        key={`${scope.id}:${identity}:${reportVersion}`}
+        scope={scope}
+        names={names}
+        statuses={statuses}
+        filter={filter}
+        resume={resume}
+        onPage={(revision, pages, owner) => {
+          setTraversals((previous) => {
+            const saved = previous.get(identity);
+            if (
+              saved?.owner === owner &&
+              saved.revision === revision &&
+              saved.pages >= pages
+            )
+              return previous;
+            const next = new Map(previous);
+            next.set(identity, { revision, pages, owner });
+            return next;
+          });
+        }}
+      />
+      {selection.source && (
+        <SelectedTransaction
+          scope={scope}
+          names={names}
+          onSaved={() => setReportVersion((value) => value + 1)}
+        />
+      )}
+    </>
   );
 }
 function TransactionRead({
@@ -239,13 +250,6 @@ function ReportContent({
         </Status>
       ) : (
         <>
-          {selection.source && (
-            <SelectedTransaction
-              scope={scope}
-              names={names}
-              onSaved={onRetry}
-            />
-          )}
           {!selection.source && restore && (
             <ReturnAuthorization
               key={restore}
@@ -837,7 +841,8 @@ function SelectedTransaction({
             transaction={data.bankingTransaction.transaction}
             archive={selected.archive}
             discrepancy={selected.discrepancy}
-            onSaved={onSaved}
+            onFieldSaved={onSaved}
+            onSaved={() => setRetry((value) => value + 1)}
           />
         ) : (
           <Status kind="error">

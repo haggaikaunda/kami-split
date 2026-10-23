@@ -76,6 +76,7 @@ export function TransactionDetail({
   discrepancy,
   names,
   onSaved,
+  onFieldSaved,
 }: {
   scope: FinancialScope;
   transaction: personalTransactionDetail$key;
@@ -83,6 +84,7 @@ export function TransactionDetail({
   discrepancy: boolean;
   names: ReadonlyMap<string, string>;
   onSaved: () => void;
+  onFieldSaved: () => void;
 }) {
   const fact = readInlineData<personalTransactionDetail$key>(
     detailDocument,
@@ -165,8 +167,8 @@ export function TransactionDetail({
     };
   }, []);
   const historyExit = useEffectEvent(() => setDiscard('close'));
-  // One same-URL guard entry owns browser Back while input is dirty. Stop the
-  // canceled traversal before Next/session foreground listeners can dispose it.
+  // Own dirty navigation before the route can dispose this draft. The native
+  // navigation boundary preserves history; older engines use a guarded entry.
   useEffect(() => {
     if (!dirty) return;
     const unload = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -232,11 +234,20 @@ export function TransactionDetail({
     }
   };
   const clear = () => {
-    sessionStorage.removeItem(storageKey(scope.actor, fact.sourceId));
+    try {
+      sessionStorage.removeItem(storageKey(scope.actor, fact.sourceId));
+    } catch {
+      setStorageError(true);
+      setMessage(
+        'Tab storage could not be cleared. Your draft remains; restore storage before continuing.',
+      );
+      return false;
+    }
     setEdit(null);
     setConflict(false);
     setFresh(null);
     setMessage('');
+    return true;
   };
   const act = async (action: () => Promise<void>) => {
     if (locked.current || !live()) return;
@@ -261,7 +272,16 @@ export function TransactionDetail({
       setUnavailable(true);
       return null;
     }
+    if (result.code === 'READY' && !current) {
+      onFieldSaved();
+      setUnavailable(true);
+      setMessage(
+        'The original field save is confirmed, but the current private record is unavailable. No further change was sent.',
+      );
+      return null;
+    }
     if (result.code === 'READY' && current) {
+      onFieldSaved();
       const next = rebaseEdit(sent, current);
       // Only this operation's field is confirmed. Other intended values remain.
       const field = sent.pending!.field as AnnotationField;
@@ -313,9 +333,14 @@ export function TransactionDetail({
   };
   const finish = () => {
     if (token && edit?.returnTo) scope.visits.set(token, edit.returnTo);
-    clear();
+    if (!clear()) {
+      setMessage(
+        'Private changes are confirmed, but tab storage cleanup failed. Restore storage before editing again.',
+      );
+      return;
+    }
     setMessage(
-      'Private changes saved. Complete activity totals will be checked when you return.',
+      'Private changes saved. Complete activity totals are being checked separately.',
     );
     onSaved();
   };
@@ -429,7 +454,8 @@ export function TransactionDetail({
     return (
       <Dialog open title="Transaction detail" panel onClose={close}>
         <Status kind="error">
-          This private record is unavailable or no longer accessible.
+          {message ||
+            'This private record is unavailable or no longer accessible.'}
         </Status>
         <Button onClick={close}>{backLabel}</Button>
       </Dialog>
@@ -853,7 +879,7 @@ export function TransactionDetail({
                 onClick={() => {
                   const destination = discard;
                   setDiscard(null);
-                  if (!edit?.pending) clear();
+                  if (!edit?.pending && !clear()) return;
                   if (destination === 'close') close();
                 }}
               >

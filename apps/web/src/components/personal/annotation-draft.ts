@@ -140,14 +140,17 @@ export function loadEdit(actor: string, source: string): Edit | null {
   if (
     edit.returnTo &&
     (typeof edit.returnTo.href !== 'string' ||
+      edit.returnTo.href.length > 4096 ||
       !edit.returnTo.href.startsWith('/personal?') ||
       typeof edit.returnTo.focus !== 'string' ||
+      edit.returnTo.focus.length > 256 ||
       !/^(transaction|current|selected-current)-[A-Za-z0-9-]+$/.test(
         edit.returnTo.focus,
       ) ||
       typeof edit.returnTo.scroll !== 'number' ||
       !Number.isFinite(edit.returnTo.scroll) ||
-      edit.returnTo.scroll < 0)
+      edit.returnTo.scroll < 0 ||
+      edit.returnTo.scroll > 100000000)
   )
     throw new Error('INVALID_RETURN');
   const pending = edit.pending;
