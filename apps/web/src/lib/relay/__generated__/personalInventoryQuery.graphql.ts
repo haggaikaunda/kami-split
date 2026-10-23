@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cb6b1b3d473765da5a6221bb0ff12f68>>
+ * @generated SignedSource<<4e3a4dfce7c835b1553dafcb986ac5c5>>
  * @lightSyntaxTransform
  */
 
@@ -52,6 +52,8 @@ export type personalInventoryQuery$data = {
       readonly cleanup: string;
       readonly health: string;
       readonly id: string;
+      readonly institutionName: string | null | undefined;
+      readonly permission: string;
       readonly purge: string;
       readonly state: string;
     }>;
@@ -139,6 +141,20 @@ v3 = [
         "plural": true,
         "selections": [
           (v2/*:: as any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "institutionName",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "permission",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -354,16 +370,16 @@ return {
     "selections": (v3/*:: as any*/)
   },
   "params": {
-    "cacheID": "41e4771a27b3d71987b5cc7cb4d4fa3d",
+    "cacheID": "a9cfae7c2edc7cae4e9487659666df36",
     "id": null,
     "metadata": {},
     "name": "personalInventoryQuery",
     "operationKind": "query",
-    "text": "query personalInventoryQuery(\n  $first: Int!\n  $after: String\n) {\n  bankingConnections(first: $first, after: $after) {\n    __typename\n    code\n    endCursor\n    hasNextPage\n    connections {\n      id\n      state\n      health\n      cleanup\n      purge\n      accounts {\n        id\n        streamId\n        name\n        kind\n        currency\n        selected\n        requestedHistoryDays\n        importStatus {\n          operation\n          importState\n          usable\n          recovery\n          collection\n          reportingState\n          freshness\n          coverage\n          historyAvailability\n          historicalUpdate\n          lastLocalCommit\n          providerSuccessAt\n          discrepancyCount\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query personalInventoryQuery(\n  $first: Int!\n  $after: String\n) {\n  bankingConnections(first: $first, after: $after) {\n    __typename\n    code\n    endCursor\n    hasNextPage\n    connections {\n      id\n      institutionName\n      permission\n      state\n      health\n      cleanup\n      purge\n      accounts {\n        id\n        streamId\n        name\n        kind\n        currency\n        selected\n        requestedHistoryDays\n        importStatus {\n          operation\n          importState\n          usable\n          recovery\n          collection\n          reportingState\n          freshness\n          coverage\n          historyAvailability\n          historicalUpdate\n          lastLocalCommit\n          providerSuccessAt\n          discrepancyCount\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2ec6fe3adac28d7439b8b8144c9eeef7";
+(node as any).hash = "dd77442833f12314f565b0e0ed1df221";
 
 export default node;

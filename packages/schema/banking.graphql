@@ -116,6 +116,10 @@ Private lifecycle projection. No bank credentials or financial source payloads a
 """
 type BankingConnection {
   """
+  Server-observed institution display name. Null for legacy/unknown metadata or deleted connections; never guessed from account names or provider identifiers.
+  """
+  institutionName: String
+  """
   Stable private connection UUID.
   """
   id: ID!

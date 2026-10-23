@@ -183,3 +183,21 @@
       max(1.25rem, env(safe-area-inset-left));
   }
 }
+.field {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1rem;
+  min-width: 0;
+}
+.field input,
+.field select {
+  min-width: 0;
+  width: 100%;
+  min-height: var(--target-size);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-control);
+  padding: 0.6rem;
+  font: inherit;
+}

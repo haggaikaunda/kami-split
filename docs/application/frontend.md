@@ -165,7 +165,7 @@ Account's reporting-timezone editor uses independently versioned operations and
 same-attempt recovery. Device initialization occurs only when the server reports
 an uninitialized preference; travel never replaces a saved zone. The initial
 Personal pages expose connection/import state and private setup guidance.
-Transaction browsing, spending summaries and existing-connection management
-remain separately owned capabilities; these pages do not infer a successful
+Connections owns existing-account management, explicit date-bound replacement and recovery.
+Transaction browsing and spending summaries remain separately owned capabilities; these pages do not infer a successful
 zero, complete history, renewed consent or a shared expense from connection
 success.

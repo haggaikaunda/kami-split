@@ -213,7 +213,13 @@ function accessDenial(
         record.__typename === 'InvitationProblem' ||
         record.__typename === 'ReportingTimezoneProblem' ||
         record.__typename === 'BankingConnectionsResult' ||
-        record.__typename === 'BankingEnrollmentResult')
+        record.__typename === 'BankingEnrollmentResult' ||
+        record.__typename === 'BankingConnectionResult' ||
+        record.__typename === 'BankingManagementResult' ||
+        record.__typename === 'BankingReplacementResult' ||
+        record.__typename === 'BankingReplacementPreview' ||
+        record.__typename === 'BankingReport' ||
+        record.__typename === 'BankingTransactionDetail')
     ) {
       if (
         [
@@ -225,7 +231,10 @@ function accessDenial(
         ].includes(code) ||
         (code === 'NOT_FOUND' &&
           !recovery &&
-          record.__typename !== 'BankingEnrollmentResult')
+          !(
+            typeof record.__typename === 'string' &&
+            record.__typename.startsWith('Banking')
+          ))
       )
         return code;
     }

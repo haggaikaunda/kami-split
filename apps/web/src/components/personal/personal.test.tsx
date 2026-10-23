@@ -59,6 +59,8 @@ const connection = {
   id: 'c1',
   state: 'active',
   health: 'healthy',
+  permission: 'granted',
+  institutionName: 'Example Community Credit Union',
   cleanup: 'not_requested',
   purge: 'not_requested',
   accounts: [

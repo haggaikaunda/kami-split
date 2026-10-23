@@ -6,7 +6,7 @@ repair, disconnect and private-history deletion. It uses the private
 [storage](banking-storage.md), the existing [worker and verified ingress](banking-worker.md),
 and the [Personal banking contract](personal-banking.md). Personal Connections
 consumes initial Link enrollment with explicit account selection and same-attempt
-recovery. Existing-connection management remains a separate UI delivery; live
+recovery. Connections also consumes existing-connection management; live
 enrollment authority remains separately gated. The [initial import consumer](banking-sync.md) ingests selected streams; the [status API](banking-status.md) exposes their persisted progress, coverage and freshness. The [replacement backend](banking-replacement.md) supplies explicit staging, preview, activation and bounded recovery.
 New enrollment is disabled by default. An active connection returns
 `AWAITING_INITIAL_IMPORT`; this establishes neither transactions nor freshness,
@@ -218,3 +218,28 @@ Plaid recommends deleting derived data after revocation; Kami's approved C1/C2
 policy retains private history. Retention-compatible live consent, provider
 capabilities, concurrent lifecycle behavior and backup erasure evidence remain
 explicit #255 gates; new enrollment stays disabled by default.
+
+### Browser management
+
+Connections opens a fresh owner-authorized management baseline before changing
+selection. The contextual desktop panel becomes a sheet on phones. Account choices
+are explicit; repair uses update-mode Link without a public-token exchange and
+newly authorized accounts remain unchecked. Closing or canceling the view never
+attests a provider rollback. The original repair can be checked through its durable
+status until completion or expiry.
+
+Disconnect and private-history deletion have separate confirmations naming the
+affected institution and accounts. Local commit, provider removal and active-copy
+purge are distinct observations. Only opaque actor-scoped attempt IDs survive
+navigation in session storage; permission failures, logout and actor departure clear
+them through the financial session boundary. A missing receipt does not prove a
+write failed or permit an automatic new attempt.
+
+Institution names come from the existing server-observed institution lookup and
+are saved with successful enrollment, repair or provider-authorized account
+selection. Reads perform no provider lookup. Older connections without a known
+name use an explicit unavailable label. Deleted connections erase and hide this
+display metadata. Neither names nor opaque provider identifiers prove continuity.
+The [replacement guide](banking-replacement.md) describes staged confirmation and
+reporting-only recovery. These browser paths do not enable production enrollment
+or establish live-provider acceptance.

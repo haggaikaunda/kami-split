@@ -143,6 +143,7 @@ type ComplexityRoot struct {
 		Generation         func(childComplexity int) int
 		Health             func(childComplexity int) int
 		ID                 func(childComplexity int) int
+		InstitutionName    func(childComplexity int) int
 		Permission         func(childComplexity int) int
 		Purge              func(childComplexity int) int
 		SnapshotRevision   func(childComplexity int) int
@@ -1382,6 +1383,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BankingConnection.ID(childComplexity), true
+	case "BankingConnection.institutionName":
+		if e.ComplexityRoot.BankingConnection.InstitutionName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankingConnection.InstitutionName(childComplexity), true
 	case "BankingConnection.permission":
 		if e.ComplexityRoot.BankingConnection.Permission == nil {
 			break
@@ -6364,6 +6371,10 @@ Private lifecycle projection. No bank credentials or financial source payloads a
 """
 type BankingConnection {
   """
+  Server-observed institution display name. Null for legacy/unknown metadata or deleted connections; never guessed from account names or provider identifiers.
+  """
+  institutionName: String
+  """
   Stable private connection UUID.
   """
   id: ID!
@@ -9585,6 +9596,8 @@ func (ec *executionContext) childFields_BankingArchiveReference(ctx context.Cont
 
 func (ec *executionContext) childFields_BankingConnection(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
+	case "institutionName":
+		return ec.fieldContext_BankingConnection_institutionName(ctx, field)
 	case "id":
 		return ec.fieldContext_BankingConnection_id(ctx, field)
 	case "state":
@@ -13394,6 +13407,29 @@ func (ec *executionContext) _BankingArchiveReference_annotationRevision(ctx cont
 }
 func (ec *executionContext) fieldContext_BankingArchiveReference_annotationRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("BankingArchiveReference", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BankingConnection_institutionName(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BankingConnection_institutionName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InstitutionName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BankingConnection_institutionName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BankingConnection", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _BankingConnection_id(ctx context.Context, field graphql.CollectedField, obj *model.BankingConnection) (ret graphql.Marshaler) {
@@ -30537,6 +30573,11 @@ func (ec *executionContext) _BankingConnection(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BankingConnection")
+		case "institutionName":
+			out.Values[i] = ec._BankingConnection_institutionName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "id":
 			out.Values[i] = ec._BankingConnection_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

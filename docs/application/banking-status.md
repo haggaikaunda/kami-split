@@ -58,7 +58,8 @@ logical `id`. Always select `streamId`. An operation omitting it remains
 parent-scoped rather than falling back to a colliding logical ID. Actor disposal
 clears the whole store. The compiled
 [consumer operation](../../apps/web/src/lib/relay/bankingStatusContract.ts) is a
-contract fixture, with no mounted banking UI.
+contract fixture. Mounted Personal inventory and management use their own
+feature-owned operations beside the components.
 
 ## Independent state dimensions
 

@@ -8,6 +8,8 @@ export const inventory = graphql`
       hasNextPage
       connections {
         id
+        institutionName
+        permission
         state
         health
         cleanup

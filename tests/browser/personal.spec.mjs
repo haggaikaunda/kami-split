@@ -16,6 +16,8 @@ function inventory({ accounts = true, status = {}, code = 'READY' } = {}) {
               id: 'connection-private',
               state: 'active',
               health: 'healthy',
+              permission: 'granted',
+              institutionName: 'Example Community Credit Union',
               cleanup: 'not_requested',
               purge: 'not_requested',
               accounts: [

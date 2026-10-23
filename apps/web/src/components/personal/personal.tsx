@@ -15,6 +15,8 @@ import { WorkspaceRefresh } from '../workspace-refresh';
 import { WorkspaceLoading } from '../workspace-loading';
 import { useForegroundRefresh } from '../groups/foreground';
 import { Enrollment } from './enrollment';
+import { Management } from './management';
+import { ManagementRecovery } from './management-attempt';
 import { ReportingTimezoneInitialization } from './reporting-timezone-control';
 import { importSummary, coverageSummary } from './status';
 import styles from './personal.module.css';
@@ -130,8 +132,10 @@ function PersonalRead({
                       className={styles.stack}
                     >
                       <Enrollment scope={scope} onConnected={refresh} />
+                      <ManagementRecovery scope={scope} onChanged={refresh} />
                       <p className={styles.connectionsHelp}>
-                        Only selected accounts appear in Personal.
+                        Only explicitly authorized accounts collect updates.
+                        Retained private history remains after deselection.
                       </p>
                       {!data.bankingConnections.connections.length && (
                         <div className={styles.empty}>
@@ -145,6 +149,7 @@ function PersonalRead({
                       <InventoryPage
                         scope={scope}
                         result={data.bankingConnections}
+                        onChanged={refresh}
                       />
                       <p className={styles.privacy}>
                         Your bank activity is private. Connecting an account
@@ -231,7 +236,9 @@ function ActivityBoundary({
 function InventoryPage({
   scope,
   result,
+  onChanged,
 }: {
+  onChanged: () => void;
   scope: FinancialScope;
   result: personalInventoryQuery['response']['bankingConnections'];
 }) {
@@ -240,7 +247,12 @@ function InventoryPage({
   return (
     <>
       {result.connections.map((connection) => (
-        <ConnectionCard key={connection.id} connection={connection} />
+        <ConnectionCard
+          key={connection.id}
+          connection={connection}
+          scope={scope}
+          onChanged={onChanged}
+        />
       ))}
       {result.hasNextPage &&
         result.endCursor &&
@@ -264,7 +276,11 @@ function InventoryPage({
           >
             {(data) =>
               data.bankingConnections.code === 'READY' ? (
-                <InventoryPage scope={scope} result={data.bankingConnections} />
+                <InventoryPage
+                  scope={scope}
+                  result={data.bankingConnections}
+                  onChanged={onChanged}
+                />
               ) : (
                 <Status kind="error">
                   More connections are unavailable. Check current access.
@@ -282,16 +298,25 @@ function InventoryPage({
 }
 function ConnectionCard({
   connection,
+  scope,
+  onChanged,
 }: {
+  scope: FinancialScope;
+  onChanged: () => void;
   connection: personalInventoryQuery['response']['bankingConnections']['connections'][number];
 }) {
   return (
     <article className={`${styles.panel} ${styles.connectionCard}`}>
-      <h3>Bank connection</h3>
+      <h3>
+        {connection.institutionName ??
+          'Bank connection — institution name unavailable'}
+      </h3>
       <p>
-        {connection.health === 'repair_required'
-          ? 'Connection needs repair. Existing-account management is not available on this screen.'
-          : 'Private connection'}{' '}
+        {connection.permission === 'revoked'
+          ? 'Provider permission revoked. Updates stopped; imported private history remains.'
+          : connection.health === 'repair_required'
+            ? 'Connection needs repair. Recent activity may be missing; private history remains.'
+            : 'Private connection'}{' '}
         · {connection.state.replaceAll('_', ' ')}
       </p>
       {[...connection.accounts]
@@ -361,14 +386,19 @@ function ConnectionCard({
           No visible retained account history is available for this connection.
         </p>
       )}
-      <details>
-        <summary>About existing-account management</summary>
-        <p>
-          Repair, selection changes, disconnect, history deletion and
-          replacement recovery are separate account-management actions. This
-          screen does not change an existing account’s history or selection.
-        </p>
-      </details>
+      <Management
+        scope={scope}
+        connectionId={connection.id}
+        needsRepair={
+          connection.health === 'repair_required' ||
+          connection.accounts.some((a) =>
+            ['REVOKED', 'RECONNECT_REQUIRED'].includes(
+              a.importStatus.collection,
+            ),
+          )
+        }
+        onChanged={onChanged}
+      />
     </article>
   );
 }

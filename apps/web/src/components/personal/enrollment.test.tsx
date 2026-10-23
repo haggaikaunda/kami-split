@@ -491,3 +491,59 @@ it('retains the original attempt after cancellation finds no reservation yet', a
     requests.filter((request) => request.name === 'enrollmentFinishMutation'),
   ).toHaveLength(0);
 });
+
+it('stages an explicitly targeted replacement with exactly one checked account and no reporting activation', async () => {
+  await act(async () =>
+    root.render(
+      <Enrollment
+        key="replacement"
+        scope={scope}
+        replacementAccountId="logical-original"
+        onConnected={connected}
+      />,
+    ),
+  );
+  await click('Connect replacement');
+  await click('Continue with Plaid');
+  const request = requests.at(-1)!;
+  expect(request.name).toBe('managementReplacementStartMutation');
+  expect(request.variables).toEqual({
+    input: { attemptId: expect.any(String), accountId: 'logical-original' },
+  });
+  const attemptId = (request.variables.input as { attemptId: string })
+    .attemptId;
+  await act(async () =>
+    request.next({
+      startBankingReplacement: {
+        ...result('PREPARED'),
+        attemptId,
+        linkToken: 'private-staging-link',
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      },
+    }),
+  );
+  await act(async () =>
+    config.onSuccess('private-staging-public', { accounts }),
+  );
+  const choices = [
+    ...host.querySelectorAll<HTMLInputElement>('input[type=checkbox]'),
+  ];
+  await act(async () => {
+    choices[0].click();
+    choices[1].click();
+  });
+  expect(button('Include selected accounts').disabled).toBe(true);
+  await act(async () => choices[1].click());
+  await click('Include selected accounts');
+  expect(requests.at(-1)?.variables).toEqual({
+    input: {
+      attemptId,
+      publicToken: 'private-staging-public',
+      accountIds: ['checking'],
+    },
+  });
+  expect(requests.some((r) => r.name === 'managementConfirmMutation')).toBe(
+    false,
+  );
+  expect(JSON.stringify(sessionStorage)).not.toContain('private-staging');
+});

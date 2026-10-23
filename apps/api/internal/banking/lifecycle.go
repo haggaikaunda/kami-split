@@ -274,6 +274,9 @@ func (s *EnrollmentService) ChangeSelection(ctx context.Context, input Selection
 	return s.storage.run(ctx, input.AttemptID, "selection", input, func(tx pgx.Tx, _ auth.Actor) (Result, error) {
 		var code string
 		err := tx.QueryRow(ctx, `SELECT app.banking_selection($1,$2,$3,$4,$5)`, input.ConnectionID, input.ExpectedGeneration, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code)
+		if err == nil && code == "READY" {
+			err = saveInstitutionName(ctx, tx, input.ConnectionID, inventory)
+		}
 		return Result{Code: code, ID: input.ConnectionID}, err
 	})
 }
@@ -334,7 +337,13 @@ func (s *EnrollmentService) FinishRepair(ctx context.Context, input FinishRepair
 	encoded, _ := json.Marshal(selected)
 	code := ""
 	err = s.actor(ctx, func(tx pgx.Tx, _ auth.Actor) error {
-		return tx.QueryRow(ctx, `SELECT app.banking_repair_finish($1,$2,$3,$4,$5)`, input.AttemptID, digest, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code)
+		if err := tx.QueryRow(ctx, `SELECT app.banking_repair_finish($1,$2,$3,$4,$5)`, input.AttemptID, digest, encoded, inventory.InstitutionID, inventory.ItemID).Scan(&code); err != nil {
+			return err
+		}
+		if code == "READY" {
+			return saveInstitutionName(ctx, tx, r.connection, inventory)
+		}
+		return nil
 	})
 	if err != nil {
 		return enrollmentFailure(ctx, err)
@@ -390,4 +399,15 @@ func (s *EnrollmentService) deselection(ctx context.Context, connection uuid.UUI
 		return inventory, nil, enrollmentFailure(ctx, err).Code
 	}
 	return inventory, selected, code
+}
+
+// saveInstitutionName retains only validated server-observed display metadata in
+// the same authorized transaction as enrollment/repair/selection. Legacy or
+// offline inventory without a name does not overwrite a previously observed name.
+func saveInstitutionName(ctx context.Context, tx pgx.Tx, connection uuid.UUID, inventory AccountInventory) error {
+	if inventory.InstitutionName == "" {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `SELECT app.banking_institution_name($1,$2,$3)`, connection, inventory.InstitutionID, inventory.InstitutionName)
+	return err
 }
