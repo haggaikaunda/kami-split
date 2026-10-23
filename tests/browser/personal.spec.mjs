@@ -321,6 +321,10 @@ test('Personal Link requires explicit eligible account selection and ignores dup
   expect(finishes[0].variables.input.publicToken).toBe(
     'public-synthetic-private',
   );
+  await expect(
+    page.getByText('History importing', { exact: true }),
+  ).toBeVisible();
+  await page.getByText('Import details', { exact: true }).click();
   await expect(page.getByText(/Initial history is importing/)).toBeVisible();
   await expect(
     page.getByText(/Actual history coverage is unknown/),
@@ -477,8 +481,11 @@ test('Personal connections reflow and five-slot navigation retain clear status i
         },
         width === 1280 ? 200 : 100,
       );
-      await expect(page.getByText(/Reconnect needed/)).toBeVisible();
-      await expect(page.getByText(/Known collection gap/)).toBeVisible();
+      await expect(
+        page.getByText('Reconnect needed · Known collection gap', {
+          exact: true,
+        }),
+      ).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth - innerWidth,
@@ -838,3 +845,112 @@ for (const unresolved of ['receipt', 'replay']) {
     expect(writes.at(-1).attemptId).not.toBe(writes[0].attemptId);
   });
 }
+
+test('Connections keeps healthy institution management compact and uses the R2 desktop card grid @owns-viewport', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const data = inventory({
+    status: {
+      usable: true,
+      importState: 'USABLE',
+      operation: 'COMMITTED',
+      freshness: 'OBSERVED',
+      lastLocalCommit: '2026-10-16T09:12:00Z',
+      providerSuccessAt: '2026-10-16T08:10:00Z',
+    },
+  });
+  const first = data.bankingConnections.connections[0];
+  first.institutionName = 'Northbank';
+  first.accounts[0].name = 'Everyday card';
+  first.accounts.push({
+    ...first.accounts[0],
+    id: 'second-account',
+    streamId: 'second-stream',
+    name: 'Everyday checking',
+  });
+  data.bankingConnections.connections.push({
+    ...first,
+    id: 'second-institution',
+    institutionName: 'Summit Credit',
+    accounts: [
+      {
+        ...first.accounts[0],
+        id: 'third-account',
+        streamId: 'third-stream',
+        name: 'Travel card',
+      },
+    ],
+  });
+  await page.route('**/api/graphql', (route) => {
+    if (
+      /query personalInventoryQuery/.test(route.request().postDataJSON().query)
+    )
+      return route.fulfill({ json: { data } });
+    return route.fallback();
+  });
+  app.setAppearance('LIGHT');
+  await page.emulateMedia({ colorScheme: 'light' });
+  for (const [width, height] of [
+    [390, 839],
+    [1120, 760],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/personal?tab=connections');
+    const cards = page.locator('article');
+    await expect(cards).toHaveCount(2);
+    await expect(
+      cards.first().getByRole('heading', { name: 'Northbank' }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Actual history coverage is unknown/).first(),
+    ).not.toBeVisible();
+    const metrics = await cards.evaluateAll((elements) =>
+      elements.map((element) => {
+        const r = element.getBoundingClientRect();
+        const manage = element.querySelector('button').getBoundingClientRect();
+        return {
+          x: r.x,
+          y: r.y,
+          width: r.width,
+          height: r.height,
+          manageTop: manage.top,
+          manageBottom: manage.bottom,
+        };
+      }),
+    );
+    if (width === 390) {
+      expect(metrics[0].manageBottom).toBeLessThan(600);
+      expect(metrics[1].manageBottom).toBeLessThan(839);
+    } else {
+      expect(Math.abs(metrics[0].y - metrics[1].y)).toBeLessThanOrEqual(1);
+      expect(metrics[1].x - metrics[0].x).toBeGreaterThan(400);
+      expect(metrics[0].width).toBeGreaterThan(400);
+      expect(metrics[0].width).toBeLessThan(470);
+    }
+    await page.screenshot({
+      path: testInfo.outputPath(`connections-${width}-healthy.png`),
+      fullPage: true,
+    });
+    await testInfo.attach(`connections-${width}-metrics`, {
+      body: JSON.stringify(metrics),
+      contentType: 'application/json',
+    });
+    await cards.first().getByText('Import details', { exact: true }).click();
+    await expect(
+      cards
+        .first()
+        .getByText(/Actual history coverage is unknown/)
+        .first(),
+    ).toBeVisible();
+    await expect(
+      cards.first().getByText('Initial history requested').first(),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+  }
+});

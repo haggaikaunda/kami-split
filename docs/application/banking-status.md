@@ -206,3 +206,5 @@ first page. `READY` with an empty list is a successful empty inventory. Invalid
 page sizes/cursors return `INVALID_INPUT`; storage failure returns `UNAVAILABLE`
 with no partial rows, cursor or continuation claim. Institution names and account
 masks are not part of this stored projection.
+
+Connections keeps selected account scope and attention states visible in compact institution cards. Local-save and provider-success observations are distinct, and the card’s latest observations may belong to different accounts. The Import details disclosure retains each account’s complete import, coverage, requested-history and timestamp facts; a local save or provider observation does not establish complete bank freshness or coverage. Cards use two columns on larger desktop layouts and remain a single flowing column on narrow screens.

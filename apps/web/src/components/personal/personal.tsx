@@ -134,8 +134,7 @@ function PersonalRead({
                       <Enrollment scope={scope} onConnected={refresh} />
                       <ManagementRecovery scope={scope} onChanged={refresh} />
                       <p className={styles.connectionsHelp}>
-                        Only explicitly authorized accounts collect updates.
-                        Retained private history remains after deselection.
+                        Selection controls updates. History is retained.
                       </p>
                       {!data.bankingConnections.connections.length && (
                         <div className={styles.empty}>
@@ -146,11 +145,13 @@ function PersonalRead({
                           </p>
                         </div>
                       )}
-                      <InventoryPage
-                        scope={scope}
-                        result={data.bankingConnections}
-                        onChanged={refresh}
-                      />
+                      <div className={styles.connectionsGrid}>
+                        <InventoryPage
+                          scope={scope}
+                          result={data.bankingConnections}
+                          onChanged={refresh}
+                        />
+                      </div>
                       <p className={styles.privacy}>
                         Your bank activity is private. Connecting an account
                         never shares it with your household or groups.
@@ -305,100 +306,184 @@ function ConnectionCard({
   onChanged: () => void;
   connection: personalInventoryQuery['response']['bankingConnections']['connections'][number];
 }) {
+  const accounts = [...connection.accounts].sort(
+    (a, b) => Number(b.selected) - Number(a.selected),
+  );
+  const needsRepair =
+    connection.health === 'repair_required' ||
+    accounts.some((a) =>
+      ['REVOKED', 'RECONNECT_REQUIRED'].includes(a.importStatus.collection),
+    );
+  const institution =
+    connection.institutionName ??
+    'Bank connection — institution name unavailable';
+  const latestObservation = (
+    field: 'lastLocalCommit' | 'providerSuccessAt',
+  ) => {
+    const times = accounts
+      .map((a) => a.importStatus[field])
+      .filter((v): v is string => Boolean(v))
+      .map((v) => new Date(v).getTime())
+      .filter(Number.isFinite);
+    if (!times.length) return 'Unknown';
+    const latest = Math.max(...times);
+    return new Date(latest).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
   return (
     <article className={`${styles.panel} ${styles.connectionCard}`}>
-      <h3>
-        {connection.institutionName ??
-          'Bank connection — institution name unavailable'}
-      </h3>
-      <p>
-        {connection.permission === 'revoked'
-          ? 'Provider permission revoked. Updates stopped; imported private history remains.'
-          : connection.health === 'repair_required'
-            ? 'Connection needs repair. Recent activity may be missing; private history remains.'
-            : 'Private connection'}{' '}
-        · {connection.state.replaceAll('_', ' ')}
-      </p>
-      {[...connection.accounts]
-        .sort((a, b) => Number(b.selected) - Number(a.selected))
-        .map((account) => (
-          <section
-            className={styles.account}
-            key={account.streamId}
-            aria-label={account.name}
-          >
-            <div className={styles.accountHeading}>
-              <div>
-                <h4>{account.name}</h4>
-                <p>
-                  {account.kind.replaceAll('_', ' ')} · {account.currency}
-                </p>
-              </div>
-              <strong>
-                {account.selected ? 'Included' : 'Not collecting'}
-              </strong>
-            </div>
-            <p>{importSummary(account.importStatus)}</p>
-            <p>{coverageSummary(account.importStatus)}</p>
-            <dl className={styles.facts}>
-              <div>
-                <dt>Last local import</dt>
-                <dd>
-                  {account.importStatus.lastLocalCommit
-                    ? new Date(
-                        account.importStatus.lastLocalCommit,
-                      ).toLocaleString()
-                    : 'Unknown'}
-                </dd>
-              </div>
-              <div>
-                <dt>Bank success observation</dt>
-                <dd>
-                  {account.importStatus.providerSuccessAt
-                    ? new Date(
-                        account.importStatus.providerSuccessAt,
-                      ).toLocaleString()
-                    : 'Unknown'}
-                </dd>
-              </div>
-              <div>
-                <dt>Initial history requested</dt>
-                <dd>
-                  {account.requestedHistoryDays} days, subject to institution
-                  availability
-                </dd>
-              </div>
-            </dl>
-            <p className={styles.muted}>
-              Local persistence does not prove the bank is up to date. Imported
-              history remains private.
-            </p>
-            {account.importStatus.discrepancyCount !== '0' && (
-              <p>
-                Historical discrepancy reported. Retained history may need
-                inspection in account management.
+      <header className={styles.connectionHeading}>
+        <div>
+          <h3>{institution}</h3>
+          <small>
+            {accounts.filter((a) => a.selected).length} of {accounts.length}{' '}
+            accounts included
+          </small>
+        </div>
+        <span>
+          {connection.permission === 'revoked'
+            ? 'Permission revoked'
+            : needsRepair
+              ? 'Needs repair'
+              : connection.state === 'active'
+                ? 'Connected'
+                : connection.state.replaceAll('_', ' ')}
+        </span>
+      </header>
+      {accounts.map((account) => (
+        <section
+          className={styles.connectionAccount}
+          key={account.streamId}
+          aria-label={account.name}
+        >
+          <div>
+            <h4>{account.name}</h4>
+            <small>
+              {account.kind.replaceAll('_', ' ')} · {account.currency}
+            </small>
+            {accountAttention(account) && (
+              <p className={styles.accountAttention}>
+                {accountAttention(account)}
               </p>
             )}
-          </section>
-        ))}
-      {!connection.accounts.length && (
+          </div>
+          <small>{account.selected ? 'Included' : 'Not collecting'}</small>
+        </section>
+      ))}
+      {!accounts.length && (
         <p>
           No visible retained account history is available for this connection.
         </p>
       )}
-      <Management
-        scope={scope}
-        connectionId={connection.id}
-        needsRepair={
-          connection.health === 'repair_required' ||
-          connection.accounts.some((a) =>
-            ['REVOKED', 'RECONNECT_REQUIRED'].includes(
-              a.importStatus.collection,
-            ),
-          )
-        }
-        onChanged={onChanged}
-      />
+      <footer className={styles.connectionFooter}>
+        <div className={styles.connectionActions}>
+          <details className={styles.importDetails}>
+            <summary>
+              <span className={styles.observations}>
+                <span>
+                  Latest local save: {latestObservation('lastLocalCommit')}
+                </span>
+                <span>
+                  Latest bank success: {latestObservation('providerSuccessAt')}
+                </span>
+              </span>
+              <span>Import details</span>
+            </summary>
+            <div className={styles.importFacts}>
+              <p>
+                Local persistence does not prove the bank is up to date. Bank
+                success is an observation, not complete period coverage. Latest
+                observations above may apply to different accounts.
+              </p>
+              {accounts.map((account) => (
+                <section
+                  className={styles.account}
+                  key={account.streamId}
+                  aria-label={`${account.name} import details`}
+                >
+                  <h4>{account.name}</h4>
+                  <p>{importSummary(account.importStatus)}</p>
+                  <p>{coverageSummary(account.importStatus)}</p>
+                  <dl className={styles.facts}>
+                    <div>
+                      <dt>Last local import</dt>
+                      <dd>
+                        {account.importStatus.lastLocalCommit
+                          ? new Date(
+                              account.importStatus.lastLocalCommit,
+                            ).toLocaleString()
+                          : 'Unknown'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Bank success observation</dt>
+                      <dd>
+                        {account.importStatus.providerSuccessAt
+                          ? new Date(
+                              account.importStatus.providerSuccessAt,
+                            ).toLocaleString()
+                          : 'Unknown'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Initial history requested</dt>
+                      <dd>
+                        {account.requestedHistoryDays} days, subject to
+                        institution availability
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className={styles.muted}>
+                    Local persistence does not prove the bank is up to date.
+                    Imported history remains private.
+                  </p>
+                  {account.importStatus.discrepancyCount !== '0' && (
+                    <p>
+                      Historical discrepancy reported. Retained history may need
+                      inspection in account management.
+                    </p>
+                  )}
+                </section>
+              ))}
+            </div>
+          </details>
+          <Management
+            scope={scope}
+            connectionId={connection.id}
+            needsRepair={needsRepair}
+            onChanged={onChanged}
+          />
+        </div>
+      </footer>
     </article>
   );
+}
+function accountAttention(
+  account: personalInventoryQuery['response']['bankingConnections']['connections'][number]['accounts'][number],
+) {
+  const status = account.importStatus;
+  const notices: string[] = [];
+  if (status.collection === 'RECONNECT_REQUIRED')
+    notices.push('Reconnect needed');
+  else if (status.collection === 'REVOKED')
+    notices.push('Permission revoked; updates stopped');
+  else if (['DISCONNECTED', 'RETIRED', 'CANCELLED'].includes(status.collection))
+    notices.push('Updates stopped; history retained');
+  else if (status.reportingState === 'STAGED')
+    notices.push('Replacement staged; not in current reporting');
+  else if (status.recovery === 'CONTACT_SUPPORT')
+    notices.push('Import needs attention');
+  else if (!status.usable)
+    notices.push(
+      status.importState === 'UNAVAILABLE'
+        ? 'History unavailable'
+        : 'History importing',
+    );
+  else if (status.freshness === 'STALE') notices.push('Updates stale');
+  if (status.coverage === 'KNOWN_GAP') notices.push('Known collection gap');
+  else if (status.coverage === 'LIMITED') notices.push('Limited history');
+  if (status.discrepancyCount !== '0') notices.push('Historical discrepancy');
+  return notices.join(' · ');
 }
