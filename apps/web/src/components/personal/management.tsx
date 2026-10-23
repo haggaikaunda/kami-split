@@ -260,7 +260,12 @@ function ConnectionManagement({
           )
         ).startBankingRepair;
         if (!work.live()) return result;
-        if (result.code === 'ATTEMPT_IN_PROGRESS' && !result.state)
+        if (
+          ['ATTEMPT_IN_PROGRESS', 'NOT_FOUND', 'CONFLICT'].includes(
+            result.code,
+          ) &&
+          !result.state
+        )
           setRepairId(undefined);
         if (
           result.code !== 'PREPARED' ||

@@ -381,6 +381,21 @@ withAuthFixture(origin, session, async () => {
       await waitText('The local change is confirmed.');
       assert.notEqual(selections.at(-1).attemptId, invalid);
       await checkpoint('retained');
+      await click('Close management');
+      await open();
+      await checkpoint('delete-from-other-device');
+      await click('Authorize account additions');
+      await waitText('The connection or preview changed.');
+      assert.equal(observed.startBankingRepair.code, 'CONFLICT');
+      assert.equal(observed.startBankingRepair.state, null);
+      assert.equal(await pending('repair'), null);
+      await checkpoint('unreserved', {
+        attemptId: repairStarts.at(-1).attemptId,
+      });
+      await click('Reload current state');
+      await expect(
+        page.getByRole('button', { name: 'Manage connection', exact: true }),
+      ).toHaveCount(0);
     } else {
       const replacement = () =>
         page.getByRole('button', {

@@ -139,6 +139,15 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 		switch r.URL.Path {
 		case "/fixture/expire-repair":
 			_, err = f.admin.Exec(r.Context(), `UPDATE app.banking_repairs SET expires_at=clock_timestamp()-interval '1 minute' WHERE owner_id=$1`, f.owner)
+		case "/fixture/delete-from-other-device":
+			var generation int64
+			err = f.admin.QueryRow(r.Context(), `SELECT generation FROM app.banking_connections WHERE id=$1`, connection).Scan(&generation)
+			if err == nil {
+				result := f.operation(h, lifecycleHTTPFence("deleteBankingHistory", uuid.New(), connection, generation), token, "deleteBankingHistory", false)
+				if result["code"] != "READY" {
+					err = fmt.Errorf("other-device deletion failed")
+				}
+			}
 		case "/fixture/provider-ready":
 			provider.mode.Store(0)
 		case "/fixture/provider-failure":
@@ -238,7 +247,7 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 	}
 	if scenario == "repair-failure" {
 		var pending, selected int
-		if err := f.admin.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM app.banking_repairs WHERE owner_id=$1 AND state<>'complete'),(SELECT count(*) FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id WHERE b.connection_id=$2 AND a.selected)`, f.owner, connection).Scan(&pending, &selected); err != nil || pending != 0 || selected != 2 {
+		if err := f.admin.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM app.banking_repairs WHERE owner_id=$1 AND state<>'complete'),(SELECT count(*) FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id WHERE b.connection_id=$2 AND a.selected)`, f.owner, connection).Scan(&pending, &selected); err != nil || pending != 0 || selected != 0 {
 			t.Fatal("repair/selection recovery left blocked or changed state", pending, selected, err)
 		}
 		return

@@ -44,6 +44,7 @@ function resolvedOutcome(
       !state &&
       [
         'ATTEMPT_IN_PROGRESS',
+        'NOT_FOUND',
         'CONFLICT',
         'INVALID_INPUT',
         'REPAIR_UNAVAILABLE',
@@ -135,7 +136,9 @@ export function useManagementAttempt(
     const code = typeof outcome === 'string' ? outcome : outcome.code;
     const resolved = resolvedOutcome(kind, outcome, source, attemptId);
     setMessage(
-      managementMessage(code === 'READY' && !resolved ? 'PENDING' : code),
+      source === 'repair-start' && code === 'NOT_FOUND' && resolved
+        ? 'This connection is unavailable. This new repair was not reserved. Reload current connection state before trying again.'
+        : managementMessage(code === 'READY' && !resolved ? 'PENDING' : code),
     );
     if (resolved) {
       sessionStorage.removeItem(key);

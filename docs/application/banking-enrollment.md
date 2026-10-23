@@ -255,3 +255,10 @@ marked complete. `ATTEMPT_IN_PROGRESS` from a fresh repair start proves that new
 UUID was not reserved; it does not replace the existing handoff's authority.
 Late receipts cannot clear or announce success for a different UUID now owning
 the same actor/kind slot. Missing or uncertain receipts retain their recovery ID.
+
+A fresh repair start rejected with `NOT_FOUND` before reservation has no state or
+attempt identity and permits reloading a fresh baseline. After a reservation,
+missing connection/credential reads preserve its actor-authorized state and ID;
+they do not prove no write occurred. Status reads inspect the lifecycle fence,
+so deletion or disconnection resolves the original attempt as `CONFLICT` without
+returning private inventory. Access denial continues to mask operation metadata.
