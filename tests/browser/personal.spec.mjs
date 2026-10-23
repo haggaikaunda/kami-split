@@ -1574,7 +1574,9 @@ test('Personal detail protects drafts, validates private values and recovers con
     exact: true,
   });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText('2026-10-16', { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText('2026-10-16', { exact: true }).first(),
+  ).toBeVisible();
   await expect(dialog.getByLabel('Private note', { exact: true })).toHaveCount(
     0,
   );
@@ -1639,7 +1641,7 @@ test('Personal detail protects drafts, validates private values and recovers con
     .click();
   await expect(
     page.getByRole('button', { name: 'Edit', exact: true }),
-  ).toBeVisible();
+  ).toBeFocused();
   expect(frozen).toEqual(original);
   await page
     .getByRole('button', { name: 'Back to transactions', exact: true })
@@ -1713,10 +1715,41 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
       await expect(
         dialog.getByText(/contributes nothing to spending/),
       ).toBeVisible();
+    // Editing replaces read-only facts and owns focus immediately, without a
+    // test-induced scroll/focus that could hide a broken transition.
+    await dialog.getByText('Original bank details', { exact: true }).click();
     await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
-    await expect(
-      dialog.getByLabel('Activity type', { exact: true }),
-    ).toBeVisible();
+    const editorHeading = dialog.getByRole('heading', {
+      name: 'Edit private annotations',
+      exact: true,
+    });
+    await expect(editorHeading).toBeFocused();
+    const firstControl = dialog.getByLabel('Activity type', { exact: true });
+    await page.keyboard.press('Tab');
+    await expect(firstControl).toBeFocused();
+    const transition = await dialog.evaluate((element) => {
+      const heading = element.querySelector('form h3').getBoundingClientRect();
+      const activity = element
+        .querySelector('form select')
+        .getBoundingClientRect();
+      return {
+        headingTop: heading.top,
+        headingBottom: heading.bottom,
+        activityTop: activity.top,
+        activityBottom: activity.bottom,
+        viewport: innerHeight,
+      };
+    });
+    expect(transition.headingTop).toBeGreaterThanOrEqual(0);
+    expect(transition.activityBottom).toBeLessThanOrEqual(transition.viewport);
+    expect(transition.activityTop - transition.headingBottom).toBeLessThan(
+      180 * text,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `detail-edit-top-${width}-${theme}-${text}.png`,
+      ),
+    });
     await dialog.getByLabel('Reviewed', { exact: true }).focus();
     await expect(dialog.getByLabel('Reviewed', { exact: true })).toBeFocused();
     expect(
@@ -1734,6 +1767,9 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
     await dialog
       .getByRole('button', { name: 'Cancel editing', exact: true })
       .click();
+    await expect(
+      dialog.getByRole('button', { name: 'Edit', exact: true }),
+    ).toBeFocused();
     await dialog
       .getByRole('button', { name: 'Close Transaction detail', exact: true })
       .click();

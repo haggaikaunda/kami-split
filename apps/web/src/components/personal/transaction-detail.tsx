@@ -79,6 +79,8 @@ export function TransactionDetail({
   onSaved,
   onFieldSaved,
   originPages,
+  focusEdit = false,
+  onFocusedEdit,
 }: {
   scope: FinancialScope;
   transaction: personalTransactionDetail$key;
@@ -88,6 +90,8 @@ export function TransactionDetail({
   onSaved: () => void;
   onFieldSaved: (origin?: SavedOrigin) => void;
   originPages: number;
+  focusEdit?: boolean;
+  onFocusedEdit?: () => void;
 }) {
   const fact = readInlineData<personalTransactionDetail$key>(
     detailDocument,
@@ -135,6 +139,22 @@ export function TransactionDetail({
   const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState(false),
     [discard, setDiscard] = useState<'close' | 'cancel' | null>(null);
+  const editorHeading = useRef<HTMLHeadingElement>(null),
+    editButton = useRef<HTMLButtonElement>(null),
+    wasEditing = useRef(false);
+  const editing = !!edit;
+  const consumeSavedFocus = useEffectEvent(() => onFocusedEdit?.());
+  useEffect(() => {
+    const target = editing
+      ? editorHeading.current
+      : wasEditing.current || focusEdit
+        ? editButton.current
+        : null;
+    wasEditing.current = editing;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'nearest' });
+    if (target && !editing && focusEdit) consumeSavedFocus();
+  }, [editing, focusEdit]);
   const alive = useRef(true),
     locked = useRef(false);
   const live = () => alive.current && scope.isLive();
@@ -489,56 +509,59 @@ export function TransactionDetail({
         <p>
           {BigInt(fact.amountMinor) < 0n ? 'Money in' : 'Money out'} ·{' '}
           {readable(fact.processingState)}
+          {edit && <> · {fact.bankDate}</>}
         </p>
-        <dl className={styles.facts}>
-          <div>
-            <dt>Account</dt>
-            <dd>{names.get(fact.accountId) ?? 'Retained bank account'}</dd>
-          </div>
-          <div>
-            <dt>
-              {fact.processingState === 'pending'
-                ? 'Provisional bank date'
-                : 'Posted bank date'}
-            </dt>
-            <dd>{fact.bankDate}</dd>
-          </div>
-          {fact.authorizationDate && (
+        {!edit && (
+          <dl className={styles.facts}>
             <div>
-              <dt>Authorization date</dt>
-              <dd>{fact.authorizationDate}</dd>
+              <dt>Account</dt>
+              <dd>{names.get(fact.accountId) ?? 'Retained bank account'}</dd>
             </div>
-          )}
-          <div>
-            <dt>Activity type</dt>
-            <dd>
-              {readable(fact.activity)}
-              {fact.activityOverride && ' · Private override'}
-            </dd>
-          </div>
-          <div>
-            <dt>Category</dt>
-            <dd>
-              {readable(fact.category)}
-              {fact.categoryOverride && ' · Private override'}
-            </dd>
-          </div>
-          <div>
-            <dt>Spending</dt>
-            <dd>
-              {fact.eligible ? 'Included' : 'Not included'}
-              {fact.excluded && ' · Excluded privately'}
-            </dd>
-          </div>
-          <div>
-            <dt>Review status</dt>
-            <dd>{fact.reviewed ? 'Reviewed' : 'Needs review'}</dd>
-          </div>
-          <div>
-            <dt>Private note</dt>
-            <dd className={styles.note}>{fact.note || 'No private note'}</dd>
-          </div>
-        </dl>
+            <div>
+              <dt>
+                {fact.processingState === 'pending'
+                  ? 'Provisional bank date'
+                  : 'Posted bank date'}
+              </dt>
+              <dd>{fact.bankDate}</dd>
+            </div>
+            {fact.authorizationDate && (
+              <div>
+                <dt>Authorization date</dt>
+                <dd>{fact.authorizationDate}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Activity type</dt>
+              <dd>
+                {readable(fact.activity)}
+                {fact.activityOverride && ' · Private override'}
+              </dd>
+            </div>
+            <div>
+              <dt>Category</dt>
+              <dd>
+                {readable(fact.category)}
+                {fact.categoryOverride && ' · Private override'}
+              </dd>
+            </div>
+            <div>
+              <dt>Spending</dt>
+              <dd>
+                {fact.eligible ? 'Included' : 'Not included'}
+                {fact.excluded && ' · Excluded privately'}
+              </dd>
+            </div>
+            <div>
+              <dt>Review status</dt>
+              <dd>{fact.reviewed ? 'Reviewed' : 'Needs review'}</dd>
+            </div>
+            <div>
+              <dt>Private note</dt>
+              <dd className={styles.note}>{fact.note || 'No private note'}</dd>
+            </div>
+          </dl>
+        )}
         {fact.processingState !== 'posted' && (
           <Status kind="info">
             {fact.processingState === 'pending'
@@ -567,30 +590,6 @@ export function TransactionDetail({
             reporting. Date changes can leave gaps or differently identified
             duplicates.
           </Status>
-        )}
-        {archive && (
-          <section>
-            <h3>Immutable archive provenance</h3>
-            {fact.archives
-              .filter((item) => item.archiveId === archive)
-              .map((item) => (
-                <div key={item.archiveId}>
-                  <p>
-                    Captured source revision {item.sourceRevision}; annotation
-                    revision {item.annotationRevision ?? 'none'}.
-                  </p>
-                  <p className={styles.note}>
-                    Captured note: {item.annotation?.note ?? 'None'}. Category:{' '}
-                    {item.annotation?.category ?? 'Bank derived'}. Activity:{' '}
-                    {item.annotation?.activity ?? 'Bank derived'}.{' '}
-                    {item.annotation?.excluded
-                      ? 'Excluded'
-                      : 'Included when eligible'}{' '}
-                    · {item.annotation?.reviewed ? 'Reviewed' : 'Not reviewed'}.
-                  </p>
-                </div>
-              ))}
-          </section>
         )}
         {archive && fact.currentId && (
           <ScopedLink
@@ -639,6 +638,7 @@ export function TransactionDetail({
         )}
         {!edit && editable && (
           <Button
+            ref={editButton}
             disabled={storageError}
             onClick={() => {
               setMessage('');
@@ -671,11 +671,34 @@ export function TransactionDetail({
               void act(save);
             }}
           >
-            <h3>Edit private annotations</h3>
+            <h3
+              ref={editorHeading}
+              tabIndex={-1}
+              onKeyDown={(event) => {
+                if (
+                  event.key !== 'Tab' ||
+                  event.shiftKey ||
+                  event.altKey ||
+                  event.ctrlKey ||
+                  event.metaKey
+                )
+                  return;
+                const first = event.currentTarget
+                  .closest('form')
+                  ?.querySelector<HTMLElement>(
+                    'select:not(:disabled), input:not(:disabled), textarea:not(:disabled), button:not(:disabled)',
+                  );
+                if (first) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  first.focus();
+                }
+              }}
+            >
+              Edit private annotations
+            </h3>
             <p>
-              Each changed field saves separately. Confirmed fields stay saved
-              if a later field fails. Bank amount and dates stay unchanged; no
-              shared expense is created.
+              These changes stay private. Bank amount and dates stay unchanged.
             </p>
             <fieldset
               className={styles.fields}
@@ -780,6 +803,10 @@ export function TransactionDetail({
                 {annotationError(edit, fresh ?? fact)}
               </Status>
             )}
+            <p>
+              Each changed field saves separately. Confirmed fields stay saved
+              if a later field fails. No shared expense is created.
+            </p>
             <div className={styles.actions}>
               <Button
                 tone="secondary"
@@ -844,10 +871,44 @@ export function TransactionDetail({
             )}
           </form>
         )}
+        {archive && (
+          <section>
+            <h3>Immutable archive provenance</h3>
+            {fact.archives
+              .filter((item) => item.archiveId === archive)
+              .map((item) => (
+                <div key={item.archiveId}>
+                  <p>
+                    Captured source revision {item.sourceRevision}; annotation
+                    revision {item.annotationRevision ?? 'none'}.
+                  </p>
+                  <p className={styles.note}>
+                    Captured note: {item.annotation?.note ?? 'None'}. Category:{' '}
+                    {item.annotation?.category ?? 'Bank derived'}. Activity:{' '}
+                    {item.annotation?.activity ?? 'Bank derived'}.{' '}
+                    {item.annotation?.excluded
+                      ? 'Excluded'
+                      : 'Included when eligible'}{' '}
+                    · {item.annotation?.reviewed ? 'Reviewed' : 'Not reviewed'}.
+                  </p>
+                </div>
+              ))}
+          </section>
+        )}
         <details>
           <summary>Original bank details</summary>
           <dl className={styles.facts}>
             {[
+              ['Account', names.get(fact.accountId) ?? 'Retained bank account'],
+              [
+                fact.processingState === 'pending'
+                  ? 'Provisional bank date'
+                  : 'Posted bank date',
+                fact.bankDate,
+              ],
+              ...(fact.authorizationDate
+                ? [['Authorization date', fact.authorizationDate]]
+                : []),
               ['Description', fact.name],
               ['Provider category', fact.providerCategory],
               ['Provider primary category', fact.providerPrimaryCategory],

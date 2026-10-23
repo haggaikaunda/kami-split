@@ -214,6 +214,7 @@ beforeEach(() => {
   host = document.createElement('div');
   document.body.append(host);
   window.scrollTo = vi.fn();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   window.requestAnimationFrame = (callback) =>
     window.setTimeout(() => callback(0), 0);
   window.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -623,6 +624,13 @@ it('opens read-only, separates immutable dates, and protects edited input on Clo
   await openDetail();
   expect(host.querySelector('textarea')).toBeNull();
   expect(host.textContent).toContain('Authorization date2026-10-16');
+  await click('Edit');
+  expect(document.activeElement).toBe(host.querySelector('form h3'));
+  expect(host.querySelector('form')?.previousElementSibling?.tagName).not.toBe(
+    'DL',
+  );
+  await click('Cancel editing');
+  expect(document.activeElement?.textContent).toBe('Edit');
   await click('Edit');
   await textInput('Intended private note');
   await click('Close');

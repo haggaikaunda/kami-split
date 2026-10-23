@@ -858,6 +858,8 @@ function SelectedTransaction({
   const params = useSearchParams(),
     selected = transactionSelection(params);
   const [retry, setRetry] = useState(0);
+  const [savedSelection, setSavedSelection] = useState<string | null>(null);
+  const selectionIdentity = `${scope.id}:${selected.source}:${selected.archive}:${selected.discrepancy}`;
   return (
     <NetworkQuery<personalTransactionSelectionQuery>
       key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
@@ -873,6 +875,7 @@ function SelectedTransaction({
       }
       failure={
         <Status kind="error">
+          <ClearSavedEditFocus onClear={() => setSavedSelection(null)} />
           The selected private record could not be loaded.{' '}
           <Button onClick={() => setRetry((value) => value + 1)}>
             Retry selected transaction
@@ -899,10 +902,16 @@ function SelectedTransaction({
             discrepancy={selected.discrepancy}
             originPages={originPages}
             onFieldSaved={onSaved}
-            onSaved={() => setRetry((value) => value + 1)}
+            focusEdit={savedSelection === selectionIdentity}
+            onFocusedEdit={() => setSavedSelection(null)}
+            onSaved={() => {
+              setSavedSelection(selectionIdentity);
+              setRetry((value) => value + 1);
+            }}
           />
         ) : (
           <Status kind="error">
+            <ClearSavedEditFocus onClear={() => setSavedSelection(null)} />
             This private record is unavailable or no longer accessible.{' '}
             <Link
               href={personalHref(new URLSearchParams(params), {
@@ -916,6 +925,12 @@ function SelectedTransaction({
       }
     </NetworkQuery>
   );
+}
+/** A failed fresh detail relinquishes the pending navigation-only focus intent. */
+function ClearSavedEditFocus({ onClear }: { onClear: () => void }) {
+  const clear = useEffectEvent(onClear);
+  useEffect(() => clear(), []);
+  return null;
 }
 function reportProblem(code: string) {
   switch (code) {
