@@ -64,12 +64,15 @@ export function SourceReturn({
   household = false,
   authorizedGroups,
   fallbackLabel,
+  label,
   authorized = true,
 }: {
   scope: FinancialScope;
   household?: boolean;
   authorizedGroups?: readonly { id: string; name: string }[];
   fallbackLabel?: string;
+  /** A source-specific visible return label; authorization and href ownership stay here. */
+  label?: string;
   /** The owning read can deny a saved origin after fresh access validation. */
   authorized?: boolean;
 }) {
@@ -109,14 +112,15 @@ export function SourceReturn({
         if (token) scope.restored.delete(token);
       }}
     >
-      {destination
-        ? sourceReturnLabel(destination.pathname, group?.name)
-        : (fallbackLabel ??
-          (household
-            ? 'Back to Household'
-            : trip
-              ? 'Back to Trips'
-              : 'Back to Groups'))}
+      {label ??
+        (destination
+          ? sourceReturnLabel(destination.pathname, group?.name)
+          : (fallbackLabel ??
+            (household
+              ? 'Back to Household'
+              : trip
+                ? 'Back to Trips'
+                : 'Back to Groups')))}
     </Link>
   );
 }

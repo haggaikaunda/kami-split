@@ -1068,7 +1068,7 @@ test('Personal transactions apply drafts, preserve shared dates, and restore row
     page.getByRole('heading', { name: 'Selected transaction', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('link', { name: 'Back to Personal', exact: true })
+    .getByRole('link', { name: 'Back to transactions', exact: true })
     .click();
   await expect(page.locator('#transaction-source-private')).toBeFocused();
   await page
@@ -1093,7 +1093,7 @@ test('Personal transactions apply drafts, preserve shared dates, and restore row
     variables: { source: 'source-private', archive: null, discrepancy: false },
   });
   await page
-    .getByRole('link', { name: 'Back to Personal', exact: true })
+    .getByRole('link', { name: 'Back to recovery archive', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Recovery archive', exact: true }),
@@ -1160,7 +1160,7 @@ test('Personal transaction pagination restarts on changed snapshots and keeps fi
     page.getByRole('heading', { name: 'Selected transaction', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('link', { name: 'Back to Personal', exact: true })
+    .getByRole('link', { name: 'Back to transactions', exact: true })
     .click();
   await expect(page.locator('#transaction-second-page')).toBeFocused();
   expect(

@@ -211,18 +211,23 @@ function ReportContent({
                   scope.visits.has(params.get('source')!) && (
                     <SourceReturn
                       scope={scope}
-                      fallbackLabel="Back to current activity"
+                      label="Back to current activity"
                     />
                   )}
-                <Link
-                  href={personalHref(new URLSearchParams(params), {
-                    archive: null,
-                    transaction: null,
-                    discrepancies: null,
-                  })}
-                >
-                  Back to current activity
-                </Link>
+                {!(
+                  params.get('source') &&
+                  scope.visits.has(params.get('source')!)
+                ) && (
+                  <Link
+                    href={personalHref(new URLSearchParams(params), {
+                      archive: null,
+                      transaction: null,
+                      discrepancies: null,
+                    })}
+                  >
+                    Back to current activity
+                  </Link>
+                )}
               </div>
             )}
             {selection.discrepancy && (
@@ -244,7 +249,12 @@ function ReportContent({
                 </Link>
               </div>
             )}
-            <Coverage report={report} names={names} connections={connections} />
+            <Coverage
+              report={report}
+              names={names}
+              statuses={statuses}
+              connections={connections}
+            />
             {report.summary && (
               <p className={styles.summary}>
                 Spending from your accounts:{' '}
@@ -334,6 +344,13 @@ function ReportContent({
                       {interval.afterDate ??
                         'the beginning of retained history'}{' '}
                       through {interval.throughDate ?? 'the current period'}.{' '}
+                      Import: {readable(interval.importState)}. Collection:{' '}
+                      {readable(interval.collectionState)}. Last local import:{' '}
+                      {interval.lastLocalCommit ?? 'Unknown'}; bank success
+                      observation: {interval.providerSuccessAt ?? 'Unknown'}.
+                      Actual coverage: after{' '}
+                      {interval.coverageAfter ?? 'Unknown'} through{' '}
+                      {interval.coverageThrough ?? 'Unknown'}.{' '}
                       {interval.discrepancyCount > 0 &&
                         `${interval.discrepancyCount} historical discrepancies.`}
                     </p>
@@ -345,6 +362,7 @@ function ReportContent({
                         id={`archive-${archive.id}`}
                         href={personalHref(new URLSearchParams(params), {
                           archive: archive.id,
+                          source: null,
                           discrepancies: null,
                           transaction: null,
                         })}
@@ -362,6 +380,7 @@ function ReportContent({
                   id="source-discrepancies"
                   href={personalHref(new URLSearchParams(params), {
                     discrepancies: 'true',
+                    source: null,
                     archive: null,
                     transaction: null,
                   })}
@@ -554,6 +573,7 @@ function TransactionRow({
               id={`transaction-${value.sourceId}`}
               href={personalHref(new URLSearchParams(params), {
                 transaction: value.sourceId,
+                source: null,
               })}
             >
               {label}
@@ -607,6 +627,7 @@ function TransactionRow({
               id={`current-${value.sourceId}`}
               href={personalHref(new URLSearchParams(params), {
                 transaction: value.currentId,
+                source: null,
                 archive: null,
                 discrepancies: null,
               })}
@@ -629,13 +650,27 @@ function SelectedTransaction({ scope, names }: Context) {
     <section className={styles.selected}>
       <h2>Selected transaction</h2>
       {params.get('source') && scope.visits.has(params.get('source')!) && (
-        <SourceReturn scope={scope} fallbackLabel="Back to transactions" />
+        <SourceReturn
+          scope={scope}
+          label={
+            new URL(
+              scope.visits.get(params.get('source')!)!.href,
+              'https://workspace.invalid',
+            ).searchParams.has('archive')
+              ? 'Back to recovery archive'
+              : 'Back to transactions'
+          }
+        />
       )}
-      <Link
-        href={personalHref(new URLSearchParams(params), { transaction: null })}
-      >
-        Back to transactions
-      </Link>
+      {!(params.get('source') && scope.visits.has(params.get('source')!)) && (
+        <Link
+          href={personalHref(new URLSearchParams(params), {
+            transaction: null,
+          })}
+        >
+          Back to transactions
+        </Link>
+      )}
       <NetworkQuery<personalTransactionSelectionQuery>
         key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
         scope={scope}

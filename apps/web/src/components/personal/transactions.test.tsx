@@ -325,3 +325,69 @@ it('reauthorizes a selected-row return before restoring a retained later-page ro
   expect(document.activeElement?.id).toBe('transaction-later-source');
   expect(host.querySelectorAll('[data-source-id]')).toHaveLength(2);
 });
+it('keeps stale/reconnect import facts visible beside a usable complete current report', async () => {
+  const facts = {
+    operation: 'IDLE',
+    importState: 'USABLE',
+    usable: true,
+    recovery: 'NONE',
+    collection: 'RECONNECT_REQUIRED',
+    reportingState: 'CURRENT',
+    freshness: 'STALE',
+    coverage: 'COMPLETE',
+    historicalUpdate: 'COMPLETE',
+    historyAvailability: 'UNKNOWN',
+    discrepancyCount: '0',
+  };
+  await act(async () =>
+    root.render(
+      <PersonalTransactions
+        scope={scope}
+        names={new Map([['account', 'Private checking']])}
+        statuses={new Map([['account', facts]])}
+      />,
+    ),
+  );
+  const account = report().bankingReport.accounts[0];
+  await answer(
+    report({
+      accounts: [
+        {
+          ...account,
+          coverage: 'COMPLETE',
+          selected: true,
+          transitionDate: null,
+          intervals: [
+            {
+              ...account.intervals[0],
+              throughDate: null,
+              collectionState: 'current/active/granted',
+              collectionStopped: false,
+              importState: 'usable',
+              coverage: 'COMPLETE',
+              discrepancyCount: 0,
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  expect(host.textContent).toContain('Reconnect needed');
+  expect(
+    [...host.querySelectorAll('a')].some(
+      (link) => link.textContent === 'View status in Connections',
+    ),
+  ).toBe(true);
+  await act(async () =>
+    root.render(
+      <PersonalTransactions
+        scope={scope}
+        names={new Map([['account', 'Private checking']])}
+        statuses={
+          new Map([['account', { ...facts, collection: 'COLLECTING' }]])
+        }
+      />,
+    ),
+  );
+  expect(host.textContent).toContain('updates are stale');
+});
