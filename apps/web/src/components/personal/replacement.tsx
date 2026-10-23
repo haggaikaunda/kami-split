@@ -101,9 +101,9 @@ export function Replacement({
     return (
       <>
         <Status kind="info">
-          The reporting change is confirmed locally. Reload current plans and
-          archive status; provider permission, collection and erased data are
-          not restored.
+          The local change is confirmed. Reload current plans and archive
+          status. Provider permission, collection and erased data are not
+          restored.
         </Status>
         <Button onClick={onChanged}>Reload current state</Button>
       </>
@@ -287,6 +287,7 @@ export function Replacement({
               {(intent === 'recover' ||
                 (intent === 'replace' && bindingId)) && (
                 <form
+                  noValidate
                   onSubmit={(e) => {
                     e.preventDefault();
                     setPreview(undefined);
@@ -318,7 +319,11 @@ export function Replacement({
                       ).bankingReplacementPreview;
                       if (work.live()) {
                         setPreview({ request, value });
-                        if (value.code !== 'READY')
+                        if (value.code === 'INVALID_INPUT')
+                          setFieldError(
+                            'Choose a real nonfuture posted-bank date after the preceding transition boundary.',
+                          );
+                        else if (value.code !== 'READY')
                           work.setMessage(managementMessage(value.code));
                       }
                       return value.code;

@@ -513,3 +513,20 @@ it('canceling a preview has no reporting effect and unusable imports cannot be c
     'private annotations leaving reporting remain',
   );
 });
+
+it('keeps server date-boundary errors persistent on the field and prevents confirmation', async () => {
+  await recoveryPanel();
+  await click('Change latest transition date');
+  await click('Preview recovery');
+  await reply('managementPreviewQuery', {
+    bankingReplacementPreview: previewValue('INVALID_INPUT'),
+  });
+  expect(
+    host
+      .querySelector<HTMLInputElement>('input[type=date]')
+      ?.getAttribute('aria-invalid'),
+  ).toBe('true');
+  expect(host.textContent).toContain('after the preceding transition boundary');
+  expect(button('Confirm recovery').disabled).toBe(true);
+  expect(host.querySelector('form')?.noValidate).toBe(true);
+});

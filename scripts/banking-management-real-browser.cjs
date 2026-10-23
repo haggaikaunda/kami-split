@@ -206,7 +206,7 @@ withAuthFixture(origin, session, async () => {
       await waitText('The local change is confirmed.');
       assert.equal(observed.finishBankingRepair.code, 'READY');
       await checkpoint('retained');
-      await click('Cancel');
+      await click('Close management');
       await open();
       await savings().uncheck();
       lose = 'changeBankingSelection';

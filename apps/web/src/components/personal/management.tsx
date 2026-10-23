@@ -185,11 +185,30 @@ function ConnectionManagement({
     ...new Set(connection.accounts.map((a) => a.name)),
   ].join(', ');
   const canCollect = connection.state === 'active';
-  const choices =
-    repairChoices ??
-    connection.accounts
-      .filter((a) => a.importStatus.reportingState !== 'RETIRED')
-      .map((a) => ({ id: a.providerAccountId, name: a.name, subtype: a.kind }));
+  const choices = [
+    ...(repairChoices ??
+      connection.accounts
+        .filter((a) =>
+          ['CURRENT', 'STAGED'].includes(a.importStatus.reportingState),
+        )
+        .map((a) => ({
+          id: a.providerAccountId,
+          name: a.name,
+          subtype: a.kind,
+        }))),
+  ].sort(
+    (a, b) =>
+      Number(
+        connection.accounts.some(
+          (saved) => saved.providerAccountId === b.id && saved.selected,
+        ),
+      ) -
+      Number(
+        connection.accounts.some(
+          (saved) => saved.providerAccountId === a.id && saved.selected,
+        ),
+      ),
+  );
   const changed =
     [...selected].sort().join() !==
     connection.accounts
@@ -397,7 +416,7 @@ function ConnectionManagement({
         </Button>
         {canCollect && (
           <Button
-            tone="secondary"
+            tone={connection.health === 'healthy' ? 'secondary' : 'primary'}
             disabled={work.busy || Boolean(repairId)}
             onClick={() => void repair()}
           >

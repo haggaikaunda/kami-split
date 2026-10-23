@@ -51,6 +51,10 @@ func TestBankingInstitutionNameFollowsOwnerAndDeletion(t *testing.T) {
 	if deleted["code"] != "READY" {
 		t.Fatal("delete did not commit", deleted["code"])
 	}
+	var savedName *string
+	if err := f.admin.QueryRow(context.Background(), `SELECT institution_name FROM app.banking_connections WHERE id=$1`, id).Scan(&savedName); err != nil || savedName != nil {
+		t.Fatal("deleted institution name was not erased", err)
+	}
 	current := f.operation(h, query, token, "bankingConnection", false)
 	erased := current["connection"].(map[string]any)
 	if erased["institutionName"] != nil || len(erased["accounts"].([]any)) != 0 {
