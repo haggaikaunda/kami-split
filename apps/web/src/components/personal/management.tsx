@@ -241,64 +241,70 @@ function ConnectionManagement({
       .sort()
       .join();
   const repair = () =>
-    work.run('repair', async (attemptId) => {
-      setRepairId(attemptId);
-      callback.current = false;
-      const result = (
-        await command<managementRepairStartMutation>(
-          scope,
-          repairStartDocument,
-          {
-            input: {
-              attemptId,
-              connectionId: connection.id,
-              expectedGeneration: connection.generation,
+    work.run(
+      'repair',
+      async (attemptId) => {
+        setRepairId(attemptId);
+        callback.current = false;
+        const result = (
+          await command<managementRepairStartMutation>(
+            scope,
+            repairStartDocument,
+            {
+              input: {
+                attemptId,
+                connectionId: connection.id,
+                expectedGeneration: connection.generation,
+              },
             },
-          },
+          )
+        ).startBankingRepair;
+        if (!work.live()) return result;
+        if (result.code === 'ATTEMPT_IN_PROGRESS' && !result.state)
+          setRepairId(undefined);
+        if (
+          result.code !== 'PREPARED' ||
+          !result.linkToken ||
+          !result.expiresAt ||
+          Date.parse(result.expiresAt) <= Date.now() ||
+          !Number.isFinite(Date.parse(result.expiresAt))
         )
-      ).startBankingRepair;
-      if (!work.live()) return result.code;
-      if (
-        result.code !== 'PREPARED' ||
-        !result.linkToken ||
-        !result.expiresAt ||
-        Date.parse(result.expiresAt) <= Date.now() ||
-        !Number.isFinite(Date.parse(result.expiresAt))
-      )
-        return result.code;
-      const sdk = await loadPlaid();
-      if (!work.live()) return 'PENDING';
-      handler.current = sdk.create({
-        token: result.linkToken,
-        onSuccess: (_token, metadata) => {
-          if (!work.live() || callback.current) return;
-          callback.current = true;
-          setProviderOpen(false);
-          const eligible = metadata.accounts.filter(eligibleLinkAccount);
-          setRepairChoices(eligible);
-          // Preserve only previously selected IDs present in the authorized handoff. New accounts start unchecked.
-          setSelected((current) =>
-            current.filter((id) => eligible.some((a) => a.id === id)),
-          );
-          work.setMessage(
-            'Review exactly which accounts to include, then Apply repair. Link success alone is not renewed consent or a saved selection.',
-          );
-        },
-        onExit: (error) => {
-          if (!work.live() || callback.current) return;
-          callback.current = true;
-          setProviderOpen(false);
-          work.setMessage(
-            error
-              ? 'Repair was interrupted or expired. Saved local selection and history remain; check the original repair outcome.'
-              : 'Repair canceled. Saved local selection and history remain. Provider permissions may have changed; check the repair outcome before starting again.',
-          );
-        },
-      });
-      flushSync(() => setProviderOpen(true));
-      handler.current.open();
-      return 'PREPARED';
-    });
+          return result;
+        const sdk = await loadPlaid();
+        if (!work.live()) return 'PENDING';
+        handler.current = sdk.create({
+          token: result.linkToken,
+          onSuccess: (_token, metadata) => {
+            if (!work.live() || callback.current) return;
+            callback.current = true;
+            setProviderOpen(false);
+            const eligible = metadata.accounts.filter(eligibleLinkAccount);
+            setRepairChoices(eligible);
+            // Preserve only previously selected IDs present in the authorized handoff. New accounts start unchecked.
+            setSelected((current) =>
+              current.filter((id) => eligible.some((a) => a.id === id)),
+            );
+            work.setMessage(
+              'Review exactly which accounts to include, then Apply repair. Link success alone is not renewed consent or a saved selection.',
+            );
+          },
+          onExit: (error) => {
+            if (!work.live() || callback.current) return;
+            callback.current = true;
+            setProviderOpen(false);
+            work.setMessage(
+              error
+                ? 'Repair was interrupted or expired. Saved local selection and history remain; check the original repair outcome.'
+                : 'Repair canceled. Saved local selection and history remain. Provider permissions may have changed; check the repair outcome before starting again.',
+            );
+          },
+        });
+        flushSync(() => setProviderOpen(true));
+        handler.current.open();
+        return result;
+      },
+      'repair-start',
+    );
   if (confirmed)
     return (
       <>
@@ -406,7 +412,7 @@ function ConnectionManagement({
             void (repairChoices && repairId
               ? work.run(null, async () => {
                   setRepairFinishSubmitted(true);
-                  const code = (
+                  const outcome = (
                     await command<managementRepairFinishMutation>(
                       scope,
                       repairFinishDocument,
@@ -417,10 +423,13 @@ function ConnectionManagement({
                         },
                       },
                     )
-                  ).finishBankingRepair.code;
-                  work.accept('repair', code);
-                  setRepairChoices(undefined);
-                  return code;
+                  ).finishBankingRepair;
+                  work.accept('repair', outcome, {
+                    source: 'repair-finish',
+                    attemptId: repairId,
+                  });
+                  if (outcome.state === 'complete') setRepairChoices(undefined);
+                  return outcome;
                 })
               : work.run(
                   'management',

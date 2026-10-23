@@ -300,7 +300,7 @@ it('repair filters eligibility, never selects a new account implicitly, sends no
     input: { attemptId, accountIds: ['checking'] },
   });
   await reply('managementRepairFinishMutation', {
-    finishBankingRepair: { code: 'READY', attemptId, state: 'ready' },
+    finishBankingRepair: { code: 'READY', attemptId, state: 'complete' },
   });
   expect(
     requests.filter((r) => r.name === 'enrollmentFinishMutation'),
@@ -361,7 +361,7 @@ it('freezes an ambiguous repair finish and recovers its original receipt without
       __typename: 'BankingRepairResult',
       code: 'READY',
       attemptId,
-      state: 'ready',
+      state: 'complete',
     },
   });
   expect(changed).toHaveBeenCalledOnce();
@@ -662,4 +662,227 @@ it('keeps history controls collapsed until requested and restores account-trigge
     button('Replacement and recovery — Private checking').closest('details')
       ?.open,
   ).toBe(true);
+});
+
+it.each(['REPAIR_REQUIRED', 'INVALID_SELECTION'])(
+  'keeps an immediate %s repair failure prepared until an authoritative expired receipt',
+  async (code) => {
+    const attemptId = await repair();
+    await act(async () =>
+      config.onSuccess('unused', {
+        accounts: [
+          {
+            id: 'checking',
+            name: 'Private checking',
+            type: 'depository',
+            subtype: 'checking',
+          },
+          {
+            id: 'savings',
+            name: 'Private savings',
+            type: 'depository',
+            subtype: 'savings',
+          },
+        ],
+      }),
+    );
+    await click('Apply repair');
+    await reply('managementRepairFinishMutation', {
+      finishBankingRepair: { code, state: null, attemptId: null },
+    });
+    const key = 'kami-personal-enrollment:alice:manage:repair';
+    expect(sessionStorage.getItem(key)).toBe(attemptId);
+    expect(checkboxes().every((c) => c.matches(':disabled'))).toBe(true);
+    expect(button('Apply repair').disabled).toBe(true);
+    await click('Cancel');
+    await click('Check repair outcome');
+    await reply('managementRepairQuery', {
+      bankingRepair: { code: 'PREPARED', state: 'prepared', attemptId },
+    });
+    expect(sessionStorage.getItem(key)).toBe(attemptId);
+    await click('Check repair outcome');
+    await reply('managementRepairQuery', {
+      bankingRepair: { code: 'REPAIR_REQUIRED', state: 'prepared', attemptId },
+    });
+    expect(sessionStorage.getItem(key)).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+    await manage();
+    await click('Authorize account additions');
+    expect(
+      (requests.at(-1)?.variables.input as { attemptId: string }).attemptId,
+    ).not.toBe(attemptId);
+  },
+);
+it('releases a known-unreserved competing repair start without inventing a receipt', async () => {
+  await manage();
+  await click('Authorize account additions');
+  const original = (requests.at(-1)!.variables.input as { attemptId: string })
+    .attemptId;
+  await reply('managementRepairStartMutation', {
+    startBankingRepair: {
+      code: 'ATTEMPT_IN_PROGRESS',
+      state: null,
+      attemptId: null,
+      linkToken: null,
+      expiresAt: null,
+    },
+  });
+  expect(
+    sessionStorage.getItem('kami-personal-enrollment:alice:manage:repair'),
+  ).toBeNull();
+  expect(host.textContent).toContain('This new attempt was not reserved');
+  expect(open).not.toHaveBeenCalled();
+  expect(button('Authorize account additions').disabled).toBe(false);
+  await click('Cancel');
+  await manage();
+  await click('Authorize account additions');
+  expect(
+    (requests.at(-1)!.variables.input as { attemptId: string }).attemptId,
+  ).not.toBe(original);
+});
+it('releases a durably completed preparation failure but retains missing or mismatched repair receipts', async () => {
+  await manage();
+  await click('Authorize account additions');
+  const id = (requests.at(-1)!.variables.input as { attemptId: string })
+    .attemptId;
+  await reply('managementRepairStartMutation', {
+    startBankingRepair: {
+      code: 'REPAIR_REQUIRED',
+      state: 'complete',
+      attemptId: id,
+      linkToken: null,
+      expiresAt: null,
+    },
+  });
+  const key = 'kami-personal-enrollment:alice:manage:repair';
+  expect(sessionStorage.getItem(key)).toBeNull();
+  await click('Cancel');
+  await manage();
+  await click('Authorize account additions');
+  const next = requests.at(-1)!;
+  const nextId = (next.variables.input as { attemptId: string }).attemptId;
+  await act(async () => next.error());
+  await click('Cancel');
+  await click('Check repair outcome');
+  await reply('managementRepairQuery', {
+    bankingRepair: { code: 'NOT_FOUND', state: null, attemptId: null },
+  });
+  expect(sessionStorage.getItem(key)).toBe(nextId);
+  await click('Check repair outcome');
+  await reply('managementRepairQuery', {
+    bankingRepair: {
+      code: 'READY',
+      state: 'complete',
+      attemptId: 'different-repair',
+    },
+  });
+  expect(sessionStorage.getItem(key)).toBe(nextId);
+  expect(changed).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('local change is confirmed');
+});
+it.each(['command', 'receipt'])(
+  'resolves durable management INVALID_SELECTION from its %s without clearing a different kind',
+  async (source) => {
+    await manage();
+    await act(async () => checkboxes()[1].click());
+    await click('Apply selection');
+    const original = requests.at(-1)!;
+    const first = (original.variables.input as { attemptId: string }).attemptId;
+    sessionStorage.setItem(
+      'kami-personal-enrollment:alice:manage:plan',
+      'unrelated-plan',
+    );
+    if (source === 'receipt') {
+      await act(async () => original.error());
+      await click('Check management outcome');
+      await reply('managementOperationQuery', {
+        bankingOperation: { code: 'INVALID_SELECTION' },
+      });
+    } else
+      await reply('managementSelectionMutation', {
+        changeBankingSelection: { code: 'INVALID_SELECTION' },
+      });
+    expect(
+      sessionStorage.getItem(
+        'kami-personal-enrollment:alice:manage:management',
+      ),
+    ).toBeNull();
+    expect(
+      sessionStorage.getItem('kami-personal-enrollment:alice:manage:plan'),
+    ).toBe('unrelated-plan');
+    await click('Reload current state');
+    await reply('managementConnectionQuery', {
+      bankingConnection: {
+        code: 'READY',
+        connection: { ...connection, generation: '9007199254740994' },
+      },
+    });
+    await act(async () => checkboxes()[1].click());
+    await click('Apply selection');
+    const input = requests.at(-1)!.variables.input as {
+      attemptId: string;
+      expectedGeneration: string;
+    };
+    expect(input.attemptId).not.toBe(first);
+    expect(input.expectedGeneration).toBe('9007199254740994');
+  },
+);
+it.each(['management', 'repair'])(
+  'ignores an old held %s receipt after a newer operation owns the same slot',
+  async (kind) => {
+    const key = `kami-personal-enrollment:alice:manage:${kind}`;
+    await act(async () => {
+      sessionStorage.setItem(key, 'old-attempt');
+      window.dispatchEvent(new Event('kami-banking-attempt'));
+    });
+    await click(`Check ${kind} outcome`);
+    const old = requests.at(-1)!;
+    // Another owner resolved A; this owner now sends B before the held A read arrives.
+    sessionStorage.removeItem(key);
+    await manage();
+    if (kind === 'management') {
+      await act(async () => checkboxes()[1].click());
+      await click('Apply selection');
+    } else await click('Authorize account additions');
+    const newer = requests.at(-1)!;
+    const nextId = (newer.variables.input as { attemptId: string }).attemptId;
+    await act(async () =>
+      old.next(
+        kind === 'management'
+          ? { bankingOperation: { code: 'READY' } }
+          : {
+              bankingRepair: {
+                code: 'READY',
+                state: 'complete',
+                attemptId: 'old-attempt',
+              },
+            },
+      ),
+    );
+    expect(sessionStorage.getItem(key)).toBe(nextId);
+    expect(
+      button(
+        kind === 'management'
+          ? 'Apply selection'
+          : 'Authorize account additions',
+      ).disabled,
+    ).toBe(true);
+    expect(changed).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('local change is confirmed');
+  },
+);
+
+it('resolves an authoritative fenced repair receipt without claiming a completed change', async () => {
+  const attemptId = await repair();
+  await act(async () => config.onExit(null));
+  await click('Cancel');
+  await click('Check repair outcome');
+  await reply('managementRepairQuery', {
+    bankingRepair: { code: 'CONFLICT', state: 'prepared', attemptId },
+  });
+  expect(
+    sessionStorage.getItem('kami-personal-enrollment:alice:manage:repair'),
+  ).toBeNull();
+  expect(changed).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('local change is confirmed');
 });

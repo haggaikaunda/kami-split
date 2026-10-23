@@ -13,12 +13,71 @@ import repairDocument, {
 import { readFresh } from './relay-command';
 import { Button, Status } from '../ui/primitives';
 export type AttemptKind = 'management' | 'plan' | 'repair';
+type AttemptOutcome =
+  | string
+  | {
+      readonly code: string;
+      readonly state?: string | null;
+      readonly attemptId?: string | null;
+    };
+type AttemptSource = 'command' | 'repair-start' | 'repair-finish' | 'receipt';
+function resolvedOutcome(
+  kind: AttemptKind,
+  outcome: AttemptOutcome,
+  source: AttemptSource,
+  attemptId?: string,
+) {
+  const code = typeof outcome === 'string' ? outcome : outcome.code;
+  const state = typeof outcome === 'string' ? undefined : outcome.state;
+  if (kind === 'repair') {
+    // Immediate provider inventory errors leave the existing repair prepared.
+    // Only its durable completion or an authoritative expired/fenced read resolves it.
+    const matches =
+      typeof outcome !== 'string' && outcome.attemptId === attemptId;
+    if (state === 'complete') return matches;
+    if (source === 'receipt')
+      return matches && ['REPAIR_REQUIRED', 'CONFLICT'].includes(code);
+    // The start endpoint returns these before inserting this fresh UUID. In
+    // particular ATTEMPT_IN_PROGRESS belongs to a different, existing handoff.
+    return (
+      source === 'repair-start' &&
+      !state &&
+      [
+        'ATTEMPT_IN_PROGRESS',
+        'CONFLICT',
+        'INVALID_INPUT',
+        'REPAIR_UNAVAILABLE',
+        'FEATURE_DISABLED',
+      ].includes(code)
+    );
+  }
+  // Selection completes its operation receipt even when provider validation
+  // returns INVALID_SELECTION; that code is not terminal for a prepared repair.
+  return (
+    (kind === 'management' && code === 'INVALID_SELECTION') ||
+    [
+      'READY',
+      'CONFLICT',
+      'INVALID_INPUT',
+      'REPAIR_REQUIRED',
+      'REPLACEMENT_REQUIRED',
+      'EXPIRED',
+      'FORBIDDEN',
+      'UNAUTHENTICATED',
+      'FEATURE_DISABLED',
+    ].includes(code)
+  );
+}
 export function attemptKey(scope: FinancialScope, kind: AttemptKind) {
   return `kami-personal-enrollment:${scope.actor}:manage:${kind}`;
 }
 export function managementMessage(code: string) {
   if (code === 'READY')
     return 'The local change is confirmed. Provider removal and active-copy purge have separate status; pending removal is not complete.';
+  if (code === 'ATTEMPT_IN_PROGRESS')
+    return 'Another repair handoff is still active. This new attempt was not reserved. Wait for the existing handoff to finish or expire, then reload the connection before trying again.';
+  if (code === 'INVALID_SELECTION')
+    return 'The provider could not validate that account selection. Reload current connection state and review the available accounts; saved collection and private history are unchanged.';
   if (code === 'CONFLICT')
     return 'The connection or preview changed. Reload its current state, then review and confirm again.';
   if (code === 'REPAIR_REQUIRED')
@@ -55,31 +114,39 @@ export function useManagementAttempt(
     };
   }, []);
   const live = () => mounted.current && scope.isLive();
-  const accept = (kind: AttemptKind, code: string) => {
+  const accept = (
+    kind: AttemptKind,
+    outcome: AttemptOutcome,
+    {
+      source = 'command',
+      attemptId,
+    }: { source?: AttemptSource; attemptId?: string } = {},
+  ) => {
     if (!live()) return;
-    setMessage(managementMessage(code));
-    // Missing/unknown status never unlocks a new command. Known rejects have no effect.
+    const key = attemptKey(scope, kind);
+    // A late receipt must never settle a newer operation in the actor's slot.
+    if (attemptId && sessionStorage.getItem(key) !== attemptId) return;
     if (
-      [
-        'READY',
-        'CONFLICT',
-        'INVALID_INPUT',
-        'REPAIR_REQUIRED',
-        'REPLACEMENT_REQUIRED',
-        'EXPIRED',
-        'FORBIDDEN',
-        'UNAUTHENTICATED',
-        'FEATURE_DISABLED',
-      ].includes(code)
-    ) {
-      sessionStorage.removeItem(attemptKey(scope, kind));
+      typeof outcome !== 'string' &&
+      outcome.attemptId &&
+      outcome.attemptId !== attemptId
+    )
+      return;
+    const code = typeof outcome === 'string' ? outcome : outcome.code;
+    const resolved = resolvedOutcome(kind, outcome, source, attemptId);
+    setMessage(
+      managementMessage(code === 'READY' && !resolved ? 'PENDING' : code),
+    );
+    if (resolved) {
+      sessionStorage.removeItem(key);
       window.dispatchEvent(new Event('kami-banking-attempt'));
       if (code === 'READY') onChanged();
     }
   };
   const run = async (
     kind: AttemptKind | null,
-    work: (id: string) => Promise<string>,
+    work: (id: string) => Promise<AttemptOutcome>,
+    source: AttemptSource = 'command',
   ) => {
     if (locked.current || !live()) return;
     locked.current = true;
@@ -97,8 +164,8 @@ export function useManagementAttempt(
         sessionStorage.setItem(key, id);
         window.dispatchEvent(new Event('kami-banking-attempt'));
       }
-      const code = await work(id);
-      if (kind) accept(kind, code);
+      const outcome = await work(id);
+      if (kind) accept(kind, outcome, { source, attemptId: id });
     } catch {
       if (live())
         setMessage(
@@ -158,7 +225,7 @@ export function ManagementRecovery({
             void work.run(null, async () => {
               const attemptId = sessionStorage.getItem(attemptKey(scope, kind));
               if (!attemptId) return '';
-              const code =
+              const outcome =
                 kind === 'management'
                   ? (
                       await readFresh<managementOperationQuery>(
@@ -166,7 +233,7 @@ export function ManagementRecovery({
                         managementDocument,
                         { attemptId },
                       )
-                    ).bankingOperation.code
+                    ).bankingOperation
                   : kind === 'plan'
                     ? (
                         await readFresh<managementReplacementOperationQuery>(
@@ -174,16 +241,16 @@ export function ManagementRecovery({
                           replacementDocument,
                           { attemptId },
                         )
-                      ).bankingReplacementOperation.code
+                      ).bankingReplacementOperation
                     : (
                         await readFresh<managementRepairQuery>(
                           scope,
                           repairDocument,
                           { attemptId },
                         )
-                      ).bankingRepair.code;
-              work.accept(kind, code);
-              return code;
+                      ).bankingRepair;
+              work.accept(kind, outcome, { source: 'receipt', attemptId });
+              return outcome;
             })
           }
         >

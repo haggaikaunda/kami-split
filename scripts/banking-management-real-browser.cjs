@@ -61,6 +61,8 @@ withAuthFixture(origin, session, async () => {
   const errors = [];
   const observed = {};
   const repairFinishes = [];
+  const repairStarts = [];
+  const selections = [];
   let lose;
   page.on('pageerror', (error) => errors.push(error.message));
   await seedSession(page.context(), origin, session);
@@ -101,6 +103,10 @@ withAuthFixture(origin, session, async () => {
       `Unexpected GraphQL errors in ${r.request().postDataJSON().operationName || 'operation'}`,
     );
     Object.assign(observed, result.data);
+    if (Object.hasOwn(result.data, 'startBankingRepair'))
+      repairStarts.push(r.request().postDataJSON().variables.input);
+    if (Object.hasOwn(result.data, 'changeBankingSelection'))
+      selections.push(r.request().postDataJSON().variables.input);
     if (Object.hasOwn(result.data, 'finishBankingRepair'))
       repairFinishes.push(r.request().postDataJSON().variables.input);
     if (lose && Object.hasOwn(result.data, lose)) {
@@ -110,9 +116,10 @@ withAuthFixture(origin, session, async () => {
     }
     await r.fulfill({ response, json: result });
   });
-  const checkpoint = async (name) => {
+  const checkpoint = async (name, data) => {
     const response = await page.request.post(endpoint + '/fixture/' + name, {
       headers: { Authorization: 'Bearer ' + token },
+      ...(data ? { data } : {}),
     });
     assert.equal(response.status(), 204, 'Fixture checkpoint ' + name);
   };
@@ -273,6 +280,107 @@ withAuthFixture(origin, session, async () => {
       await click('Confirm deletion');
       await waitText('The local change is confirmed.');
       assert.equal(observed.deleteBankingHistory.code, 'READY');
+    } else if (scenario === 'repair-failure') {
+      const savings = () =>
+        page.getByRole('checkbox', { name: /^Unselected bank metadata/ });
+      const pending = (kind) =>
+        page.evaluate(
+          (kind) =>
+            Object.entries(sessionStorage).find(([key]) =>
+              key.endsWith(':manage:' + kind),
+            )?.[1] ?? null,
+          kind,
+        );
+      await click('Reconnect with Plaid');
+      await waitText('This new attempt was not reserved.');
+      assert.equal(observed.startBankingRepair.code, 'ATTEMPT_IN_PROGRESS');
+      assert.equal(observed.startBankingRepair.state, null);
+      assert.equal(observed.startBankingRepair.attemptId, null);
+      assert.equal(await pending('repair'), null);
+      await checkpoint('unreserved', {
+        attemptId: repairStarts.at(-1).attemptId,
+      });
+      await checkpoint('expire-repair');
+      await click('Cancel');
+      await open();
+      await checkpoint('provider-prepare-failure');
+      await click('Reconnect with Plaid');
+      await waitText('Repair this connection before adding accounts.');
+      assert.equal(observed.startBankingRepair.state, 'complete');
+      assert.equal(await pending('repair'), null);
+      await checkpoint('completed-repair', {
+        attemptId: repairStarts.at(-1).attemptId,
+      });
+      await checkpoint('provider-ready');
+      await click('Cancel');
+      await open();
+      await click('Reconnect with Plaid');
+      await waitText('Link success alone is not renewed consent');
+      await checkpoint('provider-failure');
+      await click('Apply repair');
+      await waitText('Repair this connection before adding accounts.');
+      const original = repairFinishes.at(-1).attemptId;
+      assert.equal(observed.finishBankingRepair.code, 'REPAIR_REQUIRED');
+      assert.equal(observed.finishBankingRepair.state, null);
+      assert.equal(observed.finishBankingRepair.attemptId, null);
+      assert.equal(await pending('repair'), original);
+      await expect(savings()).toBeDisabled();
+      await checkpoint('prepared-repair', { attemptId: original });
+      await checkpoint('retained');
+      await screenshot('provider-failure-prepared');
+      await click('Cancel');
+      await click('Check repair outcome');
+      await expect.poll(() => observed.bankingRepair?.code).toBe('PREPARED');
+      assert.equal(observed.bankingRepair.state, 'prepared');
+      assert.equal(await pending('repair'), original);
+      await checkpoint('expire-repair');
+      await click('Check repair outcome');
+      await expect
+        .poll(() => observed.bankingRepair?.code)
+        .toBe('REPAIR_REQUIRED');
+      assert.equal(observed.bankingRepair.state, 'prepared');
+      assert.equal(await pending('repair'), null);
+      await checkpoint('provider-ready');
+      await open();
+      await click('Reconnect with Plaid');
+      await waitText('Link success alone is not renewed consent');
+      assert.notEqual(repairStarts.at(-1).attemptId, original);
+      await click('Apply repair');
+      await waitText('The local change is confirmed.');
+      assert.equal(observed.finishBankingRepair.state, 'complete');
+      await click('Close management');
+      await open();
+      await savings().uncheck();
+      await click('Apply selection');
+      await waitText('The local change is confirmed.');
+      await click('Close management');
+      await open();
+      await checkpoint('provider-missing-account');
+      await savings().check();
+      lose = 'changeBankingSelection';
+      await click('Apply selection');
+      await waitText('The response was lost or unavailable.');
+      const invalid = selections.at(-1).attemptId;
+      assert.equal(observed.changeBankingSelection.code, 'INVALID_SELECTION');
+      await checkpoint('terminal-selection', { attemptId: invalid });
+      await checkpoint('selection');
+      await click('Cancel');
+      await click('Check management outcome');
+      await expect
+        .poll(() => observed.bankingOperation?.code)
+        .toBe('INVALID_SELECTION');
+      assert.equal(await pending('management'), null);
+      await checkpoint('provider-ready');
+      await open();
+      assert(
+        !(await savings().isChecked()),
+        'Invalid selection must preserve saved subset',
+      );
+      await savings().check();
+      await click('Apply selection');
+      await waitText('The local change is confirmed.');
+      assert.notEqual(selections.at(-1).attemptId, invalid);
+      await checkpoint('retained');
     } else {
       const replacement = () =>
         page.getByRole('button', {

@@ -243,3 +243,15 @@ display metadata. Neither names nor opaque provider identifiers prove continuity
 The [replacement guide](banking-replacement.md) describes staged confirmation and
 reporting-only recovery. These browser paths do not enable production enrollment
 or establish live-provider acceptance.
+
+Management recovery interprets outcomes by endpoint and persisted repair state.
+Selection's `INVALID_SELECTION` is a completed management receipt and permits a
+freshly read baseline. The same code, or `REPAIR_REQUIRED`, from an immediate
+repair finish can leave its original repair prepared with frozen input; the
+browser retains that opaque attempt and checks its receipt. A matching completed
+repair receipt resolves the attempt. An authoritative expired or generation-fenced
+repair status also permits a fresh handoff, even before the stored prepared row is
+marked complete. `ATTEMPT_IN_PROGRESS` from a fresh repair start proves that new
+UUID was not reserved; it does not replace the existing handoff's authority.
+Late receipts cannot clear or announce success for a different UUID now owning
+the same actor/kind slot. Missing or uncertain receipts retain their recovery ID.

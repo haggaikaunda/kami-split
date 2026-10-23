@@ -5,12 +5,14 @@ package graph_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,12 +30,28 @@ import (
 
 // managementBrowserProvider adds synthetic display metadata at the external
 // provider boundary; it grants no production identity or domain authority.
-type managementBrowserProvider struct{ *bankingHTTPProvider }
+type managementBrowserProvider struct {
+	*bankingHTTPProvider
+	mode atomic.Int32
+}
 
-func (p managementBrowserProvider) Accounts(ctx context.Context, environment string, token banking.Credential) (banking.AccountInventory, error) {
+func (p *managementBrowserProvider) Accounts(ctx context.Context, environment string, token banking.Credential) (banking.AccountInventory, error) {
+	if p.mode.Load() == 1 {
+		return banking.AccountInventory{}, fmt.Errorf("synthetic account inventory unavailable")
+	}
 	inventory, err := p.bankingHTTPProvider.Accounts(ctx, environment, token)
+	if p.mode.Load() == 2 {
+		inventory.Accounts = inventory.Accounts[:1]
+	}
 	inventory.InstitutionName = "Example Community Credit Union"
 	return inventory, err
+}
+
+func (p *managementBrowserProvider) PrepareRepair(ctx context.Context, environment, client string, token banking.Credential) (banking.LinkPreparation, error) {
+	if p.mode.Load() == 3 {
+		return banking.LinkPreparation{}, fmt.Errorf("synthetic repair preparation unavailable")
+	}
+	return p.bankingHTTPProvider.PrepareRepair(ctx, environment, client, token)
 }
 
 // TestBankingManagementRealBrowserJourney connects the production browser to
@@ -46,7 +64,7 @@ func TestBankingManagementRealBrowserJourney(t *testing.T) {
 	if os.Getenv("BANKING_MANAGEMENT_PLAYWRIGHT_MODULE") == "" {
 		t.Fatal("explicit Playwright module required for real browser acceptance")
 	}
-	for _, scenario := range []string{"lifecycle", "replacement"} {
+	for _, scenario := range []string{"lifecycle", "replacement", "repair-failure"} {
 		t.Run(scenario, func(t *testing.T) { runBankingManagementBrowser(t, scenario) })
 	}
 }
@@ -62,7 +80,8 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 			f.exec(`DELETE FROM app.banking_`+table+` WHERE owner_id=$1`, f.owner)
 		}
 	})
-	enrollment, err := banking.NewEnrollment(f.storage, managementBrowserProvider{f.provider}, banking.EnrollmentConfig{Enabled: true, Environment: "sandbox", WebhookOrigin: "https://bank-http.example.invalid"})
+	provider := &managementBrowserProvider{bankingHTTPProvider: f.provider}
+	enrollment, err := banking.NewEnrollment(f.storage, provider, banking.EnrollmentConfig{Enabled: true, Environment: "sandbox", WebhookOrigin: "https://bank-http.example.invalid"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +103,7 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 	source := seedBankingManagementHistory(f, account, binding)
 	f.exec(`UPDATE app.banking_bindings SET import_state='usable',last_local_commit=clock_timestamp() WHERE connection_id=$1`, connection)
 	staged := uuid.Nil
-	if scenario == "lifecycle" {
+	if scenario != "replacement" {
 		f.exec(`UPDATE app.banking_connections SET health='repair_required' WHERE id=$1`, connection)
 	} else {
 		stage := uuid.New()
@@ -100,6 +119,13 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 		f.exec(`UPDATE app.banking_bindings SET import_state='usable' WHERE id=$1`, staged)
 		f.exec(`WITH source AS(INSERT INTO app.banking_sources(id,owner_id,binding_id,provider_transaction_id,revision) VALUES($1,$2,$3,'replacement-browser-source',1) RETURNING id) INSERT INTO app.banking_source_revisions(source_id,owner_id,revision,amount_minor,currency,bank_date,processing_state,provider_code,mapping_version,stage) SELECT id,$2,1,5000,'USD','2026-10-02','posted','purchase','pfc-v2','current' FROM source`, uuid.New(), f.owner, staged)
 	}
+	if scenario == "repair-failure" {
+		existing := uuid.New()
+		result := f.operation(h, lifecycleHTTPFence("startBankingRepair", existing, connection, 1), token, "startBankingRepair", true)
+		if result["code"] != "PREPARED" {
+			t.Fatal("competing repair setup", result["code"])
+		}
+	}
 	// Checkpoint writes are test setup/fault injection, never product endpoints.
 	// The unguessable verified JWT gates this loopback-only fixture handler.
 	mux := http.NewServeMux()
@@ -112,7 +138,49 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 		var err error
 		switch r.URL.Path {
 		case "/fixture/expire-repair":
-			_, err = f.admin.Exec(r.Context(), `UPDATE app.banking_repairs SET expires_at=clock_timestamp()-interval '1 minute',state='complete',result_code='REPAIR_REQUIRED',link_ciphertext=NULL WHERE owner_id=$1`, f.owner)
+			_, err = f.admin.Exec(r.Context(), `UPDATE app.banking_repairs SET expires_at=clock_timestamp()-interval '1 minute' WHERE owner_id=$1`, f.owner)
+		case "/fixture/provider-ready":
+			provider.mode.Store(0)
+		case "/fixture/provider-failure":
+			provider.mode.Store(1)
+		case "/fixture/provider-missing-account":
+			provider.mode.Store(2)
+		case "/fixture/provider-prepare-failure":
+			provider.mode.Store(3)
+		case "/fixture/unreserved", "/fixture/prepared-repair", "/fixture/completed-repair", "/fixture/terminal-selection":
+			var input struct {
+				AttemptID uuid.UUID `json:"attemptId"`
+			}
+			err = json.NewDecoder(r.Body).Decode(&input)
+			if err == nil && input.AttemptID == uuid.Nil {
+				err = fmt.Errorf("missing fixture attempt")
+			}
+			if err == nil {
+				switch r.URL.Path {
+				case "/fixture/unreserved":
+					var n int
+					err = f.admin.QueryRow(r.Context(), `SELECT count(*) FROM app.banking_repairs WHERE id=$1`, input.AttemptID).Scan(&n)
+					if err == nil && n != 0 {
+						err = fmt.Errorf("competing attempt unexpectedly reserved")
+					}
+				case "/fixture/prepared-repair", "/fixture/completed-repair":
+					var state, code string
+					var frozen bool
+					err = f.admin.QueryRow(r.Context(), `SELECT state,result_code,finish_digest IS NOT NULL FROM app.banking_repairs WHERE id=$1 AND owner_id=$2`, input.AttemptID, f.owner).Scan(&state, &code, &frozen)
+					if err == nil && r.URL.Path == "/fixture/prepared-repair" && (state != "prepared" || code != "PREPARED" || !frozen) {
+						err = fmt.Errorf("provider failure lost prepared frozen attempt")
+					}
+					if err == nil && r.URL.Path == "/fixture/completed-repair" && (state != "complete" || code != "REPAIR_REQUIRED" || frozen) {
+						err = fmt.Errorf("preparation failure not durably complete")
+					}
+				case "/fixture/terminal-selection":
+					var state, code string
+					err = f.admin.QueryRow(r.Context(), `SELECT state,result_code FROM app.banking_operations WHERE attempt_id=$1 AND owner_id=$2 AND kind='selection'`, input.AttemptID, f.owner).Scan(&state, &code)
+					if err == nil && (state != "complete" || code != "INVALID_SELECTION") {
+						err = fmt.Errorf("invalid selection not durably complete")
+					}
+				}
+			}
 		case "/fixture/retained":
 			var annotations, current, staged, captures int
 			err = f.admin.QueryRow(r.Context(), `SELECT (SELECT count(*) FROM app.banking_annotations WHERE source_id=$1),(SELECT count(*) FROM app.banking_source_revisions WHERE source_id=$1 AND stage='current'),(SELECT count(*) FROM app.banking_source_revisions WHERE source_id=$1 AND stage='staged'),(SELECT count(*) FROM app.banking_captures WHERE source_id=$1 AND annotation_revision=2)`, source).Scan(&annotations, &current, &staged, &captures)
@@ -165,6 +233,13 @@ func runBankingManagementBrowser(t *testing.T, scenario string) {
 		}
 		if err := f.admin.QueryRow(context.Background(), `SELECT count(*) FROM app.banking_annotations WHERE source_id=$1 AND note='latest private annotation'`, source).Scan(&retained); err != nil || retained != 1 {
 			t.Fatal("recovery changed original private annotation", err)
+		}
+		return
+	}
+	if scenario == "repair-failure" {
+		var pending, selected int
+		if err := f.admin.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM app.banking_repairs WHERE owner_id=$1 AND state<>'complete'),(SELECT count(*) FROM app.banking_accounts a JOIN app.banking_bindings b ON b.account_id=a.id WHERE b.connection_id=$2 AND a.selected)`, f.owner, connection).Scan(&pending, &selected); err != nil || pending != 0 || selected != 2 {
+			t.Fatal("repair/selection recovery left blocked or changed state", pending, selected, err)
 		}
 		return
 	}
