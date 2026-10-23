@@ -3,7 +3,7 @@
 `banking.PlaidProvider.SyncTransactions` supplies validated private changes for
 one explicitly selected account binding. It is an internal provider boundary;
 restricted atomic batch persistence and durable initial/incremental consumption through verified Transactions dispatch and daily reconciliation are implemented below. The [owner-only status API](banking-status.md) exposes persisted progress, coverage and freshness.
-The [private reporting API](banking-reporting.md) reads stored canonical activity and guarded annotations; the browser transaction journey remains separate work.
+The [private reporting API](banking-reporting.md) reads stored canonical activity and guarded annotations; Personal Transactions consumes those stored report snapshots through the owner-scoped browser journey described in the [frontend guide](frontend.md).
 Enrollment remains disabled by default.
 
 The adapter uses the existing protected HTTP client and `Plaid-Version:

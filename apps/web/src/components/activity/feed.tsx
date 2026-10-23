@@ -130,18 +130,26 @@ export function ActivityFeed({
   const source = '';
   const [version, setVersion] = useState(0);
   const [after, setAfter] = useState<string | null>(null);
-  const [page, setPage] = useState<Connection>();
+  const [acceptedPage, setPage] = useState<{
+    identity: string;
+    value: Connection;
+  }>();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [readPending, setLoading] = useState(true);
+  const [selected, setSelected] =
+    useState<Pick<Event, 'id' | 'groupId' | 'recordId'>>();
+  const identity = JSON.stringify([scope.id, groupId, kind, after, version]);
+  // A queued acceptance belongs to its captured request, even if React commits
+  // it after the URL-controlled filter has moved to another read.
+  const page =
+    acceptedPage?.identity === identity ? acceptedPage.value : undefined;
+  const loading = readPending || (!error && !page);
   const reportRead = useEffectEvent(() =>
     onReadState?.({ busy: loading, error }),
   );
   useEffect(() => {
     reportRead();
   }, [loading, error]);
-  const [selected, setSelected] =
-    useState<Pick<Event, 'id' | 'groupId' | 'recordId'>>();
-  const identity = JSON.stringify([scope.id, groupId, kind, after, version]);
   const [readIdentity, setReadIdentity] = useState(identity);
   // URL-owned filters can arrive after a foreground response. Adjust this
   // component's state before committing a different read's presentation.
@@ -184,7 +192,7 @@ export function ActivityFeed({
       if (!live || !scope.isLive() || ticket !== generation.current) return;
       const result = readInlineData<activityFeed$key>(feedDocument, reference);
       if (result.__typename === 'ActivityConnection') {
-        setPage(result);
+        setPage({ identity, value: result });
         setError('');
       } else {
         onDenied?.();
