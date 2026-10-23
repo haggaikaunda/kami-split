@@ -1864,25 +1864,65 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
   app,
 }, testInfo) => {
   await app.authenticate();
-  let state = 'posted';
-  await transactionServer(page, (operation, variables) =>
-    operation === 'personalTransactionSelectionQuery'
-      ? {
-          bankingTransaction: {
-            __typename: 'BankingTransactionDetail',
-            id: `detail-${state}`,
-            code: 'READY',
-            currentId: variables.source,
-            transaction: transactionRow(variables.source, {
-              processingState: state,
-              eligible: state === 'posted',
-              amountMinor: '9007199254740991',
-              name: 'A long original description '.repeat(12),
-            }),
+  let state = 'posted',
+    snapshot,
+    releaseList,
+    listReady,
+    responseOrder;
+  await transactionServer(page, async (operation, variables, route) => {
+    if (operation === 'personalTransactionSelectionQuery') {
+      await route.fulfill({
+        json: {
+          data: {
+            bankingTransaction: {
+              __typename: 'BankingTransactionDetail',
+              id: `detail-${state}`,
+              code: 'READY',
+              currentId: variables.source,
+              transaction: snapshot,
+            },
           },
-        }
-      : undefined,
-  );
+        },
+      });
+      responseOrder.push('detail');
+      releaseList();
+      return false;
+    }
+    if (operation === 'personalTransactionsQuery') {
+      await listReady;
+      const posted = state === 'posted';
+      await route.fulfill({
+        json: {
+          data: transactionReport({
+            rows: [snapshot],
+            totalCount: 1,
+            hasNextPage: false,
+            endCursor: null,
+            counts: {
+              __typename: 'BankingReportCounts',
+              count: 1,
+              postedCount: Number(posted),
+              pendingCount: Number(state === 'pending'),
+              removedCount: Number(state === 'removed'),
+              excludedCount: 0,
+              unresolvedCount: 0,
+              reviewedCount: 0,
+              classificationComplete: true,
+            },
+            summary: {
+              __typename: 'BankingReportSummary',
+              netMinor: posted ? snapshot.amountMinor : '0',
+              purchaseMinor: posted ? snapshot.amountMinor : '0',
+              refundMinor: '0',
+              classificationComplete: true,
+            },
+          }),
+        },
+      });
+      responseOrder.push('list');
+      return false;
+    }
+  });
   for (const [width, theme, text, stateValue] of [
     [320, 'light', 1, 'pending'],
     [390, 'dark', 1, 'removed'],
@@ -1891,6 +1931,19 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
     [1280, 'system', 1, 'posted'],
   ]) {
     state = stateValue;
+    // One immutable fact must have identical bytes in list and detail. Deliberately
+    // deliver detail first so a late list cannot replace its amount or state.
+    snapshot = transactionRow('source-private', {
+      id: `matrix-fact-${state}`,
+      processingState: state,
+      eligible: state === 'posted',
+      amountMinor: '9007199254740991',
+      name: 'A long original description '.repeat(12),
+    });
+    responseOrder = [];
+    listReady = new Promise((resolve) => {
+      releaseList = resolve;
+    });
     app.setAppearance(theme.toUpperCase());
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({
@@ -1912,13 +1965,21 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
       'data-theme',
       theme === 'light' ? 'light' : 'dark',
     );
+    await expect(page.locator('#transaction-source-private')).toHaveCount(1);
+    expect(responseOrder.slice(0, 2)).toEqual(['detail', 'list']);
+    await expect(
+      dialog.getByText('$90,071,992,547,409.91', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByText(
+        `Money out · ${state === 'posted' ? 'Posted' : state === 'pending' ? 'Pending' : 'Removed'}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath(`detail-read-${width}-${theme}-${text}.png`),
       fullPage: true,
     });
-    await expect(
-      dialog.getByText('$90,071,992,547,409.91', { exact: true }),
-    ).toBeVisible();
     if (state !== 'posted')
       await expect(
         dialog.getByText(/contributes nothing to spending/),
