@@ -185,7 +185,7 @@ their bounded budgets; status reads themselves never schedule or resume them.
 Provider failures and discrepancy outcomes can follow later committed passes.
 Exact available-history determination remains separate: current imports leave
 actual availability unknown. Limited-availability fixtures demonstrate preserved
-status semantics without claiming that exact-coverage producers have shipped. Personal presents the retained connection inventory and these status facts through authenticated Relay reads. The [private reporting API](banking-reporting.md) provides canonical transaction/reporting reads and guarded annotations; transaction/reporting browser screens remain downstream. Retained connection discovery is described below. Enrollment stays
+status semantics without claiming that exact-coverage producers have shipped. Personal presents the retained connection inventory and these status facts through authenticated Relay reads. The [private reporting API](banking-reporting.md) provides canonical transaction/reporting reads and guarded annotations; Personal Transactions consumes those reads for current/archive browsing and complete server result context; full detail/private editing and Overview presentation remain separately owned. Retained connection discovery is described below. Enrollment stays
 disabled by default; fixtures do not authorize live Plaid work or release.
 
 ## Fresh-session connection discovery
