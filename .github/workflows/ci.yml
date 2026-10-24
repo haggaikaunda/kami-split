@@ -38,6 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
@@ -47,6 +48,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Enforce immutable ordered migration history
+        run: node scripts/ci/migrations.mjs
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm format:check
       - run: node --test scripts/ci/*.test.mjs

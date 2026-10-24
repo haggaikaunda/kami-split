@@ -90,8 +90,8 @@ history supplies the objects; missing history falls back to both consumers.
 PR code runs only in unprivileged CI, never in `pull_request_target`.
 
 The lightweight classification job runs alongside repository validation. The
-repository job checks repository-wide formatting, runs
-classifier/gate and execution-helper tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
+repository job enforces immutable ordered migration history using full checkout
+history, checks repository-wide formatting, runs classifier/gate and execution-helper tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
 Skill validation uses an isolated Python environment; it does not execute skill
 procedures. It installs pinned workspace dependencies with scripts
 disabled; it does not build the web application or start Go, Docker, or databases.

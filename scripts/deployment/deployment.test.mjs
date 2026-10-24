@@ -82,7 +82,10 @@ function fixture(t) {
   mkdirSync(join(root, 'bin'));
   mkdirSync(join(root, 'supabase/migrations'), { recursive: true });
   mkdirSync(join(root, 'source/supabase/migrations'), { recursive: true });
-  writeFileSync(join(root, 'source/supabase/migrations/001.sql'), 'select 1;');
+  writeFileSync(
+    join(root, 'source/supabase/migrations/20261022000000_test.sql'),
+    'select 1;',
+  );
   const env = {
     ...process.env,
     PATH: `${root}/bin:${process.env.PATH}`,
@@ -171,7 +174,10 @@ function fixture(t) {
   );
   stub(
     'scripts/db-tool.sh',
-    'if [[ "$*" == *--dry-run* ]]; then exit "${MIGRATION_EXIT:-0}"; fi',
+    `if [[ "$*" == *"migration list"* ]]; then
+ printf '%s' '{"migrations":[{"local":"20261022000000","remote":"20261022000000","time":"2026-10-22 00:00:00"}],"message":"Migrations listed"}'
+fi
+if [[ "$*" == *--dry-run* ]]; then exit "\${MIGRATION_EXIT:-0}"; fi`,
   );
   const run = (script, overrides = {}, args = []) =>
     spawnSync('bash', [`scripts/deployment/${script}.sh`, ...args], {
@@ -254,7 +260,7 @@ test('rehearsal migrations dry-run only, including failure; release applies afte
       .every((l) => l.endsWith('--dry-run')),
   );
   assert.equal(f.run('migrate', { DEPLOY_MODE: 'release' }).status, 0);
-  assert.match(f.calls(), /db push --linked\n/);
+  assert.match(f.calls(), /db push --linked --yes\n/);
 });
 test('candidate uses zero traffic, immutable image, durable provenance, stable tag across retries', (t) => {
   const f = fixture(t);
