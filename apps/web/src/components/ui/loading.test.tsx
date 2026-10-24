@@ -85,6 +85,9 @@ it('a content retry restarts both feedback thresholds and disposes its timers', 
 it('uses only public startup copy, progresses to truthful slow feedback, and resets on a new visit', () => {
   act(() => root.render(<ScreenLoading />));
   expect(host.textContent).toBe('Kami Grow');
+  expect(
+    host.querySelector('[data-ui="brand-mark"]')?.getAttribute('aria-hidden'),
+  ).toBe('true');
   tick(150);
   expect(host.textContent).toBe(
     'Kami GrowGetting things readyOpening your account…',

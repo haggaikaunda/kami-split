@@ -8,9 +8,7 @@
     max(1.5rem, env(safe-area-inset-left));
 }
 .brand {
-  color: var(--color-primary);
-  font-size: 1.125rem;
-  font-weight: 650;
+  display: flex;
 }
 .center {
   flex: 1;

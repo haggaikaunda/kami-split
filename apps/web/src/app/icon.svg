@@ -1,1 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><rect width="36" height="36" rx="13" fill="#c3eee0"/><path transform="translate(6 6)" d="M20 3C10 2 3 6 4 14c1 7 13 8 16-11ZM3 21 16 8" fill="#096957" stroke="#096957" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="280 240 720 720">
+  <style>
+    .sage { fill: #87aa92; }
+    .forest { fill: #17634d; }
+    @media (prefers-color-scheme: dark) {
+      .sage { fill: #a3c7ae; }
+      .forest { fill: #59a98b; }
+    }
+  </style>
+  <path class="sage" d="M336 799C292 719 312 609 365 531C442 416 574 359 711 340C802 328 861 322 942 278C955 271 963 279 961 295C947 387 892 475 817 523C753 564 687 577 610 597C493 628 407 684 336 799Z"/>
+  <path class="forest" d="M330 878C386 755 452 688 550 648C614 621 687 612 758 588C833 562 895 516 935 441C952 544 923 659 861 741C766 870 624 897 486 863C431 850 403 855 372 895C356 922 322 906 330 878Z"/>
+</svg>

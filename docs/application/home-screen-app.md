@@ -22,9 +22,10 @@ This configuration adds no service worker, offline storage, or financial caching
 
 The root layout supplies Apple capability/title metadata. Next.js discovers the
 180px `apple-icon.png`; the manifest uses 192px and 512px PNGs under
-`apps/web/public/icons`. All three are rasterizations of the existing
-`apps/web/src/app/icon.svg`, flattened onto its `#c3eee0` background for opaque
-installation icons. Keep these assets aligned if the brand icon changes.
+`apps/web/public/icons`. All three derive from the canonical transparent leaf in
+`apps/web/src/app/icon.svg`, with extra padding and a deliberate opaque `#edf2ef`
+canvas for platform corner masks. See [brand source and generation](brand.md)
+when updating the mark.
 
 ## Installation and verification
 
