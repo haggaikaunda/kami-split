@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -372,41 +373,108 @@ func TestInitialConsumerProcessKillAndRestart(t *testing.T) {
 }
 
 func TestInitialConsumerRenewsDuringProviderWork(t *testing.T) {
-	c := newInitialConsumer(t)
-	entered := make(chan struct{})
-	release := make(chan struct{})
-	c.respond = func(string) (*http.Response, error) {
-		close(entered)
-		<-release
-		return plaidTestResponse(200, syncEmptyFixture), nil
-	}
-	// Two bounded provider calls normally cannot exceed the 45-second renewal
-	// interval, so occupy the real consumer after several pages instead. A slow
-	// test provider here waits under the caller's real renewable work context.
-	provider := &renewInitialProvider{entered: entered, release: release}
-	c.worker, _ = NewWorker(c.db, c.service.protector, provider)
-	done := make(chan error, 1)
-	go func() { _, err := c.worker.ProcessOne(context.Background()); done <- err }()
-	<-entered
-	var original time.Time
-	if err := c.admin.QueryRow(context.Background(), `SELECT lease_until FROM app.banking_work WHERE id=$1`, c.operation).Scan(&original); err != nil {
-		t.Fatal(err)
-	}
-	renewed := false
-	deadline := time.Now().Add(52 * time.Second)
-	for time.Now().Before(deadline) {
-		if queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND lease_until>$2`, c.operation, original) == 1 {
-			renewed = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	close(release)
-	if err := <-done; err != nil {
-		t.Fatal(err)
-	}
-	if !renewed || queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state='complete'`, c.operation) != 1 {
-		t.Fatal("actual consumer failed lease renewal")
+	for _, outcome := range []string{"complete", "cancel", "expired lease"} {
+		t.Run(outcome, func(t *testing.T) {
+			c := newInitialConsumer(t)
+			entered := make(chan struct{})
+			release := make(chan struct{})
+			provider := &renewInitialProvider{entered: entered, release: release}
+			var err error
+			c.worker, err = NewWorker(c.db, c.service.protector, provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Control only the renewal wakeup. The claimed lease, restricted-role
+			// renewal, provider context and completion all use the real consumer.
+			ticks := make(chan time.Time)
+			interval := make(chan time.Duration, 1)
+			stopped := make(chan struct{})
+			c.worker.newTicker = func(d time.Duration) (<-chan time.Time, func()) {
+				interval <- d
+				return ticks, func() { close(stopped) }
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error, 1)
+			joined := make(chan struct{})
+			go func() {
+				_, err := c.worker.ProcessOne(ctx)
+				done <- err
+				close(joined)
+			}()
+			t.Cleanup(func() {
+				cancel()
+				select {
+				case <-joined:
+				case <-time.After(5 * time.Second):
+					t.Error("consumer did not join on cleanup")
+				}
+			})
+			select {
+			case <-entered:
+			case <-time.After(5 * time.Second):
+				t.Fatal("provider did not start")
+			}
+			select {
+			case got := <-interval:
+				if got != 45*time.Second {
+					t.Fatalf("production renewal interval = %s", got)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("renewal ticker did not start")
+			}
+			var original time.Time
+			if err := c.admin.QueryRow(ctx, `SELECT lease_until FROM app.banking_work WHERE id=$1`, c.operation).Scan(&original); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case ticks <- time.Now():
+			case <-time.After(5 * time.Second):
+				t.Fatal("renewal did not consume tick")
+			}
+			deadline := time.Now().Add(5 * time.Second)
+			for queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND lease_until>$2`, c.operation, original) != 1 {
+				if time.Now().After(deadline) {
+					t.Fatal("actual consumer failed lease renewal")
+				}
+				time.Sleep(time.Millisecond)
+			}
+			switch outcome {
+			case "complete":
+				close(release)
+			case "cancel":
+				cancel()
+			case "expired lease":
+				c.exec(`UPDATE app.banking_work SET lease_until=clock_timestamp()-interval '1 second' WHERE id=$1`, c.operation)
+				select {
+				case ticks <- time.Now():
+				case <-time.After(5 * time.Second):
+					t.Fatal("renewal did not consume expired lease tick")
+				}
+			}
+			select {
+			case err = <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("consumer did not stop")
+			}
+			if outcome == "complete" && err != nil {
+				t.Fatal(err)
+			}
+			if outcome != "complete" && !errors.Is(err, context.Canceled) {
+				t.Fatal("consumer did not cancel provider work", err)
+			}
+			select {
+			case <-stopped:
+			default:
+				t.Fatal("consumer returned before stopping renewal ticker")
+			}
+			wantState := "complete"
+			if outcome != "complete" {
+				wantState = "running"
+			}
+			if queryInt(t, c.fixture, `SELECT count(*) FROM app.banking_work WHERE id=$1 AND state=$2`, c.operation, wantState) != 1 {
+				t.Fatal("consumer lost completion or leased recovery intent")
+			}
+		})
 	}
 }
 
@@ -416,15 +484,7 @@ func (*renewInitialProvider) Remove(context.Context, string, Credential) (Remova
 	return RemovalResult{Confirmed: true}, nil
 }
 func (p *renewInitialProvider) SyncTransactions(ctx context.Context, b SyncBinding, _ Credential, cursor SyncCursor) (SyncPage, error) {
-	// Each call remains inside the worker's 30-second provider timeout. Two pages
-	// together cross its actual 45-second lease-renewal ticker.
-	if cursor.Opaque() == "" {
-		select {
-		case <-time.After(24 * time.Second):
-		case <-ctx.Done():
-			return SyncPage{}, ctx.Err()
-		}
-	}
+	// Keep the second page in flight until renewal is observed in PostgreSQL.
 	if cursor.Opaque() != "" {
 		close(p.entered)
 		select {
