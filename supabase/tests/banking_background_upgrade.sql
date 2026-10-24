@@ -6,11 +6,23 @@ DO $$ BEGIN
    RAISE EXCEPTION 'background upgrade requires deployed status history without background sync';
  END IF;
 END $$;
-SET ROLE kami_migrator;
+-- The earlier lifecycle fixture predates enrollment and deliberately retains
+-- permission_state=unknown. Model its explicit synthetic enrollment grant here;
+-- the importer must not bypass that permission gate merely because it is active.
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT FROM app.banking_connections
+  WHERE id='b3290000-0000-4000-8000-000000000011' AND permission_state='unknown') THEN
+  RAISE EXCEPTION 'legacy fixture permission precondition changed';
+ END IF;
+END $$;
+BEGIN;
+SET LOCAL ROLE kami_migrator;
+UPDATE app.banking_connections SET permission_state='granted'
+ WHERE id='b3290000-0000-4000-8000-000000000011';
 -- Existing initial work has both pending and completed behavior to backfill.
 SELECT app.banking_initial_enqueue('b3290000-0000-4000-8000-000000000011');
 UPDATE app.banking_work SET state='complete' WHERE kind='initial_sync' AND connection_id='b3290000-0000-4000-8000-000000000011';
-RESET ROLE;
+COMMIT;
 DO $$ BEGIN
  IF NOT EXISTS(SELECT FROM app.banking_work WHERE kind='initial_sync' AND state='complete')
   OR NOT EXISTS(SELECT FROM app.banking_work WHERE state<>'complete') THEN
