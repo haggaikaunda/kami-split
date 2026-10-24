@@ -1243,7 +1243,7 @@ it('Overview renders complete negative totals, useful breakdown and three recent
   expect(host.textContent).toContain('Refunds received$140.00');
   expect(host.textContent).toContain('History is partial or unknown');
   expect(host.textContent).toContain('Historical discrepancy');
-  expect(host.textContent).toContain('1 transaction needs classification');
+  expect(host.textContent).toContain('5 transactions not reviewed');
   expect(host.querySelectorAll('[data-source-id]')).toHaveLength(3);
   const viewAll = host.querySelector<HTMLAnchorElement>('#overview-view-all')!;
   expect(viewAll.getAttribute('href')).toContain(
@@ -1251,7 +1251,7 @@ it('Overview renders complete negative totals, useful breakdown and three recent
   );
   expect(
     host.querySelector('#overview-review')?.getAttribute('href'),
-  ).toContain('activity=unresolved');
+  ).toContain('reviewed=false');
   expect(host.textContent).not.toContain('Net spending');
   expect(host.textContent).not.toContain('Load more transactions');
   await act(async () =>

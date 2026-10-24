@@ -2094,10 +2094,8 @@ test('Personal Overview uses complete totals and restores private recent activit
   ).toBeVisible();
   expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
   await page.getByRole('link', { name: 'Overview', exact: true }).click();
-  await page
-    .getByRole('link', { name: /transaction needs classification/ })
-    .click();
-  expect(new URL(page.url()).searchParams.get('activity')).toBe('unresolved');
+  await page.getByRole('link', { name: /transactions not reviewed/ }).click();
+  expect(new URL(page.url()).searchParams.get('reviewed')).toBe('false');
   expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
 });
 

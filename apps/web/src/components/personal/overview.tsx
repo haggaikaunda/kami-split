@@ -33,6 +33,9 @@ export function PersonalOverview({
     source: null,
   });
   const unresolved = report.counts?.unresolvedCount ?? 0;
+  const notReviewed = report.counts
+    ? report.counts.count - report.counts.reviewedCount
+    : 0;
   const complete =
     report.accounts.length > 0 &&
     report.accounts.every((account) => account.coverage === 'COMPLETE');
@@ -102,7 +105,7 @@ export function PersonalOverview({
         )}
         {coverage}
       </section>
-      {unresolved > 0 && (
+      {notReviewed > 0 && (
         <ScopedLink
           scope={scope}
           id="overview-review"
@@ -111,10 +114,7 @@ export function PersonalOverview({
             tab: 'transactions',
             transaction: null,
             source: null,
-            activity: 'unresolved',
-            state: null,
-            reviewed: null,
-            excluded: null,
+            reviewed: 'false',
           })}
         >
           {unresolved}{' '}
@@ -123,7 +123,9 @@ export function PersonalOverview({
         </ScopedLink>
       )}
       {report.counts &&
-        (report.counts.pendingCount > 0 || report.counts.excludedCount > 0) && (
+        (report.counts.pendingCount > 0 ||
+          report.counts.excludedCount > 0 ||
+          unresolved > 0) && (
           <p className={styles.context}>
             {report.counts.pendingCount} pending · {report.counts.excludedCount}{' '}
             excluded. Separate from spending.
