@@ -12,11 +12,15 @@ fi
 # an owned fresh directory; a collision or setup failure must disable export.
 cache_export_root="${cache_root}-export"
 cache_export=false
-if mkdir "$cache_export_root" 2>/dev/null; then
-  cache_export=true
-  build_args+=(--cache-to "type=local,dest=$cache_export_root,mode=max,ignore-error=true")
-else
-  echo '::warning::API build cache export disabled because its directory could not be created' >&2
+# An exact successful seed restore already contains reusable dependency layers.
+# Keep building selected source, but avoid materializing/exporting those layers.
+if [[ "${API_CACHE_HIT:-false}" != true || ! -f "$cache_root/index.json" ]]; then
+  if mkdir "$cache_export_root" 2>/dev/null; then
+    cache_export=true
+    build_args+=(--cache-to "type=local,dest=$cache_export_root,mode=max,ignore-error=true")
+  else
+    echo '::warning::API build cache export disabled because its directory could not be created' >&2
+  fi
 fi
 docker buildx build "${build_args[@]}" --tag "$image_tag" \
   --label "org.opencontainers.image.revision=$DEPLOY_SHA" \

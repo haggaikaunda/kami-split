@@ -34,6 +34,7 @@ function fixture(t) {
     join(root, 'bin/docker'),
     `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$CALLS"
+if [[ "$1" == push ]]; then exit "\${PUSH_EXIT:-0}"; fi
 if [[ "$1 $2" == 'buildx build' ]]; then
   [[ "\${BUILD_EXIT:-0}" == 0 ]] || exit "$BUILD_EXIT"
   if [[ "$*" == *--cache-to* ]]; then
@@ -135,6 +136,67 @@ test('an export path collision is advisory and cannot publish a stale cache', (t
   }
 });
 
+test('an exact trusted seed hit skips export while still building and publishing each selected source identity', (t) => {
+  const f = fixture(t);
+  mkdirSync(join(f.root, 'api-build-cache'));
+  writeFileSync(join(f.root, 'api-build-cache/index.json'), '{}');
+  // A stale export index must not be promoted after export was intentionally skipped.
+  mkdirSync(join(f.root, 'api-build-cache-export'));
+  writeFileSync(join(f.root, 'api-build-cache-export/index.json'), 'stale');
+  for (const selectedSha of ['a'.repeat(40), 'c'.repeat(40)]) {
+    assert.equal(
+      f.run({ API_CACHE_HIT: 'true', DEPLOY_SHA: selectedSha }).status,
+      0,
+    );
+    assert.match(f.calls(), new RegExp(`--tag .*api:${selectedSha}-42-1`));
+    assert.match(
+      f.calls(),
+      new RegExp(`org.opencontainers.image.revision=${selectedSha}`),
+    );
+  }
+  const calls = f.calls();
+  assert.equal(calls.match(/buildx build/g).length, 2);
+  assert.equal(
+    calls.match(/--file source\/apps\/api\/Dockerfile source/g).length,
+    2,
+  );
+  assert.ok(calls.includes('--cache-from'));
+  assert.ok(!calls.includes('--cache-to'));
+  assert.equal(
+    readFileSync(join(f.root, 'api-build-cache-export/index.json'), 'utf8'),
+    'stale',
+  );
+  assert.ok(!readFileSync(f.env.GITHUB_OUTPUT, 'utf8').includes('cache_ready'));
+});
+
+test('only literal confirmed hits with a restored index suppress export', (t) => {
+  for (const hit of ['', 'false', 'TRUE', 'unknown']) {
+    const f = fixture(t);
+    mkdirSync(join(f.root, 'api-build-cache'));
+    writeFileSync(join(f.root, 'api-build-cache/index.json'), 'malformed');
+    assert.equal(f.run({ API_CACHE_HIT: hit }).status, 0);
+    assert.ok(f.calls().includes('--cache-to'));
+    assert.match(readFileSync(f.env.GITHUB_OUTPUT, 'utf8'), /cache_ready=true/);
+  }
+  const missing = fixture(t);
+  assert.equal(missing.run({ API_CACHE_HIT: 'true' }).status, 0);
+  assert.ok(missing.calls().includes('--cache-to'));
+});
+
+test('an exact seed hit cannot turn a real build, push or digest failure into success', (t) => {
+  for (const overrides of [
+    { BUILD_EXIT: '17' },
+    { PUSH_EXIT: '18' },
+    { DIGEST: 'latest' },
+  ]) {
+    const f = fixture(t);
+    mkdirSync(join(f.root, 'api-build-cache'));
+    writeFileSync(join(f.root, 'api-build-cache/index.json'), '{}');
+    assert.notEqual(f.run({ API_CACHE_HIT: 'true', ...overrides }).status, 0);
+    assert.ok(!existsSync(f.env.GITHUB_OUTPUT));
+  }
+});
+
 test('dependency seed tracks external runtime imports and remains before application source', () => {
   const dockerfile = readFileSync('apps/api/Dockerfile', 'utf8');
   const seed = dockerfile
@@ -178,8 +240,16 @@ test('cache namespace binds build inputs and only release can save the main cach
     save,
     /hashFiles\('source\/apps\/api\/Dockerfile', 'source\/apps\/api\/go.mod', 'source\/apps\/api\/go.sum'\)/,
   );
-  assert.match(save, /api-deploy-main-linux-amd64-v1-/);
-  assert.match(save, /inputs.sha/);
+  const keys = [...workflow.matchAll(/^          key: (.*)$/gm)].map(
+    (match) => match[1],
+  );
+  assert.equal(keys.length, 2);
+  assert.equal(keys[0], keys[1]);
+  assert.match(keys[0], /^api-deploy-main-linux-amd64-seed-v2-/);
+  assert.ok(!keys[0].includes('inputs.sha'));
+  assert.ok(!workflow.includes('restore-keys:'));
+  assert.match(save, /steps.api-cache.outcome != 'success'/);
+  assert.match(save, /steps.api-cache.outputs.cache-hit != 'true'/);
   assert.match(save, /steps.image.outputs.cache_ready == 'true'/);
   const cachePaths = [
     ...workflow.matchAll(/path: \$\{\{ runner.temp \}\}\/api-build-cache(.*)/g),
@@ -194,6 +264,10 @@ test('cache namespace binds build inputs and only release can save the main cach
     .split('- name: Build and publish immutable API image')[1]
     .split('# Rehearsals')[0];
   assert.ok(!build.includes('continue-on-error'));
+  assert.match(
+    build,
+    /API_CACHE_HIT: \$\{\{ steps.api-cache.outcome == 'success' && steps.api-cache.outputs.cache-hit == 'true' \}\}/,
+  );
 });
 
 test('only the verified release caller grants inherited cache writes; rehearsal is capped at read', () => {
