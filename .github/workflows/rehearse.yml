@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   rehearsal:
+    # Cap the reusable workflow's token even though workflow_dispatch allows writes.
+    cache-mode: read
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/api-deploy.yml
     with:

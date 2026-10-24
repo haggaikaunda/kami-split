@@ -47,6 +47,8 @@ jobs:
         run: node scripts/ci/release.mjs plan
 
   api:
+    # workflow_run defaults to read-only cache; this caller releases verified main.
+    cache-mode: write
     needs: plan
     if: ${{ needs.plan.outputs.deploy_api == 'true' }}
     uses: ./.github/workflows/api-deploy.yml

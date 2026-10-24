@@ -1,7 +1,27 @@
-FROM golang:1.27.1-bookworm AS source
+FROM golang:1.27.1-bookworm AS dependencies
 WORKDIR /workspace/apps/api
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN go mod download && go mod verify
+# Keep compilation output in an ordinary layer: exported BuildKit caches do not
+# persist cache mounts. Seed only runtime library imports before copying source.
+RUN CGO_ENABLED=0 go build -trimpath \
+    github.com/99designs/gqlgen/graphql \
+    github.com/99designs/gqlgen/graphql/handler \
+    github.com/99designs/gqlgen/graphql/handler/extension \
+    github.com/99designs/gqlgen/graphql/handler/transport \
+    github.com/99designs/gqlgen/graphql/introspection \
+    github.com/MicahParks/keyfunc/v3 \
+    github.com/golang-jwt/jwt/v5 \
+    github.com/google/uuid \
+    github.com/jackc/pgx/v5 \
+    github.com/jackc/pgx/v5/pgconn \
+    github.com/jackc/pgx/v5/pgtype \
+    github.com/jackc/pgx/v5/pgxpool \
+    github.com/vektah/gqlparser/v2 \
+    github.com/vektah/gqlparser/v2/ast \
+    github.com/vektah/gqlparser/v2/gqlerror
+
+FROM dependencies AS source
 COPY apps/api/ ./
 COPY packages/schema/ /workspace/packages/schema/
 
