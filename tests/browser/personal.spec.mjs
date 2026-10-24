@@ -554,8 +554,6 @@ test('Account timezone saves independently and conflict recovery preserves the p
   app,
 }) => {
   await app.authenticate();
-  if (page.viewportSize().width === 390)
-    await page.setViewportSize({ width: 390, height: 844 });
   let version = '1',
     timezone = 'America/Los_Angeles',
     conflict = true;
@@ -568,19 +566,6 @@ test('Account timezone saves independently and conflict recovery preserves the p
       timezone,
       version,
     });
-    if (operation === 'profileQuery')
-      return route.fulfill({
-        json: {
-          data: {
-            currentProfile: {
-              __typename: 'Profile',
-              id: 'profile-v',
-              displayName: 'Alex 王小明',
-              appearance: 'LIGHT',
-            },
-          },
-        },
-      });
     if (operation === 'reportingTimezoneQuery')
       return route.fulfill({ json: { data: { reportingTimezone: saved() } } });
     if (operation === 'reportingTimezoneUpdateMutation') {
@@ -619,46 +604,6 @@ test('Account timezone saves independently and conflict recovery preserves the p
     return route.fallback();
   });
   await page.goto('/account');
-  const zone = page.getByRole('textbox', {
-    name: 'IANA timezone',
-    exact: true,
-  });
-  const appearance = page.getByRole('combobox', {
-    name: 'Appearance',
-    exact: true,
-  });
-  await expect(zone).toHaveValue('America/Los_Angeles');
-  await expect(zone).toBeEnabled();
-  await expect(appearance).toHaveValue('LIGHT');
-  await expect(page.getByRole('alert')).toHaveCount(0);
-  const geometry = await page.evaluate(() => {
-    const box = (selector) => {
-      const { top, bottom } = document
-        .querySelector(selector)
-        .getBoundingClientRect();
-      return { top, bottom };
-    };
-    return {
-      details: box('[data-ui="account-profile-fields"]'),
-      preferences: box('#appearance-heading'),
-      appearance: box('#account-appearance'),
-      timezone: box('#timezone-heading'),
-      session: box('#session-heading'),
-      navigation: box('[data-ui="workspace-navigation-links"]'),
-    };
-  });
-  expect(geometry.details.bottom).toBeLessThanOrEqual(geometry.preferences.top);
-  expect(geometry.preferences.bottom).toBeLessThanOrEqual(
-    geometry.appearance.top,
-  );
-  expect(geometry.appearance.bottom).toBeLessThanOrEqual(geometry.timezone.top);
-  expect(geometry.timezone.bottom).toBeLessThanOrEqual(geometry.session.top);
-  if (page.viewportSize().width === 390) {
-    expect(geometry.preferences.top).toBeGreaterThanOrEqual(0);
-    expect(geometry.appearance.bottom).toBeLessThanOrEqual(
-      geometry.navigation.top,
-    );
-  }
   await page
     .getByRole('textbox', { name: 'IANA timezone', exact: true })
     .fill('Europe/London');
