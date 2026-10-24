@@ -213,6 +213,15 @@ withAuthFixture(origin, session, async () => {
     assert.equal(initial.rows.length, 50);
     assert.equal(initial.hasNextPage, true);
     assert.equal(initial.summary.netMinor, '22000');
+    stage = 'Overview negative refund report';
+    const refunds = new URL(
+      origin + listHref.replace('tab=transactions', 'tab=overview'),
+    );
+    refunds.searchParams.set('activity', 'refund');
+    await page.goto(refunds.href);
+    await expect(
+      page.getByRole('region', { name: 'Spending from your accounts' }),
+    ).toContainText('−$40.00');
     stage = 'Overview complete report and recent detail';
     await page.goto(
       origin + listHref.replace('tab=transactions', 'tab=overview'),

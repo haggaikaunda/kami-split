@@ -2095,6 +2095,7 @@ test('Personal Overview uses complete totals and restores private recent activit
   expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
   await page.getByRole('link', { name: 'Overview', exact: true }).click();
   await page.getByRole('link', { name: /transactions not reviewed/ }).click();
+  await expect(page).toHaveURL(/reviewed=false/);
   expect(new URL(page.url()).searchParams.get('reviewed')).toBe('false');
   expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
 });
@@ -2235,5 +2236,61 @@ test('Personal Overview reflows summary, warnings and recent activity across app
       }),
     ).toBeFocused();
     long = true;
+  }
+});
+
+test('Personal Overview disposes a held private report when the session signs out', async ({
+  page,
+  context,
+  app,
+}) => {
+  await app.authenticate();
+  let hold = false;
+  const started = Promise.withResolvers();
+  const released = Promise.withResolvers();
+  const finished = Promise.withResolvers();
+  await transactionServer(page, async (operation, _variables, route) => {
+    if (operation !== 'personalTransactionsQuery' || !hold) return;
+    started.resolve();
+    await released.promise;
+    try {
+      await route.fulfill({ json: { data: transactionReport() } });
+    } finally {
+      finished.resolve();
+    }
+    return false;
+  });
+  try {
+    await page.goto('/personal');
+    await expect(page.locator('[data-source-id]')).toHaveCount(3);
+    const accountPage = await context.newPage();
+    await accountPage.goto('/account');
+    await expect(
+      accountPage.getByLabel('Display name', { exact: true }),
+    ).toBeVisible();
+    hold = true;
+    await page.getByRole('button', { name: 'This month', exact: true }).click();
+    await page.getByRole('button', { name: 'Last month', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Apply dates', exact: true })
+      .click();
+    await started.promise;
+    await accountPage
+      .getByRole('button', { name: 'Sign out of this session' })
+      .click();
+    await expect(accountPage).toHaveURL(/\/sign-in(?:\?|$)/);
+    await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
+    released.resolve();
+    await finished.promise;
+    await expect(page.locator('[data-source-id]')).toHaveCount(0);
+    await expect(page.getByText(privateName, { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText(
+        'Long private grocery merchant with a full descriptive name',
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+  } finally {
+    released.resolve();
   }
 });
