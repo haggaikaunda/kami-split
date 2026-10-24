@@ -470,7 +470,8 @@ to regular SQL files; candidate deployment scripts and Makefiles never run on th
 credentialed host. Images are deployed by digest after publication. Image tags include SHA, run ID,
 and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
 
-Rehearsal runs only `supabase db push --linked --dry-run`. It never reaches the
+Rehearsal validates history and runs only the selected dry-run push plan,
+including the bounded recovery exception described below when eligible. It never reaches the
 release-only migration application or promotion step and has no Vercel job.
 Dry-run reports pending migrations and CLI validation; it does **not** prove SQL
 will execute successfully against production. Real isolated database CI remains

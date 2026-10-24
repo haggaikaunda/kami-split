@@ -32,7 +32,16 @@ DO $$ BEGIN
  IF app.banking_connection_status('b3290000-0000-4000-8000-000000000011') IS NULL THEN
   RAISE EXCEPTION 'owner lost status access'; END IF;
 END $$;
-SELECT set_config('app.verified_sub','b3290000-0000-4000-8000-000000000002',true);
+RESET ROLE;
+SELECT set_config('app.verified_sub',(SELECT auth_subject::text FROM app.users
+ WHERE id<>'b3290000-0000-4000-8000-000000000001' AND enabled
+ AND live_auth_id=auth_subject ORDER BY id LIMIT 1),true);
+DO $$ BEGIN
+ IF coalesce(current_setting('app.verified_sub',true),'')='' THEN
+  RAISE EXCEPTION 'cross-owner denial requires another live fixture user';
+ END IF;
+END $$;
+SET LOCAL ROLE kami_api;
 DO $$ BEGIN
  IF app.banking_connection_status('b3290000-0000-4000-8000-000000000011') IS NOT NULL THEN
   RAISE EXCEPTION 'cross-owner status disclosed'; END IF;

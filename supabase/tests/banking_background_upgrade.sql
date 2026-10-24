@@ -11,6 +11,12 @@ SET ROLE kami_migrator;
 SELECT app.banking_initial_enqueue('b3290000-0000-4000-8000-000000000011');
 UPDATE app.banking_work SET state='complete' WHERE kind='initial_sync' AND connection_id='b3290000-0000-4000-8000-000000000011';
 RESET ROLE;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT FROM app.banking_work WHERE kind='initial_sync' AND state='complete')
+  OR NOT EXISTS(SELECT FROM app.banking_work WHERE state<>'complete') THEN
+  RAISE EXCEPTION 'upgrade requires completed initial work and outstanding work';
+ END IF;
+END $$;
 CREATE TABLE public.banking_background_snapshot AS SELECT
  (SELECT jsonb_agg(to_jsonb(u) ORDER BY id) FROM app.users u) AS users,
  (SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM app.groups g) AS groups,
