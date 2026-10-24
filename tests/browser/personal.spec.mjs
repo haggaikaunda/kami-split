@@ -2245,12 +2245,17 @@ test('Personal Overview disposes a held private report when the session signs ou
   app,
 }) => {
   await app.authenticate();
-  let hold = false;
   const started = Promise.withResolvers();
   const released = Promise.withResolvers();
   const finished = Promise.withResolvers();
-  await transactionServer(page, async (operation, _variables, route) => {
-    if (operation !== 'personalTransactionsQuery' || !hold) return;
+  await transactionServer(page, async (operation, variables, route) => {
+    // Foreground authorization may refresh THIS_MONTH independently. Own only
+    // the applied-date request whose late response this scenario exercises.
+    if (
+      operation !== 'personalTransactionsQuery' ||
+      variables.filter.period !== 'LAST_MONTH'
+    )
+      return;
     started.resolve();
     await released.promise;
     try {
@@ -2263,18 +2268,17 @@ test('Personal Overview disposes a held private report when the session signs ou
   try {
     await page.goto('/personal');
     await expect(page.locator('[data-source-id]')).toHaveCount(3);
-    const accountPage = await context.newPage();
-    await accountPage.goto('/account');
-    await expect(
-      accountPage.getByLabel('Display name', { exact: true }),
-    ).toBeVisible();
-    hold = true;
     await page.getByRole('button', { name: 'This month', exact: true }).click();
     await page.getByRole('button', { name: 'Last month', exact: true }).click();
     await page
       .getByRole('button', { name: 'Apply dates', exact: true })
       .click();
     await started.promise;
+    const accountPage = await context.newPage();
+    await accountPage.goto('/account');
+    await expect(
+      accountPage.getByLabel('Display name', { exact: true }),
+    ).toBeVisible();
     await accountPage
       .getByRole('button', { name: 'Sign out of this session' })
       .click();
