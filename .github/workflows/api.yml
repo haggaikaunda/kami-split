@@ -30,9 +30,33 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
+        id: go
         with:
           go-version-file: apps/api/go.mod
-          cache-dependency-path: apps/api/go.sum
+          cache: false
+      - name: Locate Go caches
+        id: go-cache
+        run: |
+          echo "modules=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "image=$ImageOS" >> "$GITHUB_OUTPUT"
+      # Cache availability affects speed only; every verification step still runs.
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        continue-on-error: true
+        with:
+          path: ${{ steps.go-cache.outputs.modules }}
+          key: go-modules-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}
+      # Refresh integration/race compilation after each revision. Only this job
+      # writes this namespace; Go validates reused outputs against current inputs.
+      - name: Cache database Go build outputs
+        uses: actions/cache@v5
+        continue-on-error: true
+        with:
+          path: ${{ steps.go-cache.outputs.build }}
+          key: go-database-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-database-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-
       - name: Install pinned database tools
         run: make db-tools
       - run: make db-generation-check

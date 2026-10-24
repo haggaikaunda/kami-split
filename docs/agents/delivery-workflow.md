@@ -101,10 +101,18 @@ runner with a 15-minute limit:
 - **Go source checks:** Go setup/module cache, Cloud Run traffic-selection tests,
   and authoritative `make api-check` coverage (formatting, module integrity, vet,
   regular/race tests, build, and gqlgen generation drift).
-- **Database integration checks:** Go setup/module cache, pinned database tools,
-  sqlc drift, and `make db-test` migration/permission/integration/reset/replay and
-  dump/restore checks. The script owns a unique disposable Supabase project and
-  an EXIT trap for cleanup.
+- **Database integration checks:** Go setup, separate module and database build
+  caches, pinned database tools, sqlc drift, and `make db-test`
+  migration/permission/integration/reset/replay and dump/restore checks. Module
+  keys bind the runner OS/architecture/image, resolved Go version and module
+  manifests. The database build cache adds the checked-out GitHub revision and
+  restores the latest compatible prefix, so successful jobs refresh integration
+  and race build outputs without competing with source/runtime caches. Go still
+  validates cached build inputs; integration execution retains `-count=1`.
+  Cache misses or service failures never skip verification, and cache saves run
+  only after successful jobs. GitHub's ordinary branch/default-branch cache
+  visibility applies; PR caches remain scoped to their merge ref. The script
+  owns a unique disposable Supabase project and an EXIT trap for cleanup.
 - **Container and local startup checks:** pinned database tools, Compose
   validation, one production image build, readiness and live GraphQL smoke,
   then coordinated Supabase/API startup via `make dev-up DEV_BUILD_FLAG=--no-build`.
