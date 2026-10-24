@@ -168,13 +168,13 @@ function OnboardingVisit({
                       <RestoreSource scope={scope} allowed={[]} />
                     )}
                     <ProfileEditor key={c.session.user.id} state={c} />
-                    {scope?.actor === c.session.user.id && (
-                      <ReportingTimezoneControl key={`timezone:${scope.id}`} />
-                    )}
                     <AppearanceEditor
                       key={`appearance:${c.session.user.id}`}
                       state={c}
                     />
+                    {scope?.actor === c.session.user.id && (
+                      <ReportingTimezoneControl key={`timezone:${scope.id}`} />
+                    )}
                     <section
                       data-ui="account-session form-region"
                       className={accountStyles['account-session']}

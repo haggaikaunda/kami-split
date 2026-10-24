@@ -81,7 +81,9 @@ OS-wide and Account-only dark palettes have been removed.
 phone navigation or at the desktop sidebar bottom. Account remains selected and global navigation stays available. The compact content uses an identity divider,
 stacked read-only email and editable display-name fields, and a native Appearance
 selector in a leading column bounded to 560px. Appearance still saves independently
-and immediately. It loads no financial overview. Its return link uses the actor-scoped
+and immediately. The independently saved reporting-timezone section follows
+Appearance and precedes Session, keeping Personal details and Appearance together
+above the phone navigation for normal content. It loads no financial overview. Its return link uses the actor-scoped
 source visit. Personal origins require a fresh authenticated response and retain the
 exact local section, dates and filters before source content restores scroll and focus. Household and directory visits have descriptive labels; a Group/Trip
 origin, including nested expense, repayment and activity routes, resolves its name from a fresh, retained authorized group-name query, which
