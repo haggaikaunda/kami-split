@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  repository:
-    name: Repository validation and change classification
+  classify:
+    name: Change classification
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -25,9 +25,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - name: Classify actual event commits
         id: changes
         run: node scripts/ci/changes.mjs
+  repository:
+    name: Repository validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0
@@ -36,6 +48,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Enforce immutable ordered migration history
+        run: node scripts/ci/migrations.mjs
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm format:check
       - run: node --test scripts/ci/*.test.mjs
@@ -53,17 +67,17 @@ jobs:
           .tools/skills-validator/bin/python -m unittest discover -s scripts/agents -p '*_test.py'
   web:
     name: Web
-    needs: repository
-    if: ${{ !cancelled() && (needs.repository.result != 'success' || needs.repository.outputs.verify_web != 'false') }}
+    needs: classify
+    if: ${{ !cancelled() && (needs.classify.result != 'success' || needs.classify.outputs.verify_web != 'false') }}
     uses: ./.github/workflows/web.yml
   api:
     name: API
-    needs: repository
-    if: ${{ !cancelled() && (needs.repository.result != 'success' || needs.repository.outputs.verify_api != 'false') }}
+    needs: classify
+    if: ${{ !cancelled() && (needs.classify.result != 'success' || needs.classify.outputs.verify_api != 'false') }}
     uses: ./.github/workflows/api.yml
   verify:
     name: Verify
-    needs: [repository, web, api]
+    needs: [classify, repository, web, api]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -73,9 +87,10 @@ jobs:
           persist-credentials: false
       - name: Require successful applicable checks
         env:
+          CLASSIFICATION_RESULT: ${{ needs.classify.result }}
           REPOSITORY_RESULT: ${{ needs.repository.result }}
-          WEB_REQUIRED: ${{ needs.repository.outputs.verify_web }}
-          API_REQUIRED: ${{ needs.repository.outputs.verify_api }}
+          WEB_REQUIRED: ${{ needs.classify.outputs.verify_web }}
+          API_REQUIRED: ${{ needs.classify.outputs.verify_api }}
           WEB_RESULT: ${{ needs.web.result }}
           API_RESULT: ${{ needs.api.result }}
         run: node scripts/ci/verify.mjs

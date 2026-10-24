@@ -17,7 +17,4 @@ shutil.rmtree(target)
 shutil.copytree(source, target)
 PY
 ./scripts/db-tool.sh supabase link --project-ref "$SUPABASE_PROJECT_REF"
-./scripts/db-tool.sh supabase db push --linked --dry-run
-if [[ "$DEPLOY_MODE" == release ]]; then
-  ./scripts/db-tool.sh supabase db push --linked
-fi
+node scripts/deployment/migrations.mjs

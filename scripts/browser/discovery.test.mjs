@@ -24,6 +24,7 @@ const groups = {
     80,
     [
       / enlarged header geometry /,
+      /^account resolution: the slow opening screen/,
       /^directory cards contain long exact amounts/,
       /^shared header aligns Household/,
       /^compact identity and navigation remain/,
@@ -137,3 +138,58 @@ for (const [name, omitted] of [
       assertCoverage(discovered.filter((item) => !omitted(item))),
     );
   });
+
+// Run actual Playwright partitioning, rather than duplicating its scheduler.
+// Keep file-level state grouped; the smoke file already opts into parallel cases.
+test('three actual shards have an exact disjoint required inventory union', () => {
+  const shards = [1, 2, 3].map((index) => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        'node_modules/@playwright/test/cli.js',
+        'test',
+        '--list',
+        '--reporter=json',
+        `--shard=${index}/3`,
+      ],
+      {
+        cwd: fileURLToPath(new URL('../../', import.meta.url)),
+        encoding: 'utf8',
+        timeout: 30_000,
+        maxBuffer: 4 * 1024 * 1024,
+      },
+    );
+    assert.equal(result.status, 0, `Shard ${index} discovery succeeds`);
+    const listed = JSON.parse(result.stdout);
+    assert.deepEqual(listed.errors, []);
+    return cases(listed);
+  });
+  const key = (item) => JSON.stringify(item);
+  const union = shards.flat();
+  assert.equal(
+    new Set(union.map(key)).size,
+    union.length,
+    'No execution is duplicated across partitions',
+  );
+  assert.deepEqual(
+    union.map(key).sort(),
+    discovered.map(key).sort(),
+    'All reviewed required executions remain selected exactly once',
+  );
+  assertCoverage(union);
+  for (const shard of shards) assert.ok(shard.length > 0, 'No empty partition');
+  console.log(
+    'Browser partition execution counts:',
+    shards.map((shard) => shard.length).join(', '),
+  );
+});
+
+test('discovery rejects a duplicate desktop execution of the owned account-opening matrix', () => {
+  const account = discovered.find((item) =>
+    /^account resolution:/.test(item.title),
+  );
+  assert.ok(account);
+  assert.throws(() =>
+    assertCoverage([...discovered, { ...account, project: 'chromium-1280' }]),
+  );
+});

@@ -89,27 +89,30 @@ PR comparisons use the event's actual base/head merge base; pushes use the actua
 history supplies the objects; missing history falls back to both consumers.
 PR code runs only in unprivileged CI, never in `pull_request_target`.
 
-The repository job classifies changes, checks repository-wide formatting, runs
-classifier/gate and execution-helper tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
+The lightweight classification job runs alongside repository validation. The
+repository job enforces immutable ordered migration history using full checkout
+history, checks repository-wide formatting, runs classifier/gate and execution-helper tests and the [pinned skill/resource validation](skill-authoring.md#objective-checks-from-a-fresh-checkout).
 Skill validation uses an isolated Python environment; it does not execute skill
 procedures. It installs pinned workspace dependencies with scripts
 disabled; it does not build the web application or start Go, Docker, or databases.
 The Web and API reusable workflows consume `verify_web` / `verify_api` in caller-level conditions, so an unaffected
 branch never allocates its expensive runner jobs. The API source/database/runtime
 checks stay together: this change does not narrow verification within a service.
-A failed repository job also requests both consumers, while still failing `Verify`.
+A failed classification job also requests both consumers, while still failing `Verify`.
+Repository validation can fail independently while application verification runs;
+its success remains mandatory at the final gate.
 
 `Verify` retains its exact required name and runs with `always()`. It requires a
-successful repository job, a literal applicability boolean, and either success
+successful classification and repository jobs, a literal applicability boolean, and either success
 for applicable work or an intentional `skipped` result for inapplicable work.
 Failure, cancellation, missing outputs, and unexpected skips cannot pass. PR
 concurrency cancels superseded runs; main runs remain non-canceling. Results are
 scoped to the same workflow run, never reused from an earlier head.
 
-The classifier must precede dependent jobs, while `Verify` must follow them, so
-combining those jobs would create a dependency cycle. Repository validation makes
-the classification runner useful. Keep the small final gate despite minute
-rounding; the primary savings come from avoiding unaffected runners.
+The classifier must precede dependent jobs, while `Verify` must follow them.
+Application jobs begin after lightweight classification without waiting for
+repository formatting, Python setup or skill validation. The small final gate
+still requires every applicable result from the same run.
 
 ## Production boundary and #161
 

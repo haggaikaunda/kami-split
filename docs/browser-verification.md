@@ -16,14 +16,14 @@ pnpm test:browser
 
 Hosted web CI runs inside the version-pinned official Playwright Noble image in
 `.github/workflows/web.yml`, which supplies browser binaries and OS libraries.
-It still selects Node 24 and installs frozen workspace dependencies. Before any
-web checks, `scripts/browser/ci-environment.mjs` verifies the installed Playwright
+It still selects Node 24 and installs frozen workspace dependencies. Before each
+browser partition, `scripts/browser/ci-environment.mjs` verifies the installed Playwright
 version against the exact package pin and image metadata, then launches Chromium.
 Missing or mismatched metadata, browser paths, binaries or libraries fail the job;
 CI does not install browsers or run apt. Update the image tag together with the
 Playwright dependency. Local browser setup remains as described above.
 
-The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
+The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI verifies and restores its sealed build artifact before doing this). The caller must ensure that build matches the current source.
 
 The suite also exercises collapsed Household balance sources, explicit repayment
 rows in both directions, return focus/scroll, another authorized recorder,
@@ -41,7 +41,26 @@ BROWSER_PORT=3395 BROWSER_AUTH_PORT=3396 \
   BROWSER_OUTPUT_DIR=/tmp/kami-browser-other pnpm test:browser
 ```
 
-The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. The affected-web job runs two browser workers on its existing runner, behind the unchanged required `Verify` gate. Known synthetic browser inputs require web verification; unknown root tooling remains conservatively classified as shared input.
+The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. Hosted web verification overlaps Relay/lint/type/unit/helper checks with one
+production build, then runs three browser partitions on separate runners. Each
+partition retains two workers, zero retries and its own stateless services and
+output directory. Playwright's built-in sharding preserves nonparallel file groups;
+global `fullyParallel` remains false. `ci-build.mjs` packs hidden `.next` runtime
+files in a tar archive (excluding build cache), retaining permissions. Its manifest
+binds the archive, discovery inventory and Next build ID to the exact checkout
+revision. Each partition verifies the archive/revision before extraction and uses
+`BROWSER_SKIP_BUILD=1`.
+
+The independent reviewed discovery check validates all required journeys and
+viewport ownership and exercises all three actual shard selections. Each partition
+records every execution and attempt. The `Web coverage` job requires successful
+checks/build/matrix results and an exact disjoint union equal to the sealed full
+discovery inventory, with matching revision/build identity. Missing, failed,
+cancelled, unexpectedly skipped, duplicated or extra executions fail the reusable
+workflow and the unchanged required `Verify` gate. Matrix fail-fast is disabled to
+retain other partitions' diagnostics; per-partition reports and failure artifacts
+are retained seven days. Build artifacts are scoped to the same workflow run and
+retained one day. No build or report is reused across runs. Known synthetic browser inputs require web verification; unknown root tooling remains conservatively classified as shared input.
 
 ### Deterministic fixture facts and ordering
 
@@ -75,19 +94,20 @@ Tests tagged `@owns-viewport` explicitly set their relevant dimensions and run
 once under `chromium-390`; `chromium-1280` excludes that tag during discovery.
 Their retained viewport/theme/text coverage lives inside the test:
 
-| Owned cases                                | Retained dimensions / behavior                                                                               |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Enlarged Group/Trip headers                | Explicit 320/390px, doubled text, protected read/failure/retry geometry                                      |
-| Activity row composition                   | 320/390/440/1280/1440px; Household/Group; Light/Dark/System; normal/doubled text                             |
-| Creation page reachability                 | 320/390/440/1280px; Light/Dark/System; normal/doubled text and short viewport                                |
-| Members reflow                             | Household/Group/Trip; 320/390/440/1280px; theme/text/empty-state cases owned by the matrix                   |
-| Directory cards and shared shell           | Internal width/theme/text matrices, exact amounts, artwork failure and keyboard help                         |
-| Balance/repayment layout                   | Internal narrow/desktop, text and appearance matrices; unavailable/ineligible sources and reachable controls |
-| Short expense filters and focus indicators | Explicit short mobile viewports, enlarged text, pointer/keyboard and forced-color checks                     |
-| Creation recovery and Overview reflow      | Explicit fixed mobile or internal narrow/desktop matrices, exact amounts and readable secondary totals       |
+| Owned cases                                | Retained dimensions / behavior                                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enlarged Group/Trip headers                | Explicit 320/390px, doubled text, protected read/failure/retry geometry                                                                        |
+| Activity row composition                   | 320/390/440/1280/1440px; Household/Group; Light/Dark/System; normal/doubled text                                                               |
+| Creation page reachability                 | 320/390/440/1280px; Light/Dark/System; normal/doubled text and short viewport                                                                  |
+| Members reflow                             | Household/Group/Trip; 320/390/440/1280px; theme/text/empty-state cases owned by the matrix                                                     |
+| Account opening accessibility              | Normal 390/1280px privacy/axe checks, then 320/390/1280px in Light/Dark with doubled text; one held Auth response and real slow-state/recovery |
+| Directory cards and shared shell           | Internal width/theme/text matrices, exact amounts, artwork failure and keyboard help                                                           |
+| Balance/repayment layout                   | Internal narrow/desktop, text and appearance matrices; unavailable/ineligible sources and reachable controls                                   |
+| Short expense filters and focus indicators | Explicit short mobile viewports, enlarged text, pointer/keyboard and forced-color checks                                                       |
+| Creation recovery and Overview reflow      | Explicit fixed mobile or internal narrow/desktop matrices, exact amounts and readable secondary totals                                         |
 
 All untagged journeys retain both project dimensions, including startup paint,
-initial loading accessibility, auth denial, account lifecycle, cache/navigation,
+auth denial, account lifecycle, cache/navigation,
 focus restoration and repayment/history behavior. A test whose initial checks
 rely on project dimensions must remain untagged even if it later resizes.
 `node --test scripts/browser/*.test.mjs` runs actual default discovery and rejects
@@ -95,17 +115,19 @@ missing required files/cases, missing desktop counterparts or unexpected tag
 ownership. Update its reviewed inventory deliberately with coverage changes.
 Focused commands remain diagnostic subsets; they do not satisfy full-suite gates.
 
-The loading-handoff browser case retains its real 8s slow-status wait for both
-initial loading and retry. Playwright's clock controls browser timers, but the
-visible React loading commit does not establish which passive effect/remount
-owns the final status timer. Observing a first timer registration alone cannot
-safely establish that boundary. Keep real rendering, held responses, route cues,
-focus and retry assertions here; do not reset application events or change
-production delays to accelerate it. Exact 149/150ms and 7,999/8,000ms boundaries,
-content-retry reset and timer cleanup have deterministic component tests in
-`loading.test.tsx`. The existing rapid-destination browser case owns navigation
-away and late-response disposal checks. Startup-frame, cache-expiry and
-interaction/paint synchronization also retain real time for their behavioral
+The loading-handoff browser case installs Playwright's clock only after the
+initial Overview is ready. Each held read must visibly commit its initial
+`Loading balances…` status before advancing the browser clock by eight seconds;
+the browser must then render the slow status before release. The retry repeats
+that initial-to-slow transition independently. This keeps real route delivery,
+held responses, rendering, focus and request-count assertions while removing the
+wall-clock slow wait. Do not infer readiness from a timer registration, dispatch
+application lifecycle events or change production delays to arrange the test.
+Exact 149/150ms and 7,999/8,000ms boundaries, content-retry reset and timer cleanup
+have deterministic component tests in `loading.test.tsx`. The existing
+rapid-destination browser case owns navigation away and late-response disposal
+checks. Account-opening slow feedback, startup-frame, cache-expiry and
+interaction/paint synchronization retain real time for their behavioral
 boundaries.
 
 Use the same discovered workload with one worker for serial diagnosis:

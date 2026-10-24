@@ -84,7 +84,7 @@ remaining scope before updating the handoff.
 
 `.github/workflows/ci.yml` owns pull-request and main-push triggers, read-only
 permissions, cancellation of superseded runs, and the single required **Verify**
-check. It runs repository validation and the centralized change classifier, then calls
+check. It runs repository validation alongside the lightweight centralized change classifier, then calls
 `web.yml` and/or `api.yml` using `verify_web` / `verify_api`. Production selection
 uses the same classifier's separate `deploy_web` / `deploy_api` decisions over the
 cumulative unreleased range; verification-only tests do not require deployment. See the
@@ -92,19 +92,35 @@ cumulative unreleased range; verification-only tests do not require deployment. 
 fallbacks, and selective release semantics. Both reusable workflows use only
 `workflow_call`; their caller owns selection and concurrency.
 
-`web.yml` owns pnpm/Node setup, the root-lockfile cache, lint, type checking, web tests, the Next.js build, and the required Playwright Chromium smoke suite, in order. The browser suite reuses that build with two workers on the same runner (audited smoke cases run in parallel; self-contained viewport matrices have one explicit project owner) and uploads failure artifacts for seven days.
-Repository-wide formatting runs exactly once in the repository validation job,
-alongside classifier/gate tests and pinned skill/resource validation, even for documentation-only changes.
+`web.yml` owns pnpm/Node setup, the root-lockfile cache and parallel web checks
+and production-build jobs. Three independent browser partitions reuse the same
+revision-checked production build in the pinned Playwright image, with two workers
+each, zero retries and global `fullyParallel` disabled. The reviewed discovery
+inventory and exact partition union are verified; all checks, the build and every
+partition must succeed. Missing, failed, cancelled or skipped partitions fail the
+web aggregate. Per-partition coverage and failure artifacts are retained seven
+days. See [browser verification](../browser-verification.md) for build identity,
+viewport ownership and diagnostic details. Repository-wide formatting runs once
+in the repository validation job alongside immutable ordered migration-history
+validation, classifier/gate tests and pinned skill/resource validation, even for documentation-only changes.
 `api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted
 runner with a 15-minute limit:
 
 - **Go source checks:** Go setup/module cache, Cloud Run traffic-selection tests,
   and authoritative `make api-check` coverage (formatting, module integrity, vet,
   regular/race tests, build, and gqlgen generation drift).
-- **Database integration checks:** Go setup/module cache, pinned database tools,
-  sqlc drift, and `make db-test` migration/permission/integration/reset/replay and
-  dump/restore checks. The script owns a unique disposable Supabase project and
-  an EXIT trap for cleanup.
+- **Database integration checks:** Go setup, separate module and database build
+  caches, pinned database tools, sqlc drift, and `make db-test`
+  migration/permission/integration/reset/replay and dump/restore checks. Module
+  keys bind the runner OS/architecture/image, resolved Go version and module
+  manifests. The database build cache adds the checked-out GitHub revision and
+  restores the latest compatible prefix, so successful jobs refresh integration
+  and race build outputs without competing with source/runtime caches. Go still
+  validates cached build inputs; integration execution retains `-count=1`.
+  Cache misses or service failures never skip verification, and cache saves run
+  only after successful jobs. GitHub's ordinary branch/default-branch cache
+  visibility applies; PR caches remain scoped to their merge ref. The script
+  owns a unique disposable Supabase project and an EXIT trap for cleanup.
 - **Container and local startup checks:** pinned database tools, Compose
   validation, one production image build, readiness and live GraphQL smoke,
   then coordinated Supabase/API startup via `make dev-up DEV_BUILD_FLAG=--no-build`.
@@ -115,13 +131,14 @@ runner with a 15-minute limit:
 Runner isolation prevents cross-job port/project conflicts and teardown. No Docker
 state is assumed to be shared across runners. The Dockerfile's `verify` target
 remains available for manual use, but CI does not duplicate host Go verification
-through it. Web checks retain their own runner and a 25-minute aggregate limit,
-using a pinned Playwright image for prebuilt browsers and OS dependencies. An early
-exact-version check and Chromium launch reject image/dependency drift before the
-complete required suite; Node 24 setup and frozen pnpm installation remain authoritative.
+through it. Web checks have a 25-minute limit, the build has 10 minutes, each
+browser partition has 15 minutes and the web aggregate has 5 minutes. Browser
+partitions use a pinned Playwright image for prebuilt browsers and OS dependencies.
+An exact-version check and Chromium launch reject image/dependency drift before
+testing; Node 24 setup and frozen pnpm installation remain authoritative.
 
-The **Verify** job waits for repository validation and both calls with `always()`.
-It requires successful repository validation and each affected result to equal
+The **Verify** job waits for classification, repository validation and both calls with `always()`.
+It requires successful classification and repository validation and each affected result to equal
 `success`; only an explicitly inapplicable branch may equal `skipped`. Missing
 classification, failures, cancellation, and unexpected skips fail the gate. The reusable API result aggregates all
 three required jobs; none is optional or uses `continue-on-error`. Failure, cancellation, or unexpected skipping of
