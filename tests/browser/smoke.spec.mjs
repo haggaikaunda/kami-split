@@ -619,6 +619,9 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(balances).toHaveAttribute('aria-current', 'page');
     expect(await balances.boundingBox()).toEqual(before);
     await expect(page.locator('[data-ui~="group-balances"]')).toHaveCount(0);
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toHaveCount(0);
     await page.clock.fastForward(8_000);
     await expect(
       page.getByText('Still loading balances…', { exact: true }),
@@ -637,6 +640,9 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     ).toBeVisible();
     await expect(page.getByRole('status')).toHaveCount(1);
     expect(reads()).toBe(baseline + 2);
+    await expect(
+      page.getByText('Still loading balances…', { exact: true }),
+    ).toHaveCount(0);
     await page.clock.fastForward(8_000);
     await expect(
       page.getByText('Still loading balances…', { exact: true }),
