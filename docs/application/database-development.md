@@ -9,8 +9,8 @@ for local database development. Supabase owns its containers; Compose owns only 
 
 ## Prerequisites and pins
 
-Install Docker Engine/Desktop with Compose, Go 1.27.1, Python 3.11+, curl, tar and
-make. Run `make db-tools` to install repository-local binaries (macOS/Linux,
+Install Docker Engine/Desktop with Compose, Go 1.27.1, Node 24, Python 3.11+,
+curl, tar and make. Node runs database package discovery and coverage validation. Run `make db-tools` to install repository-local binaries (macOS/Linux,
 ARM64/AMD64). `scripts/tool-versions.env` pins Supabase CLI **2.118.0** and sqlc
 **1.31.1**; `apps/api/go.mod` pins pgx **v5.11.0**. Wrappers reject other binary
 versions. CLI-managed service image versions come from that exact CLI release
@@ -181,6 +181,21 @@ application ACL is widened for lint. Inside that stack it applies desired SQL to
 database and compares schema dumps with ownership/ACLs plus global default ACLs
 and cluster role attributes/memberships. Only dump restriction tokens are removed.
 This is reconciliation, not an alternative deployment runner.
+
+The default command preserves the full serial workflow. CI uses
+`./scripts/db-test.sh migrations` for those upgrade/replay comparisons and
+`./scripts/db-test.sh banking` / `expenses` for balanced runtime partitions.
+Each runtime partition starts all current migrations in a separate complete
+Supabase provider/cluster, asserts effective roles, and runs its packages serially
+with `-race -tags=integration -count=1`. Banking owns database/auth/profile/banking
+and the worker binary smoke; expenses owns invitation/expense/graph/onboarding/
+bootstrap. Each verifies actual relevant fixture rows before dumping/restoring
+app schema and data. Counts and successful package events produce revision-bound
+coverage reports under ignored `test-results/database`; provider keys remain in
+private temporary files. Discovery rejects missing/duplicate assignments, new
+tagged packages or test-bearing descendants without an explicit lane assignment.
+Unknown or empty modes fail before project allocation. CI requires every lane,
+the migration report, distinct project identities and exact discovery coverage.
 
 Tests assert real runtime and browser-role denial, generated query execution,
 invalid credentials/admin startup rejection, cancellation, bounded exhausted-pool
