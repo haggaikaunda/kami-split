@@ -2298,3 +2298,66 @@ test('Personal Overview disposes a held private report when the session signs ou
     released.resolve();
   }
 });
+
+test('Personal first-use dates end at saved-zone today across UTC calendar boundaries', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  await bankingServer(page);
+  let timezone = 'America/Los_Angeles';
+  const operations = [];
+  await page.route('**/api/graphql', (route) => {
+    const { query } = route.request().postDataJSON();
+    const operation = query.match(/(?:query|mutation) (\w+)/)?.[1];
+    operations.push(operation);
+    if (operation !== 'reportingTimezoneQuery') return route.fallback();
+    return route.fulfill({
+      json: {
+        data: {
+          reportingTimezone: {
+            __typename: 'ReportingTimezone',
+            timezone,
+            version: '1',
+          },
+        },
+      },
+    });
+  });
+  for (const [instant, zone, bounds] of [
+    [
+      '2026-10-24T01:00:00Z',
+      'America/Los_Angeles',
+      'Oct 1, 2026 – Oct 23, 2026',
+    ],
+    [
+      '2026-10-01T01:00:00Z',
+      'America/Los_Angeles',
+      'Sep 1, 2026 – Sep 30, 2026',
+    ],
+    ['2026-10-01T01:00:00Z', 'Asia/Tokyo', 'Oct 1, 2026 – Oct 1, 2026'],
+    [
+      '2024-03-01T01:00:00Z',
+      'America/Los_Angeles',
+      'Feb 1, 2024 – Feb 29, 2024',
+    ],
+    ['2024-03-01T01:00:00Z', 'Asia/Tokyo', 'Mar 1, 2024 – Mar 1, 2024'],
+  ]) {
+    timezone = zone;
+    // Date-only freezing leaves real rendering/timers intact. Explicit UTC
+    // instants and saved IANA zones avoid relying on the executor's local zone.
+    await page.clock.setFixedTime(new Date(instant));
+    await page.goto('/personal');
+    await expect(
+      page.getByText(`This month: ${bounds} · ${zone}`, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Go to Connections', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('$0.00', { exact: false })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Connect account', exact: true }),
+    ).toHaveCount(0);
+  }
+  expect(operations).not.toContain('reportingTimezoneInitializeMutation');
+});

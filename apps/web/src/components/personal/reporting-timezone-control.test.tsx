@@ -69,6 +69,7 @@ beforeEach(async () => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  vi.useRealTimers();
 });
 it('initializes once from device only when missing and retains the server-returned zone', async () => {
   await act(async () =>
@@ -170,16 +171,65 @@ it('does not expose timezone data while session verification is pending', async 
   await act(async () => root.render(<ReportingTimezoneControl />));
   expect(host.textContent).toBe('');
 });
-it('renders concrete initial month dates in saved zone across a UTC boundary', async () => {
-  expect(
-    currentMonthLabel('America/Los_Angeles', new Date('2026-11-01T01:00:00Z')),
-  ).toBe('This month: Oct 1, 2026 – Oct 31, 2026');
-  expect(
-    currentMonthLabel('Asia/Tokyo', new Date('2026-11-01T01:00:00Z')),
-  ).toBe('This month: Nov 1, 2026 – Nov 30, 2026');
+it.each([
+  ['2026-10-24T01:00:00Z', 'America/Los_Angeles', 'Oct 1, 2026 – Oct 23, 2026'],
+  ['2026-10-24T01:00:00Z', 'UTC', 'Oct 1, 2026 – Oct 24, 2026'],
+  ['2026-11-01T01:00:00Z', 'America/Los_Angeles', 'Oct 1, 2026 – Oct 31, 2026'],
+  ['2026-11-01T01:00:00Z', 'Asia/Tokyo', 'Nov 1, 2026 – Nov 1, 2026'],
+  ['2024-03-01T01:00:00Z', 'America/Los_Angeles', 'Feb 1, 2024 – Feb 29, 2024'],
+  ['2024-03-01T01:00:00Z', 'Asia/Tokyo', 'Mar 1, 2024 – Mar 1, 2024'],
+  ['2027-01-01T01:00:00Z', 'Asia/Tokyo', 'Jan 1, 2027 – Jan 1, 2027'],
+])(
+  'ends this month at saved-zone today for %s in %s',
+  (instant, timezone, bounds) => {
+    expect(currentMonthLabel(timezone, new Date(instant))).toBe(
+      `This month: ${bounds}`,
+    );
+  },
+);
+it('renders first-use dates through saved-zone today without reinitializing an existing preference', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-24T01:00:00Z'));
   await act(async () =>
     root.render(<ReportingTimezoneInitialization showPeriod />),
   );
+  await act(async () =>
+    requests.at(-1)!.next({ reportingTimezone: saved('America/Los_Angeles') }),
+  );
+  expect(host.textContent).toBe(
+    'This month: Oct 1, 2026 – Oct 23, 2026 · America/Los_Angeles',
+  );
+  expect(
+    requests.filter(
+      (request) => request.name === 'reportingTimezoneInitializeMutation',
+    ),
+  ).toHaveLength(0);
+});
+it('uses the server-confirmed initialized zone for first-use dates at a UTC month boundary', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-11-01T01:00:00Z'));
+  await act(async () =>
+    root.render(<ReportingTimezoneInitialization showPeriod />),
+  );
+  await act(async () =>
+    requests.at(-1)!.next({ reportingTimezone: problem('NOT_INITIALIZED') }),
+  );
+  const initialize = requests.at(-1)!;
+  expect(initialize.name).toBe('reportingTimezoneInitializeMutation');
+  await act(async () =>
+    initialize.next({ initializeReportingTimezone: saved('Asia/Tokyo') }),
+  );
+  expect(host.textContent).toBe(
+    'This month: Nov 1, 2026 – Nov 1, 2026 · Asia/Tokyo',
+  );
+  await act(async () =>
+    root.render(<ReportingTimezoneInitialization showPeriod />),
+  );
+  expect(
+    requests.filter(
+      (request) => request.name === 'reportingTimezoneInitializeMutation',
+    ),
+  ).toHaveLength(1);
 });
 
 it.each([
