@@ -578,6 +578,7 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(
       page.getByRole('heading', { name: 'Recent expenses', exact: true }),
     ).toBeVisible();
+    await page.clock.install();
     const tabs = page.locator('[data-ui~="workspace-tabs"]');
     const balances = tabs.getByRole('link', { name: 'Balances', exact: true });
     const before = await balances.boundingBox();
@@ -618,9 +619,10 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     await expect(balances).toHaveAttribute('aria-current', 'page');
     expect(await balances.boundingBox()).toEqual(before);
     await expect(page.locator('[data-ui~="group-balances"]')).toHaveCount(0);
+    await page.clock.fastForward(8_000);
     await expect(
       page.getByText('Still loading balances…', { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible();
     expect(reads()).toBe(baseline + 1);
     await pending.release();
     await expect(loading).toHaveCount(0);
@@ -635,9 +637,10 @@ test('loading handoff: route cue, one slow content status, failure and one expli
     ).toBeVisible();
     await expect(page.getByRole('status')).toHaveCount(1);
     expect(reads()).toBe(baseline + 2);
+    await page.clock.fastForward(8_000);
     await expect(
       page.getByText('Still loading balances…', { exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible();
     expect(reads()).toBe(baseline + 2);
     await retry.release();
     await expect(page.locator('[data-ui~="group-balances"]')).toBeVisible();
@@ -908,7 +911,7 @@ test('rapid route destinations: abandoned link feedback clears before its late r
   }
 });
 
-test('account resolution: the slow opening screen stays public and accessible at enlarged mobile and desktop sizes', async ({
+test('account resolution: the slow opening screen stays public and accessible at enlarged mobile and desktop sizes @owns-viewport', async ({
   page,
   app,
 }, testInfo) => {
@@ -924,21 +927,28 @@ test('account resolution: the slow opening screen stays public and accessible at
     await page.goto('/account');
     await started.promise;
     const screen = page.locator('[data-ui="screen-loading"]');
-    await expect(
-      page.getByRole('heading', { name: 'Getting things ready', exact: true }),
-    ).toBeVisible();
-    await expect(page.locator(forbidden)).toHaveCount(0);
-    await expect(page.getByText('Private synthetic person')).toHaveCount(0);
-    await expect(page.getByRole('status')).toHaveCount(1);
-    await expect(
-      page.getByRole('region', { name: 'Account content' }),
-    ).toHaveAttribute('aria-busy', 'true');
+    // Preserve both original project-sized startup checks before enlarged reflow.
     await page.addScriptTag({ path: axePath });
-    expect(
-      await screen.evaluate(async (element) =>
-        (await globalThis.axe.run(element)).violations.map(({ id }) => id),
-      ),
-    ).toEqual([]);
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(
+        page.getByRole('heading', {
+          name: 'Getting things ready',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.locator(forbidden)).toHaveCount(0);
+      await expect(page.getByText('Private synthetic person')).toHaveCount(0);
+      await expect(page.getByRole('status')).toHaveCount(1);
+      await expect(
+        page.getByRole('region', { name: 'Account content' }),
+      ).toHaveAttribute('aria-busy', 'true');
+      expect(
+        await screen.evaluate(async (element) =>
+          (await globalThis.axe.run(element)).violations.map(({ id }) => id),
+        ),
+      ).toEqual([]);
+    }
     for (const width of [320, 390, 1280]) {
       for (const theme of ['light', 'dark']) {
         await page.setViewportSize({ width, height: 900 });

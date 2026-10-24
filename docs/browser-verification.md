@@ -66,19 +66,20 @@ Tests tagged `@owns-viewport` explicitly set their relevant dimensions and run
 once under `chromium-390`; `chromium-1280` excludes that tag during discovery.
 Their retained viewport/theme/text coverage lives inside the test:
 
-| Owned cases                                | Retained dimensions / behavior                                                                               |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Enlarged Group/Trip headers                | Explicit 320/390px, doubled text, protected read/failure/retry geometry                                      |
-| Activity row composition                   | 320/390/440/1280/1440px; Household/Group; Light/Dark/System; normal/doubled text                             |
-| Creation page reachability                 | 320/390/440/1280px; Light/Dark/System; normal/doubled text and short viewport                                |
-| Members reflow                             | Household/Group/Trip; 320/390/440/1280px; theme/text/empty-state cases owned by the matrix                   |
-| Directory cards and shared shell           | Internal width/theme/text matrices, exact amounts, artwork failure and keyboard help                         |
-| Balance/repayment layout                   | Internal narrow/desktop, text and appearance matrices; unavailable/ineligible sources and reachable controls |
-| Short expense filters and focus indicators | Explicit short mobile viewports, enlarged text, pointer/keyboard and forced-color checks                     |
-| Creation recovery and Overview reflow      | Explicit fixed mobile or internal narrow/desktop matrices, exact amounts and readable secondary totals       |
+| Owned cases                                | Retained dimensions / behavior                                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enlarged Group/Trip headers                | Explicit 320/390px, doubled text, protected read/failure/retry geometry                                                                        |
+| Activity row composition                   | 320/390/440/1280/1440px; Household/Group; Light/Dark/System; normal/doubled text                                                               |
+| Creation page reachability                 | 320/390/440/1280px; Light/Dark/System; normal/doubled text and short viewport                                                                  |
+| Members reflow                             | Household/Group/Trip; 320/390/440/1280px; theme/text/empty-state cases owned by the matrix                                                     |
+| Account opening accessibility              | Normal 390/1280px privacy/axe checks, then 320/390/1280px in Light/Dark with doubled text; one held Auth response and real slow-state/recovery |
+| Directory cards and shared shell           | Internal width/theme/text matrices, exact amounts, artwork failure and keyboard help                                                           |
+| Balance/repayment layout                   | Internal narrow/desktop, text and appearance matrices; unavailable/ineligible sources and reachable controls                                   |
+| Short expense filters and focus indicators | Explicit short mobile viewports, enlarged text, pointer/keyboard and forced-color checks                                                       |
+| Creation recovery and Overview reflow      | Explicit fixed mobile or internal narrow/desktop matrices, exact amounts and readable secondary totals                                         |
 
 All untagged journeys retain both project dimensions, including startup paint,
-initial loading accessibility, auth denial, account lifecycle, cache/navigation,
+auth denial, account lifecycle, cache/navigation,
 focus restoration and repayment/history behavior. A test whose initial checks
 rely on project dimensions must remain untagged even if it later resizes.
 `node --test scripts/browser/*.test.mjs` runs actual default discovery and rejects
@@ -86,17 +87,19 @@ missing required files/cases, missing desktop counterparts or unexpected tag
 ownership. Update its reviewed inventory deliberately with coverage changes.
 Focused commands remain diagnostic subsets; they do not satisfy full-suite gates.
 
-The loading-handoff browser case retains its real 8s slow-status wait for both
-initial loading and retry. Playwright's clock controls browser timers, but the
-visible React loading commit does not establish which passive effect/remount
-owns the final status timer. Observing a first timer registration alone cannot
-safely establish that boundary. Keep real rendering, held responses, route cues,
-focus and retry assertions here; do not reset application events or change
-production delays to accelerate it. Exact 149/150ms and 7,999/8,000ms boundaries,
-content-retry reset and timer cleanup have deterministic component tests in
-`loading.test.tsx`. The existing rapid-destination browser case owns navigation
-away and late-response disposal checks. Startup-frame, cache-expiry and
-interaction/paint synchronization also retain real time for their behavioral
+The loading-handoff browser case installs Playwright's clock only after the
+initial Overview is ready. Each held read must visibly commit its initial
+`Loading balances…` status before advancing the browser clock by eight seconds;
+the browser must then render the slow status before release. The retry repeats
+that initial-to-slow transition independently. This keeps real route delivery,
+held responses, rendering, focus and request-count assertions while removing the
+wall-clock slow wait. Do not infer readiness from a timer registration, dispatch
+application lifecycle events or change production delays to arrange the test.
+Exact 149/150ms and 7,999/8,000ms boundaries, content-retry reset and timer cleanup
+have deterministic component tests in `loading.test.tsx`. The existing
+rapid-destination browser case owns navigation away and late-response disposal
+checks. Account-opening slow feedback, startup-frame, cache-expiry and
+interaction/paint synchronization retain real time for their behavioral
 boundaries.
 
 Use the same discovered workload with one worker for serial diagnosis:
