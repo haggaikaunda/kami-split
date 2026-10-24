@@ -339,15 +339,16 @@ export function currentMonthLabel(timezone: string, now = new Date()) {
     timeZone: timezone,
     year: 'numeric',
     month: 'numeric',
+    day: 'numeric',
   }).formatToParts(now);
   const year = Number(parts.find((part) => part.type === 'year')?.value);
   const month = Number(parts.find((part) => part.type === 'month')?.value);
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
   const format = new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
-  return `This month: ${format.format(new Date(Date.UTC(year, month - 1, 1)))} – ${format.format(new Date(Date.UTC(year, month - 1, last)))}`;
+  return `This month: ${format.format(new Date(Date.UTC(year, month - 1, 1)))} – ${format.format(new Date(Date.UTC(year, month - 1, day)))}`;
 }

@@ -218,5 +218,5 @@ Account names come from all pages of the freshly authorized connection inventory
 current bindings take precedence over retired copies of one logical account.
 Genuinely unavailable retained identities use a labeled account fallback rather
 than invented bank names or masks. Reporting coverage and import/freshness facts remain
-independent. Connections owns existing-account management, explicit date-bound replacement and recovery. Overview presentation remains separate; connection success never proves zero spending,
+independent. Connections owns existing-account management, explicit date-bound replacement and recovery. Overview reuses the same report/navigation owner for its complete spending card, warnings and recent-row preview; connection success never proves zero spending,
 complete history, renewed consent or a shared expense.
