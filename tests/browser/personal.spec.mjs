@@ -2344,10 +2344,27 @@ test('Personal first-use dates end at saved-zone today across UTC calendar bound
     ['2024-03-01T01:00:00Z', 'Asia/Tokyo', 'Mar 1, 2024 – Mar 1, 2024'],
   ]) {
     timezone = zone;
-    // Date-only freezing leaves real rendering/timers intact. Explicit UTC
-    // instants and saved IANA zones avoid relying on the executor's local zone.
-    await page.clock.setFixedTime(new Date(instant));
+    // Establish ordinary authentication using real time before freezing Date.
+    // Historical dates must not re-arm auth expiry timers with a multi-year delay.
+    await page.clock.setFixedTime(new Date());
     await page.goto('/personal');
+    await expect(
+      page.getByRole('link', { name: 'Go to Connections', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Overview', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
+    // Keep real rendering/timers, explicit UTC instants and saved IANA zones;
+    // normal local navigation remounts the label inside the verified session.
+    await page.clock.setFixedTime(new Date(instant));
+    await page.getByRole('link', { name: 'Transactions', exact: true }).click();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Your private transactions',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await expect(
       page.getByText(`This month: ${bounds} · ${zone}`, { exact: true }),
     ).toBeVisible();
