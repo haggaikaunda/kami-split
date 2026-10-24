@@ -3,8 +3,20 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root=$PWD
+# Validate selection and the complete discovery union before allocating resources.
+mode=${1-all}
+[[ $# -le 1 ]] || { echo 'Usage: db-test.sh [all|migrations|banking|expenses]' >&2; exit 1; }
+packages=$(node scripts/db-partitions.mjs select "$mode")
+if [[ "$mode" == all ]]; then
+  # Preserve the established serial local package order.
+  packages=$(printf './internal/%s\n' database auth invitation expense graph onboarding bootstrap profile banking)
+fi
+report_directory=${DB_TEST_REPORT_DIR:-$root/test-results/database}
+mkdir -p "$report_directory"
+rm -f "$report_directory/$mode.json"
 stage=$(mktemp -d)
-project="kami-split-test-$(date +%s)-$$"
+project="kami-split-test-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:20])')"
+node scripts/db-partitions.mjs project "$project"
 cleanup() {
   result=$?
   "$root/scripts/db-tool.sh" supabase stop --project-id "$project" --no-backup || result=1
@@ -18,7 +30,11 @@ cp -R supabase/seeds "$stage/supabase/"
 cp -R supabase/templates "$stage/supabase/"
 mkdir -p "$stage/supabase/migrations"
 # Start with the provider plus the already shipped #74 foundation only.
-cp supabase/migrations/20260929000000_foundation.sql "$stage/supabase/migrations/"
+if [[ "$mode" == all || "$mode" == migrations ]]; then
+  cp supabase/migrations/20260929000000_foundation.sql "$stage/supabase/migrations/"
+else
+  cp supabase/migrations/*.sql "$stage/supabase/migrations/"
+fi
 # Reserve four unused loopback ports during selection. Docker binding still fails
 # safely if another process races us; no shared stack is stopped or reset.
 python3 - "$stage/supabase/config.toml" "$project" <<'PY'
@@ -26,18 +42,25 @@ import socket, sys
 path, project = sys.argv[1:]
 text = open(path).read().replace('project_id = "kami-split"', f'project_id = "{project}"')
 sockets = [socket.socket() for _ in range(4)]
+ports = []
 for sock, old in zip(sockets, [55421, 55422, 55420, 55424]):
     sock.bind(('127.0.0.1', 0))
-    text = text.replace(str(old), str(sock.getsockname()[1]))
+    port = sock.getsockname()[1]
+    ports.append(port)
+    text = text.replace(str(old), str(port))
 open(path, 'w').write(text)
+print(f'Owned database project={project} ports(api,db,shadow,smtp)={ports}')
 PY
-scripts/db-tool.sh supabase start --workdir "$stage"
+# The CLI can print synthetic provider credentials on stdout; keep them private.
+scripts/db-tool.sh supabase start --workdir "$stage" > "$stage/start-status.log"
 container="supabase_db_$project"
 port=$(python3 - "$stage/supabase/config.toml" <<'PY'
 import sys, tomllib
 with open(sys.argv[1], 'rb') as f: print(tomllib.load(f)['db']['port'])
 PY
 )
+echo "Database verification mode=$mode project=$project database-port=$port"
+if [[ "$mode" == all || "$mode" == migrations ]]; then
 # Clone the actual provider database before new app migrations. The desired-state
 # database retains managed Auth objects verbatim; no hand-built provider stub.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d template1 -c "ALTER DATABASE postgres ALLOW_CONNECTIONS false"
@@ -231,8 +254,19 @@ diff -u "$stage/postgres.acl" "$stage/fresh.acl"
 # migration replay, followed by real authenticated runtime integration tests.
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
 scripts/check-sqlc.sh
+fi
+if [[ "$mode" == migrations ]]; then
+  node scripts/db-partitions.mjs report "$mode" "$project" "$port"
+  exit 0
+fi
+# Fresh integration lanes still verify current replay's effective permissions.
+if [[ "$mode" != all ]]; then
+  docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/roles.sql
+fi
+if [[ "$mode" == all || "$mode" == banking ]]; then
 # Exercise the actual binary before integration fixtures create cleanup jobs.
 BANKING_WORKER_SMOKE_DATABASE_URL="postgres://kami_worker:kami-worker-local-only@127.0.0.1:$port/postgres?sslmode=disable" ./scripts/banking-worker-smoke.sh
+fi
 # Record installed extension/owner/ACL evidence without private queue payloads.
 docker exec "$container" psql -X -At -U postgres -d postgres -c "SELECT extname,extversion FROM pg_extension WHERE extname='pgmq'; SELECT relname,pg_get_userbyid(relowner),relacl FROM pg_class WHERE relnamespace='pgmq'::regnamespace AND relname IN('q_banking_lifecycle','a_banking_lifecycle');"
 # Keep local synthetic provider credentials out of command output and arguments.
@@ -243,7 +277,7 @@ cd apps/api
 TEST_DATABASE_URL="postgres://kami_api:kami-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
 TEST_WORKER_DATABASE_URL="postgres://kami_worker:kami-worker-local-only@127.0.0.1:$port/postgres?sslmode=disable" \
 TEST_DATABASE_ADMIN_URL="postgres://postgres:postgres@127.0.0.1:$port/postgres?sslmode=disable" \
-  python3 - "$stage/auth-status.json" <<'PROVIDER_TEST'
+  python3 - "$stage/auth-status.json" "$stage/integration.jsonl" "$packages" <<'PROVIDER_TEST'
 import json, os, subprocess, sys
 with open(sys.argv[1]) as status_file:
     status = json.load(status_file)
@@ -256,14 +290,28 @@ env["TEST_AUTH_PUBLISHABLE_KEY"] = status["PUBLISHABLE_KEY"]
 env["TEST_AUTH_SECRET_KEY"] = status["SECRET_KEY"]
 # Database permission probes temporarily change cluster roles; packages sharing
 # this cluster must run serially. Tests inside each package still exercise races.
-sys.exit(subprocess.run([
-    "go", "test", "-p=1", "-race", "-tags=integration", "-count=1",
-    "./internal/database/...", "./internal/auth/...", "./internal/invitation/...",
-    "./internal/expense/...", "./internal/graph/...", "./internal/onboarding/...",
-    "./internal/bootstrap/...", "./internal/profile/...", "./internal/banking/...",
-], env=env).returncode)
+# JSON events prove each selected package actually completed; raw output remains
+# private until the disposable stage is removed. Stream ordinary test diagnostics.
+with open(sys.argv[2], "w") as events:
+    process = subprocess.Popen([
+        "go", "test", "-json", "-p=1", "-race", "-tags=integration", "-count=1",
+        *sys.argv[3].splitlines(),
+    ], env=env, stdout=subprocess.PIPE, text=True)
+    for line in process.stdout:
+        events.write(line)
+        event = json.loads(line)
+        if event.get("Output"):
+            print(event["Output"], end="", flush=True)
+    sys.exit(process.wait())
 PROVIDER_TEST
 cd "$root"
+
+# Prove the dump includes actual integration-created financial/provider rows.
+# Counts contain no fixture payloads or credentials. Empty schema-only success
+# cannot satisfy the per-lane population contract in the coverage reporter.
+docker exec "$container" psql -X -At -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -c "SELECT json_build_object('users',(SELECT count(*) FROM app.users),'authUsers',(SELECT count(*) FROM auth.users),'expenses',(SELECT count(*) FROM app.expenses),'financialRecords',(SELECT count(*) FROM app.financial_records),'allocations',(SELECT count(*) FROM app.allocations),'bankingSources',(SELECT count(*) FROM app.banking_sources),'bankingRevisions',(SELECT count(*) FROM app.banking_source_revisions))" > "$stage/population.json"
+
+node scripts/db-partitions.mjs population "$mode" "$stage/population.json"
 
 # Prove financial history can survive a normal full schema+data dump/replay.
 # Clone the real provider database solely to retain managed Auth dependencies,
@@ -281,3 +329,5 @@ for db in postgres kami_restore; do
     | sed '/^\\restrict /d; /^\\unrestrict /d' > "$stage/$db-restored.sql"
 done
 diff -u "$stage/postgres-restored.sql" "$stage/kami_restore-restored.sql"
+
+node scripts/db-partitions.mjs report "$mode" "$project" "$port" "$stage/integration.jsonl" "$stage/population.json"

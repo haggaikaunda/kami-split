@@ -182,6 +182,21 @@ database and compares schema dumps with ownership/ACLs plus global default ACLs
 and cluster role attributes/memberships. Only dump restriction tokens are removed.
 This is reconciliation, not an alternative deployment runner.
 
+The default command preserves the full serial workflow. CI uses
+`./scripts/db-test.sh migrations` for those upgrade/replay comparisons and
+`./scripts/db-test.sh banking` / `expenses` for balanced runtime partitions.
+Each runtime partition starts all current migrations in a separate complete
+Supabase provider/cluster, asserts effective roles, and runs its packages serially
+with `-race -tags=integration -count=1`. Banking owns database/auth/profile/banking
+and the worker binary smoke; expenses owns invitation/expense/graph/onboarding/
+bootstrap. Each verifies actual relevant fixture rows before dumping/restoring
+app schema and data. Counts and successful package events produce revision-bound
+coverage reports under ignored `test-results/database`; provider keys remain in
+private temporary files. Discovery rejects missing/duplicate assignments, new
+tagged packages or test-bearing descendants without an explicit lane assignment.
+Unknown or empty modes fail before project allocation. CI requires every lane,
+the migration report, distinct project identities and exact discovery coverage.
+
 Tests assert real runtime and browser-role denial, generated query execution,
 invalid credentials/admin startup rejection, cancellation, bounded exhausted-pool
 readiness, connection loss/recovery, independent liveness and pool cleanup. They

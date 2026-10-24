@@ -23,12 +23,38 @@ jobs:
           cache-dependency-path: apps/api/go.sum
       - run: make api-check
 
-  database:
-    name: Database integration checks
+  migrations:
+    name: Database migration and replay checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install pinned database tools
+        run: make db-tools
+      - run: ./scripts/db-test.sh migrations
+      - uses: actions/upload-artifact@v7
+        with:
+          name: database-coverage-migrations
+          path: test-results/database/migrations.json
+          if-no-files-found: error
+          retention-days: 7
+
+  database:
+    name: Database integration (${{ matrix.partition }})
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [banking, expenses]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - uses: actions/setup-go@v7
         id: go
         with:
@@ -48,20 +74,26 @@ jobs:
           path: ${{ steps.go-cache.outputs.modules }}
           key: go-modules-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}
       # Refresh integration/race compilation after each revision. Only this job
-      # writes this namespace; Go validates reused outputs against current inputs.
+      # writes its lane namespace; Go validates reused outputs against current inputs.
       - name: Cache database Go build outputs
         uses: actions/cache@v5
         continue-on-error: true
         with:
           path: ${{ steps.go-cache.outputs.build }}
-          key: go-database-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-${{ github.sha }}
+          key: go-database-v2-${{ matrix.partition }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-${{ github.sha }}
           restore-keys: |
+            go-database-v2-${{ matrix.partition }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-
             go-database-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache.outputs.image }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('apps/api/go.mod', 'apps/api/go.sum') }}-
       - name: Install pinned database tools
         run: make db-tools
-      - run: make db-generation-check
-      # db-test owns its unique disposable project and EXIT-trap cleanup.
-      - run: make db-test
+      # Each matrix lane owns a complete provider/cluster and EXIT-trap cleanup.
+      - run: ./scripts/db-test.sh "${{ matrix.partition }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: database-coverage-${{ matrix.partition }}
+          path: test-results/database/${{ matrix.partition }}.json
+          if-no-files-found: error
+          retention-days: 7
 
   runtime:
     name: Container and local startup checks
@@ -96,3 +128,29 @@ jobs:
         run: docker compose -f compose.yaml -f compose.database.yaml down
       - if: always()
         run: make db-stop
+
+  verify:
+    name: Verify API coverage
+    needs: [source, migrations, database, runtime]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: database-coverage-*
+          path: test-results/database
+          merge-multiple: true
+      - name: Require every API job and exact database coverage
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          MIGRATIONS_RESULT: ${{ needs.migrations.result }}
+          INTEGRATION_RESULT: ${{ needs.database.result }}
+          RUNTIME_RESULT: ${{ needs.runtime.result }}
+        run: node scripts/db-partitions.mjs aggregate
