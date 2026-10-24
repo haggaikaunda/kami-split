@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -23,11 +23,23 @@ export function verifyBuild(manifest, revision, archive) {
   );
 }
 
+// Container checkout ownership can differ from the Node executor's UID.
+// Trust only this exact checkout for this command; retain Git's checks elsewhere.
+export function currentRevision(cwd = process.cwd()) {
+  const checkout = realpathSync(cwd);
+  return execFileSync(
+    'git',
+    ['-c', `safe.directory=${checkout}`, 'rev-parse', 'HEAD'],
+    {
+      cwd: checkout,
+      encoding: 'utf8',
+    },
+  ).trim();
+}
+
 function main() {
   const directory = resolve(process.argv[3] || 'test-results/browser-build');
-  const revision = execFileSync('git', ['rev-parse', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
+  const revision = currentRevision();
   const archive = resolve(directory, 'production.tar');
   const manifestFile = resolve(directory, 'build.json');
   if (process.argv[2] === 'seal') {
@@ -77,7 +89,7 @@ function main() {
       digest(readFileSync(resolve(directory, 'inventory.json'))),
       'Browser inventory mismatch',
     );
-    execFileSync('tar', ['-xf', archive, '-C', 'apps/web']);
+    execFileSync('tar', ['-xpf', archive, '-C', 'apps/web']);
     assert.equal(
       readFileSync('apps/web/.next/BUILD_ID', 'utf8').trim(),
       manifest.buildId,
