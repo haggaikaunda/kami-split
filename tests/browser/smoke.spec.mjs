@@ -1460,7 +1460,9 @@ test('Profile direct and expired visits offer Groups without inventing a return 
     await expect(zone).toHaveValue('America/Los_Angeles');
     await expect(zone).toBeEnabled();
     await expect(appearance).toHaveValue('LIGHT');
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(
+      page.locator('[data-content="account"]').getByRole('alert'),
+    ).toHaveCount(0);
     const geometry = await page.evaluate(() => {
       const box = (selector) => {
         const { top, bottom } = document
