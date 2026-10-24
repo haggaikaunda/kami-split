@@ -122,6 +122,7 @@ export function ActivityFeed({
 }) {
   const headingId = useId();
   const initial = useRef(initialFeed);
+  const [initialHandoff, setInitialHandoff] = useState(initialFeed);
   const generation = useRef(0);
   const request = useRef<{ unsubscribe(): void } | undefined>(undefined);
   const detailRef = useRef<HTMLElement>(null);
@@ -165,7 +166,9 @@ export function ActivityFeed({
     cacheAllowed && !groupId && !after && version === 0,
   );
   const prepared =
-    cacheAllowed && !after && !kind && version === 0 ? initialFeed : undefined;
+    cacheAllowed && !after && !kind && version === 0
+      ? initialHandoff
+      : undefined;
   const warmReference =
     prepared ?? warmGroup?.groupActivity ?? warmHousehold?.householdActivity;
   const warmPage = warmReference
@@ -247,6 +250,10 @@ export function ActivityFeed({
     };
     const prepared = initial.current;
     initial.current = undefined;
+    // The direct first-render reference has the same one-time lifetime as the
+    // composed effect handoff, even when this activation starts with a filter.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInitialHandoff(undefined);
     if (prepared && !after && !kind && version === 0) {
       accept(prepared);
       return () => {

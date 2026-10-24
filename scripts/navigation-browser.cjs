@@ -288,7 +288,7 @@ const activity = {
         after: null,
         kind: 'EXPENSE_CREATED',
         groupId: profileGroupId,
-        groupName: profileGroup.name,
+        groupName: profileGroupId === 'T' ? 'Maui' : profileGroup.name,
         groupKind: profileGroup.kind,
         isHousehold: false,
         amountMinor: '300',
