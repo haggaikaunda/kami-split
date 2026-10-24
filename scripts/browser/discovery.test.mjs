@@ -20,7 +20,7 @@ const groups = {
   'members.spec.mjs': [9, [/ Members reflows long names/]],
   'refresh-spacing.spec.mjs': [3, []],
   'smoke.spec.mjs': [
-    80,
+    83,
     [
       / enlarged header geometry /,
       /^account resolution: the slow opening screen/,
@@ -33,6 +33,7 @@ const groups = {
       /^creation recovery and validation stay/,
       /^Overview [HFT] compact vertical composition/,
       /^Overview exact long amounts/,
+      /^refined brand (sign-in|workspace) themes/,
     ],
   ],
   'startup-theme.spec.mjs': [13, []],

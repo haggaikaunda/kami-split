@@ -1,6 +1,7 @@
 'use client';
 
 import { cx } from './ui/classnames';
+import { Brand } from './brand';
 
 import Link from 'next/link';
 import {
@@ -18,7 +19,6 @@ import uiStyles from './ui/primitives.module.css';
 import shellStyles from './workspace/shell.module.css';
 
 // Reference icon geometry: Lucide1.17.0 (ISC/MIT); see LUCIDE-LICENSE.txt.
-// The existing leaf brand remains unchanged.
 const icons = {
   lock: (
     <>
@@ -42,7 +42,6 @@ const icons = {
       <path d="M3 10h18M7 5V3h10v2M16 15h2" />
     </>
   ),
-  leaf: <path d="M20 3C10 2 3 6 4 14c1 7 13 8 16-11ZM3 21 16 8" />,
   pie: (
     <>
       <path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z" />
@@ -291,14 +290,6 @@ export function AppIcon({
     </svg>
   );
 }
-export function Brand() {
-  return (
-    <span data-ui="workspace-brand" className={shellStyles['workspace-brand']}>
-      <AppIcon name="leaf" />
-      <span>Kami Grow</span>
-    </span>
-  );
-}
 /** Keep the compact phone caption and the full desktop action in one owner. */
 export function ExpenseActionLabel() {
   return (
@@ -464,7 +455,7 @@ export function WorkspaceNavigation({
         )}
       >
         <div className={shellStyles['workspace-navigation-identity']}>
-          <Brand />
+          <Brand className={shellStyles['workspace-brand']} />
           <div
             ref={headerRef}
             data-destination={trip ? 'Trip' : 'Group'}

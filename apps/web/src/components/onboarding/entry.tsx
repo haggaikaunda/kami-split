@@ -4,11 +4,8 @@ import { cx } from '../ui/classnames';
 import { useFinancialSession } from '../groups/session';
 import { RestoreSource } from '../groups/navigation';
 
-import {
-  AppIcon,
-  Brand,
-  WorkspaceNavigation,
-} from '@/components/workspace-identity';
+import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
+import { Brand } from '../brand';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Status } from '../ui/primitives';

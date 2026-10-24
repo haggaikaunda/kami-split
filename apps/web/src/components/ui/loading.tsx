@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { SkeletonBlock } from './primitives';
 import { cx } from './classnames';
 import styles from './loading.module.css';
+import { Brand } from '../brand';
 
 /** Presentation time only: callers remove private content before mounting and
  * unmount as soon as data, an error, or an access decision is available. */
@@ -58,7 +59,9 @@ export function ScreenLoading() {
   const phase = useLoadingPhase();
   return (
     <main className={styles.screen} data-ui="screen-loading">
-      <header className={styles.brand}>Kami Grow</header>
+      <header className={styles.brand}>
+        <Brand />
+      </header>
       <div className={styles.center}>
         <div className={styles.message}>
           {phase !== 'quiet' && <LoadingDots />}

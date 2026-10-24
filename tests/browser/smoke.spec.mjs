@@ -1519,7 +1519,9 @@ test('no eligible expense source and failed group discovery leave Profile usable
 async function expectAlignedIdentity(page, title, helpLabel) {
   const header = page.locator('[data-ui~="workspace-navigation-brand"]');
   const brand = header.getByText('Kami Grow', { exact: true });
-  const leaf = header.locator('[data-ui~="workspace-brand"] [data-ui~="icon"]');
+  const leaf = header.locator(
+    '[data-ui~="workspace-brand"] [data-ui="brand-mark"]',
+  );
   const destination = header.getByText(title, { exact: true });
   await expect(
     header.getByRole('link', { name: 'Account', exact: true }),
@@ -3908,3 +3910,168 @@ for (const source of [
     });
   });
 }
+
+for (const surface of ['sign-in', 'workspace']) {
+  test(`refined brand ${surface} themes and enlarged layouts @owns-viewport`, async ({
+    page,
+    app,
+  }, info) => {
+    test.setTimeout(120_000);
+    if (surface === 'workspace') await app.authenticate();
+    for (const [appearance, os, theme] of [
+      ['LIGHT', 'dark', 'light'],
+      ['DARK', 'light', 'dark'],
+      ['SYSTEM', 'dark', 'dark'],
+    ]) {
+      app.setAppearance(appearance);
+      await page.emulateMedia({
+        colorScheme: surface === 'sign-in' ? theme : os,
+      });
+      await page.goto(surface === 'sign-in' ? '/sign-in' : '/groups');
+      if (surface === 'workspace')
+        await expect(
+          page.getByRole('navigation', { name: 'Financial navigation' }),
+        ).toBeVisible();
+      const brand = page.locator('[data-ui="workspace-brand"]');
+      await expect(brand).toHaveText('Kami Grow');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      const mark = brand.locator('svg');
+      await expect(mark).toHaveAttribute('aria-hidden', 'true');
+      const fills = await mark
+        .locator('path')
+        .evaluateAll((paths) =>
+          paths.map((path) => getComputedStyle(path).fill),
+        );
+      expect(fills).toEqual(
+        theme === 'dark'
+          ? ['rgb(163, 199, 174)', 'rgb(89, 169, 139)']
+          : ['rgb(135, 170, 146)', 'rgb(23, 99, 77)'],
+      );
+      if (surface === 'sign-in') {
+        await expect(
+          page.getByRole('link', { name: 'Kami Grow', exact: true }),
+        ).toHaveAttribute('href', '/sign-in');
+      }
+      for (const width of [320, 390, 440, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const scale of [1, 2]) {
+          await page.evaluate((scale) => {
+            document.documentElement.style.fontSize = `${scale * 100}%`;
+          }, scale);
+          const geometry = await brand.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            return {
+              left: box.left,
+              right: box.right,
+              children: [...element.children].map((child) => {
+                const box = child.getBoundingClientRect();
+                return {
+                  left: box.left,
+                  right: box.right,
+                  top: box.top,
+                  bottom: box.bottom,
+                };
+              }),
+            };
+          });
+          expect(geometry.left).toBeGreaterThanOrEqual(0);
+          expect(geometry.right).toBeLessThanOrEqual(width);
+          expect(geometry.children[0].right).toBeLessThanOrEqual(
+            geometry.children[1].left,
+          );
+          await expect(brand).toBeVisible();
+          await page.screenshot({
+            path: info.outputPath(`brand-${appearance}-${width}-${scale}.png`),
+          });
+        }
+      }
+    }
+    if (surface === 'workspace') {
+      await page.emulateMedia({ colorScheme: 'light' });
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+      expect(
+        await page
+          .locator('[data-ui="brand-mark"] path')
+          .first()
+          .evaluate((path) => getComputedStyle(path).fill),
+      ).toBe('rgb(135, 170, 146)');
+    }
+  });
+}
+
+test('refined brand public icon delivery preserves installation identity', async ({
+  page,
+  context,
+}, info) => {
+  await page.goto('/sign-in');
+  const manifest = await (await context.request.get('/manifest.json')).json();
+  expect({
+    id: manifest.id,
+    start: manifest.start_url,
+    scope: manifest.scope,
+    name: manifest.name,
+  }).toEqual({ id: '/', start: '/groups', scope: '/', name: 'Kami Grow' });
+  const favicon = await page.locator('link[rel="icon"]').getAttribute('href');
+  const apple = await page
+    .locator('link[rel="apple-touch-icon"]')
+    .getAttribute('href');
+  const svg = await context.request.get(favicon);
+  expect(svg.status()).toBe(200);
+  expect(svg.headers()['content-type']).toContain('image/svg+xml');
+  const icons = [
+    [apple, 180],
+    ...manifest.icons.map((icon) => [
+      icon.src,
+      Number(icon.sizes.split('x')[0]),
+    ]),
+  ];
+  for (const [src, size] of icons) {
+    const response = await context.request.get(src);
+    expect(response.status()).toBe(200);
+    const pixels = await page.evaluate(
+      async ({ src, size }) => {
+        const img = new Image();
+        img.src = src;
+        await img.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        const color = (x, y) => [
+          ...data.slice((y * size + x) * 4, (y * size + x) * 4 + 4),
+        ];
+        return {
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          corner: color(0, 0),
+          center: color(Math.floor(size / 2), Math.floor(size / 2)),
+        };
+      },
+      { src, size },
+    );
+    expect(pixels.width).toBe(size);
+    expect(pixels.height).toBe(size);
+    expect(pixels.corner).toEqual([237, 242, 239, 255]);
+    expect(pixels.center).not.toEqual(pixels.corner);
+  }
+  // Show the served SVG against both canvases at actual small-icon sizes.
+  await page.evaluate((src) => {
+    const preview = document.createElement('div');
+    preview.style.cssText =
+      'position:fixed;inset:0;background:#f2f5f7;padding:32px;z-index:9999;display:flex;gap:32px;align-items:start';
+    for (const background of ['#f2f5f7', '#0b111b']) {
+      const group = document.createElement('div');
+      group.style.cssText = `background:${background};padding:24px;display:flex;gap:24px;align-items:center`;
+      for (const size of [16, 24, 32, 180]) {
+        const img = new Image(size, size);
+        img.src = src;
+        group.append(img);
+      }
+      preview.append(group);
+    }
+    document.body.append(preview);
+  }, favicon);
+  await page.screenshot({ path: info.outputPath('served-icon-sizes.png') });
+});

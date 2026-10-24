@@ -36,6 +36,7 @@
   text-decoration: none;
 }
 .onboarding-brand > [data-ui~='workspace-brand'] {
+  --brand-mark-size: 43px;
   font-size: 1.25rem;
 }
 .onboarding footer {
