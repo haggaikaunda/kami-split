@@ -9,8 +9,8 @@ for local database development. Supabase owns its containers; Compose owns only 
 
 ## Prerequisites and pins
 
-Install Docker Engine/Desktop with Compose, Go 1.27.1, Python 3.11+, curl, tar and
-make. Run `make db-tools` to install repository-local binaries (macOS/Linux,
+Install Docker Engine/Desktop with Compose, Go 1.27.1, Node 24, Python 3.11+,
+curl, tar and make. Node runs database package discovery and coverage validation. Run `make db-tools` to install repository-local binaries (macOS/Linux,
 ARM64/AMD64). `scripts/tool-versions.env` pins Supabase CLI **2.118.0** and sqlc
 **1.31.1**; `apps/api/go.mod` pins pgx **v5.11.0**. Wrappers reject other binary
 versions. CLI-managed service image versions come from that exact CLI release

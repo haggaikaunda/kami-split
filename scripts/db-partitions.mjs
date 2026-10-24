@@ -126,12 +126,12 @@ export function selection(mode, inventory = discover()) {
 export function passedPackages(events, expected) {
   const actual = [];
   const outputs = new Map();
-  const module = readFileSync('apps/api/go.mod', 'utf8').match(
+  const modulePath = readFileSync('apps/api/go.mod', 'utf8').match(
     /^module (\S+)/m,
   )[1];
   for (const event of events) {
     assert.notEqual(event.Action, 'fail', 'Failed integration execution');
-    const key = `${event.Package?.slice(module.length + '/internal/'.length)}/${event.Test}`;
+    const key = `${event.Package?.slice(modulePath.length + '/internal/'.length)}/${event.Test}`;
     if (event.Output) outputs.set(key, (outputs.get(key) || '') + event.Output);
     if (event.Action === 'skip') {
       const reason = optionalTests.get(key);
@@ -142,10 +142,10 @@ export function passedPackages(events, expected) {
     }
     if (event.Action === 'pass' && !event.Test) {
       assert.ok(
-        event.Package.startsWith(`${module}/`),
+        event.Package.startsWith(`${modulePath}/`),
         'Unexpected package outside API module',
       );
-      actual.push(`./${event.Package.slice(module.length + 1)}`);
+      actual.push(`./${event.Package.slice(modulePath.length + 1)}`);
     }
   }
   assert.equal(
