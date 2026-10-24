@@ -100,6 +100,7 @@ Their retained viewport/theme/text coverage lives inside the test:
 | Activity row composition                   | 320/390/440/1280/1440px; Household/Group; Light/Dark/System; normal/doubled text                                                               |
 | Creation page reachability                 | 320/390/440/1280px; Light/Dark/System; normal/doubled text and short viewport                                                                  |
 | Members reflow                             | Household/Group/Trip; 320/390/440/1280px; theme/text/empty-state cases owned by the matrix                                                     |
+| Brand presentation                         | Sign-in/workspace at 320/390/440/1280px; Light/Dark/System and normal/doubled text; public served icon/metadata checks                         |
 | Account opening accessibility              | Normal 390/1280px privacy/axe checks, then 320/390/1280px in Light/Dark with doubled text; one held Auth response and real slow-state/recovery |
 | Directory cards and shared shell           | Internal width/theme/text matrices, exact amounts, artwork failure and keyboard help                                                           |
 | Balance/repayment layout                   | Internal narrow/desktop, text and appearance matrices; unavailable/ineligible sources and reachable controls                                   |

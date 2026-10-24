@@ -4046,7 +4046,16 @@ test('refined brand public icon delivery preserves installation identity', async
           width: img.naturalWidth,
           height: img.naturalHeight,
           corner: color(0, 0),
-          center: color(Math.floor(size / 2), Math.floor(size / 2)),
+          sage: color(Math.floor(size / 2), Math.floor(size / 3)),
+          forest: color(Math.floor(size / 2), Math.floor((size * 2) / 3)),
+          padded: Array.from({ length: size }, (_, offset) => [
+            color(offset, 0),
+            color(offset, size - 1),
+            color(0, offset),
+            color(size - 1, offset),
+          ])
+            .flat()
+            .every((pixel) => pixel.join() === '237,242,239,255'),
         };
       },
       { src, size },
@@ -4054,9 +4063,12 @@ test('refined brand public icon delivery preserves installation identity', async
     expect(pixels.width).toBe(size);
     expect(pixels.height).toBe(size);
     expect(pixels.corner).toEqual([237, 242, 239, 255]);
-    expect(pixels.center).not.toEqual(pixels.corner);
+    expect(pixels.sage).toEqual([135, 170, 146, 255]);
+    expect(pixels.forest).toEqual([23, 99, 77, 255]);
+    expect(pixels.padded).toBe(true);
   }
   // Show the served SVG against both canvases at actual small-icon sizes.
+  await page.setViewportSize({ width: 1280, height: 450 });
   await page.evaluate((src) => {
     const preview = document.createElement('div');
     preview.style.cssText =
