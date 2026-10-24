@@ -5,11 +5,10 @@
 stored data. Group access grants no bank access. Reads work independently of
 new-enrollment enablement and never request a bank refresh. The authoritative
 wire contract is [banking-reporting.graphql](../../packages/schema/banking-reporting.graphql).
-The Personal Transactions screen consumes these stored-data reads with actor-scoped
+Personal Overview and Transactions consume these stored-data reads with actor-scoped
 Relay ownership. Its reusable detail panel keeps provider facts read-only and
 exposes explicit private category/activity/note/exclusion/review editing and
-resets. Overview presentation and live enrollment retain their separate delivery
-boundaries.
+resets. Overview shows one exact spending summary with purchases/charges and refunds, plus three recent rows. View all and classification review preserve applied date/filter context; a confirmed detail edit refreshes the complete report. Live enrollment retains its separate delivery boundary.
 
 The reporting service resolves each posted source against one current,
 non-overlapping interval plan. Retired history keeps its original source identity

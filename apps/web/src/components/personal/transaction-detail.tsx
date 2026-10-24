@@ -173,7 +173,9 @@ export function TransactionDetail({
     : null;
   const backLabel = origin?.searchParams.has('archive')
     ? 'Back to recovery archive'
-    : origin?.searchParams.get('tab') === 'overview'
+    : origin &&
+        (!origin.searchParams.has('tab') ||
+          origin.searchParams.get('tab') === 'overview')
       ? 'Back to Overview'
       : 'Back to transactions';
   const close = () => {

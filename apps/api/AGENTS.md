@@ -38,8 +38,12 @@ new enrollment. The [replacement backend](../../docs/application/banking-replace
 The [reporting-timezone API](../../docs/application/reporting-timezone.md) supplies
 an owner-only independent preference and immutable write recovery. Account consumes
 its independent control, and Personal initializes the device zone once. Private
-bank reporting uses this saved preference for date bounds. Personal Transactions consumes these stored report reads; full transaction detail/private
-editing and Overview presentation remain separately owned capabilities.
+bank reporting uses this saved preference for date bounds. Personal Overview and
+Transactions consume these stored reports with shared applied dates. Overview
+presents complete spending summaries, coverage and recent activity; reusable
+private transaction detail provides explicit guarded editing and recovery. New
+enrollment remains disabled by default, and live rollout stays subject to the
+separately authorized [#255 gates](https://github.com/haggaikaunda/kami-split/issues/255).
 
 ## Design and implementation
 

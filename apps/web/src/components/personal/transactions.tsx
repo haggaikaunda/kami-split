@@ -19,6 +19,7 @@ import { Button, Status } from '../ui/primitives';
 import { ContentLoading } from '../ui/loading';
 import { Money } from '../financial/presentation';
 import { RestoreSource, ScopedLink, SourceReturn } from '../groups/navigation';
+import { PersonalOverview } from './overview';
 import { TransactionControls } from './transaction-controls';
 import { TransactionDetail } from './transaction-detail';
 import type { SavedOrigin } from './annotation-draft';
@@ -34,6 +35,7 @@ import { importSummary, type ImportFacts } from './status';
 import styles from './transactions.module.css';
 type Report = personalTransactionsQuery['response']['bankingReport'];
 type Context = {
+  overview?: boolean;
   scope: FinancialScope;
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
@@ -63,7 +65,7 @@ export function PersonalTransactions(context: Context) {
 }
 /** Retain only actor-owned revision/extent; private rows and signed cursors always
  * come from fresh authorized queries when returning across report contexts. */
-function TransactionNavigation({ scope, names, statuses }: Context) {
+function TransactionNavigation({ scope, names, statuses, overview }: Context) {
   const params = useSearchParams();
   const selection = transactionSelection(params);
   const [reportVersion, setReportVersion] = useState(0);
@@ -98,6 +100,7 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
     <>
       <TransactionRead
         key={`${scope.id}:${identity}:${reportVersion}`}
+        overview={overview}
         scope={scope}
         names={names}
         statuses={statuses}
@@ -156,6 +159,7 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
   );
 }
 function TransactionRead({
+  overview,
   scope,
   names,
   statuses,
@@ -207,6 +211,7 @@ function TransactionRead({
         >
           {(data) => (
             <ReportContent
+              overview={overview}
               scope={scope}
               names={names}
               statuses={statuses}
@@ -224,6 +229,7 @@ function TransactionRead({
   );
 }
 function ReportContent({
+  overview,
   scope,
   names,
   statuses,
@@ -369,82 +375,110 @@ function ReportContent({
                 </Link>
               </div>
             )}
-            <Coverage
-              report={report}
-              names={names}
-              statuses={statuses}
-              connections={connections}
-            />
-            {report.summary && (
-              <p className={styles.summary}>
-                Spending from your accounts:{' '}
-                <strong>
-                  <Money
-                    value={bankMoney(report.summary.netMinor)}
-                    currency="USD"
-                  />
-                </strong>
-                <span>
-                  Purchases &amp; charges{' '}
-                  {bankMoney(report.summary.purchaseMinor)} − refunds{' '}
-                  {bankMoney(report.summary.refundMinor)}. Refunds reduce their
-                  posting period.
-                </span>
-                {!report.summary.classificationComplete && (
-                  <span>
-                    Classification incomplete. Unresolved activity is separate
-                    from this subtotal.
-                  </span>
-                )}
-              </p>
-            )}
-            <div className={styles.listMeta}>
-              <h2>
-                {selection.archive
-                  ? 'Captured account activity'
-                  : selection.discrepancy
-                    ? 'Changed source activity'
-                    : 'Account activity'}
-              </h2>
-              <span>
-                {report.totalCount} transactions
-                <span className={styles.srOnly}>
-                  {' '}
-                  · complete matching count
-                </span>
-              </span>
-            </div>
-            {reportStatusText(report.counts) && (
-              <p className={styles.context}>
-                {reportStatusText(report.counts)}
-                {!report.summary &&
-                  ' · Activity context; no spending total applies.'}
-              </p>
-            )}
-            {!report.rows.length ? (
-              <div className={styles.empty}>
-                <h3>No matching transactions</h3>
-                <p>
-                  {report.accounts.length &&
-                  report.accounts.every(
-                    (account) => account.coverage === 'COMPLETE',
-                  )
-                    ? 'No activity matches these dates and filters in the covered history.'
-                    : 'No matching imported activity. History coverage is incomplete or unknown; this is not confirmation of zero spending.'}
-                </p>
-              </div>
-            ) : (
-              <TransactionPage
+            {overview && !selection.archive && !selection.discrepancy ? (
+              <PersonalOverview
                 scope={scope}
-                names={names}
                 report={report}
-                filter={filter}
-                onRestart={onRestart}
-                depth={1}
-                resumePages={replayPages}
-                onPage={onPage}
-                onExtentReady={() => setExtentReady(true)}
+                names={names}
+                coverage={
+                  <Coverage
+                    compact
+                    report={report}
+                    names={names}
+                    statuses={statuses}
+                    connections={connections}
+                  />
+                }
+                recent={
+                  <ul className={styles.rows}>
+                    {report.rows.slice(0, 3).map((row) => (
+                      <li key={row.sourceId}>
+                        <TransactionRow scope={scope} names={names} row={row} />
+                      </li>
+                    ))}
+                  </ul>
+                }
               />
+            ) : (
+              <>
+                <Coverage
+                  report={report}
+                  names={names}
+                  statuses={statuses}
+                  connections={connections}
+                />
+                {report.summary && (
+                  <p className={styles.summary}>
+                    Spending from your accounts:{' '}
+                    <strong>
+                      <Money
+                        value={bankMoney(report.summary.netMinor)}
+                        currency="USD"
+                      />
+                    </strong>
+                    <span>
+                      Purchases &amp; charges{' '}
+                      {bankMoney(report.summary.purchaseMinor)} − refunds{' '}
+                      {bankMoney(report.summary.refundMinor)}. Refunds reduce
+                      their posting period.
+                    </span>
+                    {!report.summary.classificationComplete && (
+                      <span>
+                        Classification incomplete. Unresolved activity is
+                        separate from this subtotal.
+                      </span>
+                    )}
+                  </p>
+                )}
+                <div className={styles.listMeta}>
+                  <h2>
+                    {selection.archive
+                      ? 'Captured account activity'
+                      : selection.discrepancy
+                        ? 'Changed source activity'
+                        : 'Account activity'}
+                  </h2>
+                  <span>
+                    {report.totalCount} transactions
+                    <span className={styles.srOnly}>
+                      {' '}
+                      · complete matching count
+                    </span>
+                  </span>
+                </div>
+                {reportStatusText(report.counts) && (
+                  <p className={styles.context}>
+                    {reportStatusText(report.counts)}
+                    {!report.summary &&
+                      ' · Activity context; no spending total applies.'}
+                  </p>
+                )}
+                {!report.rows.length ? (
+                  <div className={styles.empty}>
+                    <h3>No matching transactions</h3>
+                    <p>
+                      {report.accounts.length &&
+                      report.accounts.every(
+                        (account) => account.coverage === 'COMPLETE',
+                      )
+                        ? 'No activity matches these dates and filters in the covered history.'
+                        : 'No matching imported activity. History coverage is incomplete or unknown; this is not confirmation of zero spending.'}
+                    </p>
+                  </div>
+                ) : (
+                  <TransactionPage
+                    scope={scope}
+                    names={names}
+                    report={report}
+                    filter={filter}
+                    onRestart={onRestart}
+                    depth={1}
+                    resumePages={replayPages}
+                    onPage={onPage}
+                    onExtentReady={() => setExtentReady(true)}
+                  />
+                )}
+              </>
             )}
             <details className={styles.provenance}>
               <summary>Reporting history and recovery archives</summary>
@@ -489,6 +523,7 @@ function ReportContent({
                         scope={scope}
                         id={`archive-${archive.id}`}
                         href={personalHref(new URLSearchParams(params), {
+                          tab: 'transactions',
                           archive: archive.id,
                           source: null,
                           discrepancies: null,
@@ -507,6 +542,7 @@ function ReportContent({
                   scope={scope}
                   id="source-discrepancies"
                   href={personalHref(new URLSearchParams(params), {
+                    tab: 'transactions',
                     discrepancies: 'true',
                     source: null,
                     archive: null,
@@ -584,6 +620,7 @@ function importNeedsContext(status: ImportFacts) {
   );
 }
 function Coverage({
+  compact = false,
   report,
   names,
   statuses,
@@ -593,40 +630,64 @@ function Coverage({
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
   connections: string;
+  compact?: boolean;
 }) {
   return (
     <div className={styles.coverage}>
-      {report.accounts.map((account) => (
-        <div key={account.accountId}>
-          <p>
-            <strong>
-              {names.get(account.accountId) ??
-                `Retained ${readable(account.kind)} account`}
-            </strong>{' '}
-            · {readable(account.coverage)} coverage
-            {!account.selected && ' · Updates stopped; retained history'}
-            {account.coverage !== 'COMPLETE' && ' · Activity may be missing.'}
-          </p>
-          {statuses?.get(account.accountId) &&
-            importNeedsContext(statuses.get(account.accountId)!) && (
-              <p>{importSummary(statuses.get(account.accountId)!)}</p>
-            )}
-          {(statuses?.get(account.accountId)?.collection ===
-            'RECONNECT_REQUIRED' ||
+      {report.accounts
+        .filter(
+          (account) =>
+            !compact ||
+            account.coverage !== 'COMPLETE' ||
+            !account.selected ||
+            (statuses?.get(account.accountId) &&
+              importNeedsContext(statuses.get(account.accountId)!)) ||
             account.intervals.some(
               (interval) =>
                 interval.collectionStopped ||
-                !['usable'].includes(interval.importState) ||
+                interval.importState !== 'usable' ||
                 interval.discrepancyCount > 0,
-            )) && (
+            ),
+        )
+        .map((account) => (
+          <div key={account.accountId}>
             <p>
-              Import or connection needs attention; retained activity can be
-              incomplete, stale or corrected.{' '}
-              <Link href={connections}>View status in Connections</Link>
+              <strong>
+                {names.get(account.accountId) ??
+                  `Retained ${readable(account.kind)} account`}
+              </strong>{' '}
+              · {readable(account.coverage)} coverage
+              {!account.selected && ' · Updates stopped; retained history'}
+              {account.coverage !== 'COMPLETE' && ' · Activity may be missing.'}
             </p>
-          )}
-        </div>
-      ))}
+            {statuses?.get(account.accountId) &&
+              importNeedsContext(statuses.get(account.accountId)!) && (
+                <p>{importSummary(statuses.get(account.accountId)!)}</p>
+              )}
+            {account.intervals.some(
+              (interval) => interval.discrepancyCount > 0,
+            ) && (
+              <p>
+                Historical discrepancy: later source changes are retained for
+                inspection; current totals keep the confirmed reporting history.
+              </p>
+            )}
+            {(statuses?.get(account.accountId)?.collection ===
+              'RECONNECT_REQUIRED' ||
+              account.intervals.some(
+                (interval) =>
+                  interval.collectionStopped ||
+                  !['usable'].includes(interval.importState) ||
+                  interval.discrepancyCount > 0,
+              )) && (
+              <p>
+                Import or connection needs attention; retained activity can be
+                incomplete, stale or corrected.{' '}
+                <Link href={connections}>View status in Connections</Link>
+              </p>
+            )}
+          </div>
+        ))}
     </div>
   );
 }
