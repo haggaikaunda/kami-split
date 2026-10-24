@@ -34,6 +34,22 @@ BROWSER_PORT=3395 BROWSER_AUTH_PORT=3396 \
 
 The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. The affected-web job runs two browser workers on its existing runner, behind the unchanged required `Verify` gate. Known synthetic browser inputs require web verification; unknown root tooling remains conservatively classified as shared input.
 
+### Deterministic fixture facts and ordering
+
+Keep facts for an immutable entity ID coherent across list/detail responses and
+shared fixture builders, including type, ownership, version, amount and status.
+Model a real transition explicitly; use distinct IDs for distinct entities. A
+contradictory fixture can cause a valid cache or navigation assertion to fail, so
+inspect both response facts and accepted state before attributing the failure.
+
+Use explicit response gates and observable request/state checkpoints to control
+asynchronous ordering. Release and drain held responses during teardown. Add
+synthetic delays only when delay itself is required by the behavior under test;
+do not use arbitrary sleeps to arrange ordering. Preserve the real-time boundary
+cases documented below and the harness's existing timeout/retry settings. For
+recurring failures, retain evidence and follow the shared
+[diagnosis owner and retry budget](agents/model-routing.md#bound-retries-and-hand-off).
+
 ### Scheduling and coverage ownership
 
 Global `fullyParallel` remains disabled. The audited independent cases in

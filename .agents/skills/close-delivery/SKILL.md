@@ -42,6 +42,7 @@ The coordinator retains [routing responsibility](../../../docs/agents/model-rout
 On interrupted closeout, refresh GitHub and real checkout state and resume only
 uncompleted safe operations. Skip already-absent resources only after successful
 proof; network failure is not absence. Do not backdate missing pre-merge evidence.
-After one focused retry of a diagnosed failure, leave an actionable handoff and
-continue independent safe work. A record or skill never authenticates separate
+Resume the existing [diagnosis owner and retry budget](../../../docs/agents/model-routing.md#bound-retries-and-hand-off),
+leaving an actionable handoff for persistent failures while continuing independent
+safe work. A record or skill never authenticates separate
 credentials, authorizes new scope or turns an incomplete delivery into success.

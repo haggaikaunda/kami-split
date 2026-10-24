@@ -80,10 +80,18 @@ and does not block ordinary trusted delivery.
 ## Bound retries and hand off
 
 Declare a finite task budget before starting; use the owning pilot budget when
-one exists. Allow one focused retry of a failure after identifying a specific
-likely cause. If it persists, diagnose with the exact scope/base/head, launch
-request and observed error, commands/results, unresolved question, spent/remaining
-budget, owner and next action. Do not repeat identical attempts or widen fan-out.
+one exists. For each recurring failure, designate one diagnosis owner and
+carry the same retry budget across roles, contexts and resumed stages. Before
+further retries, classify the failure as product, harness, environment or unknown
+from observed evidence; retain unknown when the cause is unproven. A timeout or
+passing rerun alone does not establish a host defect. Allow one focused retry
+after identifying a specific likely cause and a discriminating check. If it
+persists, stop repeating the failing attempt and diagnose or hand off with the
+exact scope/base/head, inputs, launch request, observed error, commands/results,
+retained failure links, attempts already used, spent/remaining budget, unresolved
+question, owner and next action. A role transfer, new context or new attempt label
+does not reset that failure's budget. Record genuinely changed inputs and rationale
+before planning further work; do not repeat identical attempts or widen fan-out.
 
 For an unavailable preferred model, record the capability limitation and select
 an available authorized model/effort using fresh context. Do not manufacture a

@@ -12,8 +12,11 @@ and link detailed results instead of copying them into multiple reports.
 For a retest or resumed stage, record the changed revision/scope, new observations,
 finding disposition and next action. Link the earlier report and explain which
 evidence remains applicable; do not republish the whole report or relabel retained
-observations as new execution. Keep detailed logs/artifacts behind the concise
-outcome and source links, preserving useful failure history.
+observations as new execution. Applicability includes relevant inputs (fixtures,
+harness/environment and build identity), not only a commit SHA. Keep detailed
+logs/artifacts behind the concise outcome and source links, preserving useful
+failure history. Carry the [diagnosis owner and consumed retry budget](model-routing.md#bound-retries-and-hand-off)
+into each affected delta/handoff; a fresh context does not erase failed attempts.
 
 For a bounded retrospective, use
 [evaluate-deliveries](../../.agents/skills/evaluate-deliveries/SKILL.md) to collect
@@ -134,7 +137,9 @@ blockers, elapsed delivery/closeout time and final-revision/closeout completenes
 
 Report coverage and unknowns per observation. Missing intervention records are
 unknown, not zero; comments/commits are not rework counts. Elapsed time includes
-waiting and is not active effort. Link confirmed regressions without inventing
+waiting and is not active effort. Distinguish measured command duration from
+waiting/interruption and unknown duration; do not infer active effort or time
+savings from comment timestamps. Link confirmed regressions without inventing
 causation. Missing cost remains unknown and never gates delivery. Keep secrets,
 financial/authentication data and raw private conversations out of records.
 
