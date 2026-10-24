@@ -123,7 +123,7 @@ for (const [paths, expected] of [
   [['docs/new-example.tsx'], conservative()],
   [['apps/web/public/example.test.ts'], choices(true, false, true, false)],
   [['apps/api/internal/fixture.json'], choices(false, true, false, true)],
-  [['scripts/db-test.sh'], choices(false, true, false, true)],
+  [['scripts/db-test.sh'], choices(true, true, false, false)],
   [['supabase/migrations/test.sql'], choices(false, true, false, true)],
   [['apps/web/next.config.ts'], choices(true, false, true, false)],
   [['apps/api/Dockerfile'], choices(false, true, false, true)],

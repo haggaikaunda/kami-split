@@ -91,7 +91,23 @@ const agentResources = new Set([
   'scripts/agents/check_stage_event_test.py',
 ]);
 
+// Audited CI orchestration and disposable verification helpers. Release policy
+// imports changes/release/verify.mjs, so those and unknown neighbors stay deployable.
+const ciVerification = new Set([
+  '.github/workflows/ci.yml',
+  '.github/workflows/web.yml',
+  '.github/workflows/api.yml',
+  'scripts/db-test.sh',
+  'scripts/db-partitions.mjs',
+  'scripts/ci/db-partitions.test.mjs',
+]);
+
 export function pathRule(path) {
+  if (ciVerification.has(path))
+    return {
+      rule: 'ci-verification-tooling',
+      ...decision(true, true, false, false),
+    };
   if (agentResources.has(path))
     return {
       rule: 'agent-validation-resource',

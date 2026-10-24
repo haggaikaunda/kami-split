@@ -26,12 +26,7 @@ for (const [paths, web, api] of [
   [['scripts/relay/generate.mjs'], true, false],
   [['apps/api/internal/auth/auth.go'], false, true],
   [
-    [
-      'supabase/migrations/001.sql',
-      'scripts/db-test.sh',
-      'sqlc.yaml',
-      'compose.database.yaml',
-    ],
+    ['supabase/migrations/001.sql', 'sqlc.yaml', 'compose.database.yaml'],
     false,
     true,
   ],
