@@ -117,9 +117,11 @@ export function PersonalOverview({
             reviewed: 'false',
           })}
         >
-          {unresolved}{' '}
-          {unresolved === 1 ? 'transaction needs' : 'transactions need'}{' '}
-          classification · Review activity
+          {notReviewed}{' '}
+          {notReviewed === 1
+            ? 'transaction not reviewed'
+            : 'transactions not reviewed'}{' '}
+          · Review activity
         </ScopedLink>
       )}
       {report.counts &&
@@ -128,7 +130,7 @@ export function PersonalOverview({
           unresolved > 0) && (
           <p className={styles.context}>
             {report.counts.pendingCount} pending · {report.counts.excludedCount}{' '}
-            excluded. Separate from spending.
+            excluded · {unresolved} unresolved. Separate from spending.
           </p>
         )}
       <div className={styles.grid}>
