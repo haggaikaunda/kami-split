@@ -2378,3 +2378,153 @@ test('Personal first-use dates end at saved-zone today across UTC calendar bound
   }
   expect(operations).not.toContain('reportingTimezoneInitializeMutation');
 });
+
+test('Personal warm navigation reuses exact inventory and report operations across tabs and spaces', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  const requests = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/graphql')) {
+      const body = request.postDataJSON();
+      requests.push({
+        kind: 'financial',
+        operation:
+          body.query.match(/(?:query|mutation) (\w+)/)?.[1] ?? 'unnamed',
+      });
+    } else if (
+      request.isNavigationRequest() ||
+      request.url().includes('_rsc=')
+    ) {
+      requests.push({ kind: 'route-session' });
+    }
+  });
+  await transactionServer(page, (operation) =>
+    operation === 'personalTransactionsQuery'
+      ? transactionReport({ hasNextPage: false, endCursor: null })
+      : undefined,
+  );
+  await page.goto('/personal');
+  const tabs = page.getByRole('navigation', { name: 'Personal workspace' });
+  const ready = (section) =>
+    section === 'Overview'
+      ? page.getByRole('region', { name: 'Spending from your accounts' })
+      : section === 'Transactions'
+        ? page.getByRole('heading', { name: 'Account activity', exact: true })
+        : page.locator('#existing-connections');
+  await expect(ready('Overview')).toBeVisible();
+  const fetchedAt = Date.now();
+  const samples = [];
+  for (let burst = 0; burst < 5; burst++) {
+    for (const section of ['Transactions', 'Connections', 'Overview']) {
+      const before = requests.length;
+      await page.evaluate(() => {
+        window.__navigationSample = {
+          start: performance.now(),
+          pendingMs: null,
+          loadingObserved: false,
+        };
+        const sample = window.__navigationSample;
+        const observer = new MutationObserver(() => {
+          if (
+            sample.pendingMs === null &&
+            document.querySelector(
+              '[data-ui="workspace-navigation-pending"][data-pending]',
+            )
+          )
+            sample.pendingMs = performance.now() - sample.start;
+          if (document.querySelector('[data-ui="content-loading"]'))
+            sample.loadingObserved = true;
+        });
+        observer.observe(document.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+        });
+        sample.stop = () => observer.disconnect();
+      });
+      await tabs.getByRole('link', { name: section, exact: true }).click();
+      await expect(
+        tabs.getByRole('link', { name: section, exact: true }),
+      ).toHaveAttribute('aria-current', 'page');
+      await expect(ready(section)).toBeVisible();
+      const timing = await page.evaluate(() => {
+        const sample = window.__navigationSample;
+        sample.stop();
+        return {
+          readyMs: performance.now() - sample.start,
+          pendingMs: sample.pendingMs,
+          loadingObserved: sample.loadingObserved,
+        };
+      });
+      samples.push({
+        burst,
+        section,
+        ageMs: Date.now() - fetchedAt,
+        ...timing,
+        requests: requests.slice(before),
+      });
+    }
+  }
+  await (
+    await import('node:fs/promises')
+  ).writeFile(
+    testInfo.outputPath('personal-navigation-cohort.json'),
+    JSON.stringify(samples, null, 2),
+  );
+  await testInfo.attach('personal-navigation-cohort', {
+    body: JSON.stringify(
+      {
+        mode: 'ordinary production',
+        viewport: page.viewportSize(),
+        samples,
+        limitations:
+          'Synthetic services. Playwright action/assertion roundtrips included; MutationObserver is not paint or React profiler evidence. Route/session requests are browser-observed combined category.',
+      },
+      null,
+      2,
+    ),
+    contentType: 'application/json',
+  });
+  expect(Math.max(...samples.map((sample) => sample.ageMs))).toBeLessThan(
+    30_000,
+  );
+  expect(
+    samples
+      .flatMap((sample) => sample.requests)
+      .filter((request) =>
+        ['personalInventoryQuery', 'personalTransactionsQuery'].includes(
+          request.operation,
+        ),
+      ),
+  ).toHaveLength(0);
+  await page
+    .getByRole('navigation', { name: 'Financial navigation', exact: true })
+    .getByRole('link', { name: 'Household', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  const beforeReturn = requests.length;
+  await page
+    .getByRole('navigation', { name: 'Financial navigation', exact: true })
+    .getByRole('link', { name: 'Personal', exact: true })
+    .click();
+  await expect(ready('Overview')).toBeVisible();
+  expect(
+    requests
+      .slice(beforeReturn)
+      .filter((request) =>
+        ['personalInventoryQuery', 'personalTransactionsQuery'].includes(
+          request.operation,
+        ),
+      ),
+  ).toHaveLength(0);
+  await page.goBack();
+  await expect(
+    page.getByRole('heading', { name: 'Recent expenses', exact: true }),
+  ).toBeVisible();
+  await page.goForward();
+  await expect(ready('Overview')).toBeVisible();
+});

@@ -308,6 +308,7 @@ withAuthFixture(origin, session, async () => {
     let ledgerEdited = false;
     let log = [],
       documents = 0,
+      routeSessionRequests = 0,
       denied = false,
       offline = false;
     const errors = [];
@@ -318,6 +319,12 @@ withAuthFixture(origin, session, async () => {
     });
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('request', (r) => {
+      if (
+        r.isNavigationRequest() ||
+        r.url().includes('_rsc=') ||
+        r.url().includes('/auth/v1/')
+      )
+        routeSessionRequests++;
       if (r.isNavigationRequest() && r.resourceType() === 'document')
         documents++;
     });
@@ -782,17 +789,25 @@ withAuthFixture(origin, session, async () => {
         end: x.end - start,
       })),
     });
-    for (const tab of [
-      'Members',
-      'Activity',
+    const cohortStart = Date.now();
+    const visited = new Set(['Overview']);
+    const cohorts = Number(process.env.NAVIGATION_COHORTS || 1);
+    assert(
+      Number.isInteger(cohorts) && cohorts > 0 && cohorts <= 5,
+      'bounded cohort count',
+    );
+    for (const tab of Array.from({ length: cohorts }, () => [
+      'Balances',
       'Expenses',
       'Overview',
       'Members',
-    ]) {
+      'Activity',
+    ]).flat()) {
       const link = await workspaceLink(tab);
       await link.waitFor();
       log = [];
       documents = 0;
+      routeSessionRequests = 0;
       await page.evaluate(() => {
         window.__shell = document.querySelector('[data-ui~="workspace-tabs"]');
         window.__feedback = null;
@@ -803,9 +818,15 @@ withAuthFixture(origin, session, async () => {
             window.__click = performance.now();
             window.__clickEpoch = Date.now();
             const observer = new MutationObserver(() => {
-              if (window.__feedback === null)
+              if (
+                window.__feedback === null &&
+                document.querySelector(
+                  '[data-ui="workspace-navigation-pending"][data-pending]',
+                )
+              )
                 window.__feedback = performance.now() - window.__click;
             });
+            window.__stopFeedback = () => observer.disconnect();
             observer.observe(document.querySelector('main') || document.body, {
               childList: true,
               subtree: true,
@@ -830,6 +851,10 @@ withAuthFixture(origin, session, async () => {
       }));
       await page.waitForFunction(
         (tab) => {
+          if (tab === 'Balances')
+            return [...document.querySelectorAll('h2')].some(
+              (e) => e.textContent === 'Your balances',
+            );
           if (tab === 'Expenses')
             return !!document.querySelector('#ledger-expense-e1');
           if (tab === 'Activity')
@@ -856,6 +881,10 @@ withAuthFixture(origin, session, async () => {
         { polling: 'raf' },
       );
       const authorizedContentMs = Date.now() - start;
+      const pendingFeedbackMs = await page.evaluate(() => {
+        window.__stopFeedback?.();
+        return window.__feedback;
+      });
       await page.waitForTimeout(200);
       assert(
         early.shellPresent && early.sameShell,
@@ -873,6 +902,13 @@ withAuthFixture(origin, session, async () => {
         workspace,
         action: 'click ' + tab,
         ...early,
+        feedbackMs: pendingFeedbackMs,
+        routeSessionRequests,
+        cohortAgeMs: Date.now() - cohortStart,
+        financialCacheCondition:
+          visited.has(tab) && Date.now() - cohortStart < 30000
+            ? 'visited-within-window'
+            : 'cold-or-expired',
         scrollBefore,
         documents,
         authorizedContentMs,
@@ -884,6 +920,7 @@ withAuthFixture(origin, session, async () => {
           end: x.end - start,
         })),
       });
+      visited.add(tab);
     }
 
     await page

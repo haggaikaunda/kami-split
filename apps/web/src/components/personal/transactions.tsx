@@ -106,6 +106,7 @@ function TransactionNavigation({ scope, names, statuses, overview }: Context) {
         statuses={statuses}
         filter={filter}
         resume={resume}
+        allowReuse={!selection.source && !visit && !freshTraversal?.refresh}
         onPage={(revision, pages, owner) => {
           setTraversals((previous) => {
             const saved = previous.get(identity);
@@ -166,9 +167,11 @@ function TransactionRead({
   filter,
   resume,
   onPage,
+  allowReuse,
 }: Context & {
   filter: personalTransactionsQuery['variables']['filter'];
   resume?: Traversal;
+  allowReuse: boolean;
   onPage: (revision: string | null, pages: number, owner: object) => void;
 }) {
   const [owner, setOwner] = useState({});
@@ -193,6 +196,7 @@ function TransactionRead({
         </Status>
       ) : (
         <NetworkQuery<personalTransactionsQuery>
+          reuse={allowReuse && !restoring && version === 0}
           key={version}
           document={reportDocument}
           scope={scope}

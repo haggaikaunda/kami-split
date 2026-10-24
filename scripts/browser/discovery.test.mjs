@@ -7,7 +7,7 @@ import { test } from 'node:test';
 // Update deliberately when adding/removing a journey, not to bless lost discovery.
 const groups = {
   'personal.spec.mjs': [
-    24,
+    25,
     [
       /^Personal connections reflow/,
       /^Connections keeps healthy institution management compact/,

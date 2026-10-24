@@ -56,18 +56,26 @@ route-owned identity fields in the wire operation's finite complexity budget.
 Shared financial presentation receives ordinary, exact-value props and can
 still render in the gallery without a Relay provider.
 
-`NetworkQuery` is the common read boundary: an effect calls `loadQuery` with
-`network-only` by default (eligible read-only workspace callers explicitly opt into
-`store-or-network`), the child reads through `usePreloadedQuery`, and effect cleanup
-calls the reference's public `dispose()`. The effect owns that reference immediately,
-even when an access event removes the component before its reference reaches render.
-Disposal releases retention and cancels pending transport; completion alone does not
-grant server authorization. Eligible navigation reuse is bounded by the account
-store’s 30-second expiry and explicit invalidation. This explicit ownership also covers
-React Strict Mode setup/cleanup. Loading uses Suspense, transport/render failures use
-the local error boundary, and feature owners inspect domain unions and report their
-loading/error status to the existing refresh surface. A fulfilled access Problem is
-an error, never an empty result or successful refresh.
+`NetworkQuery` is the common read boundary. Eligible read-only callers explicitly
+opt into bounded reuse. A complete fresh visit reads the actual Relay snapshot
+synchronously through `useWorkspaceQuery`, without an initialization fallback.
+The public lookup/check APIs are pure; `useSyncExternalStore` owns public Relay
+subscriptions, global invalidation observation and operation retention after commit.
+Its subscription rechecks the store before React commits a retained snapshot, so
+collection or invalidation between render and subscription requires a fresh read.
+Abandoned renders retain nothing; unmount releases every subscription and retain.
+Retention never updates Relay's original server fetch time or extends the 30-second
+policy. Missing fields, unknown fetch times, field errors and disposed scopes cannot
+use this path. Private data remains solely in Relay, with no navigation payload cache.
+
+Cold, expired, invalidated and safety reads keep an effect-owned `loadQuery` reference
+and `usePreloadedQuery`/Suspense consumption. Only the effect loads/disposes that
+reference, including request-start denial and Strict Mode cleanup. A cold visit stays
+with its original reader after completion so child forms, traversals and recovery
+owners do not remount when the operation becomes fresh. An invalidated warm visit
+permanently changes to a fresh reader for that keyed visit. Transport/render failures
+use the existing local error boundary; features still validate domain unions. A
+fulfilled access Problem is an error, never an empty result or successful refresh.
 
 Each read owner defines its keyed identity: account, destination, source return,
 ledger filters and explicit refresh generation. A composed workspace query keeps

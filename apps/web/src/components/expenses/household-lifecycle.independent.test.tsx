@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react';
+import { act, Profiler } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import {
   Environment,
@@ -52,6 +52,7 @@ let requests: {
   variables: Variables;
   canceled: boolean;
   next(data: unknown): void;
+  complete(): void;
 }[];
 const result = (
   dashboardVersion = 'same',
@@ -94,6 +95,9 @@ beforeEach(() => {
           name: operation.name,
           variables,
           canceled: false,
+          complete() {
+            sink.complete();
+          },
           next(data: unknown) {
             sink.next({ data } as never);
           },
@@ -208,4 +212,27 @@ it('retains committed edit status when the separately refreshed Household list f
   expect(host.textContent).toContain('Expense edit saved');
   expect(host.querySelector('[role=alert]')).not.toBeNull();
   expect(host.textContent).not.toContain('private ledger');
+});
+
+it('commits a valid complete cached composed ledger directly without initializing a loading frame', async () => {
+  await act(async () => root.render(<HouseholdLedger scope={scope} />));
+  await act(async () => {
+    requests[0].next(result());
+    requests[0].complete();
+  });
+  await act(async () => root.render(null));
+  const commits: string[] = [];
+  await act(async () =>
+    root.render(
+      <Profiler
+        id="ledger"
+        onRender={() => commits.push(host.textContent ?? '')}
+      >
+        <HouseholdLedger scope={scope} />
+      </Profiler>,
+    ),
+  );
+  expect(commits.length).toBeGreaterThan(0);
+  expect(commits.every((text) => text.includes('private ledger'))).toBe(true);
+  expect(requests).toHaveLength(1);
 });

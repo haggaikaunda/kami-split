@@ -10,7 +10,11 @@ import { AppIcon, WorkspaceNavigation } from '@/components/workspace-identity';
 import { CategoryIcon } from '@/components/financial/category';
 import Link from 'next/link';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
-import { workspaceFetchPolicy, NetworkQuery } from '@/lib/relay/query';
+import {
+  workspaceFetchPolicy,
+  NetworkQuery,
+  useWorkspaceQuery,
+} from '@/lib/relay/query';
 import { fetchQuery, readInlineData } from 'relay-runtime';
 import { useFinancialSession } from '@/components/groups/session';
 import { Button } from '../ui/primitives';
@@ -129,6 +133,7 @@ export function ActivityFeed({
   const setKind = onKindChange ?? setLocalKind;
   const source = '';
   const [version, setVersion] = useState(0);
+  const [cacheAllowed, setCacheAllowed] = useState(true);
   const [after, setAfter] = useState<string | null>(null);
   const [acceptedPage, setPage] = useState<{
     identity: string;
@@ -141,9 +146,38 @@ export function ActivityFeed({
   const identity = JSON.stringify([scope.id, groupId, kind, after, version]);
   // A queued acceptance belongs to its captured request, even if React commits
   // it after the URL-controlled filter has moved to another read.
+  const filter = {
+    kind: kind
+      ? (kind as 'EXPENSE_CREATED' | 'EXPENSE_UPDATED' | 'REPAYMENT_RECORDED')
+      : null,
+    sourceGroupId: source || null,
+  };
+  const warmGroup = useWorkspaceQuery<activityGroupQuery>(
+    scope,
+    groupDocument,
+    { groupId, after, filter },
+    cacheAllowed && !!groupId && !after && version === 0,
+  );
+  const warmHousehold = useWorkspaceQuery<activityHouseholdQuery>(
+    scope,
+    householdDocument,
+    { after, filter },
+    cacheAllowed && !groupId && !after && version === 0,
+  );
+  const prepared =
+    cacheAllowed && !after && !kind && version === 0 ? initialFeed : undefined;
+  const warmReference =
+    prepared ?? warmGroup?.groupActivity ?? warmHousehold?.householdActivity;
+  const warmPage = warmReference
+    ? readInlineData<activityFeed$key>(feedDocument, warmReference)
+    : undefined;
   const page =
-    acceptedPage?.identity === identity ? acceptedPage.value : undefined;
-  const loading = readPending || (!error && !page);
+    acceptedPage?.identity === identity
+      ? acceptedPage.value
+      : warmPage?.__typename === 'ActivityConnection'
+        ? warmPage
+        : undefined;
+  const loading = !page && (readPending || !error);
   const reportRead = useEffectEvent(() =>
     onReadState?.({ busy: loading, error }),
   );
@@ -162,6 +196,7 @@ export function ActivityFeed({
   }
   const invalidate = () => {
     scope.invalidate?.();
+    setCacheAllowed(false);
     generation.current++;
     request.current?.unsubscribe();
     setPage(undefined);

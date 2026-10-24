@@ -1,5 +1,5 @@
 'use client';
-import { workspaceFetchPolicy } from '@/lib/relay/query';
+import { workspaceFetchPolicy, useWorkspaceQuery } from '@/lib/relay/query';
 import { WorkspaceLoading } from '@/components/workspace-loading';
 import { WorkspaceRefresh } from '@/components/workspace-refresh';
 import { useEffect, useRef, useState } from 'react';
@@ -39,10 +39,12 @@ export function HouseholdExpenses() {
 export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   const params = useSearchParams();
   const filters = expenseFilterText(params);
+  const [initialFilters] = useState(filters);
   const [context, setContext] = useState<{
     result: expensesHouseholdInitialQuery['response'];
     filters: string;
   }>();
+  const [cacheAllowed, setCacheAllowed] = useState(true);
   const [saved, setSaved] = useState(false);
   const savedNotice = saved ? (
     <p role="status">
@@ -56,6 +58,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   const generation = useRef(0);
   const invalidate = () => {
     scope.invalidate?.();
+    setCacheAllowed(false);
     generation.current++;
     request.current?.unsubscribe();
     setContext(undefined);
@@ -123,12 +126,31 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
     // Filter changes are owned by the ledger traversal. A response keeps its original filter identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, version]);
-  const dashboard = context?.result.householdDashboard,
-    viewer = context?.result.viewer;
+  const warm = useWorkspaceQuery<expensesHouseholdInitialQuery>(
+    scope,
+    initialDocument,
+    { filter: expenseFilter(initialFilters) },
+    cacheAllowed && version === 0 && !params.has('create'),
+  );
+  const warmView = warm?.householdExpenses
+    ? readInlineData<expensesView$key>(viewDocument, warm.householdExpenses)
+    : undefined;
+  const readyContext =
+    context ??
+    (warm?.viewer?.__typename === 'Viewer' &&
+    warm.householdDashboard?.__typename === 'HouseholdDashboard' &&
+    warm.householdDashboard.state === 'COMPLETE' &&
+    warm.householdDashboard.contextVersion &&
+    warmView?.__typename === 'ExpenseView' &&
+    warmView.contextVersion === warm.householdDashboard.contextVersion
+      ? { result: warm, filters: initialFilters }
+      : undefined);
+  const dashboard = readyContext?.result.householdDashboard,
+    viewer = readyContext?.result.viewer;
   const refreshControl = (
     <WorkspaceRefresh
       contentPending
-      busy={!context && !error}
+      busy={!readyContext && !error}
       error={error}
       onRefresh={() => {
         scope.expensePositions?.clear();
@@ -138,7 +160,7 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   );
   if (error)
     return (
-      <WorkspaceLoading busy={!context && !error}>
+      <WorkspaceLoading busy={!readyContext && !error}>
         {savedNotice}
         {refreshControl}
         <p role="alert">{error}</p>
@@ -147,17 +169,17 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
   if (
     dashboard?.__typename !== 'HouseholdDashboard' ||
     viewer?.__typename !== 'Viewer' ||
-    !context
+    !readyContext
   )
     return (
-      <WorkspaceLoading busy={!context && !error}>
+      <WorkspaceLoading busy={!readyContext && !error}>
         {savedNotice}
         {refreshControl}
         <ContentLoading layout="expenses" />
       </WorkspaceLoading>
     );
   return (
-    <WorkspaceLoading busy={!context && !error}>
+    <WorkspaceLoading busy={!readyContext && !error}>
       {savedNotice}
       {refreshControl}
       <ExpenseLedger
@@ -167,8 +189,8 @@ export function HouseholdLedger({ scope }: { scope: FinancialScope }) {
         today={viewer.today}
         contextVersion={dashboard.contextVersion!}
         initialView={{
-          filterText: context.filters,
-          reference: context.result.householdExpenses,
+          filterText: readyContext.filters,
+          reference: readyContext.result.householdExpenses,
         }}
         managedRefresh
         activeSpaces={

@@ -61,8 +61,14 @@ export function createScope(
     });
   };
   const dispose = () => {
+    if (!live) return;
     live = false;
     generation++;
+    // Clearing a RecordSource directly does not mark updated record IDs in Relay.
+    // Notify public invalidation subscribers after revocation, before erasing data.
+    environment.commitUpdate((store) => {
+      (store as typeof store & { invalidateStore(): void }).invalidateStore();
+    });
     if (typeof window !== 'undefined') {
       window.removeEventListener('popstate', restoreHistory);
       window.removeEventListener('focus', invalidate);
