@@ -293,7 +293,7 @@ Failure/uncertainty during creation or exchange requires reconciling owned Sandb
 inventory before retry; never replay an uncertain exchange. Output contains only
 safe stages, counts and confirmation. Fixtures establish the full authenticated
 enrollment journey separately; Sandbox establishes only the observed synthetic
-provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Private transaction reads and annotations are implemented by [reporting](banking-reporting.md); Personal Transactions presents current/archive activity and persisted status. The reusable private detail/editor adds explicit guarded annotations and recovery. Overview presentation, live capabilities, backups and release remain separate work.
+provider/consumer integration. [Owner-only status reads](banking-status.md) expose persisted import facts. Private transaction reads and annotations are implemented by [reporting](banking-reporting.md); Personal Transactions presents current/archive activity and persisted status. The reusable private detail/editor adds explicit guarded annotations and recovery. Overview consumes complete reporting summaries and status context alongside recent activity. Live capabilities, backups and release remain separate work.
 
 ## Background dispatch and reconciliation
 
