@@ -24,8 +24,9 @@ ordered; a test exemption precedes its application's production rule.
 | `apps/web/src/lib/relay/__generated__/*.graphql.ts` / `relay-wire-contract`                                                          | Both            | Web        | API transport-budget and workspace integration tests read checked-in wire operations. These artifacts ship in web, not the Go server image.                                                                                                                                                                                         |
 | Other `apps/web/**`, `scripts/relay/**` / `web-production`                                                                           | Web             | Web        | Next build/runtime and Relay generation. Authored operations/config are web inputs; `relay:check` requires changed compiled output to be committed, then the wire-contract rule selects API verification. Ownership-only moves with unchanged wire output need no API verification.                                                 |
 | Other `apps/api/**`, `supabase/**`, Compose, sqlc, `.dockerignore`, Go module/workspace files / `api-build-runtime`                  | API             | API        | API build, database schemas/migrations and local runtime configuration.                                                                                                                                                                                                                                                             |
-| Database/tool installation/Cloud Run traffic scripts and `scripts/tool-versions.env` / `api-build-runtime`                           | API             | API        | Some are verification-only today, but these broader runtime/tool families retain conservative deployment treatment; no blanket script/test-name exemption.                                                                                                                                                                          |
+| Database/tool installation/Cloud Run traffic scripts and `scripts/tool-versions.env` / `api-build-runtime`                           | API             | API        | Except for the exact CI verification inventory below, these broader runtime/tool families retain conservative deployment treatment; no blanket script/test-name exemption.                                                                                                                                                          |
 | `packages/schema/**`, root dependencies/workspace/lock/config, `Makefile` / `shared-input`                                           | Both            | Both       | Shared authoritative contracts, generation and installation/build entry points. Schema testdata stays conservative.                                                                                                                                                                                                                 |
+| Audited CI workflow/database verification inventory / `ci-verification-tooling`                                                      | Both            | Neither    | These workflows orchestrate required checks; the database helpers discover/validate coverage and run unique disposable Supabase verification projects. Production build, migration and release commands do not load these helpers.                                                                                                  |
 | Workflows, deployment/classifier/gate scripts, Vercel promotion tooling / `delivery-tooling`                                         | Both            | Both       | Trusted selection, release orchestration and safety checks.                                                                                                                                                                                                                                                                         |
 | Everything else / `unknown-path`                                                                                                     | Both            | Both       | Unresolved dependencies select all consumers.                                                                                                                                                                                                                                                                                       |
 
@@ -60,8 +61,21 @@ resources. There is no blanket `.agents/**` exemption.
 The API Dockerfile copies only API/schema source before compiling the server;
 the root `.dockerignore` excludes agent tooling. Boundary tests guard actual
 production references and Docker COPY inputs. New copy syntax/loaders require
-review before preserving these exemptions. Changes to the classifier, workflows
-or deployment scripts themselves still select all checks and deployments.
+review before preserving these exemptions.
+
+The exact CI workflow inventory keeps both verification branches applicable but
+adds no production release obligation. `ci.yml` calls `web.yml` and `api.yml`;
+`api.yml`, `make db-test` and the local execution helper consume `db-test.sh`,
+which invokes `db-partitions.mjs` for discovery, selection and coverage reports.
+The exact `scripts/ci/db-partitions.test.mjs` test runs in repository validation. The API Dockerfile copies
+only API/schema source; Next and Relay have no imports of these helpers. Boundary
+tests guard production references and image COPY inputs. Workflow identities may
+still be read as CI metadata by deployment selection; that does not execute their
+verification helpers in production. New workflow names, helper neighbors and
+runtime consumers require a fresh audit. In particular, `release.mjs` imports
+`changes.mjs` and `verify.mjs`, so those shared release-policy modules remain
+deployment-affecting. Other workflows, deployment scripts and classifier/gate
+changes still select all checks and deployments.
 
 Deletions and both sides of renames are classified (`--no-renames`, NUL-delimited).
 Empty comparisons, unavailable commits, non-ancestor push history, first pushes,
