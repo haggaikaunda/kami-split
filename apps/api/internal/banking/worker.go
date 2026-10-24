@@ -24,6 +24,9 @@ type Worker struct {
 	db        *database.WorkerDB
 	protector *Protector
 	provider  Remover
+
+	// Each claimed job owns its ticker and stops it before joining renewal.
+	newTicker func(time.Duration) (<-chan time.Time, func())
 }
 
 // NewWorker constructs the durable lifecycle and recurring selected-account import consumer.
@@ -32,7 +35,13 @@ func NewWorker(db *database.WorkerDB, p *Protector, provider Remover) (*Worker, 
 	if db == nil || p == nil || provider == nil {
 		return nil, errors.New("banking worker unavailable")
 	}
-	return &Worker{db: db, protector: p, provider: provider}, nil
+	return &Worker{
+		db: db, protector: p, provider: provider,
+		newTicker: func(interval time.Duration) (<-chan time.Time, func()) {
+			ticker := time.NewTicker(interval)
+			return ticker.C, ticker.Stop
+		},
+	}, nil
 }
 
 // Run polls due work every minute and reconciles healthy selected streams on each
@@ -87,13 +96,13 @@ func (w *Worker) ProcessOne(ctx context.Context) (bool, error) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		ticker := time.NewTicker(45 * time.Second)
-		defer ticker.Stop()
+		ticks, stop := w.newTicker(45 * time.Second)
+		defer stop()
 		for {
 			select {
 			case <-workCtx.Done():
 				return
-			case <-ticker.C:
+			case <-ticks:
 				ok, err := w.db.RenewBankingWork(workCtx, job)
 				if err != nil || !ok {
 					cancel()
