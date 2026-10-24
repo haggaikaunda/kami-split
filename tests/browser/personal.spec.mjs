@@ -2121,6 +2121,16 @@ test('Personal Overview distinguishes unavailable, failed, empty and uncertain i
     return transactionReport({
       rows: [],
       totalCount: 0,
+      counts: {
+        count: 0,
+        postedCount: 0,
+        pendingCount: 0,
+        removedCount: 0,
+        excludedCount: 0,
+        unresolvedCount: 0,
+        reviewedCount: 0,
+        classificationComplete: true,
+      },
       summary: {
         netMinor: '0',
         purchaseMinor: '0',

@@ -382,6 +382,7 @@ function ReportContent({
                 names={names}
                 coverage={
                   <Coverage
+                    compact
                     report={report}
                     names={names}
                     statuses={statuses}
@@ -619,6 +620,7 @@ function importNeedsContext(status: ImportFacts) {
   );
 }
 function Coverage({
+  compact = false,
   report,
   names,
   statuses,
@@ -628,48 +630,64 @@ function Coverage({
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
   connections: string;
+  compact?: boolean;
 }) {
   return (
     <div className={styles.coverage}>
-      {report.accounts.map((account) => (
-        <div key={account.accountId}>
-          <p>
-            <strong>
-              {names.get(account.accountId) ??
-                `Retained ${readable(account.kind)} account`}
-            </strong>{' '}
-            · {readable(account.coverage)} coverage
-            {!account.selected && ' · Updates stopped; retained history'}
-            {account.coverage !== 'COMPLETE' && ' · Activity may be missing.'}
-          </p>
-          {statuses?.get(account.accountId) &&
-            importNeedsContext(statuses.get(account.accountId)!) && (
-              <p>{importSummary(statuses.get(account.accountId)!)}</p>
-            )}
-          {account.intervals.some(
-            (interval) => interval.discrepancyCount > 0,
-          ) && (
-            <p>
-              Historical discrepancy: later source changes are retained for
-              inspection; current totals keep the confirmed reporting history.
-            </p>
-          )}
-          {(statuses?.get(account.accountId)?.collection ===
-            'RECONNECT_REQUIRED' ||
+      {report.accounts
+        .filter(
+          (account) =>
+            !compact ||
+            account.coverage !== 'COMPLETE' ||
+            !account.selected ||
+            (statuses?.get(account.accountId) &&
+              importNeedsContext(statuses.get(account.accountId)!)) ||
             account.intervals.some(
               (interval) =>
                 interval.collectionStopped ||
-                !['usable'].includes(interval.importState) ||
+                interval.importState !== 'usable' ||
                 interval.discrepancyCount > 0,
-            )) && (
+            ),
+        )
+        .map((account) => (
+          <div key={account.accountId}>
             <p>
-              Import or connection needs attention; retained activity can be
-              incomplete, stale or corrected.{' '}
-              <Link href={connections}>View status in Connections</Link>
+              <strong>
+                {names.get(account.accountId) ??
+                  `Retained ${readable(account.kind)} account`}
+              </strong>{' '}
+              · {readable(account.coverage)} coverage
+              {!account.selected && ' · Updates stopped; retained history'}
+              {account.coverage !== 'COMPLETE' && ' · Activity may be missing.'}
             </p>
-          )}
-        </div>
-      ))}
+            {statuses?.get(account.accountId) &&
+              importNeedsContext(statuses.get(account.accountId)!) && (
+                <p>{importSummary(statuses.get(account.accountId)!)}</p>
+              )}
+            {account.intervals.some(
+              (interval) => interval.discrepancyCount > 0,
+            ) && (
+              <p>
+                Historical discrepancy: later source changes are retained for
+                inspection; current totals keep the confirmed reporting history.
+              </p>
+            )}
+            {(statuses?.get(account.accountId)?.collection ===
+              'RECONNECT_REQUIRED' ||
+              account.intervals.some(
+                (interval) =>
+                  interval.collectionStopped ||
+                  !['usable'].includes(interval.importState) ||
+                  interval.discrepancyCount > 0,
+              )) && (
+              <p>
+                Import or connection needs attention; retained activity can be
+                incomplete, stale or corrected.{' '}
+                <Link href={connections}>View status in Connections</Link>
+              </p>
+            )}
+          </div>
+        ))}
     </div>
   );
 }
