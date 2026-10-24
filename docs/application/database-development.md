@@ -118,6 +118,14 @@ explicit desired-state reconciliation, not experimental generation:
 4. `scripts/db-tool.sh supabase migration up --local` applies pending local history.
 5. Run `make db-test`, then all repository checks. Never edit an applied migration.
 
+Required CI validates the exact PR target/head or main push before/after history.
+Every new filename must use a unique 14-digit version strictly above the highest
+version on that comparison base. Existing migration files are immutable: changing,
+removing or renaming one fails validation. An advanced PR target can require a
+branch update and a new timestamp before merge; a stale merge-base is not the
+ordering authority. Missing/invalid comparison history fails closed. Existing
+historical order is retained and does not block unrelated changes.
+
 Migration versions must be unique across branches before merging. Household designation uses
 `20261005000000`; repayments use `20261006000000` after resolving a
 pre-deployment collision. Both SQL bodies are unchanged. If a local database
@@ -126,6 +134,14 @@ reapply or mark migrations complete: inspect its migration history and actual
 schema first. Recreate only explicitly disposable test data; preserve valued
 local data and reconcile its history against the installed schema before upgrading.
 This correction does not repair existing database histories automatically.
+
+The database harness also reconstructs the last deployed banking history with
+`20261022010000_banking_status.sql` installed and the older background-sync
+migration absent. It proves normal push rejection, exercises the same bounded
+recovery controller as deployment, preserves representative financial and private
+banking fixtures, checks work-version backfill and owner denial, and repeats push
+without duplicate effects. Its complete upgraded schema/ACL/role snapshot is
+compared with desired SQL and fresh replay.
 
 The #75 test upgrades the shipped #74 foundation and separately runs fresh
 replay plus migration up with an applied history. Desired-schema comparison uses

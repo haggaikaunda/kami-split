@@ -470,7 +470,8 @@ to regular SQL files; candidate deployment scripts and Makefiles never run on th
 credentialed host. Images are deployed by digest after publication. Image tags include SHA, run ID,
 and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
 
-Rehearsal runs only `supabase db push --linked --dry-run`. It never reaches the
+Rehearsal validates history and runs only the selected dry-run push plan,
+including the bounded recovery exception described below when eligible. It never reaches the
 release-only migration application or promotion step and has no Vercel job.
 Dry-run reports pending migrations and CLI validation; it does **not** prove SQL
 will execute successfully against production. Real isolated database CI remains
@@ -547,6 +548,28 @@ provider dashboard. To redeploy the same commit after a transient provider
 failure, rerun the failed GitHub Actions workflow. Confirm both Cloud Run
 readiness endpoints and the hosted smoke checks before considering the run
 recovered.
+
+Migration history is immutable and new versions must advance the actual CI
+comparison base. Normal release uses ordinary Supabase push. The trusted
+`migration-policy.mjs` controller has one reviewed out-of-order exception for
+`20261022000000_banking_background_sync.sql`: its filename and SHA-256 must match
+the checked-in policy, remote history must contain every preceding local version
+and `20261022010000_banking_status.sql`, and no later version may already be
+recorded. Any other missing old version, unknown remote version, malformed history
+or changed recovery SQL fails closed. The pinned CLI's structured history is
+read with `--output-format json`; `--output json` is a different status-output
+option and must not be assumed to control migration history.
+
+Only that validated plan may use `--include-all`, after a dry run and a second
+unchanged-history check immediately before application. The same controller
+runs against disposable synthetic data in `make db-test`. Rehearsal always stops
+after dry run. Once the missing SQL is applied, later releases use ordinary push;
+never mark SQL applied without executing it, edit applied files, or add a blanket
+ordering override. A future incident requires a separately reviewed bounded
+policy and real deployed-schema regression. Remove the exception after all
+relevant environments have recorded it. Production recovery remains the serialized
+GitHub Actions release, followed by existing API/web candidate and promotion
+checks; local regression success does not establish hosted recovery.
 
 The normal rollback path is a new reviewed PR that reverts or fixes the change,
 followed by the same workflow. Database migrations are forward-only: never reset

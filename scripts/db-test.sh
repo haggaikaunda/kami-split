@@ -152,12 +152,41 @@ scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir
 docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/banking_replacement_upgraded.sql
 mv "$stage/banking-sync.sql" "$stage/supabase/migrations/20261021000000_banking_sync.sql"
 mv "$stage/banking-initial-sync.sql" "$stage/supabase/migrations/20261021010000_banking_initial_sync.sql"
-mv "$stage/banking-background-sync.sql" "$stage/supabase/migrations/20261022000000_banking_background_sync.sql"
+# Reconstruct the actual last deployed history: status is installed while the
+# older background-sync migration is absent. No migration history is fabricated.
 mv "$stage/banking-status.sql" "$stage/supabase/migrations/20261022010000_banking_status.sql"
+scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --yes --workdir "$stage"
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/banking_background_upgrade.sql
+mv "$stage/banking-background-sync.sql" "$stage/supabase/migrations/20261022000000_banking_background_sync.sql"
 mv "$stage/banking-pfc.sql" "$stage/supabase/migrations/20261022015000_banking_pfc.sql"
 mv "$stage/banking-reporting.sql" "$stage/supabase/migrations/20261022020000_banking_reporting.sql"
 mv "$stage/banking-institution-name.sql" "$stage/supabase/migrations/20261023000000_banking_institution_name.sql"
-scripts/db-tool.sh supabase migration up --local --workdir "$stage"
+if scripts/db-tool.sh supabase db push --db-url "$lifecycle_db_url" --dry-run --workdir "$stage" > "$stage/ordinary-push.log" 2>&1; then
+  echo 'Ordinary push unexpectedly accepted out-of-order migration' >&2
+  exit 1
+fi
+# Distinguish the intended ordering rejection from unrelated connection failures.
+grep -q -- '--include-all' "$stage/ordinary-push.log"
+scripts/db-tool.sh supabase migration list --output-format json --db-url "$lifecycle_db_url" --workdir "$stage" > "$stage/migration-history.txt"
+cat "$stage/migration-history.txt"
+MIGRATION_TEST_URL="$lifecycle_db_url" MIGRATION_TEST_WORKDIR="$stage" node --input-type=module <<'RECOVERY_TEST'
+import { execFileSync } from 'node:child_process';
+import { pushMigrations } from './scripts/deployment/migrations.mjs';
+const options = {
+ mode: 'release', target: ['--db-url', process.env.MIGRATION_TEST_URL],
+ workdir: process.env.MIGRATION_TEST_WORKDIR,
+ directory: `${process.env.MIGRATION_TEST_WORKDIR}/supabase/migrations`,
+ run: args => execFileSync('./scripts/db-tool.sh', ['supabase', ...args], {encoding: 'utf8', stdio: ['ignore','pipe','inherit']}),
+};
+if (!pushMigrations(options).includeAll) throw new Error('Recovery exception was not exercised');
+if (pushMigrations(options).missing.length) throw new Error('Repeated recovery must be a no-op');
+RECOVERY_TEST
+# Synthetic-only row deltas stay in ignored run output for diagnosis. The
+# comparison excludes only the newly added nullable taxonomy column; its null
+# value is asserted separately below, so retained facts cannot be rewritten.
+mkdir -p test-results
+docker exec "$container" psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -c "SELECT jsonb_build_object('before',to_jsonb(s),'after',jsonb_build_object('users',(SELECT jsonb_agg(to_jsonb(u) ORDER BY id) FROM app.users u),'groups',(SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM app.groups g),'expenses',(SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM app.expenses e),'sources',(SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM app.banking_sources b),'revisions',(SELECT jsonb_agg(to_jsonb(r)-'provider_primary_category' ORDER BY source_id,revision) FROM app.banking_source_revisions r),'preferences',(SELECT jsonb_agg(to_jsonb(p) ORDER BY owner_id) FROM app.reporting_timezones p),'work_count',(SELECT count(*) FROM app.banking_work))) FROM public.banking_background_snapshot s" > test-results/banking-background-comparison.json
+docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U supabase_admin -d postgres < supabase/tests/banking_background_upgraded.sql
 # Lint under the function owner: plpgsql_check does not apply SECURITY DEFINER
 # ownership when called by the non-inheriting migration login. No ACL is widened.
 docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS plpgsql_check WITH SCHEMA public"
