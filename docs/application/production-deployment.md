@@ -477,6 +477,15 @@ build-input prefix. Release builds alone save this main-branch cache. Rehearsals
 may restore it but never save candidate output to it. Cache storage is separate
 from Artifact Registry, whose per-run image tags remain immutable.
 
+GitHub gives default-branch `workflow_run` jobs read-only cache access unless an
+explicit mode overrides it. The production API caller sets `cache-mode: write`
+after trusted main-push CI selection; the shared API workflow inherits that access.
+The rehearsal caller sets `cache-mode: read` to cap inherited access, because
+`workflow_dispatch` otherwise permits cache writes. The shared workflow's
+release-only save condition remains an additional guard. See GitHub's
+[cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
+and [reusable caller cache modes](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcache-mode).
+
 The Dockerfile compiles the runtime's external library imports before copying
 application source. Module downloads and Go compilation output live in ordinary
 exported layers, so a fresh builder can reuse compiled dependencies after a source

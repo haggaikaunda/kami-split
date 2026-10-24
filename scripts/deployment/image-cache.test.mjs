@@ -195,3 +195,61 @@ test('cache namespace binds build inputs and only release can save the main cach
     .split('# Rehearsals')[0];
   assert.ok(!build.includes('continue-on-error'));
 });
+
+test('only the verified release caller grants inherited cache writes; rehearsal is capped at read', () => {
+  const release = readFileSync('.github/workflows/deploy.yml', 'utf8');
+  const rehearsal = readFileSync('.github/workflows/rehearse.yml', 'utf8');
+  const shared = readFileSync('.github/workflows/api-deploy.yml', 'utf8');
+  function job(workflow, name) {
+    const marker = `\n  ${name}:\n`;
+    assert.ok(workflow.includes(marker), `missing caller job ${name}`);
+    return workflow.split(marker)[1].split(/\n  [a-zA-Z_][\w-]*:\n/)[0];
+  }
+  // GitHub propagates a calling job's cache mode to its reusable workflow.
+  // Leave the shared workflow without a broader override or global grant.
+  assert.ok(!shared.includes('cache-mode:'));
+  for (const [workflow, name, mode, deploymentMode] of [
+    [release, 'api', 'write', 'release'],
+    [rehearsal, 'rehearsal', 'read', 'rehearsal'],
+  ]) {
+    const caller = job(workflow, name);
+    assert.match(
+      caller,
+      /^    uses: \.\/\.github\/workflows\/api-deploy\.yml$/m,
+    );
+    const inheritedMode = caller.match(/^    cache-mode: (read|write)$/m)?.[1];
+    assert.equal(
+      inheritedMode,
+      mode,
+      `${name} must use a static caller cache mode`,
+    );
+    assert.match(caller, new RegExp(`^      mode: ${deploymentMode}$`, 'm'));
+  }
+  const plan = job(release, 'plan');
+  assert.match(job(release, 'api'), /^    needs: plan$/m);
+  for (const condition of [
+    "github.event.workflow_run.conclusion == 'success'",
+    "github.event.workflow_run.event == 'push'",
+    "github.event.workflow_run.head_branch == 'main'",
+  ])
+    assert.ok(
+      plan.includes(condition),
+      `trusted release prerequisite missing: ${condition}`,
+    );
+  assert.match(job(release, 'api'), /needs.plan.outputs.deploy_api == 'true'/);
+  assert.match(
+    job(rehearsal, 'rehearsal'),
+    /github.ref == 'refs\/heads\/main'/,
+  );
+  const grants = readdirSync('.github/workflows').flatMap((file) =>
+    [
+      ...readFileSync(join('.github/workflows', file), 'utf8').matchAll(
+        /^(\s*)cache-mode: (.*)$/gm,
+      ),
+    ].map((match) => [file, match[1].length, match[2]]),
+  );
+  assert.deepEqual(grants, [
+    ['deploy.yml', 4, 'write'],
+    ['rehearse.yml', 4, 'read'],
+  ]);
+});
