@@ -9,10 +9,19 @@ Use Node 24 and pnpm 11.25.0 from `package.json`. Install the frozen workspace d
 ```sh
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
-# Linux, including CI: install Chromium and required system libraries together.
+# Local Linux: install Chromium and required system libraries together.
 pnpm exec playwright install --with-deps chromium
 pnpm test:browser
 ```
+
+Hosted web CI runs inside the version-pinned official Playwright Noble image in
+`.github/workflows/web.yml`, which supplies browser binaries and OS libraries.
+It still selects Node 24 and installs frozen workspace dependencies. Before any
+web checks, `scripts/browser/ci-environment.mjs` verifies the installed Playwright
+version against the exact package pin and image metadata, then launches Chromium.
+Missing or mismatched metadata, browser paths, binaries or libraries fail the job;
+CI does not install browsers or run apt. Update the image tag together with the
+Playwright dependency. Local browser setup remains as described above.
 
 The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
 
