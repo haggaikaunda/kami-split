@@ -479,11 +479,17 @@ credentialed host. Images are deployed by digest after publication. Image tags i
 and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
 
 API images use a fresh Buildx builder with a GitHub Actions cache of intermediate
-layers (`mode=max`). Cache keys bind Linux/amd64, the Dockerfile (including the Go
-version), module manifests and selected SHA; restoration uses only the matching
-build-input prefix. Release builds alone save this main-branch cache. Rehearsals
-may restore it but never save candidate output to it. Cache storage is separate
-from Artifact Registry, whose per-run image tags remain immutable.
+layers (`mode=max`). A versioned seed key binds Linux/amd64, the Dockerfile
+(including the Go version) and module manifests, independently of repository SHA.
+A successful exact restore with its index present skips cache export and save;
+missing or failed restores still build normally and can populate the seed. There
+is no fallback to older per-revision cache namespaces. Release builds alone save
+this main-branch cache. Rehearsals may restore it but never save candidate output.
+Cache storage is separate from Artifact Registry, whose per-run image tags remain
+immutable. Every selected source is still built: BuildKit content identities
+invalidate application layers after source edits, even though the seed key stays
+the same. A seed may retain its first application's outputs until its build inputs
+change or it is evicted; it is not an assertion that later source is unchanged.
 
 GitHub gives default-branch `workflow_run` jobs read-only cache access unless an
 explicit mode overrides it. The production API caller sets `cache-mode: write`
