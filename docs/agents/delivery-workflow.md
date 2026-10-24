@@ -22,8 +22,12 @@ Write run outputs to ignored `test-results/` or an external temporary directory.
 ## Plan verification before final review
 
 At task start, include affected user journeys/contracts and their existing checks
-in the short implementation plan. Identify required checks and any opt-in runners
-needed to demonstrate the issue's acceptance criteria, with resource ownership.
+in the short implementation plan. Identify high-risk boundaries (for example,
+authorization/denial, financial mutations, version conflicts and asynchronous
+state) and required checks, including opt-in runners needed for acceptance, with
+resource ownership. A bounded independent diagnostic check may examine a specific
+risky boundary early from the approved requirements and raw inputs. State its
+question and budget; its success is not final acceptance or whole-diff review.
 For UI changes, inspect relevant navigation, accessible names, control state and
 fixture assumptions early; batch related runner maintenance with the change while
 preserving observable assertions. Use the existing area guidance and classifier;
@@ -32,10 +36,27 @@ this plan neither requires every optional runner nor permits skipping required c
 Finish builder checks, independent requirements testing and substantive tester
 fixes/retests before requesting the final whole-diff review. This includes selected
 opt-in checks needed for acceptance; an opt-in command is not a reason to leave an
-affected criterion unverified. Early diagnostic consultation may help resolve a
-specific problem, but it is not the final review gate. CI may run earlier; merge
-still requires passing final-head CI. Relevant changes after review require the
-affected verification and a whole updated final-diff review.
+affected criterion unverified. CI may run earlier; merge still requires passing
+final-head CI. Relevant changes after review require the affected verification
+and a whole updated final-diff review.
+
+### Stable candidate and shared resources
+
+Use focused affected checks while iterating; batch related corrections before
+broad verification. Do not replace required checks with diagnostic subsets. Before
+handing off a candidate, commit the intended changes and record exact base/head,
+inputs/build identity, completed checks and remaining work. Coordinate overlapping
+shared-file changes and dependent base updates through one integration owner;
+serialize edits or use separate branches with an explicit integration order.
+After integration, reassess affected evidence against the new base/head and rerun
+invalidated checks, testing and whole-final-diff review as required above.
+
+Assign an explicit owner to each checkout, build, server, port and mutable output
+directory before use or transfer. Stop only owned processes before rebuilding;
+never concurrently write shared outputs or reuse a foreign server. Separate
+worktrees still require host-resource coordination. Use the existing
+[execution preflight](execution.md) and area harness contracts; a handoff transfers
+resources explicitly rather than inferring ownership from a path or old result.
 
 ## Shared source-of-truth updates
 

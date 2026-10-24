@@ -25,6 +25,8 @@ and [current handoff contract](../../../docs/agents/delivery-records.md).
    configuration values or reclaim unowned resources; a worktree isolates files.
 4. Inspect relevant source and state a short plan including
    [affected journeys, checks and runner maintenance](../../../docs/agents/delivery-workflow.md#plan-verification-before-final-review).
+   Use that plan's bounded early diagnostic option when a risky boundary warrants
+   it, and establish the [stable candidate and integration owners](../../../docs/agents/delivery-workflow.md#stable-candidate-and-shared-resources).
    Route only useful independent roles. Verify actual launch support, explicitly
    select model/effort and supply compact authoritative assignments with resource boundaries. Keep the original
    coordinator selected; record unavailable optional capabilities honestly.
@@ -37,6 +39,7 @@ and [current handoff contract](../../../docs/agents/delivery-records.md).
 
 For continuation, reread GitHub and current refs/resources before acting. Reuse an
 eligible owned checkout or obtain an explicit transfer; timestamps are not locks.
-After one focused retry of a diagnosed setup failure, hand off the remaining
-blocker with owner/action and continue unaffected work. Record what actually ran,
+Carry any existing [diagnosis owner and retry budget](../../../docs/agents/model-routing.md#bound-retries-and-hand-off)
+forward rather than restarting setup attempts. Hand off persistent blockers with
+owner/action and continue unaffected work. Record what actually ran,
 including blocked starts; never infer fresh remote equality from an old record.

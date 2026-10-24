@@ -20,16 +20,18 @@ publish outcomes using [stage records](../../../docs/agents/delivery-records.md)
    Include the [affected checks selected for acceptance](../../../docs/agents/delivery-workflow.md#plan-verification-before-final-review).
    Diagnose a failed runner against current contracts and observed behavior before
    changing assertions: distinguish a product defect from stale selectors or
-   fixture behavior. For freshness/concurrency cases, inspect requests and accepted
-   state as well as the rendered result. Batch related test maintenance, preserve
+   fixture behavior, following the [fixture facts and ordering contract](../../../docs/browser-verification.md#deterministic-fixture-facts-and-ordering).
+   For freshness/concurrency cases, inspect requests and accepted state as well as
+   the rendered result. Batch related test maintenance, preserve
    observable and negative-case assertions, and record fixture limits honestly.
 3. Publish the contract's criterion/scenario/observed-evidence/limitation table
    on the PR, bound to exact tested revision and approved scope. Report actual
    commands, findings, residual risks and available context identity honestly.
 4. Test-only changes are permitted under the delivery assignment; return
    production fixes to the builder. Retest affected criteria after changes.
-   If the same failure persists after one focused retry, hand off diagnosis and
-   next action rather than repeat blindly; required checks remain mandatory.
+   Continue the existing [diagnosis owner and retry budget](../../../docs/agents/model-routing.md#bound-retries-and-hand-off)
+   across the handoff; testing does not grant a fresh retry. Required checks remain
+   mandatory, and early diagnostic evidence does not replace this final gate.
 5. Leave a compact handoff on interruption or completion: current head/scope,
    covered and unverified criteria, findings, owner and next action. The separate
    reviewer must still inspect the whole final diff. Do not merge or claim
