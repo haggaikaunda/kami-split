@@ -25,6 +25,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Enforce immutable ordered migration history
+        run: node scripts/ci/migrations.mjs
       - name: Classify actual event commits
         id: changes
         run: node scripts/ci/changes.mjs
