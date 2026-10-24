@@ -23,6 +23,7 @@ const groups = {
     80,
     [
       / enlarged header geometry /,
+      /^account resolution: the slow opening screen/,
       /^directory cards contain long exact amounts/,
       /^shared header aligns Household/,
       /^compact identity and navigation remain/,
@@ -179,5 +180,15 @@ test('three actual shards have an exact disjoint required inventory union', () =
   console.log(
     'Browser partition execution counts:',
     shards.map((shard) => shard.length).join(', '),
+  );
+});
+
+test('discovery rejects a duplicate desktop execution of the owned account-opening matrix', () => {
+  const account = discovered.find((item) =>
+    /^account resolution:/.test(item.title),
+  );
+  assert.ok(account);
+  assert.throws(() =>
+    assertCoverage([...discovered, { ...account, project: 'chromium-1280' }]),
   );
 });
