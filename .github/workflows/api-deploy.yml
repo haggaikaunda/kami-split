@@ -78,9 +78,27 @@ jobs:
           workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v3
+      - uses: docker/setup-buildx-action@v4
+      - name: Restore trusted API build cache
+        id: api-cache
+        continue-on-error: true
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ runner.temp }}/api-build-cache
+          key: api-deploy-main-linux-amd64-v1-${{ hashFiles('source/apps/api/Dockerfile', 'source/apps/api/go.mod', 'source/apps/api/go.sum') }}-${{ inputs.sha }}
+          restore-keys: |
+            api-deploy-main-linux-amd64-v1-${{ hashFiles('source/apps/api/Dockerfile', 'source/apps/api/go.mod', 'source/apps/api/go.sum') }}-
       - name: Build and publish immutable API image
         id: image
         run: bash scripts/deployment/image.sh
+      # Rehearsals build candidate code and must never populate the release cache.
+      - name: Save trusted API build cache
+        if: inputs.mode == 'release' && steps.api-cache.outputs.cache-hit != 'true' && steps.image.outputs.cache_ready == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}/api-build-cache
+          key: api-deploy-main-linux-amd64-v1-${{ hashFiles('source/apps/api/Dockerfile', 'source/apps/api/go.mod', 'source/apps/api/go.sum') }}-${{ inputs.sha }}
       - name: Install pinned database tools
         run: make db-tools
       - name: Check or apply migrations

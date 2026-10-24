@@ -470,6 +470,31 @@ to regular SQL files; candidate deployment scripts and Makefiles never run on th
 credentialed host. Images are deployed by digest after publication. Image tags include SHA, run ID,
 and attempt so repeated builds do not overwrite Artifact Registry immutable tags.
 
+API images use a fresh Buildx builder with a GitHub Actions cache of intermediate
+layers (`mode=max`). Cache keys bind Linux/amd64, the Dockerfile (including the Go
+version), module manifests and selected SHA; restoration uses only the matching
+build-input prefix. Release builds alone save this main-branch cache. Rehearsals
+may restore it but never save candidate output to it. Cache storage is separate
+from Artifact Registry, whose per-run image tags remain immutable.
+
+GitHub gives default-branch `workflow_run` jobs read-only cache access unless an
+explicit mode overrides it. The production API caller sets `cache-mode: write`
+after trusted main-push CI selection; the shared API workflow inherits that access.
+The rehearsal caller sets `cache-mode: read` to cap inherited access, because
+`workflow_dispatch` otherwise permits cache writes. The shared workflow's
+release-only save condition remains an additional guard. See GitHub's
+[cache access defaults](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#cache-access-for-low-trust-workflow-triggers)
+and [reusable caller cache modes](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcache-mode).
+
+The Dockerfile compiles the runtime's external library imports before copying
+application source. Module downloads and Go compilation output live in ordinary
+exported layers, so a fresh builder can reuse compiled dependencies after a source
+edit. The deployment tests require this seed to match the current external imports;
+update it when runtime imports change. Application code still compiles from the
+selected source. Cache misses compile normally, failed exports are advisory, and
+publication or digest-resolution failure prevents deployment. Cache restore/save
+and export transfer time must be included when assessing deployment performance.
+
 Rehearsal validates history and runs only the selected dry-run push plan,
 including the bounded recovery exception described below when eligible. It never reaches the
 release-only migration application or promotion step and has no Vercel job.
