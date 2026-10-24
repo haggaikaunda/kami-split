@@ -213,6 +213,35 @@ withAuthFixture(origin, session, async () => {
     assert.equal(initial.rows.length, 50);
     assert.equal(initial.hasNextPage, true);
     assert.equal(initial.summary.netMinor, '22000');
+    stage = 'Overview negative refund report';
+    const refunds = new URL(
+      origin + listHref.replace('tab=transactions', 'tab=overview'),
+    );
+    refunds.searchParams.set('activity', 'refund');
+    await page.goto(refunds.href);
+    await expect(
+      page.getByRole('region', { name: 'Spending from your accounts' }),
+    ).toContainText('−$40.00');
+    stage = 'Overview complete report and recent detail';
+    await page.goto(
+      origin + listHref.replace('tab=transactions', 'tab=overview'),
+    );
+    const spending = page.getByRole('region', {
+      name: 'Spending from your accounts',
+    });
+    await expect(spending).toContainText('$220.00');
+    await expect(page.locator('[data-source-id]')).toHaveCount(3);
+    await page.locator('[data-source-id] a').first().click();
+    await editButton.waitFor();
+    await page
+      .getByRole('button', { name: 'Back to Overview', exact: true })
+      .click();
+    await expect(spending).toContainText('$220.00');
+    await page.getByRole('link', { name: 'View all', exact: true }).click();
+    assert.equal(new URL(page.url()).searchParams.get('period'), 'custom');
+    assert.equal(new URL(page.url()).searchParams.get('start'), filter.start);
+    assert.equal(new URL(page.url()).searchParams.get('end'), filter.end);
+    stage = 'filtered read and immutable facts';
     await page.goto(origin + listHref);
     await page
       .getByRole('heading', { name: 'Account activity', exact: true })

@@ -126,7 +126,7 @@ The [reporting-timezone API](reporting-timezone.md) implements the preference
 persistence and recovery boundary below; the [private reporting API](banking-reporting.md)
 uses that saved zone for preset dates. Account timezone controls and Personal
 navigation, transaction/report browsing and reusable private transaction
-detail/editing are implemented. Overview presentation remains a separate delivery.
+detail/editing and Overview are implemented. Overview uses the same complete server report, applied dates/filters and saved timezone as Transactions. Its recent rows are a preview; summary values and classification counts cover the complete matching dataset. Coverage, stale imports and historical discrepancies remain beside the spending card. Live enrollment and release remain separately gated.
 
 Save a validated IANA reporting timezone once from the initial device setting,
 using UTC if unavailable. Account can change it through a dedicated versioned

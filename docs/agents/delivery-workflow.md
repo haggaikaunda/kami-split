@@ -103,30 +103,47 @@ days. See [browser verification](../browser-verification.md) for build identity,
 viewport ownership and diagnostic details. Repository-wide formatting runs once
 in the repository validation job alongside immutable ordered migration-history
 validation, classifier/gate tests and pinned skill/resource validation, even for documentation-only changes.
-`api.yml` runs three independent jobs concurrently, each on its own GitHub-hosted
-runner with a 15-minute limit:
+`api.yml` runs source, migration, two database integration partitions and runtime
+checks concurrently on independent GitHub-hosted runners with 15-minute limits:
 
 - **Go source checks:** Go setup/module cache, Cloud Run traffic-selection tests,
   and authoritative `make api-check` coverage (formatting, module integrity, vet,
   regular/race tests, build, and gqlgen generation drift).
-- **Database integration checks:** Go setup, separate module and database build
-  caches, pinned database tools, sqlc drift, and `make db-test`
-  migration/permission/integration/reset/replay and dump/restore checks. Module
-  keys bind the runner OS/architecture/image, resolved Go version and module
-  manifests. The database build cache adds the checked-out GitHub revision and
-  restores the latest compatible prefix, so successful jobs refresh integration
-  and race build outputs without competing with source/runtime caches. Go still
-  validates cached build inputs; integration execution retains `-count=1`.
-  Cache misses or service failures never skip verification, and cache saves run
-  only after successful jobs. GitHub's ordinary branch/default-branch cache
-  visibility applies; PR caches remain scoped to their merge ref. The script
-  owns a unique disposable Supabase project and an EXIT trap for cleanup.
+- **Database migration and replay checks:** pinned tools, every staged historical
+  upgrade/recovery fixture, migration lint, desired-schema/ownership/ACL and
+  cluster-role comparison, reset/fresh replay, effective permission assertions
+  and sqlc drift. This lane starts from the shipped foundation.
+- **Database integration (banking / expenses):** each lane starts current
+  migrations in its own complete disposable Supabase project, including Auth
+  and SMTP. Packages remain serial within their cluster and retain race
+  detection and `-count=1`. Banking runs database/auth/profile/banking; expenses
+  runs invitation/expense/graph/onboarding/bootstrap. Banking also exercises the
+  actual worker binary. Each lane verifies populated financial/provider fixture
+  counts before full app schema/data dump, restore and exact dump comparison.
+  Source discovery independently checks the assigned union; reports require
+  actual successful Go package events, the checked-out revision and distinct
+  project identities. Unexpected skips fail; the existing named optional
+  Sandbox/browser checks and child-process entry points retain their original
+  opt-in conditions and skip reasons.
+  Module keys bind runner OS/architecture/image, resolved Go version and module
+  manifests. Build keys add lane and GitHub revision, restoring the latest
+  compatible lane prefix or the prior full database cache for initial seeding.
+  Cache misses/failures never skip execution; only successful jobs save outputs.
+  PR caches retain GitHub's ordinary merge-ref visibility. Every harness mode
+  owns its unique project and cleanup trap; default `make db-test` retains the
+  complete serial upgrade/integration/dump workflow.
 - **Container and local startup checks:** pinned database tools, Compose
   validation, one production image build, readiness and live GraphQL smoke,
   then coordinated Supabase/API startup via `make dev-up DEV_BUILD_FLAG=--no-build`.
   Both startup modes reuse the same runner-local image; normal `make dev-up`
   still builds by default. Separate unconditional Compose and Supabase cleanup
   steps ensure either cleanup is attempted even if the other fails.
+
+The API coverage aggregate runs with `always()`, requiring source, migrations,
+all integration matrix lanes and runtime success plus every expected database
+report, exact discovered package union, fixture population and matching revision.
+Missing, duplicate, stale, failed, skipped or cancelled coverage fails the API
+result and therefore the caller's stable required **Verify** check.
 
 Runner isolation prevents cross-job port/project conflicts and teardown. No Docker
 state is assumed to be shared across runners. The Dockerfile's `verify` target
@@ -141,7 +158,7 @@ The **Verify** job waits for classification, repository validation and both call
 It requires successful classification and repository validation and each affected result to equal
 `success`; only an explicitly inapplicable branch may equal `skipped`. Missing
 classification, failures, cancellation, and unexpected skips fail the gate. The reusable API result aggregates all
-three required jobs; none is optional or uses `continue-on-error`. Failure, cancellation, or unexpected skipping of
+required jobs and exact database coverage; none is optional or uses `continue-on-error`. Failure, cancellation, or unexpected skipping of
 an applicable dependency cannot produce a passing gate. Child checks have distinct names;
 branch protections should continue to require **Verify**. Do not change protections
 to accommodate this layout.

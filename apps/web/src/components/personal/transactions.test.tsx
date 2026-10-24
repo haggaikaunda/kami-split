@@ -1220,3 +1220,135 @@ it('delegates a directly delivered definitive actor denial to the financial sess
   );
   expect(host.textContent).not.toContain('original save is unconfirmed');
 });
+
+it('Overview renders complete negative totals, useful breakdown and three recent rows without summing its preview', async () => {
+  nav.search = 'tab=overview&period=year-to-date';
+  await act(async () =>
+    root.render(
+      <PersonalTransactions
+        overview
+        scope={scope}
+        names={new Map([['account', 'Private checking']])}
+      />,
+    ),
+  );
+  await answer(
+    report({ rows: [row('one'), row('two'), row('three'), row('four')] }),
+  );
+  expect(host.querySelector('h2')?.textContent).toBe(
+    'Spending from your accounts',
+  );
+  expect(host.textContent).toContain('−$40.00');
+  expect(host.textContent).toContain('Purchases & charges$100.00');
+  expect(host.textContent).toContain('Refunds received$140.00');
+  expect(host.textContent).toContain('History is partial or unknown');
+  expect(host.textContent).toContain('Historical discrepancy');
+  expect(host.textContent).toContain('5 transactions not reviewed');
+  expect(host.querySelectorAll('[data-source-id]')).toHaveLength(3);
+  const viewAll = host.querySelector<HTMLAnchorElement>('#overview-view-all')!;
+  expect(viewAll.getAttribute('href')).toContain(
+    'tab=transactions&period=year-to-date',
+  );
+  expect(
+    host.querySelector('#overview-review')?.getAttribute('href'),
+  ).toContain('reviewed=false');
+  expect(host.textContent).not.toContain('Net spending');
+  expect(host.textContent).not.toContain('Load more transactions');
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(
+        '[aria-label="How spending is calculated"]',
+      )!
+      .click(),
+  );
+  expect(host.querySelector('dialog')?.textContent).toContain(
+    'Refunds reduce their posting period',
+  );
+});
+
+it('Overview preserves filters as activity context instead of inventing a spending zero', async () => {
+  nav.search = 'tab=overview&period=last-month&state=pending';
+  await act(async () =>
+    root.render(
+      <PersonalTransactions overview scope={scope} names={new Map()} />,
+    ),
+  );
+  expect(requests[0].variables).toMatchObject({
+    filter: { period: 'LAST_MONTH', states: ['pending'] },
+  });
+  await answer(report({ summary: null, rows: [] }));
+  expect(host.textContent).toContain(
+    'No spending total applies to these filters',
+  );
+  expect(host.textContent).not.toContain('$0.00');
+});
+
+it('Overview refreshes a confirmed detail edit and restores its originating recent row after fresh authorization', async () => {
+  nav.search = 'tab=overview&period=last-month';
+  const overview = () =>
+    root.render(
+      <PersonalTransactions overview scope={scope} names={new Map()} />,
+    );
+  await act(async () => overview());
+  await answer();
+  scope.visits.set('overview-return', {
+    href: '/personal?tab=overview&period=last-month',
+    focus: 'transaction-source-1',
+    scroll: 140,
+  });
+  nav.search += '&transaction=source-1&source=overview-return';
+  await act(async () => overview());
+  await answer({
+    bankingTransaction: {
+      __typename: 'BankingTransactionDetail',
+      id: 'overview-detail',
+      code: 'READY',
+      currentId: 'source-1',
+      transaction: row(),
+    },
+  });
+  expect(host.querySelector('dialog')?.textContent).toContain(
+    'Back to Overview',
+  );
+  nav.search = 'tab=overview&period=last-month&restore=overview-return';
+  await act(async () => overview());
+  expect(document.activeElement?.id).not.toBe('transaction-source-1');
+  await answer(
+    report({
+      summary: {
+        netMinor: '5000',
+        purchaseMinor: '5000',
+        refundMinor: '0',
+        classificationComplete: true,
+      },
+    }),
+  );
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+  expect(document.activeElement?.id).toBe('transaction-source-1');
+  expect(host.textContent).toContain('$50.00');
+});
+
+it('Overview discards late actor responses and keeps unavailable reports distinct from an empty covered zero', async () => {
+  const overview = () =>
+    root.render(
+      <PersonalTransactions overview scope={scope} names={new Map()} />,
+    );
+  await act(async () => overview());
+  scope = {
+    ...scope,
+    id: 'bob',
+    actor: 'bob',
+    environment: queryEnvironment((request) => requests.push(request)),
+  };
+  await act(async () => overview());
+  await answer(report(), 0);
+  expect(host.textContent).not.toContain('Private merchant');
+  await answer(
+    report({ code: 'DATA_UNAVAILABLE', rows: [], summary: null, counts: null }),
+  );
+  expect(host.textContent).toContain(
+    'Initial history is importing or unavailable',
+  );
+  expect(host.textContent).not.toContain('$0.00');
+  expect(host.textContent).not.toContain('No activity in this period');
+});
