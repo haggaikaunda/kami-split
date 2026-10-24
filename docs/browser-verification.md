@@ -16,14 +16,14 @@ pnpm test:browser
 
 Hosted web CI runs inside the version-pinned official Playwright Noble image in
 `.github/workflows/web.yml`, which supplies browser binaries and OS libraries.
-It still selects Node 24 and installs frozen workspace dependencies. Before any
-web checks, `scripts/browser/ci-environment.mjs` verifies the installed Playwright
+It still selects Node 24 and installs frozen workspace dependencies. Before each
+browser partition, `scripts/browser/ci-environment.mjs` verifies the installed Playwright
 version against the exact package pin and image metadata, then launches Chromium.
 Missing or mismatched metadata, browser paths, binaries or libraries fail the job;
 CI does not install browsers or run apt. Update the image tag together with the
 Playwright dependency. Local browser setup remains as described above.
 
-The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
+The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI verifies and restores its sealed build artifact before doing this). The caller must ensure that build matches the current source.
 
 The suite also exercises collapsed Household balance sources, explicit repayment
 rows in both directions, return focus/scroll, another authorized recorder,
@@ -41,7 +41,26 @@ BROWSER_PORT=3395 BROWSER_AUTH_PORT=3396 \
   BROWSER_OUTPUT_DIR=/tmp/kami-browser-other pnpm test:browser
 ```
 
-The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. The affected-web job runs two browser workers on its existing runner, behind the unchanged required `Verify` gate. Known synthetic browser inputs require web verification; unknown root tooling remains conservatively classified as shared input.
+The default ignored `test-results/browser/` contains the HTML report and failure screenshots/traces. Use only this ignored tree or an external temporary output directory. CI uploads failures for seven days. Named test/action failures and uncaught browser errors identify the failing journey. No tests, unexpected skips, focused-only declarations and failed attempts fail the suite; retries are disabled. Hosted web verification overlaps Relay/lint/type/unit/helper checks with one
+production build, then runs three browser partitions on separate runners. Each
+partition retains two workers, zero retries and its own stateless services and
+output directory. Playwright's built-in sharding preserves nonparallel file groups;
+global `fullyParallel` remains false. `ci-build.mjs` packs hidden `.next` runtime
+files in a tar archive (excluding build cache), retaining permissions. Its manifest
+binds the archive, discovery inventory and Next build ID to the exact checkout
+revision. Each partition verifies the archive/revision before extraction and uses
+`BROWSER_SKIP_BUILD=1`.
+
+The independent reviewed discovery check validates all required journeys and
+viewport ownership and exercises all three actual shard selections. Each partition
+records every execution and attempt. The `Web coverage` job requires successful
+checks/build/matrix results and an exact disjoint union equal to the sealed full
+discovery inventory, with matching revision/build identity. Missing, failed,
+cancelled, unexpectedly skipped, duplicated or extra executions fail the reusable
+workflow and the unchanged required `Verify` gate. Matrix fail-fast is disabled to
+retain other partitions' diagnostics; per-partition reports and failure artifacts
+are retained seven days. Build artifacts are scoped to the same workflow run and
+retained one day. No build or report is reused across runs. Known synthetic browser inputs require web verification; unknown root tooling remains conservatively classified as shared input.
 
 ### Deterministic fixture facts and ordering
 

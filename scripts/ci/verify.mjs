@@ -4,8 +4,16 @@ export function validResult(required, result) {
     ? result === 'success'
     : required === 'false' && result === 'skipped';
 }
-export function verify({ repository, webRequired, apiRequired, web, api }) {
+export function verify({
+  classification,
+  repository,
+  webRequired,
+  apiRequired,
+  web,
+  api,
+}) {
   return (
+    classification === 'success' &&
     repository === 'success' &&
     validResult(webRequired, web) &&
     validResult(apiRequired, api)
@@ -15,6 +23,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   const e = process.env;
   if (
     !verify({
+      classification: e.CLASSIFICATION_RESULT,
       repository: e.REPOSITORY_RESULT,
       webRequired: e.WEB_REQUIRED,
       apiRequired: e.API_REQUIRED,

@@ -10,12 +10,68 @@ jobs:
   check:
     name: Web checks
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.0-noble
-      options: --init --ipc=host
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm relay:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: node --test scripts/vercel-promote.test.mjs
+      - run: pnpm test
+      - run: node --test scripts/browser/*.test.mjs
+  build:
+    name: Browser production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Seal production build and complete discovery inventory
+        run: node scripts/browser/ci-build.mjs seal
+      - uses: actions/upload-artifact@v7
+        with:
+          name: browser-production-build
+          path: test-results/browser-build/
+          if-no-files-found: error
+          retention-days: 1
+  browser:
+    name: Browser partition ${{ matrix.partition }}/3
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0
@@ -27,19 +83,58 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify prebuilt browser environment
         run: node scripts/browser/ci-environment.mjs
-      - run: pnpm relay:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: node --test scripts/vercel-promote.test.mjs
-      - run: pnpm test
-      - run: node --test scripts/browser/*.test.mjs
-      - run: pnpm build
-      - run: pnpm test:browser
+      - uses: actions/download-artifact@v8
+        with:
+          name: browser-production-build
+          path: test-results/browser-build/
+      - name: Verify revision and restore production build
+        run: node scripts/browser/ci-build.mjs restore
+      - run: pnpm test:browser --shard=${{ matrix.partition }}/3
         env:
           BROWSER_SKIP_BUILD: '1'
+          BROWSER_BUILD_MANIFEST: test-results/browser-build/build.json
+          BROWSER_COVERAGE_FILE: test-results/browser-coverage-${{ matrix.partition }}.json
+          BROWSER_PARTITION: ${{ matrix.partition }}
+          BROWSER_PARTITIONS: '3'
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: browser-coverage-${{ matrix.partition }}
+          path: test-results/browser-coverage-${{ matrix.partition }}.json
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: browser-failure
+          name: browser-failure-${{ matrix.partition }}
           path: test-results/browser/
           retention-days: 7
+  verify:
+    name: Web coverage
+    needs: [check, build, browser]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: browser-production-build
+          path: test-results/browser-build/
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: browser-coverage-*
+          path: test-results/browser-coverage/
+          merge-multiple: true
+      - name: Require successful jobs and exact browser coverage
+        if: ${{ always() }}
+        env:
+          WEB_CHECK_RESULT: ${{ needs.check.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+        run: node scripts/browser/aggregate.mjs
