@@ -61,8 +61,9 @@ opt into bounded reuse. A complete fresh visit reads the actual Relay snapshot
 synchronously through `useWorkspaceQuery`, without an initialization fallback.
 The public lookup/check APIs are pure; `useSyncExternalStore` owns public Relay
 subscriptions, global invalidation observation and operation retention after commit.
-Its subscription rechecks the store before React commits a retained snapshot, so
-collection or invalidation between render and subscription requires a fresh read.
+Its snapshot consistency check observes current Relay records before commit; the
+subscription closes the later notification window. Collection or invalidation
+between render and subscription requires a fresh read.
 Abandoned renders retain nothing; unmount releases every subscription and retain.
 Retention never updates Relay's original server fetch time or extends the 30-second
 policy. Missing fields, unknown fetch times, field errors and disposed scopes cannot
