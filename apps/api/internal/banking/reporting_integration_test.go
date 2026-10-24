@@ -164,11 +164,24 @@ func TestReportC5ArchiveDiscoveryEditsAndRestoration(t *testing.T) {
 	f.row(b, "2026-09-20", "10000", "posted", false)
 	oct := f.row(b, "2026-10-02", "5000", "posted", false)
 	f.usable(b)
+	before := f.service.ReadReport(ctx, reportRange(f.account))
 	f.confirm(f.preview(b, "2026-09-30", "ACTIVATE"))
 	request := reportRange(f.account)
 	r := f.service.ReadReport(ctx, request)
 	if r.Code != "READY" || r.TotalCount != 3 || r.Summary.NetMinor != "7000" || r.Accounts[0].PredecessorID == nil || len(r.Accounts[0].Archives) == 0 {
 		t.Fatalf("canonical C5 %+v", r)
+	}
+	if r.Revision == before.Revision {
+		t.Fatal("transition retained the previous complete report snapshot")
+	}
+	// The approved September/October example excludes the older June history:
+	// retain the original September exclusion and count only new October $50.
+	exact := reportRange(f.account)
+	exact.Filter.Start = "2026-09-01"
+	exact.Filter.End = "2026-10-02"
+	period := f.service.ReadReport(ctx, exact)
+	if period.Code != "READY" || period.TotalCount != 2 || period.Summary.NetMinor != "5000" || period.Summary.ExcludedCount != 1 {
+		t.Fatalf("selected C5 period double-counted archive/replacement facts: %+v", period)
 	}
 	for _, id := range []uuid.UUID{retained, excluded, oct} {
 		if d := f.service.ReadTransaction(ctx, id.String(), ""); d.Code != "READY" {
@@ -204,6 +217,9 @@ func TestReportC5ArchiveDiscoveryEditsAndRestoration(t *testing.T) {
 	}
 	f.confirm(f.preview(uuid.Nil, "", "RESTORE_PREDECESSOR"))
 	restored := f.service.ReadReport(ctx, reportRange(f.account))
+	if restored.Revision == r.Revision {
+		t.Fatal("recovery retained the previous complete report snapshot")
+	}
 	if restored.Code != "READY" || restored.Summary.NetMinor != "2000" || restored.Summary.ExcludedCount != 2 {
 		t.Fatalf("restoration lost latest annotations %+v", restored)
 	}
