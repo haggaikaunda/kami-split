@@ -59,6 +59,7 @@ for (const status of ['failure', 'cancelled', 'skipped', '', undefined]) {
   });
 }
 for (const [name, change, message] of [
+  ['missing job result', (c) => c.results.pop(), /Every web job/],
   ['missing partition', (c) => c.reports.pop(), /Missing or extra/],
   [
     'duplicate partition',

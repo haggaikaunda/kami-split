@@ -23,7 +23,7 @@ export function assertPartitionCoverage({
     'Missing build ID',
   );
   assert.ok(
-    results.length && results.every((result) => result === 'success'),
+    results.length === 3 && results.every((result) => result === 'success'),
     'Every web job must succeed',
   );
   assert.ok(Number.isInteger(count) && count > 0, 'Expected partition count');

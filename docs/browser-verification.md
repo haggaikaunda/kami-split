@@ -23,7 +23,7 @@ Missing or mismatched metadata, browser paths, binaries or libraries fail the jo
 CI does not install browsers or run apt. Update the image tag together with the
 Playwright dependency. Local browser setup remains as described above.
 
-The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI does this immediately after `pnpm build`). The caller must ensure that build matches the current source.
+The single command builds the current production app, starts owned loopback Auth and Next services, runs named Playwright tests with two workers at 390px and 1280px, and tears down both services. Stop any preview before rebuilding this checkout; do not run type checking concurrently with the build. Never share `.next` between worktrees. For a build just produced by the required checks, use `BROWSER_SKIP_BUILD=1 pnpm test:browser` (CI verifies and restores its sealed build artifact before doing this). The caller must ensure that build matches the current source.
 
 The suite also exercises collapsed Household balance sources, explicit repayment
 rows in both directions, return focus/scroll, another authorized recorder,
