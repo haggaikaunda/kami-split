@@ -20,6 +20,8 @@ import { ContentLoading } from '../ui/loading';
 import { Money } from '../financial/presentation';
 import { RestoreSource, ScopedLink, SourceReturn } from '../groups/navigation';
 import { TransactionControls } from './transaction-controls';
+import { TransactionDetail } from './transaction-detail';
+import type { SavedOrigin } from './annotation-draft';
 import {
   bankMoney,
   bankDateLabel,
@@ -36,7 +38,12 @@ type Context = {
   names: ReadonlyMap<string, string>;
   statuses?: ReadonlyMap<string, ImportFacts>;
 };
-type Traversal = { revision: string | null; pages: number; owner: object };
+type Traversal = {
+  revision: string | null;
+  pages: number;
+  owner: object;
+  refresh?: boolean;
+};
 type PageProgress = (revision: string | null, pages: number) => void;
 function restoreToken(scope: FinancialScope, params: URLSearchParams) {
   const historyToken =
@@ -58,6 +65,8 @@ export function PersonalTransactions(context: Context) {
  * come from fresh authorized queries when returning across report contexts. */
 function TransactionNavigation({ scope, names, statuses }: Context) {
   const params = useSearchParams();
+  const selection = transactionSelection(params);
+  const [reportVersion, setReportVersion] = useState(0);
   const filter = reportFilter(new URLSearchParams(params));
   const identity = JSON.stringify(filter);
   const [traversals, setTraversals] = useState(new Map<string, Traversal>());
@@ -66,34 +75,84 @@ function TransactionNavigation({ scope, names, statuses }: Context) {
   const origin = visit
     ? new URL(visit.href, 'https://workspace.invalid')
     : null;
+  const freshTraversal = traversals.get(identity);
+  const sourceVisit = params.get('source')
+    ? scope.visits.get(params.get('source')!)
+    : undefined;
+  const sourceIdentity = sourceVisit
+    ? JSON.stringify(
+        reportFilter(
+          new URL(sourceVisit.href, 'https://workspace.invalid').searchParams,
+        ),
+      )
+    : identity;
+  const originPages = traversals.get(sourceIdentity)?.pages ?? 1;
   const resume =
-    origin?.pathname === '/personal' &&
-    JSON.stringify(reportFilter(origin.searchParams)) === identity
-      ? traversals.get(identity)
-      : undefined;
+    freshTraversal?.refresh && (selection.source || visit)
+      ? freshTraversal
+      : origin?.pathname === '/personal' &&
+          JSON.stringify(reportFilter(origin.searchParams)) === identity
+        ? traversals.get(identity)
+        : undefined;
   return (
-    <TransactionRead
-      key={`${scope.id}:${identity}`}
-      scope={scope}
-      names={names}
-      statuses={statuses}
-      filter={filter}
-      resume={resume}
-      onPage={(revision, pages, owner) => {
-        setTraversals((previous) => {
-          const saved = previous.get(identity);
-          if (
-            saved?.owner === owner &&
-            saved.revision === revision &&
-            saved.pages >= pages
-          )
-            return previous;
-          const next = new Map(previous);
-          next.set(identity, { revision, pages, owner });
-          return next;
-        });
-      }}
-    />
+    <>
+      <TransactionRead
+        key={`${scope.id}:${identity}:${reportVersion}`}
+        scope={scope}
+        names={names}
+        statuses={statuses}
+        filter={filter}
+        resume={resume}
+        onPage={(revision, pages, owner) => {
+          setTraversals((previous) => {
+            const saved = previous.get(identity);
+            if (
+              saved?.owner === owner &&
+              saved.revision === revision &&
+              saved.pages >= pages
+            )
+              return previous;
+            const next = new Map(previous);
+            next.set(identity, { revision, pages, owner });
+            return next;
+          });
+        }}
+      />
+      {selection.source && (
+        <SelectedTransaction
+          scope={scope}
+          names={names}
+          originPages={originPages}
+          onSaved={(savedOrigin) => {
+            const returnIdentity = savedOrigin
+              ? JSON.stringify(
+                  reportFilter(
+                    new URL(savedOrigin.href, 'https://workspace.invalid')
+                      .searchParams,
+                  ),
+                )
+              : identity;
+            setTraversals((previous) => {
+              const next = new Map(previous);
+              for (const target of new Set([identity, returnIdentity])) {
+                const pages = Math.max(
+                  previous.get(target)?.pages ?? 1,
+                  target === returnIdentity ? (savedOrigin?.pages ?? 1) : 1,
+                );
+                next.set(target, {
+                  revision: null,
+                  pages,
+                  owner: {},
+                  refresh: true,
+                });
+              }
+              return next;
+            });
+            setReportVersion((value) => value + 1);
+          }}
+        />
+      )}
+    </>
   );
 }
 function TransactionRead({
@@ -187,6 +246,13 @@ function ReportContent({
   const restore = restoreToken(scope, new URLSearchParams(params));
   const [returnReady, setReturnReady] = useState<string | null>(null);
   const [extentReady, setExtentReady] = useState(!resume || resume.pages <= 1);
+  const replayPages = resume?.refresh
+    ? Math.min(resume.pages, Math.max(1, Math.ceil(report.totalCount / 50)))
+    : (resume?.pages ?? 1);
+  const emptyProgress = useEffectEvent(() => onPage(report.revision, 1));
+  useEffect(() => {
+    if (report.code === 'READY' && !report.rows.length) emptyProgress();
+  }, [report.code, report.revision, report.rows.length]);
   useEffect(() => {
     if (report.code !== 'READY' || !report.timezone) return;
     const timer = window.setInterval(() => {
@@ -210,6 +276,7 @@ function ReportContent({
   if (
     report.code === 'READY' &&
     resume &&
+    !resume.refresh &&
     (report.revision !== resume.revision ||
       (resume.pages > 1 && !report.rows.length))
   )
@@ -238,9 +305,6 @@ function ReportContent({
         </Status>
       ) : (
         <>
-          {selection.source && (
-            <SelectedTransaction scope={scope} names={names} />
-          )}
           {!selection.source && restore && (
             <ReturnAuthorization
               key={restore}
@@ -250,14 +314,9 @@ function ReportContent({
               onRetry={onRetry}
             />
           )}
-          <div
-            hidden={
-              Boolean(selection.source) ||
-              Boolean(restore && returnReady !== restore)
-            }
-          >
+          <div hidden={Boolean(restore && returnReady !== restore)}>
             {!selection.source &&
-              extentReady &&
+              (extentReady || !report.rows.length) &&
               (!restore || returnReady === restore) && (
                 <RestoreSource key={restore} scope={scope} allowed={[]} />
               )}
@@ -382,7 +441,7 @@ function ReportContent({
                 filter={filter}
                 onRestart={onRestart}
                 depth={1}
-                resumePages={resume?.pages ?? 1}
+                resumePages={replayPages}
                 onPage={onPage}
                 onExtentReady={() => setExtentReady(true)}
               />
@@ -789,79 +848,89 @@ function bankingIcon(activity: string, category: string): IconName {
   };
   return icons[category] ?? 'expense';
 }
-/** A fresh selected-row read outside list filters. #259 owns the full detail/editor;
- * this source/archive/discrepancy contract and ScopedLink origin remain its handoff. */
-function SelectedTransaction({ scope, names }: Context) {
+/** Fresh owner-only detail outside filters; URL source identity remains stable. */
+function SelectedTransaction({
+  scope,
+  names,
+  onSaved,
+  originPages,
+}: Context & { onSaved: (origin?: SavedOrigin) => void; originPages: number }) {
   const params = useSearchParams(),
     selected = transactionSelection(params);
   const [retry, setRetry] = useState(0);
+  const [savedSelection, setSavedSelection] = useState<string | null>(null);
+  const selectionIdentity = `${scope.id}:${selected.source}:${selected.archive}:${selected.discrepancy}`;
   return (
-    <section className={styles.selected}>
-      <h2>Selected transaction</h2>
-      {params.get('source') && scope.visits.has(params.get('source')!) && (
-        <SourceReturn
-          scope={scope}
-          label={
-            new URL(
-              scope.visits.get(params.get('source')!)!.href,
-              'https://workspace.invalid',
-            ).searchParams.has('archive')
-              ? 'Back to recovery archive'
-              : 'Back to transactions'
-          }
-        />
-      )}
-      {!(params.get('source') && scope.visits.has(params.get('source')!)) && (
-        <Link
-          href={personalHref(new URLSearchParams(params), {
-            transaction: null,
-          })}
-        >
-          Back to transactions
-        </Link>
-      )}
-      <NetworkQuery<personalTransactionSelectionQuery>
-        key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
-        scope={scope}
-        document={selectionDocument}
-        variables={{
-          source: selected.source!,
-          archive: selected.archive,
-          discrepancy: selected.discrepancy,
-        }}
-        fallback={
-          <ContentLoading layout="expenses" label="selected transaction" />
-        }
-        failure={
+    <NetworkQuery<personalTransactionSelectionQuery>
+      key={`${selected.source}:${selected.archive}:${selected.discrepancy}:${retry}`}
+      scope={scope}
+      document={selectionDocument}
+      variables={{
+        source: selected.source!,
+        archive: selected.archive,
+        discrepancy: selected.discrepancy,
+      }}
+      fallback={
+        <ContentLoading layout="expenses" label="selected transaction" />
+      }
+      failure={
+        <Status kind="error">
+          <ClearSavedEditFocus onClear={() => setSavedSelection(null)} />
+          The selected private record could not be loaded.{' '}
+          <Button onClick={() => setRetry((value) => value + 1)}>
+            Retry selected transaction
+          </Button>
+          <Link
+            href={personalHref(new URLSearchParams(params), {
+              transaction: null,
+            })}
+          >
+            Back to transactions
+          </Link>
+        </Status>
+      }
+    >
+      {(data) =>
+        data.bankingTransaction.code === 'READY' &&
+        data.bankingTransaction.transaction ? (
+          <TransactionDetail
+            key={`${scope.id}:${selected.source}:${selected.archive}:${selected.discrepancy}`}
+            scope={scope}
+            names={names}
+            transaction={data.bankingTransaction.transaction}
+            archive={selected.archive}
+            discrepancy={selected.discrepancy}
+            originPages={originPages}
+            onFieldSaved={onSaved}
+            focusEdit={savedSelection === selectionIdentity}
+            onFocusedEdit={() => setSavedSelection(null)}
+            onSaved={() => {
+              setSavedSelection(selectionIdentity);
+              setRetry((value) => value + 1);
+            }}
+          />
+        ) : (
           <Status kind="error">
-            The selected private record could not be loaded.{' '}
-            <Button onClick={() => setRetry((v) => v + 1)}>
-              Retry selected transaction
-            </Button>
+            <ClearSavedEditFocus onClear={() => setSavedSelection(null)} />
+            This private record is unavailable or no longer accessible.{' '}
+            <Link
+              href={personalHref(new URLSearchParams(params), {
+                transaction: null,
+              })}
+            >
+              Back to transactions
+            </Link>
           </Status>
-        }
-      >
-        {(data) =>
-          data.bankingTransaction.code === 'READY' &&
-          data.bankingTransaction.transaction ? (
-            <>
-              <RestoreSource scope={scope} allowed={[]} />
-              <TransactionRow
-                scope={scope}
-                names={names}
-                row={data.bankingTransaction.transaction}
-                selected
-              />
-            </>
-          ) : (
-            <Status kind="error">
-              This private record is unavailable or no longer accessible.
-            </Status>
-          )
-        }
-      </NetworkQuery>
-    </section>
+        )
+      }
+    </NetworkQuery>
   );
+}
+/** A failed fresh detail relinquishes the pending navigation-only focus intent. */
+function ClearSavedEditFocus({ onClear }: { onClear: () => void }) {
+  const clear = useEffectEvent(onClear);
+  useEffect(() => clear(), []);
+  return null;
 }
 function reportProblem(code: string) {
   switch (code) {

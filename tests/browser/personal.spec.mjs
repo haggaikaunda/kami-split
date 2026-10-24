@@ -963,6 +963,18 @@ function transactionRow(sourceId = 'source-private', extra = {}) {
     accountId: 'account-private',
     bindingId: 'binding-private',
     sourceRevision: '1',
+    materialRevision: '1',
+    annotationRevision: '0',
+    categoryOverride: null,
+    activityOverride: null,
+    note: null,
+    eligible: true,
+    authorizationDate: '2026-10-16',
+    providerPrimaryCategory: 'FOOD_AND_DRINK',
+    providerCategory: 'FOOD_AND_DRINK_GROCERIES',
+    providerConfidence: 'HIGH',
+    providerCode: 'purchase',
+    mappingVersion: 'pfc-v2',
     latestSourceRevision: '2',
     bankDate: '2026-10-17',
     amountMinor: '10000',
@@ -987,6 +999,9 @@ function transactionRow(sourceId = 'source-private', extra = {}) {
         annotation: {
           __typename: 'BankingAnnotationSnapshot',
           revision: '2',
+          materialRevision: '1',
+          category: null,
+          activity: null,
           note: 'Immutable captured private note',
           excluded: true,
           reviewed: false,
@@ -1107,7 +1122,9 @@ async function transactionServer(page, handler = () => undefined) {
       return route.fulfill({ json: { data: inventory() } });
     if (
       operation !== 'personalTransactionsQuery' &&
-      operation !== 'personalTransactionSelectionQuery'
+      operation !== 'personalTransactionSelectionQuery' &&
+      operation !== 'personalTransactionAnnotationMutation' &&
+      operation !== 'personalTransactionAnnotationRecoveryQuery'
     )
       return route.fallback();
     calls.push({ operation, variables });
@@ -1183,10 +1200,10 @@ test('Personal transactions apply drafts, preserve shared dates, and restore row
     })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+    page.getByRole('heading', { name: 'Transaction detail', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('link', { name: 'Back to transactions', exact: true })
+    .getByRole('button', { name: 'Back to transactions', exact: true })
     .click();
   await expect(page.locator('#transaction-source-private')).toBeFocused();
   await page
@@ -1204,14 +1221,14 @@ test('Personal transactions apply drafts, preserve shared dates, and restore row
     .first()
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+    page.getByRole('heading', { name: 'Transaction detail', exact: true }),
   ).toBeVisible();
   expect(calls.at(-1)).toEqual({
     operation: 'personalTransactionSelectionQuery',
     variables: { source: 'source-private', archive: null, discrepancy: false },
   });
   await page
-    .getByRole('link', { name: 'Back to recovery archive', exact: true })
+    .getByRole('button', { name: 'Back to recovery archive', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Recovery archive', exact: true }),
@@ -1284,10 +1301,10 @@ test('Personal transaction pagination restarts on changed snapshots and keeps fi
     .getByRole('link', { name: 'Second signed page', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+    page.getByRole('heading', { name: 'Transaction detail', exact: true }),
   ).toBeVisible();
   await page
-    .getByRole('link', { name: 'Back to transactions', exact: true })
+    .getByRole('button', { name: 'Back to transactions', exact: true })
     .click();
   await expect(page.locator('#transaction-second-page')).toBeFocused();
   expect(
@@ -1363,7 +1380,7 @@ test('Personal archive returns replay fresh signed extent and discard changed or
       .click();
     await page.locator('#current-archive-later').click();
     await expect(
-      page.getByRole('heading', { name: 'Selected transaction', exact: true }),
+      page.getByRole('heading', { name: 'Transaction detail', exact: true }),
     ).toBeVisible();
     await expect(
       page.locator('[data-source-id="current-outside"]:visible'),
@@ -1371,7 +1388,7 @@ test('Personal archive returns replay fresh signed extent and discard changed or
     returning = true;
     const before = calls.length;
     await page
-      .getByRole('link', { name: 'Back to recovery archive', exact: true })
+      .getByRole('button', { name: 'Back to recovery archive', exact: true })
       .click();
     if (mode === 'denied') {
       // Typed banking access denial invalidates the actor before normalization;
@@ -1588,5 +1605,442 @@ test('Personal transactions reflow long activity and controls in every appearanc
     await expect(
       page.getByRole('button', { name: 'Filters', exact: true }),
     ).toBeFocused();
+  }
+});
+
+test('Personal detail protects drafts, validates private values and recovers conflicts and uncertain saves', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let fact = transactionRow('source-private', {
+      amountMinor: '-10000',
+      activity: 'unresolved',
+      activityOverride: 'purchase',
+      materialConflict: true,
+      eligible: false,
+    }),
+    mode = 'ready',
+    frozen;
+  const receipts = new Map();
+  await transactionServer(page, async (operation, variables, route) => {
+    const detail = () => ({
+      __typename: 'BankingTransactionDetail',
+      id: `detail-${fact.annotationRevision}`,
+      code: 'READY',
+      currentId: fact.currentId,
+      transaction: fact,
+    });
+    if (operation === 'personalTransactionSelectionQuery')
+      return { bankingTransaction: detail() };
+    if (operation === 'personalTransactionAnnotationRecoveryQuery')
+      return {
+        bankingAnnotationOperation: receipts.get(variables.attemptId) ?? {
+          __typename: 'BankingAnnotationResult',
+          id: 'missing',
+          code: 'NOT_FOUND',
+          sourceId: null,
+          detail: null,
+        },
+      };
+    if (operation === 'personalTransactionsQuery')
+      return transactionReport({
+        revision: `revision-${fact.annotationRevision}`,
+        totalCount: 51,
+        rows: variables.after
+          ? [fact]
+          : Array.from({ length: 50 }, (_, index) =>
+              transactionRow(`first-${index}`, {
+                merchantName: `Earlier purchase ${index}`,
+              }),
+            ),
+        hasNextPage: !variables.after,
+        endCursor: variables.after ? null : 'signed-page',
+        counts: {
+          count: 51,
+          postedCount: 51,
+          pendingCount: 0,
+          removedCount: 0,
+          excludedCount: 0,
+          unresolvedCount: 1,
+          reviewedCount: 0,
+          classificationComplete: false,
+        },
+        summary: {
+          netMinor: '500000',
+          purchaseMinor: '500000',
+          refundMinor: '0',
+          classificationComplete: false,
+        },
+      });
+    if (operation !== 'personalTransactionAnnotationMutation') return;
+    const input = variables.input;
+    frozen = input;
+    if (mode === 'forbidden')
+      return {
+        editBankingAnnotation: {
+          __typename: 'BankingAnnotationResult',
+          id: 'denied-actor',
+          code: 'FORBIDDEN',
+          sourceId: null,
+          detail: null,
+        },
+      };
+    if (mode === 'conflict') {
+      mode = 'ready';
+      fact = {
+        ...fact,
+        id: 'changed-bank-fact',
+        amountMinor: '12345',
+        bankDate: '2026-10-18',
+        sourceRevision: '2',
+        materialRevision: '2',
+        annotationRevision: '1',
+        note: 'Concurrent saved note',
+      };
+      return {
+        editBankingAnnotation: {
+          __typename: 'BankingAnnotationResult',
+          id: 'conflict',
+          code: 'CONFLICT',
+          sourceId: fact.sourceId,
+          detail: detail(),
+        },
+      };
+    }
+    fact = {
+      ...fact,
+      id: `saved-${input.attemptId}`,
+      annotationRevision: String(Number(fact.annotationRevision) + 1),
+      ...(input.field === 'NOTE' ? { note: input.value } : {}),
+      ...(input.field === 'EXCLUDED'
+        ? { excluded: input.value === 'true', eligible: input.value !== 'true' }
+        : {}),
+    };
+    const result = {
+      __typename: 'BankingAnnotationResult',
+      id: input.attemptId,
+      code: 'READY',
+      sourceId: fact.sourceId,
+      detail: detail(),
+    };
+    receipts.set(input.attemptId, result);
+    if (mode === 'lost') {
+      mode = 'ready';
+      await route.abort('failed');
+      return false;
+    }
+    return { editBankingAnnotation: result };
+  });
+  await page.goto('/personal?tab=transactions&period=last-month&state=posted');
+  await page
+    .getByRole('button', { name: 'Load more transactions', exact: true })
+    .click();
+  await page.locator('#transaction-source-private').click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Transaction detail',
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByText('2026-10-16', { exact: true }).first(),
+  ).toBeVisible();
+  await expect(dialog.getByLabel('Private note', { exact: true })).toHaveCount(
+    0,
+  );
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+  await dialog
+    .getByLabel('Private note', { exact: true })
+    .fill('Intended private draft');
+  await page.evaluate(() => window.history.back());
+  await expect(
+    page.getByRole('dialog', { name: 'Discard unsaved changes?', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(dialog.getByLabel('Private note', { exact: true })).toHaveValue(
+    'Intended private draft',
+  );
+  await dialog
+    .getByLabel('Private note', { exact: true })
+    .fill('😀'.repeat(2001));
+  await expect(
+    dialog.getByRole('button', { name: 'Save changes', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    dialog.getByText(/Private note must contain at most/),
+  ).toBeVisible();
+  await dialog
+    .getByLabel('Private note', { exact: true })
+    .fill('Intended private draft');
+  mode = 'conflict';
+  await dialog
+    .getByRole('button', { name: 'Save changes', exact: true })
+    .click();
+  await expect(
+    dialog.getByText(/source or private annotation changed/),
+  ).toBeVisible();
+  await expect(dialog.getByLabel('Private note', { exact: true })).toHaveValue(
+    'Intended private draft',
+  );
+  await dialog
+    .getByRole('button', { name: 'Check current record', exact: true })
+    .click();
+  await dialog
+    .getByRole('button', { name: 'Use current versions', exact: true })
+    .click();
+  await expect(
+    dialog.getByText('Money out · Posted · 2026-10-18', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog
+      .getByLabel('Activity type', { exact: true })
+      .locator('option[value=refund]'),
+  ).toHaveCount(0);
+  await expect(
+    dialog
+      .getByLabel('Activity type', { exact: true })
+      .locator('option[value=purchase]'),
+  ).toHaveCount(1);
+  mode = 'lost';
+  await dialog
+    .getByRole('button', { name: 'Save changes', exact: true })
+    .click();
+  await expect(
+    dialog.getByRole('button', { name: 'Check original save', exact: true }),
+  ).toBeVisible();
+  const original = frozen;
+  page.once('dialog', async (prompt) => {
+    expect(prompt.type()).toBe('beforeunload');
+    await prompt.accept();
+  });
+  await page.reload();
+  await expect(page.getByLabel('Private note', { exact: true })).toHaveValue(
+    'Intended private draft',
+  );
+  await page
+    .getByRole('button', { name: 'Check original save', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Edit', exact: true }),
+  ).toBeFocused();
+  expect(frozen).toEqual(original);
+  await page
+    .getByRole('button', { name: 'Back to transactions', exact: true })
+    .click();
+  await expect(page.locator('#transaction-source-private')).toBeFocused();
+  await expect(page).toHaveURL(/period=last-month/);
+  await expect(page).toHaveURL(/state=posted/);
+  // A definitive actor denial disposes normalized records and purges durable
+  // drafts through the real financial session transport, before normalization.
+  await page.locator('#transaction-source-private').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page
+    .getByLabel('Private note', { exact: true })
+    .fill('Actor-private denied draft');
+  mode = 'forbidden';
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(
+    page.getByText(
+      /Financial access is unavailable|Account verification is unavailable/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('dialog', { name: 'Transaction detail', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText(fact.merchantName, { exact: true })).toHaveCount(
+    0,
+  );
+  expect(
+    await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((key) =>
+        key.startsWith('kami-personal-annotation:'),
+      ),
+    ),
+  ).toEqual([]);
+});
+
+test('Personal detail reflows private facts and editor across themes, narrow screens and enlarged text @owns-viewport', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  let state = 'posted',
+    snapshot,
+    releaseList,
+    listReady,
+    responseOrder;
+  await transactionServer(page, async (operation, variables, route) => {
+    if (operation === 'personalTransactionSelectionQuery') {
+      await route.fulfill({
+        json: {
+          data: {
+            bankingTransaction: {
+              __typename: 'BankingTransactionDetail',
+              id: `detail-${state}`,
+              code: 'READY',
+              currentId: variables.source,
+              transaction: snapshot,
+            },
+          },
+        },
+      });
+      responseOrder.push('detail');
+      releaseList();
+      return false;
+    }
+    if (operation === 'personalTransactionsQuery') {
+      await listReady;
+      const posted = state === 'posted';
+      await route.fulfill({
+        json: {
+          data: transactionReport({
+            rows: [snapshot],
+            totalCount: 1,
+            hasNextPage: false,
+            endCursor: null,
+            counts: {
+              __typename: 'BankingReportCounts',
+              count: 1,
+              postedCount: Number(posted),
+              pendingCount: Number(state === 'pending'),
+              removedCount: Number(state === 'removed'),
+              excludedCount: 0,
+              unresolvedCount: 0,
+              reviewedCount: 0,
+              classificationComplete: true,
+            },
+            summary: {
+              __typename: 'BankingReportSummary',
+              netMinor: posted ? snapshot.amountMinor : '0',
+              purchaseMinor: posted ? snapshot.amountMinor : '0',
+              refundMinor: '0',
+              classificationComplete: true,
+            },
+          }),
+        },
+      });
+      responseOrder.push('list');
+      return false;
+    }
+  });
+  for (const [width, theme, text, stateValue] of [
+    [320, 'light', 1, 'pending'],
+    [390, 'dark', 1, 'removed'],
+    [440, 'system', 2, 'posted'],
+    [1280, 'light', 2, 'posted'],
+    [1280, 'system', 1, 'posted'],
+  ]) {
+    state = stateValue;
+    // One immutable fact must have identical bytes in list and detail. Deliberately
+    // deliver detail first so a late list cannot replace its amount or state.
+    snapshot = transactionRow('source-private', {
+      id: `matrix-fact-${state}`,
+      processingState: state,
+      eligible: state === 'posted',
+      amountMinor: '9007199254740991',
+      name: 'A long original description '.repeat(12),
+    });
+    responseOrder = [];
+    listReady = new Promise((resolve) => {
+      releaseList = resolve;
+    });
+    app.setAppearance(theme.toUpperCase());
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({
+      colorScheme: theme === 'light' ? 'light' : 'dark',
+    });
+    await page.goto('/personal?tab=transactions&transaction=source-private');
+    await page.evaluate(
+      ({ text }) => {
+        document.documentElement.style.fontSize = `${text * 100}%`;
+      },
+      { theme, text },
+    );
+    const dialog = page.getByRole('dialog', {
+      name: 'Transaction detail',
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-theme',
+      theme === 'light' ? 'light' : 'dark',
+    );
+    await expect(page.locator('#transaction-source-private')).toHaveCount(1);
+    expect(responseOrder.slice(0, 2)).toEqual(['detail', 'list']);
+    await expect(
+      dialog.getByText('$90,071,992,547,409.91', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByText(
+        `Money out · ${state === 'posted' ? 'Posted' : state === 'pending' ? 'Pending' : 'Removed'}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`detail-read-${width}-${theme}-${text}.png`),
+      fullPage: true,
+    });
+    if (state !== 'posted')
+      await expect(
+        dialog.getByText(/contributes nothing to spending/),
+      ).toBeVisible();
+    // Editing replaces read-only facts and owns focus immediately, without a
+    // test-induced scroll/focus that could hide a broken transition.
+    await dialog.getByText('Original bank details', { exact: true }).click();
+    await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+    const editorHeading = dialog.getByRole('heading', {
+      name: 'Edit private annotations',
+      exact: true,
+    });
+    await expect(editorHeading).toBeFocused();
+    const firstControl = dialog.getByLabel('Activity type', { exact: true });
+    await page.keyboard.press('Tab');
+    await expect(firstControl).toBeFocused();
+    const transition = await dialog.evaluate((element) => {
+      const heading = element.querySelector('form h3').getBoundingClientRect();
+      const activity = element
+        .querySelector('form select')
+        .getBoundingClientRect();
+      return {
+        headingTop: heading.top,
+        headingBottom: heading.bottom,
+        activityTop: activity.top,
+        activityBottom: activity.bottom,
+        viewport: innerHeight,
+      };
+    });
+    expect(transition.headingTop).toBeGreaterThanOrEqual(0);
+    expect(transition.activityBottom).toBeLessThanOrEqual(transition.viewport);
+    expect(transition.activityTop - transition.headingBottom).toBeLessThan(
+      180 * text,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `detail-edit-top-${width}-${theme}-${text}.png`,
+      ),
+    });
+    await dialog.getByLabel('Reviewed', { exact: true }).focus();
+    await expect(dialog.getByLabel('Reviewed', { exact: true })).toBeFocused();
+    expect(
+      await dialog.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth + 1,
+      ),
+    ).toBe(true);
+    const geometry = await dialog.boundingBox();
+    expect(geometry.width).toBeLessThanOrEqual(width);
+    if (width >= 760) expect(geometry.x).toBeGreaterThan(0);
+    await page.screenshot({
+      path: testInfo.outputPath(`detail-${width}-${theme}-${text}.png`),
+      fullPage: true,
+    });
+    await dialog
+      .getByRole('button', { name: 'Cancel editing', exact: true })
+      .click();
+    await expect(
+      dialog.getByRole('button', { name: 'Edit', exact: true }),
+    ).toBeFocused();
+    await dialog
+      .getByRole('button', { name: 'Close Transaction detail', exact: true })
+      .click();
   }
 });

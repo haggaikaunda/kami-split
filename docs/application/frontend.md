@@ -180,12 +180,33 @@ Recovery archives and latest source discrepancies use separate report contexts.
 The `transaction` URL parameter is the stable source identity, `archive` is an
 optional immutable manifest identity, and `discrepancies=true` selects latest
 noncontributing source facts. The narrow selected-row reader freshly authorizes
-`bankingTransaction` outside list filters. It supplies source/return continuity for
-the separately owned full detail/editor. Current-record links clear archive and
+`bankingTransaction` outside list filters. It supplies source/return continuity for the reusable `TransactionDetail` panel.
+The panel opens read-only, separates bank facts from private annotations and uses
+a full explicit edit form. Its actor/source-scoped tab draft retains the opened
+source/material/annotation baseline and any frozen pending command. Each changed
+field saves independently; confirmed fields remain saved after a later failure.
+Conflicts require explicit current-version reapplication, and uncertain results
+recover the original receipt before an identical frozen retry. Explicit version
+reapplication also adopts the selected immutable bank facts for the displayed
+amount/date/status and compatible activity choices, while preserving remaining
+user input. Captured archive provenance remains separate from that editor baseline.
+Current archive
+copies link to their sole current editor; archive-only saves reread the selected
+manifest after the safe receipt. Native modal focus/inertness and dirty Back/Close
+protection preserve unfinished input. Logout, actor changes and access denial
+purge these drafts with existing financial storage. Typed annotation, detail and
+report actor denials are consumed before normalization. A definitive domain
+fallback calls the scope's idempotent `revokeAccess` boundary, which delegates to
+the same disposal/session-purge owner; a disposed scope cannot revoke a later
+actor. Receipt `NOT_FOUND` and operation `UNAVAILABLE` remain domain outcomes,
+not actor revocation. The navigator owns detail separately from reporting, so each confirmed field
+refreshes complete reporting without disposing remaining input; no client total is derived from loaded rows. Current-record links clear archive and
 discrepancy context while `ScopedLink` retains the exact actor-scoped origin.
 The actor-owned transaction navigator retains only each report revision and loaded
 page extent. A valid source return across contexts replays that extent from fresh
 signed continuations, then restores focus and scroll after fresh authorization.
+Confirmed private edits replay the bounded originating extent under a fresh signed
+anchor, including after recovery reload through navigation-only draft metadata.
 Changed revisions or invalid signed continuations discard the traversal and
 require an explicit restart; actor authorization loss follows the global
 access-recovery boundary above. Manual filter changes begin at page one. Restoring a source inside native
@@ -197,5 +218,5 @@ Account names come from all pages of the freshly authorized connection inventory
 current bindings take precedence over retired copies of one logical account.
 Genuinely unavailable retained identities use a labeled account fallback rather
 than invented bank names or masks. Reporting coverage and import/freshness facts remain
-independent. Connections owns existing-account management, explicit date-bound replacement and recovery. Full detail/private mutations remain a separate capability; connection success never proves zero spending,
+independent. Connections owns existing-account management, explicit date-bound replacement and recovery. Overview presentation remains separate; connection success never proves zero spending,
 complete history, renewed consent or a shared expense.

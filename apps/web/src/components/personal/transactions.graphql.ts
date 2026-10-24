@@ -5,6 +5,7 @@ export const report = graphql`
     $after: String
   ) {
     bankingReport(filter: $filter, first: 50, after: $after) {
+      __typename
       id
       code
       fieldErrors
@@ -116,11 +117,13 @@ export const selection = graphql`
       archiveId: $archive
       discrepancy: $discrepancy
     ) {
+      __typename
       id
       code
       currentId
       transaction {
         ...personalTransactionRow
+        ...personalTransactionDetail
       }
     }
   }
