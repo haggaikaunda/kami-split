@@ -862,8 +862,10 @@ withAuthFixture(origin, session, async () => {
           if (tab === 'Expenses')
             return !!document.querySelector('#ledger-expense-e1');
           if (tab === 'Activity')
-            return [...document.querySelectorAll('button')].some((e) =>
-              e.textContent.includes('added an expense'),
+            return [...document.querySelectorAll('button')].some(
+              (e) =>
+                e.getAttribute('aria-label')?.includes('added an expense') &&
+                e.textContent.includes('Fixture lunch'),
             );
           if (tab === 'Members')
             return [
