@@ -1,4 +1,4 @@
-import { setTimeout as delay } from 'node:timers/promises';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import { test as base, expect } from '@playwright/test';
 import { origin } from '../../scripts/browser/settings.mjs';
 import { session, user } from '../../scripts/browser/session.mjs';
@@ -49,8 +49,8 @@ export const test = base.extend({
         hold.started.resolve();
         await hold.released.promise;
       }
-      // Model an asynchronous service, as in the retained navigation fixture.
-      await delay(100);
+      // Keep responses asynchronous; ordering-sensitive tests use explicit holds.
+      await nextTurn();
       try {
         await route.fulfill({
           json: { data },
