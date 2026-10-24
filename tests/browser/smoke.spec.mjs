@@ -1783,16 +1783,19 @@ test('expense Escape consumes a fresh first page before completing the restored 
     prematureContinuation,
     'Replay waits for the fresh first-page anchor',
   ).toBe(false);
-  expect(
-    app.requests
-      .slice(returnRequests)
-      .some(
-        (request) =>
-          request.operation === 'expensesGroupQuery' &&
-          request.variables.after === 'fresh-e6',
-      ),
-    'Continuation uses the new first-page anchor',
-  ).toBe(true);
+  await expect
+    .poll(
+      () =>
+        app.requests
+          .slice(returnRequests)
+          .some(
+            (request) =>
+              request.operation === 'expensesGroupQuery' &&
+              request.variables.after === 'fresh-e6',
+          ),
+      'Continuation uses the new first-page anchor',
+    )
+    .toBe(true);
   await expect(origin).toBeAttached();
   await expect(origin).toBeFocused();
   await expect(page.locator('[id^="ledger-expense-"]')).toHaveCount(9);
