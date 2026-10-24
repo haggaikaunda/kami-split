@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import { writeFile } from 'node:fs/promises';
 import { test, expect } from './fixtures.mjs';
 import { responseFor } from './data.mjs';
+import { isRouteNavigation } from '../../scripts/browser/route-navigation.mjs';
 
 // Contexts, fixture state, held routes and testInfo output paths are test-owned.
 // Keep other files serial unless their ownership has also been audited.
@@ -564,8 +565,7 @@ test('loading handoff: route cue, one slow content status, failure and one expli
   await page.route('**/groups/F?*', async (route) => {
     if (
       !heldRoute &&
-      new URL(route.request().url()).searchParams.get('tab') === 'balances' &&
-      route.request().headers().rsc === '1'
+      isRouteNavigation(route.request(), '/groups/F?tab=balances')
     ) {
       heldRoute = true;
       routeStarted.resolve();
@@ -857,11 +857,7 @@ test('rapid route destinations: abandoned link feedback clears before its late r
   const released = Promise.withResolvers();
   let held = false;
   await page.route('**/groups/F?*', async (route) => {
-    if (
-      !held &&
-      new URL(route.request().url()).searchParams.get('tab') === 'expenses' &&
-      route.request().headers().rsc === '1'
-    ) {
+    if (!held && isRouteNavigation(route.request(), '/groups/F?tab=expenses')) {
       held = true;
       started.resolve();
       await released.promise;
