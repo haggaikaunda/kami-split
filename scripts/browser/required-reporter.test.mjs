@@ -22,6 +22,7 @@ for (const status of [
     assert.equal(result.status, status === 'passed' ? 'passed' : 'failed');
     assert.equal(
       verify({
+        classification: 'success',
         repository: 'success',
         webRequired: 'true',
         apiRequired: 'false',

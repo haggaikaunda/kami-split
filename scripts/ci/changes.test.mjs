@@ -133,7 +133,14 @@ test('aggregate exhaustively rejects failed, cancelled, unexpected skipped and m
         for (const api of results)
           for (const repository of results) {
             assert.equal(
-              verify({ repository, webRequired, apiRequired, web, api }),
+              verify({
+                classification: 'success',
+                repository,
+                webRequired,
+                apiRequired,
+                web,
+                api,
+              }),
               repository === 'success' &&
                 web === { true: 'success', false: 'skipped' }[webRequired] &&
                 api === { true: 'success', false: 'skipped' }[apiRequired] &&
