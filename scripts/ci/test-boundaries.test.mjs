@@ -9,11 +9,7 @@ import { classify, git, pathRule } from './changes.mjs';
 // dependency analyzer. New loaders/generators require a fresh rule audit.
 function referencedPaths(file, literal) {
   if (literal.startsWith('@/')) return [`apps/web/src/${literal.slice(2)}`];
-  if (
-    /^(\.agents\/|\.codex\/|scripts\/agents\/|docs\/agents\/records\/)/.test(
-      literal,
-    )
-  )
+  if (/^(\.agents\/|\.codex\/|scripts\/|docs\/agents\/records\/)/.test(literal))
     return [literal];
   if (!literal.startsWith('.')) return [];
   return [posix.normalize(posix.join(posix.dirname(file), literal))];
@@ -58,6 +54,7 @@ test('runtime references and generation cannot hide behind a unit-test exemption
   const exempt = new Set([
     'apps/web/src/lib/value.test.ts',
     'apps/web/src/lib/fixture.test.tsx',
+    'scripts/db-partitions.mjs',
   ]);
   for (const source of [
     "import {value} from './value.test';",
@@ -71,6 +68,13 @@ test('runtime references and generation cannot hide behind a unit-test exemption
         .length,
       source,
     );
+  assert.ok(
+    webBoundaryViolations(
+      'scripts/ci/release.mjs',
+      "import '../db-partitions.mjs';",
+      exempt,
+    ).length,
+  );
   assert.ok(
     webBoundaryViolations(
       'apps/web/src/lib/value.test.ts',
@@ -109,6 +113,7 @@ test('current runtime and Relay inputs respect non-deploying test/tooling bounda
       /^apps\/web\/.*\.tsx?$/.test(file) ||
       file === 'scripts/relay/generate.mjs' ||
       /^scripts\/deployment\/.*\.mjs$/.test(file) ||
+      /^scripts\/ci\/(release|verify)\.mjs$/.test(file) ||
       file === 'package.json',
   )) {
     assert.deepEqual(
@@ -142,9 +147,11 @@ test('current runtime and Relay inputs respect non-deploying test/tooling bounda
   }
 });
 
-test('agent resources remain outside production image COPY inputs', () => {
+test('agent and CI verification resources remain outside production image COPY inputs', () => {
   const files = git(['ls-files', '-z']).split('\0').filter(Boolean);
-  const resources = files.filter((file) => /^agent-/.test(pathRule(file).rule));
+  const resources = files.filter((file) =>
+    /^(agent-|ci-verification-tooling)/.test(pathRule(file).rule),
+  );
   assert.ok(resources.length > 0);
   const source = readFileSync('apps/api/Dockerfile', 'utf8');
   for (const copy of source.matchAll(/^COPY\s+(?!\-\-from)(.+)$/gm)) {
@@ -160,8 +167,39 @@ test('agent resources remain outside production image COPY inputs', () => {
             path !== '' &&
             file !== path &&
             !file.startsWith(`${path}/`),
-          `${input} copies agent resource ${file}`,
+          `${input} copies verification resource ${file}`,
         );
     }
   }
+});
+
+// Shell release entry points use repository-root paths. Keep exact helper
+// references disjoint; relative JS imports are covered by the AST guard above.
+function shellVerificationReferences(source, helpers) {
+  return helpers.filter((path) => source.includes(path));
+}
+
+test('production shell commands cannot invoke exempt CI helpers', () => {
+  const files = git(['ls-files', '-z']).split('\0').filter(Boolean);
+  const helpers = files.filter(
+    (file) =>
+      pathRule(file).rule === 'ci-verification-tooling' &&
+      file.startsWith('scripts/'),
+  );
+  assert.ok(helpers.includes('scripts/db-test.sh'));
+  for (const file of files.filter(
+    (file) =>
+      /^scripts\/deployment\/.*\.sh$/.test(file) ||
+      (/^\.github\/workflows\//.test(file) &&
+        pathRule(file).rule !== 'ci-verification-tooling'),
+  ))
+    assert.deepEqual(
+      shellVerificationReferences(readFileSync(file, 'utf8'), helpers),
+      [],
+      file,
+    );
+  assert.deepEqual(
+    shellVerificationReferences('bash scripts/db-test.sh migrations', helpers),
+    ['scripts/db-test.sh'],
+  );
 });
