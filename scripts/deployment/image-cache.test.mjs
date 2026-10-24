@@ -36,9 +36,11 @@ function fixture(t) {
 printf '%s\\n' "$*" >> "$CALLS"
 if [[ "$1 $2" == 'buildx build' ]]; then
   [[ "\${BUILD_EXIT:-0}" == 0 ]] || exit "$BUILD_EXIT"
-  if [[ "\${EXPORT_CACHE:-1}" == 1 ]]; then
-    mkdir -p "$RUNNER_TEMP/api-build-cache-export"
-    printf '{}' > "$RUNNER_TEMP/api-build-cache-export/index.json"
+  if [[ "$*" == *--cache-to* ]]; then
+    mkdir -p "$RUNNER_TEMP/api-build-cache-export" || exit 23
+    if [[ "\${EXPORT_CACHE:-1}" == 1 ]]; then
+      printf '{}' > "$RUNNER_TEMP/api-build-cache-export/index.json"
+    fi
   fi
 fi
 `,
@@ -104,6 +106,33 @@ test('failed cache export still publishes and cannot be saved under a new revisi
   const f = fixture(t);
   assert.equal(f.run({ EXPORT_CACHE: '0' }).status, 0);
   assert.ok(!readFileSync(f.env.GITHUB_OUTPUT, 'utf8').includes('cache_ready'));
+});
+
+test('an export path collision is advisory and cannot publish a stale cache', (t) => {
+  for (const collision of ['file', 'stale-directory']) {
+    const f = fixture(t);
+    const exportRoot = join(f.root, 'api-build-cache-export');
+    if (collision === 'file') writeFileSync(exportRoot, 'preserved');
+    else {
+      mkdirSync(exportRoot);
+      writeFileSync(join(exportRoot, 'index.json'), 'stale');
+    }
+    const result = f.run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /cache export disabled/);
+    assert.ok(!f.calls().includes('--cache-to'));
+    assert.match(f.calls(), /push /);
+    const output = readFileSync(f.env.GITHUB_OUTPUT, 'utf8');
+    assert.match(output, /ref=.*\/api@sha256:[a-f0-9]{64}/);
+    assert.ok(!output.includes('cache_ready'));
+    assert.equal(
+      readFileSync(
+        collision === 'file' ? exportRoot : join(exportRoot, 'index.json'),
+        'utf8',
+      ),
+      collision === 'file' ? 'preserved' : 'stale',
+    );
+  }
 });
 
 test('dependency seed tracks external runtime imports and remains before application source', () => {
