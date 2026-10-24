@@ -526,3 +526,67 @@ it('captures nonempty variables for one keyed warm visit and separates changed i
   expect(requests).toHaveLength(2);
   expect(requests[1].variables.first).toBe(10);
 });
+
+it('rechecks age after an interrupted warm render and never commits the expired payload', async () => {
+  let now = 100_000;
+  vi.spyOn(Date, 'now').mockImplementation(() => now);
+  await prime();
+  let release!: () => void;
+  let blocked = true;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const committed: string[] = [];
+  function Content({ value }: { value: string }) {
+    useLayoutEffect(() => {
+      committed.push(value);
+    });
+    return <p>{value}</p>;
+  }
+  function Gate() {
+    if (blocked) throw gate;
+    return null;
+  }
+  await act(async () =>
+    startTransition(() =>
+      root.render(
+        <>
+          <NetworkQuery<householdAccessQuery>
+            reuse
+            scope={scope}
+            document={documentQuery}
+            variables={{}}
+            fallback={<p>Authorizing</p>}
+            failure={<p>Read failed</p>}
+          >
+            {(data) => (
+              <Content
+                value={
+                  data.viewer.__typename === 'Viewer'
+                    ? (data.viewer.groups[0]?.id ?? '')
+                    : 'Denied'
+                }
+              />
+            )}
+          </NetworkQuery>
+          <Gate />
+        </>,
+      ),
+    ),
+  );
+  expect(committed).toEqual([]);
+  now += 30_000;
+  await act(async () => {
+    blocked = false;
+    release();
+  });
+  expect(host.textContent).toContain('Authorizing');
+  expect(committed).toEqual([]);
+  expect(requests).toHaveLength(2);
+  await act(async () => requests[1].next(response('fresh-after-interruption')));
+  expect(host.textContent).toBe('fresh-after-interruption');
+  expect(committed.length).toBeGreaterThan(0);
+  expect(committed.every((value) => value === 'fresh-after-interruption')).toBe(
+    true,
+  );
+});

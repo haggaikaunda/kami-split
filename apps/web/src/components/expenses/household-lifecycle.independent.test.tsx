@@ -236,3 +236,43 @@ it('commits a valid complete cached composed ledger directly without initializin
   expect(commits.every((text) => text.includes('private ledger'))).toBe(true);
   expect(requests).toHaveLength(1);
 });
+
+it.each(['incomplete', 'empty-context', 'mismatched-context'])(
+  'withholds every cached ledger commit for %s composed data',
+  async (condition) => {
+    const payload = result(
+      condition === 'empty-context' ? '' : 'same',
+      condition === 'empty-context'
+        ? ''
+        : condition === 'mismatched-context'
+          ? 'different'
+          : 'same',
+    );
+    if (condition === 'incomplete')
+      payload.householdDashboard.state = 'INCOMPLETE';
+    await act(async () => root.render(<HouseholdLedger scope={scope} />));
+    await act(async () => {
+      requests[0].next(payload);
+      requests[0].complete();
+    });
+    await act(async () => root.render(null));
+    const commits: string[] = [];
+    await act(async () =>
+      root.render(
+        <Profiler
+          id="invalid-cached-ledger"
+          onRender={() => commits.push(host.textContent ?? '')}
+        >
+          <HouseholdLedger scope={scope} />
+        </Profiler>,
+      ),
+    );
+    expect(commits.length).toBeGreaterThan(0);
+    expect(commits.every((text) => !text.includes('private ledger'))).toBe(
+      true,
+    );
+    expect(host.querySelector('[data-ledger]')).toBeNull();
+    expect(host.querySelector('[role=alert]')).not.toBeNull();
+    expect(requests).toHaveLength(1);
+  },
+);
