@@ -55,20 +55,20 @@ jobs:
       sha: ${{ github.event.workflow_run.head_sha }}
     secrets: inherit
 
-  web:
-    name: Deploy web
-    needs: [plan, api]
-    if: >-
-      ${{ !cancelled() && needs.plan.result == 'success' &&
-          needs.plan.outputs.deploy_web == 'true' &&
-          ((needs.plan.outputs.deploy_api == 'true' && needs.api.result == 'success') ||
-           (needs.plan.outputs.deploy_api == 'false' && needs.api.result == 'skipped')) }}
+  web-prepare:
+    name: Prepare production web candidate
+    needs: plan
+    if: ${{ needs.plan.result == 'success' && needs.plan.outputs.deploy_web == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: Production
+    outputs:
+      url: ${{ steps.deployment.outputs.url }}
+      api_origin: ${{ vars.PRODUCTION_API_ORIGIN }}
+      sha: ${{ github.event.workflow_run.head_sha }}
     env:
-      API_ORIGIN: ${{ needs.api.outputs.service_url || vars.PRODUCTION_API_ORIGIN }}
-      CONFIGURED_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+      API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
@@ -78,6 +78,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -92,27 +93,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: |
-          set -euo pipefail
-          required=(
-            API_ORIGIN PRODUCTION_WEB_ORIGIN SUPABASE_PROJECT_REF
-            SUPABASE_PUBLISHABLE_KEY VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN
-            VERCEL_AUTOMATION_BYPASS_SECRET
-          )
-          for name in "${required[@]}"; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "Missing required production setting: $name" >&2
-              exit 1
-            fi
-          done
-          [[ "$API_ORIGIN" == https://* ]]
-          [[ "$API_ORIGIN" != */ ]]
-          [[ "$PRODUCTION_WEB_ORIGIN" == "https://finances.mckardah.com" ]]
-          [[ "$SUPABASE_PROJECT_REF" == "zlxpapkxacnwnmgagbth" ]]
-          if [[ -n "$CONFIGURED_API_ORIGIN" && "$CONFIGURED_API_ORIGIN" != "$API_ORIGIN" ]]; then
-            echo "PRODUCTION_API_ORIGIN does not match the deployed Cloud Run service URL" >&2
-            exit 1
-          fi
+        run: node scripts/deployment/web-selection.mjs prepare
 
       - name: Deploy web to Vercel
         id: deployment
@@ -139,11 +120,47 @@ jobs:
           [[ "$deployment_url" == https://* ]]
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
 
+  web:
+    name: Verify and promote web
+    needs: [plan, api, web-prepare]
+    if: >-
+      ${{ !cancelled() && needs.plan.result == 'success' &&
+          needs.plan.outputs.deploy_web == 'true' &&
+          needs.web-prepare.result == 'success' &&
+          ((needs.plan.outputs.deploy_api == 'true' && needs.api.result == 'success') ||
+           (needs.plan.outputs.deploy_api == 'false' && needs.api.result == 'skipped')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Production
+    env:
+      API_ORIGIN: ${{ needs.web-prepare.outputs.api_origin }}
+      CONFIGURED_API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+      RELEASED_API_ORIGIN: ${{ needs.api.outputs.service_url }}
+      API_REQUIRED: ${{ needs.plan.outputs.deploy_api }}
+      API_RESULT: ${{ needs.api.result }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      PREPARED_SHA: ${{ needs.web-prepare.outputs.sha }}
+      DEPLOYMENT_URL: ${{ needs.web-prepare.outputs.url }}
+      PRODUCTION_WEB_ORIGIN: ${{ vars.PRODUCTION_WEB_ORIGIN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Validate prepared candidate and released API identity
+        run: node scripts/deployment/web-selection.mjs promote
+
       - name: Verify staged web deployment
         shell: bash
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
         run: |
           set -euo pipefail
           supabase_origin="https://${SUPABASE_PROJECT_REF}.supabase.co"
@@ -171,7 +188,6 @@ jobs:
       - name: Promote verified web deployment
         shell: bash
         env:
-          DEPLOYMENT_URL: ${{ steps.deployment.outputs.url }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
@@ -200,7 +216,7 @@ jobs:
 
   release-status:
     name: Exact-commit API release gate
-    needs: [plan, api, web]
+    needs: [plan, api, web-prepare, web]
     if: >-
       ${{ always() && github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.event == 'push' &&

@@ -183,7 +183,7 @@ Repository or environment variables are non-secret identifiers:
 | `SUPABASE_PROJECT_REF`                     | `zlxpapkxacnwnmgagbth`.                                                                             |
 | `SUPABASE_PUBLISHABLE_KEY`                 | Publishable/anonymous key for the selected project.                                                 |
 | `PRODUCTION_WEB_ORIGIN`                    | Canonical HTTPS web origin without a trailing slash.                                                |
-| `PRODUCTION_API_ORIGIN`                    | Required for web-only releases; must equal the HTTPS Cloud Run origin without a trailing slash.     |
+| `PRODUCTION_API_ORIGIN`                    | Required for every web candidate; must equal the HTTPS Cloud Run origin without a trailing slash.   |
 | `INVITATION_FROM`                          | Verified sender address `invites@finances.mckardah.com`.                                            |
 | `DATABASE_URL_SECRET_VERSION`              | Positive numeric version of `kami-split-database-url` selected for the release.                     |
 | `SUPABASE_CA_SECRET_VERSION`               | Positive numeric version of `kami-split-supabase-ca` selected for the release.                      |
@@ -301,12 +301,12 @@ The root [`.vercelignore`](../../.vercelignore) excludes local verification outp
 Vercel uses Node 24, pnpm 11.25.0, the repository lockfile, and the existing
 monorepo build commands described in [repository layout](../repository-layout.md).
 Provider-native Git push deployment must not race GitHub Actions; production is
-deployed by the serialized GitHub workflow after migrations and API readiness
-succeed. The workflow passes the Cloud Run URL discovered during that same run
-to Vercel, which allows the initial deployment before a Cloud Run service URL is
-known. After the first successful run, record that URL as
-`PRODUCTION_API_ORIGIN`; later runs fail before web deployment if the configured
-value and actual service URL differ.
+deployed by the serialized GitHub workflow. Candidate preparation overlaps API
+release, using `PRODUCTION_API_ORIGIN` from the GitHub `Production` environment.
+This URL is required before preparing a web candidate, including combined releases;
+bootstrap the API and record its canonical Cloud Run URL first. Before any staged
+compatibility probe or web promotion, the required API release must succeed and
+its discovered service URL must exactly equal the origin used by the candidate.
 
 | Vercel production variable       | Value                                             |
 | -------------------------------- | ------------------------------------------------- |
@@ -336,8 +336,8 @@ Before release, verify these required selections:
 - The canonical Vercel production origin, organization ID, and project ID are in
   the GitHub `Production` environment.
 - The invitation sender domain and address must be verified.
-- The Cloud Run service URL is discovered during deployment and must be recorded
-  as `PRODUCTION_API_ORIGIN` after the first successful run.
+- The canonical Cloud Run service URL must be recorded as `PRODUCTION_API_ORIGIN`
+  after API bootstrap and before the first web candidate is prepared.
 
 The standalone production workflow listens for completion of `CI` on `main` and
 runs only when the triggering CI event was a successful push. It checks out and
@@ -353,18 +353,26 @@ traffic to it. Existing services receive a candidate with zero traffic (`--no-tr
 first deployment only, a successful empty service lookup permits creation without
 that flag because Cloud Run rejects it for a new service. The first revision is
 therefore reachable before the workflow readiness checks; no prior API revision
-exists to preserve. Web deployment still waits for candidate and service readiness.
+exists to preserve. Web compatibility checks and promotion still wait for candidate and service readiness.
 Failed or unexpected service lookups stop deployment instead of being treated as
 service absence. `bash scripts/cloud-run-traffic-flag-test.sh` exercises first
 creation, existing-service staging, and lookup failure paths in API CI.
 
 Core API configuration is validated before authentication,
-migration, or deployment. Web-specific configuration and the optional canonical
-API-origin assertion are validated after the API is healthy but before Vercel is
-changed.
-Only after the API passes readiness does the web job use a pinned Vercel CLI
-release to create a staged production build with the exact API, Supabase, and
-canonical-origin settings. Read-only preflight checks exercise the staged page,
+migration, or deployment. Web-specific configuration is validated before candidate
+preparation. The independent preparation job uses the pinned Vercel CLI with
+`--prod --skip-domain` to create a genuine production candidate with the configured
+API, Supabase, and canonical-origin settings in both build and runtime environments.
+It checks out the exact selected commit and can run alongside API build, migration,
+and release. The API URL is consumed by the request-time proxy; the current web
+build does not fetch live API data. Changes introducing build-time API reads must
+reassess this ordering.
+
+A separate web job requires successful preparation and exact required API success
+(or an explicitly inapplicable, skipped API job). It checks candidate commit identity
+and configured/released API-origin agreement before any staged probe or promotion.
+A preparation failure or a failed, cancelled or unexpectedly skipped required API
+cannot produce a successful release status. Read-only preflight checks exercise the staged page,
 public Supabase configuration route, and GraphQL health request before the build
 is promoted to the production domain. Generated deployment URLs remain protected
 by Vercel Deployment Protection: all three staged checks use ordinary `curl`
