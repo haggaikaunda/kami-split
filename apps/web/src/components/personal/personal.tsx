@@ -102,6 +102,7 @@ function PersonalRead({
       />
       {active ? (
         <NetworkQuery<personalInventoryQuery>
+          reuse={version === 0}
           key={version}
           scope={scope}
           document={document}
@@ -290,6 +291,7 @@ function TransactionInventory({
   if (result.hasNextPage && result.endCursor)
     return (
       <NetworkQuery<personalInventoryQuery>
+        reuse
         key={retry}
         scope={scope}
         document={document}
@@ -356,6 +358,7 @@ function InventoryPage({
         result.endCursor &&
         (next ? (
           <NetworkQuery<personalInventoryQuery>
+            reuse
             key={retry}
             document={document}
             scope={scope}

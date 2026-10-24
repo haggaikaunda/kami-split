@@ -94,7 +94,8 @@ Next Link may prefetch route code/RSC payloads; that prefetch does not authorize
 private data. Tab navigation owns no speculative financial intent request.
 
 Read-only Group/Trip tabs, Household summary/membership/access, the initial
-Household expense traversal and first Activity pages may reuse complete Relay data
+Household expense traversal, first Activity pages and Personal inventory/report
+operations may reuse complete Relay data
 for **30 seconds from its server fetch**. Relay owns the only private store and its
 native operation fetch timestamps; its release buffer retains at most 30 released
 operations. Memory pressure/collection, missing fields, expiry or explicit store
@@ -124,7 +125,19 @@ aborts requests, hides protected UI and guards late responses. Reload rechecks a
 in a new scope. Logout, account switch and session expiry likewise dispose the scope.
 Recovery-query NOT_FOUND remains an operation outcome; transport failures, unavailable
 projections and legitimate empty lists do not become access denial. There is no cached
-fallback after denial. Retained references are released on owner unmount; normal
+fallback after denial. Eligible visits use a pure subscribed Relay snapshot rather than initializing an
+empty reference after mount. Household Expenses validates the composed COMPLETE
+context and matching nonempty versions before either cached or fresh data is
+exposed; Activity validates its inline connection before direct rendering.
+Personal inventory reuse includes exact signed inventory page variables; report
+reuse includes all applied period/account/filter/archive variables. The server's
+saved timezone and account stream/report revisions remain in the same Relay
+projection and are invalidated by existing writes. Report continuation and
+source/detail restoration stay fresh and revision-checked. Detail selection,
+annotation recovery, connection management/enrollment, replacement/archive and
+timezone initialization retain network-only reads and original operation keys.
+Explicit refresh disables initial reuse before rechecking access, even before the
+coalesced read starts. Retained references are released on owner unmount; normal
 navigation cancellation does not dispose an otherwise valid account.
 
 ## Verification
@@ -145,17 +158,23 @@ harness with an installed Playwright module and Chromium/Chrome executable:
 ```sh
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
 CHROME_PATH=/absolute/path/to/chrome \
-PORT=3193 FIXTURE_DELAY_MS=250 WIDTH=320 SCALE=2 \
+PORT=3193 FIXTURE_DELAY_MS=250 NAVIGATION_COHORTS=5 WIDTH=320 SCALE=2 \
 OUTPUT_DIR=/tmp/kami-navigation-evidence \
 TESTED_COMMIT="$(git rev-parse HEAD)" node scripts/navigation-browser.cjs
 ```
 
 Repeat at 320, 390 and 1280 CSS pixels with `SCALE=1` and `SCALE=2`. The harness
 sets reduced motion, seeds supported cookie sessions, starts a loopback Auth fixture on port 3196 for both the server and browser, and routes synthetic GraphQL fixtures in the browser;
-no production credentials or financial data are used. It records requests,
-feedback/content timing, exact shell retention and document loads, and asserts
+no production credentials or financial data are used. It records financial requests separately from browser-observed route/session
+requests, labels repeated warm cohorts inside the freshness window, and records
+pending-cue mutation/content timing, exact shell retention and document loads, and asserts
 keyboard detail closure/focus, URL filter/Back/Forward restoration, local filters,
-native modified-click entry and denial after focusing a destination tab.
+native modified-click entry and denial after focusing a destination tab. Timings
+include Playwright scheduling/assertion overhead. Mutation observations and RAF
+polling are approximations, not proof of displayed pixels or React commits.
+The required Personal warm-navigation browser case records a repeated inventory/
+report cohort and verifies cross-space and Back/Forward return with the same
+synthetic report fixture.
 
 Set `LAYOUT_TESTS=1` for the #238/#267 layout regression matrix instead of the request
 profile. It uses a long synthetic expense list and checks top/bottom edge anchoring

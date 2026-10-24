@@ -5,6 +5,8 @@ import {
   useEffect,
   useState,
   useEffectEvent,
+  useMemo,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import {
@@ -49,27 +51,23 @@ export function NetworkQuery<T extends OperationType>({
   onState?: (state: ReadState) => void;
   onError?: (error: Error) => void;
 }) {
-  const environment = useRelayEnvironment();
-  const [reference, setReference] = useState<PreloadedQuery<T> | null>(null);
+  // One keyed visit owns its captured variables, including panel-only URL updates.
+  const [captured] = useState(() => variables);
+  const [warmVisit, setWarmVisit] = useState(
+    () =>
+      reuse &&
+      scope.isLive() &&
+      workspaceFetchPolicy(scope.environment, document, captured) ===
+        'store-or-network',
+  );
+  const warm = useWorkspaceQuery<T>(scope, document, captured, warmVisit);
+  // A cold visit keeps its reader after completion, preserving child traversals,
+  // forms and recovery owners. An invalidated warm visit becomes cold once.
+  if (warmVisit && warm === undefined) setWarmVisit(false);
   const state = useEffectEvent((value: ReadState) => onState?.(value));
   useEffect(() => {
-    if (!scope.isLive()) return;
-    state({ busy: true, error: false });
-    const query = loadQuery<T>(environment, document, variables, {
-      fetchPolicy: reuse
-        ? workspaceFetchPolicy(environment, document, variables)
-        : 'network-only',
-    });
-    // The effect owns the public reference even if a request-start access event
-    // removes the owner before this state update commits. dispose cancels the
-    // network subscription as well as releasing its store retention.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReference(query);
-    return () => query.dispose();
-    // Query variables are captured for one keyed read visit. URL-only
-    // panel changes must not reset a retained traversal or durable form draft.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [environment, document]);
+    if (warm !== undefined) state({ busy: false, error: false });
+  }, [warm]);
   return (
     <QueryFailure
       fallback={failure}
@@ -78,24 +76,188 @@ export function NetworkQuery<T extends OperationType>({
         onError?.(error);
       }}
     >
-      <Suspense fallback={fallback}>
-        {reference ? (
-          <QueryResult<T>
-            document={document}
-            reference={reference}
-            onReady={() => onState?.({ busy: false, error: false })}
-          >
-            {(data) =>
-              scope.isLive() ? children(data, reference.variables) : fallback
-            }
-          </QueryResult>
-        ) : (
-          fallback
-        )}
-      </Suspense>
+      {warm !== undefined ? (
+        <Suspense fallback={fallback}>
+          <WarmResult<T> data={warm} variables={captured}>
+            {children}
+          </WarmResult>
+        </Suspense>
+      ) : (
+        <PendingQuery<T>
+          scope={scope}
+          document={document}
+          variables={captured}
+          fallback={fallback}
+          onState={onState}
+        >
+          {children}
+        </PendingQuery>
+      )}
     </QueryFailure>
   );
 }
+function WarmResult<T extends OperationType>({
+  data,
+  variables,
+  children,
+}: {
+  data: T['response'];
+  variables: T['variables'];
+  children: (data: T['response'], variables: T['variables']) => ReactNode;
+}) {
+  return children(data, variables);
+}
+/** Cold/safety reads retain their effect-owned public preloaded reference. */
+function PendingQuery<T extends OperationType>({
+  scope,
+  document,
+  variables,
+  fallback,
+  onState,
+  children,
+}: {
+  scope: FinancialScope;
+  document: GraphQLTaggedNode;
+  variables: T['variables'];
+  fallback: ReactNode;
+  onState?: (state: ReadState) => void;
+  children: (data: T['response'], variables: T['variables']) => ReactNode;
+}) {
+  const environment = useRelayEnvironment();
+  const [reference, setReference] = useState<PreloadedQuery<T> | null>(null);
+  const state = useEffectEvent((value: ReadState) => onState?.(value));
+  useEffect(() => {
+    if (!scope.isLive()) return;
+    state({ busy: true, error: false });
+    const query = loadQuery<T>(environment, document, variables, {
+      fetchPolicy: 'network-only',
+    });
+    // The effect owns this reference even when request-start denial removes its owner.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReference(query);
+    return () => query.dispose();
+    // Variables are captured by the keyed parent visit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [environment, document]);
+  return (
+    <Suspense fallback={fallback}>
+      {reference ? (
+        <QueryResult<T>
+          document={document}
+          reference={reference}
+          onReady={() => onState?.({ busy: false, error: false })}
+        >
+          {(data) =>
+            scope.isLive() ? children(data, reference.variables) : fallback
+          }
+        </QueryResult>
+      ) : (
+        fallback
+      )}
+    </Suspense>
+  );
+}
+
+/** A pure public Relay snapshot read. The committed subscriber owns retention;
+ * abandoned renders own nothing. React rechecks after subscribe, closing the
+ * render/commit update, collection and invalidation window. No payload is copied
+ * out of Relay and retention never advances the operation's server fetch time. */
+export function useWorkspaceQuery<T extends OperationType>(
+  scope: FinancialScope,
+  document: GraphQLTaggedNode,
+  variables: T['variables'],
+  enabled = true,
+): T['response'] | undefined {
+  const identity = JSON.stringify(variables);
+  const reader = useMemo(() => {
+    if (!enabled)
+      return { getSnapshot: () => undefined, subscribe: () => () => {} };
+    const environment = scope.environment;
+    const operation = createOperationDescriptor(
+      getRequest(document),
+      variables,
+    );
+    let snapshot = environment.lookup(operation.fragment);
+    const recordIDs = () =>
+      snapshot.seenRecords instanceof Set
+        ? ([...snapshot.seenRecords] as string[])
+        : Object.keys(snapshot.seenRecords);
+    let observed = new Map(
+      recordIDs().map((id) => [id, environment.getStore().getSource().get(id)]),
+    );
+    const refreshSnapshot = () => {
+      snapshot = environment.lookup(operation.fragment);
+      observed = new Map(
+        recordIDs().map((id) => [
+          id,
+          environment.getStore().getSource().get(id),
+        ]),
+      );
+    };
+    const getSnapshot = () => {
+      // Relay records are immutable. Re-read when a seen record changes, including
+      // before subscribe/commit, without manufacturing a new snapshot on every call.
+      if (
+        scope.isLive() &&
+        [...observed].some(
+          ([id, record]) =>
+            environment.getStore().getSource().get(id) !== record,
+        )
+      )
+        refreshSnapshot();
+      return enabled &&
+        scope.isLive() &&
+        workspaceFetchPolicy(environment, document, variables) ===
+          'store-or-network' &&
+        !snapshot.isMissingData &&
+        !(snapshot as typeof snapshot & { fieldErrors?: readonly unknown[] })
+          .fieldErrors?.length
+        ? (snapshot.data as T['response'])
+        : undefined;
+    };
+    return {
+      getSnapshot,
+      subscribe(notify: () => void) {
+        if (!enabled || !scope.isLive()) return () => {};
+        const retention = environment.retain(operation);
+        getSnapshot();
+        const subscription = environment.subscribe(snapshot, (next) => {
+          snapshot = next;
+          observed = new Map(
+            recordIDs().map((id) => [
+              id,
+              environment.getStore().getSource().get(id),
+            ]),
+          );
+          notify();
+        });
+        const store = environment.getStore();
+        const invalidation = store.subscribeToInvalidationState(
+          store.lookupInvalidationState(
+            snapshot.seenRecords instanceof Set
+              ? [...snapshot.seenRecords]
+              : Object.keys(snapshot.seenRecords),
+          ),
+          notify,
+        );
+        notify();
+        return () => {
+          subscription.dispose();
+          invalidation.dispose();
+          retention.dispose();
+        };
+      },
+    };
+    // Identity is the operation's serialized variables, never caller object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, document, identity, enabled]);
+  return useSyncExternalStore(
+    reader.subscribe,
+    reader.getSnapshot,
+    () => undefined,
+  );
+}
+
 function QueryResult<T extends OperationType>({
   document,
   reference,

@@ -161,10 +161,21 @@ const origin = process.env.BROWSER_ORIGIN || `http://localhost:${port}`;
 const delay = Number(process.env.FIXTURE_DELAY_MS || 250);
 const width = Number(process.env.WIDTH || 1280),
   scale = Number(process.env.SCALE || 1);
+// Select the concrete Group-family fixture without changing the measured lifecycle.
+const profileGroupId = process.env.GROUP_ID || 'T';
+assert(
+  ['T', 'F'].includes(profileGroupId),
+  'GROUP_ID must select Trip T or ordinary Group F',
+);
+const profileGroup = groups.find((group) => group.id === profileGroupId);
+const profileGroupPath =
+  profileGroup.kind === 'TRIP'
+    ? `/trips/${profileGroupId}`
+    : `/groups/${profileGroupId}`;
 const expense = {
   __typename: 'Expense',
   id: 'e1',
-  groupId: 'T',
+  groupId: profileGroupId,
   version: '1',
   canEdit: true,
   editLockReason: null,
@@ -204,7 +215,9 @@ const view = {
   ],
   expenseCount: '1',
   months: [{ month: '2026-10', totalExpenseMinor: '300', expenseCount: '1' }],
-  edges: [{ cursor: 'e1', node: expenseSnapshot(expense), source: groups[1] }],
+  edges: [
+    { cursor: 'e1', node: expenseSnapshot(expense), source: profileGroup },
+  ],
   pageInfo: { hasNextPage: false, endCursor: 'e1' },
 };
 if (process.env.LAYOUT_TESTS === '1' || process.env.REFRESH_TESTS === '1') {
@@ -215,7 +228,7 @@ if (process.env.LAYOUT_TESTS === '1' || process.env.REFRESH_TESTS === '1') {
       id: `e${i + 1}`,
       description: `Fixture lunch ${i + 1}`,
     }),
-    source: groups[1],
+    source: profileGroup,
   }));
   view.expenseCount = '40';
   view.totalExpenseMinor =
@@ -243,7 +256,13 @@ if (process.env.LEDGER_TESTS === '1') {
           }
         : {}),
     }),
-    source: i === 1 ? { ...groups[1], name: 'Maui' } : groups[1],
+    source:
+      i === 1
+        ? {
+            ...profileGroup,
+            name: profileGroupId === 'T' ? 'Maui' : profileGroup.name,
+          }
+        : profileGroup,
   }));
   view.expenseCount = '9';
   view.totalExpenseMinor = '2700';
@@ -263,10 +282,14 @@ const activity = {
         __typename: 'ActivityEvent',
         id: 'a1',
         recordId: 'e1',
+        description: 'Fixture lunch',
+        note: null,
+        before: null,
+        after: null,
         kind: 'EXPENSE_CREATED',
-        groupId: 'T',
-        groupName: 'Maui',
-        groupKind: 'TRIP',
+        groupId: profileGroupId,
+        groupName: profileGroupId === 'T' ? 'Maui' : profileGroup.name,
+        groupKind: profileGroup.kind,
         isHousehold: false,
         amountMinor: '300',
         currency: 'USD',
@@ -308,6 +331,7 @@ withAuthFixture(origin, session, async () => {
     let ledgerEdited = false;
     let log = [],
       documents = 0,
+      routeSessionRequests = 0,
       denied = false,
       offline = false;
     const errors = [];
@@ -318,6 +342,12 @@ withAuthFixture(origin, session, async () => {
     });
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('request', (r) => {
+      if (
+        r.isNavigationRequest() ||
+        r.url().includes('_rsc=') ||
+        r.url().includes('/auth/v1/')
+      )
+        routeSessionRequests++;
       if (r.isNavigationRequest() && r.resourceType() === 'document')
         documents++;
     });
@@ -390,7 +420,7 @@ withAuthFixture(origin, session, async () => {
             changed: true,
             record: {
               expenseId: variables.input.expenseId,
-              groupId: 'T',
+              groupId: profileGroupId,
               totalMinor: '300',
             },
           },
@@ -445,7 +475,7 @@ withAuthFixture(origin, session, async () => {
       else if (op === 'expenseEditMembersQuery')
         data = { group: group(variables.groupId) };
       else if (op === 'journeyGroupQuery' || op === 'householdMembersQuery')
-        data = { group: group(variables.id || 'T') };
+        data = { group: group(variables.id || profileGroupId) };
       else if (op === 'householdWorkspaceQuery')
         data = {
           householdDashboard: dashboard({ mode: 'complete', net: '0' }),
@@ -494,7 +524,7 @@ withAuthFixture(origin, session, async () => {
                   ? { description: 'Edited late expense', version: '2' }
                   : {}),
               }),
-              source: groups[1],
+              source: profileGroup,
             })),
             {
               cursor: 'e9',
@@ -503,7 +533,7 @@ withAuthFixture(origin, session, async () => {
                 id: 'e9',
                 effectiveDate: '2026-09-30',
               }),
-              source: groups[1],
+              source: profileGroup,
             },
           ],
           pageInfo: { hasNextPage: false, endCursor: 'e9' },
@@ -741,7 +771,10 @@ withAuthFixture(origin, session, async () => {
     }
     let start = Date.now();
     await page.goto(
-      origin + (workspace === 'group' ? '/trips/T?tab=overview' : '/household'),
+      origin +
+        (workspace === 'group'
+          ? `${profileGroupPath}?tab=overview`
+          : '/household'),
     );
     await page.locator('[data-ui~="workspace-tabs"]').waitFor();
     if (scale === 2)
@@ -782,17 +815,25 @@ withAuthFixture(origin, session, async () => {
         end: x.end - start,
       })),
     });
-    for (const tab of [
-      'Members',
-      'Activity',
+    const cohortStart = Date.now();
+    const visited = new Set(['Overview']);
+    const cohorts = Number(process.env.NAVIGATION_COHORTS || 1);
+    assert(
+      Number.isInteger(cohorts) && cohorts > 0 && cohorts <= 5,
+      'bounded cohort count',
+    );
+    for (const tab of Array.from({ length: cohorts }, () => [
+      'Balances',
       'Expenses',
       'Overview',
       'Members',
-    ]) {
+      'Activity',
+    ]).flat()) {
       const link = await workspaceLink(tab);
       await link.waitFor();
       log = [];
       documents = 0;
+      routeSessionRequests = 0;
       await page.evaluate(() => {
         window.__shell = document.querySelector('[data-ui~="workspace-tabs"]');
         window.__feedback = null;
@@ -803,9 +844,15 @@ withAuthFixture(origin, session, async () => {
             window.__click = performance.now();
             window.__clickEpoch = Date.now();
             const observer = new MutationObserver(() => {
-              if (window.__feedback === null)
+              if (
+                window.__feedback === null &&
+                document.querySelector(
+                  '[data-ui="workspace-navigation-pending"][data-pending]',
+                )
+              )
                 window.__feedback = performance.now() - window.__click;
             });
+            window.__stopFeedback = () => observer.disconnect();
             observer.observe(document.querySelector('main') || document.body, {
               childList: true,
               subtree: true,
@@ -830,11 +877,17 @@ withAuthFixture(origin, session, async () => {
       }));
       await page.waitForFunction(
         (tab) => {
+          if (tab === 'Balances')
+            return [...document.querySelectorAll('h2')].some(
+              (e) => e.textContent === 'Your balances',
+            );
           if (tab === 'Expenses')
             return !!document.querySelector('#ledger-expense-e1');
           if (tab === 'Activity')
-            return [...document.querySelectorAll('button')].some((e) =>
-              e.textContent.includes('added an expense'),
+            return [...document.querySelectorAll('button')].some(
+              (e) =>
+                e.getAttribute('aria-label')?.includes('added an expense') &&
+                e.textContent.includes('Fixture lunch'),
             );
           if (tab === 'Members')
             return [
@@ -856,6 +909,10 @@ withAuthFixture(origin, session, async () => {
         { polling: 'raf' },
       );
       const authorizedContentMs = Date.now() - start;
+      const pendingFeedbackMs = await page.evaluate(() => {
+        window.__stopFeedback?.();
+        return window.__feedback;
+      });
       await page.waitForTimeout(200);
       assert(
         early.shellPresent && early.sameShell,
@@ -873,6 +930,13 @@ withAuthFixture(origin, session, async () => {
         workspace,
         action: 'click ' + tab,
         ...early,
+        feedbackMs: pendingFeedbackMs,
+        routeSessionRequests,
+        cohortAgeMs: Date.now() - cohortStart,
+        financialCacheCondition:
+          visited.has(tab) && Date.now() - cohortStart < 30000
+            ? 'visited-within-window'
+            : 'cold-or-expired',
         scrollBefore,
         documents,
         authorizedContentMs,
@@ -884,6 +948,7 @@ withAuthFixture(origin, session, async () => {
           end: x.end - start,
         })),
       });
+      visited.add(tab);
     }
 
     await page
@@ -1260,7 +1325,9 @@ withAuthFixture(origin, session, async () => {
         .waitFor();
       assert.equal(await page.getByText('Private fixture note').count(), 0);
       assert.equal(
-        await page.getByText(group('T').name, { exact: true }).count(),
+        await page
+          .getByText(group(profileGroupId).name, { exact: true })
+          .count(),
         0,
       );
       results.push({ workspace, cachedTabForegroundRevocationDenied: true });
@@ -1274,6 +1341,11 @@ withAuthFixture(origin, session, async () => {
       {
         commit: process.env.TESTED_COMMIT || 'working tree',
         browser: browser.version(),
+        profileGroup: {
+          id: profileGroupId,
+          kind: profileGroup.kind,
+          path: profileGroupPath,
+        },
         delay,
         results,
       },
