@@ -2044,3 +2044,188 @@ test('Personal detail reflows private facts and editor across themes, narrow scr
       .click();
   }
 });
+
+test('Personal Overview uses complete totals and restores private recent activity with shared dates', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  const calls = await transactionServer(page);
+  await page.goto('/personal');
+  const card = page.getByRole('region', {
+    name: 'Spending from your accounts',
+  });
+  await expect(card).toContainText('−$40.00');
+  await expect(card).toContainText('Purchases & charges');
+  await expect(card).toContainText('Refunds received');
+  await expect(card).toContainText('History is partial or unknown');
+  await expect(card).toContainText('Historical discrepancy');
+  await expect(page.locator('[data-source-id]')).toHaveCount(3);
+  await expect(page.getByText('Net spending', { exact: false })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Connect account', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'This month', exact: true }).click();
+  await page.getByRole('button', { name: 'Last month', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'This month', exact: true }),
+  ).toBeFocused();
+  expect(new URL(page.url()).searchParams.get('period')).toBeNull();
+  await page.getByRole('button', { name: 'This month', exact: true }).click();
+  await page.getByRole('button', { name: 'Last month', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click();
+  await expect
+    .poll(() => calls.at(-1)?.variables.filter.period)
+    .toBe('LAST_MONTH');
+  const first = page.locator('[data-source-id] a').first();
+  const firstId = await first.getAttribute('id');
+  await first.click();
+  await expect(
+    page.getByRole('button', { name: 'Edit', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Back to Overview', exact: true })
+    .click();
+  await expect(page.locator(`[id="${firstId}"]`)).toBeFocused();
+  await page.getByRole('link', { name: 'View all', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Account activity', exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
+  await page.getByRole('link', { name: 'Overview', exact: true }).click();
+  await page
+    .getByRole('link', { name: /transaction needs classification/ })
+    .click();
+  expect(new URL(page.url()).searchParams.get('activity')).toBe('unresolved');
+  expect(new URL(page.url()).searchParams.get('period')).toBe('last-month');
+});
+
+test('Personal Overview distinguishes unavailable, failed, empty and uncertain imports', async ({
+  page,
+  app,
+}) => {
+  await app.authenticate();
+  let state = 'unavailable';
+  await transactionServer(page, (operation, _variables, route) => {
+    if (operation !== 'personalTransactionsQuery') return;
+    if (state === 'failed') {
+      route.fulfill({ status: 503, body: 'Unavailable' });
+      return false;
+    }
+    if (state === 'unavailable')
+      return transactionReport({
+        code: 'DATA_UNAVAILABLE',
+        summary: null,
+        counts: null,
+        rows: [],
+      });
+    return transactionReport({
+      rows: [],
+      totalCount: 0,
+      summary: {
+        netMinor: '0',
+        purchaseMinor: '0',
+        refundMinor: '0',
+        classificationComplete: true,
+      },
+      accounts: [
+        {
+          ...transactionReport().bankingReport.accounts[0],
+          coverage: 'COMPLETE',
+          intervals: [],
+        },
+      ],
+    });
+  });
+  await page.goto('/personal');
+  await expect(
+    page.getByText('Initial history is importing or unavailable.', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText('$0.00', { exact: false })).toHaveCount(0);
+  state = 'failed';
+  await page.reload();
+  await expect(
+    page.getByText('Private activity could not be loaded.', { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText('$0.00', { exact: false })).toHaveCount(0);
+  state = 'empty';
+  await page
+    .getByRole('button', { name: 'Retry activity', exact: true })
+    .click();
+  await expect(
+    page.getByText('No activity in this period.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Spending from your accounts' }),
+  ).toContainText('$0.00');
+});
+
+test('Personal Overview reflows summary, warnings and recent activity across appearances @owns-viewport', async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.authenticate();
+  let long = false;
+  await transactionServer(page, (operation) =>
+    operation === 'personalTransactionsQuery'
+      ? transactionReport(
+          long
+            ? {
+                summary: {
+                  netMinor: '-900719925474099123',
+                  purchaseMinor: '10000',
+                  refundMinor: '900719925474109123',
+                  classificationComplete: false,
+                },
+              }
+            : {},
+        )
+      : undefined,
+  );
+  for (const [width, scale, theme] of [
+    [320, 1, 'LIGHT'],
+    [390, 1, 'DARK'],
+    [440, 2, 'SYSTEM'],
+    [1280, 2, 'LIGHT'],
+    [1280, 1, 'DARK'],
+  ]) {
+    app.setAppearance(theme);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/personal?tab=overview');
+    await expect(
+      page.getByRole('region', { name: 'Spending from your accounts' }),
+    ).toBeVisible();
+    await page.evaluate((scale) => {
+      document.documentElement.style.fontSize = `${16 * scale}px`;
+    }, scale);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `overview-${width}-${scale}-${theme}-${long}.png`,
+      ),
+      fullPage: true,
+    });
+    await page
+      .getByRole('button', { name: 'How spending is calculated', exact: true })
+      .click();
+    await expect(
+      page.getByRole('dialog', { name: 'About this spending total' }),
+    ).toContainText('Refunds reduce their posting period');
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', {
+        name: 'How spending is calculated',
+        exact: true,
+      }),
+    ).toBeFocused();
+    long = true;
+  }
+});

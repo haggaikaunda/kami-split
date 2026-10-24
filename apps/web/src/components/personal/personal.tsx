@@ -113,26 +113,21 @@ function PersonalRead({
           {(data) =>
             data.bankingConnections.code === 'READY' ? (
               <>
-                {(section !== 'Transactions' ||
-                  !data.bankingConnections.connections.some(
-                    (connection) => connection.accounts.length > 0,
-                  )) && <RestoreSource scope={scope} allowed={[]} />}
+                {(section === 'Connections' ||
+                  (!data.bankingConnections.hasNextPage &&
+                    !data.bankingConnections.connections.some(
+                      (connection) => connection.accounts.length > 0,
+                    ))) && <RestoreSource scope={scope} allowed={[]} />}
                 <ReportingTimezoneInitialization
                   showPeriod={
                     section === 'Overview' &&
+                    !data.bankingConnections.connections.some(
+                      (connection) => connection.accounts.length > 0,
+                    ) &&
+                    !data.bankingConnections.hasNextPage &&
                     (paramsPeriod === null || paramsPeriod === 'this-month')
                   }
                 />
-                {section !== 'Connections' &&
-                  (section !== 'Transactions' ||
-                    (!data.bankingConnections.connections.some(
-                      (connection) => connection.accounts.length > 0,
-                    ) &&
-                      !data.bankingConnections.hasNextPage)) && (
-                    <p className={styles.privacy}>
-                      Only you can see these bank accounts and their activity.
-                    </p>
-                  )}
                 {section === 'Connections' ? (
                   <>
                     <section
@@ -167,12 +162,11 @@ function PersonalRead({
                       </p>
                     </section>
                   </>
-                ) : section === 'Transactions' &&
-                  (data.bankingConnections.connections.some(
+                ) : data.bankingConnections.connections.some(
                     (connection) => connection.accounts.length > 0,
-                  ) ||
-                    data.bankingConnections.hasNextPage) ? (
+                  ) || data.bankingConnections.hasNextPage ? (
                   <TransactionInventory
+                    overview={section === 'Overview'}
                     scope={scope}
                     result={data.bankingConnections}
                   />
@@ -246,6 +240,9 @@ function ActivityBoundary({
           history. Available history depends on your institution.
         </p>
       )}
+      <p className={styles.privacy}>
+        Only you can see these bank accounts and their activity.
+      </p>
       <Link className={styles.link} href={`/personal?${next}`}>
         Go to Connections
       </Link>
@@ -260,7 +257,9 @@ function TransactionInventory({
   scope,
   result,
   known = new Map(),
+  overview = false,
 }: {
+  overview?: boolean;
   scope: FinancialScope;
   result: personalInventoryQuery['response']['bankingConnections'];
   known?: ReadonlyMap<string, AccountLabel>;
@@ -308,6 +307,7 @@ function TransactionInventory({
         {(data) =>
           data.bankingConnections.code === 'READY' ? (
             <TransactionInventory
+              overview={overview}
               scope={scope}
               result={data.bankingConnections}
               known={labels}
@@ -322,6 +322,7 @@ function TransactionInventory({
     );
   return (
     <PersonalTransactions
+      overview={overview}
       scope={scope}
       names={new Map([...labels].map(([id, account]) => [id, account.name]))}
       statuses={
